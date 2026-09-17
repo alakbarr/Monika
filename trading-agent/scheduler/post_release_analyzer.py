@@ -31,6 +31,14 @@ CURRENCY_TO_SYMBOLS = {
     'XBR': ['XTIUSD', 'XBRUSD'],
     'BTC': ['BTCUSD'],
 }
+ 
+
+class _AwaitableNone:
+    """Helper enabling stop() to be called both synchronously and awaited without warning."""
+    def __await__(self):
+        async def _noop():
+            return None
+        return _noop().__await__()
 
 
 class PostReleaseAnalyzer:
@@ -96,10 +104,11 @@ class PostReleaseAnalyzer:
             except asyncio.CancelledError:
                 break
 
-    async def stop(self) -> None:
+    def stop(self) -> Any:
         self._running = False
         self._stop_event.set()
         logger.info("[PostReleaseAnalyzer] Stopped")
+        return _AwaitableNone()
 
     async def _check_releases(self):
         """Check for recently-released high-impact events and trigger re-analysis."""
