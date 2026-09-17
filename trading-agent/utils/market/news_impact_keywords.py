@@ -4,7 +4,7 @@ supaya tidak divergen."""
 
 SHOCK_KEYWORDS = [
     # Geopolitical — frasa spesifik (bukan single words seperti 'war', 'attack')
-    'missile attack', 'missile strikes', 'military strikes on', 'airstrike on',
+    'missile attack', 'missile strikes', 'military strikes', 'military strikes on', 'airstrike on',
     'war declared', 'declares war', 'war breaks out',
     'coup attempt', 'coup d\'etat', 'martial law declared', 'state of emergency declared',
     'assassination of', 'targeted assassination',

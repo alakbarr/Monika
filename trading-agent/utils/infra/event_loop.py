@@ -35,4 +35,11 @@ def run_async(coroutine: Any, **kwargs: Any) -> Any:
     """
     factory_kwargs = get_loop_factory()
     merged_kwargs = {**factory_kwargs, **kwargs}
+    if sys.version_info < (3, 12):
+        merged_kwargs.pop("loop_factory", None)
+        if IS_WINDOWS:
+            try:
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            except Exception:
+                pass
     return asyncio.run(coroutine, **merged_kwargs)
