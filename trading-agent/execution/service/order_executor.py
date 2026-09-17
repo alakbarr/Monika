@@ -305,6 +305,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             # Pips slippage check
             max_slippage_pips = order_plan.get("max_slippage_pips") or self.settings.get("execution", {}).get("max_trigger_slippage_pips")
             if max_slippage_pips is not None:
+                max_slip_pips_val = float(max_slippage_pips)
                 from utils.market.instrument_identity import resolve_instrument_identity
                 pip_size = resolve_instrument_identity(symbol).pip_size or 0.0001
                 actual_slippage_pips = abs(current_price - target_price) / pip_size

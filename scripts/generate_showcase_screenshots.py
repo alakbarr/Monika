@@ -1168,7 +1168,8 @@ async def capture_tui_screenshot():
     png_path = DOCS_IMG_DIR / "10_terminal_ui_tui.png"
     svg_path.write_text(svg_content, encoding="utf-8")
     
-    file_url = f"file:///{str(svg_path).replace('\\', '/')}"
+    svg_path_posix = svg_path.as_posix()
+    file_url = f"file:///{svg_path_posix}"
     cmd = [
         str(CHROME_PATH),
         "--headless=new",
