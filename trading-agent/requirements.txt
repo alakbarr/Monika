@@ -1,0 +1,81 @@
+# LLM Integration
+anthropic>=0.30.0
+langgraph>=0.0.25
+langgraph-checkpoint-postgres>=2.0.0
+langchain_core>=0.1.0
+
+# Data Acquisition & Scraping
+DrissionPage>=4.0.0
+yfinance>=0.2.40
+feedparser>=6.0.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+requests>=2.31.0
+
+# Data Processing & Indicators
+pandas>=2.2.0
+numpy>=1.26.0
+ta>=0.11.0
+matplotlib>=3.8.0
+mplfinance>=0.12.10b0
+torch>=2.14.0
+timesfm>=3.0.1
+huggingface_hub>=0.28.0
+safetensors>=0.5.3
+
+# Execution
+MetaTrader5>=5.0.45; sys_platform == 'win32'
+
+# Database (PostgreSQL & SQLite)
+asyncpg>=0.29.0
+SQLAlchemy[asyncio]>=2.0.30
+alembic>=1.13.1
+aiosqlite>=0.19.0
+
+# Web Dashboard
+fastapi>=0.111.0
+uvicorn>=0.30.0
+
+# Telegram Bot
+python-telegram-bot>=21.1.1
+
+# Scheduling
+APScheduler>=3.10.0
+
+# Configuration & Utilities
+PyYAML>=6.0.1
+ruamel.yaml>=0.17.0
+python-dotenv>=1.0.1
+python-dateutil>=2.8.2
+psutil>=5.9.0
+pydantic>=2.7.0
+
+# CLI & Terminal UI
+textual>=0.86.0
+prompt_toolkit>=3.0.0
+rich>=13.0.0
+
+# HTTP Client (async)
+aiohttp>=3.9.0
+httpx>=0.27.0
+certifi>=2024.2.2
+
+# Observability & Validation
+jsonschema>=4.20.0
+opentelemetry-api>=1.25.0
+opentelemetry-sdk>=1.25.0
+
+# PostgreSQL connection pool (psycopg3)
+psycopg[pool]>=3.1.0
+
+# Linux performance (optional)
+uvloop>=0.20.0; sys_platform == 'linux'
+
+# Optional LLM Providers
+openai>=1.14.0
+langchain-ollama>=0.1.0
+langchain-community>=0.0.25
+
+# Testing & Development
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

@@ -1,0 +1,794 @@
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap');
+
+/* ==============================================================================
+   DESIGN TOKENS — Monika AI Trading Agent (Retro-Vintage · Typewriter · Dual Mode)
+   Follows DESIGN.md specifications
+   ============================================================================== */
+
+:root[data-theme="light"] {
+  /* Mode Terang — Vintage OS (vintage-ui.jpg desktop aesthetic) */
+  --color-desktop: #877F75;
+  --color-paper: #EFE9DF;
+  --color-paper-raised: #FAF7F2;
+  --color-ink: #1C1917;
+  --color-ink-soft: #5C544C;
+  --color-rule: #1C1917;
+  --color-border-thick: #1C1917;
+
+  /* Vintage OS Titlebar Palette */
+  --color-win-blue: #3BA4C4;
+  --color-win-yellow: #F5BD38;
+  --color-win-salmon: #E86C53;
+  --color-win-coral: #E25B45;
+  --color-win-green: #48A9A6;
+  --color-win-gray: #C4BCB1;
+  --color-titlebar: #3BA4C4;
+  --color-titlebar-text: #1C1917;
+
+  /* Accents & Status */
+  --color-brass: #E0962B;
+  --color-brass-bright: #F5BD38;
+  --color-ledger-green: #2E7D32;
+  --color-ledger-red: #D32F2F;
+
+  /* Aliases & Backward Compatibility */
+  --color-canvas: var(--color-desktop);
+  --color-canvas-raised: var(--color-paper-raised);
+  --color-surface: var(--color-paper-raised);
+  --color-surface-card: var(--color-paper-raised);
+  --color-surface-elevated: var(--color-paper-raised);
+  --color-surface-hover: #F0E8DC;
+  --color-surface-subtle: #EFE9DF;
+  --color-primary: var(--color-win-blue);
+  --color-primary-active: #2D93B3;
+  --color-primary-dim: rgba(59, 164, 196, 0.2);
+  --color-on-primary: #1C1917;
+  --color-text-white: var(--color-ink);
+  --color-ink-muted: var(--color-ink-soft);
+  --color-text-primary: var(--color-ink);
+  --color-text-secondary: var(--color-ink-soft);
+  --color-text-muted: var(--color-ink-soft);
+  --color-border: var(--color-rule);
+  --color-border-strong: var(--color-ink);
+  --color-border-focus: var(--color-win-blue);
+  --color-profit: var(--color-ledger-green);
+  --color-profit-dim: rgba(46, 125, 50, 0.18);
+  --color-loss: var(--color-ledger-red);
+  --color-loss-dim: rgba(211, 47, 47, 0.18);
+  --color-warn: var(--color-win-yellow);
+  --color-warn-dim: rgba(245, 189, 56, 0.25);
+  --color-active: var(--color-ledger-green);
+  --color-paused: var(--color-win-yellow);
+  --color-error: var(--color-ledger-red);
+  --color-info: var(--color-win-blue);
+  --color-info-dim: rgba(59, 164, 196, 0.18);
+
+  /* Hard Vintage Drop Shadows (zero blur) */
+  --shadow-card: 3px 3px 0 var(--color-rule);
+  --shadow-elevated: 4px 4px 0 var(--color-rule);
+  --shadow-btn: 2px 2px 0 var(--color-rule);
+  --shadow-dropdown: 4px 4px 0 var(--color-ink);
+}
+
+:root,
+:root[data-theme="dark"] {
+  /* Mode Gelap — Vintage OS Dark Station */
+  --color-desktop: #1A1715;
+  --color-paper: #24201D;
+  --color-paper-raised: #2D2824;
+  --color-ink: #F6F1EA;
+  --color-ink-soft: #ADA296;
+  --color-rule: #0F0D0C;
+  --color-border-thick: #0F0D0C;
+
+  /* Vintage OS Titlebar Palette Dark */
+  --color-win-blue: #2A7991;
+  --color-win-yellow: #B8851B;
+  --color-win-salmon: #B04A36;
+  --color-win-coral: #A83A27;
+  --color-win-green: #2E6F6D;
+  --color-win-gray: #4A433D;
+  --color-titlebar: #2A7991;
+  --color-titlebar-text: #F6F1EA;
+
+  /* Accents & Status */
+  --color-brass: #D98C28;
+  --color-brass-bright: #F5BD38;
+  --color-ledger-green: #4CAF50;
+  --color-ledger-red: #EF5350;
+
+  /* Aliases & Backward Compatibility */
+  --color-canvas: var(--color-desktop);
+  --color-canvas-raised: var(--color-paper-raised);
+  --color-surface: var(--color-paper-raised);
+  --color-surface-card: var(--color-paper-raised);
+  --color-surface-elevated: var(--color-paper-raised);
+  --color-surface-hover: #38322D;
+  --color-surface-subtle: #24201D;
+  --color-primary: var(--color-win-blue);
+  --color-primary-active: #3BA4C4;
+  --color-primary-dim: rgba(42, 121, 145, 0.25);
+  --color-on-primary: #F6F1EA;
+  --color-text-white: var(--color-ink);
+  --color-ink-muted: var(--color-ink-soft);
+  --color-text-primary: var(--color-ink);
+  --color-text-secondary: var(--color-ink-soft);
+  --color-text-muted: var(--color-ink-soft);
+  --color-border: #443D36;
+  --color-border-strong: #0F0D0C;
+  --color-border-focus: var(--color-win-blue);
+  --color-profit: var(--color-ledger-green);
+  --color-profit-dim: rgba(76, 175, 80, 0.2);
+  --color-loss: var(--color-ledger-red);
+  --color-loss-dim: rgba(239, 83, 80, 0.2);
+  --color-warn: var(--color-win-yellow);
+  --color-warn-dim: rgba(184, 133, 27, 0.25);
+  --color-active: var(--color-ledger-green);
+  --color-paused: var(--color-win-yellow);
+  --color-error: var(--color-ledger-red);
+  --color-info: var(--color-win-blue);
+  --color-info-dim: rgba(42, 121, 145, 0.2);
+
+  /* Hard Vintage Drop Shadows */
+  --shadow-card: 3px 3px 0 var(--color-rule);
+  --shadow-elevated: 4px 4px 0 var(--color-rule);
+  --shadow-btn: 2px 2px 0 var(--color-rule);
+  --shadow-dropdown: 4px 4px 0 #000000;
+}
+
+:root {
+  /* Konsol Sang Mesin — Konstan di kedua mode per DESIGN.md §4.3 */
+  --color-console-bg: #0B0906;
+  --color-console-phosphor: #E8B94A;
+  --color-console-dim: rgba(232, 185, 74, 0.45);
+  --color-console-border: rgba(232, 185, 74, 0.25);
+
+  /* Tipografi Dwi-Suara per DESIGN.md §5 */
+  --font-precision: "Courier Prime", ui-monospace, "IBM Plex Mono", monospace;
+  --font-narrative: "Courier Prime", ui-monospace, "IBM Plex Mono", "Courier New", monospace;
+
+  /* Aliases font backward compatibility */
+  --font-display: var(--font-precision);
+  --font-mono: var(--font-precision);
+  --font-sans: var(--font-precision);
+  --font-number: var(--font-precision);
+
+  /* Skala Ukuran Tipografi Monospace (line-height proporsional monospace) */
+  --text-hero: 44px;
+  --text-display-lg: 36px;
+  --text-display-md: 28px;
+  --text-display-sm: 22px;
+  --text-title-lg: 19px;
+  --text-title-md: 17px;
+  --text-title-sm: 15px;
+  --text-body-lg: 14px;
+  --text-body-md: 13px;
+  --text-body-sm: 12px;
+  --text-caption: 11px;
+  --text-xs: 10px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Spacing Grid 8px (skala: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Border-radius — Meniru frame jendela vintage OS (vintage-ui.jpg) */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-pill: 9999px;
+  --radius-card: 6px;
+
+  /* Layout */
+  --header-height: 54px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 60px;
+
+  /* Focus */
+  --shadow-focus: 0 0 0 2px var(--color-win-blue);
+
+  /* Micro transitions */
+  --transition-fast: 80ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==============================================================================
+   RESET & BASE
+   ============================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-precision);
+  font-size: var(--text-body-md);
+  font-weight: var(--weight-regular);
+  line-height: 1.5;
+  color: var(--color-ink);
+  background-color: var(--color-desktop);
+  min-height: 100vh;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+/* Retro Vintage OS Scrollbar (Chunky with solid outline) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-win-yellow);
+  border: 2px solid var(--color-rule);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brass);
+}
+
+/* High-Contrast Retro Focus Visible */
+*:focus-visible {
+  outline: 2px solid var(--color-win-blue) !important;
+  outline-offset: 2px !important;
+}
+
+/* Tabular Monospace Financial Figures */
+.num,
+.tabular-nums {
+  font-family: var(--font-precision);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Semantic Ledger Text Colors */
+.text-profit { color: var(--color-ledger-green); }
+.text-loss   { color: var(--color-ledger-red); }
+.text-warn   { color: var(--color-brass); }
+.text-primary{ color: var(--color-win-blue); }
+.text-muted  { color: var(--color-ink-soft); }
+.text-secondary { color: var(--color-ink-soft); }
+
+/* ==============================================================================
+   VINTAGE OS COMPONENT UTILITIES (vintage-ui.jpg)
+   ============================================================================== */
+
+/* Vintage OS Window (The Retro Window & Ledger Card) */
+.win-window,
+.ledger-card {
+  background: var(--color-paper-raised);
+  border: 2px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.win-window:hover,
+.ledger-card:hover {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Vintage OS Titlebar */
+.win-titlebar {
+  background: var(--color-win-blue);
+  color: var(--color-titlebar-text);
+  border-bottom: 2px solid var(--color-rule);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: var(--text-body-sm);
+  letter-spacing: 0.04em;
+  user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+}
+
+.win-titlebar--yellow { background: var(--color-win-yellow); }
+.win-titlebar--salmon { background: var(--color-win-salmon); }
+.win-titlebar--coral  { background: var(--color-win-coral); }
+.win-titlebar--green  { background: var(--color-win-green); }
+.win-titlebar--gray   { background: var(--color-win-gray); }
+
+/* Window Control Buttons (o _ X) */
+.win-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.win-control-btn {
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-rule);
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 1px 1px 0 var(--color-rule);
+}
+
+.win-control-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 transparent;
+}
+
+/* The Machine's Console Panel */
+.console-panel {
+  background: var(--color-console-bg) !important;
+  color: var(--color-console-phosphor) !important;
+  border: 2px solid var(--color-rule) !important;
+  border-radius: var(--radius-card);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.console-text-narrative {
+  font-family: var(--font-narrative) !important;
+  line-height: 1.7;
+}
+
+/* Retro OS / Typewriter Tactile Buttons (§7 & §9) */
+.win-btn,
+.typewriter-btn {
+  font-family: var(--font-precision);
+  font-size: var(--text-body-sm);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 14px;
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+  border: 2px solid var(--color-rule);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+  user-select: none;
+}
+
+.win-btn:hover,
+.typewriter-btn:hover {
+  background: var(--color-win-yellow);
+  color: #1C1917;
+}
+
+.win-btn:active,
+.typewriter-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 transparent;
+}
+
+.win-btn-primary,
+.typewriter-btn-brass {
+  background: var(--color-win-yellow);
+  color: #1C1917;
+}
+.win-btn-primary:hover,
+.typewriter-btn-brass:hover {
+  background: var(--color-brass);
+}
+
+.win-btn-danger,
+.typewriter-btn-danger {
+  background: var(--color-win-coral);
+  color: #FAF7F2;
+}
+.win-btn-danger:hover,
+.typewriter-btn-danger:hover {
+  background: var(--color-ledger-red);
+}
+
+/* Greenbar / Retro Listview Table Rows */
+.greenbar-row:nth-child(even) {
+  background: color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-win-green)) !important;
+}
+
+/* Rubber Stamp / Retro OS Stamp Badges */
+.stamp-badge,
+.win-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-precision);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border: 1.5px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  box-shadow: 1px 1px 0 var(--color-rule);
+  line-height: 1.3;
+}
+
+/* Vintage Stock Ticker Tape */
+.ticker-tape-container {
+  background: var(--color-paper-raised);
+  border-bottom: 2px solid var(--color-rule);
+  color: var(--color-ink);
+  font-family: var(--font-precision);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Vintage OS Sidebar Folder Tabs */
+.folder-tab {
+  font-family: var(--font-precision);
+  font-size: var(--text-body-sm);
+  letter-spacing: 0.02em;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.folder-tab.-active {
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+  border-color: var(--color-rule);
+  border-left: 4px solid var(--color-win-yellow);
+  box-shadow: 2px 2px 0 var(--color-rule);
+}
+
+/* ==============================================================================
+   ANIMATION KEYFRAMES (§9 Disciplined Motion)
+   ============================================================================== */
+
+/* CRT Console Boot Sequence (< 600ms) */
+@keyframes crtFlicker {
+  0%   { opacity: 0.1; filter: brightness(0.5); }
+  25%  { opacity: 0.8; filter: brightness(1.2); }
+  35%  { opacity: 0.3; filter: brightness(0.6); }
+  60%  { opacity: 0.95; filter: brightness(1.1); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+@keyframes scanlineSweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Typewriter / Teleprinter Blinking Cursor */
+@keyframes typewriterCursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Live Price Flash (150ms bounce-free) */
+@keyframes priceFlashGreen {
+  0% { background-color: var(--color-ledger-green); color: #FFF; }
+  100% { background-color: transparent; }
+}
+@keyframes priceFlashRed {
+  0% { background-color: var(--color-ledger-red); color: #FFF; }
+  100% { background-color: transparent; }
+}
+
+.animate-crt-boot {
+  animation: crtFlicker 500ms ease-out forwards;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background-color: var(--color-console-phosphor);
+  vertical-align: middle;
+  animation: typewriterCursor 1s steps(2, start) infinite;
+}
+
+/* Accessibility: Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .typewriter-cursor {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Utility Flexbox / Grid */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ==============================================================================
+   COCKPIT RESPONSIVE INSTRUMENT CLUSTER
+   ============================================================================== */
+.cockpit-bar {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 0.9fr 0.9fr;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.cockpit-item {
+  border-right: 1.5px dashed var(--color-rule);
+  padding-right: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cockpit-item:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+@media (max-width: 1200px) {
+  .cockpit-bar {
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: var(--space-3);
+  }
+  .cockpit-item:nth-child(3) {
+    border-right: none;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .cockpit-bar {
+    grid-template-columns: 1fr;
+  }
+  .cockpit-item {
+    border-right: none;
+    border-bottom: 1.5px dashed var(--color-rule);
+    padding-right: 0;
+    padding-bottom: var(--space-2);
+  }
+  .cockpit-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+/* ==============================================================================
+   BREADCRUMB BAR (Workspace > Tab Context)
+   ============================================================================== */
+.breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 2px solid var(--color-rule);
+  background: var(--color-paper);
+  font-family: var(--font-precision);
+  user-select: none;
+}
+
+.breadcrumb-bar .breadcrumb-separator {
+  color: var(--color-win-yellow);
+  font-weight: 900;
+}
+
+/* ==============================================================================
+   GLOBAL STATUS BAR (Win95/98 Bottom Taskbar)
+   ============================================================================== */
+.status-bar-global {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  background: var(--color-paper);
+  border-top: 2px solid var(--color-rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  font-size: var(--text-xs);
+  font-family: var(--font-precision);
+  color: var(--color-ink);
+  z-index: 100;
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.1);
+  user-select: none;
+}
+
+/* ==============================================================================
+   CRT SCANLINE OVERLAY & VINTAGE HARDWARE CHASSIS
+   ============================================================================== */
+.console-scanline {
+  position: relative;
+}
+
+.console-scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Vintage CRT Monitor Beige Chassis for Chat Panel in Light Mode */
+.crt-chassis {
+  background: #D9D2C5;
+  border: 3px solid #1C1917;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 4px 4px 0 #1C1917, inset 1px 1px 0 rgba(255, 255, 255, 0.6);
+  position: relative;
+}
+
+[data-theme="dark"] .crt-chassis {
+  background: #1C1917;
+  border-color: #0F0D0C;
+  box-shadow: 4px 4px 0 #0F0D0C;
+}
+
+.crt-bezel {
+  background: #181512;
+  border: 4px solid #3A352A;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Textarea / Input Retro Placeholder High-Contrast */
+textarea::placeholder,
+input::placeholder {
+  color: var(--color-ink-soft) !important;
+  opacity: 0.85;
+}
+
+/* Tabular numbers default for financial stats */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+
+/* ==============================================================================
+   TICKER TAPE CONTINUOUS SCROLL
+   ============================================================================== */
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-scroll-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 24px;
+  white-space: nowrap;
+  animation: tickerScroll 35s linear infinite;
+  width: max-content;
+}
+
+.ticker-scroll-track:hover,
+.ticker-tape-container:hover .ticker-scroll-track {
+  animation-play-state: paused;
+}
+
+/* ==============================================================================
+   SIDEBAR COLLAPSED
+   ============================================================================== */
+.sidebar--collapsed {
+  width: var(--sidebar-collapsed) !important;
+}
+
+.sidebar--collapsed .sidebar-label,
+.sidebar--collapsed .sidebar-subtabs {
+  display: none !important;
+}
+
+/* ==============================================================================
+   BRAND HEADER LOCKUP TYPOGRAPHY (LIGHT & DARK ADAPTIVE)
+   ============================================================================== */
+.monika-brand-stamp {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: box-shadow 0.2s ease;
+}
+
+[data-theme="light"] .monika-brand-stamp {
+  box-shadow: 1px 1px 0 var(--color-rule), 0 0 8px rgba(184, 117, 3, 0.2);
+}
+
+[data-theme="dark"] .monika-brand-stamp {
+  box-shadow: 0 0 10px rgba(245, 189, 56, 0.35);
+}
+
+.monika-brand-title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+[data-theme="light"] .monika-brand-title {
+  color: #1A1510;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .monika-brand-title {
+  color: #FFF8E7;
+  text-shadow: 0 0 12px rgba(245, 189, 56, 0.4), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.monika-brand-os {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  margin-left: 6px;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+[data-theme="light"] .monika-brand-os {
+  color: #B26A00;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(224, 150, 43, 0.3);
+}
+
+[data-theme="dark"] .monika-brand-os {
+  color: var(--color-brass-bright, #F5BD38);
+  text-shadow: 0 0 14px rgba(245, 189, 56, 0.65), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+

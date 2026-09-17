@@ -1,0 +1,70 @@
+"""
+Unit tests for backtest/statistical_tests.py (PSR, E[max], DSR, sample moments).
+"""
+import pytest
+from backtest.statistical_tests import (
+    probabilistic_sharpe_ratio,
+    expected_max_sharpe,
+    deflated_sharpe_ratio,
+    compute_sample_moments,
+)
+
+
+def test_probabilistic_sharpe_ratio_normal():
+    # Observed Sharpe = 1.5, benchmark = 0, n_obs = 100
+    psr = probabilistic_sharpe_ratio(observed_sr=1.5, benchmark_sr=0.0, n_obs=100)
+    assert 0.99 <= psr <= 1.0
+
+    # Negative Sharpe against 0 benchmark
+    psr_neg = probabilistic_sharpe_ratio(observed_sr=-0.5, benchmark_sr=0.0, n_obs=100)
+    assert psr_neg < 0.05
+
+    # Exactly matching benchmark
+    psr_eq = probabilistic_sharpe_ratio(observed_sr=1.0, benchmark_sr=1.0, n_obs=100)
+    assert abs(psr_eq - 0.5) < 1e-4
+
+
+def test_probabilistic_sharpe_ratio_edge_cases():
+    # Too few observations
+    assert probabilistic_sharpe_ratio(observed_sr=2.0, n_obs=2) == 0.5
+
+    # Fat-tail negative skew
+    psr_skew = probabilistic_sharpe_ratio(
+        observed_sr=1.0, benchmark_sr=0.0, n_obs=100, skew=-1.5, excess_kurt=4.0
+    )
+    assert 0.0 < psr_skew < 1.0
+
+
+def test_expected_max_sharpe():
+    # 1 trial = 0.0
+    assert expected_max_sharpe(n_trials=1) == 0.0
+
+    # Multiple trials monotonic increase
+    e_10 = expected_max_sharpe(n_trials=10, sr_std=0.5)
+    e_100 = expected_max_sharpe(n_trials=100, sr_std=0.5)
+    e_1000 = expected_max_sharpe(n_trials=1000, sr_std=0.5)
+
+    assert 0.0 < e_10 < e_100 < e_1000
+
+
+def test_deflated_sharpe_ratio():
+    # Single trial DSR equals PSR against 0.0
+    dsr_1 = deflated_sharpe_ratio(observed_sr=1.2, n_trials=1, n_obs=50)
+    psr_1 = probabilistic_sharpe_ratio(observed_sr=1.2, benchmark_sr=0.0, n_obs=50)
+    assert abs(dsr_1 - psr_1) < 1e-5
+
+    # When 50 trials tested, DSR drops because E[max] is positive
+    dsr_50 = deflated_sharpe_ratio(observed_sr=1.2, n_trials=50, n_obs=50, sr_std=0.5)
+    assert dsr_50 < dsr_1
+
+
+def test_compute_sample_moments():
+    data = [0.01, 0.02, -0.01, 0.03, -0.02, 0.01, 0.0]
+    mean, std, skew, kurt = compute_sample_moments(data)
+    assert abs(mean - (sum(data) / len(data))) < 1e-6
+    assert std > 0.0
+
+    # Constant data
+    m_const, s_const, sk_const, k_const = compute_sample_moments([0.05, 0.05, 0.05])
+    assert s_const == 0.0
+    assert sk_const == 0.0

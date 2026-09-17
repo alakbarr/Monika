@@ -1,0 +1,139 @@
+/* ==============================================================================
+   LAYOUT & RESPONSIVE GRID — Monika AI Trading Agent Dashboard
+   Follows retro-vintage 8px grid and hairline layout specifications
+   ============================================================================== */
+
+/* Base Layout Grids */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-4);
+}
+
+.edge-periods-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.main-content {
+  padding: var(--space-4);
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Sidebar smooth transition */
+nav[role="navigation"], .sidebar {
+  transition: width var(--transition-base), transform var(--transition-base);
+  background: var(--color-paper);
+  border-right: 2px solid var(--color-rule);
+}
+
+/* Breakpoints */
+@media (max-width: 1280px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .analysis-grid {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 200px;
+  }
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+  .edge-periods-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+
+  .overview-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .analysis-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .edge-periods-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Desktop sidebar hidden on mobile; mobile nav handled via MobileNavDrawer */
+  nav[role="navigation"].desktop-sidebar, .sidebar.desktop-sidebar {
+    display: none !important;
+  }
+
+  #mobile-nav-toggle {
+    display: inline-flex !important;
+  }
+
+  main, .main-content {
+    padding: var(--space-3) !important;
+  }
+
+  .header-metrics-center {
+    display: none !important;
+  }
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print ledger format */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  nav[role="navigation"], .sidebar, .no-print {
+    display: none !important;
+  }
+  main, .main-content {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .ledger-card {
+    border: 1px solid #999999 !important;
+    box-shadow: none !important;
+  }
+}

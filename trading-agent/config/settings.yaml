@@ -1,0 +1,1954 @@
+app_name: Monika
+environment: development
+trading:
+  cost_mode: standard
+  stage1_self_consistency_enabled: true
+  caveman_mode: true
+  parallel_asset_analysis: true
+  parallel_max_concurrency: 2
+  on_skill_load_failure: abort
+  auto_execute: false
+  auto_execute_min_confluence: 7
+  auto_execute_min_confidence: 0.6
+  auto_execute_active_hours_utc_start: 6
+  auto_execute_active_hours_utc_end: 22
+  position_review_interval_hours: 4.0
+  position_review:
+    auto_close_on_invalidation: true
+    auto_close_min_holding_hours: 2.0
+    auto_close_max_loss_pct: 0.5
+    auto_close_require_negative_pnl: true
+  min_reanalysis_minutes: 30
+  min_paper_trades_before_live: 50
+  min_paper_win_rate_pct: 55.0
+  paper_trading:
+    enabled: true
+    initial_balance: 10000.0
+    streak_loss_policy: warn_and_scale
+    pause_system_on_daily_sl_limit: false
+    streak_risk_scale_factor: 0.5
+    suspension_hours: 12
+  asset_universe:
+  - XAUUSD
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+  - AUDUSD
+  - XTIUSD
+  - BTCUSD
+  - XBRUSD
+  position_guardian:
+    enabled: true
+    strategy: close_before_news
+    close_if_near_event_minutes: 15
+    check_interval_seconds: 300
+    warning_minutes: 30
+    impact_levels:
+    - high
+  weekend_management:
+    enabled: true
+    strategy: close_if_profitable
+    gap_protection_hours: 2
+    exempted_symbols:
+    - BTCUSD
+    profit_threshold_pct: 0.5
+    alert_hour_utc: 17
+    auto_close_friday_positions: false
+  risk:
+    max_risk_amount_usd: 1000.0
+    max_weekly_drawdown_percent: 6.0
+    daily_rollover_utc_hour: 21
+    strategy_min_sample_size: 50
+    min_verifiable_confluence: 4
+    max_lot_per_symbol: 1.0
+    max_daily_sl_hits: 3
+    intraday_range_strategy_enabled: true
+    adr_baseline_lookback_days: 20
+    strict_structural_mapping: true
+    structural_snap_tolerance_atr_mult: 0.4
+    adr_lookback_days_fx: 5
+    adr_lookback_days_247: 7
+    intraday_tp_min_adr_pct: 0.4
+    intraday_tp_max_adr_pct: 0.9
+    intraday_max_sl_adr_pct: 0.4
+    intraday_adr_band_tolerance_pct: 0.15
+    max_position_holding_hours_intraday: 30
+    min_sl_atr_multiplier_by_symbol:
+      BTCUSD: 1.2
+      XAUUSD: 1.1
+      XTIUSD: 1.2
+      XBRUSD: 1.2
+      EURUSD: 1.0
+      GBPUSD: 1.0
+      USDJPY: 1.0
+      AUDUSD: 1.0
+      default: 1.0
+    dynamic_risk_scaling: true
+    dynamic_risk_min_pct: 0.25
+    dynamic_risk_max_pct: 1.0
+    dynamic_risk_lookback_trades: 20
+    risk_percent_per_trade: 1.0
+    min_rr_ratio: 1.3
+    max_daily_drawdown_percent: 4.0
+    max_concurrent_positions: 5
+    max_daily_trades: 8
+    max_consecutive_losses_per_symbol: 3
+    suspension_hours_after_consecutive_losses: 12
+    max_portfolio_heat_pct: 4.0
+    correlation_limit: 3
+    news_window_minutes: 15
+    post_sl_cooldown_hours: 1
+    vix_risk_adjustment: true
+    vix_thresholds:
+      normal: 20
+      caution: 25
+      defensive: 30
+      pause: 40
+    confluence_verifier_enabled: true
+    max_score_discrepancy_allowed: 3
+    max_score_discrepancy_by_symbol:
+      BTCUSD: 3
+      XTIUSD: 3
+      XBRUSD: 3
+    flash_crash:
+      enabled: true
+      lookback_minutes: 15
+      cooldown_minutes: 30
+      check_interval_seconds: 30
+      default_atr_multiplier: 5.0
+      default_min_pct_move: 2.0
+      symbol_rules:
+        BTCUSD:
+          atr_multiplier: 6.0
+          min_pct_move: 4.0
+        EURUSD:
+          atr_multiplier: 5.0
+          min_pct_move: 1.2
+        GBPUSD:
+          atr_multiplier: 5.0
+          min_pct_move: 1.2
+        USDJPY:
+          atr_multiplier: 5.0
+          min_pct_move: 1.2
+        AUDUSD:
+          atr_multiplier: 5.0
+          min_pct_move: 1.2
+        XAUUSD:
+          atr_multiplier: 4.5
+          min_pct_move: 2.5
+        XTIUSD:
+          atr_multiplier: 4.5
+          min_pct_move: 2.5
+        XBRUSD:
+          atr_multiplier: 4.5
+          min_pct_move: 2.5
+  signal_arbitration:
+    enabled: true
+    concordant_boost_conf: 0.05
+    concordant_risk_multiplier: 1.15
+    max_risk_multiplier: 1.25
+    quant_priority_risk_multiplier: 0.7
+    min_quant_confidence_for_trend_override: 0.75
+    vix_defensive_override_threshold: 35.0
+    empirical_joint_pooling: true
+    min_sample_size: 50
+  edge_strategy:
+    signal_cooldown_seconds: 3600
+    macro_gate_exempt_strategies:
+    - gap_fade
+    stats_tracker:
+      min_sample_size: 20
+      min_profit_factor: 1.0
+      review_days_back: 60
+    swap_modeling_enabled: true
+    trend_trailing:
+      sl_atr_multiplier: 1.5
+      tp_sl_multiplier: 2.5
+      use_adr_cap: true
+      max_tp_adr_multiple: 1.5
+    gap_fade:
+      enabled: true
+      min_gap_pips:
+        EURUSD: 5
+        GBPUSD: 5
+        AUDUSD: 5
+        USDJPY: 5
+      assumed_spread_pips:
+        EURUSD: 1.2
+        GBPUSD: 1.5
+        AUDUSD: 1.5
+        USDJPY: 1.2
+        XAUUSD: 3.0
+        BTCUSD: 15.0
+      assumed_slippage_pips: 0.5
+      max_hold_minutes: 60
+    tsm_momentum:
+      enabled: true
+      lookbacks_days:
+      - 63
+      - 126
+      - 252
+    xau_trend_engine:
+      enabled: true
+      ema_fast: 20
+      ema_slow: 50
+      donchian_period: 20
+    btc_donchian_breakout:
+      enabled: true
+      donchian_period: 20
+      volume_zscore_min: 1.5
+      size_multiplier: 0.6
+    xti_pairs_readiness:
+      enabled: true
+      brent_symbol: XBRUSD
+      z_entry_threshold: 2.0
+      z_tp_target: 0.0
+      z_sl_threshold: 3.0
+      max_hold_minutes: 7200
+    liquidity_sweep:
+      enabled: true
+      asian_session_start_utc: 0
+      asian_session_end_utc: 8
+    macro_bias:
+      enabled: true
+      strong_misalignment_threshold: 0.8
+      yield_lookback_days: 5
+    volume_profile:
+      enabled: true
+      profile_lookback_bars: 30
+      value_area_pct: 0.7
+    volatility_regime:
+      enabled: true
+      chop_atr_percentile_max: 25
+      lookback_bars: 20
+  schedule:
+    weekend_btc_only_mode: true
+    min_reanalysis_minutes: 30
+    analysis_cycle_hours: 8
+    trigger_check_minutes: 2
+    news_check_minutes: 5
+    price_fetch_minutes: 2
+    scraper_stagger_seconds: 10
+    max_news_reruns_per_day: 8
+    timezone: Asia/Jakarta
+    cycle_times_local:
+    - 07:00
+    - '15:00'
+    - '20:00'
+    daily_report_time_local: 08:00
+    weekly_report_weekday: 5
+    run_immediately_on_first_start: true
+    catch_up_missed_cycles: true
+    catch_up_overdue_multiplier: 1.5
+  trigger_checker:
+    max_trigger_age_hours: 18.0
+    auto_close_on_invalidation: false
+  trailing_stop:
+    enabled: true
+    breakeven_atr_multiple: 0.8
+    trail_atr_multiple: 1.2
+    timeframe: H4
+    check_interval_minutes: 5
+  timesfm:
+    enabled: true
+    device: cuda
+    model_id: google/timesfm-3.0-pytorch
+    context_length: 512
+    horizon_hours: 24
+    cache_ttl_hours: 8.0
+    multivariate_covariates:
+    - DXY
+    - US10Y
+    - XTIUSD
+    expectancy_gate:
+      enabled: true
+      min_probabilistic_expectancy: 1.05
+    volatility_trailing_adjustment: true
+    sizing_tail_risk_adjustment: true
+    stat_arb_confirmation: true
+    momentum_anti_exhaustion: true
+  mt5:
+    timeframes:
+    - M15
+    - H1
+    - H4
+    - D1
+  indicators:
+    ma_periods:
+    - 20
+    - 50
+    - 200
+    rsi_period: 14
+    stochastic_k: 14
+    stochastic_d: 3
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    bollinger_period: 20
+    bollinger_std: 2
+    swing_window: 5
+    sr_tolerance: 0.002
+    sr_min_touches: 2
+  symbols:
+  - XAUUSD
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+  - AUDUSD
+  - XTIUSD
+  - BTCUSD
+  - XBRUSD
+execution:
+  max_price_staleness_seconds: 120
+  max_analysis_age_for_execute_minutes: 30
+  max_analysis_age_hours: 0.5
+  max_brief_age_hours: 12.0
+  max_spread_multiplier:
+    XAUUSD: 5
+    EURUSD: 5
+    GBPUSD: 5
+    USDJPY: 5
+    AUDUSD: 5
+    XTIUSD: 10
+    XBRUSD: 10
+    BTCUSD: 20
+  adapter_type: live
+  remote_gateway_url: http://127.0.0.1:8080
+  remote_gateway_token: ''
+  mt5_common_dir: ''
+paper_trading:
+  enabled: true
+  initial_balance: 10000.0
+  tp_detection_method: close_price
+  realistic_sl_tp_conflict: sl_wins
+  max_paper_trade_holding_hours: 48
+  spread_realistic_multiplier: 2.0
+  spread_multipliers:
+    XAUUSD: 3.0
+    BTCUSD: 3.5
+    XTIUSD: 2.5
+    XBRUSD: 2.5
+    default: 2.0
+adversarial_check:
+  enabled: true
+  alert_on_extreme_only: false
+  hard_block_on_rr_error: true
+  hard_block_on_direction_conflict: true
+confidence_calibration:
+  check_interval_cycles: 10
+  min_trades_for_calibration: 20
+data_quality:
+  max_brief_age_execution_hours: 12.0
+  max_brief_age_analysis_hours: 12.0
+  brief_validity_hours: 12.0
+  max_stage2_brief_age_hours: 12.0
+  max_ohlcv_age_hours:
+    M15: 1.0
+    H1: 3.0
+    H4: 8.0
+    D1: 32.0
+  max_indicator_age_hours:
+    H1: 3.0
+    H4: 8.0
+    D1: 32.0
+  block_analysis_if_calendar_stale_hours: 14.0
+  max_macro_age_days:
+    vix: 4.5
+    treasury_yield: 4.5
+    dxy: 4.5
+    cot: 11.0
+    fedwatch: 7.0
+  key_data_tolerance:
+    treasury_10y_yield_bp: 15.0
+    cot_leveraged_pct: null
+ssvp:
+  enabled: true
+  cds_thresholds:
+    warning: 0.35
+    sync_trigger: 0.5
+    block_buysell: 0.65
+    abort_all: 0.75
+  max_score_discrepancy_allowed: 3
+  max_score_discrepancy_by_symbol:
+    BTCUSD: 3
+    XTIUSD: 3
+  require_adjudication_in_rationale: true
+  validate_precomputed_signals: true
+  precomputed_signal_confidence_threshold: 0.7
+  cross_agent_sync_enabled: true
+  cross_agent_contradiction_threshold: 0.65
+  temporal_cds_max_age_spread_hours: 3.0
+  magnitude_staleness_thresholds:
+    XAUUSD: 0.4
+    EURUSD: 0.25
+    GBPUSD: 0.25
+    USDJPY: 0.25
+    AUDUSD: 0.25
+    XTIUSD: 0.8
+    BTCUSD: 1.5
+    default: 0.35
+  require_substantive_adjudication: true
+  adjudication_min_explanation_chars: 30
+  post_event_brief_staleness_check: true
+  post_event_surprise_threshold_pct: 20
+  post_event_lookback_hours: 4
+  cds_calibration_enabled: true
+  cds_calibration_interval_hours: 24
+  cds_calibration_min_trades: 20
+  cds_predictive_threshold_gap: 8.0
+  specialist_conflict_detection: true
+  specialist_conflict_requires_adjudication: true
+  context_split_detection: true
+  context_split_alert_on_actionable: true
+news_classification_control:
+  max_breaking_per_day: 10
+  max_targeted_reruns_per_day: 10
+scraping:
+  min_interval_minutes: 45
+  rate_limit_seconds: 5
+  max_retries: 3
+  timeout: 30
+  consecutive_failure_alert: 3
+  sources:
+    rss_boj:
+      enabled: true
+      priority: critical
+    rss_rba:
+      enabled: true
+      priority: critical
+    rss_fed:
+      enabled: true
+      priority: critical
+    rss_ecb:
+      enabled: true
+      priority: critical
+    rss_boe:
+      enabled: true
+      priority: critical
+    tradingview:
+      enabled: true
+      priority: high
+    investing:
+      enabled: true
+      priority: medium
+    kitco:
+      enabled: true
+      priority: medium
+    investing_calendar:
+      enabled: true
+      priority: high
+    twitter:
+      enabled: true
+      priority: low
+      method: scraping
+    cme_fedwatch:
+      enabled: true
+      priority: high
+    rss_bloomberg:
+      enabled: true
+      priority: high
+    rss_wsj:
+      enabled: true
+      priority: high
+    rss_marketwatch:
+      enabled: true
+      priority: medium
+    rss_dow_jones:
+      enabled: true
+      priority: high
+    rss_forexlive:
+      enabled: true
+      priority: medium
+    rss_investing:
+      enabled: true
+      priority: medium
+    rss_coindesk:
+      enabled: true
+      priority: low
+    rss_fxstreet:
+      enabled: true
+      priority: medium
+    rss_reuters:
+      enabled: true
+      priority: high
+    rss_cnbc:
+      enabled: true
+      priority: high
+    rss_ft:
+      enabled: true
+      priority: high
+  finnhub_calendar_fallback:
+    enabled: true
+data_sources:
+  fred:
+    api_url: https://api.stlouisfed.org/fred/series/observations
+    series:
+      treasury_2y: DGS2
+      treasury_5y: DGS5
+      treasury_10y: DGS10
+      real_yield_10y: DFII10
+      inflation_expectation_10y: T10YIE
+      treasury_30y: DGS30
+      fed_funds_rate: FEDFUNDS
+      ecb_deposit_rate: ECBDFR
+      boe_base_rate: BOERUKM
+      boj_policy_rate: IRSTCB01JPM156N
+    update_frequency: daily
+  cftc_cot:
+    api_url: https://publicreporting.cftc.gov/resource
+    report_type: disaggregated_futopt
+    markets:
+      gold: 088691
+      crude_oil: '067651'
+      euro_fx: 099741
+      british_pound: 096742
+      japanese_yen: 097741
+      australian_dollar: '232741'
+    update_frequency: weekly
+  vix:
+    ticker: ^VIX
+    source: yfinance
+    update_frequency: daily
+telegram:
+  notification_events:
+  - order_executed
+  - order_closed
+  - trigger_fired
+  - circuit_breaker
+  - scraper_failure
+  - mt5_disconnected
+claude:
+  fundamental_model_escalation: claude-opus-5
+  fundamental_escalation_threshold: 0.6
+  fundamental_max_retries: 3
+  fundamental_retry_base_delay: 5
+  stage2_max_tool_turns: 18
+  stage2_max_tool_turns_fallback: 25
+database:
+  backup:
+    enabled: true
+    backup_dir: backups
+    keep_last_n: 7
+cost_tracking:
+  monthly_budget_usd: 100.0
+  daily_budget_usd: 5.0
+  alert_threshold_pct: 80
+  daily_anthropic_limit: 10000000
+  daily_gemini_limit: 4000000
+data_retention_days:
+  ohlcv_m15: 7
+  ohlcv_d1: 400
+  ohlcv_h1_h4: 60
+  news_items: 30
+  activity_log: 90
+  asset_analysis: 30
+  fundamental_brief: 30
+  order_log: 90
+  economic_calendar: 30
+  vix_data: 60
+  risk_state: 90
+  technical_indicators: 14
+  swing_points: 30
+  liquidity_zones: 90
+  fvg_zones_filled: 30
+backtest:
+  enforce_risk_gate: true
+analysis:
+  stage2_max_bundle_chars: 50000
+agent_architecture:
+  specialist_decomposition: true
+  enable_debate: true
+  debate_rounds: 2
+  risk_debate_rounds: 1
+  memory_reflection: true
+  paper_whatifs: true
+  deterministic_risk_gate: true
+search:
+  tavily_api_keys: ${TRAVILY_API_KEYS:${TAVILY_API_KEYS:}}
+  tavily_api_key: ${TAVILY_API_KEY:}
+  brave_api_key: ${BRAVE_API_KEY:}
+  default_provider: tavily
+  cache_ttl_minutes: 15
+  max_results_per_query: 5
+llm:
+  providers:
+    openrouter:
+      enabled: true
+      api_style: openai_compatible
+      base_url: https://openrouter.ai/api/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      api_key_rotation: true
+      features:
+        tool_calling: true
+        reasoning: true
+        json_schema: true
+        prompt_caching: true
+    gemini:
+      enabled: true
+      api_style: google
+      max_retries: 3
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      api_key_rotation: true
+      features:
+        tool_calling: true
+        thinking_budget: true
+        json_mode: true
+    groq:
+      enabled: true
+      api_style: openai_compatible
+      base_url: https://api.groq.com/openai/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 30
+        first_chunk_timeout_seconds: 60
+        safety_timeout_seconds: 300
+      features:
+        tool_calling: true
+        json_mode: true
+    anthropic:
+      enabled: false
+      api_style: anthropic
+      max_retries: 3
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        prompt_caching: true
+        extended_thinking: true
+    deepseek:
+      enabled: false
+      api_style: openai_compatible
+      base_url: https://api.deepseek.com/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 60
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        reasoning_content: true
+        json_mode: true
+    openai:
+      enabled: false
+      api_style: openai_compatible
+      base_url: https://api.openai.com/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        reasoning_effort: true
+        json_schema: true
+    openai_compatible:
+      enabled: false
+      api_style: openai_compatible
+      base_url: http://localhost:8000/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        json_mode: true
+    ollama:
+      enabled: true
+      api_style: ollama
+      base_url: http://localhost:11434
+      timeout_seconds: 180
+      streaming:
+        enabled: false
+      features:
+        tool_calling: true
+        json_mode: true
+  model_catalog:
+    fable-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-fable-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    opus-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-opus-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    opus-4.8:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-opus-4.8:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    opus-4.7:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-opus-4.7:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    opus-4.6:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-opus-4.6:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    opus-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    claude-opus-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    sonnet-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    claude-sonnet-5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    sonnet-4.6:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    claude-sonnet-4.6:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    claude-sonnet-4-6:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    sonnet-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    claude-sonnet-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    haiku-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    claude-haiku-4.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    claude-haiku-4-5-20251001:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    deepseek-v4-pro:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: medium
+    deepseek-v4-pro-0813:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: medium
+    deepseek-v4-flash:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: low
+    deepseek-v4-flash-0731:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: low
+    glm-5.3:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    glm-5.2:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    glm-5.2:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: free
+    z-ai/glm-5.2:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: free
+    glm-5.1:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    gpt-5.6-sol:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: high
+    gpt-5.6-terra:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: medium
+    gpt-5.5:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: high
+    gpt-5.4:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: medium
+    gpt-5.6-luna:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+    gpt-5.4-mini:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+    gpt-5.4-nano:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+    muse-spark-1.2:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    minimax-m3:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: low
+    minimax-m3:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+    minimax/minimax-m3:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+    kimi-k3:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      cost_tier: medium
+    qwen3.8-max:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: medium
+    qwen3.8-2.4t-a95b:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: medium
+    grok-4.6:
+      provider: openrouter
+      context_window: 131072
+      supports_tool_calling: true
+      cost_tier: medium
+    grok-4.5:
+      provider: openrouter
+      context_window: 131072
+      supports_tool_calling: true
+      cost_tier: medium
+    grok-4.3:
+      provider: openrouter
+      context_window: 131072
+      supports_tool_calling: true
+      cost_tier: low
+    mimo-v2.5-pro:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    mimo-v2.5:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    ox-alpha:
+      provider: openrouter
+      context_window: 1048576
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    gemma-4-31b:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    google/gemma-4-31b-it:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    gemma-4-26b:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    google/gemma-4-26b-a4b-it:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3-ultra:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3-ultra-550b-a55b:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3.5-lightning:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3.5-lightning:free:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3-super:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3-super-120b-a12b:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3-nano:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3-nano-30b-a3b:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3-nano-omni:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-nano-12b-vl:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-nano-12b-v2-vl:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-nano-9b:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-nano-9b-v2:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    nemotron-3.5-safety:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+    nvidia/nemotron-3.5-content-safety:free:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+    north-mini-code:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    cohere/north-mini-code:free:
+      provider: openrouter
+      context_window: 256000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    laguna-s-2.1:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    poolside/laguna-s-2.1:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    laguna-xs-2.1:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    poolside/laguna-xs-2.1:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    inkling:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    thinkingmachines/inkling:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    inkling-small:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    thinkingmachines/inkling-small:free:
+      provider: openrouter
+      context_window: 262144
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    dots-3-note:free:
+      provider: openrouter
+      context_window: 512000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    dots-studio/dots-3-note-preview:free:
+      provider: openrouter
+      context_window: 512000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    lfm-2.5-2.6b:free:
+      provider: openrouter
+      context_window: 65536
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    liquid/lfm-2.5-2.6b:free:
+      provider: openrouter
+      context_window: 65536
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    openrouter/free:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    gemini-3.1-pro-preview:
+      provider: openrouter
+      context_window: 2000000
+      supports_tool_calling: true
+      cost_tier: high
+    gemini-2.5-pro:
+      provider: openrouter
+      context_window: 2000000
+      supports_tool_calling: true
+      cost_tier: medium
+    gemini-3.7-flash:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 5
+        rpd: 20
+    gemini-3.6-flash:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 5
+        rpd: 20
+    gemini-3.5-flash:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 5
+        rpd: 20
+    gemini-3.0-flash-preview:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
+    gemini-3.5-flash-lite:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
+    gemini-3.1-flash-lite:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
+    groq-compound:
+      provider: groq
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 250
+        tpm: 70000
+    groq-compound-mini:
+      provider: groq
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 250
+        tpm: 70000
+    groq-gpt-oss-120b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 200000
+    groq-gpt-oss-20b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 200000
+    qwen3.6-27b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 200000
+    groq-qwen3.6-27b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 200000
+    qwen3.8-27b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 2000000
+    groq-qwen3.8-27b:
+      provider: groq
+      context_window: 32000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 30
+        rpd: 1000
+        tpm: 8000
+        tpd: 2000000
+    llama3.2:
+      provider: ollama
+      context_window: 128000
+      supports_tool_calling: false
+      cost_tier: free
+  task_roles:
+    stage1_shadow_check:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 2048
+      max_tool_turns: 3
+      temperature: 0.0
+    stage1_fundamental:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 16384
+      max_tool_turns: 12
+      temperature: 0.0
+    stage1_escalation:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 16384
+      max_tool_turns: 12
+      temperature: 0.0
+    stage2_per_asset_primary:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: medium
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 12288
+      max_tool_turns: 15
+      temperature: 0.0
+    stage2_per_asset_secondary:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: medium
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 12288
+      max_tool_turns: 12
+      temperature: 0.0
+    stage2_session_trigger:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: medium
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 8192
+      max_tool_turns: 15
+      temperature: 0.0
+    stage2_prescreen:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 1024
+      temperature: 0.0
+    debate_bear:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.1
+    debate_bull:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.1
+    debate_judge:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: medium
+        groq: medium
+        openrouter: medium
+        ollama: medium
+        openai_compatible: medium
+      max_tokens: 6144
+      temperature: 0.0
+    risk_gate_conservative:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    risk_gate_aggressive:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    risk_gate_neutral:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    portfolio_manager_per_trade:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: medium
+        groq: medium
+        openrouter: medium
+        ollama: medium
+        openai_compatible: medium
+      max_tokens: 6144
+      temperature: 0.0
+    adversarial_check:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    news_classification:
+      batch_size: 10
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 2048
+      temperature: 0.0
+    news_classification_escalation:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    news_classification_verifier:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 2048
+      temperature: 0.0
+    news_digest:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.1
+    news_digest_macro_overview:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 6144
+      temperature: 0.2
+    news_digest_verifier:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: minimal
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 3072
+      temperature: 0.0
+    fundamental_verifier:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 2048
+      temperature: 0.0
+    cot_precompute:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    specialist_technical:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    specialist_sentiment:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    specialist_macro:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: minimal
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      temperature: 0.0
+    portfolio_synthesis:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: medium
+        groq: medium
+        openrouter: medium
+        ollama: medium
+        openai_compatible: medium
+      max_tokens: 6144
+      temperature: 0.0
+    stage2_adjudicator:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: medium
+        groq: medium
+        openrouter: medium
+        ollama: medium
+        openai_compatible: medium
+      max_tokens: 6144
+      temperature: 0.0
+    trade_reflection:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 12288
+      temperature: 0.0
+    chat_telegram:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      max_tool_turns: 8
+      temperature: 0.2
+    chat_telegram_medium:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: low
+        gemini: low
+        openai: low
+        deepseek: low
+        groq: low
+        openrouter: low
+        ollama: low
+        openai_compatible: low
+      max_tokens: 4096
+      max_tool_turns: 10
+      temperature: 0.1
+    chat_telegram_complex:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 8192
+      max_tool_turns: 12
+      temperature: 0.0
+    deep_research:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+      max_tokens: 16384
+      max_tool_turns: 15
+      temperature: 0.1
+    context_compaction:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 1024
+      temperature: 0.0
+    summarizer:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 2048
+      temperature: 0.0
+    report_synthesizer:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-compound
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 4096
+      temperature: 0.2
+scenario_tree:
+  enabled: true
+  ev_threshold: 1.3
+  min_dominant_prob: 0.45
+  branch_types:
+  - bull
+  - bear
+  - chop
+  persist_trees: true
+context_compaction:
+  enabled: true
+  synthesis_threshold: 0.5
+  emergency_threshold: 0.85
+progressive_tools:
+  enabled: true
+  core_primitives_only: true
+  enable_category_loading: true
+gepa_evolution:
+  enabled: true
+  schedule_interval_days: 14
+  trade_count_threshold: 40
+  drawdown_breaker_pct: 5.0
+  min_cooldown_days: 7
+verification_engine:
+  enabled: true
+  strict_pre_trade_assertions: true
+  post_execution_reconciliation: true
+alpha_discovery:
+  enabled: true
+  interval_hours: 24.0
+  lookback_days: 120
+  is_window_days: 60
+  oos_window_days: 20
+  step_days: 20
+  min_wfe: 0.6
+  min_oos_sharpe: 0.5
+  max_drawdown_limit: 20.0
+strategy_synthesis:
+  enabled: true
+  interval_hours: 48.0
+  min_sharpe: 1.5
+  max_drawdown_pct: 10.0
+  min_trades: 5
+  walk_forward_enabled: true
+  min_walk_forward_sharpe: 1.0
+  min_walk_forward_efficiency: 0.4
+news_classification:
+  slice_schedule:
+    interval_minutes: 120
+
+ui:
+  theme: "retro_vintage"
+  steer_mode: "one-at-a-time"

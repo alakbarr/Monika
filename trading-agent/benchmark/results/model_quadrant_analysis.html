@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kuadran Model · Cost–Performance Screener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root{
+  --bg:            #0A0C10;
+  --bg-raised:     #12151B;
+  --bg-inset:      #0D1015;
+  --bg-well:       #0B0D12;
+  --line:          #20252E;
+  --line-strong:   #2B313D;
+  --text-1:        #ECEEF2;
+  --text-2:        #9099AB;
+  --text-3:        #7A7E8A;
+
+  --mint:          #4FD1A5;
+  --mint-dim:      rgba(79,209,165,.13);
+  --mint-line:     rgba(79,209,165,.38);
+
+  --gold:          #E3A548;
+  --gold-dim:      rgba(227,165,72,.13);
+
+  --indigo:        #6C8EF5;
+  --indigo-dim:    rgba(108,142,245,.11);
+
+  --rose:          #E36571;
+  --rose-dim:      rgba(227,101,113,.11);
+
+  --radius-s:      4px;
+  --radius-m:      8px;
+
+  --font-ui:   "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --ease: cubic-bezier(.16,.8,.24,1);
+}
+
+*{ box-sizing:border-box; }
+html{ color-scheme: dark; }
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(108,142,245,.06), transparent 60%),
+    radial-gradient(ellipse 900px 500px at 100% 0%, rgba(79,209,165,.05), transparent 55%),
+    var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+::selection{ background: var(--mint-dim); color: var(--text-1); }
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-track{ background: transparent; }
+::-webkit-scrollbar-thumb{ background:#2A303B; border-radius:8px; }
+::-webkit-scrollbar-thumb:hover{ background:#39414F; }
+
+a, button, input, [tabindex]{ font-family: inherit; }
+button{ cursor:pointer; }
+:focus-visible{ outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 3px; }
+
+.mono{ font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+.shell{
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 20px 64px;
+}
+
+/* ---------- topbar ---------- */
+.topbar{
+  border-bottom: 1px solid var(--line);
+  padding: 20px 20px 18px;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+.topbar__row{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.mark{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.mark__glyph{
+  width: 30px; height: 30px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  position: relative;
+  flex: none;
+  background:
+    linear-gradient(to top right, transparent 49%, var(--mint-dim) 50%, transparent 51%);
+}
+.mark__glyph::before, .mark__glyph::after{
+  content:"";
+  position:absolute;
+  border-radius: 50%;
+}
+.mark__glyph::before{ width:5px; height:5px; background: var(--mint); top:6px; left:6px; box-shadow: 0 0 6px var(--mint); }
+.mark__glyph::after{ width:3.5px; height:3.5px; background: var(--rose); bottom:6px; right:6px; }
+.mark h1{
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  margin:0;
+  line-height:1.2;
+}
+.mark p{
+  margin: 1px 0 0;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.topbar__meta{
+  display:flex;
+  gap:18px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.topbar__meta b{ color: var(--text-1); font-weight:600; }
+.topbar__meta .mono{ color: var(--text-1); }
+.topbar__lede{
+  max-width: 640px;
+  color: var(--text-2);
+  font-size: 13px;
+  margin-top: 14px;
+}
+.topbar__lede .accent{ color: var(--mint); font-weight:600; }
+
+/* ============================================================
+   KPI STRIP
+   ============================================================ */
+.kpi{
+  display:grid;
+  grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  overflow:hidden;
+  margin-top: 22px;
+  background: var(--bg-raised);
+}
+.kpi__cell{
+  padding: 16px 18px;
+  border-left: 1px solid var(--line);
+  min-width:0;
+}
+.kpi__cell:first-child{ border-left:none; }
+.kpi__cell--hero{
+  background:
+    linear-gradient(180deg, var(--mint-dim), transparent 70%);
+  position:relative;
+}
+.kpi__cell--hero::after{
+  content:"";
+  position:absolute; inset:0 0 auto 0; height:2px;
+  background: linear-gradient(90deg, var(--mint), transparent);
+}
+.kpi__label{
+  font-size: 11.5px;
+  color: var(--text-2);
+  display:flex; align-items:center; gap:6px;
+  margin-bottom: 8px;
+}
+.kpi__label .dot{ width:6px; height:6px; border-radius:50%; flex:none; }
+.kpi__value{
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--text-1);
+  display:flex; align-items:baseline; gap:8px;
+}
+.kpi__cell--hero .kpi__value{ font-size: 40px; color: var(--mint); }
+.kpi__value small{
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+.kpi__sub{
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.kpi__model{
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi__thresh{
+  display:flex; flex-direction:column; gap:5px; margin-top:2px;
+}
+.kpi__thresh-row{
+  display:flex; justify-content:space-between; font-size:12.5px;
+}
+.kpi__thresh-row span:first-child{ color:var(--text-3); }
+.kpi__thresh-row span:last-child{ font-weight:600; }
+
+@media (max-width: 900px){
+  .kpi{ grid-template-columns: 1fr 1fr; }
+  .kpi__cell{ border-left:none; border-top:1px solid var(--line); }
+  .kpi__cell:first-child{ border-top:none; }
+  .kpi__cell:nth-child(2n+1):not(:first-child){ border-left:1px solid var(--line); }
+  .kpi__cell--hero{ grid-column: 1 / -1; }
+}
+
+/* ============================================================
+   SCREENER (threshold controls)
+   ============================================================ */
+.screener{
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--bg-raised);
+  padding: 16px 18px 14px;
+}
+.screener__head{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.screener__title{
+  display:flex; align-items:center; gap:8px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-1);
+}
+.screener__title svg{ color: var(--mint); flex:none; }
+.counter-pill{
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mint-dim);
+  border: 1px solid var(--mint-line);
+  color: var(--mint);
+  font-weight: 600;
+}
+.counter-pill .mono{ color:var(--mint); }
+
+.presets{
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.preset-btn{
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text-2);
+  transition: background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease);
+}
+.preset-btn:hover{ border-color: var(--text-3); color: var(--text-1); }
+.preset-btn.is-active{
+  background: var(--mint-dim);
+  border-color: var(--mint-line);
+  color: var(--mint);
+}
+
+.screener__grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (max-width: 720px){ .screener__grid{ grid-template-columns: 1fr; } }
+
+.field{
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--bg-inset);
+  padding: 12px 14px 14px;
+}
+.field__head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 10px;
+}
+.field__label{
+  display:flex; align-items:center; gap:7px;
+  font-size: 12px; font-weight: 600; color: var(--text-1);
+}
+.field__label .dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+.field__input{
+  display:flex; align-items:center; gap:4px;
+}
+.field__input input[type=number]{
+  width: 78px;
+  background: var(--bg-well);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  padding: 5px 8px;
+}
+.field__input input[type=number]:focus{ border-color: var(--mint); }
+.field__input .unit{ font-size: 11.5px; color: var(--text-3); }
+
+.stepper{
+  display:flex; justify-content:flex-end; gap:4px; margin-bottom: 10px;
+}
+.stepper button{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--text-2);
+}
+.stepper button:hover{ border-color: var(--line-strong); color: var(--text-1); }
+
+.slider-wrap input[type=range]{
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  outline:none;
+}
+.slider-wrap input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px; height:14px; border-radius:50%;
+  background: var(--text-1);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor:pointer;
+  margin-top:-6px;
+}
+.slider-wrap input[type=range]::-moz-range-thumb{
+  width:14px; height:14px; border-radius:50%;
+  background: var(--text-1); border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--line-strong); cursor:pointer;
+}
+.field--score input[type=range]::-webkit-slider-thumb{ box-shadow: 0 0 0 1px var(--mint); }
+.field--cost input[type=range]::-webkit-slider-thumb{ box-shadow: 0 0 0 1px var(--gold); }
+.slider-legend{
+  display:flex; justify-content:space-between;
+  font-size: 10.5px; color: var(--text-3);
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+.adv{
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.adv > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+  font-size: 12px; font-weight:500; color: var(--text-2);
+}
+.adv > summary::-webkit-details-marker{ display:none; }
+.adv > summary::before{
+  content:"";
+  width:0; height:0;
+  border-left: 4px solid var(--text-3);
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform .15s var(--ease);
+}
+.adv[open] > summary::before{ transform: rotate(90deg); }
+.adv:hover > summary{ color: var(--text-1); }
+.adv__body{
+  padding-top: 14px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.pill-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.pill-row__label{ font-size: 11.5px; color: var(--text-3); flex:none; margin-right:2px; }
+.tag-pill{
+  display:flex; align-items:center; gap:6px;
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text-2);
+  transition: opacity .15s, border-color .15s;
+}
+.tag-pill .dot{ width:6px; height:6px; border-radius:50%; flex:none; }
+.tag-pill.is-off{ opacity: .32; }
+.tag-pill:hover{ border-color: var(--text-3); }
+.adv__foot{
+  display:flex; align-items:center; justify-content:flex-end;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.link-btn{
+  background:none; border:none; padding:0;
+  font-size: 12px; color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link-btn:hover{ color: var(--rose); }
+
+/* ============================================================
+   CHART PANEL
+   ============================================================ */
+.chart-panel{
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--bg-raised);
+  padding: 16px 18px 10px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .55s var(--ease), transform .55s var(--ease);
+}
+.chart-panel.is-in{ opacity:1; transform:none; }
+
+.chart-panel__head{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.chart-panel__title{
+  font-size: 13px; font-weight:600; color: var(--text-1);
+  margin: 0 0 3px;
+}
+.chart-panel__desc{
+  font-size: 12px; color: var(--text-3); margin:0;
+}
+.chart-toolbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.tbtn{
+  display:flex; align-items:center; gap:6px;
+  font-size: 11.5px; font-weight:500;
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-inset);
+  color: var(--text-2);
+}
+.tbtn:hover{ color: var(--text-1); border-color: var(--text-3); }
+.tbtn svg{ flex:none; }
+.tbtn .led{ width:6px; height:6px; border-radius:50%; background: var(--text-3); flex:none; }
+.tbtn.is-active{ color: var(--gold); border-color: rgba(227,165,72,.4); background: var(--gold-dim); }
+.tbtn.is-active .led{ background: var(--gold); box-shadow: 0 0 5px var(--gold); animation: pulse 1.4s infinite; }
+.tseg{ display:flex; border:1px solid var(--line-strong); border-radius: var(--radius-s); overflow:hidden; }
+.tseg button{
+  font-size: 11.5px; padding: 6px 10px; background: var(--bg-inset); color: var(--text-2); border:none;
+  border-left: 1px solid var(--line-strong);
+}
+.tseg button:first-child{ border-left:none; }
+.tseg button.is-active{ background: var(--indigo-dim); color: var(--indigo); }
+
+@keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+.legend-row{
+  display:flex; flex-wrap:wrap; align-items:center; gap: 16px;
+  padding: 10px 2px 12px;
+  font-size: 11.5px; color: var(--text-2);
+}
+.legend-row__label{
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-3);
+}
+.legend-row .item{ display:flex; align-items:center; gap:7px; }
+.legend-row .sw{ width:12px; height:12px; border-radius:3px; flex:none; }
+.legend-row .sw--sweet{ background: var(--mint-dim); border: 1px solid var(--mint); }
+.legend-row .sw--premium{ background: var(--indigo-dim); border: 1px solid var(--indigo); }
+.legend-row .sw--budget{ background: var(--gold-dim); border: 1px solid var(--gold); }
+.legend-row .sw--lagging{ background: var(--rose-dim); border: 1px solid var(--rose); }
+.legend-row b{ color: var(--text-1); font-weight:600; }
+.legend-row .legend-hint{ margin-left:auto; font-size:11px; color:var(--text-3); }
+
+.click-note{
+  display:none;
+  align-items:center; gap:8px;
+  font-size:11.5px; color: var(--gold);
+  background: var(--gold-dim);
+  border: 1px dashed rgba(227,165,72,.45);
+  border-radius: var(--radius-s);
+  padding: 7px 12px;
+  margin: 0 2px 12px;
+}
+.click-note.is-shown{ display:flex; }
+
+#quadrantChart{ width:100%; height: 560px; }
+@media (max-width:640px){ #quadrantChart{ height: 440px; } }
+
+/* ============================================================
+   LEDGER (table)
+   ============================================================ */
+.ledger{
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--bg-raised);
+  padding: 16px 18px 18px;
+}
+.ledger__head{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap: 14px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ledger__title{ display:flex; align-items:baseline; gap:8px; }
+.ledger__title h2{ font-size: 13px; font-weight:600; margin:0; color: var(--text-1); }
+.ledger__count{ font-size: 11.5px; color: var(--text-3); }
+.ledger__desc{ font-size: 12px; color: var(--text-3); margin: 3px 0 0; }
+
+.ledger__controls{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.search{
+  position:relative;
+}
+.search svg{ position:absolute; left:9px; top:50%; transform:translateY(-50%); color: var(--text-3); }
+.search input{
+  width: 200px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--text-1);
+  font-size: 12.5px;
+  padding: 7px 10px 7px 28px;
+}
+.search input::placeholder{ color: var(--text-3); }
+.search input:focus{ border-color: var(--mint); }
+
+.tabs{ display:flex; border:1px solid var(--line-strong); border-radius: var(--radius-s); overflow:hidden; }
+.tabs button{
+  font-size: 12px; font-weight:500; padding: 7px 12px;
+  background: var(--bg-inset); color: var(--text-2); border:none;
+  border-left: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+.tabs button:first-child{ border-left:none; }
+.tabs button.is-active{ background: var(--mint-dim); color: var(--mint); }
+
+.table-scroll{
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  overflow:hidden;
+}
+.table-scroll__inner{
+  overflow-x: auto;
+  max-height: 560px;
+  overflow-y: auto;
+}
+.table-scroll::after{
+  content:"";
+  position:absolute; top:0; right:0; bottom:0; width:28px;
+  background: linear-gradient(to right, transparent, var(--bg-raised));
+  pointer-events:none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.table-scroll.can-scroll::after{ opacity: 1; }
+
+table{ width:100%; border-collapse:collapse; font-size: 12.5px; min-width: 920px; }
+thead th{
+  position: sticky; top:0; z-index:2;
+  background: var(--bg-inset);
+  text-align:left;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+thead th:hover{ color: var(--text-1); }
+thead th.is-sorted{ color: var(--mint); }
+thead th .arr{ margin-left:4px; opacity:.85; font-size:10px; display:inline-block; }
+thead th.num, td.num{ text-align:right; }
+tbody td{
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+tbody tr{ transition: background .12s; cursor:pointer; }
+tbody tr:hover{ background: rgba(255,255,255,.025); }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr.is-sweet{ box-shadow: inset 2px 0 0 var(--mint); background: rgba(79,209,165,.035); }
+tbody tr.is-sweet:hover{ background: rgba(79,209,165,.07); }
+tbody tr.is-focused{ outline: 2px solid var(--gold); background: rgba(227,165,72,.08) !important; }
+
+.cell-model{ display:flex; align-items:center; gap:8px; font-weight:600; color: var(--text-1); }
+.cell-model .dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+.cell-model .th{ font-weight:400; color: var(--text-3); margin-left:3px; }
+
+.qtag{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:500; }
+.qtag .dot{ width:6px; height:6px; border-radius:50%; }
+.qtag.sweet{ color: var(--mint); }
+.qtag.premium{ color: var(--indigo); }
+.qtag.budget{ color: var(--gold); }
+.qtag.lagging{ color: var(--rose); }
+
+.row-actions{ display:flex; align-items:center; gap:10px; justify-content:flex-end; }
+.row-actions button{
+  background:none; border:none; padding:0;
+  font-size: 11.5px; color: var(--text-3);
+}
+.row-actions button:hover{ color: var(--mint); }
+.row-actions .sep{ color: var(--line-strong); }
+
+.empty-row td{ text-align:center; color: var(--text-3); padding: 40px 12px; font-style: normal; }
+
+/* ============================================================
+   FOOTER + TOAST
+   ============================================================ */
+.foot{
+  max-width: 1360px; margin: 28px auto 0; padding: 16px 20px 0;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px; color: var(--text-3);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+}
+
+.toast{
+  position: fixed; left:50%; bottom: 22px; transform: translate(-50%, 16px);
+  display:flex; align-items:center; gap:9px;
+  background: var(--bg-raised);
+  border: 1px solid var(--mint-line);
+  color: var(--mint);
+  font-size: 12.5px; font-weight:500;
+  padding: 10px 16px;
+  border-radius: var(--radius-s);
+  opacity:0; pointer-events:none;
+  transition: opacity .25s var(--ease), transform .25s var(--ease);
+  z-index: 50;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+}
+.toast.is-shown{ opacity:1; transform: translate(-50%, 0); }
+.toast .led{ width:7px; height:7px; border-radius:50%; background: var(--mint); flex:none; }
+
+/* tooltip content (echarts injects raw HTML) */
+.tt{ font-family: var(--font-ui); min-width: 220px; }
+.tt__name{ font-size:13px; font-weight:700; color:#fff; }
+.tt__th{ font-size:11px; font-weight:400; color:#8891a3; }
+.tt__prov{ font-size:11px; color:#c3c9d6; margin: 2px 0 7px; }
+.tt__badge{ font-size:11px; font-weight:600; margin-bottom:8px; }
+.tt__grid{ border-top:1px solid #2b313d; padding-top:7px; display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px; font-family: var(--font-mono); }
+.tt__grid div:nth-child(odd){ color:#8891a3; font-family: var(--font-ui); }
+.tt__grid div:nth-child(even){ text-align:right; font-weight:700; }
+.tt__aa{ border-top:1px solid #2b313d; margin-top:7px; padding-top:6px; font-size:10.5px; color:#8891a3; }
+.tt__cta{ margin-top:9px; text-align:center; }
+.tt__cta button{
+  background:#173028; color:#4FD1A5; border:1px solid #2c5142;
+  padding:5px 11px; font-size:10.5px; font-weight:600; border-radius:5px; cursor:pointer;
+  font-family: var(--font-ui);
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__row">
+    <div class="mark">
+      <span class="mark__glyph" aria-hidden="true"></span>
+      <div>
+        <h1>Kuadran Model</h1>
+        <p>Cost&ndash;performance screener untuk AI trading agent</p>
+      </div>
+    </div>
+    <div class="topbar__meta">
+      <div>Model dievaluasi&nbsp;<b class="mono" id="metaTotal">72</b></div>
+      <div>Sumber&nbsp;<span class="mono">model_all.csv</span></div>
+    </div>
+  </div>
+  <p class="topbar__lede">Setiap titik adalah satu kombinasi model &amp; tingkat reasoning. Sumbu Y menunjukan skor rata&#8209;rata terbobot, sumbu X menunjukan estimasi biaya per task &mdash; geser ambang batas untuk menemukan titik <span class="accent">sweet spot</span>: skor tinggi dengan biaya rendah.</p>
+</header>
+
+<main class="shell">
+
+  <!-- KPI STRIP -->
+  <section class="kpi" aria-label="Ringkasan metrik">
+    <div class="kpi__cell kpi__cell--hero">
+      <div class="kpi__label"><span class="dot" style="background:var(--mint)"></span>Model di sweet spot</div>
+      <div class="kpi__value"><span id="kpiSweetCount" class="mono">0</span><small id="kpiSweetPct">(0%)</small></div>
+      <div class="kpi__sub">Skor &ge; ambang &amp; biaya &le; ambang</div>
+    </div>
+    <div class="kpi__cell">
+      <div class="kpi__label"><span class="dot" style="background:var(--text-3)"></span>Total konfigurasi</div>
+      <div class="kpi__value"><span id="kpiTotal" class="mono">0</span></div>
+      <div class="kpi__sub">Model &times; tingkat reasoning</div>
+    </div>
+    <div class="kpi__cell">
+      <div class="kpi__label"><span class="dot" style="background:var(--indigo)"></span>Skor tertinggi</div>
+      <div class="kpi__model" id="kpiTopScoreModel">&mdash;</div>
+      <div class="kpi__sub" id="kpiTopScoreDetail">di dalam sweet spot</div>
+    </div>
+    <div class="kpi__cell">
+      <div class="kpi__label"><span class="dot" style="background:var(--gold)"></span>Termurah</div>
+      <div class="kpi__model" id="kpiLowCostModel">&mdash;</div>
+      <div class="kpi__sub" id="kpiLowCostDetail">di dalam sweet spot</div>
+    </div>
+    <div class="kpi__cell">
+      <div class="kpi__label"><span class="dot" style="background:var(--text-2)"></span>Ambang aktif &middot; <span id="kpiModeLabel">Median</span></div>
+      <div class="kpi__thresh">
+        <div class="kpi__thresh-row"><span>Skor (Y)</span><span class="mono" id="kpiScoreVal" style="color:var(--mint)">44.95</span></div>
+        <div class="kpi__thresh-row"><span>Biaya (X)</span><span class="mono" id="kpiCostVal" style="color:var(--gold)">$0.1150</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREENER -->
+  <section class="screener" aria-label="Parameter threshold">
+    <div class="screener__head">
+      <div class="screener__title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-11M12 6V3M20 21v-5M20 12V3M1 14h6M9 6h6M17 16h6"/></svg>
+        Ambang batas kuadran
+      </div>
+      <span class="counter-pill" id="liveCounterPill">9 model &middot; 12.5%</span>
+    </div>
+
+    <div class="presets" role="group" aria-label="Preset strategi">
+      <button data-preset="median" class="preset-btn is-active" aria-pressed="true">Median</button>
+      <button data-preset="mean" class="preset-btn" aria-pressed="false">Rata&#8209;rata</button>
+      <button data-preset="elite" class="preset-btn" aria-pressed="false">Elite &middot; &ge;50 / &le;$0.15</button>
+      <button data-preset="budget" class="preset-btn" aria-pressed="false">Hemat &middot; &ge;45 / &le;$0.05</button>
+      <button data-preset="balanced" class="preset-btn" aria-pressed="false">Seimbang &middot; &ge;46 / &le;$0.10</button>
+    </div>
+
+    <div class="screener__grid">
+      <div class="field field--score">
+        <div class="field__head">
+          <label class="field__label" for="numScore"><span class="dot" style="background:var(--mint)"></span>Skor minimum</label>
+          <div class="field__input">
+            <input id="numScore" type="number" min="20.0" max="60.0" step="0.01" value="44.95" />
+            <span class="unit">pts</span>
+          </div>
+        </div>
+        <div class="stepper">
+          <button data-step-score="-1.0" aria-label="Kurangi skor 1.0">&minus;1.0</button>
+          <button data-step-score="-0.25" aria-label="Kurangi skor 0.25">&minus;0.25</button>
+          <button data-step-score="0.25" aria-label="Tambah skor 0.25">+0.25</button>
+          <button data-step-score="1.0" aria-label="Tambah skor 1.0">+1.0</button>
+        </div>
+        <div class="slider-wrap">
+          <input id="rangeScore" type="range" min="20.0" max="60.0" step="0.01" value="44.95" aria-label="Skor minimum" />
+          <div class="slider-legend"><span>20.00</span><span>60.00</span></div>
+        </div>
+      </div>
+
+      <div class="field field--cost">
+        <div class="field__head">
+          <label class="field__label" for="numCost"><span class="dot" style="background:var(--gold)"></span>Biaya maksimum</label>
+          <div class="field__input">
+            <span class="unit">$</span>
+            <input id="numCost" type="number" min="0.000" max="2.000" step="0.001" value="0.115" />
+          </div>
+        </div>
+        <div class="stepper">
+          <button data-step-cost="-0.05" aria-label="Kurangi biaya $0.05">&minus;0.05</button>
+          <button data-step-cost="-0.01" aria-label="Kurangi biaya $0.01">&minus;0.01</button>
+          <button data-step-cost="0.01" aria-label="Tambah biaya $0.01">+0.01</button>
+          <button data-step-cost="0.05" aria-label="Tambah biaya $0.05">+0.05</button>
+        </div>
+        <div class="slider-wrap">
+          <input id="rangeCost" type="range" min="0.000" max="2.000" step="0.001" value="0.115" aria-label="Biaya maksimum" />
+          <div class="slider-legend"><span>$0.00</span><span>$2.00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <details class="adv" id="advPanel">
+      <summary>Filter provider &amp; tingkat reasoning</summary>
+      <div class="adv__body">
+        <div class="pill-row" id="providerFilterContainer">
+          <span class="pill-row__label">Provider</span>
+        </div>
+        <div class="pill-row" id="thinkingFilterContainer">
+          <span class="pill-row__label">Reasoning</span>
+        </div>
+        <div class="adv__foot">
+          <button class="link-btn" id="btnResetFilters">Kembalikan ke default</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- CHART -->
+  <section class="chart-panel" id="chartPanel" aria-label="Grafik kuadran">
+    <div class="chart-panel__head">
+      <div>
+        <p class="chart-panel__title">Skor terbobot vs estimasi biaya per task</p>
+        <p class="chart-panel__desc">Arahkan kursor ke titik mana pun untuk detail lengkap</p>
+      </div>
+      <div class="chart-toolbar">
+        <div class="tseg" role="group" aria-label="Skala sumbu biaya">
+          <button data-scale="linear" class="is-active" aria-pressed="true">Linear</button>
+          <button data-scale="log" aria-pressed="false">Log</button>
+        </div>
+        <button class="tbtn" id="btnToggleClickMode" aria-pressed="false">
+          <span class="led"></span> Klik untuk menyetel
+        </button>
+        <button class="tbtn" id="btnExportPng">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5 5-5M12 15V4"/></svg>
+          PNG
+        </button>
+      </div>
+    </div>
+
+    <div class="click-note" id="clickNote">Mode klik aktif &mdash; klik posisi mana pun pada grafik untuk memindahkan ambang batas ke sana.</div>
+
+    <div class="legend-row">
+      <span class="legend-row__label">Zona Latar:</span>
+      <span class="item"><span class="sw sw--sweet"></span><b>Sweet spot</b>&nbsp;skor tinggi, biaya rendah</span>
+      <span class="item"><span class="sw sw--premium"></span><b>Premium</b>&nbsp;skor tinggi, biaya tinggi</span>
+      <span class="item"><span class="sw sw--budget"></span><b>Budget</b>&nbsp;skor rendah, biaya rendah</span>
+      <span class="item"><span class="sw sw--lagging"></span><b>Lagging</b>&nbsp;skor rendah, biaya tinggi</span>
+      <span class="legend-hint">Warna titik = Provider (lihat legenda kanan atas grafik)</span>
+    </div>
+
+    <div id="quadrantChart" role="img" aria-label="Diagram sebar skor versus biaya per model"></div>
+  </section>
+
+  <!-- LEDGER -->
+  <section class="ledger" aria-label="Tabel model">
+    <div class="ledger__head">
+      <div class="ledger__title">
+        <h2>Daftar model</h2>
+        <span class="ledger__count" id="ledgerCount">72 model</span>
+      </div>
+      <div class="ledger__controls">
+        <div class="search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="searchInput" type="text" placeholder="Cari model, provider, reasoning, atau kuadran&hellip;" aria-label="Cari model" />
+        </div>
+        <button class="tbtn" id="btnExportCsv">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5 5-5M12 15V4"/></svg>
+          CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs" id="tableTabGroup" role="tablist" aria-label="Filter kuadran tabel">
+      <button role="tab" id="tab-sweet" aria-selected="true" data-tab="sweet" class="is-active">Sweet spot</button>
+      <button role="tab" id="tab-all" aria-selected="false" data-tab="all">Semua</button>
+      <button role="tab" id="tab-premium" aria-selected="false" data-tab="premium">Premium</button>
+      <button role="tab" id="tab-budget" aria-selected="false" data-tab="budget">Budget</button>
+      <button role="tab" id="tab-lagging" aria-selected="false" data-tab="lagging">Lagging</button>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="table-scroll" id="tableScroll">
+      <div class="table-scroll__inner" id="tableScrollInner">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="id" tabindex="0" scope="col" aria-sort="none">#<span class="arr"></span></th>
+              <th data-sort="model" tabindex="0" scope="col" aria-sort="none">Model<span class="arr"></span></th>
+              <th data-sort="provider" tabindex="0" scope="col" aria-sort="none">Provider<span class="arr"></span></th>
+              <th data-sort="thinking" tabindex="0" scope="col" aria-sort="none">Reasoning<span class="arr"></span></th>
+              <th data-sort="score" tabindex="0" class="num is-sorted" scope="col" aria-sort="descending">Skor<span class="arr"> &darr;</span></th>
+              <th data-sort="cost" tabindex="0" class="num" scope="col" aria-sort="none">Biaya<span class="arr"></span></th>
+              <th data-sort="cost_efficient" tabindex="0" class="num" title="Cost efficiency" scope="col" aria-sort="none">Eff.<span class="arr"></span></th>
+              <th data-sort="quadrant" tabindex="0" scope="col" aria-sort="none">Kuadran<span class="arr"></span></th>
+              <th data-sort="aa_agentic" tabindex="0" class="num" title="Artificial Analysis &ndash; Agentic" scope="col" aria-sort="none">Ag.<span class="arr"></span></th>
+              <th data-sort="aa_economics" tabindex="0" class="num" title="Artificial Analysis &ndash; Economics" scope="col" aria-sort="none">Ek.<span class="arr"></span></th>
+              <th class="num" scope="col">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <span>AI Trading Agent &middot; LLM Benchmark Analysis Suite</span>
+  <span id="footStamp"></span>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="led"></span><span id="toastMessage">Threshold diperbarui</span>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   DATA
+   ============================================================ */
+const rawModels = [{"id":1,"provider":"Antrhopic","model":"claude-fable-5","thinking":"max","cost":1.8,"score":58.7,"cost_efficient":32.61,"tokens":36000.0,"input_price":"$10,00","cache_price":"$1,00","output_price":"$50,00","aa_economics":64.0,"aa_strategy":54.0,"aa_finance":57.0,"aa_agentic":57.0},{"id":2,"provider":"Antrhopic","model":"claude-opus-5","thinking":"max","cost":1.0,"score":59.15,"cost_efficient":59.15,"tokens":40000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":63.0,"aa_strategy":56.0,"aa_finance":57.0,"aa_agentic":59.0},{"id":3,"provider":"Antrhopic","model":"claude-opus-5","thinking":"xhigh","cost":0.78,"score":58.75,"cost_efficient":75.81,"tokens":31000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":63.0,"aa_strategy":55.0,"aa_finance":57.0,"aa_agentic":58.0},{"id":4,"provider":"Antrhopic","model":"claude-opus-5","thinking":"high","cost":0.53,"score":57.0,"cost_efficient":108.57,"tokens":21000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":61.0,"aa_strategy":54.0,"aa_finance":55.0,"aa_agentic":56.0},{"id":5,"provider":"Antrhopic","model":"claude-opus-5","thinking":"medium","cost":0.3,"score":54.0,"cost_efficient":180.0,"tokens":12000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":60.0,"aa_strategy":50.0,"aa_finance":52.0,"aa_agentic":50.0},{"id":6,"provider":"Antrhopic","model":"claude-opus-4.8","thinking":"max","cost":1.13,"score":51.15,"cost_efficient":45.47,"tokens":45000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":58.0,"aa_strategy":45.0,"aa_finance":49.0,"aa_agentic":49.0},{"id":7,"provider":"Meta","model":"muse-spark-1.2","thinking":"xhigh","cost":0.13,"score":51.4,"cost_efficient":403.14,"tokens":30000.0,"input_price":"$1,25","cache_price":"$0,15","output_price":"$4,25","aa_economics":58.0,"aa_strategy":46.0,"aa_finance":49.0,"aa_agentic":49.0},{"id":8,"provider":"XAI","model":"grok-4.6","thinking":"xhigh","cost":0.14,"score":53.6,"cost_efficient":372.22,"tokens":24000.0,"input_price":"$2,00","cache_price":"$0,50","output_price":"$6,00","aa_economics":58.0,"aa_strategy":49.0,"aa_finance":50.0,"aa_agentic":57.0},{"id":9,"provider":"Google","model":"gemini-3.7-flash","thinking":"high","cost":0.28,"score":49.95,"cost_efficient":180.0,"tokens":37000.0,"input_price":"$1,50","cache_price":"$0,15","output_price":"$7,50","aa_economics":57.0,"aa_strategy":45.0,"aa_finance":48.0,"aa_agentic":45.0},{"id":10,"provider":"MoonshotAI","model":"kimi-k3","thinking":"max","cost":0.38,"score":53.05,"cost_efficient":141.47,"tokens":25000.0,"input_price":"$3,00","cache_price":"$0,30","output_price":"$15,00","aa_economics":57.0,"aa_strategy":50.0,"aa_finance":50.0,"aa_agentic":54.0},{"id":11,"provider":"XAI","model":"grok-4.6","thinking":"high","cost":0.13,"score":54.55,"cost_efficient":413.26,"tokens":22000.0,"input_price":"$2,00","cache_price":"$0,50","output_price":"$6,00","aa_economics":57.0,"aa_strategy":52.0,"aa_finance":51.0,"aa_agentic":59.0},{"id":12,"provider":"Meta","model":"muse-spark-1.1","thinking":"xhigh","cost":0.09,"score":47.6,"cost_efficient":509.09,"tokens":22000.0,"input_price":"$1,25","cache_price":"$0,15","output_price":"$4,25","aa_economics":56.0,"aa_strategy":42.0,"aa_finance":46.0,"aa_agentic":40.0},{"id":13,"provider":"OpenAI","model":"gpt-5.6-sol","thinking":"max","cost":0.34,"score":54.55,"cost_efficient":160.44,"tokens":17000.0,"input_price":"$4,00","cache_price":"$0,40","output_price":"$20,00","aa_economics":56.0,"aa_strategy":53.0,"aa_finance":52.0,"aa_agentic":58.0},{"id":14,"provider":"XAI","model":"grok-4.6","thinking":"medium","cost":0.1,"score":52.25,"cost_efficient":512.25,"tokens":17000.0,"input_price":"$2,00","cache_price":"$0,50","output_price":"$6,00","aa_economics":56.0,"aa_strategy":48.0,"aa_finance":49.0,"aa_agentic":56.0},{"id":15,"provider":"Antrhopic","model":"claude-opus-5","thinking":"low","cost":0.18,"score":48.3,"cost_efficient":276.0,"tokens":7000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":55.0,"aa_strategy":44.0,"aa_finance":47.0,"aa_agentic":42.0},{"id":16,"provider":"Antrhopic","model":"claude-opus-4.7","thinking":"max","cost":0.85,"score":48.65,"cost_efficient":57.24,"tokens":34000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$25,00","aa_economics":55.0,"aa_strategy":44.0,"aa_finance":46.0,"aa_agentic":46.0},{"id":17,"provider":"OpenAI","model":"gpt-5.6-sol","thinking":"xhigh","cost":0.22,"score":52.6,"cost_efficient":239.09,"tokens":11000.0,"input_price":"$4,00","cache_price":"$0,40","output_price":"$20,00","aa_economics":55.0,"aa_strategy":51.0,"aa_finance":50.0,"aa_agentic":54.0},{"id":18,"provider":"ZAI","model":"glm-5.3","thinking":"max","cost":0.18,"score":52.35,"cost_efficient":290.19,"tokens":41000.0,"input_price":"$1,40","cache_price":"$0,26","output_price":"$4,40","aa_economics":55.0,"aa_strategy":49.0,"aa_finance":48.0,"aa_agentic":59.0},{"id":19,"provider":"Google","model":"gemini-3.1-pro-preview","thinking":"high","cost":0.17,"score":40.1,"cost_efficient":238.69,"tokens":14000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":54.0,"aa_strategy":32.0,"aa_finance":39.0,"aa_agentic":23.0},{"id":20,"provider":"Google","model":"gemini-3.7-flash","thinking":"medium","cost":0.17,"score":48.65,"cost_efficient":282.03,"tokens":23000.0,"input_price":"$1,50","cache_price":"$0,15","output_price":"$7,50","aa_economics":54.0,"aa_strategy":46.0,"aa_finance":46.0,"aa_agentic":45.0},{"id":21,"provider":"Google","model":"gemini-3.5-flash","thinking":"high","cost":0.28,"score":46.4,"cost_efficient":166.31,"tokens":31000.0,"input_price":"$1,50","cache_price":"$0,15","output_price":"$9,00","aa_economics":54.0,"aa_strategy":42.0,"aa_finance":44.0,"aa_agentic":40.0},{"id":22,"provider":"OpenAI","model":"gpt-5.6-sol","thinking":"high","cost":0.16,"score":51.05,"cost_efficient":319.06,"tokens":8000.0,"input_price":"$4,00","cache_price":"$0,40","output_price":"$20,00","aa_economics":54.0,"aa_strategy":49.0,"aa_finance":49.0,"aa_agentic":51.0},{"id":23,"provider":"OpenAI","model":"gpt-5.5","thinking":"xhigh","cost":0.51,"score":49.45,"cost_efficient":96.96,"tokens":17000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$30,00","aa_economics":54.0,"aa_strategy":47.0,"aa_finance":47.0,"aa_agentic":47.0},{"id":24,"provider":"XAI","model":"grok-4.5","thinking":"high","cost":0.09,"score":49.5,"cost_efficient":550.0,"tokens":15000.0,"input_price":"$2,00","cache_price":"$0,30","output_price":"$6,00","aa_economics":54.0,"aa_strategy":46.0,"aa_finance":47.0,"aa_agentic":49.0},{"id":25,"provider":"Google","model":"gemini-3.6-flash","thinking":"high","cost":0.1,"score":45.95,"cost_efficient":471.28,"tokens":26000.0,"input_price":"$0,75","cache_price":"$0,08","output_price":"$3,75","aa_economics":53.0,"aa_strategy":41.0,"aa_finance":44.0,"aa_agentic":41.0},{"id":26,"provider":"OpenAI","model":"gpt-5.5","thinking":"high","cost":0.33,"score":48.45,"cost_efficient":146.82,"tokens":11000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$30,00","aa_economics":53.0,"aa_strategy":46.0,"aa_finance":46.0,"aa_agentic":46.0},{"id":27,"provider":"Qwen","model":"qwen3.8-2.4t-a95b","thinking":"high","cost":0.22,"score":50.35,"cost_efficient":233.1,"tokens":36000.0,"input_price":"$2,00","cache_price":"$0,25","output_price":"$6,00","aa_economics":53.0,"aa_strategy":47.0,"aa_finance":46.0,"aa_agentic":57.0},{"id":28,"provider":"Qwen","model":"qwen3.8-max","thinking":"high","cost":0.23,"score":50.75,"cost_efficient":222.59,"tokens":38000.0,"input_price":"$2,00","cache_price":"$0,25","output_price":"$6,00","aa_economics":53.0,"aa_strategy":48.0,"aa_finance":46.0,"aa_agentic":58.0},{"id":29,"provider":"ZAI","model":"glm-5.3-flash","thinking":"high","cost":0.02,"score":50.25,"cost_efficient":2138.3,"tokens":47000.0,"input_price":"$0,15","cache_price":"$0,03","output_price":"$0,50","aa_economics":53.0,"aa_strategy":46.0,"aa_finance":46.0,"aa_agentic":58.0},{"id":30,"provider":"OpenAI","model":"gpt-5.6-sol","thinking":"medium","cost":0.1,"score":49.15,"cost_efficient":491.5,"tokens":5000.0,"input_price":"$4,00","cache_price":"$0,40","output_price":"$20,00","aa_economics":52.0,"aa_strategy":48.0,"aa_finance":47.0,"aa_agentic":48.0},{"id":31,"provider":"Google","model":"gemini-3.7-flash","thinking":"low","cost":0.11,"score":45.9,"cost_efficient":437.14,"tokens":14000.0,"input_price":"$1,50","cache_price":"$0,15","output_price":"$7,50","aa_economics":51.0,"aa_strategy":43.0,"aa_finance":44.0,"aa_agentic":42.0},{"id":32,"provider":"OpenAI","model":"gpt-5.5","thinking":"medium","cost":0.18,"score":44.95,"cost_efficient":249.72,"tokens":6000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$30,00","aa_economics":51.0,"aa_strategy":42.0,"aa_finance":43.0,"aa_agentic":39.0},{"id":33,"provider":"ZAI","model":"glm-5.2","thinking":"max","cost":0.2,"score":44.0,"cost_efficient":217.39,"tokens":46000.0,"input_price":"$1,40","cache_price":"$0,26","output_price":"$4,40","aa_economics":51.0,"aa_strategy":37.0,"aa_finance":40.0,"aa_agentic":46.0},{"id":34,"provider":"MiniMax","model":"minimax-m3","thinking":"high","cost":0.03,"score":38.65,"cost_efficient":1288.33,"tokens":25000.0,"input_price":"$0,30","cache_price":"$0,06","output_price":"$1,20","aa_economics":50.0,"aa_strategy":28.0,"aa_finance":35.0,"aa_agentic":36.0},{"id":35,"provider":"OpenAI","model":"gpt-5.6-sol","thinking":"low","cost":0.06,"score":45.55,"cost_efficient":759.17,"tokens":3000.0,"input_price":"$4,00","cache_price":"$0,40","output_price":"$20,00","aa_economics":50.0,"aa_strategy":43.0,"aa_finance":44.0,"aa_agentic":42.0},{"id":36,"provider":"OpenAI","model":"gpt-5.6-terra","thinking":"max","cost":0.25,"score":47.5,"cost_efficient":188.49,"tokens":21000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":50.0,"aa_strategy":46.0,"aa_finance":44.0,"aa_agentic":50.0},{"id":37,"provider":"Qwen","model":"qwen3.7-max","thinking":"high","cost":0.1,"score":38.15,"cost_efficient":374.85,"tokens":23000.0,"input_price":"$1,48","cache_price":"$0,30","output_price":"$4,43","aa_economics":50.0,"aa_strategy":28.0,"aa_finance":36.0,"aa_agentic":31.0},{"id":38,"provider":"XAI","model":"grok-4.6","thinking":"low","cost":0.04,"score":46.2,"cost_efficient":1283.33,"tokens":6000.0,"input_price":"$2,00","cache_price":"$0,50","output_price":"$6,00","aa_economics":50.0,"aa_strategy":43.0,"aa_finance":43.0,"aa_agentic":48.0},{"id":39,"provider":"OpenAI","model":"gpt-5.4","thinking":"xhigh","cost":0.51,"score":45.25,"cost_efficient":88.73,"tokens":34000.0,"input_price":"$2,50","cache_price":"$0,25","output_price":"$15,00","aa_economics":49.0,"aa_strategy":43.0,"aa_finance":43.0,"aa_agentic":44.0},{"id":40,"provider":"Antrhopic","model":"claude-sonnet-5","thinking":"max","cost":0.72,"score":43.1,"cost_efficient":59.86,"tokens":72000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$10,00","aa_economics":48.0,"aa_strategy":40.0,"aa_finance":40.0,"aa_agentic":42.0},{"id":41,"provider":"DeepSeek","model":"deepseek-v4-pro-0813","thinking":"max","cost":0.15,"score":47.3,"cost_efficient":306.27,"tokens":39000.0,"input_price":"$1,32","cache_price":"$0,13","output_price":"$3,96","aa_economics":48.0,"aa_strategy":47.0,"aa_finance":45.0,"aa_agentic":50.0},{"id":42,"provider":"OpenAI","model":"gpt-5.6-terra","thinking":"xhigh","cost":0.14,"score":44.95,"cost_efficient":312.15,"tokens":12000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":48.0,"aa_strategy":42.0,"aa_finance":43.0,"aa_agentic":46.0},{"id":43,"provider":"Xiaomi","model":"mimo-v2.5-pro","thinking":"high","cost":0.02,"score":35.8,"cost_efficient":1959.5,"tokens":21000.0,"input_price":"$0,44","cache_price":"$0,00","output_price":"$0,87","aa_economics":48.0,"aa_strategy":25.0,"aa_finance":33.0,"aa_agentic":30.0},{"id":44,"provider":"OpenAI","model":"gpt-5.6-terra","thinking":"high","cost":0.1,"score":43.4,"cost_efficient":452.08,"tokens":8000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":47.0,"aa_strategy":41.0,"aa_finance":41.0,"aa_agentic":43.0},{"id":45,"provider":"OpenAI","model":"gpt-5.6-luna","thinking":"max","cost":0.02,"score":44.75,"cost_efficient":1864.58,"tokens":20000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,20","aa_economics":47.0,"aa_strategy":43.0,"aa_finance":42.0,"aa_agentic":47.0},{"id":46,"provider":"Qwen","model":"qwen3.8-27b","thinking":"xhigh","cost":0.14,"score":43.6,"cost_efficient":309.22,"tokens":47000.0,"input_price":"$0,40","cache_price":"$0,15","output_price":"$3,00","aa_economics":47.0,"aa_strategy":40.0,"aa_finance":38.0,"aa_agentic":51.0},{"id":47,"provider":"XAI","model":"grok-4.3","thinking":"high","cost":0.04,"score":34.8,"cost_efficient":928.0,"tokens":15000.0,"input_price":"$1,25","cache_price":"$0,20","output_price":"$2,50","aa_economics":47.0,"aa_strategy":26.0,"aa_finance":33.0,"aa_agentic":24.0},{"id":48,"provider":"OpenAI","model":"gpt-5.5","thinking":"low","cost":0.06,"score":39.65,"cost_efficient":660.83,"tokens":2000.0,"input_price":"$5,00","cache_price":"$0,50","output_price":"$30,00","aa_economics":46.0,"aa_strategy":37.0,"aa_finance":38.0,"aa_agentic":32.0},{"id":49,"provider":"DeepSeek","model":"deepseek-v4-flash-0731","thinking":"max","cost":0.06,"score":44.2,"cost_efficient":727.93,"tokens":46000.0,"input_price":"$0,44","cache_price":"$0,01","output_price":"$1,32","aa_economics":45.0,"aa_strategy":44.0,"aa_finance":41.0,"aa_agentic":48.0},{"id":50,"provider":"OpenAI","model":"gpt-5.6-luna","thinking":"xhigh","cost":0.02,"score":42.6,"cost_efficient":2730.77,"tokens":13000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,20","aa_economics":45.0,"aa_strategy":41.0,"aa_finance":40.0,"aa_agentic":44.0},{"id":51,"provider":"MiniMax","model":"minimax-m2.7","thinking":"high","cost":0.02,"score":33.3,"cost_efficient":1460.53,"tokens":19000.0,"input_price":"$0,30","cache_price":"$0,06","output_price":"$1,20","aa_economics":44.0,"aa_strategy":25.0,"aa_finance":31.0,"aa_agentic":26.0},{"id":52,"provider":"MoonshotAI","model":"kimi-k3","thinking":"low","cost":0.06,"score":41.15,"cost_efficient":685.83,"tokens":4000.0,"input_price":"$3,00","cache_price":"$0,30","output_price":"$15,00","aa_economics":44.0,"aa_strategy":41.0,"aa_finance":38.0,"aa_agentic":40.0},{"id":53,"provider":"OpenAI","model":"gpt-5.6-luna","thinking":"high","cost":0.01,"score":40.2,"cost_efficient":3722.22,"tokens":9000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,20","aa_economics":43.0,"aa_strategy":38.0,"aa_finance":38.0,"aa_agentic":41.0},{"id":54,"provider":"Qwen","model":"qwen3.7-plus","thinking":"high","cost":0.03,"score":30.7,"cost_efficient":1042.8,"tokens":23000.0,"input_price":"$0,32","cache_price":"$0,06","output_price":"$1,28","aa_economics":43.0,"aa_strategy":22.0,"aa_finance":28.0,"aa_agentic":21.0},{"id":55,"provider":"Qwen","model":"qwen3.6-plus","thinking":"high","cost":0.04,"score":33.65,"cost_efficient":750.28,"tokens":23000.0,"input_price":"$0,33","cache_price":"","output_price":"$1,95","aa_economics":43.0,"aa_strategy":27.0,"aa_finance":30.0,"aa_agentic":29.0},{"id":56,"provider":"OpenAI","model":"gpt-5.6-terra","thinking":"medium","cost":0.05,"score":39.05,"cost_efficient":813.54,"tokens":4000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":42.0,"aa_strategy":37.0,"aa_finance":37.0,"aa_agentic":39.0},{"id":57,"provider":"Xiaomi","model":"mimo-v2.5","thinking":"high","cost":0.01,"score":30.45,"cost_efficient":6041.67,"tokens":18000.0,"input_price":"$0,14","cache_price":"$0,00","output_price":"$0,28","aa_economics":41.0,"aa_strategy":22.0,"aa_finance":28.0,"aa_agentic":24.0},{"id":58,"provider":"Antrhopic","model":"claude-sonnet-4.6","thinking":"max","cost":0.78,"score":35.1,"cost_efficient":45.0,"tokens":52000.0,"input_price":"$3,00","cache_price":"$0,30","output_price":"$15,00","aa_economics":40.0,"aa_strategy":31.0,"aa_finance":33.0,"aa_agentic":34.0},{"id":59,"provider":"Google","model":"gemini-3.5-flash-lite","thinking":"high","cost":0.04,"score":32.05,"cost_efficient":915.71,"tokens":14000.0,"input_price":"$0,30","cache_price":"$0,03","output_price":"$2,50","aa_economics":40.0,"aa_strategy":27.0,"aa_finance":29.0,"aa_agentic":27.0},{"id":60,"provider":"OpenAI","model":"gpt-5.6-terra","thinking":"low","cost":0.04,"score":34.9,"cost_efficient":969.44,"tokens":3000.0,"input_price":"$2,00","cache_price":"$0,20","output_price":"$12,00","aa_economics":40.0,"aa_strategy":32.0,"aa_finance":33.0,"aa_agentic":31.0},{"id":61,"provider":"Antrhopic","model":"claude-sonnet-4.5","thinking":"high","cost":0.75,"score":31.45,"cost_efficient":41.93,"tokens":50000.0,"input_price":"$3,00","cache_price":"$0,30","output_price":"$15,00","aa_economics":38.0,"aa_strategy":28.0,"aa_finance":29.0,"aa_agentic":26.0},{"id":62,"provider":"OpenAI","model":"gpt-5.6-luna","thinking":"medium","cost":0.0,"score":34.1,"cost_efficient":7104.17,"tokens":4000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,20","aa_economics":38.0,"aa_strategy":32.0,"aa_finance":32.0,"aa_agentic":32.0},{"id":63,"provider":"OpenAI","model":"gpt-5.4-nano","thinking":"xhigh","cost":0.09,"score":32.3,"cost_efficient":344.53,"tokens":75000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,25","aa_economics":38.0,"aa_strategy":29.0,"aa_finance":29.0,"aa_agentic":30.0},{"id":64,"provider":"Qwen","model":"qwen3.6-27b","thinking":"high","cost":0.08,"score":30.25,"cost_efficient":386.33,"tokens":29000.0,"input_price":"$0,45","cache_price":"","output_price":"$2,70","aa_economics":38.0,"aa_strategy":24.0,"aa_finance":27.0,"aa_agentic":28.0},{"id":65,"provider":"OpenAI","model":"gpt-5.4-mini","thinking":"xhigh","cost":0.36,"score":33.25,"cost_efficient":92.36,"tokens":80000.0,"input_price":"$0,75","cache_price":"$0,08","output_price":"$4,50","aa_economics":37.0,"aa_strategy":31.0,"aa_finance":31.0,"aa_agentic":32.0},{"id":66,"provider":"Qwen","model":"qwen3.8-27b","thinking":"low","cost":0.08,"score":35.7,"cost_efficient":457.69,"tokens":26000.0,"input_price":"$0,40","cache_price":"$0,15","output_price":"$3,00","aa_economics":36.0,"aa_strategy":35.0,"aa_finance":31.0,"aa_agentic":44.0},{"id":67,"provider":"Qwen","model":"qwen3.6-35b-a3b","thinking":"high","cost":0.05,"score":26.9,"cost_efficient":542.34,"tokens":31000.0,"input_price":"$0,20","cache_price":"","output_price":"$1,60","aa_economics":36.0,"aa_strategy":20.0,"aa_finance":24.0,"aa_agentic":22.0},{"id":68,"provider":"Antrhopic","model":"claude-haiku-4.5","thinking":"high","cost":0.12,"score":24.4,"cost_efficient":203.33,"tokens":24000.0,"input_price":"$1,00","cache_price":"$0,10","output_price":"$5,00","aa_economics":35.0,"aa_strategy":18.0,"aa_finance":21.0,"aa_agentic":16.0},{"id":69,"provider":"Meta","model":"muse-glimmer","thinking":"high","cost":0.02,"score":28.7,"cost_efficient":1594.44,"tokens":12000.0,"input_price":"$0,35","cache_price":"$0,04","output_price":"$1,50","aa_economics":35.0,"aa_strategy":26.0,"aa_finance":26.0,"aa_agentic":23.0},{"id":70,"provider":"OpenAI","model":"gpt-5.6-luna","thinking":"low","cost":0.0,"score":30.4,"cost_efficient":12666.67,"tokens":2000.0,"input_price":"$0,20","cache_price":"$0,02","output_price":"$1,20","aa_economics":35.0,"aa_strategy":28.0,"aa_finance":29.0,"aa_agentic":26.0},{"id":71,"provider":"Qwen","model":"qwen3.8-27b","thinking":"medium","cost":0.09,"score":38.0,"cost_efficient":408.6,"tokens":31000.0,"input_price":"$0,40","cache_price":"$0,15","output_price":"$3,00","aa_economics":35.0,"aa_strategy":40.0,"aa_finance":33.0,"aa_agentic":50.0},{"id":72,"provider":"Google","model":"gemini-3.1-flash-lite","thinking":"high","cost":0.03,"score":21.9,"cost_efficient":730.0,"tokens":20000.0,"input_price":"$0,25","cache_price":"$0,03","output_price":"$1,50","aa_economics":31.0,"aa_strategy":19.0,"aa_finance":21.0,"aa_agentic":7.0}];
+const datasetStats = {"count":72,"score_min":21.9,"score_max":59.15,"score_mean":43.28,"score_median":44.95,"score_midrange":40.52,"cost_min":0.0,"cost_max":1.8,"cost_mean":0.2311,"cost_median":0.115,"cost_midrange":0.9};
+
+const providerDisplay = { "Antrhopic": "Anthropic", "Anthropic": "Anthropic" };
+const displayName = p => providerDisplay[p] || p;
+
+const providerColors = {
+  "Anthropic":   "#D68C4A",
+  "Antrhopic":   "#D68C4A",
+  "OpenAI":      "#59B389",
+  "Google":      "#5B8FD9",
+  "XAI":         "#9B7FD4",
+  "Meta":        "#C97FC9",
+  "Qwen":        "#4FB8C9",
+  "DeepSeek":    "#3FA6A0",
+  "ZAI":         "#E07BA0",
+  "MoonshotAI":  "#C9A227",
+  "MiniMax":     "#8B93A6",
+  "Xiaomi":      "#E8735A"
+};
+
+const quadrantRank = { 'sweet': 4, 'premium': 3, 'budget': 2, 'lagging': 1 };
+const thinkingRank = { 'max': 5, 'xhigh': 4, 'high': 3, 'medium': 2, 'low': 1 };
+
+function escapeHtml(str){
+  if (typeof str !== 'string') return String(str ?? '');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const C = {
+  mint: cssVar('--mint'), gold: cssVar('--gold'), indigo: cssVar('--indigo'), rose: cssVar('--rose'),
+  text1: cssVar('--text-1'), text2: cssVar('--text-2'), text3: cssVar('--text-3'),
+  line: cssVar('--line'), lineStrong: cssVar('--line-strong'),
+  bgRaised: cssVar('--bg-raised'), bgInset: cssVar('--bg-inset')
+};
+
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let scoreThreshold = datasetStats.score_median;
+let costThreshold = datasetStats.cost_median;
+let currentCenterMode = 'median';
+let currentScale = 'linear';
+let selectedProviders = new Set(rawModels.map(m => m.provider));
+let selectedThinking = new Set(rawModels.map(m => m.thinking));
+let activeTableTab = 'sweet';
+let searchQuery = '';
+let sortColumn = 'score';
+let sortAsc = false;
+let clickToSetMode = false;
+let kpiAnimated = false;
+
+/* ---- optional cross-session persistence via artifact storage (never localStorage) ---- */
+async function loadPersisted(){
+  try{
+    if (!window.storage) return;
+    const res = await window.storage.get('llm-quadrant-thresholds', false);
+    if (res && res.value){
+      const parsed = JSON.parse(res.value);
+      if (typeof parsed.score === 'number' && typeof parsed.cost === 'number'){
+        scoreThreshold = parsed.score;
+        costThreshold = parsed.cost;
+        currentCenterMode = parsed.mode || 'custom';
+      }
+    }
+  }catch(e){ /* no persisted state yet, or storage unavailable — fall back to defaults */ }
+}
+function persist(){
+  try{
+    if (!window.storage) return;
+    window.storage.set('llm-quadrant-thresholds', JSON.stringify({
+      score: scoreThreshold, cost: costThreshold, mode: currentCenterMode
+    }), false).catch(()=>{});
+  }catch(e){ /* ignore */ }
+}
+
+/* ============================================================
+   DOM refs
+   ============================================================ */
+const chartDom = document.getElementById('quadrantChart');
+const myChart = echarts.init(chartDom, null, { renderer: 'canvas' });
+const chartPanel = document.getElementById('chartPanel');
+const numScore = document.getElementById('numScore');
+const rangeScore = document.getElementById('rangeScore');
+const numCost = document.getElementById('numCost');
+const rangeCost = document.getElementById('rangeCost');
+const liveCounterPill = document.getElementById('liveCounterPill');
+const tableBody = document.getElementById('tableBody');
+const searchInput = document.getElementById('searchInput');
+const toast = document.getElementById('toast');
+const toastMessage = document.getElementById('toastMessage');
+const btnToggleClickMode = document.getElementById('btnToggleClickMode');
+const clickNote = document.getElementById('clickNote');
+const tableScroll = document.getElementById('tableScroll');
+const tableScrollInner = document.getElementById('tableScrollInner');
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function showToast(msg){
+  toastMessage.textContent = msg;
+  toast.classList.add('is-shown');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('is-shown'), 2600);
+}
+
+function getModelQuadrant(m, sThresh = scoreThreshold, cThresh = costThreshold){
+  const highScore = m.score >= sThresh;
+  const lowCost = m.cost <= cThresh;
+  if (highScore && lowCost) return 'sweet';
+  if (highScore && !lowCost) return 'premium';
+  if (!highScore && lowCost) return 'budget';
+  return 'lagging';
+}
+const quadColor = q => q === 'sweet' ? C.mint : q === 'premium' ? C.indigo : q === 'budget' ? C.gold : C.rose;
+const quadLabel = q => q === 'sweet' ? 'Sweet spot' : q === 'premium' ? 'Premium' : q === 'budget' ? 'Budget' : 'Lagging';
+
+function getFilteredModels(){
+  return rawModels.filter(m => selectedProviders.has(m.provider) && selectedThinking.has(m.thinking));
+}
+
+function animateNumber(el, endVal, opts = {}){
+  const decimals = opts.decimals ?? 0;
+  if (reduceMotion){ el.textContent = endVal.toFixed(decimals); return; }
+  const start = performance.now();
+  const dur = opts.duration ?? 650;
+  const startVal = 0;
+  function step(now){
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = (startVal + (endVal - startVal) * eased).toFixed(decimals);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ============================================================
+   CORE: setThresholds
+   ============================================================ */
+function setThresholds(scoreVal, costVal, mode = 'custom', showNotice = false, noticeText = ''){
+  scoreThreshold = Math.round(Math.max(20, Math.min(60, parseFloat(scoreVal))) * 100) / 100;
+  costThreshold = Math.round(Math.max(0, Math.min(2, parseFloat(costVal))) * 1000) / 1000;
+  currentCenterMode = mode;
+
+  numScore.value = scoreThreshold.toFixed(2);
+  rangeScore.value = scoreThreshold.toFixed(2);
+  numCost.value = costThreshold.toFixed(3);
+  rangeCost.value = costThreshold.toFixed(3);
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    const isActive = btn.dataset.preset === mode;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+  });
+
+  persist();
+  updateKPIs();
+  renderChart();
+  renderTable();
+
+  if (showNotice && noticeText) showToast(noticeText);
+}
+
+/* ============================================================
+   KPIs
+   ============================================================ */
+function updateKPIs(){
+  const activeModels = getFilteredModels();
+  const sweetModels = activeModels.filter(m => getModelQuadrant(m) === 'sweet');
+  const count = sweetModels.length;
+  const totalActive = activeModels.length;
+  const pct = totalActive > 0 ? ((count / totalActive) * 100).toFixed(1) : '0.0';
+
+  document.getElementById('metaTotal').textContent = totalActive === rawModels.length ? `${rawModels.length}` : `${totalActive}/${rawModels.length}`;
+  document.getElementById('kpiTotal').textContent = totalActive;
+
+  if (!kpiAnimated){
+    animateNumber(document.getElementById('kpiSweetCount'), count, { decimals: 0 });
+    kpiAnimated = true;
+  } else {
+    document.getElementById('kpiSweetCount').textContent = count;
+  }
+  document.getElementById('kpiSweetPct').textContent = `(${pct}%)`;
+  liveCounterPill.textContent = `${count} model \u00b7 ${pct}%`;
+
+  if (count > 0){
+    const topScore = [...sweetModels].sort((a,b) => b.score - a.score)[0];
+    const topCostDisplay = topScore.cost === 0 ? '$0.00' : (topScore.cost < 0.01 ? '<$0.01' : '$' + topScore.cost.toFixed(2));
+    document.getElementById('kpiTopScoreModel').textContent = `${topScore.model} \u00b7 ${topScore.thinking}`;
+    document.getElementById('kpiTopScoreDetail').textContent = `Skor ${topScore.score.toFixed(2)} \u00b7 ${topCostDisplay}`;
+
+    const lowestCost = [...sweetModels].sort((a,b) => a.cost - b.cost || b.score - a.score)[0];
+    const lowCostDisplay = lowestCost.cost === 0 ? '$0.00' : (lowestCost.cost < 0.01 ? '<$0.01' : '$' + lowestCost.cost.toFixed(2));
+    document.getElementById('kpiLowCostModel').textContent = `${lowestCost.model} \u00b7 ${lowestCost.thinking}`;
+    document.getElementById('kpiLowCostDetail').textContent = `${lowCostDisplay} \u00b7 Skor ${lowestCost.score.toFixed(2)}`;
+  } else {
+    document.getElementById('kpiTopScoreModel').textContent = 'Tidak ada model';
+    document.getElementById('kpiTopScoreDetail').textContent = 'Longgarkan ambang batas';
+    document.getElementById('kpiLowCostModel').textContent = 'Tidak ada model';
+    document.getElementById('kpiLowCostDetail').textContent = 'Longgarkan ambang batas';
+  }
+
+  const modeLabels = { median:'Median', mean:'Rata-rata', elite:'Elite', budget:'Hemat', balanced:'Seimbang', model:'Patokan model', custom:'Custom' };
+  document.getElementById('kpiModeLabel').textContent = modeLabels[currentCenterMode] || 'Custom';
+  document.getElementById('kpiScoreVal').textContent = scoreThreshold.toFixed(2);
+  document.getElementById('kpiCostVal').textContent = `$${costThreshold.toFixed(4)}`;
+}
+
+/* ============================================================
+   CHART
+   ============================================================ */
+function renderChart(){
+  const filtered = getFilteredModels();
+  const providers = Array.from(new Set(rawModels.map(m => m.provider))).sort((a,b) => displayName(a).localeCompare(displayName(b)));
+  const logFloor = 0.002;
+  const providerPalette = providers.map(p => providerColors[p] || '#94a3b8');
+
+  const series = providers.map(p => {
+    const pModels = filtered.filter(m => m.provider === p);
+    const pColor = providerColors[p] || '#94a3b8';
+    const data = pModels.map(m => {
+      const quad = getModelQuadrant(m);
+      const plotCost = currentScale === 'log' ? Math.max(m.cost, logFloor) : m.cost;
+      return {
+        name: m.model,
+        value: [plotCost, m.score, m.cost_efficient, m.thinking, m.provider, quad, m],
+        itemStyle: {
+          color: pColor,
+          borderColor: quad === 'sweet' ? C.mint : 'rgba(10,12,16,.6)',
+          borderWidth: quad === 'sweet' ? 2 : 1,
+          shadowBlur: quad === 'sweet' ? 10 : 0,
+          shadowColor: C.mint
+        }
+      };
+    });
+    return {
+      name: displayName(p),
+      type: 'scatter',
+      z: 5,
+      itemStyle: { color: pColor },
+      symbolSize: val => val[5] === 'sweet' ? 16 : 10,
+      data,
+      emphasis: {
+        focus: 'self',
+        itemStyle: { borderColor: '#fff', borderWidth: 2, shadowBlur: 14, shadowColor: 'rgba(255,255,255,.85)' }
+      }
+    };
+  });
+
+  const maxX = currentScale === 'log' ? 2.05 : 2.05;
+  const minX = currentScale === 'log' ? 0.0015 : -0.05;
+  const markCost = currentScale === 'log' ? Math.max(costThreshold, logFloor) : costThreshold;
+
+  const markSeries = {
+    name: 'Quadrants', type: 'scatter', data: [], silent: true, z: 1,
+    markArea: {
+      silent: true,
+      z: 1,
+      data: [
+        [ { itemStyle:{ color:'rgba(79,209,165,.10)', borderColor:'rgba(79,209,165,.34)', borderWidth:1, borderType:'solid' },
+            label:{ position:['3%','6%'], color: C.mint, fontWeight:600, fontSize:11.5, fontFamily:'IBM Plex Sans', formatter:'Sweet spot' },
+            coord:[minX, scoreThreshold] }, { coord:[markCost, 68] } ],
+        [ { itemStyle:{ color:'rgba(108,142,245,.05)' }, label:{ position:['70%','6%'], color: C.indigo, fontSize:11, fontFamily:'IBM Plex Sans', formatter:'Premium' }, coord:[markCost, scoreThreshold] }, { coord:[maxX, 68] } ],
+        [ { itemStyle:{ color:'rgba(227,165,72,.05)' }, label:{ position:['3%','88%'], color: C.gold, fontSize:11, fontFamily:'IBM Plex Sans', formatter:'Budget' }, coord:[minX, 15] }, { coord:[markCost, scoreThreshold] } ],
+        [ { itemStyle:{ color:'rgba(227,101,113,.04)' }, label:{ position:['70%','88%'], color: C.rose, fontSize:11, fontFamily:'IBM Plex Sans', formatter:'Lagging' }, coord:[markCost, 15] }, { coord:[maxX, scoreThreshold] } ]
+      ]
+    },
+    markLine: {
+      silent: true, z: 2, symbol: ['none','none'],
+      lineStyle: { color: C.gold, type:'dashed', width:1.4, opacity:.7 },
+      data: [
+        { xAxis: markCost, label:{ formatter:`Biaya \u2264 $${costThreshold.toFixed(3)}`, position:'end', color: C.gold, fontSize:10.5, fontWeight:600, fontFamily:'IBM Plex Mono', backgroundColor:'rgba(13,16,21,.9)', padding:[3,6], borderRadius:3 } },
+        { yAxis: scoreThreshold, lineStyle:{ color:C.mint, type:'dashed', width:1.4, opacity:.7 }, label:{ formatter:`Skor \u2265 ${scoreThreshold.toFixed(2)}`, position:'end', color: C.mint, fontSize:10.5, fontWeight:600, fontFamily:'IBM Plex Mono', backgroundColor:'rgba(13,16,21,.9)', padding:[3,6], borderRadius:3 } }
+      ]
+    }
+  };
+  series.push(markSeries);
+
+  const option = {
+    color: providerPalette,
+    backgroundColor: 'transparent',
+    textStyle: { fontFamily: 'IBM Plex Sans' },
+    animationDurationUpdate: 150,
+    tooltip: {
+      trigger: 'item',
+      enterable: true,
+      confine: true,
+      backgroundColor: C.bgRaised,
+      borderColor: C.lineStrong,
+      borderWidth: 1,
+      padding: 12,
+      extraCssText: 'border-radius:8px; box-shadow:0 12px 32px rgba(0,0,0,.45); pointer-events:auto;',
+      formatter: function(params){
+        if (!params.value || !params.value[6]) return '';
+        const m = params.value[6];
+        const quad = getModelQuadrant(m);
+        const costLabel = m.cost === 0 ? '$0.00' : (m.cost < 0.01 ? `<$0.01 ($${m.cost.toFixed(4)})` : `$${m.cost.toFixed(2)}`);
+        return `
+          <div class="tt">
+            <div class="tt__name">${escapeHtml(m.model)} <span class="tt__th">\u00b7 ${escapeHtml(m.thinking)}</span></div>
+            <div class="tt__prov">${escapeHtml(displayName(m.provider))}</div>
+            <div class="tt__badge" style="color:${quadColor(quad)}">${quadLabel(quad)}</div>
+            <div class="tt__grid">
+              <div>Skor terbobot</div><div style="color:#7dd8ba">${m.score.toFixed(2)}</div>
+              <div>Biaya / task</div><div style="color:#f0c584">${costLabel}</div>
+              <div>Cost efficiency</div><div style="color:#9ab6f2">${m.cost_efficient.toLocaleString('id-ID')}</div>
+              <div>Output tokens</div><div style="color:#c7cddb">${m.tokens.toLocaleString('id-ID')}</div>
+            </div>
+            <div class="tt__aa">Agentic <b style="color:#fff">${m.aa_agentic}</b> &nbsp;Econ <b style="color:#fff">${m.aa_economics}</b> &nbsp;Fin <b style="color:#fff">${m.aa_finance}</b> &nbsp;Strat <b style="color:#fff">${m.aa_strategy}</b></div>
+            <div class="tt__cta"><button type="button" onclick="setThresholdsFromModelId(${m.id})">Jadikan patokan ambang batas</button></div>
+          </div>`;
+      }
+    },
+    legend: { data: providers.map(displayName), selected: Object.fromEntries(providers.map(p => [displayName(p), selectedProviders.has(p)])), type:'scroll', top: 4, right: 10, textStyle:{ color: C.text2, fontSize: 11 }, pageTextStyle:{ color: C.text2 }, itemWidth: 10, itemHeight: 10 },
+    grid: { left: '4%', right: '4%', bottom: '13%', top: '13%', containLabel: true },
+    xAxis: {
+      type: currentScale === 'log' ? 'log' : 'value',
+      name: 'Estimasi biaya per task ($)', nameLocation:'middle', nameGap: 30,
+      nameTextStyle: { color: C.text3, fontWeight: 500, fontSize: 11.5 },
+      min: currentScale === 'log' ? logFloor : 0, max: 2.0,
+      splitLine: { lineStyle: { color: C.line } },
+      axisLine: { lineStyle: { color: C.lineStrong } },
+      axisLabel: { color: C.text3, fontFamily:'IBM Plex Mono', fontSize: 10.5, formatter: v => v < 0.01 ? '$' + v.toFixed(3) : '$' + v.toFixed(2) }
+    },
+    yAxis: {
+      type: 'value', name: 'Skor rata-rata terbobot', nameLocation:'middle', nameGap: 40,
+      nameTextStyle: { color: C.text3, fontWeight: 500, fontSize: 11.5 },
+      min: 20, max: 62,
+      splitLine: { lineStyle: { color: C.line } },
+      axisLine: { lineStyle: { color: C.lineStrong } },
+      axisLabel: { color: C.text3, fontFamily:'IBM Plex Mono', fontSize: 10.5 }
+    },
+    dataZoom: [
+      { type:'inside', xAxisIndex:[0], yAxisIndex:[0] },
+      { type:'slider', show:true, xAxisIndex:[0], bottom: 4, height: 14, borderColor: C.lineStrong, fillerColor:'rgba(79,209,165,.13)', handleStyle:{color:C.lineStrong}, textStyle:{ color: C.text3, fontSize: 9.5, fontFamily:'IBM Plex Mono' } }
+    ],
+    series
+  };
+
+  myChart.setOption(option, true);
+
+  if (!chartPanel.classList.contains('is-in')){
+    requestAnimationFrame(() => chartPanel.classList.add('is-in'));
+  }
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+let currentTableModels = [];
+
+function renderTable(){
+  const query = searchQuery.toLowerCase().trim();
+  let list = rawModels.filter(m => {
+    const matchProvider = selectedProviders.has(m.provider);
+    const matchThinking = selectedThinking.has(m.thinking);
+    const quad = getModelQuadrant(m);
+    const qName = quadLabel(quad).toLowerCase();
+    const matchSearch = query === '' ||
+      String(m.id) === query ||
+      String(m.id) === query.replace('#', '') ||
+      m.model.toLowerCase().includes(query) ||
+      displayName(m.provider).toLowerCase().includes(query) ||
+      m.thinking.toLowerCase().includes(query) ||
+      qName.includes(query);
+    return matchProvider && matchThinking && matchSearch;
+  });
+
+  if (activeTableTab !== 'all') list = list.filter(m => getModelQuadrant(m) === activeTableTab);
+
+  list.sort((a, b) => {
+    if (sortColumn === 'quadrant'){
+      const rA = quadrantRank[getModelQuadrant(a)] || 0;
+      const rB = quadrantRank[getModelQuadrant(b)] || 0;
+      return sortAsc ? rA - rB : rB - rA;
+    }
+    if (sortColumn === 'thinking'){
+      const rA = thinkingRank[a.thinking] || 0;
+      const rB = thinkingRank[b.thinking] || 0;
+      return sortAsc ? rA - rB : rB - rA;
+    }
+    if (sortColumn === 'provider'){
+      const pA = displayName(a.provider).toLowerCase();
+      const pB = displayName(b.provider).toLowerCase();
+      if (pA < pB) return sortAsc ? -1 : 1;
+      if (pA > pB) return sortAsc ? 1 : -1;
+      return 0;
+    }
+    let vA = a[sortColumn], vB = b[sortColumn];
+    if (typeof vA === 'string'){ vA = vA.toLowerCase(); vB = vB.toLowerCase(); }
+    if (vA < vB) return sortAsc ? -1 : 1;
+    if (vA > vB) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  currentTableModels = list;
+  document.getElementById('ledgerCount').textContent = `${list.length} model ditampilkan`;
+
+  // Update header sort indicators and ARIA
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    const col = th.dataset.sort;
+    const arrEl = th.querySelector('.arr');
+    if (col === sortColumn){
+      th.classList.add('is-sorted');
+      th.setAttribute('aria-sort', sortAsc ? 'ascending' : 'descending');
+      if (arrEl) arrEl.innerHTML = sortAsc ? ' &uarr;' : ' &darr;';
+    } else {
+      th.classList.remove('is-sorted');
+      th.setAttribute('aria-sort', 'none');
+      if (arrEl) arrEl.innerHTML = '';
+    }
+  });
+
+  if (list.length === 0){
+    tableBody.innerHTML = `<tr class="empty-row"><td colspan="11">Tidak ada model yang cocok dengan filter dan ambang batas saat ini &mdash; coba longgarkan threshold.</td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = list.map(m => {
+    const quad = getModelQuadrant(m);
+    const costDisplay = m.cost === 0 ? '$0.00' : (m.cost < 0.01 ? `<$0.01` : `$${m.cost.toFixed(2)}`);
+    return `
+      <tr class="${quad === 'sweet' ? 'is-sweet' : ''}" data-model-id="${m.id}" onclick="focusChartModel(${m.id})">
+        <td class="mono" style="color:var(--text-3)">${m.id}</td>
+        <td><span class="cell-model"><span class="dot" style="background:${providerColors[m.provider] || '#94a3b8'}"></span>${escapeHtml(m.model)}<span class="th">${escapeHtml(m.thinking)}</span></span></td>
+        <td>${escapeHtml(displayName(m.provider))}</td>
+        <td>${escapeHtml(m.thinking)}</td>
+        <td class="num mono" style="color:#7dd8ba;font-weight:600">${m.score.toFixed(2)}</td>
+        <td class="num mono" style="color:#f0c584;font-weight:600" title="$${m.cost.toFixed(4)}">${costDisplay}</td>
+        <td class="num mono">${m.cost_efficient.toLocaleString('id-ID',{maximumFractionDigits:1})}</td>
+        <td><span class="qtag ${quad}"><span class="dot" style="background:currentColor"></span>${quadLabel(quad)}</span></td>
+        <td class="num mono">${m.aa_agentic}</td>
+        <td class="num mono">${m.aa_economics}</td>
+        <td class="num">
+          <span class="row-actions">
+            <button type="button" onclick="event.stopPropagation(); focusChartModel(${m.id})">Lihat</button>
+            <span class="sep">&middot;</span>
+            <button type="button" onclick="event.stopPropagation(); setThresholdsFromModelId(${m.id})">Patokan</button>
+          </span>
+        </td>
+      </tr>`;
+  }).join('');
+
+  requestAnimationFrame(checkTableScroll);
+}
+
+function checkTableScroll(){
+  if (!tableScrollInner) return;
+  const overflowing = tableScrollInner.scrollWidth > tableScrollInner.clientWidth + 2;
+  const atEnd = tableScrollInner.scrollLeft + tableScrollInner.clientWidth >= tableScrollInner.scrollWidth - 2;
+  tableScroll.classList.toggle('can-scroll', overflowing && !atEnd);
+}
+tableScrollInner?.addEventListener('scroll', checkTableScroll);
+window.addEventListener('resize', checkTableScroll);
+
+/* ============================================================
+   Global actions (referenced from injected HTML)
+   ============================================================ */
+window.focusChartModel = function(modelIdOrName, thinking, scrollToChart = true){
+  let found;
+  if (typeof modelIdOrName === 'number'){
+    found = rawModels.find(m => m.id === modelIdOrName);
+  } else if (typeof modelIdOrName === 'string'){
+    const parsedId = parseInt(modelIdOrName, 10);
+    if (!isNaN(parsedId) && String(parsedId) === modelIdOrName.trim()){
+      found = rawModels.find(m => m.id === parsedId);
+    } else {
+      found = rawModels.find(m => m.model === modelIdOrName && (!thinking || m.thinking === thinking));
+    }
+  }
+  if (!found) return;
+
+  // Unfilter provider or thinking if currently hidden
+  let filterChanged = false;
+  if (!selectedProviders.has(found.provider)){
+    selectedProviders.add(found.provider);
+    filterChanged = true;
+    const btn = document.querySelector(`.provider-pill[data-provider="${found.provider}"]`);
+    if (btn){
+      btn.classList.remove('is-off');
+      btn.setAttribute('aria-pressed', 'true');
+    }
+  }
+  if (!selectedThinking.has(found.thinking)){
+    selectedThinking.add(found.thinking);
+    filterChanged = true;
+    const btn = document.querySelector(`.thinking-pill[data-thinking="${found.thinking}"]`);
+    if (btn){
+      btn.classList.remove('is-off');
+      btn.setAttribute('aria-pressed', 'true');
+    }
+  }
+
+  // If target model quadrant is filtered out by current table tab, switch tab
+  const modelQuad = getModelQuadrant(found);
+  if (activeTableTab !== 'all' && activeTableTab !== modelQuad){
+    activeTableTab = modelQuad;
+    document.querySelectorAll('#tableTabGroup button').forEach(b => {
+      const isTarget = b.dataset.tab === modelQuad;
+      b.classList.toggle('is-active', isTarget);
+      b.setAttribute('aria-selected', String(isTarget));
+    });
+    filterChanged = true;
+  }
+
+  // If searchQuery hides the target model, clear search input
+  if (searchQuery){
+    const q = searchQuery.toLowerCase().trim();
+    const matches = found.model.toLowerCase().includes(q) ||
+                    displayName(found.provider).toLowerCase().includes(q) ||
+                    found.thinking.toLowerCase().includes(q);
+    if (!matches){
+      searchQuery = '';
+      searchInput.value = '';
+      filterChanged = true;
+    }
+  }
+
+  if (filterChanged){
+    renderChart();
+    renderTable();
+    updateKPIs();
+  }
+
+  // Highlight table row and scroll it into view inside table
+  document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('is-focused'));
+  const row = document.querySelector(`#tableBody tr[data-model-id="${found.id}"]`);
+  if (row){
+    row.classList.add('is-focused');
+    row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  }
+
+  // Find series and data index in chart
+  const providers = Array.from(new Set(rawModels.map(m => m.provider))).sort((a,b) => displayName(a).localeCompare(displayName(b)));
+  const sIdx = providers.indexOf(found.provider);
+  if (sIdx !== -1){
+    const filtered = getFilteredModels();
+    const pModels = filtered.filter(m => m.provider === found.provider);
+    const dIdx = pModels.findIndex(m => m.id === found.id);
+    if (dIdx !== -1){
+      myChart.dispatchAction({ type: 'downplay' });
+      myChart.dispatchAction({ type: 'highlight', seriesIndex: sIdx, dataIndex: dIdx });
+      myChart.dispatchAction({ type: 'showTip', seriesIndex: sIdx, dataIndex: dIdx });
+    }
+  }
+
+  if (scrollToChart){
+    chartDom.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+  }
+};
+
+window.setThresholdsFromModelId = function(modelId){
+  const found = rawModels.find(m => m.id === modelId);
+  if (!found) return;
+  setThresholds(found.score, found.cost, 'model', true, `Ambang diset ke ${found.model} (${found.thinking}): skor ${found.score.toFixed(2)}, biaya $${found.cost.toFixed(2)}`);
+};
+
+// Backward-compatibility shim
+window.setThresholdsFromModel = function(modelName, thinking){
+  const found = rawModels.find(m => m.model === modelName && m.thinking === thinking);
+  if (found) window.setThresholdsFromModelId(found.id);
+};
+
+/* ============================================================
+   INIT: controls
+   ============================================================ */
+function initNumericInputsAndSteppers(){
+  function handleScoreInput(val){
+    const v = parseFloat(val);
+    if (!isNaN(v)) setThresholds(v, costThreshold, 'custom');
+    else numScore.value = scoreThreshold.toFixed(2);
+  }
+  function handleCostInput(val){
+    const v = parseFloat(val);
+    if (!isNaN(v)) setThresholds(scoreThreshold, v, 'custom');
+    else numCost.value = costThreshold.toFixed(3);
+  }
+
+  numScore.addEventListener('change', e => handleScoreInput(e.target.value));
+  numCost.addEventListener('change', e => handleCostInput(e.target.value));
+  numScore.addEventListener('blur', () => { numScore.value = scoreThreshold.toFixed(2); });
+  numCost.addEventListener('blur', () => { numCost.value = costThreshold.toFixed(3); });
+
+  let rafPending = false;
+  function scheduleSlider(fn){
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { fn(); rafPending = false; });
+  }
+  rangeScore.addEventListener('input', e => scheduleSlider(() => setThresholds(e.target.value, costThreshold, 'custom')));
+  rangeCost.addEventListener('input', e => scheduleSlider(() => setThresholds(scoreThreshold, e.target.value, 'custom')));
+
+  document.querySelectorAll('[data-step-score]').forEach(btn => btn.addEventListener('click', () => {
+    const delta = parseFloat(btn.dataset.stepScore);
+    const newScore = Math.round((scoreThreshold + delta) * 100) / 100;
+    setThresholds(newScore, costThreshold, 'custom');
+  }));
+  document.querySelectorAll('[data-step-cost]').forEach(btn => btn.addEventListener('click', () => {
+    const delta = parseFloat(btn.dataset.stepCost);
+    const newCost = Math.round((costThreshold + delta) * 1000) / 1000;
+    setThresholds(scoreThreshold, newCost, 'custom');
+  }));
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      if (preset === 'median') setThresholds(datasetStats.score_median, datasetStats.cost_median, 'median', true, 'Preset median diterapkan');
+      else if (preset === 'mean') setThresholds(datasetStats.score_mean, datasetStats.cost_mean, 'mean', true, 'Preset rata-rata diterapkan');
+      else if (preset === 'elite') setThresholds(50.00, 0.150, 'elite', true, 'Preset elite diterapkan \u2014 skor \u2265 50, biaya \u2264 $0.15');
+      else if (preset === 'budget') setThresholds(45.00, 0.050, 'budget', true, 'Preset hemat diterapkan \u2014 skor \u2265 45, biaya \u2264 $0.05');
+      else if (preset === 'balanced') setThresholds(46.00, 0.100, 'balanced', true, 'Preset seimbang diterapkan \u2014 skor \u2265 46, biaya \u2264 $0.10');
+    });
+  });
+}
+
+function disableClickMode(){
+  clickToSetMode = false;
+  btnToggleClickMode.classList.remove('is-active');
+  btnToggleClickMode.setAttribute('aria-pressed', 'false');
+  clickNote.classList.remove('is-shown');
+  chartDom.style.cursor = 'default';
+  const canvas = chartDom.querySelector('canvas');
+  if (canvas) canvas.style.cursor = 'default';
+  if (myChart && myChart.getZr()) myChart.getZr().setCursorStyle('default');
+}
+
+function initClickOnChart(){
+  btnToggleClickMode.addEventListener('click', () => {
+    clickToSetMode = !clickToSetMode;
+    btnToggleClickMode.classList.toggle('is-active', clickToSetMode);
+    btnToggleClickMode.setAttribute('aria-pressed', String(clickToSetMode));
+    clickNote.classList.toggle('is-shown', clickToSetMode);
+    const cursorVal = clickToSetMode ? 'crosshair' : 'default';
+    chartDom.style.cursor = cursorVal;
+    const canvas = chartDom.querySelector('canvas');
+    if (canvas) canvas.style.cursor = cursorVal;
+    if (myChart && myChart.getZr()) myChart.getZr().setCursorStyle(cursorVal);
+    if (clickToSetMode) showToast('Mode klik aktif \u2014 klik grafik untuk memindahkan ambang batas (Esc untuk batal)');
+  });
+
+  // Klik titik model pada grafik untuk fokus dan sorot di tabel
+  myChart.on('click', function(params){
+    if (clickToSetMode) return;
+    if (params.componentType === 'series' && params.seriesType === 'scatter' && params.value && params.value[6]){
+      const m = params.value[6];
+      window.focusChartModel(m.id, null, false);
+    }
+  });
+
+  myChart.getZr().on('click', function(params){
+    if (!clickToSetMode) return;
+    if (!myChart.containPixel({ gridIndex: 0 }, [params.offsetX, params.offsetY])) return;
+    const pt = myChart.convertFromPixel({ gridIndex: 0 }, [params.offsetX, params.offsetY]);
+    if (pt && pt.length >= 2){
+      const minBound = currentScale === 'log' ? 0.002 : 0;
+      const costVal = Math.max(minBound, Math.min(2.0, parseFloat(pt[0].toFixed(3))));
+      const scoreVal = Math.max(20, Math.min(60, parseFloat(pt[1].toFixed(2))));
+      setThresholds(scoreVal, costVal, 'custom', true, `Ambang dipindah ke skor ${scoreVal.toFixed(2)}, biaya $${costVal.toFixed(3)}`);
+    }
+  });
+
+  myChart.on('legendselectchanged', function(params){
+    const allProviders = Array.from(new Set(rawModels.map(m => m.provider)));
+    const prov = allProviders.find(p => displayName(p) === params.name);
+    if (!prov) return;
+    const isSelected = params.selected[params.name];
+    if (isSelected){
+      selectedProviders.add(prov);
+    } else {
+      if (selectedProviders.size > 1){
+        selectedProviders.delete(prov);
+      } else {
+        myChart.dispatchAction({ type: 'legendSelect', name: params.name });
+        showToast('Minimal satu provider harus tetap aktif');
+        return;
+      }
+    }
+    const btn = document.querySelector(`.provider-pill[data-provider="${prov}"]`);
+    if (btn){
+      btn.classList.toggle('is-off', !selectedProviders.has(prov));
+      btn.setAttribute('aria-pressed', String(selectedProviders.has(prov)));
+    }
+    updateKPIs();
+    renderTable();
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && clickToSetMode) disableClickMode();
+  });
+}
+
+function initFiltersUI(){
+  const providers = Array.from(new Set(rawModels.map(m => m.provider))).sort((a,b) => displayName(a).localeCompare(displayName(b)));
+  const pContainer = document.getElementById('providerFilterContainer');
+  pContainer.innerHTML = '<span class="pill-row__label">Provider</span>' + providers.map(p => `
+    <button data-provider="${p}" class="tag-pill provider-pill" aria-pressed="true">
+      <span class="dot" style="background:${providerColors[p] || '#fff'}"></span>${displayName(p)}
+    </button>`).join('');
+
+  pContainer.querySelectorAll('.provider-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prov = btn.dataset.provider;
+      if (selectedProviders.has(prov)){
+        if (selectedProviders.size > 1){
+          selectedProviders.delete(prov);
+          btn.classList.add('is-off');
+          btn.setAttribute('aria-pressed', 'false');
+        }
+      } else {
+        selectedProviders.add(prov);
+        btn.classList.remove('is-off');
+        btn.setAttribute('aria-pressed', 'true');
+      }
+      renderChart(); renderTable(); updateKPIs();
+    });
+  });
+
+  const thinkings = ['max','xhigh','high','medium','low'];
+  const tContainer = document.getElementById('thinkingFilterContainer');
+  tContainer.innerHTML = '<span class="pill-row__label">Reasoning</span>' + thinkings.map(t => `
+    <button data-thinking="${t}" class="tag-pill thinking-pill" aria-pressed="true"><span class="dot" style="background:var(--text-3)"></span>${t}</button>`).join('');
+
+  tContainer.querySelectorAll('.thinking-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const th = btn.dataset.thinking;
+      if (selectedThinking.has(th)){
+        if (selectedThinking.size > 1){
+          selectedThinking.delete(th);
+          btn.classList.add('is-off');
+          btn.setAttribute('aria-pressed', 'false');
+        }
+      } else {
+        selectedThinking.add(th);
+        btn.classList.remove('is-off');
+        btn.setAttribute('aria-pressed', 'true');
+      }
+      renderChart(); renderTable(); updateKPIs();
+    });
+  });
+}
+
+function initScaleControls(){
+  document.querySelectorAll('.tseg button[data-scale]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tseg button[data-scale]').forEach(b => {
+        b.classList.remove('is-active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-pressed', 'true');
+      currentScale = btn.dataset.scale;
+      renderChart();
+    });
+  });
+}
+
+function initTableTabs(){
+  document.querySelectorAll('#tableTabGroup button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#tableTabGroup button').forEach(b => {
+        b.classList.remove('is-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-selected', 'true');
+      activeTableTab = btn.dataset.tab;
+      renderTable();
+    });
+  });
+}
+
+function initTableSorting(){
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    function triggerSort(){
+      const col = th.dataset.sort;
+      if (sortColumn === col){
+        sortAsc = !sortAsc;
+      } else {
+        sortColumn = col;
+        sortAsc = (col === 'model' || col === 'provider' || col === 'id' || col === 'cost');
+      }
+      renderTable();
+    }
+    th.addEventListener('click', triggerSort);
+    th.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        triggerSort();
+      }
+    });
+  });
+}
+
+document.getElementById('btnExportPng').addEventListener('click', () => {
+  try {
+    const url = myChart.getDataURL({ type:'png', pixelRatio:2, backgroundColor:'#0A0C10' });
+    const a = document.createElement('a');
+    a.download = `kuadran-model_skor-${scoreThreshold.toFixed(1)}_biaya-${costThreshold.toFixed(2)}.png`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('Grafik kuadran berhasil diekspor ke PNG');
+  } catch (err){
+    showToast('Gagal mengekspor grafik PNG');
+  }
+});
+
+document.getElementById('btnExportCsv').addEventListener('click', () => {
+  if (currentTableModels.length === 0){
+    showToast('Tidak ada data model yang cocok untuk diekspor');
+    return;
+  }
+  const headers = ['ID','Provider','Model','Reasoning','Skor Terbobot','Biaya ($)','Cost Efficiency','Kuadran','AA-Agentic','AA-Economics','AA-Strategy','AA-Finance'];
+  const listToExport = currentTableModels;
+  const rows = listToExport.map(m => [
+    m.id,
+    `"${displayName(m.provider).replace(/"/g, '""')}"`,
+    `"${m.model.replace(/"/g, '""')}"`,
+    `"${m.thinking.replace(/"/g, '""')}"`,
+    m.score,
+    m.cost,
+    m.cost_efficient,
+    `"${quadLabel(getModelQuadrant(m))}"`,
+    m.aa_agentic,
+    m.aa_economics,
+    m.aa_strategy,
+    m.aa_finance
+  ]);
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `model-llm_skor-${scoreThreshold.toFixed(1)}_biaya-${costThreshold.toFixed(2)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`${listToExport.length} model berhasil diekspor ke CSV`);
+});
+
+searchInput.addEventListener('input', e => { searchQuery = e.target.value; renderTable(); });
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    searchQuery = '';
+    searchInput.value = '';
+    renderTable();
+  }
+});
+
+document.getElementById('btnResetFilters').addEventListener('click', () => {
+  selectedProviders = new Set(rawModels.map(m => m.provider));
+  selectedThinking = new Set(rawModels.map(m => m.thinking));
+  currentScale = 'linear';
+  searchQuery = ''; searchInput.value = '';
+  activeTableTab = 'sweet';
+  sortColumn = 'score'; sortAsc = false;
+  disableClickMode();
+
+  document.querySelectorAll('.provider-pill, .thinking-pill').forEach(btn => {
+    btn.classList.remove('is-off');
+    btn.setAttribute('aria-pressed', 'true');
+  });
+  document.querySelectorAll('.tseg button[data-scale]').forEach(b => {
+    const isLinear = b.dataset.scale === 'linear';
+    b.classList.toggle('is-active', isLinear);
+    b.setAttribute('aria-pressed', String(isLinear));
+  });
+  document.querySelectorAll('#tableTabGroup button').forEach(b => {
+    const isSweet = b.dataset.tab === 'sweet';
+    b.classList.toggle('is-active', isSweet);
+    b.setAttribute('aria-selected', String(isSweet));
+  });
+
+  setThresholds(datasetStats.score_median, datasetStats.cost_median, 'median', true, 'Filter dan ambang batas dikembalikan ke default');
+});
+
+if (window.ResizeObserver){
+  const ro = new ResizeObserver(() => myChart.resize());
+  ro.observe(chartDom);
+} else {
+  window.addEventListener('resize', () => myChart.resize());
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+(async function boot(){
+  document.getElementById('footStamp').textContent = `${datasetStats.count} model \u00b7 skala biaya $${datasetStats.cost_min.toFixed(2)}\u2013$${datasetStats.cost_max.toFixed(2)}`;
+  await loadPersisted();
+  initFiltersUI();
+  initNumericInputsAndSteppers();
+  initClickOnChart();
+  initScaleControls();
+  initTableTabs();
+  initTableSorting();
+  setThresholds(scoreThreshold, costThreshold, currentCenterMode);
+})();
+</script>
+</body>
+</html>

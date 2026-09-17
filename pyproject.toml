@@ -1,0 +1,23 @@
+[project]
+name = "monika-trading-agent"
+version = "1.0.0"
+description = "Monika: Autonomous SOTA MT5 Trading Agent Harness"
+readme = "README.md"
+authors = [{ name = "Saiful Akbar", email = "asaifulakbarw@gmail.com" }]
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".git",
+    "venv",
+    ".venv",
+    "node_modules",
+    "data",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]

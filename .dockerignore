@@ -1,0 +1,12 @@
+.env
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+trading-agent/logging_observability/dashboard/frontend/node_modules
+trading-agent/logging_observability/dashboard/frontend/dist
+trading-agent/data/sessions
+trading-agent/logs
+backups
