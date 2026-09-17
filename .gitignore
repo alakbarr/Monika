@@ -1,0 +1,76 @@
+# Environment and Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python Virtual Environments & Packages
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Node / Frontend
+node_modules/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Logs & Debugging
+logs/
+*.log
+*.log.*
+trading-agent/logs/
+
+# Agent & Session State / Scratch files
+.agents/
+.agent_state/
+.freebuff/
+trading-agent/data/sessions/
+trading-agent/data/sessions/browser_profile/
+dummy_test_state.json
+trading-agent/dummy_test_state.json
+scratch/
+trading-agent/scratch/
+backups/
+audit_reports/
+scripts/test_results/
+audit_prompt.md
+contoh_pertanyaan.md
+tui_error.md
+
+# Database files & Backups
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.bak
+*.backup
+
+# Local Data and Results
+data/
+/data/
+/data/*
+/trading-agent/data/*
+!/trading-agent/data/.gitkeep
+results/
+trading-agent/results/
+!trading-agent/benchmark/results/

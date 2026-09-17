@@ -1,0 +1,13 @@
+{
+  "include": ["trading-agent"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    ".git"
+  ],
+  "venvPath": "trading-agent",
+  "venv": "venv",
+  "extraPaths": ["trading-agent"],
+  "reportMissingTypeStubs": false
+}

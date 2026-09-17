@@ -1,0 +1,115 @@
+# ==============================================================================
+# File: utils/plugins/extension_loader.py
+# ==============================================================================
+
+"""
+Plugin Extension Loader (M1).
+Discovers and loads external extensions via `plugin.yaml` manifests.
+"""
+
+import os
+import sys
+import yaml
+import logging
+import importlib.util
+from typing import Dict, List, Any, Optional
+from utils.plugins.manager import PluginManager, get_plugin_manager
+
+logger = logging.getLogger("TradingAgent.PluginLoader")
+
+
+def _import_from_path(module_name: str, file_path: str):
+    """Dynamically import a module from a specific file path."""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot create module spec for {file_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None) -> Optional[Dict[str, Any]]:
+    """
+    Load a plugin from its directory containing `plugin.yaml`.
+    """
+    manifest_path = os.path.join(plugin_dir, "plugin.yaml")
+    if not os.path.isfile(manifest_path):
+        return None
+
+    mgr = manager or get_plugin_manager()
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = yaml.safe_load(f) or {}
+
+        name = manifest.get("name", os.path.basename(plugin_dir))
+        enabled = manifest.get("enabled", True)
+        if not enabled:
+            logger.info(f"[PluginLoader] Plugin '{name}' is disabled in manifest.")
+            return None
+
+        # Call entrypoint if specified
+        entrypoint = manifest.get("entrypoint")
+        if entrypoint:
+            mod_name, func_name = entrypoint.split(":")
+            mod_file = os.path.join(plugin_dir, *mod_name.split(".")) + ".py"
+            if not os.path.isfile(mod_file):
+                mod_file = os.path.join(plugin_dir, f"{mod_name}.py")
+            if os.path.isfile(mod_file):
+                module = _import_from_path(f"plugin_{name}_{mod_name.replace('.', '_')}", mod_file)
+            else:
+                module = importlib.import_module(mod_name)
+            setup_func = getattr(module, func_name)
+            setup_func(mgr, manifest.get("config", {}))
+
+        # Register explicit hook mappings
+        hooks = manifest.get("hooks", {})
+        for hook_event, hook_target in hooks.items():
+            mod_name, func_name = hook_target.split(":")
+            mod_file = os.path.join(plugin_dir, *mod_name.split(".")) + ".py"
+            if not os.path.isfile(mod_file):
+                mod_file = os.path.join(plugin_dir, f"{mod_name}.py")
+            if os.path.isfile(mod_file):
+                module = _import_from_path(f"plugin_{name}_{mod_name.replace('.', '_')}", mod_file)
+            else:
+                module = importlib.import_module(mod_name)
+            handler = getattr(module, func_name)
+            mgr.register_hook(hook_event, handler)
+            logger.info(f"[PluginLoader] Registered '{name}' handler '{hook_target}' for hook '{hook_event}'")
+
+        logger.info(f"[PluginLoader] Successfully loaded plugin '{name}' v{manifest.get('version', '1.0.0')}")
+        return manifest
+    except Exception as e:
+        logger.error(f"[PluginLoader] Failed to load plugin from {plugin_dir}: {e}", exc_info=True)
+        return None
+
+
+def load_plugins(plugins_dir: Optional[str] = None, manager: Optional[PluginManager] = None) -> List[Dict[str, Any]]:
+    """
+    Discover and load all plugins within a base directory.
+    """
+    if plugins_dir is None:
+        # Default search locations
+        possible_dirs = [
+            os.path.abspath("plugins"),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "plugins")),
+        ]
+        for candidate in possible_dirs:
+            if os.path.isdir(candidate):
+                plugins_dir = candidate
+                break
+
+    if not plugins_dir or not os.path.isdir(plugins_dir):
+        logger.debug(f"[PluginLoader] No plugins directory found at {plugins_dir}")
+        return []
+
+    mgr = manager or get_plugin_manager()
+    loaded = []
+    for item in os.listdir(plugins_dir):
+        item_path = os.path.join(plugins_dir, item)
+        if os.path.isdir(item_path):
+            manifest = load_single_plugin(item_path, manager=mgr)
+            if manifest:
+                loaded.append(manifest)
+
+    return loaded
