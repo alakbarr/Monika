@@ -7,13 +7,19 @@ from utils.infra.event_loop import get_loop_factory, run_async
 
 
 def test_get_loop_factory():
-    """Verify get_loop_factory returns SelectorEventLoop on Windows and empty dict elsewhere."""
+    """Verify get_loop_factory returns SelectorEventLoop on Windows (Python 3.12+) and appropriate kwargs elsewhere."""
     factory_kwargs = get_loop_factory()
-    if sys.platform == "win32":
+    if sys.version_info < (3, 12):
+        assert factory_kwargs == {}
+    elif sys.platform == "win32":
         assert "loop_factory" in factory_kwargs
         assert factory_kwargs["loop_factory"] is asyncio.SelectorEventLoop
     else:
-        assert factory_kwargs == {}
+        try:
+            import uvloop
+            assert factory_kwargs == {"loop_factory": uvloop.new_event_loop}
+        except ImportError:
+            assert factory_kwargs == {}
 
 
 def test_run_async_executes_coroutine_with_correct_loop():

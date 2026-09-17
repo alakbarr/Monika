@@ -17,6 +17,7 @@ Monika/
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
+├── contoh_pertanyaan.md
 ├── DESIGN.md
 ├── Dockerfile
 ├── docker-compose.yml

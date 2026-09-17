@@ -149,8 +149,9 @@ class GeminiProvider(BaseLLMClient):
 
         api_keys_raw = os.getenv("GEMINI_API_KEYS", "")
         self.free_api_keys = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
-        self.paid_api_key = os.getenv("GEMINI_PAID_API_KEY", os.getenv("GEMINI_API_KEY", ""))
-        self.api_key: Optional[str] = kwargs.get("api_key")
+        cfg_api_key = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {}).get("api_key", "")
+        self.paid_api_key = os.getenv("GEMINI_PAID_API_KEY", os.getenv("GEMINI_API_KEY", cfg_api_key))
+        self.api_key: Optional[str] = kwargs.get("api_key") or cfg_api_key or None
         
         if not self.free_api_keys and not self.paid_api_key and not self.api_key:
             logger.warning("No Gemini API keys set — Gemini tasks will be skipped")

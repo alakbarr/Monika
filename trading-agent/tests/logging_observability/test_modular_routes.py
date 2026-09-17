@@ -4,6 +4,7 @@
 # ==============================================================================
 
 import pytest
+from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 
 from logging_observability.dashboard.api import app
@@ -92,11 +93,14 @@ def test_context_tracker_endpoint():
 def test_steer_endpoint():
     """Verify /api/actions/steer accepts SteerRequest and records directive."""
     client = TestClient(app)
-    response = client.post(
-        "/api/actions/steer",
-        json={"message": "Focus on DXY correlation during NFP", "mode": "steer", "symbols": ["EURUSD"]},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "steered"
-    assert data["mode"] == "steer"
+    with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
+        mock_session = AsyncMock()
+        mock_sess_cls.return_value.__aenter__.return_value = mock_session
+        response = client.post(
+            "/api/actions/steer",
+            json={"message": "Focus on DXY correlation during NFP", "mode": "steer", "symbols": ["EURUSD"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "steered"
+        assert data["mode"] == "steer"

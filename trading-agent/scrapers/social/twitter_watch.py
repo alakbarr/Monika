@@ -23,6 +23,7 @@ class TwitterWatchScraper(BaseScraper):
         super().__init__(headless=headless, profile_name=None)
         
         self.session_dir = Path(__file__).resolve().parent.parent.parent / "data" / "sessions"
+        self.session_dir.mkdir(parents=True, exist_ok=True)
         self.rotation_state_file = self.session_dir / "twitter_pool_state.json"
         self.quarantined_file = self.session_dir / "twitter_quarantined.json"
         self.target_list_url = list_url or "https://x.com/i/lists/2024453847716970688"
@@ -42,6 +43,7 @@ class TwitterWatchScraper(BaseScraper):
         quarantined = self._load_quarantined()
         if session_file not in quarantined:
             quarantined.append(session_file)
+            self.quarantined_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.quarantined_file, "w", encoding="utf-8") as f:
                 json.dump(quarantined, f, indent=4)
         logger.warning(f"Quarantined session: {session_file}")
