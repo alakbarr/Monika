@@ -1,0 +1,75 @@
+{
+  "fixtures": [
+    {
+      "id": "SMC_ICT_001_BULL_FVG_BOS",
+      "name": "Bullish H4 FVG Mitigation with M15 BOS",
+      "symbol": "EURUSD",
+      "context": {
+        "macro_bias": "bearish USD / bullish EUR",
+        "market_session": "London Open",
+        "dxy_trend": "weakening -0.5%",
+        "vix": 14.2
+      },
+      "technical_data": {
+        "h4_structure": "bullish",
+        "fvg_detected": true,
+        "fvg_zone": [1.0820, 1.0835],
+        "liquidity_sweep": "Asian Low swept",
+        "m15_bos": true,
+        "entry_price": 1.0830,
+        "stop_loss": 1.0805,
+        "take_profit": 1.0890
+      },
+      "expected_decision": "buy",
+      "expected_min_confluence": 8,
+      "expected_min_rr": 2.0
+    },
+    {
+      "id": "SMC_ICT_002_BEAR_LIQUIDITY_SWEEP",
+      "name": "Bearish Asian High Sweep with Displacement",
+      "symbol": "GBPUSD",
+      "context": {
+        "macro_bias": "bullish USD / bearish GBP",
+        "market_session": "NY Overlap",
+        "dxy_trend": "strengthening +0.6%",
+        "vix": 18.5
+      },
+      "technical_data": {
+        "h4_structure": "bearish",
+        "fvg_detected": true,
+        "fvg_zone": [1.2750, 1.2765],
+        "liquidity_sweep": "Asian High swept",
+        "m15_bos": true,
+        "entry_price": 1.2745,
+        "stop_loss": 1.2770,
+        "take_profit": 1.2680
+      },
+      "expected_decision": "sell",
+      "expected_min_confluence": 8,
+      "expected_min_rr": 2.0
+    },
+    {
+      "id": "SMC_ICT_003_CHOPPY_NO_CONFLUENCE",
+      "name": "Consolidation without Clear Orderflow",
+      "symbol": "AUDUSD",
+      "context": {
+        "macro_bias": "neutral",
+        "market_session": "Late Asian",
+        "dxy_trend": "neutral 0.0%",
+        "vix": 12.8
+      },
+      "technical_data": {
+        "h4_structure": "ranging",
+        "fvg_detected": false,
+        "liquidity_sweep": "none",
+        "m15_bos": false,
+        "entry_price": 0.6550,
+        "stop_loss": 0.6530,
+        "take_profit": 0.6580
+      },
+      "expected_decision": "wait",
+      "expected_max_confluence": 6,
+      "expected_min_rr": 1.5
+    }
+  ]
+}
