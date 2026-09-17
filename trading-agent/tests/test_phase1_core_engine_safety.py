@@ -330,6 +330,36 @@ class TestDeterministicTriggerEngine:
         assert res.executed is False
 
     @pytest.mark.asyncio
+    async def test_execution_service_preplanned_order_pips_slippage_rejection(self):
+        """Verify preplanned order is blocked if price drift exceeds pips slippage limit even when percentage slippage is acceptable."""
+        mock_mt5 = AsyncMock()
+        # 2015.10 vs 2015.00 entry -> 0.10 / 2015.0 = 0.005% (passes default 0.5% pct limit)
+        # but 0.10 / 0.01 = 10.0 pips (exceeds 5.0 pips limit)
+        mock_mt5.get_current_price.return_value = {"ask": 2015.10, "bid": 2015.09}
+
+        settings = {
+            "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5, "max_trigger_slippage_pips": 5.0}
+        }
+        svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
+        session = AsyncMock()
+
+        order_plan = {
+            "direction": "buy",
+            "entry_price": 2015.0,
+            "stop_loss": 2000.0,
+            "take_profit": 2045.0,
+            "lot_size": 0.1,
+            "max_slippage_pips": 5.0,
+        }
+
+        res = await svc.execute_preplanned_order(session, "XAUUSD", order_plan, trigger_id=16)
+
+        assert res.risk_approved is False
+        assert "slippage_exceeded" in res.risk_checks_failed
+        assert any("Trigger slippage 10.0 pips > threshold 5.0 pips" in r for r in res.risk_rejection_reasons)
+        assert res.executed is False
+
+    @pytest.mark.asyncio
     async def test_execution_service_preplanned_order_malformed_input(self):
         """Verify malformed order plan (non-numeric fields, non-dict) fails safely without crashing."""
         mock_mt5 = AsyncMock()

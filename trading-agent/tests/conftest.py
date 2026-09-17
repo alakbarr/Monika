@@ -12,7 +12,7 @@ def pytest_asyncio_loop_factories(config, item):
     """Customize pytest-asyncio event loop factory on Windows to use SelectorEventLoop."""
     if sys.platform == "win32":
         return {"default": asyncio.SelectorEventLoop}
-    return None
+    return {"default": asyncio.new_event_loop}
 
 
 @pytest.fixture(scope="session")
