@@ -43,20 +43,20 @@ def test_outcome_evaluator_btc_friction_and_dollar_pnl():
     
     trade = BacktestTrade(
         symbol="BTCUSD",
-        direction="sell",
+        direction="buy",
         entry_time=start,
-        entry_price=60000.0,
-        stop_loss=61000.0,
-        take_profit=58000.0,
+        entry_price=58000.0,
+        stop_loss=57000.0,
+        take_profit=60000.0,
     )
     trade.executed_lots = 0.2  # 0.2 BTC
 
-    # Simulating TP exit at 58000.0 (Sell trade, price dropped by 2000)
+    # Simulating TP exit at 60000.0 (Buy trade, price gained 2000)
     # BTC friction = 20.0 spread + 10.0 slippage = 30.0 pips ($30)
     # Gross USD = 0.2 * 1 * 2000 = $400
     # Friction USD = 0.2 * 1 * 30 = $6.00
     # Net USD = $394.00
-    outcome = evaluator._calculate_outcome(trade, start + timedelta(hours=6), 58000.0, "tp_hit", apply_costs=True)
+    outcome = evaluator._calculate_outcome(trade, start + timedelta(hours=6), 60000.0, "tp_hit", apply_costs=True)
 
     assert outcome["exit_reason"] == "tp_hit"
     assert outcome["pnl_usd"] == 394.00

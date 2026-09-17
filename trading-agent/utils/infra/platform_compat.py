@@ -26,11 +26,21 @@ def configure_event_loop() -> Dict[str, Any]:
     """
     Configure and return keyword arguments for optimal event loop factory based on OS.
     
-    - Windows: Uses SelectorEventLoop for compatibility with psycopg / psycopg3
-      (required by langgraph checkpointer because ProactorEventLoop lacks add_reader/add_writer).
-    - Linux / Darwin: Uses uvloop if installed for high-performance epoll event processing,
-      or defaults to standard asyncio loop.
+    - Python < 3.12: asyncio.run does not accept loop_factory keyword argument.
+      Configures event loop policy on Windows and returns empty dict.
+    - Python >= 3.12:
+      - Windows: Uses SelectorEventLoop for compatibility with psycopg / psycopg3.
+      - Linux / Darwin: Uses uvloop if installed for high-performance epoll event processing,
+        or defaults to standard asyncio loop.
     """
+    if sys.version_info < (3, 12):
+        if IS_WINDOWS:
+            try:
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            except Exception:
+                pass
+        return {}
+
     if IS_WINDOWS:
         return {"loop_factory": asyncio.SelectorEventLoop}
     else:

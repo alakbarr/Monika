@@ -96,7 +96,7 @@ class PostReleaseAnalyzer:
             except asyncio.CancelledError:
                 break
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         self._running = False
         self._stop_event.set()
         logger.info("[PostReleaseAnalyzer] Stopped")
