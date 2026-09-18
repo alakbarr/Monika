@@ -174,6 +174,27 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=65536,
         supports_structured_output=True,
     ),
+    # TypeSafe Jev System One
+    "jev-latest": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        supports_streaming=False,
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_caching=False,
+        supports_native_thinking=False,
+    ),
+    "jev-1.13": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        supports_streaming=False,
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_caching=False,
+        supports_native_thinking=False,
+    ),
 }
 
 DEFAULT_CAPABILITIES = ModelCapabilities()
@@ -198,6 +219,17 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
             return caps
 
     # Provider heuristic fallbacks
+    if "jev" in clean_name or "typesafe" in clean_name:
+        return ModelCapabilities(
+            supports_tool_choice=False,
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_streaming=False,
+            max_output_tokens=2048,
+            context_window=64000,
+            supports_caching=False,
+            supports_native_thinking=False,
+        )
     if "claude" in clean_name:
         return ModelCapabilities(supports_caching=True, supports_structured_output=True)
     if "gemini" in clean_name:

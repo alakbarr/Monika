@@ -95,7 +95,11 @@ PRICING: Dict[str, Price] = {
     "deepseek-v4-flash": Price(0.22, 0.007, 0.66, "off-peak; peak=0.44/0.014/1.32"),
     "deepseek-v4-flash-0731": Price(0.22, 0.007, 0.66),
     "deepseek-chat": Price(0.14, 0.014, 0.28),
-    "deepseek-reasoner": Price(0.55, 0.14, 2.19),
+    # --- TypeSafe Models ---
+    "jev-latest": Price(0.042, 0.042, 0.0, "TypeSafe Jev System One - output free"),
+    "jev-1.13.0": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
+    "jev-1.13": Price(0.042, 0.042, 0.0, "TypeSafe Jev 1.13 - output free"),
+    "jev-preview": Price(0.042, 0.042, 0.0, "TypeSafe Jev Preview - output free"),
 
     # --- OpenRouter Third-Party Paid Models ---
     "kimi-k3": Price(3.00, 0.30, 15.00),
@@ -248,6 +252,8 @@ def infer_provider_from_model(model_name: str) -> str:
         return "anthropic"
     if clean.startswith(("deepseek/", "deepseek-")):
         return "deepseek"
+    if clean.startswith(("typesafe/", "typesafe-", "jev-", "jev")):
+        return "typesafe"
     if clean.startswith(("openai/", "gpt-", "o1", "o3")):
         return "openai"
     if clean.startswith(("ollama", "llama3.2", "local")):

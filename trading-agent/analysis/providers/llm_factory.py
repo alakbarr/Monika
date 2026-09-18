@@ -65,6 +65,8 @@ class LLMFactory:
         name = model_name.lower()
         if "openrouter" in name or "ox-alpha" in name or name.startswith("stealth/"):
             return "openrouter"
+        if "jev" in name or "typesafe" in name:
+            return "typesafe"
         if "glm" in name or "kimi" in name or "minimax" in name or "mimo" in name or "muse" in name:
             return "openrouter"
         if name.startswith("groq"):
@@ -222,6 +224,22 @@ class LLMFactory:
                 model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
                 thinking_level=thinking_level, settings=self._settings,
                 temperature=temperature, role=task_role,
+                **key_kwargs
+            )
+        elif provider_name == "typesafe":
+            from analysis.providers.typesafe_provider import TypeSafeProvider
+            base_url = provider_config.get("base_url", "https://api.typesafe.ai")
+            confidence_thresh = float(role_config.get("confidence_threshold", 0.70))
+            client = TypeSafeProvider(
+                model=model_name,
+                max_tokens=max_tokens,
+                max_tool_turns=max_tool_turns,
+                thinking_level="none",
+                settings=self._settings,
+                temperature=temperature,
+                base_url=base_url,
+                confidence_threshold=confidence_thresh,
+                role=task_role,
                 **key_kwargs
             )
         elif provider_name in ("openai_compatible",):

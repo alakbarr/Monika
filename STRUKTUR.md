@@ -177,7 +177,8 @@ Monika/
     │   │   ├── openrouter_provider.py
     │   │   ├── pricing_catalog.py
     │   │   ├── provider_failover_classifier.py
-    │   │   └── structured_fallback.py
+    │   │   ├── structured_fallback.py
+    │   │   └── typesafe_provider.py
     │   ├── schemas
     │   │   ├── pydantic_schemas.py
     │   │   └── schemas.py
@@ -695,6 +696,9 @@ Monika/
         │   └── ssvp_coordinator.py
         ├── scheduling
         │   └── wall_clock.py
+        ├── typesafe
+        │   ├── __init__.py
+        │   └── jev_primitives.py
         └── validation
             ├── data_temporal_validator.py
             ├── data_validator.py
@@ -770,9 +774,12 @@ Monika/
         │   ├── tools
         │   │   ├── test_news_tools.py
         │   │   └── test_tool_guardrails.py
+        │   ├── providers
+        │   │   └── test_typesafe_provider.py
         │   ├── strategies
         │   │   ├── test_strategy_registry_summary.py
         │   │   └── test_synthesized_strategy_resilience.py
+        │   ├── test_jev_news_classifier.py
         │   ├── test_level_optimizer_rr_pairing.py
         │   └── test_skill_crystallizer_curation.py
         ├── cli

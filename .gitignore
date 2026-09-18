@@ -53,6 +53,7 @@ audit_reports/
 scripts/test_results/
 audit_prompt.md
 tui_error.md
+jev_documentation/
 
 # Database files & Backups
 *.sqlite
