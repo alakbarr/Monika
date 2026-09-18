@@ -681,7 +681,35 @@ llm:
       features:
         tool_calling: true
         json_mode: true
+    typesafe:
+      enabled: true
+      api_style: typesafe
+      base_url: https://api.typesafe.ai
+      timeout_seconds: 30
+      streaming:
+        enabled: false
+      features:
+        tool_calling: false
+        json_mode: true
   model_catalog:
+    jev-latest:
+      provider: typesafe
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      rate_limits:
+        rpm: 1200
+        tps: 250000
+    jev-1.13:
+      provider: typesafe
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      rate_limits:
+        rpm: 1200
+        tps: 250000
     fable-5:
       provider: openrouter
       context_window: 200000
@@ -1313,10 +1341,10 @@ llm:
       cost_tier: free
   task_roles:
     stage1_shadow_check:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-compound
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: gemini-3.1-flash-lite
+      fallback_3: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1415,10 +1443,10 @@ llm:
       max_tool_turns: 15
       temperature: 0.0
     stage2_prescreen:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-compound
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: gemini-3.1-flash-lite
+      fallback_3: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1543,10 +1571,10 @@ llm:
       max_tokens: 6144
       temperature: 0.0
     adversarial_check:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-compound
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: gemini-3.1-flash-lite
+      fallback_3: openrouter/free
       thinking:
         anthropic: low
         gemini: minimal
@@ -1560,10 +1588,10 @@ llm:
       temperature: 0.0
     news_classification:
       batch_size: 10
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-compound
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: gemini-3.1-flash-lite
+      fallback_3: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1574,6 +1602,18 @@ llm:
         ollama: none
         openai_compatible: none
       max_tokens: 2048
+      temperature: 0.0
+    jev_news_realtime:
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: openrouter/free
+      max_tokens: 1024
+      temperature: 0.0
+    jev_trigger_validator:
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: openrouter/free
+      max_tokens: 1024
       temperature: 0.0
     news_classification_escalation:
       primary: gemini-3.5-flash-lite
@@ -1752,10 +1792,10 @@ llm:
       max_tokens: 6144
       temperature: 0.0
     stage2_adjudicator:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-compound
+      primary: jev-latest
+      fallback_1: gemini-3.5-flash-lite
+      fallback_2: gemini-3.1-flash-lite
+      fallback_3: openrouter/free
       thinking:
         anthropic: medium
         gemini: medium

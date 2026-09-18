@@ -165,6 +165,20 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=8192,
         context_window=128000,
     ),
+    "jev": ModelCapabilities(
+        prompt_cache_strategy="none",
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_tool_choice=False,
+        supports_streaming=False,
+    ),
+    "typesafe": ModelCapabilities(
+        prompt_cache_strategy="none",
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_tool_choice=False,
+        supports_streaming=False,
+    ),
 }
 
 

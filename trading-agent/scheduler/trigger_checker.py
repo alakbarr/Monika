@@ -761,3 +761,56 @@ class TriggerChecker:
             created = created.replace(tzinfo=timezone.utc)
         age = datetime.now(timezone.utc) - created
         return age > timedelta(hours=max_hours)
+
+    async def validate_trigger_with_jev(
+        self,
+        trigger: TradeTrigger,
+        current_price: Optional[float] = None,
+        symbol: Optional[str] = None,
+        macro_context: Optional[str] = None
+    ) -> dict:
+        """
+        Evaluates whether a pending trade trigger remains valid given market price and macro context
+        using TypeSafe Jev System One decision primitives.
+        """
+        try:
+            from analysis.providers.llm_factory import get_client_for_task
+            from typesafe_sdk import Noul, Score
+            client = get_client_for_task("jev_trigger_validator", self.settings)
+            
+            created = trigger.created_at
+            if created and created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600 if created else 0.0
+
+            resolved_symbol = symbol or getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(trigger, "symbol", "UNKNOWN")
+
+            state = {
+                "symbol": resolved_symbol,
+                "trigger_type": trigger.trigger_type,
+                "trigger_condition": trigger.condition_json,
+                "current_price": current_price,
+                "age_hours": round(age_hours, 1),
+                "macro_context": (macro_context or "")[:500]
+            }
+
+            questions = {
+                "is_still_valid": Noul(
+                    instructions="Is this trade trigger still structurally valid and actionable given current price action and elapsed time?"
+                ),
+                "invalidation_risk": Score(
+                    instructions="Rate the risk that this trigger has been invalidated by market regime change",
+                    criteria=[
+                        "No risk — setup intact",
+                        "Low risk — minor deviation",
+                        "Moderate risk — requires fresh check",
+                        "High risk — conditions severely invalidated"
+                    ]
+                )
+            }
+
+            res = await client.classify_json(prompt="", state=state, jev_questions=questions)
+            return res or {}
+        except Exception as e:
+            logger.debug(f"Trigger Jev validation bypassed: {e}")
+            return {}
