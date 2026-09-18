@@ -780,6 +780,7 @@ Monika/
         │   │   ├── test_strategy_registry_summary.py
         │   │   └── test_synthesized_strategy_resilience.py
         │   ├── test_jev_news_classifier.py
+        │   ├── test_jev_verifiers_and_builders.py
         │   ├── test_level_optimizer_rr_pairing.py
         │   └── test_skill_crystallizer_curation.py
         ├── cli
