@@ -535,6 +535,26 @@ class NewsWatcher:
                 )).scalar_one_or_none() or 0
                 logger.info(f"NewsWatcher: Triggering re-analysis for {len(high_items)} high-impact items. Open positions: {open_pos_count}")
 
+                # Instant Jev System One shock evaluation for active positions
+                if open_pos_count > 0:
+                    try:
+                        open_pos_records = (await session_inner.execute(
+                            select(Position).where(Position.status == 'open')
+                        )).scalars().all()
+                        active_syms = list({p.symbol for p in open_pos_records if p.symbol})
+                        for h_item in high_items:
+                            shock = await self.evaluate_realtime_news_shock(h_item, open_positions=active_syms)
+                            if shock and (shock.get("threatens_positions") or shock.get("requires_circuit_breaker")):
+                                logger.warning(
+                                    f"[NewsWatcher JevShock] Critical headline threat to positions {active_syms} "
+                                    f"(threatens={shock.get('threatens_positions')}, breaker={shock.get('requires_circuit_breaker')}). "
+                                    f"Tightening stops immediately."
+                                )
+                                await self._tighten_sl_on_breaking_news(active_syms)
+                                break
+                    except Exception as shock_err:
+                        logger.debug(f"NewsWatcher Jev shock check error (non-fatal): {shock_err}")
+
                 today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
                 today_end = today_start + timedelta(days=1)
                 today_trades = (await session_inner.execute(

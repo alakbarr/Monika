@@ -15,12 +15,48 @@ RULES:
 Return JSON with 'risk_profile_assessment' (show the multiplier arithmetic explicitly), 'recommended_multiplier', 'veto_trade'."""
     user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
     try:
-        resp = await client.generate_content(system_prompt=sys_prompt, user_message=user_msg, temperature=0.1, response_schema=RISK_SCHEMA)
+        from utils.typesafe.jev_primitives import build_risk_gate_neutral_questions
+        direction = strict_context.get("direction", "buy")
+        jev_q = build_risk_gate_neutral_questions(symbol, direction=direction)
+
+        resp = await client.generate_content(
+            system_prompt=sys_prompt,
+            user_message=user_msg,
+            temperature=0.1,
+            response_schema=RISK_SCHEMA,
+            jev_questions=jev_q
+        )
         if not resp:
             raise ValueError("Empty response from LLM")
         data = extract_and_parse_json(resp) if isinstance(resp, str) else (resp if isinstance(resp, dict) else None)
         if not isinstance(data, dict):
             raise ValueError(f"Invalid JSON response format: {resp}")
+
+        # If evaluated via Jev System One, map typed fields to expected schema
+        if "overall_approval" in data or "_jev_model" in data:
+            approval = data.get("overall_approval", "approve")
+            timing_ok = data.get("timing_acceptable", True)
+            sizing_ok = data.get("position_sizing_appropriate", True)
+            rr_score = data.get("risk_reward_balance", 1)
+
+            veto = (approval == "reject") or (timing_ok is False) or (rr_score is not None and rr_score >= 3)
+            if approval == "approve":
+                mult = 1.0 if sizing_ok else 0.85
+            elif approval == "approve_with_reduced_size":
+                mult = 0.70
+            elif approval == "defer":
+                mult = 0.50
+            else:
+                mult = 0.40
+
+            data["veto_trade"] = veto
+            data["recommended_multiplier"] = mult
+            if not data.get("risk_profile_assessment") or data.get("risk_profile_assessment") in ("YES", "NO"):
+                data["risk_profile_assessment"] = (
+                    f"Jev Neutral Evaluation: verdict={approval}, rr_score={rr_score}, "
+                    f"timing_ok={timing_ok}, sizing_ok={sizing_ok}, multiplier={mult}"
+                )
+
         if 'veto_trade' not in data:
             data['veto_trade'] = False
         mult = data.get('recommended_multiplier')

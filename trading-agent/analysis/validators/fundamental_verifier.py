@@ -59,19 +59,47 @@ Overall Confidence: {structured.get('confidence')}
 Invalidation Conditions: {json.dumps(structured.get('invalidation_conditions', {}))}
 Strongest Counter Thesis: {structured.get('strongest_counter_thesis')}"""
 
+        from utils.typesafe.jev_primitives import build_fundamental_verifier_questions
+        jev_q = build_fundamental_verifier_questions()
+
         result = await client.classify_json(
             prompt=user_prompt,
             system_prompt=FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT,
             schema=VERIFIER_SCHEMA,
+            jev_questions=jev_q,
             temperature=0.0
         )
         if not result or not isinstance(result, dict):
             return default
+
+        contradictions = list(result.get('contradictions_found', []))
+        # Map typed contradiction checks from Jev System One into contradictions_found list
+        for ctype, cdesc in [
+            ("contradiction_bias_vs_narrative", "Narrative tone contradicts currency bias"),
+            ("contradiction_risk_vs_bias", "Risk sentiment contradicts currency bias"),
+            ("contradiction_confidence_vs_uncertainty", "High confidence despite material uncertainty"),
+            ("contradiction_data_vs_conclusion", "Cited data contradicts directional conclusion"),
+        ]:
+            c_val = result.get(ctype)
+            if (isinstance(c_val, bool) and c_val) or (isinstance(c_val, (int, float)) and c_val > 0.60):
+                if cdesc not in contradictions:
+                    contradictions.append(cdesc)
+
+        rec_cap = result.get('recommended_confidence_cap')
+        if rec_cap is None or not isinstance(rec_cap, (int, float)):
+            verdict_val = str(result.get('verdict', 'pass')).lower()
+            if verdict_val == 'reject':
+                rec_cap = 0.50
+            elif verdict_val == 'flag_for_review':
+                rec_cap = 0.65
+            else:
+                rec_cap = float(brief.confidence or 0.70)
+
         return {
             'internally_consistent': bool(result.get('internally_consistent', True)),
-            'contradictions_found': list(result.get('contradictions_found', [])),
+            'contradictions_found': contradictions,
             'unjustified_confidence': bool(result.get('unjustified_confidence', False)),
-            'recommended_confidence_cap': float(result.get('recommended_confidence_cap', brief.confidence or 0.7)),
+            'recommended_confidence_cap': float(rec_cap),
             'counter_thesis_is_substantive': bool(result.get('counter_thesis_is_substantive', True)),
             'verdict': str(result.get('verdict', 'pass'))
         }

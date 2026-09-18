@@ -2449,6 +2449,24 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
             "If none, return has_contradictions=false with empty list."
         )
         try:
+            # Jev System One fast gating: check if digest is clean in sub-100ms
+            try:
+                from analysis.providers.llm_factory import get_client_for_task
+                from utils.typesafe.jev_primitives import build_digest_consistency_questions
+                jev_client = get_client_for_task("stage1_shadow_check", self.settings)
+                if hasattr(jev_client, "classify_json"):
+                    gating_q = build_digest_consistency_questions()
+                    gate_res = await jev_client.classify_json(prompt="", state=digest_text[:3000], jev_questions=gating_q)
+                    if (
+                        gate_res
+                        and not gate_res.get("has_contradictions")
+                        and gate_res.get("contradiction_severity") in ("none", None)
+                    ):
+                        logger.info("[NewsDigest] Jev System One verified digest consistency (no contradictions) — skipping LLM verifier")
+                        return {"has_contradictions": False, "contradictions": []}
+            except Exception as jev_gate_err:
+                logger.debug(f"Digest Jev gating check bypassed: {jev_gate_err}")
+
             return await self._verifier.classify_json(prompt=prompt, schema=DIGEST_CONSISTENCY_SCHEMA)
         except Exception as e:
             logger.debug(f'Consistency check failed: {e}')

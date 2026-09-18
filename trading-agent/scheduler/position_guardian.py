@@ -540,4 +540,37 @@ class PositionGuardian:
         except Exception as e:
             logger.debug(f"[PositionGuardian] on_tick error for {sym_clean}: {e}")
 
+    async def evaluate_position_threat_with_jev(
+        self, position: Any, current_price: Optional[float] = None
+    ) -> dict:
+        """
+        Sub-100ms real-time position threat assessment via TypeSafe Jev System One.
+        Evaluates adverse momentum and stop-loss vulnerability without generating text.
+        """
+        try:
+            from analysis.providers.llm_factory import get_client_for_task
+            from utils.typesafe.jev_primitives import build_position_guard_questions
+            client = get_client_for_task("jev_position_guard", self.settings)
+            if not hasattr(client, "classify_json"):
+                return {}
+
+            direction = (getattr(position, "direction", "") or "").lower()
+            symbol = getattr(position, "symbol", "UNKNOWN")
+            state = {
+                "symbol": symbol,
+                "direction": direction,
+                "entry_price": getattr(position, "entry_price", None),
+                "current_price": current_price,
+                "sl": getattr(position, "sl", None),
+                "tp": getattr(position, "tp", None),
+                "volume": getattr(position, "volume", None),
+            }
+            questions = build_position_guard_questions(symbol, direction)
+            res = await client.classify_json(prompt="", state=state, jev_questions=questions)
+            return res or {}
+        except Exception as e:
+            logger.debug(f"[PositionGuardian] Jev position threat assessment bypassed: {e}")
+            return {}
+
+
 

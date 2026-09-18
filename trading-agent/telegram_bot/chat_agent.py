@@ -479,6 +479,30 @@ class ChatAgent:
         # Macro Event & Central Bank Probability patterns (Deep Research)
         if self._is_macro_event_query(msg_lower):
             return 'deep_research'
+
+        # Jev System One Intent & Model Tier Routing
+        try:
+            from analysis.providers.llm_factory import get_client_for_task
+            from utils.typesafe.jev_primitives import build_telegram_intent_questions
+            jev_client = get_client_for_task("jev_telegram_intent", self.settings)
+            if hasattr(jev_client, "classify_json"):
+                jev_res = await jev_client.classify_json(
+                    prompt="",
+                    state={"user_message": msg[:500]},
+                    jev_questions=build_telegram_intent_questions(),
+                    timeout=2.0
+                )
+                if jev_res and isinstance(jev_res, dict):
+                    tier = jev_res.get("model_tier")
+                    tier_str = (tier.get("choice") if isinstance(tier, dict) else str(tier or "")).lower()
+                    if tier_str in ("none", "light"):
+                        return "simple"
+                    elif tier_str == "medium":
+                        return "medium"
+                    elif tier_str == "heavy":
+                        return "complex"
+        except Exception as jev_intent_err:
+            logger.debug(f"[ChatAgent] Jev intent routing fallback to heuristics: {jev_intent_err}")
         
         # Action verbs always require complex / medium deep reasoning
         ACTION_VERBS = r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser)\b'

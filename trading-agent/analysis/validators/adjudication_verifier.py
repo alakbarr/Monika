@@ -76,20 +76,35 @@ Final decision: {final_decision}
 Rationale: {rationale[:1500]}"""
 
     try:
+        from utils.typesafe.jev_primitives import build_adjudication_questions
+        adjudication_jev_q = build_adjudication_questions()
         result = await client.classify_json(
             prompt=user_prompt,
             system_prompt=ADJUDICATION_SYSTEM_PROMPT,
             schema=ADJUDICATION_VERIFY_SCHEMA,
+            jev_questions=adjudication_jev_q,
             temperature=0.0
         )
         if not result or not isinstance(result, dict):
             return {'verdict': 'UNVERIFIED', 'adjudication_rule_correctly_applied': None, 'expected_outcome_per_rules': final_decision, 'mismatch_explanation': 'Empty response from verifier model'}
+        
+        mismatch_expl = str(result.get('mismatch_explanation', '') or '')
+        # Handle Jev categorical fallback if string was empty or YES/NO
+        if mismatch_expl in ('', 'YES', 'NO', 'None'):
+            mismatch_cat = result.get('mismatch_category')
+            if mismatch_cat and mismatch_cat != 'none':
+                mismatch_expl = f"Framework mismatch category: {mismatch_cat}"
+            elif result.get('verdict') == 'CONTRADICTS_OWN_FRAMEWORK':
+                mismatch_expl = f"Contradicts framework: expected {result.get('expected_outcome_per_rules')} vs {final_decision}"
+            else:
+                mismatch_expl = ''
+
         return {
             'verdict': str(result.get('verdict', 'CONFIRM')),
             'adjudication_rule_correctly_applied': bool(result.get('adjudication_rule_correctly_applied', True)),
             'is_conditional_wait': bool(result.get('is_conditional_wait', False)),
             'expected_outcome_per_rules': str(result.get('expected_outcome_per_rules', final_decision)),
-            'mismatch_explanation': str(result.get('mismatch_explanation', ''))
+            'mismatch_explanation': mismatch_expl
         }
     except Exception as e:
         logger.warning(f'[AdjudicationVerifier] failed (non-fatal, unverified): {e}')
