@@ -2451,16 +2451,23 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
         try:
             # Jev System One fast gating: check if digest is clean in sub-100ms
             try:
-                from analysis.providers.llm_factory import get_client_for_task
                 from utils.typesafe.jev_primitives import build_digest_consistency_questions
-                jev_client = get_client_for_task("stage1_shadow_check", self.settings)
-                if hasattr(jev_client, "classify_json"):
+                jev_client = None
+                if getattr(self._verifier, "provider_name", None) == "typesafe":
+                    jev_client = self._verifier
+                elif isinstance(self.settings, dict) and self.settings.get("typesafe", {}).get("enabled"):
+                    from analysis.providers.llm_factory import get_client_for_task
+                    cand = get_client_for_task("news_classification_verifier", self.settings)
+                    if getattr(cand, "provider_name", None) == "typesafe":
+                        jev_client = cand
+
+                if jev_client and hasattr(jev_client, "classify_json"):
                     gating_q = build_digest_consistency_questions()
                     gate_res = await jev_client.classify_json(prompt="", state=digest_text[:3000], jev_questions=gating_q)
                     if (
-                        gate_res
-                        and not gate_res.get("has_contradictions")
-                        and gate_res.get("contradiction_severity") in ("none", None)
+                        isinstance(gate_res, dict)
+                        and gate_res.get("has_contradictions") is False
+                        and gate_res.get("contradiction_severity") in ("none", "low", None)
                     ):
                         logger.info("[NewsDigest] Jev System One verified digest consistency (no contradictions) — skipping LLM verifier")
                         return {"has_contradictions": False, "contradictions": []}
