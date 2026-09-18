@@ -12,7 +12,7 @@ Opsi perlindungan (diatur di settings.yaml):
 """
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
