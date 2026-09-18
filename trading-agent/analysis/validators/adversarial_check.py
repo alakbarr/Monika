@@ -144,15 +144,29 @@ recommend_block=true for significant, non-fatal risk factors.
             logger.info(f"[AdversarialCheck] {analysis.symbol}: Using cached result")
             return {**default_result, **json.loads(cached_result.value)}
 
+        from utils.typesafe.jev_primitives import build_adversarial_check_questions
+        adv_jev_q = build_adversarial_check_questions(analysis.symbol)
+
         result_str = await client.generate_content(
             system_prompt='You are a skeptical risk-desk reviewer performing a final pre-trade challenge.',
             user_message=prompt, response_schema=ADVERSARIAL_SCHEMA,
+            jev_questions=adv_jev_q,
             temperature=0.0
         )
         if not result_str:
             return default_result
 
         result = _safe_parse(result_str)
+        # Synthesize meaningful explanations from Jev category if free-text is empty or YES/NO
+        primary_risk = result.get("primary_risk_category")
+        if primary_risk and primary_risk != "none":
+            if not result.get("strongest_counter_argument") or result.get("strongest_counter_argument") in ("YES", "NO"):
+                result["strongest_counter_argument"] = f"Adversarial risk flagged: {primary_risk}"
+            if result.get("hard_block") and (not result.get("hard_block_reason") or result.get("hard_block_reason") in ("YES", "NO")):
+                result["hard_block_reason"] = f"Fatal flaw: {primary_risk}"
+            if result.get("recommend_block") and (not result.get("block_reason") or result.get("block_reason") in ("YES", "NO")):
+                result["block_reason"] = f"Recommended block: {primary_risk}"
+
         merged = {**default_result, **result}
         
         # Save to cache
@@ -176,13 +190,24 @@ recommend_block=true for significant, non-fatal risk factors.
             await asyncio.sleep(3)
             retry_prompt = prompt or f"Symbol: {analysis.symbol}\nDirection: {analysis.decision}\nRationale: {analysis.rationale or ''}"
             client = get_client_for_task('adversarial_check', settings)
+            from utils.typesafe.jev_primitives import build_adversarial_check_questions
+            retry_jev_q = build_adversarial_check_questions(analysis.symbol)
             result_str = await client.generate_content(
                 system_prompt='You are a skeptical risk-desk reviewer performing a final pre-trade challenge.',
                 user_message=retry_prompt, response_schema=ADVERSARIAL_SCHEMA,
+                jev_questions=retry_jev_q,
                 temperature=0.0
             )
             if result_str:
                 result = _safe_parse(result_str)
+                primary_risk = result.get("primary_risk_category")
+                if primary_risk and primary_risk != "none":
+                    if not result.get("strongest_counter_argument") or result.get("strongest_counter_argument") in ("YES", "NO"):
+                        result["strongest_counter_argument"] = f"Adversarial risk flagged: {primary_risk}"
+                    if result.get("hard_block") and (not result.get("hard_block_reason") or result.get("hard_block_reason") in ("YES", "NO")):
+                        result["hard_block_reason"] = f"Fatal flaw: {primary_risk}"
+                    if result.get("recommend_block") and (not result.get("block_reason") or result.get("block_reason") in ("YES", "NO")):
+                        result["block_reason"] = f"Recommended block: {primary_risk}"
                 return {**default_result, **result}
         except Exception as retry_err:
             logger.error(f'[AdversarialCheck] {analysis.symbol}: retry also failed: {retry_err}')

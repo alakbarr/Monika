@@ -124,6 +124,19 @@ class TriggerChecker:
                         await safe_commit(session, label="trigger_expired")
                     continue
                 elif eval_result is True:
+                    # Validate trigger freshness & validity via Jev System One before firing
+                    try:
+                        resolved_sym = getattr(getattr(trigger, "analysis", None), "symbol", None) or getattr(trigger, "symbol", None)
+                        jev_val = await self.validate_trigger_with_jev(trigger, symbol=resolved_sym)
+                        if jev_val and jev_val.get("is_still_valid") is False and jev_val.get("invalidation_risk", 0) >= 3:
+                            logger.info(f"Trigger {trigger.id} price condition met, but invalidated by Jev System One check (risk={jev_val.get('invalidation_risk')})")
+                            async with get_session() as session:
+                                await session.execute(update(TradeTrigger).where(TradeTrigger.id == trigger.id).values(status="invalid"))
+                                await safe_commit(session, label="trigger_jev_invalidated")
+                            continue
+                    except Exception as jev_err:
+                        logger.debug(f"Trigger Jev pre-fire validation bypassed: {jev_err}")
+
                     # Kondisi terpenuhi! Fire trigger
                     async with get_session() as session:
                         symbol = await self._fire_trigger(session, trigger)

@@ -102,6 +102,36 @@ class PositionExitReviewer:
             )
 
         exit_context = f"\nPOSITION EXIT REVIEW MODE:\nYou are reviewing an EXISTING OPEN position, NOT looking for new entries.\n{intraday_overdue_note}\nCurrent Position:\n- Symbol: {position.symbol}\n- Direction: {position.direction.upper()}\n- Entry Price: {position.entry_price}\n- Current SL: {position.sl}\n- Current TP: {position.tp}\n- Opened: {position.opened_at}\n- Position Ticket: {position.mt5_ticket}\n\nYOUR TASK:\n1. Analyze current market conditions for {position.symbol}\n2. Determine if the ORIGINAL THESIS is still valid\n3. Submit your decision as:\n   - decision='wait': Position still valid, keep holding\n   - decision='avoid': Original thesis invalidated → PROPOSE closing position\n   \nIf you recommend closing (decision='avoid'), provide:\n- Clear reason WHY the thesis is invalidated\n- Specific price evidence\n- Estimated pnl impact if closed now vs held\n\nDO NOT look for new entry signals. Focus only on whether to KEEP or EXIT the existing position.\n"
+
+        # Jev System One Pre-Screen: Check if thesis is clearly intact to save expensive Stage 2 run
+        try:
+            from analysis.providers.llm_factory import get_client_for_task
+            from utils.typesafe.jev_primitives import build_exit_review_prescreen
+            jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
+            if hasattr(jev_exit_client, "classify_json"):
+                exit_q = build_exit_review_prescreen(position.symbol, position.direction)
+                state = {
+                    "symbol": position.symbol,
+                    "direction": position.direction,
+                    "entry_price": position.entry_price,
+                    "sl": position.sl,
+                    "tp": position.tp,
+                    "holding_hours": round(holding_hours_so_far, 1)
+                }
+                prescreen_res = await jev_exit_client.classify_json(prompt="", state=state, jev_questions=exit_q)
+                if (
+                    prescreen_res
+                    and prescreen_res.get("thesis_still_valid") is True
+                    and prescreen_res.get("exit_urgency", 0) <= 1
+                ):
+                    logger.info(
+                        f"[PositionExitReviewer] Jev pre-screen verified thesis intact for {position.symbol} "
+                        f"(urgency={prescreen_res.get('exit_urgency')}) — skipping full Stage 2 review."
+                    )
+                    return {"position_id": position.id, "action": "kept", "reason": "jev_prescreen_intact"}
+        except Exception as jev_prescreen_err:
+            logger.debug(f"[PositionExitReviewer] Jev exit pre-screen bypassed: {jev_prescreen_err}")
+
         async with get_session() as session:
             try:
                 result = await self._per_asset.run_one(session=session, symbol=position.symbol, extra_context=exit_context, skip_cooldown=True, bypass_prescreen=True)

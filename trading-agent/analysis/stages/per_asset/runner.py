@@ -1440,7 +1440,16 @@ Rule:
                 self._haiku_client.thinking_budget = 0
             if hasattr(self._haiku_client, 'thinking_level'):
                 self._haiku_client.thinking_level = 'none'
-            resp = await self._haiku_client.classify_json(prompt=prompt, schema=PRESCREEN_SCHEMA, temperature=0.0)
+            from utils.typesafe.jev_primitives import build_prescreen_questions
+            prescreen_jev_q = build_prescreen_questions(symbol)
+            resp = await self._haiku_client.classify_json(
+                prompt=prompt,
+                schema=PRESCREEN_SCHEMA,
+                jev_questions=prescreen_jev_q,
+                temperature=0.0
+            )
+            if resp and "reason" not in resp and "opportunity_score" in resp:
+                resp["reason"] = f"opportunity_score={resp['opportunity_score']}"
             if resp and resp.get('decision') == 'YES':
                 return True, resp.get('reason', '')[:80]
             elif resp and resp.get('decision') == 'NO':

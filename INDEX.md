@@ -78,27 +78,27 @@ This document provides an exhaustive structural index of all directories, files,
             - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctypes) - Line 2338
     - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 2341
     - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 2424
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 2722
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 2754
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 2790
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 2802
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 2928
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 2955
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 2973
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 2996
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3042
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 3439
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 3459
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 3488
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 3494
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 3509
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 3536
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 3545
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 3609
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 3638
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 3647
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 3672
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 3682
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 2723
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 2755
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 2791
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 2803
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 2929
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 2956
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 2974
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 2997
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3043
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 3440
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 3460
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 3489
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 3495
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 3510
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 3537
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 3546
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 3610
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 3639
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 3648
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 3673
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 3683
 
 ## Root Directory: `/trading-agent`
 
@@ -2601,17 +2601,18 @@ This document provides an exhaustive structural index of all directories, files,
         - `on_tick(self, event)` — EventBus subscriber handler for TickPriceEvent with debounced kill switch
         - `_protect_position(self)` — eksekusi tindakan proteksi (alert/close)
         - `check_friday_close_protection(self)` — R-4: Friday close protection + auto_close_friday_positions option
+        - `evaluate_position_threat_with_jev(self, position, current_price=None)` — Sub-100ms real-time position threat assessment via TypeSafe Jev System One (evaluates adverse momentum & stop loss threat)
 
 **File:** `position_exit_reviewer.py`
   - **Global Variables**: logger
   - **Classes**:
     - `PositionExitReviewer`
-      - *Docstring*: Subsystem periodically reviewing open positions based on latest price action and market structure.
+      - *Docstring*: Subsystem periodically reviewing open positions based on latest price action and market structure with TypeSafe Jev System One pre-screen gating.
       - *Methods*:
         - `__init__(self)`
         - `start(self)`
         - `stop(self)`
-        - `_review_positions(self)`
+        - `_review_positions(self)` — periodically reviews open positions with Jev System One thesis prescreen before executing full Stage 2 analysis
         - `_get_minimal_ohlcv(self)`
 
 **File:** `position_supervisor.py`
@@ -3693,6 +3694,15 @@ This document provides an exhaustive structural index of all directories, files,
     - `build_shadow_check_questions() -> dict`
     - `build_adjudication_questions() -> dict`
     - `build_realtime_news_questions(open_positions: Optional[list] = None) -> dict`
+    - `build_fundamental_verifier_questions() -> dict`
+    - `build_news_classification_verify_questions() -> dict`
+    - `build_digest_consistency_questions() -> dict`
+    - `build_position_guard_questions(symbol: str, direction: str) -> dict`
+    - `build_telegram_intent_questions() -> dict`
+    - `build_risk_gate_neutral_questions(symbol: str, direction: str) -> dict`
+    - `build_exit_review_prescreen(symbol: str, direction: str) -> dict`
+    - `build_scenario_branch_questions(symbol: str) -> dict`
+    - `build_adversarial_check_questions(symbol: str) -> dict`
     - `classify_news_batch_with_jev(client, batch, now_utc, calendar_priors, macro_context, min_confidence) -> Optional[list]`
 
 
