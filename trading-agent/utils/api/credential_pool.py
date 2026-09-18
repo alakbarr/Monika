@@ -76,6 +76,11 @@ class APICredentialPool:
         for k in [k.strip() for k in openrouter_raw.split(",") if k.strip()]:
             self.add_key("openrouter", k)
 
+        # TypeSafe
+        typesafe_raw = os.getenv("TYPESAFE_API_KEYS", "") or os.getenv("TYPESAFE_API_KEY", "")
+        for k in [k.strip() for k in typesafe_raw.split(",") if k.strip()]:
+            self.add_key("typesafe", k)
+
     def add_key(self, provider: str, key: str) -> None:
         """Add a key to the pool if not already present."""
         prov = provider.lower()

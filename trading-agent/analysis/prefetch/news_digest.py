@@ -1309,28 +1309,47 @@ Return ONLY valid JSON matching schema."""
             # Strict temperature for deterministic classification
             if hasattr(self._classifier, 'default_temperature'):
                 self._classifier.default_temperature = 0.0
-                
-            result = await self._classifier.classify_json(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                schema=NEWS_CLASSIFICATION_SCHEMA
-            )
-            
-            if not result:
-                logger.warning(f'[NewsClassification] Batch classify empty, retrying once for {len(batch)} items...')
-                result = await self._classifier.classify_json(prompt=prompt, system_prompt=system_prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
-            
-            if isinstance(result, dict):
-                result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
 
-            if not result or not isinstance(result, list):
-                logger.error(f'[NewsClassification] LLM classify failed TWICE for {len(batch)} items. Using keyword fallback to avoid silently downgrading breaking news to MEDIUM.')
-                result = [{'index': j + 1, 'news_id': item.id, **_keyword_fallback_classify(item.title, item.summary)} for j, item in enumerate(batch)]
-                try:
-                    from utils.infra.notifier import AgentNotifier
-                    await AgentNotifier().send_warning(f'⚠️ News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
-                except Exception:
-                    pass
+            # --- Fast Path: Try TypeSafe Jev System One parallel classification ---
+            result = None
+            try:
+                from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+                result = await classify_news_batch_with_jev(
+                    client=self._classifier,
+                    batch=batch,
+                    now_utc=now_utc,
+                    calendar_priors=calendar_priors,
+                    macro_context=macro_5d_context,
+                    min_confidence=0.30
+                )
+                if result:
+                    logger.info(f"[NewsClassification] Classified {len(batch)} items via TypeSafe Jev in sub-100ms parallel pass")
+            except Exception as e:
+                logger.debug(f"[NewsClassification] Jev fast path bypassed: {e}")
+                result = None
+
+            if not result:
+                result = await self._classifier.classify_json(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    schema=NEWS_CLASSIFICATION_SCHEMA
+                )
+                
+                if not result:
+                    logger.warning(f'[NewsClassification] Batch classify empty, retrying once for {len(batch)} items...')
+                    result = await self._classifier.classify_json(prompt=prompt, system_prompt=system_prompt, schema=NEWS_CLASSIFICATION_SCHEMA)
+                
+                if isinstance(result, dict):
+                    result = result.get('items') or result.get('results') or result.get('data') or result.get('classifications') or [result]
+
+                if not result or not isinstance(result, list):
+                    logger.error(f'[NewsClassification] LLM classify failed TWICE for {len(batch)} items. Using keyword fallback to avoid silently downgrading breaking news to MEDIUM.')
+                    result = [{'index': j + 1, 'news_id': item.id, **_keyword_fallback_classify(item.title, item.summary)} for j, item in enumerate(batch)]
+                    try:
+                        from utils.infra.notifier import AgentNotifier
+                        await AgentNotifier().send_warning(f'⚠️ News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
+                    except Exception:
+                        pass
             
             validated_result = await self._validate_classification_batch(session, result, batch, now_utc, seen_breaking_titles, global_breaking_budget, calendar_priors)
             

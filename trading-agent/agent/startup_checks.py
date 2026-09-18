@@ -436,6 +436,7 @@ class StartupChecker:
             "deepseek": ["DEEPSEEK_API_KEY"],
             "groq": ["GROQ_API_KEYS", "GROQ_API_KEY"],
             "openrouter": ["OPENROUTER_PAID_API_KEY", "OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"],
+            "typesafe": ["TYPESAFE_API_KEYS", "TYPESAFE_API_KEY"],
             "ollama": [],
         }
 
@@ -465,6 +466,7 @@ class StartupChecker:
                     "openrouter": "openrouter/free",
                     "gemini": "gemini-3.5-flash-lite",
                     "groq": "groq-compound",
+                    "typesafe": "jev-latest",
                     "ollama": "llama3.2",
                 }
 
@@ -485,7 +487,10 @@ class StartupChecker:
                     client = factory._create_client_instance(test_model, {"max_tokens": 10})
                     if client:
                         logger.info(f"  [TEST] Pinging {provider_name} (model: {test_model})...")
-                        res = await client.generate("ping", temperature=0.0)
+                        if provider_name == "typesafe":
+                            res = await client.classify_json("ping", schema={"type": "object", "properties": {"ok": {"type": "boolean"}}})
+                        else:
+                            res = await client.generate("ping", temperature=0.0)
                         if res is None:
                             raise Exception("API returned None")
                         served_model = getattr(client, "last_served_model", None)
