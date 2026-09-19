@@ -2460,9 +2460,34 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                                 )
                             except Exception:
                                 pass
+
+                    spec_out = {}
+                    if getattr(analysis, "specialist_biases_json", None):
+                        try:
+                            spec_out = json.loads(analysis.specialist_biases_json)
+                        except Exception:
+                            pass
+
+                    fund_brief = {}
+                    if getattr(analysis, "brief_id", None):
+                        fund_brief = {"brief_id": analysis.brief_id}
+
+                    deb_verdict = {}
+                    if getattr(analysis, "debate_verdict", None):
+                        deb_verdict = {
+                            "verdict": analysis.debate_verdict,
+                            "bull_thesis": getattr(analysis, "debate_bull_thesis", None),
+                            "bear_dissent": getattr(analysis, "debate_bear_dissent", None),
+                            "reason": getattr(analysis, "debate_reason", None),
+                        }
+
                     self.trajectory_logger.log_trajectory(
                         symbol=symbol,
                         decision=decision,
+                        ticket=mt5_result.get('ticket'),
+                        fundamental_brief=fund_brief,
+                        specialist_outputs=spec_out,
+                        debate_verdict=deb_verdict,
                         risk_decision={"approved": True, "lots": sizing.recommended_lots, "ticket": mt5_result.get('ticket')},
                         execution_details=mt5_result
                     )

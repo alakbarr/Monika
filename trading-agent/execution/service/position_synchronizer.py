@@ -168,6 +168,18 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                                 holding_duration or 0.0,
                                 "sl_hit" if reason == mt5.DEAL_REASON_SL else ("tp_hit" if reason == mt5.DEAL_REASON_TP else "other")
                             ))
+
+                        # Update trade trajectory outcome for learning loop
+                        try:
+                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                            TradeTrajectoryLogger().update_trajectory_outcome(
+                                ticket=pos.mt5_ticket,
+                                symbol=pos.symbol,
+                                pnl_usd=pos.pnl,
+                                reflection_tags=[exit_reason_mapped],
+                            )
+                        except Exception as traj_err:
+                            logger.debug(f"Trajectory outcome update non-fatal: {traj_err}")
                     except Exception as e:
                         logger.debug(f"Failed to log trade outcome (non-fatal): {e}")
 

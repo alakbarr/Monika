@@ -2238,6 +2238,21 @@ class ToolExecutor:
 
         # Require confluence_score and priced_in_score for actionable decisions
         if decision in ("buy", "sell"):
+            # Enforce passing verification evidence from VerificationEvidenceLedger
+            ledger = getattr(self, "verification_ledger", None)
+            if ledger is not None and not ledger.has_passed_evidence(symbol):
+                return {
+                    "status": "rejected_verification_required",
+                    "errors": [
+                        f"TRADE VERIFICATION GATE BLOCKED: You recommended {decision.upper()} {symbol}, "
+                        f"but no passing RiskGate or PositionSize verification evidence was recorded in this cycle. "
+                        f"You MUST call 'calculate_position_size' or 'get_optimal_intraday_levels' to compute and verify "
+                        f"lot sizing, stop-loss, and take-profit bounds before submitting analysis."
+                    ],
+                    "error_classification": "UNVERIFIED_TRADE_PROPOSAL",
+                    "guidance": "Call 'calculate_position_size' now with exact parameters before calling submit_asset_analysis."
+                }
+
             conf_score = inp.get("confluence_score")
             if conf_score is None:
                 errors.append(
@@ -3263,6 +3278,56 @@ class ToolExecutor:
         """Propose manual action requiring confirmation."""
         from analysis.tools.handlers.position_mgmt import handle_propose_action
         return await handle_propose_action(inp, session=self.session, executor=self)
+
+    async def _tool_delegate_specialist_analysis(self, inp: dict) -> dict:
+        """Execute delegated specialist analysis in isolated subagent harness."""
+        role = inp.get("specialist_role", "technical_specialist")
+        prompt = inp.get("task_prompt", "")
+        symbol = inp.get("symbol", "")
+
+        from analysis.subagent.isolated_harness import IsolatedSubagentRunner
+        from analysis.providers.llm_factory import get_client_for_task
+        from analysis.tools.tools_definitions import STAGE2_ESSENTIAL_TOOLS, STAGE1_TOOLS
+
+        runner = IsolatedSubagentRunner(settings=self.settings)
+        if role == "macro_specialist":
+            client = get_client_for_task("stage1_fundamental", self.settings)
+            tools = STAGE1_TOOLS
+            sys_prompt = "You are an institutional macro specialist. Deliver concise, evidence-grounded macro analysis."
+        elif role == "sentiment_specialist":
+            client = get_client_for_task("sentiment_analyst", self.settings)
+            tools = STAGE1_TOOLS
+            sys_prompt = "You are a market sentiment specialist. Deliver concise sentiment and positioning analysis."
+        elif role == "risk_specialist":
+            client = get_client_for_task("risk_gate", self.settings)
+            tools = STAGE2_ESSENTIAL_TOOLS
+            sys_prompt = "You are a quantitative risk specialist. Evaluate structural levels, invalidation, and R:R."
+        else:
+            client = get_client_for_task("stage2_per_asset_primary", self.settings)
+            tools = STAGE2_ESSENTIAL_TOOLS
+            sys_prompt = "You are an SMC technical specialist. Analyze market structure, order blocks, and key liquidity zones."
+
+        user_content = f"Symbol: {symbol}\nTask: {prompt}" if symbol else prompt
+        messages = [{"role": "user", "content": user_content}]
+
+        res = await runner.run_isolated(
+            role_name=role,
+            llm_client=client,
+            system_prompt=sys_prompt,
+            messages=messages,
+            tools=tools,
+            stage_name="chat_delegation",
+            timeout=180,
+            session=self.session,
+        )
+
+        return {
+            "status": "success" if res.get("success") else "error",
+            "specialist_role": role,
+            "summary": res.get("final_text") or res.get("error", "No output"),
+            "tool_calls_made": res.get("tool_calls_made", 0),
+        }
+
 
 
 

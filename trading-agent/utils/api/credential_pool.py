@@ -27,6 +27,7 @@ class KeyHealth:
     total_errors: int = 0
     last_used: float = 0.0
     disabled_reason: Optional[str] = None
+    model_cooldowns: Dict[str, float] = field(default_factory=dict)
 
     @property
     def is_in_cooldown(self) -> bool:
@@ -35,6 +36,15 @@ class KeyHealth:
     @property
     def is_available(self) -> bool:
         return self.is_active and not self.is_in_cooldown
+
+    def is_model_available(self, model: Optional[str] = None) -> bool:
+        if not self.is_available:
+            return False
+        if model:
+            cd = self.model_cooldowns.get(model, 0.0)
+            if time.time() < cd:
+                return False
+        return True
 
 
 class APICredentialPool:
@@ -96,24 +106,25 @@ class APICredentialPool:
         masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"
         logger.debug(f"[CredentialPool] Added key {masked} for provider '{prov}'")
 
-    def get_key(self, provider: str) -> Optional[str]:
+    def get_key(self, provider: str, model: Optional[str] = None) -> Optional[str]:
         """
         Get the most suitable available key for a provider.
         Prefers available keys with least recent usage (LRU round-robin).
+        If model is specified, filters out keys with active cooldown for that specific model.
         """
         prov = provider.lower()
         keys = self._pools.get(prov, [])
         if not keys:
             return None
 
-        available = [k for k in keys if k.is_available]
+        available = [k for k in keys if k.is_model_available(model)]
         if not available:
             # If all are in cooldown, pick the one with earliest cooldown expiry
             cooldown_keys = [k for k in keys if k.is_active]
             if cooldown_keys:
                 earliest = min(cooldown_keys, key=lambda x: x.cooldown_until)
                 logger.warning(
-                    f"[CredentialPool] All keys for '{prov}' in cooldown. "
+                    f"[CredentialPool] All keys for '{prov}' (model={model}) in cooldown. "
                     f"Earliest ready in {max(0.0, earliest.cooldown_until - time.time()):.1f}s"
                 )
             return None
@@ -132,18 +143,27 @@ class APICredentialPool:
                 kh.consecutive_errors = 0
                 return
 
-    def report_rate_limit(self, provider: str, key: str, cooldown_seconds: float = 60.0) -> None:
-        """Report a 429 rate limit and put key into temporary cooldown."""
+    def report_rate_limit(self, provider: str, key: str, cooldown_seconds: float = 60.0, model: Optional[str] = None) -> None:
+        """Report a 429 rate limit and put key (or specific model) into temporary cooldown."""
         prov = provider.lower()
         for kh in self._pools.get(prov, []):
             if kh.key == key:
-                kh.cooldown_until = time.time() + cooldown_seconds
-                kh.consecutive_errors += 1
-                kh.total_errors += 1
-                logger.warning(
-                    f"[CredentialPool] Key for '{prov}' rate limited. "
-                    f"Cooldown set for {cooldown_seconds}s"
-                )
+                if model:
+                    kh.model_cooldowns[model] = time.time() + cooldown_seconds
+                    kh.consecutive_errors += 1
+                    kh.total_errors += 1
+                    logger.warning(
+                        f"[CredentialPool] Model '{model}' on key for '{prov}' rate limited. "
+                        f"Cooldown set for {cooldown_seconds}s"
+                    )
+                else:
+                    kh.cooldown_until = time.time() + cooldown_seconds
+                    kh.consecutive_errors += 1
+                    kh.total_errors += 1
+                    logger.warning(
+                        f"[CredentialPool] Key for '{prov}' rate limited. "
+                        f"Cooldown set for {cooldown_seconds}s"
+                    )
                 return
 
     def report_failure(self, provider: str, key: str, is_permanent: bool = False, reason: str = "") -> None:
