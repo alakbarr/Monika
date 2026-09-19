@@ -38,6 +38,16 @@ class BackgroundReviewEngine:
     ):
         self.settings = settings or {}
         self.reflector = reflector
+        if self.reflector is None:
+            try:
+                from analysis.providers.llm_factory import get_client_for_task
+                from analysis.memory.reflector import TradeReflector
+                aux_client = get_client_for_task("trade_reflection", self.settings)
+                if aux_client:
+                    self.reflector = TradeReflector(llm_client=aux_client)
+                    logger.info(f"BackgroundReviewEngine initialized with auxiliary model: {getattr(aux_client, 'model', 'default')}")
+            except Exception as e:
+                logger.debug(f"Could not auto-initialize TradeReflector: {e}")
         self.crystallizer = crystallizer
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=max_queue_size)
         self._worker_task: Optional[asyncio.Task] = None

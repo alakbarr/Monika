@@ -9,6 +9,9 @@ _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)
 
+from bootstrap import install_bootstrap_hardening
+install_bootstrap_hardening()
+
 from cli.platform_compat import apply_platform_fixes
 apply_platform_fixes()
 
@@ -798,6 +801,7 @@ async def _cmd_profile(args):
 
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="AI Trading Agent CLI Interface")
+    parser.add_argument("-p", "--profile", type=str, default=None, help="Target isolated environment profile (e.g. paper, live, propfirm)")
     subparsers = parser.add_subparsers(dest="command", help="Administrative subcommands")
 
     # Command: run (default)
@@ -902,6 +906,19 @@ def parse_args(args_list=None):
     parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     parsed = parser.parse_args(args_list)
+    if getattr(parsed, "profile", None):
+        from cli.profile_manager import ProfileManager
+        pm = ProfileManager()
+        pm.set_active_profile(parsed.profile)
+        p_cfg = pm.get_settings_path_for_active()
+        if p_cfg and not getattr(parsed, "config", None):
+            parsed.config = p_cfg
+        # Isolate MT5 common files directory per profile
+        if os.environ.get("MT5_COMMON_FILES_PATH"):
+            os.environ["MT5_COMMON_FILES_PATH"] = os.path.join(
+                os.environ["MT5_COMMON_FILES_PATH"], "profiles", parsed.profile
+            )
+
     if not parsed.command:
         parsed.command = "run"
     return parsed

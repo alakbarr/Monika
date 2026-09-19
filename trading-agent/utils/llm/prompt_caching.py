@@ -67,20 +67,25 @@ class PromptCacheManager:
         system_prompt: Union[str, List[Union[Dict[str, Any], str]]],
         tools: Optional[List[Dict[str, Any]]] = None,
         messages: Optional[List[Dict[str, Any]]] = None,
+        ttl: str = "1h",
     ) -> Tuple[List[Dict[str, Any]], Optional[List[Dict[str, Any]]], List[Dict[str, Any]]]:
         """Place up to 4 cache_control breakpoints on stable prefix boundaries for Anthropic.
         
-        Breakpoint 1: End of stable system prompt
-        Breakpoint 2: End of tool definitions
-        Breakpoint 3: End of initial conversation turns
+        Breakpoint 1: End of stable system prompt (with 1h TTL)
+        Breakpoint 2: End of tool definitions (canonically sorted)
+        Breakpoint 3/4: End of initial conversation turns
         """
+        cache_marker: Dict[str, Any] = {"type": "ephemeral"}
+        if ttl:
+            cache_marker["ttl"] = ttl
+
         # 1. System blocks with ephemeral cache control
         system_blocks: List[Dict[str, Any]] = []
         if isinstance(system_prompt, str) and system_prompt:
             system_blocks.append({
                 "type": "text",
                 "text": system_prompt,
-                "cache_control": {"type": "ephemeral"},
+                "cache_control": dict(cache_marker),
             })
         elif isinstance(system_prompt, list):
             for item in system_prompt:
@@ -89,20 +94,25 @@ class PromptCacheManager:
                 elif isinstance(item, str):
                     system_blocks.append({"type": "text", "text": item})
             if system_blocks:
-                system_blocks[-1]["cache_control"] = {"type": "ephemeral"}
+                system_blocks[-1]["cache_control"] = dict(cache_marker)
 
-        # 2. Tool definitions cache breakpoint on the last tool
+        # 2. Canonical alphabetical sorting & tool definitions cache breakpoint
         cached_tools = None
         if tools:
+            sorted_tools = sorted(
+                tools,
+                key=lambda t: str(t.get("name") or (t.get("function", {}).get("name") if isinstance(t.get("function"), dict) else "") or "")
+            )
             cached_tools = []
-            for i, tool in enumerate(tools):
+            for i, tool in enumerate(sorted_tools):
                 t_copy = dict(tool)
-                if i == len(tools) - 1:
-                    t_copy["cache_control"] = {"type": "ephemeral"}
+                if i == len(sorted_tools) - 1:
+                    t_copy["cache_control"] = dict(cache_marker)
                 cached_tools.append(t_copy)
 
         # 3. Messages copy
         cached_messages = list(messages or [])
+        return system_blocks, cached_tools, cached_messages
         return system_blocks, cached_tools, cached_messages
 
     @staticmethod

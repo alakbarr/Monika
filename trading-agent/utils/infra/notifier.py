@@ -120,7 +120,7 @@ class AgentNotifier:
             except Exception as e:
                 logger.debug(f"Periodic outbox flusher encountered non-fatal error: {e}")
 
-    async def _send(self, message: str, prefix: str = ""):
+    async def _send(self, message: str, prefix: str = "", reply_markup=None):
         if not self.bot or not self.admin_id:
             logger.debug(f"Notifier skipping message (no token/admin): {message}")
             return
@@ -132,11 +132,11 @@ class AgentNotifier:
         try:
             try:
                 clean_html = sanitize_telegram_html(full_msg)
-                await self.bot.send_message(chat_id=self.admin_id, text=clean_html, parse_mode="HTML")
+                await self.bot.send_message(chat_id=self.admin_id, text=clean_html, parse_mode="HTML", reply_markup=reply_markup)
             except TelegramError as e:
                 logger.warning(f"HTML parse failed on Telegram notification ({e}), retrying plain text...")
                 plain_text = re.sub(r'<[^>]+>', '', full_msg)
-                await self.bot.send_message(chat_id=self.admin_id, text=plain_text)
+                await self.bot.send_message(chat_id=self.admin_id, text=plain_text, reply_markup=reply_markup)
             
             # Log to ActivityLog
             try:
@@ -167,9 +167,14 @@ class AgentNotifier:
         msg_str = str(message) if not isinstance(message, str) else message
         await self._send(msg_str, prefix="⚠️ <b>WARNING</b> ⚠️")
 
-    async def send_info(self, message):
+    async def send_info(self, message, reply_markup=None):
         msg_str = str(message) if not isinstance(message, str) else message
-        await self._send(msg_str, prefix="ℹ️ <b>INFO</b>")
+        await self._send(msg_str, prefix="ℹ️ <b>INFO</b>", reply_markup=reply_markup)
+
+    async def send_proposal(self, message: str, reply_markup=None):
+        """Send actionable trade proposal with interactive inline keyboard confirmation buttons."""
+        msg_str = str(message) if not isinstance(message, str) else message
+        await self._send(msg_str, prefix="", reply_markup=reply_markup)
 
     async def send_markdown(self, message):
         msg_str = str(message) if not isinstance(message, str) else message

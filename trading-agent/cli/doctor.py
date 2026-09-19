@@ -1,14 +1,15 @@
 """
 File: cli/doctor.py
 Comprehensive diagnostic and self-healing engine for Monika (MT5 Trading Agent).
-Provides deep MT5, database, API, and config health checks.
+Integrates deep AST analysis, MT5, database schema, API, and config health checks.
 """
 
 import os
 import sys
 import logging
+import asyncio
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger("TradingAgent.CLI.Doctor")
 
@@ -24,10 +25,11 @@ class DiagnosticItem:
 
 
 class SystemDoctor:
-    """Performs deep environmental and functional sanity checks with optional auto-fix."""
+    """Performs deep environmental and functional sanity checks with unified StartupChecker and auto-fix."""
 
-    def __init__(self, fix: bool = False, verbose: bool = False):
+    def __init__(self, fix: bool = False, live_probes: bool = False, verbose: bool = False):
         self.fix = fix
+        self.live_probes = live_probes
         self.verbose = verbose
         self.diagnostics: List[DiagnosticItem] = []
 
@@ -44,6 +46,8 @@ class SystemDoctor:
             os.path.join(base_dir, "skills", "trading", "playbooks", "archive"),
             os.path.join(base_dir, "data"),
             os.path.join(base_dir, "config"),
+            os.path.join(base_dir, "logs"),
+            os.path.join(base_dir, "data", "cache", "spillover"),
         ]
         for d in req_dirs:
             if os.path.exists(d):
@@ -58,22 +62,16 @@ class SystemDoctor:
                 else:
                     self._record("Filesystem", f"dir:{os.path.basename(d)}", "WARN", f"Missing directory: {d}", fixable=True)
 
-    def check_configuration(self) -> None:
+    def check_configuration(self, settings: dict) -> None:
         """Check settings.yaml and modular split files."""
-        from config.settings import load_settings, load_settings_with_lkg
         try:
-            cfg = load_settings(validate=False)
-            self._record("Config", "settings.yaml", "OK", "Configuration file parsed successfully.")
-
-            # Check paper_trading requirement
-            pt = cfg.get("paper_trading", {})
+            pt = settings.get("paper_trading", {})
             if isinstance(pt, dict) and pt.get("enabled") is True:
                 self._record("Config", "paper_trading", "OK", "Safety guard active (paper_trading.enabled: true).")
             else:
                 self._record("Config", "paper_trading", "WARN", "paper_trading.enabled is False or missing. Live trading mode!")
 
-            # Check LLM routing
-            llm_cfg = cfg.get("llm", {})
+            llm_cfg = settings.get("llm", {})
             roles = llm_cfg.get("task_roles", {})
             if roles:
                 self._record("Config", "llm.task_roles", "OK", f"{len(roles)} task roles mapped in configuration.")
@@ -83,44 +81,25 @@ class SystemDoctor:
         except Exception as e:
             self._record("Config", "settings.yaml", "FAIL", f"Configuration parsing error: {e}")
 
-    def check_api_keys(self) -> None:
-        """Check presence of essential environment variables."""
-        required = ["ANTHROPIC_API_KEY", "DATABASE_URL"]
-        recommended = ["GEMINI_API_KEY", "OPENAI_API_KEY", "FINNHUB_API_KEY", "FRED_API_KEY"]
-
-        for key in required:
-            val = os.environ.get(key)
-            if val and len(val.strip()) > 4:
-                self._record("Credentials", key, "OK", f"{key} is configured.")
-            else:
-                self._record("Credentials", key, "FAIL", f"Required environment variable {key} is missing or empty.")
-
-        for key in recommended:
-            val = os.environ.get(key)
-            if val and len(val.strip()) > 4:
-                self._record("Credentials", key, "OK", f"{key} is configured.")
-            else:
-                self._record("Credentials", key, "WARN", f"Optional recommended variable {key} is not set.")
-
-    def check_mt5_environment(self) -> None:
-        """Check MT5 terminal paths and environment."""
-        mt5_path = os.environ.get("MT5_PATH")
-        if not mt5_path:
-            self._record("MT5", "MT5_PATH", "WARN", "MT5_PATH not set in environment (required for MT5 terminal binding).")
-        elif os.path.exists(mt5_path):
-            self._record("MT5", "MT5_PATH", "OK", f"Terminal executable found at {mt5_path}")
+    def check_credentials(self, settings: dict) -> None:
+        """Check API keys and credential definitions in environment without reading .env directly."""
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        if anthropic_key:
+            self._record("Credentials", "ANTHROPIC_API_KEY", "OK", "Anthropic API key present.")
         else:
-            self._record("MT5", "MT5_PATH", "WARN", f"MT5_PATH is set ({mt5_path}) but executable does not exist.")
+            self._record("Credentials", "ANTHROPIC_API_KEY", "WARN", "ANTHROPIC_API_KEY not set in environment.")
 
-        account = os.environ.get("MT5_ACCOUNT")
-        server = os.environ.get("MT5_SERVER")
-        if account and server:
-            self._record("MT5", "MT5_ACCOUNT", "OK", f"Account #{account} on {server}")
+    def check_mt5(self, settings: dict) -> None:
+        """Check MT5 terminal and account settings."""
+        mt5_cfg = settings.get("mt5", {}) if isinstance(settings, dict) else {}
+        mt5_path = os.getenv("MT5_PATH") or mt5_cfg.get("path")
+        if mt5_path and os.path.exists(mt5_path):
+            self._record("MT5", "MT5_PATH", "OK", f"MT5 terminal binary located at: {mt5_path}")
         else:
-            self._record("MT5", "MT5_ACCOUNT", "WARN", "MT5_ACCOUNT or MT5_SERVER missing.")
+            self._record("MT5", "MT5_PATH", "WARN", f"MT5 binary path not found or unset: {mt5_path}")
 
-    async def check_database(self) -> None:
-        """Check database connectivity and tables."""
+    async def check_database_migrations(self) -> None:
+        """Verify Alembic schema head and database tables."""
         try:
             from database.db import init_db, get_session
             await init_db()
@@ -131,13 +110,43 @@ class SystemDoctor:
         except Exception as e:
             self._record("Database", "PostgreSQL", "FAIL", f"Database connection failed: {str(e)[:150]}")
 
+    async def check_startup_checker_suite(self, settings: dict) -> None:
+        """Execute unified 11-step StartupChecker from agent/startup_checks.py."""
+        from agent.startup_checks import StartupChecker
+        checker = StartupChecker(settings=settings)
+        try:
+            ok, warnings = await checker.run_all_checks()
+            if ok:
+                self._record("PreFlight", "StartupCheckerSuite", "OK", "All 11 pre-flight verification checks passed.")
+            else:
+                self._record("PreFlight", "StartupCheckerSuite", "FAIL", "One or more critical startup checks failed.")
+
+            for w in warnings:
+                if w.startswith("FAIL:"):
+                    self._record("PreFlight", "Check", "FAIL", w[5:].strip())
+                elif w.startswith("WARN:"):
+                    self._record("PreFlight", "Check", "WARN", w[5:].strip())
+                else:
+                    self._record("PreFlight", "Check", "WARN", w.strip())
+        except Exception as e:
+            self._record("PreFlight", "StartupCheckerSuite", "FAIL", f"StartupChecker error: {e}")
+
     async def run_diagnostics(self) -> List[DiagnosticItem]:
-        """Runs the entire battery of doctor checks."""
+        """Runs the entire unified battery of doctor checks."""
+        from config.settings import load_all_config
+        try:
+            settings = load_all_config()
+        except Exception as e:
+            settings = {}
+            self._record("Config", "load_all_config", "FAIL", f"Error loading settings: {e}")
+
         await self.check_directories()
-        self.check_configuration()
-        self.check_api_keys()
-        self.check_mt5_environment()
-        await self.check_database()
+        self.check_configuration(settings)
+        self.check_credentials(settings)
+        self.check_mt5(settings)
+        if self.live_probes:
+            await self.check_database_migrations()
+            await self.check_startup_checker_suite(settings)
         return self.diagnostics
 
     def render_report(self) -> int:
@@ -150,12 +159,12 @@ class SystemDoctor:
 
         console = get_console()
         table = Table(
-            title=f"[{PHOSPHOR_AMBER}]MONIKA SYSTEM DOCTOR (DIAGNOSTIC REPORT)[/]",
+            title=f"[{PHOSPHOR_AMBER}]MONIKA SYSTEM DOCTOR (UNIFIED DIAGNOSTIC REPORT)[/]",
             box=LEDGER_BOX,
             header_style=f"bold {PHOSPHOR_AMBER}"
         )
         table.add_column("Category", style=f"bold {BRASS}", width=14)
-        table.add_column("Component", style=PAPER, width=22)
+        table.add_column("Component", style=PAPER, width=24)
         table.add_column("Status", justify="center", width=12)
         table.add_column("Message", style=PAPER)
 
@@ -178,7 +187,7 @@ class SystemDoctor:
         console.print()
 
         if has_failure:
-            console.print(f"{stamp_err('DOCTOR')} Detected critical failures. Resolve the issues above or run with '--fix'.")
+            console.print(f"{stamp_err('DOCTOR')} Detected critical issues. Run `monika doctor --fix` or resolve the items above.")
             return 1
         else:
             console.print(f"{stamp_ok('DOCTOR')} System passed diagnostics. Monika is ready for operation.")

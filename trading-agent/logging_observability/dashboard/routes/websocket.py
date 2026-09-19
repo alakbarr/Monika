@@ -119,6 +119,59 @@ async def websocket_live_feed(websocket: WebSocket):
         pass
     finally:
         _active_websockets.discard(websocket)
+class TokenCoalescingBuffer:
+    """
+    High-performance 30 FPS (~33ms flush interval) token coalescing stream buffer.
+    Coalesces incoming fine-grained tokens/chunks before dispatching over WebSocket,
+    preventing UI re-render thrashing and socket frame congestion.
+    """
+    def __init__(self, websocket: WebSocket, flush_interval: float = 0.033, max_buffer_chars: int = 120):
+        self.websocket = websocket
+        self.flush_interval = flush_interval
+        self.max_buffer_chars = max_buffer_chars
+        self._buffer: list[str] = []
+        self._buffer_len: int = 0
+        self._last_flush: float = 0.0
+        self.has_streamed: bool = False
+
+    async def push(self, token: str):
+        if not token:
+            return
+        self.has_streamed = True
+        self._buffer.append(token)
+        self._buffer_len += len(token)
+        now = asyncio.get_event_loop().time()
+
+        should_flush = (
+            self._buffer_len >= self.max_buffer_chars
+            or (self._buffer_len > 0 and (now - self._last_flush) >= self.flush_interval)
+            or ("\n" in token)
+        )
+        if should_flush:
+            await self.flush()
+
+    async def flush(self):
+        if not self._buffer:
+            return
+        chunk = "".join(self._buffer)
+        self._buffer.clear()
+        self._buffer_len = 0
+        self._last_flush = asyncio.get_event_loop().time()
+        try:
+            await self.websocket.send_json({"type": "delta", "text": chunk})
+        except Exception:
+            pass
+
+    async def stream_text(self, text: str):
+        """Streams text smoothly through the coalescing buffer at ~30 FPS."""
+        tokens = re.findall(r'\S+|\s+', text)
+        for tok in tokens:
+            await self.push(tok)
+            now = asyncio.get_event_loop().time()
+            if (now - self._last_flush) >= self.flush_interval:
+                await self.flush()
+                await asyncio.sleep(self.flush_interval)
+        await self.flush()
 
 
 @router.websocket("/ws/agent-chat")
@@ -318,21 +371,19 @@ async def websocket_agent_chat(websocket: WebSocket):
 
                 async def _run_chat_turn(input_text: str):
                     try:
-                        reply_text, pending = await agent.handle(input_text)
+                        coalescer = TokenCoalescingBuffer(websocket, flush_interval=0.033)
+                        try:
+                            reply_text, pending = await agent.handle(input_text, token_callback=coalescer.push)
+                        except TypeError:
+                            reply_text, pending = await agent.handle(input_text)
 
                         if "Turn interrupted" in reply_text:
                             return
 
-                        words = re.findall(r'\S+|\s+', reply_text)
-                        chunk_buffer = ""
-                        for w in words:
-                            chunk_buffer += w
-                            if len(chunk_buffer) >= 8 or w.endswith("\n"):
-                                await websocket.send_json({"type": "delta", "text": chunk_buffer})
-                                chunk_buffer = ""
-                                await asyncio.sleep(0.01)
-                        if chunk_buffer:
-                            await websocket.send_json({"type": "delta", "text": chunk_buffer})
+                        if not coalescer.has_streamed:
+                            await coalescer.stream_text(reply_text)
+                        else:
+                            await coalescer.flush()
 
                         await websocket.send_json({
                             "type": "complete",
