@@ -338,6 +338,52 @@ class CategoryTurnCapGuard:
             self._category_counts[k] = 0
 
 
+class DenialCircuitBreakerGuard:
+    """
+    Tracks consecutive rejections or guardrail denials within a cycle.
+    If the agent triggers threshold (default: 3) consecutive rejections without an advancing successful step,
+    it trips the circuit breaker to force a WAIT decision and prevent oscillation.
+    """
+
+    def __init__(self, threshold: int = 3):
+        self.threshold = threshold
+        self._consecutive_denials: int = 0
+        self._is_tripped: bool = False
+
+    def evaluate(self, tool_name: str) -> GuardrailVerdict:
+        if self._is_tripped:
+            return GuardrailVerdict(
+                allowed=False,
+                guard_name="DenialCircuitBreakerGuard",
+                reason=(
+                    f"Circuit breaker tripped after {self.threshold} consecutive denials/rejections. "
+                    f"Further tool calls for '{tool_name}' are blocked. Finalize analysis with WAIT verdict."
+                ),
+                action="reject",
+                suggested_fix="Conclude analysis cycle and submit WAIT verdict.",
+            )
+        return GuardrailVerdict(allowed=True, guard_name="DenialCircuitBreakerGuard", reason="OK")
+
+    def record_denial(self) -> bool:
+        """Record a denial/rejection event. Returns True if breaker just tripped."""
+        self._consecutive_denials += 1
+        if self._consecutive_denials >= self.threshold:
+            self._is_tripped = True
+            logger.warning(
+                f"[DenialCircuitBreakerGuard] Tripped: {self._consecutive_denials} consecutive rejections reached."
+            )
+            return True
+        return False
+
+    def record_success(self) -> None:
+        """Reset consecutive denials upon successful action."""
+        self._consecutive_denials = 0
+
+    def reset(self) -> None:
+        self._consecutive_denials = 0
+        self._is_tripped = False
+
+
 class ToolGuardrailController:
     """
     Unified Tool Guardrail Controller.
@@ -351,6 +397,17 @@ class ToolGuardrailController:
         self.read_before_act = ReadBeforeActGuard()
         self.mandatory_sizing = MandatorySizingGuard()
         self.category_turn_cap = CategoryTurnCapGuard()
+        self.denial_breaker = DenialCircuitBreakerGuard(
+            threshold=int(self.settings.get("denial_breaker_threshold", 3))
+        )
+
+    def record_denial(self) -> bool:
+        """Record an external or internal denial/rejection event."""
+        return self.denial_breaker.record_denial()
+
+    def record_success(self) -> None:
+        """Record a successful advancing tool execution."""
+        self.denial_breaker.record_success()
 
     def validate_tool_call(
         self,
@@ -362,6 +419,12 @@ class ToolGuardrailController:
         Validasi menyeluruh panggilan tool sebelum dieksekusi.
         Evaluasi guard dilakukan secara sekuensial.
         """
+        # -1. Denial Circuit Breaker Guard (Hard stop if threshold tripped)
+        v_breaker = self.denial_breaker.evaluate(tool_name)
+        if not v_breaker.allowed:
+            logger.warning(f"[Guardrails] BLOCKED by {v_breaker.guard_name}: {v_breaker.reason}")
+            return v_breaker
+
         # 0. Database Access & Mutation Guard
         if tool_name in ("inspect_database_schema", "read_database_records"):
             if context and not context.get("is_admin", False):

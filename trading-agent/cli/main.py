@@ -442,6 +442,12 @@ async def _cmd_config_set(args):
             except ValueError:
                 val = raw_val
 
+        from config.key_validator import validate_config_key
+        key_err = validate_config_key(key_path)
+        if key_err:
+            console.print(f"{stamp_err('KEY')} {key_err}")
+            return
+
         keys = key_path.split(".")
         cur = update_dict
         for k in keys[:-1]:
@@ -511,59 +517,12 @@ async def _cmd_config_set(args):
             console.print(f"{stamp_err('VALIDATION')} {e}")
             return
 
+        from config.atomic_writer import AtomicConfigWriter
         try:
-            shutil.copy2(settings_path, f"{settings_path}.bak")
-        except Exception:
-            pass
-
-        import tempfile
-        config_dir = os.path.dirname(os.path.abspath(settings_path))
-        try:
-            from ruamel.yaml import YAML
-            ruamel_yaml = YAML()
-            ruamel_yaml.preserve_quotes = True
-            with open(settings_path, "r", encoding="utf-8") as f:
-                doc = ruamel_yaml.load(f)
-
-            def _apply_ruamel_merge(target, source):
-                for k, v in source.items():
-                    if isinstance(v, dict) and isinstance(target.get(k), dict):
-                        _apply_ruamel_merge(target[k], v)
-                    else:
-                        target[k] = v
-
-            _apply_ruamel_merge(doc, update_dict)
-            temp_name = None
-            try:
-                with tempfile.NamedTemporaryFile("w", dir=config_dir, delete=False, encoding="utf-8") as tf:
-                    temp_name = tf.name
-                    ruamel_yaml.dump(doc, tf)
-                    tf.flush()
-                    os.fsync(tf.fileno())
-                os.replace(temp_name, settings_path)
-            except Exception:
-                if temp_name and os.path.exists(temp_name):
-                    try:
-                        os.remove(temp_name)
-                    except OSError:
-                        pass
-                raise
-        except Exception as r_err:
-            logger.debug(f"ruamel.yaml round-trip failed or not available ({r_err}), falling back to standard yaml.dump")
-            fallback_temp = None
-            try:
-                with tempfile.NamedTemporaryFile("w", dir=config_dir, delete=False, encoding="utf-8") as tf:
-                    fallback_temp = tf.name
-                    yaml.dump(merged, tf, default_flow_style=False, sort_keys=False, allow_unicode=True)
-                    tf.flush()
-                    os.fsync(tf.fileno())
-                os.replace(fallback_temp, settings_path)
-            finally:
-                if fallback_temp and os.path.exists(fallback_temp):
-                    try:
-                        os.remove(fallback_temp)
-                    except OSError:
-                        pass
+            AtomicConfigWriter.update_in_place(settings_path, update_dict, create_backup=True)
+        except Exception as e:
+            console.print(f"{stamp_err('CONFIG')} Failed to update configuration: {e}")
+            return
 
         try:
             await init_db()

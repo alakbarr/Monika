@@ -12,15 +12,19 @@ try:
         TradingAgentConfig, RiskConfig, PaperTradingConfig,
         ExecutionConfig, IndicatorsConfig, TradingConfig
     )
+    from config.migrations import migrate_config, require_parseable_config
 except ImportError:
     from .schemas import (
         TradingAgentConfig, RiskConfig, PaperTradingConfig,
         ExecutionConfig, IndicatorsConfig, TradingConfig
     )
+    from .migrations import migrate_config, require_parseable_config
 
 DEFAULT_MONTHLY_BUDGET_USD = 100.0
 
 logger = logging.getLogger("TradingAgent.Config")
+
+_LKG_SETTINGS_CACHE: Dict[str, Any] = {}
 
 
 def _deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
@@ -137,12 +141,45 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             elif "scheduler" not in settings or not isinstance(settings.get("scheduler"), dict):
                 settings["scheduler"] = {"cycle_interval_hours": cycle_hours}
 
+    # Apply schema versioning and migrations
+    if isinstance(settings, dict):
+        settings, _ = migrate_config(settings)
+
     if validate or return_model:
         model = validate_config(settings)
         if return_model:
             return model
 
+    # Cache last-known-good configuration in memory
+    global _LKG_SETTINGS_CACHE
+    if isinstance(settings, dict) and settings:
+        _LKG_SETTINGS_CACHE = dict(settings)
+
     return settings
+
+
+def load_settings_with_lkg(
+    path: Union[str, Dict[str, Any], None] = None,
+    validate: bool = False,
+    return_model: bool = False,
+) -> Union[Dict[str, Any], TradingAgentConfig]:
+    """
+    Resilient settings loader: attempts normal load_settings, but falls back to
+    _LKG_SETTINGS_CACHE if reading or parsing encounters runtime file errors.
+    """
+    global _LKG_SETTINGS_CACHE
+    try:
+        return load_settings(path, validate=validate, return_model=return_model)
+    except Exception as exc:
+        if _LKG_SETTINGS_CACHE:
+            logger.warning(
+                f"Failed to load settings ({exc}); falling back to Last-Known-Good configuration."
+            )
+            if validate or return_model:
+                model = validate_config(_LKG_SETTINGS_CACHE)
+                return model if return_model else dict(_LKG_SETTINGS_CACHE)
+            return dict(_LKG_SETTINGS_CACHE)
+        raise
 
 
 def load_all_config(settings_path: str | None = None, validate: bool = True) -> Dict[str, Any]:
