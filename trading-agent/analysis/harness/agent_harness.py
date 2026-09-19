@@ -104,6 +104,8 @@ class AgentHarness:
         )
         from utils.llm.data_dedup import DataFetchDeduplicator
         self.data_dedup = DataFetchDeduplicator()
+        from analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
+        self.verification_ledger = VerificationEvidenceLedger()
 
     # --------------------------------------------------------------------------
     # Provider Response Normalization & Error Classification
@@ -701,6 +703,7 @@ class AgentHarness:
         # Reset all guardrails for fresh stage execution
         self.guardrail_controller.reset_all()
         self.stall_guard.reset()
+        self.verification_ledger.reset_turn()
 
         current_messages = list(messages)
 
@@ -1048,6 +1051,22 @@ class AgentHarness:
                             f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
                             f"without calling mandatory tool '{mandatory_tool}'."
                         )
+                # ── Trade Proposal Verification Stop Gate ──
+                from analysis.harness.trade_stop_gates import TradeStopGate
+                trade_verdict = TradeStopGate.evaluate(
+                    final_text,
+                    self.verification_ledger,
+                    stage_name=stage_name,
+                    stage_symbol=stage_symbol,
+                )
+                if not trade_verdict.should_stop and turns < effective_max_turns:
+                    logger.info(
+                        f"[{stage_name}][AgentHarness] Trade Stop Gate triggered for {trade_verdict.detected_symbol}. "
+                        f"Nudging agent for risk/sizing verification..."
+                    )
+                    current_messages.append({"role": "user", "content": trade_verdict.nudge_text})
+                    continue
+
                 logger.info(
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
                     f"{tool_calls_made} tool executions."
@@ -1225,6 +1244,7 @@ class AgentHarness:
                 self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
                 self.guardrail_controller.record_success()
                 self.stall_guard.record_call(c_name, res_obj)
+                self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
 
                 # Format tool result block with validation and micro-pruning
                 try:
