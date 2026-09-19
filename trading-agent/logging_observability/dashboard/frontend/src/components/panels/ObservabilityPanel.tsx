@@ -209,7 +209,7 @@ export const ObservabilityPanel: React.FC = () => {
                 </div>
                 {/* Histogram distribution bar */}
                 <div style={{ display: 'flex', height: '8px', borderRadius: '2px', overflow: 'hidden', gap: '1px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)' }}>
-                  {Object.entries(tool.buckets).map(([bucket, count]) => {
+                  {Object.entries(tool.buckets || {}).map(([bucket, count]) => {
                     const pct = tool.call_count > 0 ? (count / tool.call_count) * 100 : 0;
                     if (pct <= 0) return null;
                     const color = bucket === '<50ms' ? 'var(--color-profit)' : bucket === '50-200ms' ? 'var(--color-brass)' : bucket === '200-500ms' ? '#c47d2b' : 'var(--color-loss)';

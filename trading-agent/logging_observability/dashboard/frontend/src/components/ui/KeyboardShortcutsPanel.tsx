@@ -7,10 +7,11 @@ interface Shortcut {
 }
 
 const SHORTCUTS: Shortcut[] = [
-  { key: '1', description: 'Overview', category: 'Navigation' },
-  { key: '2', description: 'Position Ledger', category: 'Navigation' },
-  { key: '3', description: 'Market Analysis & Signals', category: 'Navigation' },
-  { key: '4', description: 'Chat', category: 'Navigation' },
+  { key: '1', description: 'Trading Desk (Overview)', category: 'Navigation' },
+  { key: '2', description: 'Market Intelligence (DAG Flow)', category: 'Navigation' },
+  { key: '3', description: 'Ledger & Risk (Performance)', category: 'Navigation' },
+  { key: '4', description: 'Telegraph & Console (Chat)', category: 'Navigation' },
+  { key: '5', description: 'System Configuration', category: 'Navigation' },
   { key: 'T', description: 'Toggle Day / Night Mode', category: 'Display' },
   { key: '?', description: 'Toggle Shortcuts Reference', category: 'System' },
   { key: 'ESC', description: 'Dismiss Modal / Dialog', category: 'System' },

@@ -111,7 +111,7 @@ export const DebateOutcomesPanel: React.FC = () => {
 
   const filteredDebates = debates.filter((d) => {
     if (!symbolFilter.trim()) return true;
-    return d.symbol.toLowerCase().includes(symbolFilter.toLowerCase().trim());
+    return d.symbol ? d.symbol.toLowerCase().includes(symbolFilter.toLowerCase().trim()) : false;
   });
 
   if (loading) {

@@ -233,6 +233,11 @@ const App: React.FC = () => {
       } else if (e.key === '5') {
         sounds.playClick('typewriter');
         setActiveTab('config');
+      } else if (e.key === 't' || e.key === 'T') {
+        const currentTheme = useDashboardStore.getState().theme;
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        useDashboardStore.getState().setTheme(nextTheme);
+        sounds.playClick('toggle');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -243,7 +248,7 @@ const App: React.FC = () => {
   const tickerItems = Object.entries(marketQuotes || {}).map(([symbol, q]: [string, any]) => ({
     symbol,
     price: q.price || q.bid || q.close || 0,
-    changePct: q.change_pct || q.pct_change || 0,
+    changePct: q.changePct ?? q.change_pct ?? q.pct_change ?? 0,
   }));
 
   return (
