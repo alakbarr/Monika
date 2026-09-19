@@ -9,7 +9,8 @@ class TestSettings:
     @patch('builtins.open', new_callable=mock_open, read_data="test_key: test_val")
     def test_load_settings_success(self, mock_file, mock_exists):
         settings = load_settings("dummy_path")
-        assert settings == {"test_key": "test_val"}
+        assert settings["test_key"] == "test_val"
+        assert settings.get("_config_version") == 1
         mock_file.assert_called_once_with("dummy_path", "r", encoding="utf-8")
 
     @patch('os.path.exists', return_value=False)

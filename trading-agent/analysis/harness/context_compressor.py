@@ -12,9 +12,11 @@ Replaces crude static truncation with an intelligent 4-phase pipeline:
 """
 
 import copy
+import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.ContextCompressor")
@@ -26,12 +28,16 @@ class ContextCompressor:
     def __init__(self, settings: Optional[dict] = None, aux_client: Optional[Any] = None):
         self.settings = settings or {}
         self.aux_client = aux_client
+        self._ineffective_compression_count: int = 0
+        self._locked_until: float = 0.0
+        self.cooldown_seconds: float = float(self.settings.get("compaction_cooldown_seconds", 120.0))
 
     def prune_deterministic_tools(self, messages: List[dict]) -> List[dict]:
-        """Phase 1: Deterministic Tool Pruning.
+        """Phase 1: Deterministic Tool Pruning & Deduplication.
 
         Identifies tool observations that failed or encountered errors that were
-        subsequently retried successfully, and prunes verbose redundant bodies.
+        subsequently retried successfully, prunes redundant bodies, and deduplicates
+        identical observations across turns.
         """
         pruned_messages = copy.deepcopy(messages)
 
@@ -59,6 +65,28 @@ class ContextCompressor:
             elif isinstance(content, str) and msg.get("role") in ("user", "tool"):
                 if ("Unknown tool:" in content or "validation_failed" in content) and len(content) > 300:
                     msg["content"] = "[Pruned error observation — tool was retried]"
+
+        # Deduplicate identical tool observations (preserving newest copy)
+        seen_hashes = set()
+        for msg in reversed(pruned_messages):
+            content = msg.get("content")
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        res_text = str(block.get("content", ""))
+                        if len(res_text) > 30:
+                            h = hashlib.md5(res_text.encode("utf-8")).hexdigest()[:12]
+                            if h in seen_hashes:
+                                block["content"] = "[Duplicate tool observation — same content as subsequent turn]"
+                            else:
+                                seen_hashes.add(h)
+            elif isinstance(content, str) and msg.get("role") == "tool":
+                if len(content) > 30:
+                    h = hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
+                    if h in seen_hashes:
+                        msg["content"] = "[Duplicate tool observation — same content as subsequent turn]"
+                    else:
+                        seen_hashes.add(h)
 
         return pruned_messages
 
@@ -199,13 +227,31 @@ class ContextCompressor:
         if total_chars <= max_context_chars:
             return messages
 
+        if time.time() < self._locked_until:
+            logger.warning("[ContextCompressor] Anti-thrashing circuit breaker active; skipping compaction.")
+            return messages
+
         # Phase 1: Deterministic Tool Pruning
         pruned = self.prune_deterministic_tools(messages)
 
         # Phase 2: Protected Boundary Split
         head, middle, tail = self.split_boundaries(pruned, tail_turns=tail_turns)
         if not middle:
-            return head + tail
+            assembled = head + tail
+            chars_after = sum(len(str(m.get("content", ""))) for m in assembled)
+            reduction_ratio = (total_chars - chars_after) / max(total_chars, 1)
+            if reduction_ratio < 0.10:
+                self._ineffective_compression_count += 1
+                if self._ineffective_compression_count >= 2:
+                    self._locked_until = time.time() + self.cooldown_seconds
+                    logger.warning(
+                        f"[ContextCompressor] Anti-thrashing circuit breaker tripped: "
+                        f"2 consecutive ineffective compactions ({reduction_ratio:.1%} reduction). "
+                        f"Locked for {self.cooldown_seconds}s."
+                    )
+            else:
+                self._ineffective_compression_count = 0
+            return assembled
 
         # Phase 3: Auxiliary Model Summarization
         summary_text = await self.summarize_middle(middle)
@@ -221,8 +267,23 @@ class ContextCompressor:
         }
 
         assembled = head + [summary_message] + tail
+        chars_after = sum(len(str(m.get("content", ""))) for m in assembled)
+        reduction_ratio = (total_chars - chars_after) / max(total_chars, 1)
+
+        if reduction_ratio < 0.10:
+            self._ineffective_compression_count += 1
+            if self._ineffective_compression_count >= 2:
+                self._locked_until = time.time() + self.cooldown_seconds
+                logger.warning(
+                    f"[ContextCompressor] Anti-thrashing circuit breaker tripped: "
+                    f"2 consecutive ineffective compactions ({reduction_ratio:.1%} reduction). "
+                    f"Locked for {self.cooldown_seconds}s."
+                )
+        else:
+            self._ineffective_compression_count = 0
+
         logger.info(
             f"[ContextCompressor] Compressed {len(messages)} messages ({total_chars} chars) "
-            f"-> {len(assembled)} messages."
+            f"-> {len(assembled)} messages ({chars_after} chars, {reduction_ratio:.1%} freed)."
         )
         return assembled

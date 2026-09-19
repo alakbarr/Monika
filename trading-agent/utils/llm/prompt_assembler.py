@@ -80,6 +80,7 @@ class PromptAssembler:
         self,
         core_memory: str = "",
         pad_for_gemini: bool = True,
+        model_name: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """
         Returns structured 3 system tiers (Tier 1, Tier 2, Tier 3) for cache breakpoint injection.
@@ -92,7 +93,15 @@ class PromptAssembler:
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE1_TIER1}\n\n{MANDATORY_RULES}"
-        tier2 = TIER2_TOOL_STUBS
+
+        discipline = ""
+        if model_name:
+            try:
+                from utils.llm.model_discipline import get_model_discipline
+                discipline = get_model_discipline(model_name)
+            except Exception:
+                pass
+        tier2 = f"{TIER2_TOOL_STUBS}\n\n{discipline}".strip() if discipline else TIER2_TOOL_STUBS
 
         # Tier 3: Skills + Stable Core Memory (invariable within cycle)
         stable_mem, _ = _split_memory(core_memory)
@@ -191,6 +200,7 @@ class PromptAssembler:
         is_crypto: bool = False,
         is_commodity: bool = False,
         detected_regime: Optional[str] = None,
+        model_name: Optional[str] = None,
     ) -> Tuple[str, str, str]:
         """
         Returns structured 3 system tiers for Stage 2 per-asset analysis.
@@ -203,7 +213,15 @@ class PromptAssembler:
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{MANDATORY_RULES}"
-        tier2 = TIER2_TOOL_STUBS
+
+        discipline = ""
+        if model_name:
+            try:
+                from utils.llm.model_discipline import get_model_discipline
+                discipline = get_model_discipline(model_name)
+            except Exception:
+                pass
+        tier2 = f"{TIER2_TOOL_STUBS}\n\n{discipline}".strip() if discipline else TIER2_TOOL_STUBS
 
         # Tier 3: Skills + Target metadata + Core Memory (Dynamic Micro-Agent Injection)
         skill_names = get_dynamic_micro_skills(symbol, {"regime": detected_regime or ""})
