@@ -5,9 +5,10 @@ from config.settings import load_settings, load_all_config
 
 class TestSettings:
 
+    @patch('shutil.copy2')
     @patch('os.path.exists', side_effect=lambda p: p == "dummy_path")
     @patch('builtins.open', new_callable=mock_open, read_data="test_key: test_val")
-    def test_load_settings_success(self, mock_file, mock_exists):
+    def test_load_settings_success(self, mock_file, mock_exists, mock_copy):
         settings = load_settings("dummy_path")
         assert settings["test_key"] == "test_val"
         assert settings.get("_config_version") == 1
