@@ -29,8 +29,8 @@ export const SessionBrowserPanel: React.FC = () => {
     try {
       const data = await api.sessions(filterSource === 'all' ? undefined : filterSource, 100);
       setSessions(data || []);
-      if (data && data.length > 0 && !selectedSessionId) {
-        setSelectedSessionId(data[0].session_id);
+      if (data && data.length > 0) {
+        setSelectedSessionId(prev => prev || data[0].session_id);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -38,7 +38,7 @@ export const SessionBrowserPanel: React.FC = () => {
     } finally {
       setLoadingSessions(false);
     }
-  }, [filterSource, selectedSessionId]);
+  }, [filterSource]);
 
   useEffect(() => {
     fetchSessions();

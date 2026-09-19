@@ -71,8 +71,8 @@ const AnalysisCard: React.FC<{ analysis: any; onClick: () => void }> = ({ analys
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Badge variant={analysis.decision as any}>
-            {analysis.decision.toUpperCase()}
+          <Badge variant={(analysis.decision || 'wait') as any}>
+            {(analysis.decision || 'WAIT').toUpperCase()}
           </Badge>
           {conf !== null && (
             <span className="tabular-nums" style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: confColor }}>

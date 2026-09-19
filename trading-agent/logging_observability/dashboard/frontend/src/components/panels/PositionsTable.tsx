@@ -36,7 +36,8 @@ export const PositionsTable: React.FC = () => {
   const [sortAsc, setSortAsc] = useState(false);
 
   const open = positions.filter((p) => p.status === 'open');
-  const displayed = showClosed ? positions : open;
+  const closed = positions.filter((p) => p.status === 'closed');
+  const displayed = showClosed ? closed : open;
 
   const handleSort = (field: SortField) => {
     sounds.playClick('typewriter');
@@ -117,7 +118,7 @@ export const PositionsTable: React.FC = () => {
       ) : sorted.length === 0 ? (
         <EmptyState
           title="LEDGER CLEAR"
-          message="No active market positions in MT5."
+          message={showClosed ? "No closed historical positions in MT5." : "No active market positions in MT5."}
           icon={<FloppyDiskIcon size={24} />}
         />
       ) : (
