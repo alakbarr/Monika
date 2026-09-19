@@ -450,6 +450,7 @@ Monika/
     │               │   │   ├── GlobalStatusBar.tsx
     │               │   │   ├── Header.tsx
     │               │   │   ├── MobileNavDrawer.tsx
+    │               │   │   ├── navigation.ts
     │               │   │   └── Sidebar.tsx
     │               │   ├── panels
     │               │   │   ├── ActivityFeed.tsx
@@ -477,7 +478,8 @@ Monika/
     │               │   │   │   ├── GraphControls.tsx
     │               │   │   │   ├── GraphEdge.tsx
     │               │   │   │   ├── GraphInspector.tsx
-    │               │   │   │   └── GraphNode.tsx
+    │               │   │   │   ├── GraphNode.tsx
+    │               │   │   │   └── graphUtils.ts
     │               │   │   └── tokens
     │               │   │       ├── TokenCharts.tsx
     │               │   │       └── TokenRoleTable.tsx

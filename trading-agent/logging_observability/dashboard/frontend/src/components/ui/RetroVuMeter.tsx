@@ -42,6 +42,23 @@ export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
     ? 'var(--color-brass)'
     : 'var(--color-ledger-green)';
 
+  // Helper to convert meter angle to (x, y) coordinates with radius r from (70, 60)
+  const getMeterPoint = (deg: number, r: number = 50) => {
+    const rad = (deg * Math.PI) / 180;
+    return {
+      x: Number((70 + r * Math.sin(rad)).toFixed(1)),
+      y: Number((60 - r * Math.cos(rad)).toFixed(1)),
+    };
+  };
+
+  const warnRatio = Math.min(1, Math.max(0, (warnThreshold - min) / (max - min || 1)));
+  const critRatio = Math.min(1, Math.max(0, (critThreshold - min) / (max - min || 1)));
+
+  const pStart = getMeterPoint(startAngle);
+  const pWarn = getMeterPoint(startAngle + warnRatio * (endAngle - startAngle));
+  const pCrit = getMeterPoint(startAngle + critRatio * (endAngle - startAngle));
+  const pEnd = getMeterPoint(endAngle);
+
   return (
     <div
       style={{
@@ -81,7 +98,7 @@ export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
       >
         {/* Dial Face Background Arc */}
         <path
-          d="M 15 55 A 55 55 0 0 1 125 55"
+          d={`M ${pStart.x} ${pStart.y} A 50 50 0 0 1 ${pEnd.x} ${pEnd.y}`}
           fill="none"
           stroke="var(--color-rule)"
           strokeWidth="6"
@@ -90,7 +107,7 @@ export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
 
         {/* Safe Zone (Green) */}
         <path
-          d="M 15 55 A 55 55 0 0 1 80 15"
+          d={`M ${pStart.x} ${pStart.y} A 50 50 0 0 1 ${pWarn.x} ${pWarn.y}`}
           fill="none"
           stroke="var(--color-ledger-green)"
           strokeWidth="4"
@@ -100,7 +117,7 @@ export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
 
         {/* Warning Zone (Yellow/Brass) */}
         <path
-          d="M 80 15 A 55 55 0 0 1 108 28"
+          d={`M ${pWarn.x} ${pWarn.y} A 50 50 0 0 1 ${pCrit.x} ${pCrit.y}`}
           fill="none"
           stroke="var(--color-brass)"
           strokeWidth="4"
@@ -109,7 +126,7 @@ export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
 
         {/* Critical Red Zone */}
         <path
-          d="M 108 28 A 55 55 0 0 1 125 55"
+          d={`M ${pCrit.x} ${pCrit.y} A 50 50 0 0 1 ${pEnd.x} ${pEnd.y}`}
           fill="none"
           stroke="var(--color-ledger-red)"
           strokeWidth="4"

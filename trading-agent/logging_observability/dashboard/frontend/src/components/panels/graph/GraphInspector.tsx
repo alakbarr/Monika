@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Clock, AlertCircle, X, Copy, Check } from 'lucide-react';
 import type { GraphNode } from '../../../types/api';
-import { getStatusColor } from './GraphNode';
+import { getStatusColor } from './graphUtils';
 
 interface GraphInspectorProps {
   selectedNode: GraphNode;

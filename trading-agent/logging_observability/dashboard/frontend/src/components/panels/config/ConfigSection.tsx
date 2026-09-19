@@ -2,7 +2,7 @@ import React from 'react';
 
 export type ConfigSectionType = 'risk' | 'symbols' | 'llm' | 'scheduler' | 'paper' | 'raw';
 
-export const inputStyle = (enabled: boolean): React.CSSProperties => ({
+const inputStyle = (enabled: boolean): React.CSSProperties => ({
   width: '100%',
   padding: '8px 12px',
   borderRadius: '2px',
