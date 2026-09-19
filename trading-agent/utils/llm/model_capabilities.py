@@ -50,6 +50,12 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=200000,
     ),
 
+    "gemini-3.8-flash": ModelCapabilities(
+        prompt_cache_strategy="gemini_context",
+        max_output_tokens=65536,
+        context_window=1048576,
+        supports_tool_choice=True,
+    ),
     "gemini-3.7-flash": ModelCapabilities(
         prompt_cache_strategy="gemini_context",
         max_output_tokens=65536,

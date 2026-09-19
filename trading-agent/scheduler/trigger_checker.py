@@ -232,13 +232,22 @@ class TriggerChecker:
                                         conf = analysis_res.get("confidence", 0.0)
                                         sl = analysis_res.get("stop_loss", "N/A")
                                         tp = analysis_res.get("take_profit", "N/A")
-                                        await notifier.send_info(
+                                        
+                                        keyboard = None
+                                        try:
+                                            from telegram_bot.command_router import CommandRouter
+                                            keyboard = CommandRouter.build_confirm_keyboard(str(ana_id))
+                                        except Exception as kb_err:
+                                            logger.debug(f"Could not build inline keyboard for trade proposal: {kb_err}")
+
+                                        await notifier.send_proposal(
                                             f"🎯 <b>Trade Proposal from Trigger</b>\n\n"
                                             f"<b>Symbol:</b> {symbol}\n"
                                             f"<b>Action:</b> {dec}\n"
                                             f"<b>Confidence:</b> {conf:.2f}\n"
                                             f"<b>SL:</b> {sl} | <b>TP:</b> {tp}\n\n"
-                                            f"Kirim <code>/approve {ana_id}</code> untuk eksekusi."
+                                            f"Gunakan tombol di bawah atau kirim <code>/approve {ana_id}</code>.",
+                                            reply_markup=keyboard,
                                         )
                                     except Exception as notify_err:
                                         logger.error(f"Failed to send trade proposal notification for trigger {symbol}: {notify_err}")

@@ -55,6 +55,7 @@ Monika/
     ├── docker-compose.yml
     ├── docker-compose.linux.yml
     ├── Dockerfile
+    ├── bootstrap.py
     ├── main.py
     ├── Makefile
     ├── README.md
@@ -145,6 +146,7 @@ Monika/
     │   │   ├── error_classifier.py
     │   │   ├── harness_state.py
     │   │   ├── message_repair.py
+    │   │   ├── repetition_guard.py
     │   │   ├── stall_guard.py
     │   │   ├── structured_output.py
     │   │   ├── symbol_segment_planner.py
@@ -162,6 +164,7 @@ Monika/
     │   │   ├── lesson_consolidator.py
     │   │   ├── outcome_linker.py
     │   │   ├── playbook_ledger.py
+    │   │   ├── progressive_loader.py
     │   │   ├── reflector.py
     │   │   ├── session_search.py
     │   │   ├── skill_crystallizer.py
@@ -234,6 +237,12 @@ Monika/
     │   │   ├── tool_guardrails.py
     │   │   ├── tool_registry.py
     │   │   ├── tools_definitions.py
+    │   │   ├── unified_registry.py
+    │   │   ├── kernel
+    │   │   │   ├── __init__.py
+    │   │   │   ├── env_sanitizer.py
+    │   │   │   ├── output_spiller.py
+    │   │   │   └── persistent_kernel.py
     │   │   ├── domain
     │   │   │   ├── execution_handlers.py
     │   │   │   ├── macro_handlers.py
@@ -357,6 +366,18 @@ Monika/
     │       ├── archive
     │       ├── env.py
     │       └── versions
+    ├── evals
+    │   ├── fixtures
+    │   │   ├── risk_trap_daily_dd.json
+    │   │   ├── risk_trap_spread_spike.json
+    │   │   ├── smc_bear_sweep.json
+    │   │   ├── smc_bull_displacement.json
+    │   │   └── smc_choppy_trap.json
+    │   ├── oracles
+    │   │   ├── risk_compliance_oracle.py
+    │   │   ├── smc_geometry_oracle.py
+    │   │   └── trade_discipline_oracle.py
+    │   └── runner.py
     ├── execution
     │   ├── backends
     │   │   ├── __init__.py
@@ -695,6 +716,7 @@ Monika/
         │   ├── prompt_assembler.py
         │   ├── prompt_caching.py
         │   ├── prompt_compressor.py
+        │   ├── prompt_disciplines.py
         │   ├── prompt_tiering.py
         │   ├── prompt_tiers.py
         │   ├── spill_subsystem.py

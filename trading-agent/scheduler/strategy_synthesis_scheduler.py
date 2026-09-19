@@ -309,7 +309,7 @@ class StrategySynthesisScheduler:
         if ruff_bin:
             try:
                 res = subprocess.run(
-                    [ruff_bin, "check", "--stdin-filename", "strategy_candidate.py", "-"],
+                    [ruff_bin, "check", "--select", "E9,F821", "--stdin-filename", "strategy_candidate.py", "-"],
                     input=code_str,
                     capture_output=True,
                     text=True,

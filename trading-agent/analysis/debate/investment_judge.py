@@ -2,6 +2,7 @@ import logging
 import json
 from typing import Optional, Dict, Any
 from analysis.providers.base_provider import BaseLLMClient
+from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
 logger = logging.getLogger("TradingAgent.InvestmentJudge")
 
@@ -109,6 +110,12 @@ ROUND 2 REBUTTAL & BAYESIAN CALIBRATION:
   * Concessions Made (conceded_points): If Bull conceded specific weaknesses (e.g. SL too close or overhead resistance), adjust entry/SL/TP or cap risk_multiplier <= 0.50.
   * Weak/Failed Rebuttal (rebuttal_strength <= 4 or ungrounded): Bear Dissent is validated. If risk_severity >= 9, enforce final_decision = 'avoid' and risk_multiplier = 0.0.
 
+TELEMETRY & SPECIALIST TRUST GUIDELINES:
+- Inspect 'fact_sheet.specialist_reliability' if present:
+  * If a specialist (technical, sentiment, macro) has trust_weight < 0.50 or is chronically_unreliable=true, heavily discount arguments relying primarily on that specialist's input.
+  * If a thesis was built on an unreliable specialist and challenged by a reliable specialist (trust_weight >= 1.0), rule in favor of the reliable specialist.
+- Inspect 'fact_sheet.news_calibration_directives': If news tier calibration reports over-classification in recent cycles, do NOT allow breaking news sentiment to override higher-timeframe technical market structure.
+
 MANDATORY FACT-CHECKING STEP:
 Before adjusting any risk multiplier or proposing level adjustments, verify:
 1. Is the counter-argument supported by concrete technical levels (Swing High/Low, Order Block, FVG, ATR distance) or specific macro data points?
@@ -116,6 +123,8 @@ Before adjusting any risk multiplier or proposing level adjustments, verify:
 3. If the counter-argument is purely rhetorical without factual data basis, do NOT penalize the trade — maintain risk_multiplier = 1.0.
 
 MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.3 (i.e. |adjusted_tp - entry| >= 1.3 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.3 will be automatically rejected by backend risk validators.
+
+{get_universal_execution_discipline()}
 
 [TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Verify math against ATR and risk tables. reason must be at most 2 concise sentences based strictly on factual evidence. Zero fluff.
 Respond in valid JSON format conforming to the schema."""

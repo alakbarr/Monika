@@ -2,6 +2,7 @@ import logging
 import json
 from typing import Dict, Any, Union
 from analysis.providers.base_provider import BaseLLMClient
+from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
 logger = logging.getLogger("TradingAgent.BearAnalyst")
 
@@ -46,6 +47,8 @@ async def generate_bear_dissent(client: BaseLLMClient, symbol: str, original_con
 Rely heavily on the 'original_context' (entry, SL, TP, invalidation), the Bull's argument, and the Fact Sheet provided in the user message.
 
 {score_desc}
+
+{get_universal_execution_discipline()}
 
 [TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bear_dissent must be concise (max 2 sentences) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
 Respond in valid JSON format ONLY conforming to the schema."""
