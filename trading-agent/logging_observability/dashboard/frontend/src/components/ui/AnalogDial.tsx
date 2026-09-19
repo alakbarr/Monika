@@ -8,6 +8,7 @@ interface AnalogDialProps {
   unit?: string;
   size?: number;
   dangerZone?: number;
+  dangerInverted?: boolean;
   style?: React.CSSProperties;
 }
 
@@ -19,6 +20,7 @@ export const AnalogDial: React.FC<AnalogDialProps> = ({
   unit = '%',
   size = 140,
   dangerZone,
+  dangerInverted = false,
   style,
 }) => {
   const clamped = Math.max(min, Math.min(max, value));
@@ -99,9 +101,17 @@ export const AnalogDial: React.FC<AnalogDialProps> = ({
         {/* Danger zone arc if specified */}
         {dangerZone !== undefined && (
           <path
-            d={`M ${polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).x} ${
-              polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).y
-            } A ${r} ${r} 0 0 1 ${pEnd.x} ${pEnd.y}`}
+            d={
+              dangerInverted
+                ? `M ${pStart.x} ${pStart.y} A ${r} ${r} 0 0 1 ${
+                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).x
+                  } ${
+                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).y
+                  }`
+                : `M ${polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).x} ${
+                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).y
+                  } A ${r} ${r} 0 0 1 ${pEnd.x} ${pEnd.y}`
+            }
             fill="none"
             stroke="var(--color-win-coral)"
             strokeWidth="4"

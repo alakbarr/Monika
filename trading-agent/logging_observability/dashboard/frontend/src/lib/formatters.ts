@@ -46,17 +46,35 @@ export const fmt = {
   // Date/time
   time: (iso: string | null | undefined) => {
     if (!iso) return '—';
-    return format(parseISO(iso), 'HH:mm:ss');
+    try {
+      const d = parseISO(iso);
+      if (isNaN(d.getTime())) return '—';
+      return format(d, 'HH:mm:ss');
+    } catch {
+      return '—';
+    }
   },
 
   datetime: (iso: string | null | undefined) => {
     if (!iso) return '—';
-    return format(parseISO(iso), 'dd MMM HH:mm');
+    try {
+      const d = parseISO(iso);
+      if (isNaN(d.getTime())) return '—';
+      return format(d, 'dd MMM HH:mm');
+    } catch {
+      return '—';
+    }
   },
 
   ago: (iso: string | null | undefined) => {
     if (!iso) return '—';
-    return formatDistanceToNow(parseISO(iso), { addSuffix: true });
+    try {
+      const d = parseISO(iso);
+      if (isNaN(d.getTime())) return '—';
+      return formatDistanceToNow(d, { addSuffix: true });
+    } catch {
+      return '—';
+    }
   },
 
   // R-ratio

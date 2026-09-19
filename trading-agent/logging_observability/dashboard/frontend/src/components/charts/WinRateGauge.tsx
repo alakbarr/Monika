@@ -21,6 +21,7 @@ export const WinRateGauge: React.FC<WinRateGaugeProps> = ({
       unit="%"
       size={size}
       dangerZone={45}
+      dangerInverted={true}
     />
   );
 };

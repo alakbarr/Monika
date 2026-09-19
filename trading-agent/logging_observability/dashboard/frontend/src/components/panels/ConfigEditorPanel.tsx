@@ -204,7 +204,7 @@ export const ConfigEditorPanel: React.FC = () => {
               System Configuration Manager
             </h2>
             <Badge variant={isAdmin ? 'profit' : 'neutral'} size="sm">
-              ROLE: {userRole.toUpperCase()}
+              ROLE: {(userRole || 'VIEWER').toUpperCase()}
             </Badge>
             {hasChanges && (
               <Badge variant="warn" size="sm">

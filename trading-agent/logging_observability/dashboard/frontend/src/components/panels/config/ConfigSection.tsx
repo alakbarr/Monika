@@ -354,7 +354,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
           </div>
 
           {(() => {
-            const syms = (getFieldValue(['trading', 'symbols'], ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY']) as string[]) || [];
+            const syms = (getFieldValue(['trading', 'asset_universe'], ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY']) as string[]) || [];
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -563,8 +563,8 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                 type="checkbox"
                 id="paper_enabled"
                 disabled={!isAdmin}
-                checked={Boolean(getFieldValue(['paper_trading', 'enabled'], true))}
-                onChange={(e) => updateField(['paper_trading', 'enabled'], e.target.checked)}
+                checked={Boolean(getFieldValue(['trading', 'paper_trading', 'enabled'], true))}
+                onChange={(e) => updateField(['trading', 'paper_trading', 'enabled'], e.target.checked)}
                 style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
               />
               <label htmlFor="paper_enabled" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text-white)', cursor: 'pointer' }}>
@@ -578,8 +578,8 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
               </label>
               <select
                 disabled={!isAdmin}
-                value={String(getFieldValue(['paper_trading', 'streak_loss_policy'], 'warn_and_scale'))}
-                onChange={(e) => updateField(['paper_trading', 'streak_loss_policy'], e.target.value)}
+                value={String(getFieldValue(['trading', 'paper_trading', 'streak_loss_policy'], 'warn_and_scale'))}
+                onChange={(e) => updateField(['trading', 'paper_trading', 'streak_loss_policy'], e.target.value)}
                 style={{
                   ...inputStyle(isAdmin),
                   cursor: 'pointer',
