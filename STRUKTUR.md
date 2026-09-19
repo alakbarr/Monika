@@ -713,6 +713,7 @@ Monika/
         │   ├── cycle_budget_guard.py
         │   ├── data_dedup.py
         │   ├── deferred_dispatcher.py
+        │   ├── embedding.py
         │   ├── memory_compressor.py
         │   ├── model_capabilities.py
         │   ├── model_discipline.py

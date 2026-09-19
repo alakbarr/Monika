@@ -213,7 +213,15 @@ class SessionSearchEngine:
             stmt = stmt.order_by(desc(DecisionReflection.created_at)).limit(limit * 2)
             sparse_rows = (await session.execute(stmt)).scalars().all()
 
-            # If no query_vector provided, return sparse rows formatted
+            # If no query_vector provided, attempt auto-vectorization via Gemini Embedding
+            if not query_vector:
+                try:
+                    from utils.llm.embedding import generate_gemini_embedding
+                    query_vector = await generate_gemini_embedding(query)
+                except Exception:
+                    query_vector = None
+
+            # If still no query_vector, return sparse rows formatted
             if not query_vector:
                 return [self._format_reflection(r) for r in sparse_rows[:limit]]
 

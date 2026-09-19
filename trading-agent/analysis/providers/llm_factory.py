@@ -12,8 +12,82 @@ import inspect
 from typing import Optional, Any
 from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 from utils.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
+import time
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
+
+class ProviderCircuitBreaker:
+    """
+    Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
+    States: CLOSED (normal), OPEN (cooldown after 3 failures), HALF_OPEN (1 canary probe).
+    """
+    _states: dict[str, str] = {}
+    _consecutive_failures: dict[str, int] = {}
+    _open_until: dict[str, float] = {}
+    _blacklisted_models: dict[tuple[str, str], float] = {}
+    _blacklist_reasons: dict[tuple[str, str], str] = {}
+    
+    FAILURE_THRESHOLD: int = 3
+    COOLDOWN_SECONDS: float = 60.0
+
+    @classmethod
+    def is_provider_available(cls, provider: str) -> bool:
+        state = cls._states.get(provider, "CLOSED")
+        if state == "OPEN":
+            now = time.time()
+            if now >= cls._open_until.get(provider, 0.0):
+                cls._states[provider] = "HALF_OPEN"
+                logger.info(f"[CircuitBreaker] Provider '{provider}' transitioning OPEN -> HALF_OPEN (canary probe allowed)")
+                return True
+            return False
+        return True
+
+    @classmethod
+    def record_provider_success(cls, provider: str) -> None:
+        if cls._consecutive_failures.get(provider, 0) > 0 or cls._states.get(provider) != "CLOSED":
+            logger.info(f"[CircuitBreaker] Provider '{provider}' healthy. Circuit CLOSED.")
+        cls._consecutive_failures[provider] = 0
+        cls._states[provider] = "CLOSED"
+        cls._open_until.pop(provider, None)
+
+    @classmethod
+    def record_provider_failure(cls, provider: str, is_server_or_timeout: bool = True, reason: str = "") -> None:
+        if is_server_or_timeout:
+            cnt = cls._consecutive_failures.get(provider, 0) + 1
+            cls._consecutive_failures[provider] = cnt
+            if cnt >= cls.FAILURE_THRESHOLD:
+                cls._states[provider] = "OPEN"
+                cls._open_until[provider] = time.time() + cls.COOLDOWN_SECONDS
+                logger.warning(
+                    f"[CircuitBreaker] Provider '{provider}' circuit OPEN ({cnt} consecutive server/timeout errors). "
+                    f"Cooldown for {cls.COOLDOWN_SECONDS:.0f}s. Reason: {reason}"
+                )
+
+    @classmethod
+    def blacklist_model(cls, provider: str, model: str, reason: str, duration: float = 1800.0) -> None:
+        key = (provider, model)
+        cls._blacklisted_models[key] = time.time() + duration
+        cls._blacklist_reasons[key] = reason
+        logger.warning(f"[CapabilityBlacklist] Blacklisting model '{model}' ({provider}) for {duration:.0f}s. Reason: {reason}")
+
+    @classmethod
+    def is_model_blacklisted(cls, provider: str, model: str) -> bool:
+        key = (provider, model)
+        if key in cls._blacklisted_models:
+            if time.time() < cls._blacklisted_models[key]:
+                return True
+            cls._blacklisted_models.pop(key, None)
+            cls._blacklist_reasons.pop(key, None)
+        return False
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._states.clear()
+        cls._consecutive_failures.clear()
+        cls._open_until.clear()
+        cls._blacklisted_models.clear()
+        cls._blacklist_reasons.clear()
+
 
 class LLMFactory:
     """
@@ -423,6 +497,23 @@ class FallbackClientWrapper(BaseLLMClient):
                 logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' (in cooldown for {remaining:.1f}s)")
                 continue
 
+            provider = self.factory._resolve_provider(model)
+            if not ProviderCircuitBreaker.is_provider_available(provider):
+                logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — provider '{provider}' circuit is OPEN")
+                continue
+            if ProviderCircuitBreaker.is_model_blacklisted(provider, model):
+                logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — model is blacklisted")
+                continue
+
+            try:
+                from utils.api.credential_pool import get_credential_pool
+                cred_pool = get_credential_pool()
+                if cred_pool and not cred_pool.is_model_available(model):
+                    logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — in CredentialPool model cooldown")
+                    continue
+            except Exception:
+                pass
+
             client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
             if not client:
                 continue
@@ -463,6 +554,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         
                     self.model = model
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
+                    ProviderCircuitBreaker.record_provider_success(provider)
                     # Reset backoff count and clear cooldown for this slot on success
                     self._slot_backoff_count[slot_name] = 0
                     self._slot_cooldowns.pop(slot_name, None)
@@ -515,6 +607,8 @@ class FallbackClientWrapper(BaseLLMClient):
                     last_error = f"Model {model} ({slot_name}) timed out in {method_name}{detail}"
                     logger.warning(f"{last_error}. Trying next fallback...")
 
+                    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="timeout")
+
                     import time
                     cnt = self._slot_backoff_count.get(slot_name, 0)
                     cd_duration = min(60.0 * (2 ** cnt), 1800.0)
@@ -562,6 +656,11 @@ class FallbackClientWrapper(BaseLLMClient):
                             continue
 
                     # Strategy 3: Failover to next model with exponential cooldown
+                    is_server_or_timeout = (reason in (FailoverReason.SERVER_ERROR, FailoverReason.NETWORK_TIMEOUT, FailoverReason.NETWORK_CONNECTION))
+                    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value)
+                    if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
+                        ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=1800.0)
+
                     import time
                     cnt = self._slot_backoff_count.get(slot_name, 0)
                     cd_duration = min(60.0 * (2 ** cnt), 1800.0)

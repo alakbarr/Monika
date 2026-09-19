@@ -48,6 +48,35 @@ def test_profile_manager_lifecycle():
         assert pm.get_active_profile_name() == "default"
 
 
+def test_profile_manager_extended():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pm = ProfileManager(root_dir=tmpdir)
+
+        # 1. Verify active env and data paths
+        env_path = pm.get_env_path_for_active()
+        data_dir = pm.get_data_dir_for_active()
+        assert data_dir is not None
+        assert os.path.exists(data_dir)
+
+        # 2. Create and export profile
+        p_dir = pm.create_profile("test_exp")
+        assert os.path.exists(p_dir)
+        zip_path = os.path.join(tmpdir, "exported.zip")
+        out_zip = pm.export_profile("test_exp", zip_path)
+        assert os.path.exists(out_zip)
+
+        # 3. Delete profile
+        assert pm.delete_profile("test_exp") is True
+        names = [p.name for p in pm.list_profiles()]
+        assert "test_exp" not in names
+
+        # 4. Import profile from zip
+        imported_dir = pm.import_profile(out_zip, new_name="imported_profile")
+        assert os.path.exists(imported_dir)
+        names = [p.name for p in pm.list_profiles()]
+        assert "imported_profile" in names
+
+
 def test_settings_disk_lkg_recovery():
     with tempfile.TemporaryDirectory() as tmpdir:
         cfg_path = os.path.join(tmpdir, "settings.yaml")

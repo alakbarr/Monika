@@ -1780,8 +1780,37 @@ STAGE2_TOOLS.append(RETRIEVE_SPILLED_CONTEXT)
 if RETRIEVE_SPILLED_CONTEXT not in STAGE2_ESSENTIAL_TOOLS:
     STAGE2_ESSENTIAL_TOOLS.append(RETRIEVE_SPILLED_CONTEXT)
 
+DELEGATE_SPECIALIST_ANALYSIS = _tool(
+    name="delegate_specialist_analysis",
+    description=(
+        "Delegate deep specialized analysis to an isolated subagent. "
+        "The specialist runs with isolated context, avoiding parent history pollution, "
+        "and returns a structured analytical summary. "
+        "Roles: 'macro_specialist', 'technical_specialist', 'sentiment_specialist', 'risk_specialist'."
+    ),
+    properties={
+        "specialist_role": {
+            "type": "string",
+            "enum": ["macro_specialist", "technical_specialist", "sentiment_specialist", "risk_specialist"],
+            "description": "Specialist subagent role to execute.",
+        },
+        "task_prompt": {
+            "type": "string",
+            "description": "Concrete prompt detailing the specialized task to analyze.",
+        },
+        "symbol": {
+            "type": "string",
+            "description": "Optional trading instrument symbol (e.g. 'EURUSD', 'XAUUSD').",
+        },
+    },
+    required=["specialist_role", "task_prompt"],
+)
+
+TELEGRAM_TOOLS.append(DELEGATE_SPECIALIST_ANALYSIS)
+
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS]}.values())
+
 
 
 
