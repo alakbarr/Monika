@@ -64,11 +64,11 @@ export const ConfigEditorPanel: React.FC = () => {
 
   // Check unsaved changes
   const hasChanges = useMemo(() => {
-    if (activeSection === 'raw') {
-      return rawYaml !== initialRawYaml;
-    }
-    return JSON.stringify(config) !== JSON.stringify(initialConfig);
-  }, [activeSection, rawYaml, initialRawYaml, config, initialConfig]);
+    return (
+      JSON.stringify(config) !== JSON.stringify(initialConfig) ||
+      rawYaml !== initialRawYaml
+    );
+  }, [rawYaml, initialRawYaml, config, initialConfig]);
 
   // Unsaved changes beforeunload protection
   useEffect(() => {

@@ -107,7 +107,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         lastRefresh: new Date(),
         error: null,
       });
-    } catch (e) {
+    } catch {
       set({ error: 'Connection lost. Retrying...' });
     }
   },
@@ -156,7 +156,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         lastRefresh: new Date(),
         error: null,
       });
-    } catch (e) {
+    } catch {
       set({ loading: false, error: 'Failed to load dashboard data.' });
     }
   },
@@ -188,8 +188,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         : p
     );
     const existingQuote = get().marketQuotes[sym];
-    const prevPrice = existingQuote?.price || bid;
-    const changePct = prevPrice > 0 ? ((bid - prevPrice) / prevPrice) * 100 : 0;
+    const rawChange = tick.change_pct ?? tick.changePct ?? tick.pct_change;
+    const changePct =
+      typeof rawChange === 'number'
+        ? rawChange
+        : rawChange != null
+          ? Number(rawChange) || 0
+          : existingQuote && existingQuote.price > 0
+            ? ((bid - existingQuote.price) / existingQuote.price) * 100
+            : 0;
+
     const marketQuotes = {
       ...get().marketQuotes,
       [sym]: { price: bid, changePct },

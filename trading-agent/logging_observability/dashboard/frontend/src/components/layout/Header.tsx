@@ -28,6 +28,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav }) => {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        sounds.playClick('typewriter');
+        setShortcutsOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleAudioToggle = () => {
     const nextMuted = sounds.toggleMute();
     setIsMuted(nextMuted);

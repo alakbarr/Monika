@@ -10,9 +10,20 @@ interface VixSparklineProps {
   showAxes?: boolean;
 }
 
+const safeDateFormat = (dateStr: string | null | undefined, pattern: string): string => {
+  if (!dateStr) return '—';
+  try {
+    const d = parseISO(dateStr);
+    return isNaN(d.getTime()) ? '—' : format(d, pattern);
+  } catch {
+    return '—';
+  }
+};
+
 const CustomTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || !payload[0]?.payload) return null;
   const d = payload[0].payload as VixDataPoint;
+  if (!d || d.close == null) return null;
   const s = vixSentiment(d.close);
   return (
     <div
@@ -27,7 +38,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       }}
     >
       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-        {format(parseISO(d.date), 'dd MMM')}
+        {safeDateFormat(d.date, 'dd MMM')}
       </div>
       <div
         className="tabular-nums"
@@ -50,10 +61,32 @@ export const VixSparkline: React.FC<VixSparklineProps> = ({
   height = 80,
   showAxes = false,
 }) => {
-  const max = Math.max(...data.map((d) => d.close));
-  const min = Math.min(...data.map((d) => d.close));
+  if (!data || data.length === 0) {
+    return (
+      <div
+        style={{
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--color-ink-soft)',
+          fontSize: 'var(--text-xs)',
+          fontFamily: 'var(--font-precision)',
+        }}
+      >
+        — No VIX historical data available —
+      </div>
+    );
+  }
+
+  const closes = data.map((d) => d.close).filter((c): c is number => typeof c === 'number' && !isNaN(c));
+  const max = closes.length > 0 ? Math.max(...closes) : 25;
+  const min = closes.length > 0 ? Math.min(...closes) : 12;
+  const yDomain = isFinite(min) && isFinite(max)
+    ? [Math.floor(min) - 2, Math.ceil(max) + 2]
+    : [10, 35];
   const latest = data[data.length - 1];
-  const s = latest ? vixSentiment(latest.close) : { color: 'var(--color-brass)' };
+  const s = latest && latest.close != null ? vixSentiment(latest.close) : { color: 'var(--color-brass)' };
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -67,7 +100,7 @@ export const VixSparkline: React.FC<VixSparklineProps> = ({
         {showAxes && (
           <XAxis
             dataKey="date"
-            tickFormatter={(v) => format(parseISO(v), 'dd')}
+            tickFormatter={(v) => safeDateFormat(v, 'dd')}
             tick={{ fill: 'var(--color-ink-soft)', fontSize: 9, fontFamily: 'var(--font-precision)' }}
             axisLine={{ stroke: 'var(--color-rule)' }}
             tickLine={false}
@@ -75,7 +108,7 @@ export const VixSparkline: React.FC<VixSparklineProps> = ({
         )}
         {showAxes && (
           <YAxis
-            domain={[Math.floor(min) - 2, Math.ceil(max) + 2]}
+            domain={yDomain}
             tick={{ fill: 'var(--color-ink-soft)', fontSize: 9, fontFamily: 'var(--font-precision)' }}
             axisLine={{ stroke: 'var(--color-rule)' }}
             tickLine={false}
