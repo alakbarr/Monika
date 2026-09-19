@@ -99,6 +99,12 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 # ---------------------------------------------------------------------------
+# Bootstrap runtime & network hardening (RFC 8305 Happy Eyeballs & Windows UTF-8)
+# ---------------------------------------------------------------------------
+from bootstrap import install_bootstrap_hardening
+install_bootstrap_hardening()
+
+# ---------------------------------------------------------------------------
 # Bootstrap logging immediately (before any other import)
 # ---------------------------------------------------------------------------
 from logging_observability.activity_logger import setup_logging

@@ -1224,6 +1224,14 @@ llm:
       rate_limits:
         rpm: 5
         rpd: 20
+    gemini-3.8-flash:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
     gemini-3.5-flash:
       provider: gemini
       context_window: 1000000
@@ -1826,8 +1834,8 @@ llm:
       max_tokens: 6144
       temperature: 0.0
     trade_reflection:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
+      primary: gemini-3.8-flash
+      fallback_1: gemini-3.5-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-compound
       thinking:

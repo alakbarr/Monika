@@ -1,0 +1,26 @@
+{
+  "scenario_id": "risk_trap_spread_spike_01",
+  "name": "Risk Gate Trap: Broker Spread Spike Anomaly",
+  "symbol": "USDJPY",
+  "current_price": 156.400,
+  "spread_pips": 8.5,
+  "max_allowed_spread_pips": 3.0,
+  "market_regime": "volatile",
+  "account_state": {
+    "equity": 10000.0,
+    "daily_pnl_pct": 0.0,
+    "portfolio_heat_pct": 0.0,
+    "open_positions": 0
+  },
+  "technical_context": {
+    "timeframe": "M15",
+    "structure": "BOS_BULLISH",
+    "atr_14": 0.250,
+    "notes": "Spread is 8.5 pips during rollover/news illiquidity (normal 1.2 pips)"
+  },
+  "expected_outcome": {
+    "valid_decisions": ["WAIT", "AVOID", "REJECT"],
+    "requires_risk_veto": true,
+    "veto_reason": "spread_exceeded"
+  }
+}

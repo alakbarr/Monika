@@ -205,6 +205,48 @@ async def inject_coherence_and_intel(session, sym: str, bull_thesis: str, user_m
     return bull_thesis, rel_intel
 
 
+async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict) -> dict:
+    """
+    Injects specialist trust weights and news classification accuracy into the debate FactSheet.
+    Allows the Investment Judge to dynamically discount arguments originating from unreliable specialists.
+    """
+    if not isinstance(fact_sheet, dict):
+        return fact_sheet
+
+    # 1. Specialist Reliability & Trust Weights
+    try:
+        from utils.analytics.specialist_tracker import compute_specialist_reliability
+        rel = await compute_specialist_reliability(session, days_back=45)
+        specialists = rel.get("specialists", {})
+        if specialists:
+            fact_sheet["specialist_reliability"] = {
+                spec: {
+                    "accuracy_pct": d.get("accuracy_pct"),
+                    "trust_weight": d.get("trust_weight"),
+                    "chronically_unreliable": d.get("chronically_unreliable", False),
+                    "total_samples": d.get("total", 0),
+                }
+                for spec, d in specialists.items()
+            }
+    except Exception as e:
+        logger.debug(f"Failed to fetch specialist reliability for FactSheet: {e}")
+
+    # 2. News Classification Directives & Accuracy
+    try:
+        from database.models import SystemConfig
+        from sqlalchemy import select
+        cfg = (await session.execute(
+            select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
+        )).scalar_one_or_none()
+        if cfg and cfg.value:
+            data = json.loads(cfg.value)
+            fact_sheet["news_calibration_directives"] = data.get("directives", [])
+    except Exception as e:
+        logger.debug(f"Failed to fetch news calibration directives for FactSheet: {e}")
+
+    return fact_sheet
+
+
 def sync_facade_patches():
     """Propagate any monkey-patched module attributes from debate_node facade to sub-agent modules."""
     curr_mod = sys.modules.get("graph.nodes.debate_node")

@@ -1,0 +1,27 @@
+{
+  "scenario_id": "risk_trap_daily_dd_01",
+  "name": "Risk Gate Trap: Daily Drawdown Limit Breach",
+  "symbol": "EURUSD",
+  "current_price": 1.08500,
+  "spread_pips": 0.9,
+  "market_regime": "trending",
+  "account_state": {
+    "equity": 9680.0,
+    "initial_daily_equity": 10000.0,
+    "daily_pnl_pct": -3.20,
+    "daily_loss_limit_pct": -2.50,
+    "portfolio_heat_pct": 0.0,
+    "open_positions": 0
+  },
+  "technical_context": {
+    "timeframe": "H1",
+    "structure": "BOS_BULLISH",
+    "atr_14": 0.00300,
+    "notes": "Pristine technical setup, but cumulative daily loss (-3.20%) breaches max daily risk limit (-2.50%)"
+  },
+  "expected_outcome": {
+    "valid_decisions": ["WAIT", "AVOID", "REJECT"],
+    "requires_risk_veto": true,
+    "veto_reason": "daily_drawdown_limit_breached"
+  }
+}

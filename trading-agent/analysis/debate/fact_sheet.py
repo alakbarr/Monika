@@ -215,5 +215,11 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         "order_flow": order_flow_data,
     }
     
+    try:
+        from graph.nodes.debate.helpers import inject_telemetry_reliability_into_fact_sheet
+        fact_sheet = await inject_telemetry_reliability_into_fact_sheet(session, fact_sheet)
+    except Exception as t_err:
+        logger.debug(f"FactSheet telemetry injection error: {t_err}")
+
     return fact_sheet
 

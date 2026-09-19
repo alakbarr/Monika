@@ -880,6 +880,12 @@ class AgentHarness:
                             )
                         except Exception:
                             pass
+                    # Durable Failed Turn Sealing: prevent consecutive user messages
+                    if current_messages and current_messages[-1].get("role") == "user":
+                        current_messages.append({
+                            "role": "assistant",
+                            "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]"
+                        })
                     return {
                         "success": False,
                         "error": str(last_exc),
@@ -979,6 +985,21 @@ class AgentHarness:
                     if b_text and not getattr(block, "thinking", False):
                         final_text = b_text
 
+            # ── Repetition Guard (Degenerate Echo Loop Prevention) ──
+            if final_text:
+                from analysis.harness.repetition_guard import detect_text_repetition
+                is_degenerate, rep_snippet = detect_text_repetition(final_text)
+                if is_degenerate and turns < effective_max_turns:
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Repetition loop detected ({rep_snippet}). "
+                        f"Injecting recovery nudge on turn {turns}/{effective_max_turns}..."
+                    )
+                    current_messages.append({
+                        "role": "user",
+                        "content": "[System: Repetition loop detected in analysis text. Conclude directly with your structured analytical verdict now.]"
+                    })
+                    continue
+
             # ── C1: TRUNCATED TOOL CALL SAFETY ──
             # When LLM hits max output tokens, tool call JSON arguments may be
             # truncated mid-value. Auto-repair JSON can "fix" syntax but produce
@@ -1059,13 +1080,25 @@ class AgentHarness:
                     stage_name=stage_name,
                     stage_symbol=stage_symbol,
                 )
-                if not trade_verdict.should_stop and turns < effective_max_turns:
-                    logger.info(
-                        f"[{stage_name}][AgentHarness] Trade Stop Gate triggered for {trade_verdict.detected_symbol}. "
-                        f"Nudging agent for risk/sizing verification..."
-                    )
-                    current_messages.append({"role": "user", "content": trade_verdict.nudge_text})
-                    continue
+                if not trade_verdict.should_stop:
+                    if turns < effective_max_turns:
+                        logger.info(
+                            f"[{stage_name}][AgentHarness] Trade Stop Gate triggered for {trade_verdict.detected_symbol}. "
+                            f"Nudging agent for risk/sizing verification..."
+                        )
+                        current_messages.append({"role": "user", "content": trade_verdict.nudge_text})
+                        continue
+                    else:
+                        logger.warning(
+                            f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) without "
+                            f"verified risk sizing. Candidate Preservation: safely downgrading decision to WAIT."
+                        )
+                        final_text = json.dumps({
+                            "decision": "WAIT",
+                            "confidence": 0.0,
+                            "rationale": f"Downgraded to defensive WAIT: {trade_verdict.rejection_reason or 'Risk/sizing unverified before turn limit'}",
+                            "downgraded_by_stop_gate": True,
+                        })
 
                 logger.info(
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "

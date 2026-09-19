@@ -1236,6 +1236,14 @@ class TelegramBot:
             action_id = data.split(":", 1)[1]
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
+                if action_id.isdigit() and self.execution_service:
+                    await query.edit_message_text(f"⏳ Mengeksekusi analisis #{action_id}...")
+                    try:
+                        res = await self.execution_service.execute_by_analysis_id(int(action_id))
+                        await query.edit_message_text(f"✅ {res.summary() if hasattr(res, 'summary') else str(res)}")
+                    except Exception as exec_err:
+                        await query.edit_message_text(f"❌ Gagal eksekusi #{action_id}: {exec_err}")
+                    return
                 await query.edit_message_text("❌ Sesi tidak ditemukan.")
                 return
             await query.edit_message_text("⏳ Mengeksekusi...")
@@ -1250,6 +1258,14 @@ class TelegramBot:
             action_id = data.split(":", 1)[1]
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
+                if action_id.isdigit() and self.execution_service:
+                    await query.edit_message_text(f"⏳ Mengeksekusi analisis #{action_id}...")
+                    try:
+                        res = await self.execution_service.execute_by_analysis_id(int(action_id))
+                        await query.edit_message_text(f"✅ {res.summary() if hasattr(res, 'summary') else str(res)}")
+                    except Exception as exec_err:
+                        await query.edit_message_text(f"❌ Gagal eksekusi #{action_id}: {exec_err}")
+                    return
                 await query.edit_message_text("❌ Sesi tidak ditemukan.")
                 return
             await query.edit_message_text("⏳ Mengeksekusi dan mengaktifkan izin sesi (4h)...")
@@ -1264,6 +1280,38 @@ class TelegramBot:
             action_id = data.split(":", 1)[1]
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
+                if action_id.isdigit():
+                    from database.db import get_session
+                    from database.models import ActivityLog, AssetAnalysis, PaperTradeRecord
+                    from sqlalchemy import update as sql_update
+                    async with get_session() as session:
+                        session.add(ActivityLog(
+                            category="trading",
+                            description=f"Trade proposal #{action_id} REJECTED by admin via Telegram inline button",
+                            actor="telegram_admin",
+                        ))
+                        try:
+                            await session.execute(
+                                sql_update(AssetAnalysis)
+                                .where(AssetAnalysis.id == int(action_id))
+                                .values(execution_status='rejected', execution_notes='Rejected via Telegram inline button')
+                            )
+                            await session.execute(
+                                sql_update(PaperTradeRecord)
+                                .where(PaperTradeRecord.analysis_id == int(action_id))
+                                .where(PaperTradeRecord.status == 'open')
+                                .values(
+                                    status='closed',
+                                    closed_at=datetime.now(timezone.utc),
+                                    exit_reason='rejected_by_admin',
+                                    pnl_pct=0.0,
+                                )
+                            )
+                        except Exception:
+                            pass
+                        await session.commit()
+                    await query.edit_message_text(f"❌ Analisis #{action_id} ditolak.")
+                    return
                 await query.edit_message_text("❌ Sesi tidak ditemukan.")
                 return
             msg = await agent.reject_action(action_id)
