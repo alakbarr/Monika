@@ -67,7 +67,7 @@ class PromptCacheManager:
         system_prompt: Union[str, List[Union[Dict[str, Any], str]]],
         tools: Optional[List[Dict[str, Any]]] = None,
         messages: Optional[List[Dict[str, Any]]] = None,
-        ttl: str = "1h",
+        ttl: Optional[str] = None,
     ) -> Tuple[List[Dict[str, Any]], Optional[List[Dict[str, Any]]], List[Dict[str, Any]]]:
         """Place up to 4 cache_control breakpoints on stable prefix boundaries for Anthropic.
         

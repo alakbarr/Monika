@@ -220,7 +220,9 @@ class CacheBreakpointManager:
     def apply_to_messages(
         self,
         messages: List[Dict[str, Any]],
-        max_message_breakpoints: int = 2
+        max_message_breakpoints: int = 2,
+        checkpoint_turn_index: Optional[int] = None,
+        **kwargs: Any
     ) -> List[Dict[str, Any]]:
         """
         Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.
@@ -250,7 +252,9 @@ class CacheBreakpointManager:
         endpoints = self.find_completed_transaction_endpoints(updated_messages)
         target_indices = []
 
-        if endpoints:
+        if checkpoint_turn_index is not None:
+            target_indices = [checkpoint_turn_index]
+        elif endpoints:
             # Take the last up to max_message_breakpoints completed endpoints
             target_indices = endpoints[-max_message_breakpoints:]
         elif len(updated_messages) >= 2:
@@ -259,7 +263,8 @@ class CacheBreakpointManager:
         elif len(updated_messages) == 1:
             target_indices = [0]
 
-        for idx in target_indices:
+        for raw_idx in target_indices:
+            idx = raw_idx if raw_idx >= 0 else (len(updated_messages) + raw_idx)
             if 0 <= idx < len(updated_messages):
                 msg = updated_messages[idx]
                 content = msg.get("content")

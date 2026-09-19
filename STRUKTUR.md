@@ -248,6 +248,7 @@ Monika/
     │   │   │   ├── macro_handlers.py
     │   │   │   ├── position_handlers.py
     │   │   │   ├── sentiment_handlers.py
+    │   │   │   ├── spill_reader_tool.py
     │   │   │   └── technical_handlers.py
     │   │   └── handlers
     │   │       ├── __init__.py
@@ -399,6 +400,7 @@ Monika/
     │   │   ├── position_synchronizer.py
     │   │   ├── reconciliation.py
     │   │   ├── risk_evaluator.py
+    │   │   ├── self_healing_executor.py
     │   │   ├── sizing_calculator.py
     │   │   └── state_machine.py
     │   ├── verification_engine.py
@@ -625,6 +627,7 @@ Monika/
     ├── skills
     │   ├── curator.py
     │   ├── loader.py
+    │   ├── trading_skill_linter.py
     │   ├── usage_tracker.py
     │   ├── crystallized
     │   └── trading
@@ -693,6 +696,7 @@ Monika/
         │   ├── audit_settings_keys.py
         │   ├── container.py
         │   ├── db_backup.py
+        │   ├── env_file_manager.py
         │   ├── event_loop.py
         │   ├── log_redactor.py
         │   ├── notifier.py

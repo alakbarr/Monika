@@ -744,7 +744,11 @@ async def _cmd_logs(args):
 
 async def _cmd_doctor(args):
     from cli.doctor import SystemDoctor
-    doc = SystemDoctor(fix=getattr(args, "fix", False), verbose=getattr(args, "verbose", False))
+    doc = SystemDoctor(
+        fix=getattr(args, "fix", False),
+        live_probes=not getattr(args, "offline", False),
+        verbose=getattr(args, "verbose", False)
+    )
     await doc.run_diagnostics()
     code = doc.render_report()
     if code != 0 and not getattr(args, "fix", False):
@@ -799,8 +803,24 @@ async def _cmd_profile(args):
             console.print(f"{stamp_err('PROFILE')} Failed to create profile: {e}")
 
 
+class MonikaArgumentParser(argparse.ArgumentParser):
+    """Custom argument parser providing fuzzy suggestions for command typos."""
+    def error(self, message):
+        import difflib
+        import re
+        m = re.search(r"invalid choice:\s*'([^']+)'\s*\(choose from (.*?)\)", message)
+        if m:
+            typo = m.group(1)
+            choices = [c.strip().strip("'") for c in m.group(2).split(",")]
+            matches = difflib.get_close_matches(typo, choices, n=2, cutoff=0.5)
+            suggestion = f"\nDid you mean: {', '.join(matches)}?" if matches else ""
+            sys.stderr.write(f"monika: error: '{typo}' is not a valid command.{suggestion}\nRun 'python -m cli.main --help' to view all commands.\n")
+            sys.exit(2)
+        super().error(message)
+
+
 def parse_args(args_list=None):
-    parser = argparse.ArgumentParser(description="AI Trading Agent CLI Interface")
+    parser = MonikaArgumentParser(description="AI Trading Agent CLI Interface")
     parser.add_argument("-p", "--profile", type=str, default=None, help="Target isolated environment profile (e.g. paper, live, propfirm)")
     subparsers = parser.add_subparsers(dest="command", help="Administrative subcommands")
 
@@ -884,6 +904,7 @@ def parse_args(args_list=None):
     # Command: doctor
     doctor_parser = subparsers.add_parser("doctor", help="Run comprehensive system diagnostics with optional auto-fix")
     doctor_parser.add_argument("--fix", action="store_true", default=False, help="Attempt to auto-fix recoverable issues")
+    doctor_parser.add_argument("--offline", action="store_true", default=False, help="Skip live database and model connection probes")
     doctor_parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Show verbose diagnostic details")
 
     # Command: setup
@@ -953,6 +974,26 @@ async def _dispatch_cli(args):
         elif args.command == "profile":
             await _cmd_profile(args)
         else:
+            # First-run interceptor for daemon execution
+            from utils.infra.env_file_manager import EnvFileManager
+            if not EnvFileManager.is_configured():
+                if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+                    from rich.prompt import Confirm
+                    from cli.theme import get_console, stamp_warn
+                    console = get_console()
+                    console.print(f"\n{stamp_warn('NOT CONFIGURED')} Monika belum terkonfigurasi (kredensial minimum MT5, DB, atau LLM belum lengkap).")
+                    if Confirm.ask("Jalankan Interactive Setup Wizard sekarang?", default=True):
+                        await _cmd_setup(args)
+                        if not EnvFileManager.is_configured():
+                            console.print(f"{stamp_warn('ABORT')} Konfigurasi belum selesai. Menutup proses.\n")
+                            return
+                    else:
+                        console.print("Jalankan `python -m cli.main setup` untuk mengonfigurasi kredensial.\n")
+                        return
+                else:
+                    logger.critical("Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m cli.main setup' first.")
+                    sys.exit(1)
+
             print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")
             await _acli_run(args)
     finally:
