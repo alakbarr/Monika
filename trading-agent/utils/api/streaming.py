@@ -88,6 +88,42 @@ class StreamWriterFence:
         return self._current_token
 
 
+class StreamingHeartbeatMonitor:
+    """Background liveness pulse generator to prevent proxy/ALB 504 drops during reasoning."""
+
+    def __init__(self, interval: float = 25.0, touch_fn: Optional[Callable[[], Any]] = None):
+        self.interval = interval
+        self.touch_fn = touch_fn
+        self._task: Optional[asyncio.Task] = None
+        self._stopped = False
+
+    async def _pulse_loop(self) -> None:
+        import inspect
+        while not self._stopped:
+            try:
+                await asyncio.sleep(self.interval)
+                if self._stopped:
+                    break
+                if self.touch_fn:
+                    res = self.touch_fn()
+                    if inspect.isawaitable(res):
+                        await res
+                logger.debug("[StreamingHeartbeat] Heartbeat pulse emitted.")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.debug(f"[StreamingHeartbeat] Pulse warning: {e}")
+
+    def start(self) -> None:
+        self._stopped = False
+        self._task = asyncio.create_task(self._pulse_loop())
+
+    def stop(self) -> None:
+        self._stopped = True
+        if self._task and not self._task.done():
+            self._task.cancel()
+
+
 async def consume_sse_stream(
     response: aiohttp.ClientResponse,
     config: StreamConfig,
@@ -95,6 +131,7 @@ async def consume_sse_stream(
     model_name: str = "unknown",
     fence: Optional[StreamWriterFence] = None,
     fence_token: Optional[int] = None,
+    touch_callback: Optional[Callable[[], Any]] = None,
 ) -> StreamResult:
     """
     Consume SSE stream dari aiohttp response dengan idle timeout.
@@ -119,6 +156,8 @@ async def consume_sse_stream(
     is_first_chunk = True
 
     buffer = ""
+    heartbeat_monitor = StreamingHeartbeatMonitor(interval=25.0, touch_fn=touch_callback)
+    heartbeat_monitor.start()
 
     try:
         while True:
@@ -229,6 +268,8 @@ async def consume_sse_stream(
             result.total_duration = time.monotonic() - start_time
             return result
         raise
+    finally:
+        heartbeat_monitor.stop()
 
     result.total_duration = time.monotonic() - start_time
     return result

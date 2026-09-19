@@ -65,3 +65,15 @@ def test_assemble_stage1_system_tuple_gemini_cache_threshold():
     assert "Sample Alert" in dynamic_note
     # Gemini 3 implicit caching threshold is 4,096 tokens (>= 16,384 chars)
     assert estimate_tokens(static_sys) >= 4096
+
+
+def test_assemble_stage2_tiers_cache_invariance():
+    assembler = PromptAssembler({"trading": {"caveman_mode": True}})
+    t1_eur, t2_eur, t3_eur = assembler.assemble_stage2_tiers(symbol="EURUSD", include_target_in_system=False)
+    t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(symbol="GBPUSD", include_target_in_system=False)
+    assert t1_eur == t1_gbp
+    assert t2_eur == t2_gbp
+    assert "Symbol: EURUSD" not in t3_eur
+    assert "Symbol: GBPUSD" not in t3_gbp
+    # Tier 1 + Tier 2 invariant prefix (>= 4,096 tokens) guarantees cross-asset KV-cache hit
+    assert estimate_tokens(f"{t1_eur}\n\n{t2_eur}") >= 4096

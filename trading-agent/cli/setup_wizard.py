@@ -7,10 +7,19 @@ database connectivity, and risk limits with atomic comment-preserving persistenc
 
 import os
 import sys
+import re
 import logging
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger("TradingAgent.CLI.SetupWizard")
+
+_PASTE_CLEANER = re.compile(r"\x1b\[\s*200~|\x1b\[\s*201~")
+
+def clean_terminal_input(val: str) -> str:
+    """Strip bracketed paste escape sequences and surrounding whitespace."""
+    if not val:
+        return ""
+    return _PASTE_CLEANER.sub("", str(val)).strip()
 
 
 class SetupWizard:
@@ -187,7 +196,7 @@ class SetupWizard:
 
         def _ask_step(prompt_text: str, default: str = "", password: bool = False) -> str:
             val = Prompt.ask(prompt_text, default=default, password=password)
-            return val.strip()
+            return clean_terminal_input(val)
 
         current_step = 1
         max_step = 4

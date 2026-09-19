@@ -157,6 +157,16 @@ Monika/
     │   │   ├── tool_repair.py
     │   │   ├── trade_stop_gates.py
     │   │   └── verification_evidence_ledger.py
+    │   ├── mcp
+    │   │   ├── __init__.py
+    │   │   ├── client.py
+    │   │   ├── protocol.py
+    │   │   ├── server.py
+    │   │   └── servers
+    │   │       ├── __init__.py
+    │   │       ├── fetch_server.py
+    │   │       ├── filesystem_server.py
+    │   │       └── sqlite_server.py
     │   ├── memory
     │   │   ├── alpha_calculator.py
     │   │   ├── background_review.py
@@ -279,6 +289,7 @@ Monika/
     │   │       ├── market_data_tools.py
     │   │       ├── news_tools.py
     │   │       ├── sentiment_tools.py
+    │   │       ├── skills_tools.py
     │   │       ├── smc_tools.py
     │   │       └── trading_tools.py
     │   └── validators
@@ -573,6 +584,7 @@ Monika/
     │               └── types
     │                   └── api.ts
     ├── risk
+    │   ├── approval_hub.py
     │   ├── correlation_matrix.py
     │   ├── execution_simulator.py
     │   ├── portfolio_correlation_gate.py
@@ -590,6 +602,7 @@ Monika/
     │   ├── market_data_scheduler.py
     │   ├── news_watcher.py
     │   ├── order_reconciler.py
+    │   ├── playbook_curator.py
     │   ├── position_exit_reviewer.py
     │   ├── position_guardian.py
     │   ├── position_supervisor.py

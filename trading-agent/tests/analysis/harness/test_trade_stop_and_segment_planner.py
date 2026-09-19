@@ -84,3 +84,14 @@ def test_symbol_segment_planner():
     # At least one sequential segment
     types = [s[0] for s in segments_conflict]
     assert "sequential" in types
+
+
+def test_trade_stop_gate_rejection_reason():
+    ledger = VerificationEvidenceLedger()
+    text = '{"action": "SELL", "symbol": "GBPUSD", "entry": 1.2500, "sl": 1.2550, "tp": 1.2400}'
+    verdict = TradeStopGate.evaluate(text, ledger, stage_name="per_asset_GBPUSD", stage_symbol="GBPUSD")
+
+    assert not verdict.should_stop
+    assert verdict.detected_action == "SELL"
+    assert verdict.rejection_reason is not None
+    assert "verification evidence" in verdict.rejection_reason

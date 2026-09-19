@@ -102,3 +102,7 @@ class ProgressivePlaybookLoader:
                 except Exception as e:
                     logger.warning(f"Failed to read Level 2 reference {ref_file}: {e}")
         return None
+
+
+# Alias for backward compatibility
+ProgressiveMemoryLoader = ProgressivePlaybookLoader

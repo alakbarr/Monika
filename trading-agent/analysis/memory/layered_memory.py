@@ -26,6 +26,14 @@ logger = logging.getLogger("TradingAgent.LayeredMemory")
 MAX_CORE_TOKENS = 800  # Hard token budget cap
 
 
+def _wrap_market_memory(content: str, max_tokens: int = 400) -> str:
+    """Isolate dynamic/retrieved market memory in XML tags to prevent prompt injection."""
+    if not content or not content.strip():
+        return ""
+    truncated = truncate_to_budget(content.strip(), max(50, max_tokens - 10))
+    return f"<market-memory-context>\n{truncated}\n</market-memory-context>"
+
+
 class LayeredMemoryManager:
     """Manages 4-layer memory hierarchy for optimal context efficiency."""
 
@@ -128,7 +136,7 @@ class LayeredMemoryManager:
 
         if not session:
             composed = "\n".join(parts) if parts else ""
-            return truncate_to_budget(composed, 400) if composed else ""
+            return _wrap_market_memory(composed, 400)
 
         try:
             from database.models import DecisionReflection, PaperTradeRecord
@@ -183,11 +191,28 @@ class LayeredMemoryManager:
                 logger.debug(f"[{symbol}] Failed to generate negative constraints: {e}")
 
             composed = "\n".join(parts) if parts else ""
-            return truncate_to_budget(composed, 400) if composed else ""
+            return _wrap_market_memory(composed, 400)
         except Exception as e:
             logger.debug(f"[{symbol}] Symbol memory fetch non-fatal error: {e}")
             composed = "\n".join(parts) if parts else ""
-            return truncate_to_budget(composed, 400) if composed else ""
+            return _wrap_market_memory(composed, 400)
+
+    async def get_macro_regime_memory(self, session: Optional[AsyncSession] = None) -> str:
+        """Dynamic macro regime state wrapped in isolated memory tags."""
+        regime = await self._detect_regime(session)
+        return _wrap_market_memory(f"MACRO_REGIME: {regime}", 150)
+
+    async def get_playbook_memory(self, symbol: str) -> str:
+        """Retrieve crystallized tactical playbook for symbol wrapped in isolated memory tags."""
+        try:
+            from analysis.memory.progressive_loader import ProgressiveMemoryLoader
+            loader = ProgressiveMemoryLoader()
+            playbook = loader.get_level1_playbook(symbol)
+            if playbook:
+                return _wrap_market_memory(playbook, 600)
+        except Exception as e:
+            logger.debug(f"Failed to fetch playbook memory for {symbol}: {e}")
+        return ""
 
     async def _detect_regime(self, session: Optional[AsyncSession]) -> str:
         """Detect comprehensive market state from VIX, DXY trend, Macro Brief, and active geopolitics."""

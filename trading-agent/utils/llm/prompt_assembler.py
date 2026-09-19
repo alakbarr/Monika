@@ -203,6 +203,7 @@ class PromptAssembler:
         is_commodity: bool = False,
         detected_regime: Optional[str] = None,
         model_name: Optional[str] = None,
+        include_target_in_system: bool = True,
     ) -> Tuple[str, str, str]:
         """
         Returns structured 3 system tiers for Stage 2 per-asset analysis.
@@ -237,27 +238,34 @@ class PromptAssembler:
         if self.settings.get("trading", {}).get("caveman_mode", False):
             skill_names.append("caveman_mode")
 
+        effective_symbol = symbol if include_target_in_system else "the target asset"
+        effective_SYMBOL = symbol if include_target_in_system else "TARGET_ASSET"
+        effective_cot = (cot_code or "N/A") if include_target_in_system else "N/A"
+        effective_thresh_str = str(effective_threshold) if include_target_in_system else "7"
+        effective_rr_str = str(min_rr_ratio) if include_target_in_system else "1.3"
+
         skills = compose_system_prompt(
             *skill_names,
             max_tokens=12000,
-            symbol=symbol,
-            SYMBOL=symbol,
-            cot_code=cot_code or "N/A",
-            effective_threshold=str(effective_threshold),
-            min_rr_ratio=str(min_rr_ratio),
+            symbol=effective_symbol,
+            SYMBOL=effective_SYMBOL,
+            cot_code=effective_cot,
+            effective_threshold=effective_thresh_str,
+            min_rr_ratio=effective_rr_str,
             tool_order_guidance=tool_order_guidance or ""
         )
 
-        target_info = (
-            f"=== CURRENT ANALYSIS TARGET ===\n"
-            f"Symbol: {symbol}\n"
-            f"COT Code: {cot_code or 'N/A'}\n"
-            f"Effective Confluence Threshold: {effective_threshold}/14\n"
-            f"Minimum R:R Ratio (Intraday Range Strategy): {min_rr_ratio}\n"
-            f"=== END TARGET INFO ==="
-        )
-
-        tier3_parts = [_flatten_system_prompt(skills), target_info]
+        tier3_parts = [_flatten_system_prompt(skills)]
+        if include_target_in_system:
+            target_info = (
+                f"=== CURRENT ANALYSIS TARGET ===\n"
+                f"Symbol: {symbol}\n"
+                f"COT Code: {cot_code or 'N/A'}\n"
+                f"Effective Confluence Threshold: {effective_threshold}/14\n"
+                f"Minimum R:R Ratio (Intraday Range Strategy): {min_rr_ratio}\n"
+                f"=== END TARGET INFO ==="
+            )
+            tier3_parts.append(target_info)
 
         if core_memory:
             tier3_parts.append(f"[AGENT MEMORY]\n{core_memory}")

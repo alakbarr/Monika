@@ -205,8 +205,11 @@ class SystemDoctor:
         self.check_credentials(settings)
         self.check_mt5(settings)
         if self.live_probes:
-            await self.check_database_migrations()
-            await self.check_startup_checker_suite(settings)
+            await asyncio.gather(
+                self.check_database_migrations(),
+                self.check_startup_checker_suite(settings),
+                return_exceptions=True
+            )
         return self.diagnostics
 
     def render_report(self) -> int:

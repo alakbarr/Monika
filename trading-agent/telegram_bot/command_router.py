@@ -88,6 +88,7 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "regime":    {"type": CommandType.DIRECT, "admin_only": False},
     "audit":     {"type": CommandType.DIRECT, "admin_only": False},
     "closeall":  {"type": CommandType.ADMIN,  "admin_only": True},
+    "steer":     {"type": CommandType.ADMIN,  "admin_only": True},
     "fuzzy_suggest": {"type": CommandType.DIRECT, "admin_only": False},
 }
 
@@ -117,6 +118,7 @@ COMMAND_HELP: dict[str, str] = {
     "backtest":    "[Admin] Jalankan historical backtest: /backtest <days>",
     "approve":     "[Admin] Eksekusi proposal trade: /approve <analysis_id>",
     "reject":      "[Admin] Tolak proposal trade: /reject <analysis_id>",
+    "steer":       "[Admin] Pandu analisis in-flight secara real-time: /steer <symbol> <instruksi>",
     "report":      "[Laporan] Ringkasan mingguan PnL dan performa",
     "tearsheet":   "[Tearsheet] Institutional quant tearsheet & risk metrics: /tearsheet [days]",
     "stats":       "[Statistik] Statistik performa paper trading",

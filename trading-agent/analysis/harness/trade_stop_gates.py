@@ -35,6 +35,7 @@ class TradeStopVerdict:
     nudge_text: Optional[str] = None
     detected_action: Optional[str] = None
     detected_symbol: Optional[str] = None
+    rejection_reason: Optional[str] = None
 
 
 class TradeStopGate:
@@ -101,4 +102,5 @@ class TradeStopGate:
             nudge_text=nudge_text,
             detected_action=detected_action,
             detected_symbol=stage_symbol,
+            rejection_reason="No passing risk/sizing verification evidence recorded in ledger",
         )

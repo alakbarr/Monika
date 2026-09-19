@@ -1257,6 +1257,59 @@ class AgentHarness:
                         "content": json.dumps(suppressed_result),
                     }
 
+                # ── Trade Proposal Verification Stop Gate & Anti-Laziness Interception ──
+                if c_name == "submit_asset_analysis":
+                    target_sym = c_input.get("symbol") or stage_symbol
+                    decision = str(c_input.get("decision") or "").upper()
+
+                    # 1. Anti-laziness on Turn 1: WAIT cannot be submitted without inspecting technical structure or price action
+                    if turns == 1 and decision in ("WAIT", "HOLD", "NEUTRAL", "PASS", "NO_TRADE"):
+                        inspection_tools = {
+                            "get_smc_zones", "get_structure_breaks", "get_price_history",
+                            "get_indicator_snapshot", "get_mt5_bars", "get_atr", "get_swing_points"
+                        }
+                        if not any(t in called_tools for t in inspection_tools):
+                            logger.warning(
+                                f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."
+                            )
+                            tool_calls_made += 1
+                            called_tools.add(c_name)
+                            return {
+                                "type": "tool_result",
+                                "tool_use_id": c_id,
+                                "content": json.dumps({
+                                    "status": "anti_laziness_nudge",
+                                    "error": (
+                                        "Cannot conclude WAIT on turn 1 without inspecting technical structure or price action. "
+                                        "You must call get_smc_zones, get_structure_breaks, or get_price_history first."
+                                    ),
+                                }),
+                                "is_error": True,
+                            }
+
+                    # 2. Risk Verification Evidence Check for BUY/SELL
+                    if decision in ("BUY", "SELL", "LONG", "SHORT"):
+                        if not self.verification_ledger.has_passed_evidence(target_sym):
+                            logger.warning(
+                                f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
+                                f"BLOCKED: No passing verification evidence in ledger."
+                            )
+                            tool_calls_made += 1
+                            called_tools.add(c_name)
+                            return {
+                                "type": "tool_result",
+                                "tool_use_id": c_id,
+                                "content": json.dumps({
+                                    "status": "blocked_by_stop_gate",
+                                    "error": (
+                                        f"Trade proposal ({decision} {target_sym}) blocked by TradeStopGate: "
+                                        f"No passing calculate_position_size or validate_risk_limits evidence recorded in ledger. "
+                                        f"You MUST call calculate_position_size with exact stop_loss and take_profit parameters first."
+                                    ),
+                                }),
+                                "is_error": True,
+                            }
+
                 # c. Dynamic Execution via ToolExecutor with OpenTelemetry Tool Span and Plugin Hooks
                 tool_calls_made += 1
                 called_tools.add(c_name)
@@ -1329,12 +1382,32 @@ class AgentHarness:
             segments = planner.plan_segments(prepared_calls)
             for seg_type, batch in segments:
                 if seg_type == "parallel" and len(batch) > 1:
-                    batch_res = await asyncio.gather(*[_execute_single_prepared_tool(tc) for tc in batch])
-                    tool_results.extend(batch_res)
+                    raw_results = await asyncio.gather(*[_execute_single_prepared_tool(tc) for tc in batch], return_exceptions=True)
+                    for idx, res in enumerate(raw_results):
+                        if isinstance(res, Exception):
+                            tc = batch[idx]
+                            logger.error(f"[{stage_name}][AgentHarness] Parallel tool {tc.get('name')} failed: {res}")
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tc.get("id", ""),
+                                "content": json.dumps({"status": "execution_error", "error": str(res)}),
+                                "is_error": True,
+                            })
+                        else:
+                            tool_results.append(res)
                 else:
                     for tc in batch:
-                        res = await _execute_single_prepared_tool(tc)
-                        tool_results.append(res)
+                        try:
+                            res = await _execute_single_prepared_tool(tc)
+                            tool_results.append(res)
+                        except Exception as ex:
+                            logger.error(f"[{stage_name}][AgentHarness] Sequential tool {tc.get('name')} failed: {ex}")
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tc.get("id", ""),
+                                "content": json.dumps({"status": "execution_error", "error": str(ex)}),
+                                "is_error": True,
+                            })
 
             # Append tool observations as next turn user message
             current_messages.append({"role": "user", "content": tool_results})

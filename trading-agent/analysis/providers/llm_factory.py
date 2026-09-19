@@ -16,6 +16,16 @@ import time
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
 
+# Memoized routes that reject native response_format / json_schema
+_UNSUPPORTED_SCHEMA_ROUTES: set[tuple[str, str]] = set()
+
+# Trading hot-path roles requiring zero-downtime eager failover
+HOT_PATH_ROLES: set[str] = {
+    "stage2", "stage2_essential", "debate", "bull_debater", "bear_debater",
+    "judge", "investment_judge", "risk_gate", "execution_verifier",
+    "position_guardian", "trailing_stop", "trigger_evaluator", "reactive_graph"
+}
+
 class ProviderCircuitBreaker:
     """
     Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
@@ -535,6 +545,19 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Safely clone mutable message lists / dicts while preserving unpicklable session objects
                     safe_args = [_safe_clone(a) for a in args]
                     safe_kwargs = {k: _safe_clone(v) for k, v in kwargs.items()}
+
+                    # Dynamic capability clamping (prevent context/output token limit errors)
+                    from analysis.providers.capabilities import get_model_capabilities
+                    caps = get_model_capabilities(model)
+                    if caps and caps.max_output_tokens:
+                        if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
+                            if safe_kwargs["max_tokens"] > caps.max_output_tokens:
+                                safe_kwargs["max_tokens"] = caps.max_output_tokens
+
+                    # Memoized schema rejection check: strip native response_format if previously rejected
+                    if (provider, model) in _UNSUPPORTED_SCHEMA_ROUTES and "response_format" in safe_kwargs:
+                        safe_kwargs.pop("response_format", None)
+
                     result = await asyncio.wait_for(
                         method(*safe_args, **safe_kwargs),
                         timeout=per_model_timeout
@@ -625,6 +648,12 @@ class FallbackClientWrapper(BaseLLMClient):
                     }
                     break
                 except Exception as e:
+                    # Memoize unsupported response_format if model returned schema rejection error
+                    err_msg = str(e).lower()
+                    if "response_format" in err_msg or "schema validation" in err_msg or "json_schema" in err_msg:
+                        _UNSUPPORTED_SCHEMA_ROUTES.add((provider, model))
+                        logger.warning(f"[{self.task_role}] Memoized unsupported response_format for {provider}/{model}")
+
                     # ── C4: STRUCTURED ERROR CLASSIFICATION ──
                     from analysis.providers.provider_failover_classifier import classify_error, FailoverReason
                     reason, detail = classify_error(e)
@@ -642,8 +671,37 @@ class FallbackClientWrapper(BaseLLMClient):
                         )
                         raise  # Let agent_harness.py C2 handle compression
 
-                    # Strategy 2: Retry same model with backoff
-                    if not reason.should_failover and reason.max_retries > 0:
+                    is_hot_path = getattr(self, "task_role", "") in HOT_PATH_ROLES
+                    is_rate_or_auth = reason in (
+                        FailoverReason.RATE_LIMIT_API,
+                        FailoverReason.RATE_LIMIT_MODEL,
+                        FailoverReason.AUTH_TRANSIENT,
+                    )
+
+                    # Strategy 2: In-Flight Key Rotation from APICredentialPool
+                    if is_rate_or_auth:
+                        try:
+                            from utils.api.credential_pool import APICredentialPool
+                            cred_pool = APICredentialPool()
+                            curr_key = getattr(client, "api_key", None) or getattr(client, "_api_key", None)
+                            if curr_key:
+                                cred_pool.report_rate_limit(provider, curr_key, model=model)
+                            next_key = cred_pool.get_key(provider, model=model, is_hot_path=is_hot_path)
+                            if next_key and next_key != curr_key:
+                                logger.info(f"[{self.task_role}] In-flight key rotation for {provider} on {slot_name}. Retrying immediately.")
+                                if hasattr(client, "api_key"):
+                                    client.api_key = next_key
+                                if hasattr(client, "_api_key"):
+                                    client._api_key = next_key
+                                if hasattr(client, "client") and hasattr(client.client, "api_key"):
+                                    client.client.api_key = next_key
+                                continue
+                        except Exception as pool_err:
+                            logger.debug(f"Credential pool rotation pass-through: {pool_err}")
+
+                    # Strategy 3: Retry same model with backoff OR Eager Failover for hot paths
+                    can_failover = reason.can_failover(is_hot_path=is_hot_path) if hasattr(reason, "can_failover") else reason.should_failover
+                    if not can_failover and reason.max_retries > 0:
                         if slot_retries < reason.max_retries:
                             backoff = reason.backoff_seconds * (1.5 ** slot_retries)
                             slot_retries += 1
@@ -655,7 +713,7 @@ class FallbackClientWrapper(BaseLLMClient):
                                 await asyncio.sleep(backoff)
                             continue
 
-                    # Strategy 3: Failover to next model with exponential cooldown
+                    # Strategy 4: Failover to next model with exponential cooldown
                     is_server_or_timeout = (reason in (FailoverReason.SERVER_ERROR, FailoverReason.NETWORK_TIMEOUT, FailoverReason.NETWORK_CONNECTION))
                     ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value)
                     if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
