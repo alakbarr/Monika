@@ -347,6 +347,18 @@ class OpenRouterProvider(OpenAIProvider):
             else:
                 kwargs["max_tokens"] = max(current_max, min_floor)
 
+        self._apply_provider_routing(kwargs)
+
+    def _apply_provider_routing(self, kwargs: dict) -> None:
+        """Injects OpenRouter provider routing configuration for lowest latency and parameter safety."""
+        extra = kwargs.setdefault("extra_body", {})
+        if isinstance(extra, dict) and "provider" not in extra:
+            extra["provider"] = {
+                "sort": "latency",
+                "require_parameters": True,
+                "data_collection": "deny",
+            }
+
     @classmethod
     def reset_cooldowns(cls, api_key: Optional[str] = None, model: Optional[str] = None) -> int:
         """Mereset status cooldown untuk seluruh atau kombinasi API key dan model tertentu."""

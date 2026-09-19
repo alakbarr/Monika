@@ -281,7 +281,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             if hasattr(active_client, 'run_agent_from_messages'):
                 rec_result = await active_client.run_agent_from_messages(
                     session=session,
-                    system_prompt=_flatten_system_prompt(system_prompt),
+                    system_prompt=system_prompt,
                     messages=messages,
                     tools=dynamic_tools,
                     max_tool_turns=3,

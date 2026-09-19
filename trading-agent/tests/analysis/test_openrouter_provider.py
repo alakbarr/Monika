@@ -50,7 +50,7 @@ def test_openrouter_reasoning_none():
     kwargs = {"model": provider.model, "messages": []}
     provider._apply_reasoning_params(kwargs)
 
-    assert "extra_body" not in kwargs
+    assert "reasoning" not in kwargs.get("extra_body", {})
 
 
 @pytest.mark.asyncio

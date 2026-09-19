@@ -61,7 +61,22 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
         settings = dict(path)
     else:
         if path is None:
-            if os.path.exists("config/settings.yaml"):
+            # Check for active profile marker first
+            active_profile_path = None
+            for p_cand in ("profiles/active_profile", "trading-agent/profiles/active_profile"):
+                if os.path.exists(p_cand):
+                    try:
+                        with open(p_cand, "r", encoding="utf-8") as pf:
+                            p_name = pf.read().strip()
+                            if p_name and p_name != "default":
+                                cand_cfg = f"profiles/{p_name}/settings.yaml" if os.path.exists(f"profiles/{p_name}/settings.yaml") else f"trading-agent/profiles/{p_name}/settings.yaml"
+                                if os.path.exists(cand_cfg):
+                                    active_profile_path = cand_cfg
+                    except Exception:
+                        pass
+            if active_profile_path:
+                path = active_profile_path
+            elif os.path.exists("config/settings.yaml"):
                 path = "config/settings.yaml"
             elif os.path.exists("trading-agent/config/settings.yaml"):
                 path = "trading-agent/config/settings.yaml"

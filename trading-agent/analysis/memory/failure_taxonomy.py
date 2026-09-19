@@ -242,3 +242,19 @@ def generate_negative_constraints(
             break
 
     return constraints
+
+
+def get_negative_constraints_for_regime(symbol: str, regime: str, max_rules: int = 3) -> List[str]:
+    """Retrieves relevant preventative rules based on market regime and symbol."""
+    rules = []
+    reg_lower = (regime or "").lower()
+    if any(k in reg_lower for k in ("trend", "bull", "bear")):
+        rules.extend([FailureCategory.TIMING_EARLY, FailureCategory.TIMING_LATE, FailureCategory.COUNTER_TREND_BLINDNESS])
+    elif any(k in reg_lower for k in ("range", "chop")):
+        rules.extend([FailureCategory.FALSE_BREAKOUT, FailureCategory.REGIME_MISCLASSIFICATION])
+    elif any(k in reg_lower for k in ("volatil", "news")):
+        rules.extend([FailureCategory.NEWS_SPIKE, FailureCategory.VOLATILITY_UNDERESTIMATION, FailureCategory.SL_TOO_TIGHT])
+    else:
+        rules.extend([FailureCategory.SL_TOO_TIGHT, FailureCategory.UNGROUNDED_CONFLUENCE])
+
+    return generate_negative_constraints(rules[:max_rules], symbol=symbol, current_regime=regime, max_constraints=max_rules)

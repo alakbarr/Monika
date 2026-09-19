@@ -626,7 +626,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     break
                 except Exception as e:
                     # ── C4: STRUCTURED ERROR CLASSIFICATION ──
-                    from analysis.providers.provider_failover_classifier import classify_error
+                    from analysis.providers.provider_failover_classifier import classify_error, FailoverReason
                     reason, detail = classify_error(e)
 
                     logger.warning(

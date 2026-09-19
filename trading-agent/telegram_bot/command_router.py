@@ -84,6 +84,11 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "credits":   {"type": CommandType.DIRECT, "admin_only": False},
     "interrupt": {"type": CommandType.DIRECT, "admin_only": False},
     "resume_proposals": {"type": CommandType.DIRECT, "admin_only": False},
+    "override":  {"type": CommandType.ADMIN,  "admin_only": True},
+    "regime":    {"type": CommandType.DIRECT, "admin_only": False},
+    "audit":     {"type": CommandType.DIRECT, "admin_only": False},
+    "closeall":  {"type": CommandType.ADMIN,  "admin_only": True},
+    "fuzzy_suggest": {"type": CommandType.DIRECT, "admin_only": False},
 }
 
 COMMAND_HELP: dict[str, str] = {
@@ -93,6 +98,10 @@ COMMAND_HELP: dict[str, str] = {
     "analysis":    "[Analisis] Analisis terkini untuk simbol: /analysis <symbol>",
     "history":     "[Riwayat] 10 aktivitas terakhir",
     "risk":        "[Risiko] Status risiko terkini (PnL harian, drawdown)",
+    "regime":      "[Rezim] Deteksi rezim makro dan volatilitas terkini",
+    "override":    "[Override] Ubah parameter risiko (misal: /override max_risk 1.5)",
+    "audit":       "[Audit] Jejak audit penalaran trade: /audit <ticket>",
+    "closeall":    "[Close All] Tutup seluruh posisi aktif",
     "vix":         "[VIX] Data VIX terkini",
     "tokens":      "[Token] Penggunaan token API AI hari ini",
     "credits":     "[Credits] Cek status saldo dan sisa kredit OpenRouter / LLM",
@@ -190,13 +199,26 @@ class CommandRouter:
 
             info  = DIRECT_COMMANDS.get(cmd)
             if info is None:
-                # Command tidak dikenali — perlakukan sebagai chat biasa
-                return ParsedCommand(
-                    command="chat",
-                    args=[],
-                    raw_text=raw_text,
-                    command_type=CommandType.CHAT,
-                )
+                from telegram_bot.fuzzy_router import FuzzyCommandRouter
+                fuzzy_router = FuzzyCommandRouter()
+                matched_def, suggestions = fuzzy_router.resolve(cmd)
+                if matched_def and matched_def.command in DIRECT_COMMANDS:
+                    cmd = matched_def.command
+                    info = DIRECT_COMMANDS[cmd]
+                elif suggestions:
+                    return ParsedCommand(
+                        command="fuzzy_suggest",
+                        args=suggestions,
+                        raw_text=raw_text,
+                        command_type=CommandType.DIRECT,
+                    )
+                else:
+                    return ParsedCommand(
+                        command="chat",
+                        args=[],
+                        raw_text=raw_text,
+                        command_type=CommandType.CHAT,
+                    )
 
             # Pengecekan khusus admin
             requires_admin = info.get("admin_only", False)
