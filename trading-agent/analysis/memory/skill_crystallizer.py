@@ -17,7 +17,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timezone
 
 from sqlalchemy import select, desc
@@ -26,6 +26,30 @@ from database.models import DecisionReflection, PaperTradeRecord, SystemConfig
 from skills.loader import invalidate_cache
 
 logger = logging.getLogger("TradingAgent.SkillCrystallizer")
+
+
+class ReadBeforeWriteGuard:
+    """Enforces that an existing skill must be read or inspected before updating or overwriting."""
+
+    def __init__(self):
+        self._inspected_paths: set[str] = set()
+
+    def record_inspection(self, path: Union[Path, str]) -> None:
+        self._inspected_paths.add(str(Path(path).resolve()))
+
+    def can_write(self, path: Union[Path, str]) -> bool:
+        p = Path(path).resolve()
+        if not p.exists():
+            return True
+        return str(p) in self._inspected_paths
+
+    def inspect_and_read(self, path: Union[Path, str]) -> str:
+        """Inspects existing skill file, records read, and returns current content."""
+        p = Path(path).resolve()
+        self.record_inspection(p)
+        if p.exists():
+            return p.read_text(encoding="utf-8")
+        return ""
 
 
 class SkillCrystallizer:
@@ -38,6 +62,7 @@ class SkillCrystallizer:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         self.SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+        self.read_guard = ReadBeforeWriteGuard()
 
     async def evaluate_and_crystallize(
         self,
@@ -132,9 +157,12 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Mandatory Stop Loss Buffer: >= 1.0x verified H4 ATR 14
 """
 
-        # Save to disk
+        # Save to disk with read-before-write inspection
         try:
+            if skill_path.exists():
+                self.read_guard.inspect_and_read(skill_path)
             skill_path.write_text(skill_content, encoding="utf-8")
+            self.read_guard.record_inspection(skill_path)
             invalidate_cache()
             logger.info(f"[SkillCrystallizer] Crystallized skill written: {skill_path.name}")
         except Exception as write_err:

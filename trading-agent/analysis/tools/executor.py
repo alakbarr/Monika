@@ -345,6 +345,34 @@ class ToolExecutor:
             code_str = tool_input.get("code", "") if isinstance(tool_input, dict) else str(tool_input)
             return await ptc.execute(code=code_str)
 
+        # Progressive Tool Disclosure Dispatch
+        if normalized_name == "search_tools":
+            from analysis.tools.tool_registry import default_registry
+            query = tool_input.get("query", "") if isinstance(tool_input, dict) else str(tool_input)
+            limit = int(tool_input.get("limit", 5)) if isinstance(tool_input, dict) else 5
+            matches = default_registry.search_tools(query, limit=limit)
+            return {"status": "success", "query": query, "matches": matches}
+
+        if normalized_name == "describe_tool":
+            from analysis.tools.tool_registry import default_registry
+            name_to_desc = tool_input.get("tool_name", "") if isinstance(tool_input, dict) else str(tool_input)
+            schema = default_registry.describe_tool(name_to_desc)
+            if schema:
+                return {"status": "success", "tool": schema}
+            return {"status": "error", "message": f"Tool '{name_to_desc}' not found in registry."}
+
+        if normalized_name == "load_tool_category":
+            from analysis.tools.tool_registry import default_registry
+            category = tool_input.get("category", "") if isinstance(tool_input, dict) else str(tool_input)
+            schemas = default_registry.load_category(category)
+            return {
+                "status": "success",
+                "category": category,
+                "loaded_count": len(schemas),
+                "tools": [s.get("name") for s in schemas],
+                "schemas": schemas,
+            }
+
         # 1. Monotonic Risk Invariant:
         # Once risk gate denies within a cycle, execution tools cannot override or escalate
         if "risk_denied" in self.monotonic_restrictions and normalized_name in ("execute_order_guard", "modify_position", "execute_market_order"):

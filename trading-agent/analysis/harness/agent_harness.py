@@ -19,6 +19,7 @@ import inspect
 import json
 import logging
 import random
+import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
@@ -101,6 +102,8 @@ class AgentHarness:
             warning_threshold=self.settings.get("stall_warning_threshold", 4),
             force_terminate_threshold=self.settings.get("stall_terminate_threshold", 7),
         )
+        from utils.llm.data_dedup import DataFetchDeduplicator
+        self.data_dedup = DataFetchDeduplicator()
 
     # --------------------------------------------------------------------------
     # Provider Response Normalization & Error Classification
@@ -131,8 +134,8 @@ class AgentHarness:
         return False
 
     @staticmethod
-    def _check_truncation(response: Any, stop_reason: str = "") -> bool:
-        """Detect if LLM response was truncated (stop_reason == 'length' or 'max_tokens')."""
+    def _check_truncation(response: Any, stop_reason: str = "", content: Optional[str] = None) -> bool:
+        """Detect if LLM response was truncated (stop_reason == 'length' or 'max_tokens' or premature cut)."""
         reasons = [stop_reason]
         if hasattr(response, "stop_reason"):
             reasons.append(getattr(response, "stop_reason", ""))
@@ -155,7 +158,19 @@ class AgentHarness:
                 elif hasattr(first_choice, "finish_reason"):
                     reasons.append(getattr(first_choice, "finish_reason", ""))
 
-        return any(str(r).lower() in ("length", "max_tokens") for r in reasons if r)
+        if any(str(r).lower() in ("length", "max_tokens") for r in reasons if r):
+            return True
+
+        # Stop-as-truncated heuristic: text cut off mid-sentence despite reporting stop
+        if content and isinstance(content, str) and len(content.strip()) > 80:
+            clean = content.strip()
+            if not re.search(r'[.!?。！？}\]"\'`]\s*$', clean):
+                raw_reasons = [str(r).lower() for r in reasons if r]
+                if "stop" in raw_reasons or "end_turn" in raw_reasons:
+                    logger.debug("Detected premature truncation despite stop finish_reason.")
+                    return True
+
+        return False
 
     @staticmethod
     def _fail_truncated_tool_calls(tool_use_blocks: list) -> list:
@@ -743,8 +758,13 @@ class AgentHarness:
             with llm_span(provider=provider_name, model=model_name, task_role=task_role) as active_llm_span:
                 for attempt in range(max_attempts):
                     try:
-                        # ── C4: ROLE ALTERNATION ENFORCEMENT ──
+                        # ── C4: ROLE ALTERNATION ENFORCEMENT & INTEGRITY REPAIR ──
                         role_safe_messages = self._enforce_role_alternation(current_messages)
+                        try:
+                            from analysis.harness.message_repair import repair_message_history
+                            role_safe_messages = repair_message_history(role_safe_messages)
+                        except Exception as e:
+                            logger.debug(f"Message repair skipped: {e}")
 
                         # ── C3: COPY-ON-WRITE MESSAGE PROTECTION ──
                         # Clone messages before sending to prevent provider-specific
@@ -1108,6 +1128,7 @@ class AgentHarness:
                 # Check if schema validation preflight failed
                 if call_item.get("_schema_error"):
                     tool_calls_made += 1
+                    self.guardrail_controller.record_denial()
                     return call_item["_schema_error"]
 
                 # Unified Tool Guardrails (Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Anti-Oscillation)
@@ -1120,6 +1141,8 @@ class AgentHarness:
                     )
                     tool_calls_made += 1
                     called_tools.add(c_name)
+                    if guard_verdict.action in ("reject", "nudge"):
+                        self.guardrail_controller.record_denial()
                     status_val = "already_executed" if guard_verdict.guard_name == "AntiOscillationGuard" else f"guardrail_{guard_verdict.action}"
                     return {
                         "type": "tool_result",
@@ -1200,6 +1223,7 @@ class AgentHarness:
 
                 await self._log_tool_call(session, stage_name, c_name, c_input, res_obj)
                 self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
+                self.guardrail_controller.record_success()
                 self.stall_guard.record_call(c_name, res_obj)
 
                 # Format tool result block with validation and micro-pruning
@@ -1215,6 +1239,29 @@ class AgentHarness:
                     tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
 
                 tool_res_content = self.compactor.micro_prune(tool_res_content, tool_name=c_name)
+
+                # ── Generation-Tracked Data Fetch Deduplication ──
+                dedup_notice = self.data_dedup.check_and_record(c_name, c_input, tool_res_content)
+                if dedup_notice:
+                    tool_res_content = dedup_notice
+
+                # ── Untrusted Content Isolation & Threat Scanning ──
+                untrusted_tools = frozenset({
+                    "get_news_items", "get_news_digest", "get_retail_sentiment",
+                    "get_social_sentiment", "web_search", "get_cot_report", "scrape_url",
+                    "get_forex_sentiment", "get_fxssi_sentiment", "get_structured_sentiment",
+                })
+                if c_name in untrusted_tools:
+                    try:
+                        from utils.security.threat_scanner import sanitize_or_block
+                        tool_res_content = sanitize_or_block(tool_res_content, source=c_name)
+                    except Exception:
+                        pass
+                    tool_res_content = (
+                        f'<untrusted_external_content source="{c_name}">\n'
+                        f'{tool_res_content}\n'
+                        f'</untrusted_external_content>'
+                    )
 
                 return {
                     "type": "tool_result",

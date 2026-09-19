@@ -88,7 +88,10 @@ Monika/
     │       ├── scraper_loop.py
     │       └── startup_watchdog.py
     ├── config
+    │   ├── atomic_writer.py
     │   ├── hot_reload.py
+    │   ├── key_validator.py
+    │   ├── migrations.py
     │   ├── schemas.py
     │   ├── settings.py
     │   └── settings.yaml
@@ -138,12 +141,14 @@ Monika/
     │   │   ├── context_compressor.py
     │   │   ├── error_classifier.py
     │   │   ├── harness_state.py
+    │   │   ├── message_repair.py
     │   │   ├── stall_guard.py
     │   │   ├── structured_output.py
     │   │   ├── tool_batch_planner.py
     │   │   └── tool_repair.py
     │   ├── memory
     │   │   ├── alpha_calculator.py
+    │   │   ├── background_review.py
     │   │   ├── chronicle_writer.py
     │   │   ├── decision_log.py
     │   │   ├── failure_taxonomy.py
@@ -297,6 +302,11 @@ Monika/
     ├── cli
     │   └── main.py
     ├── config
+    │   ├── atomic_writer.py
+    │   ├── hot_reload.py
+    │   ├── key_validator.py
+    │   ├── migrations.py
+    │   ├── schemas.py
     │   ├── settings.py
     │   ├── settings.yaml
     │   ├── MACRO_REALITY.md
@@ -338,6 +348,9 @@ Monika/
     │       ├── env.py
     │       └── versions
     ├── execution
+    │   ├── backends
+    │   │   ├── __init__.py
+    │   │   └── base.py
     │   ├── broker_adapter.py
     │   ├── effect_gate.py
     │   ├── execution_service.py
@@ -579,7 +592,9 @@ Monika/
     │   └── social
     │       └── twitter_watch.py
     ├── skills
+    │   ├── curator.py
     │   ├── loader.py
+    │   ├── usage_tracker.py
     │   ├── crystallized
     │   └── trading
     │       ├── adjudication_framework.md
@@ -661,9 +676,11 @@ Monika/
         │   ├── context_tracker.py
         │   ├── credential_pool.py
         │   ├── cycle_budget_guard.py
+        │   ├── data_dedup.py
         │   ├── deferred_dispatcher.py
         │   ├── memory_compressor.py
         │   ├── model_capabilities.py
+        │   ├── model_discipline.py
         │   ├── prompt_ab_test.py
         │   ├── prompt_assembler.py
         │   ├── prompt_caching.py
@@ -698,6 +715,9 @@ Monika/
         │   └── ssvp_coordinator.py
         ├── scheduling
         │   └── wall_clock.py
+        ├── security
+        │   ├── __init__.py
+        │   └── threat_scanner.py
         ├── typesafe
         │   ├── __init__.py
         │   └── jev_primitives.py
