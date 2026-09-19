@@ -1,8 +1,5 @@
-"""
-Unit tests for MT5SelfHealingExecutor.
-"""
-
 import pytest
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 from execution.service.self_healing_executor import MT5SelfHealingExecutor
 
@@ -28,11 +25,13 @@ async def test_self_healing_stops_invalid_10016():
     mock_tick.ask = 1.08500
     mock_tick.bid = 1.08485
 
+    mock_mt5 = MagicMock()
+    mock_mt5.symbol_info.return_value = mock_info
+    mock_mt5.symbol_info_tick.return_value = mock_tick
+
     healer = MT5SelfHealingExecutor(broker_adapter=mock_adapter)
 
-    with patch("MetaTrader5.symbol_info", return_value=mock_info), \
-         patch("MetaTrader5.symbol_info_tick", return_value=mock_tick):
-
+    with patch.dict(sys.modules, {"MetaTrader5": mock_mt5}):
         initial_res = {"success": False, "retcode": 10016, "error": "ERR_TRADE_STOPS_INVALID"}
         # SL is at 1.08480, which is only 5 points below bid (violates 45 points buffer)
         final_res = await healer.heal_and_reexecute(
@@ -67,9 +66,12 @@ async def test_self_healing_volume_invalid_10014():
     mock_info.volume_max = 10.0
     mock_info.volume_step = 0.1
 
+    mock_mt5 = MagicMock()
+    mock_mt5.symbol_info.return_value = mock_info
+
     healer = MT5SelfHealingExecutor(broker_adapter=mock_adapter)
 
-    with patch("MetaTrader5.symbol_info", return_value=mock_info):
+    with patch.dict(sys.modules, {"MetaTrader5": mock_mt5}):
         initial_res = {"success": False, "retcode": 10014, "error": "ERR_TRADE_VOLUME_INVALID"}
         final_res = await healer.heal_and_reexecute(
             order=mock_order,
