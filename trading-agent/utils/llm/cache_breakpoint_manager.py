@@ -197,21 +197,35 @@ class CacheBreakpointManager:
 
         return blocks
 
+    def find_completed_transaction_endpoints(self, messages: List[Dict[str, Any]]) -> List[int]:
+        """
+        Finds the message indices that represent the clean end of a completed tool transaction.
+        A tool transaction ends when a user turn contains tool_result blocks (or raw tool messages).
+        Placing cache breakpoints here ensures the model caches completed tool interaction rounds
+        without cutting in the middle of assistant tool-call generation.
+        """
+        endpoints = []
+        for i, msg in enumerate(messages):
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "user":
+                if isinstance(content, list) and any(
+                    (isinstance(b, dict) and b.get("type") == "tool_result") for b in content
+                ):
+                    endpoints.append(i)
+            elif role == "tool":
+                endpoints.append(i)
+        return endpoints
+
     def apply_to_messages(
         self,
         messages: List[Dict[str, Any]],
-        checkpoint_turn_index: int = -2
+        max_message_breakpoints: int = 2
     ) -> List[Dict[str, Any]]:
         """
-        Applies a sliding 4th cache breakpoint to Turn N-2.
-        Ensures any previous message-level breakpoints are stripped so total breakpoints <= 4.
-        
-        Args:
-            messages: List of message objects ({role: ..., content: ...})
-            checkpoint_turn_index: Relative index for the checkpoint turn (default: second-to-last turn)
-            
-        Returns:
-            Updated messages list with cache_control inserted into the selected checkpoint.
+        Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.
+        Transaction boundary isolation: ensures total breakpoints across system (1) +
+        tools (1) + messages (<= 2) never exceed Anthropic's hard limit of 4.
         """
         if not messages:
             return messages
@@ -233,28 +247,33 @@ class CacheBreakpointManager:
                 m_copy["content"] = cleaned_blocks
             updated_messages.append(m_copy)
 
-        # Calculate target index: on turns 1-2 anchor messages[0], on turns >= 3 anchor checkpoint turn (Turn N-2)
-        if len(updated_messages) <= 2:
-            idx = 0
-        else:
-            idx = checkpoint_turn_index if checkpoint_turn_index >= 0 else len(updated_messages) + checkpoint_turn_index
-            if idx < 0:
-                idx = 0
+        endpoints = self.find_completed_transaction_endpoints(updated_messages)
+        target_indices = []
 
-        if 0 <= idx < len(updated_messages):
-            msg = updated_messages[idx]
-            content = msg.get("content")
+        if endpoints:
+            # Take the last up to max_message_breakpoints completed endpoints
+            target_indices = endpoints[-max_message_breakpoints:]
+        elif len(updated_messages) >= 2:
+            # Fallback for non-tool conversations: anchor Turn N-2
+            target_indices = [len(updated_messages) - 2]
+        elif len(updated_messages) == 1:
+            target_indices = [0]
 
-            if isinstance(content, str):
-                msg["content"] = [{
-                    "type": "text",
-                    "text": content,
-                    "cache_control": {"type": "ephemeral"}
-                }]
-            elif isinstance(content, list) and content:
-                last_block = dict(content[-1])
-                last_block["cache_control"] = {"type": "ephemeral"}
-                msg["content"] = content[:-1] + [last_block]
+        for idx in target_indices:
+            if 0 <= idx < len(updated_messages):
+                msg = updated_messages[idx]
+                content = msg.get("content")
+
+                if isinstance(content, str):
+                    msg["content"] = [{
+                        "type": "text",
+                        "text": content,
+                        "cache_control": {"type": "ephemeral"}
+                    }]
+                elif isinstance(content, list) and content:
+                    last_block = dict(content[-1])
+                    last_block["cache_control"] = {"type": "ephemeral"}
+                    msg["content"] = content[:-1] + [last_block]
 
         return updated_messages
 

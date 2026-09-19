@@ -69,11 +69,34 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 path = os.path.join(base_dir, "config", "settings.yaml")
                 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Settings file not found at {path}")
-        with open(path, "r", encoding="utf-8") as f:
-            raw_loaded = yaml.safe_load(f)
-            settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
+        good_backup_path = f"{path}.good"
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                raw_loaded = yaml.safe_load(f)
+                settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
+            # Update last-known-good disk backup on successful load
+            try:
+                import shutil
+                shutil.copy2(path, good_backup_path)
+            except Exception:
+                pass
+        except Exception as read_err:
+            logger.error(f"Failed to parse settings at {path}: {read_err}")
+            try:
+                import time, shutil
+                corrupt_path = f"{path}.corrupt.{int(time.time())}"
+                if os.path.exists(path):
+                    shutil.copy2(path, corrupt_path)
+                    logger.warning(f"Corrupt configuration archived to {corrupt_path}")
+            except Exception:
+                pass
+            if os.path.exists(good_backup_path):
+                logger.warning(f"Recovering from last-known-good disk backup: {good_backup_path}")
+                with open(good_backup_path, "r", encoding="utf-8") as gf:
+                    raw_loaded = yaml.safe_load(gf)
+                    settings = dict(raw_loaded) if isinstance(raw_loaded, dict) else {}
+            else:
+                raise read_err
 
     if isinstance(path, str):
         config_dir = os.path.dirname(os.path.abspath(path))

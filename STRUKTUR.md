@@ -69,8 +69,11 @@ Monika/
     │   ├── __init__.py
     │   ├── analysis_tree.py
     │   ├── busy_input.py
+    │   ├── doctor.py
     │   ├── main.py
     │   ├── platform_compat.py
+    │   ├── profile_manager.py
+    │   ├── setup_wizard.py
     │   ├── sparklines.py
     │   ├── theme.py
     │   ├── tui.py
@@ -144,8 +147,11 @@ Monika/
     │   │   ├── message_repair.py
     │   │   ├── stall_guard.py
     │   │   ├── structured_output.py
+    │   │   ├── symbol_segment_planner.py
     │   │   ├── tool_batch_planner.py
-    │   │   └── tool_repair.py
+    │   │   ├── tool_repair.py
+    │   │   ├── trade_stop_gates.py
+    │   │   └── verification_evidence_ledger.py
     │   ├── memory
     │   │   ├── alpha_calculator.py
     │   │   ├── background_review.py
@@ -155,6 +161,7 @@ Monika/
     │   │   ├── layered_memory.py
     │   │   ├── lesson_consolidator.py
     │   │   ├── outcome_linker.py
+    │   │   ├── playbook_ledger.py
     │   │   ├── reflector.py
     │   │   ├── session_search.py
     │   │   ├── skill_crystallizer.py
@@ -300,7 +307,10 @@ Monika/
     │   ├── task_specs.py
     │   └── trade_trajectory_logger.py
     ├── cli
-    │   └── main.py
+    │   ├── doctor.py
+    │   ├── main.py
+    │   ├── profile_manager.py
+    │   └── setup_wizard.py
     ├── config
     │   ├── atomic_writer.py
     │   ├── hot_reload.py
@@ -790,13 +800,16 @@ Monika/
         │   ├── harness
         │   │   ├── test_agent_harness.py
         │   │   ├── test_context_compressor.py
-        │   │   └── test_error_classifier.py
+        │   │   ├── test_error_classifier.py
+        │   │   └── test_trade_stop_and_segment_planner.py
         │   ├── memory
+        │   │   ├── test_playbook_ledger.py
         │   │   └── test_skill_curator.py
         │   ├── tools
         │   │   ├── test_news_tools.py
         │   │   └── test_tool_guardrails.py
         │   ├── providers
+        │   │   ├── test_prompt_caching_enhancements.py
         │   │   └── test_typesafe_provider.py
         │   ├── strategies
         │   │   ├── test_strategy_registry_summary.py
@@ -808,6 +821,7 @@ Monika/
         ├── cli
         │   ├── test_analysis_tree.py
         │   ├── test_busy_input.py
+        │   ├── test_doctor_and_profile.py
         │   ├── test_platform_compat.py
         │   ├── test_sparklines.py
         │   ├── test_theme_packs.py

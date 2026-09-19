@@ -399,7 +399,15 @@ class OpenAIProvider(BaseLLMClient):
             is_cache_key_supported = any(m in str(self.model).lower() for m in ("gpt-4o", "gpt-4.1", "gpt-5", "o1", "o3"))
             if is_cache_key_supported:
                 clean_role = re.sub(r'[^a-zA-Z0-9_-]', '_', str(getattr(self, "role", "agent")))
-                kwargs.setdefault("prompt_cache_key", f"tradeagent_{clean_role}")
+                sys_content = ""
+                for m in (kwargs.get("messages") or []):
+                    if isinstance(m, dict) and m.get("role") == "system":
+                        sys_content = str(m.get("content") or "")
+                        break
+                tool_names = sorted([t.get("function", {}).get("name", "") for t in (kwargs.get("tools") or []) if isinstance(t, dict)])
+                cache_sig = f"{clean_role}:{hashlib.sha256(sys_content.encode('utf-8')).hexdigest()[:16]}:{','.join(tool_names)}"
+                cache_key = f"monika_{hashlib.sha256(cache_sig.encode('utf-8')).hexdigest()[:24]}"
+                kwargs.setdefault("prompt_cache_key", cache_key)
 
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get(provider_name, {})
         use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))
