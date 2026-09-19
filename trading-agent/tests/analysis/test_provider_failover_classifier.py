@@ -107,3 +107,35 @@ def test_capability_blacklist():
     ProviderCircuitBreaker._blacklisted_models[(provider, model)] = time.time() - 1.0
     assert ProviderCircuitBreaker.is_model_blacklisted(provider, model) is False
 
+
+def test_failover_reason_hot_path_eager():
+    """Verify RATE_LIMIT_API enables immediate failover when is_hot_path is True."""
+    from analysis.providers.provider_failover_classifier import FailoverReason
+    # In background mode: should_failover is False (retries)
+    assert FailoverReason.RATE_LIMIT_API.should_failover is False
+    assert FailoverReason.RATE_LIMIT_API.can_failover(is_hot_path=False) is False
+    # In hot path mode: can_failover is True (eager failover, 0s stall)
+    assert FailoverReason.RATE_LIMIT_API.can_failover(is_hot_path=True) is True
+    assert FailoverReason.RATE_LIMIT_MODEL.can_failover(is_hot_path=True) is True
+
+
+@pytest.mark.asyncio
+async def test_streaming_heartbeat_monitor():
+    """Verify StreamingHeartbeatMonitor emits pulses and stops cleanly."""
+    import asyncio
+    from utils.api.streaming import StreamingHeartbeatMonitor
+
+    pulse_count = 0
+
+    def on_touch():
+        nonlocal pulse_count
+        pulse_count += 1
+
+    monitor = StreamingHeartbeatMonitor(interval=0.05, touch_fn=on_touch)
+    monitor.start()
+    await asyncio.sleep(0.12)
+    monitor.stop()
+
+    assert pulse_count >= 2
+
+

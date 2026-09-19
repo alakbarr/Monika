@@ -933,21 +933,45 @@ async def _cmd_profile(args):
 
 async def _cmd_ask(args):
     console = get_console()
-    question = " ".join(args.question)
+    question = " ".join(args.question) if isinstance(args.question, list) else str(args.question)
     if not question.strip():
         console.print(f"{stamp_err('ASK')} No question provided.")
         return
 
-    console.print(f"{stamp_info('ASK')} Querying Monika: [bold]{question}[/]")
+    is_raw = getattr(args, "raw", False)
+    if not is_raw:
+        console.print(f"{stamp_info('ASK')} Querying Monika: [bold]{question}[/]")
+
     from telegram_bot.chat_agent import ChatAgent
     from config.settings import load_all_config
     settings = load_all_config()
     agent = ChatAgent(settings, user_id="cli_user", is_admin=True)
 
     reply_text, pending = await agent.handle(question)
-    console.print(f"\n{reply_text}\n")
-    if pending:
-        console.print(f"{stamp_warn('PROPOSAL')} Proposed action: {pending.description} (Action ID: {pending.action_id})")
+    if is_raw:
+        print(reply_text)
+    else:
+        console.print(f"\n{reply_text}\n")
+        if pending:
+            console.print(f"{stamp_warn('PROPOSAL')} Proposed action: {pending.description} (Action ID: {pending.action_id})")
+
+    out_json = getattr(args, "output_json", None)
+    if out_json:
+        import json as _json
+        payload = {
+            "query": question,
+            "response": reply_text,
+            "has_pending_action": pending is not None,
+            "pending_action": pending.to_dict() if pending and hasattr(pending, "to_dict") else None,
+        }
+        try:
+            with open(out_json, "w", encoding="utf-8") as f:
+                _json.dump(payload, f, indent=2)
+            if not is_raw:
+                console.print(f"{stamp_ok('EXPORT')} Saved query output to: {out_json}")
+        except Exception as e:
+            if not is_raw:
+                console.print(f"{stamp_err('EXPORT')} Failed to write output JSON: {e}")
 
 
 async def _cmd_analyze(args):
@@ -1119,19 +1143,34 @@ def parse_args(args_list=None):
 
     # Command: ask (one-shot question to agent)
     ask_parser = subparsers.add_parser("ask", help="Send a single question or command to Monika chat agent")
-    ask_parser.add_argument("question", nargs="+", type=str, help="Question or instruction for Monika")
+    ask_parser.add_argument("question", nargs="*", type=str, help="Question or instruction for Monika")
+    ask_parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without Rich styling or stamps")
+    ask_parser.add_argument("--output-json", type=str, default=None, help="Save query result and proposal metadata to JSON file")
 
     # Command: analyze (one-shot ad-hoc analysis for symbol)
     analyze_parser = subparsers.add_parser("analyze", help="Trigger ad-hoc multi-timeframe analysis for a symbol")
     analyze_parser.add_argument("symbol", type=str, help="Symbol to analyze (e.g. EURUSD, XAUUSD)")
     analyze_parser.add_argument("--context", type=str, default="", help="Optional custom analytical context")
 
-    # Backward compatibility when run without subcommand
+    # Command: mcp-serve (Launch Model Context Protocol server)
+    mcp_parser = subparsers.add_parser("mcp-serve", help="Launch Monika as a Model Context Protocol (MCP) server over stdio")
+    mcp_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+
+    # Backward compatibility and top-level headless query flag
+    parser.add_argument("-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit")
+    parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without formatting")
+    parser.add_argument("--output-json", type=str, default=None, help="Save one-shot query result to JSON file")
     parser.add_argument("--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode")
     parser.add_argument("--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode")
     parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     parsed = parser.parse_args(args_list)
+
+    # Intercept root-level -q / --query flag and redirect to 'ask' command
+    if getattr(parsed, "query", None):
+        parsed.command = "ask"
+        parsed.question = [parsed.query]
+
     if getattr(parsed, "profile", None):
         from cli.profile_manager import ProfileManager
         pm = ProfileManager()
@@ -1184,6 +1223,12 @@ async def _dispatch_cli(args):
             await _cmd_onboarding(args)
         elif args.command == "profile":
             await _cmd_profile(args)
+        elif args.command in ("mcp-serve", "mcp_serve"):
+            from analysis.mcp.server import MonikaMcpServer
+            from config.settings import load_settings
+            cfg = load_settings(getattr(args, "config", None))
+            server = MonikaMcpServer(settings=cfg)
+            await server.run_stdio()
         else:
             # First-run interceptor for daemon execution
             from utils.infra.env_file_manager import EnvFileManager

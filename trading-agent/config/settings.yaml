@@ -2018,3 +2018,58 @@ news_classification:
 ui:
   theme: "retro_vintage"
   steer_mode: "one-at-a-time"
+
+mcp:
+  enabled: true
+  client:
+    timeout_seconds: 15
+    servers:
+      # --- FREE / FREE-TIER MCP SERVERS (Enabled by default) ---
+      sqlite_metrics:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.sqlite_server"]
+        description: "Read-only access to local checkpointer and trading metrics"
+
+      local_market_fs:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.filesystem_server"]
+        description: "Sandboxed read-only access to playbooks and trading files"
+
+      web_fetch:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.fetch_server"]
+        description: "Lightweight public web content text extractor"
+
+      # --- PAID / PROPRIETARY MCP SERVERS (Ready-to-fill config blocks) ---
+      # brave_search:
+      #   enabled: false
+      #   transport: "stdio"
+      #   command: "npx"
+      #   args: ["-y", "@modelcontextprotocol/server-brave-search"]
+      #   env:
+      #     BRAVE_API_KEY: "${BRAVE_API_KEY}"
+      #   description: "Global financial and web news search via Brave API"
+
+      # tavily_search:
+      #   enabled: false
+      #   transport: "stdio"
+      #   command: "npx"
+      #   args: ["-y", "tavily-mcp"]
+      #   env:
+      #     TAVILY_API_KEY: "${TAVILY_API_KEY}"
+      #   description: "Deep research and macro financial search engine"
+
+      # alpha_vantage:
+      #   enabled: false
+      #   transport: "stdio"
+      #   command: "npx"
+      #   args: ["-y", "@modelcontextprotocol/server-alphavantage"]
+      #   env:
+      #     ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
+      #   description: "Macroeconomic series and fundamental data"

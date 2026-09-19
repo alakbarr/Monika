@@ -90,14 +90,65 @@ class ContextCompressor:
 
         return pruned_messages
 
+    def _snap_boundary(self, messages: List[dict], split_idx: int) -> int:
+        """Snaps split index to ensure tool-pair integrity (prevents orphaned tool_use or tool_result)."""
+        if split_idx <= 1 or split_idx >= len(messages):
+            return split_idx
+
+        # If split_idx lands on a user message containing tool_result, shift back to include preceding assistant turn
+        msg = messages[split_idx]
+        content = msg.get("content")
+        has_tool_result = False
+        if isinstance(content, list):
+            has_tool_result = any(
+                isinstance(b, dict) and b.get("type") == "tool_result" for b in content
+            )
+        elif isinstance(content, str) and msg.get("role") == "tool":
+            has_tool_result = True
+
+        if has_tool_result and split_idx > 1:
+            return split_idx - 1
+
+        # If preceding message has tool_use, verify tool_result is not severed
+        prev_msg = messages[split_idx - 1]
+        prev_content = prev_msg.get("content")
+        has_tool_use = False
+        if isinstance(prev_content, list):
+            has_tool_use = any(
+                isinstance(b, dict) and b.get("type") == "tool_use" for b in prev_content
+            )
+        if has_tool_use and split_idx > 1:
+            return split_idx - 1
+
+        return split_idx
+
+    def _feasibility_skip(self, messages: List[dict], min_chars: int = 4000) -> bool:
+        """Skip expensive auxiliary LLM summarization if middle turns are small (< 4000 chars / 1000 tokens)."""
+        total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+        return total_chars < min_chars
+
+    def _extract_existing_summary(self, middle_messages: List[dict]) -> Tuple[Optional[str], List[dict]]:
+        """Extract existing condensed summary to chain iteratively across long multi-turn runs."""
+        existing_summary = None
+        filtered = []
+        for m in middle_messages:
+            cnt = str(m.get("content", ""))
+            if "[CONDENSED CONTEXT SUMMARY" in cnt:
+                match = re.search(r"\[CONDENSED CONTEXT SUMMARY —.*?\]\n(.*?)\n\[END SUMMARY", cnt, re.DOTALL)
+                if match:
+                    existing_summary = match.group(1).strip()
+            else:
+                filtered.append(m)
+        return existing_summary, filtered
+
     def split_boundaries(
         self, messages: List[dict], tail_turns: int = 3
     ) -> Tuple[List[dict], List[dict], List[dict]]:
-        """Phase 2: Protected Boundary Split.
+        """Phase 2: Protected Boundary Split with Tool-Pair Snap.
 
         Preserves:
         - Head: First message (system / task instruction).
-        - Tail: Last `tail_turns` assistant turns + their tool observations.
+        - Tail: Last `tail_turns` assistant turns + their tool observations (snapped).
         - Middle: The intermediate exploration history to be compressed.
         """
         if len(messages) <= (tail_turns * 2) + 2:
@@ -114,6 +165,9 @@ class ContextCompressor:
             tail_start = assistant_indices[-tail_turns]
         else:
             tail_start = max(1, len(messages) - (tail_turns * 2))
+
+        # Snap boundary to guarantee tool-use / tool-result pair integrity
+        tail_start = self._snap_boundary(messages, tail_start)
 
         middle = messages[1:tail_start]
         tail = messages[tail_start:]
@@ -156,18 +210,24 @@ class ContextCompressor:
         return facts
 
     async def summarize_middle(self, middle_messages: List[dict]) -> str:
-        """Phase 3: Auxiliary Model Summarization.
+        """Phase 3: Auxiliary Model Summarization with Iterative Chaining.
 
         Summarizes middle conversation turns using an ultra-cheap model
         (gemini-3.5-flash-lite, thinking: none) or falls back to rule extraction.
+        Feasibility check: If middle segment is small (< 1000 tokens / 4000 chars),
+        uses deterministic rule extraction to avoid wasteful LLM calls.
         """
         if not middle_messages:
             return "No intermediate turns to summarize."
 
-        facts = self._extract_deterministic_facts(middle_messages)
+        existing_summary, clean_middle = self._extract_existing_summary(middle_messages)
+        facts = self._extract_deterministic_facts(clean_middle)
+
+        # Feasibility check: only invoke aux LLM if middle has substantial content or aux_client is explicitly provided
+        should_call_llm = self.aux_client is not None or not self._feasibility_skip(clean_middle)
 
         client = self.aux_client
-        if client is None:
+        if client is None and should_call_llm:
             try:
                 from analysis.providers.llm_factory import get_client_for_task
                 client = get_client_for_task("summarizer", self.settings or {})
@@ -182,31 +242,39 @@ class ContextCompressor:
                 except Exception:
                     client = None
 
-        if client and hasattr(client, "generate"):
+        if should_call_llm and client and hasattr(client, "generate"):
             try:
                 # Build concise middle text representation
                 snippets = []
-                for m in middle_messages:
+                for m in clean_middle:
                     role = m.get("role", "unknown")
                     cnt = str(m.get("content", ""))[:400]
                     snippets.append(f"[{role}]: {cnt}")
                 chunk = "\n".join(snippets[:15])
 
-                prompt = (
+                prompt_parts = []
+                if existing_summary:
+                    prompt_parts.append(f"PREVIOUS CONTEXT SUMMARY:\n{existing_summary}")
+                prompt_parts.append(
                     "Summarize the following intermediate trading analysis conversation into a dense, factual "
                     "bulleted summary. Extract all established technical levels, indicators (RSI, ATR, DXY, VIX), "
                     "order blocks, and conclusions. Do NOT invent new facts. Max 10 bullet points:\n\n"
                     f"{chunk}"
                 )
-                summary = await client.generate(prompt, max_tokens=300)
+                prompt = "\n\n".join(prompt_parts)
+                summary = await client.generate(prompt, max_tokens=350)
                 if summary and len(summary.strip()) > 30:
                     return summary.strip()
             except Exception as e:
                 logger.debug(f"Auxiliary model summarization failed, falling back to rule extraction: {e}")
 
-        # Fallback deterministic summary
-        if facts:
-            return "Key established facts from prior turns:\n" + "\n".join(f"• {f}" for f in facts)
+        # Fallback deterministic summary with chained history
+        if facts or existing_summary:
+            lines = ["Key established facts from prior turns:"]
+            if existing_summary:
+                lines.append(f"• Prior Summary: {existing_summary[:200]}")
+            lines.extend(f"• {f}" for f in facts)
+            return "\n".join(lines)
         return "Intermediate turns summarized: market data and technical indicators queried and evaluated."
 
     async def compress(
@@ -218,10 +286,11 @@ class ContextCompressor:
         """Phase 4: Assembly.
 
         Executes full 4-phase context compression pipeline:
-        1. Prune redundant tool outputs.
-        2. Split into Head, Middle, Tail.
-        3. Summarize Middle via aux model / rules.
-        4. Assemble Head + [Condensed Summary Message] + Tail.
+        1. Feasibility Skip: Ignore small contexts (< 1000 tokens).
+        2. Prune redundant tool outputs.
+        3. Split into Head, Middle, Tail (tool-pair snapped).
+        4. Summarize Middle via aux model / rules with iterative chaining.
+        5. Assemble Head + [Condensed Summary Message] + Tail.
         """
         total_chars = sum(len(str(m.get("content", ""))) for m in messages)
         if total_chars <= max_context_chars:

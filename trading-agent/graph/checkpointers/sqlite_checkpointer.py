@@ -26,10 +26,27 @@ class SqliteCheckpointSaver(InMemorySaver):
         self.db_path = db_path
         self._init_db()
 
+    def _get_connection(self) -> sqlite3.Connection:
+        """Create a hardened SQLite connection with WAL mode and high-concurrency pragmas."""
+        conn = sqlite3.connect(self.db_path, timeout=5.0)
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA journal_size_limit = 67108864")  # 64MB journal limit
+        return conn
+
     def _init_db(self):
         os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         try:
+            # Self-healing integrity check
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA integrity_check")
+            integrity = cursor.fetchone()
+            if integrity and integrity[0] != "ok":
+                logger.error(f"[SqliteCheckpointer] DB integrity failure: {integrity[0]}. Running self-healing REINDEX.")
+                conn.execute("REINDEX")
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS checkpoints (
                     thread_id TEXT,
@@ -64,7 +81,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     def _load_from_sqlite(self):
         """Restore previous checkpoints and writes into memory state."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 cursor.execute("SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob FROM checkpoints")

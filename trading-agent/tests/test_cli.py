@@ -866,3 +866,52 @@ async def test_tui_chat_handle_approval_decision_via_ws():
         assert chat_screen._pending_action_id is None
 
 
+def test_clean_terminal_input():
+    """Verify clean_terminal_input strips bracketed-paste sequences."""
+    from cli.setup_wizard import clean_terminal_input
+    assert clean_terminal_input("\x1b[200~my_secret_key\x1b[201~") == "my_secret_key"
+    assert clean_terminal_input("  normal_text  ") == "normal_text"
+    assert clean_terminal_input("") == ""
+
+
+def test_cli_parse_args_query_flag():
+    """Verify -q / --query flag sets command to 'ask' with question list."""
+    from cli.main import parse_args
+    args = parse_args(["-q", "Analyze XAUUSD market structure"])
+    assert args.command == "ask"
+    assert args.question == ["Analyze XAUUSD market structure"]
+
+
+@pytest.mark.asyncio
+async def test_cli_cmd_ask_one_shot_with_json_output(tmp_path):
+    """Verify _cmd_ask executes agent inquiry and writes output-json."""
+    from cli.main import _cmd_ask
+    out_file = str(tmp_path / "result.json")
+
+    mock_args = MagicMock()
+    mock_args.question = ["ping"]
+    mock_args.raw = True
+    mock_args.output_json = out_file
+
+    with patch("telegram_bot.chat_agent.ChatAgent.handle", new_callable=AsyncMock) as mock_handle, \
+         patch("config.settings.load_all_config", return_value={}):
+        mock_handle.return_value = ("pong response", None)
+        await _cmd_ask(mock_args)
+
+    import os
+    assert os.path.exists(out_file)
+    import json
+    with open(out_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    assert data["query"] == "ping"
+    assert data["response"] == "pong response"
+    assert not data["has_pending_action"]
+
+
+def test_cli_parse_args_mcp_serve():
+    """Verify parse_args recognizes mcp-serve command."""
+    args = parse_args(["mcp-serve", "--config", "custom_config.yaml"])
+    assert args.command == "mcp-serve"
+    assert args.config == "custom_config.yaml"
+
+
