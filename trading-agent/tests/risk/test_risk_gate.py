@@ -195,6 +195,7 @@ class TestRiskGate:
         gate._check_correlation = AsyncMock(return_value=(True, ""))
         gate._check_data_freshness = AsyncMock(return_value=(True, ""))
         gate.assess_weekend_gap_risk = AsyncMock(return_value=(True, ""))
+        gate._check_rollover_window = AsyncMock(return_value=(True, ""))
         gate._log_verdict = AsyncMock()
     
         mock_session = self._setup_mock_session(return_value_scalars=[])
