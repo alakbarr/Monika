@@ -739,6 +739,63 @@ async def _cmd_logs(args):
         console.print(f"\n[{MUTED}]Log stream terminated by operator.[/]")
 
 
+async def _cmd_doctor(args):
+    from cli.doctor import SystemDoctor
+    doc = SystemDoctor(fix=getattr(args, "fix", False), verbose=getattr(args, "verbose", False))
+    await doc.run_diagnostics()
+    code = doc.render_report()
+    if code != 0 and not getattr(args, "fix", False):
+        sys.exit(code)
+
+
+async def _cmd_setup(args):
+    from cli.setup_wizard import SetupWizard
+    wizard = SetupWizard(settings_path=getattr(args, "config", None))
+    wizard.run_wizard()
+
+
+async def _cmd_profile(args):
+    from cli.profile_manager import ProfileManager
+    from cli.theme import (
+        get_console, stamp_ok, stamp_err, stamp_info, stamp_warn,
+        PHOSPHOR_AMBER, BRASS, LEDGER_BOX, PAPER, MUTED
+    )
+    from rich.table import Table
+
+    pm = ProfileManager()
+    console = get_console()
+    action = getattr(args, "profile_action", "list") or "list"
+
+    if action == "list":
+        profiles = pm.list_profiles()
+        tbl = Table(title=f"[{PHOSPHOR_AMBER}]MONIKA PROFILES[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
+        tbl.add_column("Profile", style=f"bold {BRASS}")
+        tbl.add_column("Status", justify="center")
+        tbl.add_column("Config Path", style=PAPER)
+
+        for p in profiles:
+            status = stamp_ok("ACTIVE") if p.is_active else f"[{MUTED}]STANDBY[/]"
+            tbl.add_row(p.name, status, p.path)
+        console.print()
+        console.print(tbl)
+        console.print()
+    elif action == "use":
+        name = getattr(args, "name", "default")
+        try:
+            pm.set_active_profile(name)
+            console.print(f"{stamp_ok('PROFILE')} Switched active profile to: [bold {BRASS}]{name}[/]")
+        except Exception as e:
+            console.print(f"{stamp_err('PROFILE')} Failed to switch profile: {e}")
+    elif action == "create":
+        name = getattr(args, "name", "")
+        clone = getattr(args, "clone", None)
+        try:
+            p_dir = pm.create_profile(name, clone_from=clone)
+            console.print(f"{stamp_ok('PROFILE')} Created profile [bold {BRASS}]{name}[/] at {p_dir}")
+        except Exception as e:
+            console.print(f"{stamp_err('PROFILE')} Failed to create profile: {e}")
+
+
 def parse_args(args_list=None):
     parser = argparse.ArgumentParser(description="AI Trading Agent CLI Interface")
     subparsers = parser.add_subparsers(dest="command", help="Administrative subcommands")
@@ -820,6 +877,25 @@ def parse_args(args_list=None):
     logs_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
     logs_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
 
+    # Command: doctor
+    doctor_parser = subparsers.add_parser("doctor", help="Run comprehensive system diagnostics with optional auto-fix")
+    doctor_parser.add_argument("--fix", action="store_true", default=False, help="Attempt to auto-fix recoverable issues")
+    doctor_parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Show verbose diagnostic details")
+
+    # Command: setup
+    setup_parser = subparsers.add_parser("setup", help="Launch interactive onboarding setup wizard")
+    setup_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+
+    # Command: profile
+    profile_parser = subparsers.add_parser("profile", help="Manage isolated trading environments and profiles")
+    prof_sub = profile_parser.add_subparsers(dest="profile_action", help="Profile actions: list, use, create")
+    prof_sub.add_parser("list", help="List all trading profiles")
+    use_p = prof_sub.add_parser("use", help="Switch active profile")
+    use_p.add_argument("name", type=str, help="Name of the profile to activate")
+    create_p = prof_sub.add_parser("create", help="Create new isolated profile")
+    create_p.add_argument("name", type=str, help="Name of the new profile")
+    create_p.add_argument("--clone", type=str, default=None, help="Optional source profile to clone configuration from")
+
     # Backward compatibility when run without subcommand
     parser.add_argument("--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode")
     parser.add_argument("--confirm-live", action="store_true", default=False, help="Explicit acknowledgement for live trading mode")
@@ -831,56 +907,70 @@ def parse_args(args_list=None):
     return parsed
 
 
+async def _dispatch_cli(args):
+    try:
+        if args.command == "status":
+            await _cmd_status(args)
+        elif args.command == "pause":
+            await _cmd_pause(args)
+        elif args.command == "resume":
+            await _cmd_resume(args)
+        elif args.command == "unsuspend":
+            await _cmd_unsuspend(args)
+        elif args.command == "kill":
+            await _cmd_kill(args)
+        elif args.command == "positions":
+            await _cmd_positions(args)
+        elif args.command == "chat":
+            await _cmd_chat(args)
+        elif args.command == "config":
+            await _cmd_config(args)
+        elif args.command == "sessions":
+            await _cmd_sessions(args)
+        elif args.command == "logs":
+            await _cmd_logs(args)
+        elif args.command == "doctor":
+            await _cmd_doctor(args)
+        elif args.command == "setup":
+            await _cmd_setup(args)
+        elif args.command == "profile":
+            await _cmd_profile(args)
+        else:
+            print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")
+            await _acli_run(args)
+    finally:
+        try:
+            await close_db()
+        except Exception:
+            pass
+
+
 def run():
     args = parse_args()
     from logging_observability.activity_logger import setup_logging
     setup_logging(level=logging.INFO)
 
+    if args.command == "tui":
+        from cli.tui import run_tui
+        run_tui(
+            api_url=getattr(args, "url", DEFAULT_API_URL),
+            api_key=getattr(args, "token", None),
+            refresh_interval=getattr(args, "refresh", 5),
+            theme_name=getattr(args, "theme", None),
+        )
+        return
+
     from utils.infra.event_loop import run_async
 
     try:
-        if args.command == "status":
-            run_async(_cmd_status(args))
-        elif args.command == "pause":
-            run_async(_cmd_pause(args))
-        elif args.command == "resume":
-            run_async(_cmd_resume(args))
-        elif args.command == "unsuspend":
-            run_async(_cmd_unsuspend(args))
-        elif args.command == "kill":
-            run_async(_cmd_kill(args))
-        elif args.command == "positions":
-            run_async(_cmd_positions(args))
-        elif args.command == "tui":
-            from cli.tui import run_tui
-            run_tui(
-                api_url=getattr(args, "url", DEFAULT_API_URL),
-                api_key=getattr(args, "token", None),
-                refresh_interval=getattr(args, "refresh", 5),
-                theme_name=getattr(args, "theme", None),
-            )
-        elif args.command == "chat":
-            run_async(_cmd_chat(args))
-        elif args.command == "config":
-            run_async(_cmd_config(args))
-        elif args.command == "sessions":
-            run_async(_cmd_sessions(args))
-        elif args.command == "logs":
-            run_async(_cmd_logs(args))
-        else:
-            print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")
-            run_async(_acli_run(args))
+        run_async(_dispatch_cli(args))
     except KeyboardInterrupt:
         logger.info("CLI execution terminated by user.")
     except Exception as e:
         logger.critical(f"CLI encountered fatal exception: {e}", exc_info=True)
         sys.exit(1)
-    finally:
-        try:
-            run_async(close_db())
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":
     run()
+

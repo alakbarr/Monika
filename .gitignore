@@ -64,6 +64,8 @@ jev_documentation/
 *.db-shm
 *.bak
 *.backup
+*.good
+*.corrupt.*
 
 # Local Data and Results
 data/
