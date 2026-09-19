@@ -210,6 +210,7 @@ class PromptAssembler:
         """
         from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
         from analysis.memory.layered_memory import LayeredMemoryManager
+        from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""

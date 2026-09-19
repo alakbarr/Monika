@@ -105,6 +105,57 @@ class SetupWizard:
             console.print(f"{stamp_err('DB FAIL')} Database connection failed: {e}\n")
             return False
 
+    @staticmethod
+    def get_missing_setup_items() -> Dict[str, bool]:
+        """Detects missing environment or critical configuration items."""
+        return {
+            "mt5": not bool(os.environ.get("MT5_ACCOUNT") and os.environ.get("MT5_PASSWORD")),
+            "db": not bool(os.environ.get("DATABASE_URL")),
+            "llm": not any(os.environ.get(k) for k in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")),
+        }
+
+    def _test_llm_connection(self, provider: str, api_key: str) -> bool:
+        """Sends a 1-token lightweight completion to verify API key validity."""
+        from cli.theme import get_console, stamp_ok, stamp_err, stamp_info
+        console = get_console()
+        console.print(f"{stamp_info('PROBE')} Testing {provider} API key validity...")
+        try:
+            if provider.lower() == "gemini":
+                from google import genai
+                client = genai.Client(api_key=api_key)
+                client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents="ping",
+                )
+                console.print(f"{stamp_ok('LLM OK')} Gemini API key is valid.\n")
+                return True
+            elif provider.lower() == "anthropic":
+                import anthropic
+                client = anthropic.Anthropic(api_key=api_key)
+                client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "ping"}],
+                )
+                console.print(f"{stamp_ok('LLM OK')} Anthropic API key is valid.\n")
+                return True
+            elif provider.lower() in ("openai", "groq"):
+                import openai
+                base_url = "https://api.groq.com/openai/v1" if provider.lower() == "groq" else None
+                client = openai.OpenAI(api_key=api_key, base_url=base_url)
+                model = "llama-3.1-8b-instant" if provider.lower() == "groq" else "gpt-4o-mini"
+                client.chat.completions.create(
+                    model=model,
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "ping"}],
+                )
+                console.print(f"{stamp_ok('LLM OK')} {provider.title()} API key is valid.\n")
+                return True
+        except Exception as e:
+            console.print(f"{stamp_err('LLM FAIL')} {provider} connection test failed: {e}\n")
+            return False
+        return True
+
     def run_wizard(self, section: str = "all", quick: bool = False) -> bool:
         from cli.theme import (
             get_console, PHOSPHOR_AMBER, BRASS,
@@ -127,130 +178,224 @@ class SetupWizard:
         env_updates: Dict[str, str] = {}
         settings_updates: Dict[str, Any] = {}
 
-        # ── STEP 1: TRADING MODE & SAFETY LIMITS ──
-        if section in ("all", "risk"):
-            console.print(f"{stamp_info('STEP 1/5')} [bold {BRASS}]Trading Mode & Risk Limits[/]")
-            if quick:
-                is_paper = True
-                max_risk = 1.0
-                max_daily_dd = 3.0
-                console.print(f"  [{MUTED}]Quick mode: Paper Trading=True, Risk/Trade=1.0%, Max DD=3.0%[/{MUTED}]")
-            else:
-                is_paper = Confirm.ask("Enable Paper Trading Mode (recommended for evaluation)?", default=True)
-                max_risk = float(Prompt.ask("Max risk per trade percent (e.g. 1.0)", default="1.0"))
-                max_daily_dd = float(Prompt.ask("Max daily drawdown percent (e.g. 3.0)", default="3.0"))
+        missing_items = self.get_missing_setup_items()
+        if quick:
+            console.print(f"{stamp_info('QUICK')} Mode cepat: memeriksa item konfigurasi yang belum diset...")
+            for k, is_missing in missing_items.items():
+                status_icon = stamp_warn('MISSING') if is_missing else stamp_ok('CONFIGURED')
+                console.print(f"  {status_icon} Komponen {k.upper()}")
 
-            settings_updates["paper_trading"] = {"enabled": is_paper}
-            settings_updates["trading"] = {
-                "risk": {
+        def _ask_step(prompt_text: str, default: str = "", password: bool = False) -> str:
+            val = Prompt.ask(prompt_text, default=default, password=password)
+            return val.strip()
+
+        current_step = 1
+        max_step = 4
+
+        while 1 <= current_step <= max_step:
+            # ── STEP 1: TRADING MODE & SAFETY LIMITS ──
+            if current_step == 1:
+                if section not in ("all", "risk"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 1/4')} [bold {BRASS}]Trading Mode & Risk Limits[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                if quick and not missing_items.get("mt5", True):
+                    settings_updates.setdefault("paper_trading", {})["enabled"] = True
+                    settings_updates.setdefault("trading", {}).setdefault("risk", {})["risk_percent_per_trade"] = 1.0
+                    settings_updates["trading"]["risk"]["max_daily_drawdown_percent"] = 3.0
+                    console.print(f"  [{MUTED}]Quick mode default: Paper=True, Risk=1.0%, Max DD=3.0%[/{MUTED}]")
+                    current_step += 1
+                    continue
+
+                is_paper_str = _ask_step("Enable Paper Trading Mode? (y/n, atau 'b' kembali)", default="y")
+                if is_paper_str.lower() in ("b", "back"):
+                    console.print(f"[{MUTED}]Di langkah pertama. Ketik 'q' untuk keluar jika ingin membatalkan.[/{MUTED}]")
+                    continue
+                is_paper = is_paper_str.lower() in ("y", "yes", "true", "1")
+
+                max_risk_str = _ask_step("Max risk per trade percent (e.g. 1.0)", default="1.0")
+                if max_risk_str.lower() in ("b", "back"):
+                    continue
+                max_risk = float(max_risk_str) if max_risk_str.replace(".", "", 1).isdigit() else 1.0
+
+                max_dd_str = _ask_step("Max daily drawdown percent (e.g. 3.0)", default="3.0")
+                if max_dd_str.lower() in ("b", "back"):
+                    continue
+                max_daily_dd = float(max_dd_str) if max_dd_str.replace(".", "", 1).isdigit() else 3.0
+
+                settings_updates["paper_trading"] = {"enabled": is_paper}
+                settings_updates.setdefault("trading", {})["risk"] = {
                     "risk_percent_per_trade": max_risk,
                     "max_daily_drawdown_percent": max_daily_dd,
                 }
-            }
+                current_step += 1
+                continue
 
-        # ── STEP 2: METATRADER 5 CONFIGURATION & LIVE TEST ──
-        if section in ("all", "mt5"):
-            console.print(f"\n{stamp_info('STEP 2/5')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/]")
-            curr_acc = os.environ.get("MT5_ACCOUNT", "")
-            account = Prompt.ask("MT5 Account Number", default=curr_acc)
-            password = Prompt.ask("MT5 Account Password", password=True, default="")
-            curr_server = os.environ.get("MT5_SERVER", "MetaQuotes-Demo")
-            server = Prompt.ask("MT5 Broker Server Name", default=curr_server)
-            curr_path = os.environ.get("MT5_PATH", "")
-            mt5_path = Prompt.ask("MT5 terminal64.exe path (leave blank for auto-detect)", default=curr_path)
+            # ── STEP 2: METATRADER 5 CONFIGURATION & LIVE TEST ──
+            if current_step == 2:
+                if section not in ("all", "mt5"):
+                    current_step += 1
+                    continue
 
-            if account:
-                env_updates["MT5_ACCOUNT"] = str(account)
-            if password:
-                env_updates["MT5_PASSWORD"] = str(password)
-            if server:
-                env_updates["MT5_SERVER"] = str(server)
-            if mt5_path:
-                env_updates["MT5_PATH"] = str(mt5_path)
+                console.print(f"\n{stamp_info('STEP 2/4')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                curr_acc = os.environ.get("MT5_ACCOUNT", "")
+                account = _ask_step("MT5 Account Number", default=curr_acc)
+                if account.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
 
-            # Optional live handshake
-            if account and password:
-                if Confirm.ask("Run live MT5 broker connection test now?", default=True):
-                    self._test_mt5_connection(account, password, server, mt5_path)
+                password = _ask_step("MT5 Account Password", password=True, default="")
+                if password.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
 
-        # ── STEP 3: DATABASE CONFIGURATION ──
-        if section in ("all", "db"):
-            console.print(f"\n{stamp_info('STEP 3/5')} [bold {BRASS}]Database Connection & Storage[/]")
-            curr_db = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent")
-            db_url = Prompt.ask("PostgreSQL Connection URL (asyncpg format)", default=curr_db)
-            if db_url:
-                env_updates["DATABASE_URL"] = db_url
-                if Confirm.ask("Test database connectivity now?", default=False):
-                    self._test_db_connection(db_url)
+                curr_server = os.environ.get("MT5_SERVER", "MetaQuotes-Demo")
+                server = _ask_step("MT5 Broker Server Name", default=curr_server)
+                if server.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
 
-                if Confirm.ask("Run database migrations (alembic upgrade head) now?", default=False):
-                    try:
-                        import subprocess
-                        console.print(f"{stamp_info('ALEMBIC')} Running database migrations...")
-                        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                        res = subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
-                        if res.returncode == 0:
-                            console.print(f"{stamp_ok('MIGRATION')} Database schema migrated to latest head.")
-                        else:
-                            console.print(f"{stamp_warn('MIGRATION')} Alembic warning/error: {res.stderr or res.stdout}")
-                    except Exception as mig_err:
-                        console.print(f"{stamp_warn('MIGRATION')} Could not execute alembic automatically: {mig_err}")
+                curr_path = os.environ.get("MT5_PATH", "")
+                mt5_path = _ask_step("MT5 terminal64.exe path (leave blank for auto-detect)", default=curr_path)
+                if mt5_path.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
 
-        # ── STEP 4: AI PROVIDERS & API KEYS ──
-        if section in ("all", "llm"):
-            console.print(f"\n{stamp_info('STEP 4/5')} [bold {BRASS}]LLM Provider Credentials[/]")
-            console.print(f"[{MUTED}]Masukkan API key provider yang Anda miliki (kosongkan jika sudah ada di environment):[/{MUTED}]")
-            gemini_key = Prompt.ask("Google Gemini API Key", password=True, default="")
-            anthropic_key = Prompt.ask("Anthropic API Key", password=True, default="")
-            openai_key = Prompt.ask("OpenAI API Key", password=True, default="")
-            groq_key = Prompt.ask("Groq API Key", password=True, default="")
+                if account:
+                    env_updates["MT5_ACCOUNT"] = str(account)
+                if password:
+                    env_updates["MT5_PASSWORD"] = str(password)
+                if server:
+                    env_updates["MT5_SERVER"] = str(server)
+                if mt5_path:
+                    env_updates["MT5_PATH"] = str(mt5_path)
 
-            if gemini_key:
-                env_updates["GEMINI_API_KEY"] = gemini_key
-            if anthropic_key:
-                env_updates["ANTHROPIC_API_KEY"] = anthropic_key
-            if openai_key:
-                env_updates["OPENAI_API_KEY"] = openai_key
-            if groq_key:
-                env_updates["GROQ_API_KEY"] = groq_key
+                if account and password:
+                    if Confirm.ask("Run live MT5 broker connection test now?", default=True):
+                        self._test_mt5_connection(account, password, server, mt5_path)
 
-            # Optional Model Preset
-            console.print(f"\n[bold {BRASS}]Model Architecture Presets:[/]")
-            console.print(f"  1. [bold {BRASS}]Budget / High-Efficiency Mode[/]: Gemini 3.8 Flash (hemat token, kecepatan tinggi)")
-            console.print(f"  2. [bold {BRASS}]Institutional Performance Mode[/]: Claude 3.5/3.7 Sonnet (Stage 1/2) + Gemini 3.8 Flash (Subagents)")
-            console.print(f"  3. [bold {BRASS}]Keep Current Roles[/]: Pertahankan konfigurasi task_roles di settings.yaml")
-            preset_choice = Prompt.ask("Pilih preset (1/2/3)", choices=["1", "2", "3"], default="1")
+                current_step += 1
+                continue
 
-            if preset_choice == "1":
-                settings_updates["llm"] = {
-                    "task_roles": {
-                        "stage1_fundamental": {"primary": "gemini-3.8-flash"},
-                        "stage2_per_asset_primary": {"primary": "gemini-3.8-flash"},
-                        "stage2_per_asset_secondary": {"primary": "gemini-3.8-flash"},
-                        "debate_judge": {"primary": "gemini-3.8-flash"},
-                        "trade_reflection": {"primary": "gemini-3.8-flash"},
+            # ── STEP 3: DATABASE CONFIGURATION ──
+            if current_step == 3:
+                if section not in ("all", "db"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 3/4')} [bold {BRASS}]Database Connection & Storage[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                curr_db = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent")
+                db_url = _ask_step("PostgreSQL Connection URL (asyncpg format)", default=curr_db)
+                if db_url.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                if db_url:
+                    env_updates["DATABASE_URL"] = db_url
+                    if Confirm.ask("Test database connectivity now?", default=False):
+                        self._test_db_connection(db_url)
+
+                    if Confirm.ask("Run database migrations (alembic upgrade head) now?", default=False):
+                        try:
+                            import subprocess
+                            console.print(f"{stamp_info('ALEMBIC')} Running database migrations...")
+                            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                            res = subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True)
+                            if res.returncode == 0:
+                                console.print(f"{stamp_ok('MIGRATION')} Database schema migrated to latest head.")
+                            else:
+                                console.print(f"{stamp_warn('MIGRATION')} Alembic warning/error: {res.stderr or res.stdout}")
+                        except Exception as mig_err:
+                            console.print(f"{stamp_warn('MIGRATION')} Could not execute alembic automatically: {mig_err}")
+
+                current_step += 1
+                continue
+
+            # ── STEP 4: AI PROVIDERS & API KEYS ──
+            if current_step == 4:
+                if section not in ("all", "llm"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 4/4')} [bold {BRASS}]LLM Provider Credentials[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"[{MUTED}]Masukkan API key provider (kosongkan jika sudah ada di environment):[/{MUTED}]")
+                gemini_key = _ask_step("Google Gemini API Key", password=True, default="")
+                if gemini_key.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                anthropic_key = _ask_step("Anthropic API Key", password=True, default="")
+                if anthropic_key.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                openai_key = _ask_step("OpenAI API Key", password=True, default="")
+                if openai_key.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                groq_key = _ask_step("Groq API Key", password=True, default="")
+                if groq_key.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                if gemini_key:
+                    env_updates["GEMINI_API_KEY"] = gemini_key
+                    if Confirm.ask("Test Gemini API key validity now?", default=True):
+                        self._test_llm_connection("gemini", gemini_key)
+                if anthropic_key:
+                    env_updates["ANTHROPIC_API_KEY"] = anthropic_key
+                    if Confirm.ask("Test Anthropic API key validity now?", default=True):
+                        self._test_llm_connection("anthropic", anthropic_key)
+                if openai_key:
+                    env_updates["OPENAI_API_KEY"] = openai_key
+                    if Confirm.ask("Test OpenAI API key validity now?", default=True):
+                        self._test_llm_connection("openai", openai_key)
+                if groq_key:
+                    env_updates["GROQ_API_KEY"] = groq_key
+                    if Confirm.ask("Test Groq API key validity now?", default=True):
+                        self._test_llm_connection("groq", groq_key)
+
+                # Optional Model Preset
+                console.print(f"\n[bold {BRASS}]Model Architecture Presets:[/]")
+                console.print(f"  1. [bold {BRASS}]Budget / High-Efficiency Mode[/]: Gemini 3.8 Flash (hemat token, kecepatan tinggi)")
+                console.print(f"  2. [bold {BRASS}]Institutional Performance Mode[/]: Claude 3.5/3.7 Sonnet + Gemini 3.8 Flash")
+                console.print(f"  3. [bold {BRASS}]Keep Current Roles[/]: Pertahankan konfigurasi task_roles di settings.yaml")
+                preset_choice = _ask_step("Pilih preset (1/2/3)", default="1")
+
+                if preset_choice == "1":
+                    settings_updates["llm"] = {
+                        "task_roles": {
+                            "stage1_fundamental": {"primary": "gemini-3.8-flash"},
+                            "stage2_per_asset_primary": {"primary": "gemini-3.8-flash"},
+                            "stage2_per_asset_secondary": {"primary": "gemini-3.8-flash"},
+                            "debate_judge": {"primary": "gemini-3.8-flash"},
+                            "trade_reflection": {"primary": "gemini-3.8-flash"},
+                        }
                     }
-                }
-            elif preset_choice == "2":
-                settings_updates["llm"] = {
-                    "task_roles": {
-                        "stage1_fundamental": {"primary": "claude-3-5-sonnet"},
-                        "stage2_per_asset_primary": {"primary": "claude-3-5-sonnet"},
-                        "stage2_per_asset_secondary": {"primary": "claude-3-5-sonnet"},
-                        "debate_judge": {"primary": "claude-3-5-sonnet"},
-                        "trade_reflection": {"primary": "gemini-3.8-flash"},
+                elif preset_choice == "2":
+                    settings_updates["llm"] = {
+                        "task_roles": {
+                            "stage1_fundamental": {"primary": "claude-3-5-sonnet"},
+                            "stage2_per_asset_primary": {"primary": "claude-3-5-sonnet"},
+                            "stage2_per_asset_secondary": {"primary": "claude-3-5-sonnet"},
+                            "debate_judge": {"primary": "claude-3-5-sonnet"},
+                            "trade_reflection": {"primary": "gemini-3.8-flash"},
+                        }
                     }
-                }
+
+                current_step += 1
+                continue
 
         # ── STEP 5: ATOMIC PERSISTENCE ──
-        console.print(f"\n{stamp_info('STEP 5/5')} [bold {BRASS}]Saving Configuration & Credentials[/]")
+        console.print(f"\n{stamp_info('FINAL')} [bold {BRASS}]Saving Configuration & Credentials[/]")
 
         # 1. Update .env atomically
         if env_updates:
             env_ok = EnvFileManager.update_env_values(env_updates)
             if env_ok:
                 console.print(f"{stamp_ok('ENV SAVED')} Credentials securely written to .env file.")
-                # Update runtime os.environ as well
                 for k, v in env_updates.items():
                     os.environ[k] = v
             else:
@@ -267,7 +412,8 @@ class SetupWizard:
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")
         console.print(f"{stamp_ok('SETUP COMPLETED')} Monika successfully configured!")
         console.print(f"[{MUTED}]Next Recommended Steps:[/{MUTED}]")
-        console.print(f"  1. Run diagnostics:  [bold {BRASS}]python -m cli.main doctor[/]")
-        console.print(f"  2. Start agent:      [bold {BRASS}]python -m cli.main run --dry-run[/]")
+        console.print(f"  1. Trader Onboarding: [bold {BRASS}]python -m cli.main onboarding[/]")
+        console.print(f"  2. Run diagnostics:   [bold {BRASS}]python -m cli.main doctor[/]")
+        console.print(f"  3. Start agent:       [bold {BRASS}]python -m cli.main run --dry-run[/]")
         console.print(f"[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]\n")
         return True
