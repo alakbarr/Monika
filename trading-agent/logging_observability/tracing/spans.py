@@ -84,3 +84,32 @@ def tool_span(tool_name: str, symbol: Optional[str] = None, **attrs) -> Generato
     span = tracer.start_span(f"tool:{tool_name}", kind="tool", attributes=span_attrs)
     with span:
         yield span
+
+
+@contextmanager
+def trade_span(
+    symbol: str,
+    action: str,
+    ticket: Optional[int] = None,
+    lot_size: Optional[float] = None,
+    slippage_points: Optional[float] = None,
+    mae_points: Optional[float] = None,
+    mfe_points: Optional[float] = None,
+    **attrs
+) -> Generator[Span, None, None]:
+    """Span for trade order execution and lifecycle tracking with slippage, MAE, and MFE."""
+    tracer = get_tracer()
+    span_attrs = {
+        "symbol": symbol,
+        "action": action,
+        "ticket": ticket,
+        "lot_size": lot_size,
+        "slippage_points": slippage_points if slippage_points is not None else 0.0,
+        "mae_points": mae_points if mae_points is not None else 0.0,
+        "mfe_points": mfe_points if mfe_points is not None else 0.0,
+        **attrs
+    }
+    span = tracer.start_span(f"trade:{symbol}:{action}", kind="trade", attributes=span_attrs)
+    with span:
+        yield span
+

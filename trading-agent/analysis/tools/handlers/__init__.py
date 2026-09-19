@@ -25,7 +25,9 @@ from analysis.tools.handlers import (
     trading_tools,
     smc_tools,
     db_tools,
+    ptc_handler,
 )
+from analysis.tools.domain import spill_reader_tool
 
 __all__ = [
     "market_data",

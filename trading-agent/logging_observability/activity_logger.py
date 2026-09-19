@@ -89,7 +89,12 @@ def setup_logging(
     root_logger.handlers.clear()
 
     # --- Real file handler (rotating) ---
-    file_handler = logging.handlers.RotatingFileHandler(
+    try:
+        from concurrent_log_handler import ConcurrentRotatingFileHandler as _RotHandler
+    except ImportError:
+        _RotHandler = logging.handlers.RotatingFileHandler
+
+    file_handler = _RotHandler(
         filename=os.path.join(log_dir, "agent.log"),
         maxBytes=max_bytes,
         backupCount=backup_count,
@@ -99,7 +104,7 @@ def setup_logging(
     file_handler.setFormatter(RedactingFormatter(LOG_FORMAT_FILE, datefmt=DATE_FORMAT))
 
     # Separate error-only file for quick issue scanning
-    error_handler = logging.handlers.RotatingFileHandler(
+    error_handler = _RotHandler(
         filename=os.path.join(log_dir, "errors.log"),
         maxBytes=max_bytes,
         backupCount=3,

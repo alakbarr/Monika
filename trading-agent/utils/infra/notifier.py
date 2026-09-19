@@ -132,11 +132,17 @@ class AgentNotifier:
         try:
             try:
                 clean_html = sanitize_telegram_html(full_msg)
-                await self.bot.send_message(chat_id=self.admin_id, text=clean_html, parse_mode="HTML", reply_markup=reply_markup)
+                send_kwargs = {"chat_id": self.admin_id, "text": clean_html, "parse_mode": "HTML"}
+                if reply_markup is not None:
+                    send_kwargs["reply_markup"] = reply_markup
+                await self.bot.send_message(**send_kwargs)
             except TelegramError as e:
                 logger.warning(f"HTML parse failed on Telegram notification ({e}), retrying plain text...")
                 plain_text = re.sub(r'<[^>]+>', '', full_msg)
-                await self.bot.send_message(chat_id=self.admin_id, text=plain_text, reply_markup=reply_markup)
+                plain_kwargs = {"chat_id": self.admin_id, "text": plain_text}
+                if reply_markup is not None:
+                    plain_kwargs["reply_markup"] = reply_markup
+                await self.bot.send_message(**plain_kwargs)
             
             # Log to ActivityLog
             try:

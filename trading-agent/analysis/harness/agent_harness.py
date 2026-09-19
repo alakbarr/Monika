@@ -1341,12 +1341,18 @@ class AgentHarness:
             is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
             if is_stall_terminate and stall_msg:
                 logger.warning(f"[{stage_name}][AgentHarness] STALL GUARD FORCE TERMINATION: {stall_msg}")
-                current_messages.append({"role": "user", "content": stall_msg})
+                if current_messages and isinstance(current_messages[-1].get("content"), list):
+                    current_messages[-1]["content"].append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
+                elif current_messages:
+                    current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
                 if effective_max_turns > turns + 1:
                     effective_max_turns = turns + 1
             elif is_stall_warn and stall_msg:
                 logger.info(f"[{stage_name}][AgentHarness] STALL GUARD WARNING: {stall_msg}")
-                current_messages.append({"role": "user", "content": stall_msg})
+                if current_messages and isinstance(current_messages[-1].get("content"), list):
+                    current_messages[-1]["content"].append({"type": "text", "text": f"\n[STALL GUARD WARNING]: {stall_msg}"})
+                elif current_messages:
+                    current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}\n\n[STALL GUARD WARNING]: {stall_msg}"
 
             # I7: PTC Iteration Budget Refund
             # If sole tool call was execute_analysis_code, refund the iteration

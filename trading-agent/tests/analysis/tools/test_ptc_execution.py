@@ -75,3 +75,24 @@ print("MT5=" + os.environ.get("MT5_PASSWORD", "NONE"))
     assert "KEY=NONE" in res["stdout"]
     assert "DB=NONE" in res["stdout"]
     assert "MT5=NONE" in res["stdout"]
+
+
+@pytest.mark.asyncio
+async def test_ptc_ast_security_blocks_forbidden_modules():
+    """Verify AST security rejects malicious imports and calls before spawning."""
+    mock_executor = MagicMock()
+    handler = PTCHandler(tool_executor=mock_executor)
+
+    # Test dangerous import
+    code_import = "import subprocess\nsubprocess.run(['dir'])"
+    res1 = await handler.execute(code_import)
+    assert res1["status"] == "error"
+    assert "SecurityViolation" in res1["stderr"]
+    assert "subprocess" in res1["stderr"]
+
+    # Test dangerous builtin
+    code_eval = "x = eval('1 + 1')"
+    res2 = await handler.execute(code_eval)
+    assert res2["status"] == "error"
+    assert "SecurityViolation" in res2["stderr"]
+    assert "eval" in res2["stderr"]
