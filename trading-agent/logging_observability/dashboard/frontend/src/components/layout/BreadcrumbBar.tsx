@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { WORKSPACES } from './Sidebar';
+import { WORKSPACES } from './navigation';
 
 export const BreadcrumbBar: React.FC = () => {
   const { activeTab } = useDashboardStore();

@@ -40,10 +40,31 @@ const DEFAULT_MACRO_EVENTS = [
 ];
 
 export const MarketDataPanel: React.FC = () => {
-  const { vixHistory, brief } = useDashboardStore();
+  const { vixHistory, brief, marketQuotes } = useDashboardStore();
 
   const latest = vixHistory[vixHistory.length - 1];
   const vixS = latest ? vixSentiment(latest.close) : null;
+
+  const watchlist = DEFAULT_WATCHLIST.map((row) => {
+    const live = marketQuotes?.[row.symbol];
+    if (!live || !live.price) return row;
+    const bid = live.price;
+    const spreadDiff = row.ask - row.bid;
+    const ask = bid + (spreadDiff > 0 ? spreadDiff : 0.0001);
+    const chgPct = live.changePct != null ? live.changePct : row.chgPct;
+    return { ...row, bid, ask, chgPct };
+  });
+
+  const macroEvents = (brief?.structured?.key_upcoming_risks && brief.structured.key_upcoming_risks.length > 0)
+    ? brief.structured.key_upcoming_risks.map((evt) => ({
+        time: evt.time || 'Upcoming',
+        currency: 'MACRO',
+        event: evt.event,
+        impact: evt.expected_impact || 'medium',
+        forecast: '—',
+        previous: '—',
+      }))
+    : DEFAULT_MACRO_EVENTS;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-precision)' }}>
@@ -69,7 +90,7 @@ export const MarketDataPanel: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {DEFAULT_WATCHLIST.map((row) => (
+                {watchlist.map((row) => (
                   <tr key={row.symbol} className="greenbar-row" style={{ borderBottom: '1px solid var(--color-rule)' }}>
                     <td style={{ padding: '8px 10px' }}>
                       <div style={{ fontWeight: 800, color: 'var(--color-ink)' }}>{row.symbol}</div>
@@ -159,7 +180,7 @@ export const MarketDataPanel: React.FC = () => {
           variant="yellow"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {DEFAULT_MACRO_EVENTS.map((evt, idx) => (
+            {macroEvents.map((evt, idx) => (
               <div
                 key={idx}
                 style={{

@@ -46,6 +46,12 @@ export const AnalogDial: React.FC<AnalogDialProps> = ({
   const pStart = polarToCartesian(cx, cy, r, startAngle);
   const pEnd = polarToCartesian(cx, cy, r, endAngle);
 
+  const dangerRatio = dangerZone !== undefined ? Math.min(1, Math.max(0, (dangerZone - min) / (max - min || 1))) : 0;
+  const dangerAngle = startAngle + dangerRatio * (endAngle - startAngle);
+  const pDanger = polarToCartesian(cx, cy, r, dangerAngle);
+  const dangerArcSpan = dangerInverted ? dangerRatio * 270 : (1 - dangerRatio) * 270;
+  const dangerLargeArc = dangerArcSpan > 180 ? 1 : 0;
+
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => {
     const angle = startAngle + t * (endAngle - startAngle);
     const outer = polarToCartesian(cx, cy, r + 2, angle);
@@ -103,14 +109,8 @@ export const AnalogDial: React.FC<AnalogDialProps> = ({
           <path
             d={
               dangerInverted
-                ? `M ${pStart.x} ${pStart.y} A ${r} ${r} 0 0 1 ${
-                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).x
-                  } ${
-                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).y
-                  }`
-                : `M ${polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).x} ${
-                    polarToCartesian(cx, cy, r, startAngle + (dangerZone / max) * (endAngle - startAngle)).y
-                  } A ${r} ${r} 0 0 1 ${pEnd.x} ${pEnd.y}`
+                ? `M ${pStart.x} ${pStart.y} A ${r} ${r} 0 ${dangerLargeArc} 1 ${pDanger.x} ${pDanger.y}`
+                : `M ${pDanger.x} ${pDanger.y} A ${r} ${r} 0 ${dangerLargeArc} 1 ${pEnd.x} ${pEnd.y}`
             }
             fill="none"
             stroke="var(--color-win-coral)"

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { Header } from './components/layout/Header';
-import { Sidebar, NAV_ITEMS } from './components/layout/Sidebar';
+import { Sidebar } from './components/layout/Sidebar';
+import { NAV_ITEMS } from './components/layout/navigation';
 import { BreadcrumbBar } from './components/layout/BreadcrumbBar';
 import { GlobalStatusBar } from './components/layout/GlobalStatusBar';
 import { MobileNavDrawer } from './components/layout/MobileNavDrawer';
