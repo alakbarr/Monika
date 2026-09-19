@@ -28,6 +28,43 @@ class PTCHandler:
         self.tool_executor = tool_executor
         self.settings = settings or {}
 
+    @staticmethod
+    def _validate_code_ast(code: str) -> tuple[bool, str]:
+        """
+        Statically inspects Python code using AST to block malicious modules and dangerous calls.
+        """
+        import ast
+
+        FORBIDDEN_MODULES = {
+            "subprocess", "ctypes", "shutil", "pty",
+            "multiprocessing", "threading", "signal", "webbrowser",
+            "winreg", "_winapi",
+        }
+        FORBIDDEN_CALLS = {"eval", "exec", "__import__", "compile"}
+
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            return False, f"SyntaxError: {e}"
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    mod_root = alias.name.split(".")[0].lower()
+                    if mod_root in FORBIDDEN_MODULES:
+                        return False, f"Import of restricted module '{mod_root}' is prohibited"
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    mod_root = node.module.split(".")[0].lower()
+                    if mod_root in FORBIDDEN_MODULES:
+                        return False, f"Import from restricted module '{mod_root}' is prohibited"
+            elif isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    if node.func.id in FORBIDDEN_CALLS:
+                        return False, f"Call to dangerous built-in '{node.func.id}' is prohibited"
+
+        return True, ""
+
     async def execute(self, code: str, allowed_tools: Optional[list] = None) -> dict:
         """
         Run Python code in isolated subprocess.
@@ -39,6 +76,18 @@ class PTCHandler:
             {"status": "success"|"error", "stdout": str, "stderr": str,
              "tool_calls_made": int, "tokens_saved_estimate": int}
         """
+        # 0. AST Static Security Inspection
+        is_safe, sec_err = self._validate_code_ast(code)
+        if not is_safe:
+            logger.warning(f"PTC code execution rejected by AST sandbox: {sec_err}")
+            return {
+                "status": "error",
+                "stdout": "",
+                "stderr": f"SecurityViolation: {sec_err}",
+                "tool_calls_made": 0,
+                "tokens_saved_estimate": 0,
+            }
+
         # 1. Start RPC server for tool access
         rpc_server, rpc_port = await self._start_tool_rpc_server(allowed_tools)
 

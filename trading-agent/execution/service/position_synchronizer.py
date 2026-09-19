@@ -147,17 +147,27 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         await session.commit()
 
                         if related_analysis and related_analysis.id:
-                            try:
-                                from analysis.memory.outcome_linker import OutcomeLinker
-                                await OutcomeLinker().process_closed_position(
-                                    session,
-                                    analysis_id=related_analysis.id,
-                                    pnl=pos.pnl or 0.0,
-                                    holding_hours=holding_duration or 0.0,
-                                    exit_reason="sl_hit" if reason == mt5.DEAL_REASON_SL else ("tp_hit" if reason == mt5.DEAL_REASON_TP else "other")
-                                )
-                            except Exception as linker_err:
-                                logger.debug(f'OutcomeLinker failed for natural close {pos.mt5_ticket}: {linker_err}')
+                            # Non-blocking async background task to decouple reflection latency from position sync hot-path
+                            async def _bg_link_outcome(an_id: int, pnl_val: float, h_hours: float, ex_reason: str):
+                                try:
+                                    async with get_session() as bg_sess:
+                                        from analysis.memory.outcome_linker import OutcomeLinker
+                                        await OutcomeLinker().process_closed_position(
+                                            bg_sess,
+                                            analysis_id=an_id,
+                                            pnl=pnl_val,
+                                            holding_hours=h_hours,
+                                            exit_reason=ex_reason
+                                        )
+                                except Exception as linker_err:
+                                    logger.debug(f'Background OutcomeLinker failed for analysis {an_id}: {linker_err}')
+
+                            asyncio.create_task(_bg_link_outcome(
+                                related_analysis.id,
+                                pos.pnl or 0.0,
+                                holding_duration or 0.0,
+                                "sl_hit" if reason == mt5.DEAL_REASON_SL else ("tp_hit" if reason == mt5.DEAL_REASON_TP else "other")
+                            ))
                     except Exception as e:
                         logger.debug(f"Failed to log trade outcome (non-fatal): {e}")
 

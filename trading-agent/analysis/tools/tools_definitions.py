@@ -1753,8 +1753,35 @@ EXECUTE_ANALYSIS_CODE = _tool(
     required=["code"],
 )
 
+RETRIEVE_SPILLED_CONTEXT = _tool(
+    name="retrieve_spilled_context",
+    description=(
+        "Retrieve spilled tool observations or large context blobs from PostgreSQL or disk caches by blob_id. "
+        "Supports pagination via offset and max_chars."
+    ),
+    properties={
+        "blob_id": {
+            "type": "string",
+            "description": "The blob pointer or identifier (e.g. 'spill_1234abcd' or 'db://spill/spill_1234abcd').",
+        },
+        "offset": {
+            "type": "integer",
+            "description": "Starting character offset for pagination (default 0).",
+        },
+        "max_chars": {
+            "type": "integer",
+            "description": "Maximum characters to retrieve (default 4000, max 15000).",
+        },
+    },
+    required=["blob_id"],
+)
+
+STAGE2_TOOLS.append(RETRIEVE_SPILLED_CONTEXT)
+if RETRIEVE_SPILLED_CONTEXT not in STAGE2_ESSENTIAL_TOOLS:
+    STAGE2_ESSENTIAL_TOOLS.append(RETRIEVE_SPILLED_CONTEXT)
+
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT]}.values())
 
 
 

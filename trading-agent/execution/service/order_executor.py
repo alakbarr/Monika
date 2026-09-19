@@ -554,6 +554,27 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         comment=comment,
                         max_spread_multiplier=max_spread_mult,
                     )
+
+                # Self-Healing Execution: Attempt autonomous micro-repair on broker rejection
+                if not mt5_result.get('success'):
+                    try:
+                        from execution.service.self_healing_executor import MT5SelfHealingExecutor
+                        healer = MT5SelfHealingExecutor(
+                            broker_adapter=self.broker_adapter,
+                            mt5_client=getattr(self.broker_adapter, "mt5_client", None)
+                        )
+                        mt5_result = await healer.heal_and_reexecute(
+                            order=order,
+                            mt5_result=mt5_result,
+                            sl=sl_price,
+                            tp=tp_price,
+                            comment=comment,
+                            max_spread_multiplier=max_spread_mult,
+                            atr=getattr(sizing, "atr", None),
+                            decision=decision,
+                        )
+                    except Exception as heal_err:
+                        logger.error(f"[OrderExecutor] SelfHealingExecutor error: {heal_err}")
             except AbortRequested as abort_err:
                 elapsed = (clock.now() - start).total_seconds() * 1000
                 logger.warning(f"[EffectGate] Preplanned order blocked for {symbol}: {abort_err}")

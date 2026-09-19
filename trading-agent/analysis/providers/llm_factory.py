@@ -314,6 +314,8 @@ class FallbackClientWrapper(BaseLLMClient):
         self.role_config = role_config
         self.task_role = task_role
         self._primary_cooldown_until = None
+        self._slot_cooldowns: dict[str, float] = {}
+        self._slot_backoff_count: dict[str, int] = {}
         
         primary_provider = factory._resolve_provider(primary)
         primary_thinking = factory._resolve_thinking_level(primary, role_config, primary_provider, slot_name="primary")
@@ -341,15 +343,21 @@ class FallbackClientWrapper(BaseLLMClient):
 
     def _maybe_restore_primary(self) -> bool:
         """Check if primary provider cooldown has expired and restore it."""
+        import time
+        now = time.time()
+        expired = [s for s, t in self._slot_cooldowns.items() if now >= t]
+        for s in expired:
+            self._slot_cooldowns.pop(s, None)
+
         if not self._primary_cooldown_until:
             return False
-        import time
-        if time.time() >= self._primary_cooldown_until:
+        if now >= self._primary_cooldown_until:
             logger.info(
                 f"[{self.task_role}][FallbackClientWrapper] Primary model '{self.primary}' "
                 f"cooldown expired — restoring to primary."
             )
             self._primary_cooldown_until = None
+            self.model = self.primary
             return True
         return False
 
@@ -360,10 +368,10 @@ class FallbackClientWrapper(BaseLLMClient):
         self.thinking_budget = quantized
         self._dynamic_thinking_budget = quantized
 
-
     async def _execute_with_fallback(self, method_name: str, *args, **kwargs) -> Any:
+        import time
         self._maybe_restore_primary()
-        if self._primary_cooldown_until:
+        if self._primary_cooldown_until or "primary" in self._slot_cooldowns:
             models_to_try = [
                 (f"fallback_{i+1}", model) for i, model in enumerate(self.fallbacks)
             ]
@@ -389,19 +397,32 @@ class FallbackClientWrapper(BaseLLMClient):
             except Exception as e:
                 logger.debug(f"[CircuitBreaker] Cached budget check error: {e}")
         
-        # Streaming-based idle timeouts are managed directly at the provider/SSE layer
-        # (idle_timeout: 45s, first_chunk_timeout: 120s, safety_timeout: 600s).
-        # Wrapper only enforces explicit timeout if requested (e.g. unit tests) or ultimate safety net (600s).
+        # Stage-aware fast timeouts for hot-path trading
+        HOT_PATH_ROLES = {
+            "stage1_fundamental", "stage2_per_asset_primary", "stage2_per_asset_secondary",
+            "debate_judge", "risk_gate", "bull_analyst", "bear_analyst", "investment_judge",
+            "execution_verifier", "pre_commit_gate"
+        }
         explicit_timeout = kwargs.pop("_per_model_timeout", None)
         if explicit_timeout is not None:
             per_model_timeout = float(explicit_timeout)
+        elif self.task_role in HOT_PATH_ROLES:
+            max_turns = float((self.role_config or {}).get("max_tool_turns", 3))
+            per_model_timeout = max(45.0, min(120.0, max_turns * 30.0))
         elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
             max_turns = float((self.role_config or {}).get("max_tool_turns", 15))
-            per_model_timeout = max(600.0, max_turns * 60.0)
+            per_model_timeout = max(300.0, max_turns * 45.0)
         else:
-            per_model_timeout = 600.0  # Generous safety net aligned with StreamConfig.safety_timeout
+            per_model_timeout = 180.0
 
         for slot_name, model in models_to_try:
+            # Skip slot if currently in active cooldown
+            now = time.time()
+            if slot_name in self._slot_cooldowns and self._slot_cooldowns[slot_name] > now:
+                remaining = self._slot_cooldowns[slot_name] - now
+                logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' (in cooldown for {remaining:.1f}s)")
+                continue
+
             client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
             if not client:
                 continue
@@ -442,6 +463,12 @@ class FallbackClientWrapper(BaseLLMClient):
                         
                     self.model = model
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
+                    # Reset backoff count and clear cooldown for this slot on success
+                    self._slot_backoff_count[slot_name] = 0
+                    self._slot_cooldowns.pop(slot_name, None)
+                    if slot_name == "primary":
+                        self._primary_cooldown_until = None
+
                     if slot_name != "primary":
                         msg = (
                             f"[LLMFallbackAudit] Task role '{self.task_role}' downgraded from primary '{self.primary}' "
@@ -467,11 +494,35 @@ class FallbackClientWrapper(BaseLLMClient):
                             pass
                     return result
                 except (asyncio.TimeoutError, StreamTimeoutError, StreamSafetyTimeoutError) as timeout_err:
+                    # Attempt 1x dual-protocol non-streaming fallback if stream failed
+                    if kwargs.get("stream", True) and method_name in ["generate", "generate_content"]:
+                        try:
+                            logger.info(f"[{self.task_role}] Stream timeout on {slot_name}/{model}, attempting 1x non-streaming fallback...")
+                            ns_kwargs = dict(kwargs)
+                            ns_kwargs["stream"] = False
+                            ns_res = await asyncio.wait_for(method(*args, **ns_kwargs), timeout=25.0)
+                            if ns_res is not None:
+                                self.model = model
+                                self._slot_backoff_count[slot_name] = 0
+                                self._slot_cooldowns.pop(slot_name, None)
+                                return ns_res
+                        except Exception as ns_err:
+                            logger.debug(f"Non-streaming fallback failed: {ns_err}")
+
                     from analysis.providers.provider_failover_classifier import FailoverReason
                     reason = FailoverReason.NETWORK_TIMEOUT
                     detail = f" ({timeout_err})" if isinstance(timeout_err, (StreamTimeoutError, StreamSafetyTimeoutError)) else f" after {per_model_timeout:.0f}s"
                     last_error = f"Model {model} ({slot_name}) timed out in {method_name}{detail}"
                     logger.warning(f"{last_error}. Trying next fallback...")
+
+                    import time
+                    cnt = self._slot_backoff_count.get(slot_name, 0)
+                    cd_duration = min(60.0 * (2 ** cnt), 1800.0)
+                    self._slot_cooldowns[slot_name] = time.time() + cd_duration
+                    self._slot_backoff_count[slot_name] = cnt + 1
+                    if slot_name == "primary":
+                        self._primary_cooldown_until = self._slot_cooldowns[slot_name]
+
                     last_failed_dict = {
                         "slot": slot_name,
                         "model": model,
@@ -510,10 +561,14 @@ class FallbackClientWrapper(BaseLLMClient):
                                 await asyncio.sleep(backoff)
                             continue
 
-                    # Strategy 3: Failover to next model
+                    # Strategy 3: Failover to next model with exponential cooldown
+                    import time
+                    cnt = self._slot_backoff_count.get(slot_name, 0)
+                    cd_duration = min(60.0 * (2 ** cnt), 1800.0)
+                    self._slot_cooldowns[slot_name] = time.time() + cd_duration
+                    self._slot_backoff_count[slot_name] = cnt + 1
                     if slot_name == "primary":
-                        import time
-                        self._primary_cooldown_until = time.time() + 60.0
+                        self._primary_cooldown_until = self._slot_cooldowns[slot_name]
 
                     last_error = e
                     last_failed_dict = {

@@ -171,6 +171,9 @@ class ChatAgent:
         # Tier 4 (Deep Research): untuk ad-hoc deep research dan market intelligence
         self._client_research = get_client_for_task("deep_research", settings)
 
+        # Client for quick intent tier routing
+        self._client_intent = self._client_lite
+
         # Backward compatibility aliases
         self._gemini_lite = self._client_lite
         self._groq_medium = self._client_medium
@@ -480,11 +483,26 @@ class ChatAgent:
         if self._is_macro_event_query(msg_lower):
             return 'deep_research'
 
+        # Action verbs always require complex / medium deep reasoning
+        ACTION_VERBS = r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser)\b'
+        if re.search(ACTION_VERBS, msg_lower):
+            return 'complex'
+
+        # Super short greetings/thanks
+        if len(msg) < 15 and any(w in msg_lower for w in ['halo', 'hai', 'hi', 'hello', 'tes', 'ping', 'makasih', 'terima kasih', 'thanks', 'ok', 'siap']):
+            return 'simple'
+            
+        # Exact match or starts with a simple command (even if > 200 chars)
+        if re.match(r'^(status|posisi|positions|vix|balance|equity|pnl|drawdown|stats|performa|triggers?|history|riwayat|health|kesehatan|biaya|token)\b', msg_lower):
+            return 'simple'
+
+        if len(msg) > 300:
+            return 'complex'
+
         # Jev System One Intent & Model Tier Routing
         try:
-            from analysis.providers.llm_factory import get_client_for_task
             from utils.typesafe.jev_primitives import build_telegram_intent_questions
-            jev_client = get_client_for_task("jev_telegram_intent", self.settings)
+            jev_client = getattr(self, "_client_intent", None) or self._client_lite
             if hasattr(jev_client, "classify_json"):
                 jev_res = await jev_client.classify_json(
                     prompt="",
@@ -503,23 +521,8 @@ class ChatAgent:
                         return "complex"
         except Exception as jev_intent_err:
             logger.debug(f"[ChatAgent] Jev intent routing fallback to heuristics: {jev_intent_err}")
-        
-        # Action verbs always require complex / medium deep reasoning
-        ACTION_VERBS = r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser)\b'
-        if re.search(ACTION_VERBS, msg_lower):
-            return 'complex'
 
-        # Super short greetings/thanks
-        if len(msg) < 15 and any(w in msg_lower for w in ['halo', 'hai', 'hi', 'hello', 'tes', 'ping', 'makasih', 'terima kasih', 'thanks', 'ok', 'siap']):
-            return 'simple'
-            
-        # Exact match or starts with a simple command (even if > 200 chars)
-        if re.match(r'^(status|posisi|positions|vix|balance|equity|pnl|drawdown|stats|performa|triggers?|history|riwayat|health|kesehatan|biaya|token)\b', msg_lower):
-            return 'simple'
-
-        if len(msg) > 300:
-            return 'complex'
-        elif len(msg) > 150:
+        if len(msg) > 150:
             return 'medium'
         
         # Common simple patterns

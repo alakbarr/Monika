@@ -1,13 +1,15 @@
 """
 File: cli/doctor.py
 Comprehensive diagnostic and self-healing engine for Monika (MT5 Trading Agent).
-Integrates deep AST analysis, MT5, database schema, API, and config health checks.
+Integrates deep AST analysis, MT5, database schema, API, dependency, and config health checks.
 """
 
 import os
 import sys
+import shutil
 import logging
 import asyncio
+import datetime
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
@@ -27,7 +29,7 @@ class DiagnosticItem:
 class SystemDoctor:
     """Performs deep environmental and functional sanity checks with unified StartupChecker and auto-fix."""
 
-    def __init__(self, fix: bool = False, live_probes: bool = False, verbose: bool = False):
+    def __init__(self, fix: bool = False, live_probes: bool = True, verbose: bool = False):
         self.fix = fix
         self.live_probes = live_probes
         self.verbose = verbose
@@ -62,6 +64,36 @@ class SystemDoctor:
                 else:
                     self._record("Filesystem", f"dir:{os.path.basename(d)}", "WARN", f"Missing directory: {d}", fixable=True)
 
+    def check_dependencies(self) -> None:
+        """Verify system binaries and critical python packages."""
+        # Check Node.js and npm for dashboard
+        node_path = shutil.which("node")
+        npm_path = shutil.which("npm")
+        if node_path and npm_path:
+            self._record("Dependencies", "Node/NPM", "OK", f"Dashboard prerequisites available ({node_path})")
+        else:
+            self._record("Dependencies", "Node/NPM", "WARN", "Node.js or npm not found. Dashboard frontend build may fail.", details="Install Node.js LTS if running the local web dashboard.")
+
+        # Check MetaTrader5 Python package
+        try:
+            import MetaTrader5 as mt5
+            self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 Python package installed (v{getattr(mt5, '__version__', 'unknown')}).")
+        except ImportError:
+            self._record("Dependencies", "MetaTrader5-Pkg", "WARN", "MetaTrader5 python package not found in virtual environment.", details="Run: pip install MetaTrader5")
+
+    def check_market_session(self) -> None:
+        """Checks whether the global financial markets are open or in weekend closure."""
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        weekday = now_utc.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
+        hour = now_utc.hour
+
+        # Forex closes Friday ~21:00 UTC and reopens Sunday ~21:00 UTC
+        is_weekend = (weekday == 5) or (weekday == 4 and hour >= 21) or (weekday == 6 and hour < 21)
+        if is_weekend:
+            self._record("Market", "SessionStatus", "WARN", "Forex market currently CLOSED for weekend. Evaluation & crypto active.")
+        else:
+            self._record("Market", "SessionStatus", "OK", "Forex & global financial markets are OPEN.")
+
     def check_configuration(self, settings: dict) -> None:
         """Check settings.yaml and modular split files."""
         try:
@@ -83,11 +115,23 @@ class SystemDoctor:
 
     def check_credentials(self, settings: dict) -> None:
         """Check API keys and credential definitions in environment without reading .env directly."""
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-        if anthropic_key:
-            self._record("Credentials", "ANTHROPIC_API_KEY", "OK", "Anthropic API key present.")
-        else:
-            self._record("Credentials", "ANTHROPIC_API_KEY", "WARN", "ANTHROPIC_API_KEY not set in environment.")
+        providers = [
+            ("GEMINI_API_KEY", "Google Gemini"),
+            ("ANTHROPIC_API_KEY", "Anthropic Claude"),
+            ("OPENAI_API_KEY", "OpenAI"),
+            ("GROQ_API_KEY", "Groq"),
+            ("DEEPSEEK_API_KEY", "DeepSeek"),
+        ]
+        active_count = 0
+        for env_var, name in providers:
+            if os.getenv(env_var) or (env_var == "GEMINI_API_KEY" and os.getenv("GEMINI_API_KEYS")):
+                self._record("Credentials", env_var, "OK", f"{name} API key configured.")
+                active_count += 1
+            else:
+                self._record("Credentials", env_var, "WARN", f"{name} ({env_var}) not set in environment.")
+
+        if active_count == 0:
+            self._record("Credentials", "LLM_PROVIDERS", "FAIL", "No AI provider API keys found. Agent cannot execute reasoning tasks.")
 
     def check_mt5(self, settings: dict) -> None:
         """Check MT5 terminal and account settings."""
@@ -98,8 +142,14 @@ class SystemDoctor:
         else:
             self._record("MT5", "MT5_PATH", "WARN", f"MT5 binary path not found or unset: {mt5_path}")
 
+        account = os.getenv("MT5_ACCOUNT")
+        if account:
+            self._record("MT5", "MT5_ACCOUNT", "OK", f"MT5 Account configured ({account}).")
+        else:
+            self._record("MT5", "MT5_ACCOUNT", "FAIL", "MT5_ACCOUNT environment variable is missing.")
+
     async def check_database_migrations(self) -> None:
-        """Verify Alembic schema head and database tables."""
+        """Verify database connectivity and schema tables."""
         try:
             from database.db import init_db, get_session
             await init_db()
@@ -109,6 +159,14 @@ class SystemDoctor:
             self._record("Database", "PostgreSQL", "OK", "Database connection successful (SELECT 1 passed).")
         except Exception as e:
             self._record("Database", "PostgreSQL", "FAIL", f"Database connection failed: {str(e)[:150]}")
+            if self.fix:
+                self._record("Database", "AutoFix", "INFO", "Attempting alembic migration...")
+                try:
+                    import subprocess
+                    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, check=False)
+                except Exception:
+                    pass
 
     async def check_startup_checker_suite(self, settings: dict) -> None:
         """Execute unified 11-step StartupChecker from agent/startup_checks.py."""
@@ -141,6 +199,8 @@ class SystemDoctor:
             self._record("Config", "load_all_config", "FAIL", f"Error loading settings: {e}")
 
         await self.check_directories()
+        self.check_dependencies()
+        self.check_market_session()
         self.check_configuration(settings)
         self.check_credentials(settings)
         self.check_mt5(settings)
@@ -168,27 +228,29 @@ class SystemDoctor:
         table.add_column("Status", justify="center", width=12)
         table.add_column("Message", style=PAPER)
 
-        has_failure = False
+        has_fail = False
         for item in self.diagnostics:
             if item.status == "OK":
-                badge = stamp_ok("PASS")
+                st = stamp_ok("PASS")
             elif item.status == "FIXED":
-                badge = stamp_ok("FIXED")
+                st = stamp_ok("FIXED")
             elif item.status == "WARN":
-                badge = stamp_warn("WARN")
+                st = stamp_warn("WARN")
+            elif item.status == "INFO":
+                st = stamp_info("INFO")
             else:
-                badge = stamp_err("FAIL")
-                has_failure = True
+                st = stamp_err("FAIL")
+                has_fail = True
 
-            table.add_row(item.category, item.name, badge, item.message)
+            table.add_row(item.category, item.name, st, item.message)
 
         console.print()
         console.print(table)
         console.print()
 
-        if has_failure:
-            console.print(f"{stamp_err('DOCTOR')} Detected critical issues. Run `monika doctor --fix` or resolve the items above.")
+        if has_fail:
+            console.print(f"[{PHOSPHOR_AMBER}]One or more critical checks failed. Resolve FAIL items before starting live trading.[/]\n")
             return 1
         else:
-            console.print(f"{stamp_ok('DOCTOR')} System passed diagnostics. Monika is ready for operation.")
+            console.print(f"{stamp_ok('SYSTEM HEALTHY')} All core diagnostic checks passed. System ready.\n")
             return 0
