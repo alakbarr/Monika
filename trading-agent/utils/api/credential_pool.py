@@ -106,11 +106,12 @@ class APICredentialPool:
         masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"
         logger.debug(f"[CredentialPool] Added key {masked} for provider '{prov}'")
 
-    def get_key(self, provider: str, model: Optional[str] = None) -> Optional[str]:
+    def get_key(self, provider: str, model: Optional[str] = None, is_hot_path: bool = False) -> Optional[str]:
         """
         Get the most suitable available key for a provider.
         Prefers available keys with least recent usage (LRU round-robin).
         If model is specified, filters out keys with active cooldown for that specific model.
+        If is_hot_path is True and all keys are in cooldown, returns None immediately without waiting.
         """
         prov = provider.lower()
         keys = self._pools.get(prov, [])
@@ -119,13 +120,13 @@ class APICredentialPool:
 
         available = [k for k in keys if k.is_model_available(model)]
         if not available:
-            # If all are in cooldown, pick the one with earliest cooldown expiry
             cooldown_keys = [k for k in keys if k.is_active]
             if cooldown_keys:
                 earliest = min(cooldown_keys, key=lambda x: x.cooldown_until)
                 logger.warning(
                     f"[CredentialPool] All keys for '{prov}' (model={model}) in cooldown. "
-                    f"Earliest ready in {max(0.0, earliest.cooldown_until - time.time()):.1f}s"
+                    f"Earliest ready in {max(0.0, earliest.cooldown_until - time.time()):.1f}s. "
+                    f"{'Hot-path active: returning None for zero-downtime failover.' if is_hot_path else ''}"
                 )
             return None
 
@@ -143,26 +144,44 @@ class APICredentialPool:
                 kh.consecutive_errors = 0
                 return
 
-    def report_rate_limit(self, provider: str, key: str, cooldown_seconds: float = 60.0, model: Optional[str] = None) -> None:
-        """Report a 429 rate limit and put key (or specific model) into temporary cooldown."""
+    def report_rate_limit(
+        self,
+        provider: str,
+        key: str,
+        cooldown_seconds: float = 60.0,
+        model: Optional[str] = None,
+        retry_after: Optional[float] = None,
+        reset_at: Optional[float] = None,
+    ) -> None:
+        """Report a 429 rate limit and put key (or specific model) into temporary cooldown.
+        
+        Supports upstream header hints (retry_after or reset_at).
+        """
+        if retry_after is not None and retry_after > 0:
+            effective_cd = float(retry_after)
+        elif reset_at is not None:
+            effective_cd = max(1.0, float(reset_at) - time.time())
+        else:
+            effective_cd = float(cooldown_seconds)
+
         prov = provider.lower()
         for kh in self._pools.get(prov, []):
             if kh.key == key:
                 if model:
-                    kh.model_cooldowns[model] = time.time() + cooldown_seconds
+                    kh.model_cooldowns[model] = time.time() + effective_cd
                     kh.consecutive_errors += 1
                     kh.total_errors += 1
                     logger.warning(
                         f"[CredentialPool] Model '{model}' on key for '{prov}' rate limited. "
-                        f"Cooldown set for {cooldown_seconds}s"
+                        f"Cooldown set for {effective_cd:.1f}s"
                     )
                 else:
-                    kh.cooldown_until = time.time() + cooldown_seconds
+                    kh.cooldown_until = time.time() + effective_cd
                     kh.consecutive_errors += 1
                     kh.total_errors += 1
                     logger.warning(
                         f"[CredentialPool] Key for '{prov}' rate limited. "
-                        f"Cooldown set for {cooldown_seconds}s"
+                        f"Cooldown set for {effective_cd:.1f}s"
                     )
                 return
 

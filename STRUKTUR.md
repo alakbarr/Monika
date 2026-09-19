@@ -72,6 +72,7 @@ Monika/
     │   ├── busy_input.py
     │   ├── doctor.py
     │   ├── main.py
+    │   ├── onboarding_trader.py
     │   ├── platform_compat.py
     │   ├── profile_manager.py
     │   ├── setup_wizard.py
@@ -93,10 +94,12 @@ Monika/
     │       └── startup_watchdog.py
     ├── config
     │   ├── atomic_writer.py
+    │   ├── config_manager.py
     │   ├── hot_reload.py
     │   ├── key_validator.py
     │   ├── migrations.py
     │   ├── schemas.py
+    │   ├── security.py
     │   ├── settings.py
     │   └── settings.yaml
     ├── analysis
@@ -164,6 +167,8 @@ Monika/
     │   │   ├── lesson_consolidator.py
     │   │   ├── outcome_linker.py
     │   │   ├── playbook_ledger.py
+    │   │   ├── playbook_lifecycle.py
+    │   │   ├── playbook_linter.py
     │   │   ├── progressive_loader.py
     │   │   ├── reflector.py
     │   │   ├── session_search.py
@@ -204,6 +209,7 @@ Monika/
     │   │   │   ├── __init__.py
     │   │   │   ├── context_builder.py
     │   │   │   ├── runner.py
+    │   │   │   ├── specialist_council.py
     │   │   │   ├── specialist_pipeline.py
     │   │   │   └── verifiers.py
     │   │   └── preflight_gate.py
@@ -233,9 +239,11 @@ Monika/
     │   │   ├── composite_tools.py
     │   │   ├── executor.py
     │   │   ├── registry.py
+    │   │   ├── tool_catalog.py
     │   │   ├── tool_executor.py
     │   │   ├── tool_guardrails.py
     │   │   ├── tool_registry.py
+    │   │   ├── tool_spill.py
     │   │   ├── tools_definitions.py
     │   │   ├── unified_registry.py
     │   │   ├── kernel
@@ -402,7 +410,8 @@ Monika/
     │   │   ├── risk_evaluator.py
     │   │   ├── self_healing_executor.py
     │   │   ├── sizing_calculator.py
-    │   │   └── state_machine.py
+    │   │   ├── state_machine.py
+    │   │   └── trade_confirm.py
     │   ├── verification_engine.py
     │   └── ea_bridge
     │       ├── AIAgent_EA.mq5
@@ -652,6 +661,7 @@ Monika/
     │   ├── chat_compaction.py
     │   ├── chat_tool_router.py
     │   ├── command_router.py
+    │   ├── fuzzy_router.py
     │   ├── topic_manager.py
     │   ├── vintage_formatter.py
     │   └── voice_handler.py
@@ -664,6 +674,7 @@ Monika/
         ├── chart_generator.py
         ├── clock.py
         ├── constants.py
+        ├── turn_marker.py
         ├── analytics
         │   ├── adversarial_outcome_tracker.py
         │   ├── agent_performance_monitor.py

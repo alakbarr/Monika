@@ -542,6 +542,103 @@ async def _cmd_config_set(args):
         console.print(f"{stamp_ok('CONFIG')} Configuration updated and verified in {settings_path}! (Backup created)")
 
 
+async def _cmd_config_get(args):
+    """Retrieve and display a specific configuration value."""
+    console = get_console()
+    key_path = getattr(args, "key", "")
+    is_raw = getattr(args, "raw", False)
+    if not key_path:
+        console.print(f"{stamp_warn('CONFIG')} No configuration key specified.")
+        return
+
+    from config.settings import load_settings
+    settings = load_settings(getattr(args, "config", None))
+    parts = key_path.split(".")
+    val = settings
+    for p in parts:
+        if isinstance(val, dict) and p in val:
+            val = val[p]
+        else:
+            console.print(f"{stamp_err('NOT FOUND')} Key '{key_path}' not found in configuration.")
+            return
+
+    val_str = str(val)
+    if not is_raw and any(s in key_path.lower() for s in ("key", "password", "secret", "token")):
+        val_str = "********" if val else ""
+
+    console.print(f"[bold {BRASS}]{key_path}[/]: {val_str}")
+
+
+async def _cmd_config_unset(args):
+    """Remove a configuration key."""
+    console = get_console()
+    key_path = getattr(args, "key", "")
+    if not key_path:
+        console.print(f"{stamp_warn('CONFIG')} No configuration key specified.")
+        return
+
+    from config.settings import load_settings, validate_config
+    from config.atomic_writer import AtomicConfigWriter
+
+    settings_path = getattr(args, "config", None) or "config/settings.yaml"
+    settings = load_settings(settings_path)
+    parts = key_path.split(".")
+    cur = settings
+    for p in parts[:-1]:
+        if isinstance(cur, dict) and p in cur:
+            cur = cur[p]
+        else:
+            console.print(f"{stamp_err('NOT FOUND')} Key '{key_path}' not found.")
+            return
+
+    if isinstance(cur, dict) and parts[-1] in cur:
+        del cur[parts[-1]]
+        try:
+            validate_config(settings)
+            import yaml
+            with open(settings_path, "w", encoding="utf-8") as f:
+                yaml.dump(settings, f, default_flow_style=False)
+            console.print(f"{stamp_ok('CONFIG')} Successfully unset '{key_path}'.")
+        except Exception as e:
+            console.print(f"{stamp_err('CONFIG')} Failed to unset '{key_path}': {e}")
+    else:
+        console.print(f"{stamp_err('NOT FOUND')} Key '{key_path}' not found.")
+
+
+async def _cmd_config_edit(args):
+    """Open settings.yaml in default editor and validate upon close."""
+    import subprocess
+    console = get_console()
+    settings_path = getattr(args, "config", None) or "config/settings.yaml"
+    if not os.path.exists(settings_path):
+        for cand in ("trading-agent/config/settings.yaml", "config/settings.yaml"):
+            if os.path.exists(cand):
+                settings_path = cand
+                break
+
+    editor = os.environ.get("EDITOR") or ("notepad" if sys.platform == "win32" else "nano")
+    console.print(f"{stamp_info('EDIT')} Opening {settings_path} with {editor}...")
+    try:
+        res = subprocess.run([editor, settings_path])
+        if res.returncode == 0:
+            from config.settings import load_settings, validate_config
+            try:
+                cfg = load_settings(settings_path)
+                validate_config(cfg)
+                console.print(f"{stamp_ok('VALIDATED')} Configuration file is valid and ready.")
+            except Exception as val_err:
+                console.print(f"{stamp_err('INVALID')} Configuration error detected: {val_err}")
+    except Exception as e:
+        console.print(f"{stamp_err('EDIT')} Failed to launch editor: {e}")
+
+
+async def _cmd_onboarding(args):
+    """Launch trader onboarding personalization wizard."""
+    from cli.onboarding_trader import TraderOnboarding
+    onboarding = TraderOnboarding()
+    onboarding.run_interview()
+
+
 async def _cmd_config(args):
     """Handle config subcommand routing."""
     action = getattr(args, "config_action", None)
@@ -549,6 +646,12 @@ async def _cmd_config(args):
         await _cmd_config_show(args)
     elif action == "set":
         await _cmd_config_set(args)
+    elif action == "get":
+        await _cmd_config_get(args)
+    elif action == "unset":
+        await _cmd_config_unset(args)
+    elif action == "edit":
+        await _cmd_config_edit(args)
     else:
         await _cmd_config_show(args)
 
@@ -953,6 +1056,21 @@ def parse_args(args_list=None):
     set_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
     set_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
+    get_parser = config_sub.add_parser("get", help="Retrieve specific configuration parameter")
+    get_parser.add_argument("key", type=str, help="Parameter key path (e.g. trading.risk.risk_percent_per_trade)")
+    get_parser.add_argument("--raw", action="store_true", default=False, help="Show raw unmasked value")
+    get_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+
+    unset_parser = config_sub.add_parser("unset", help="Unset a configuration parameter")
+    unset_parser.add_argument("key", type=str, help="Parameter key path to remove")
+    unset_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+
+    edit_parser = config_sub.add_parser("edit", help="Open settings.yaml in default editor and validate upon exit")
+    edit_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+
+    # Command: onboarding
+    subparsers.add_parser("onboarding", help="Launch trader personalization and risk style onboarding interview")
+
     # Command: sessions
     sessions_parser = subparsers.add_parser("sessions", help="List conversation sessions with metadata")
     sessions_parser.add_argument("--source", type=str, choices=["all", "telegram", "dashboard", "cli"], default="all", help="Filter by conversation source")
@@ -1062,6 +1180,8 @@ async def _dispatch_cli(args):
             await _cmd_doctor(args)
         elif args.command == "setup":
             await _cmd_setup(args)
+        elif args.command == "onboarding":
+            await _cmd_onboarding(args)
         elif args.command == "profile":
             await _cmd_profile(args)
         else:

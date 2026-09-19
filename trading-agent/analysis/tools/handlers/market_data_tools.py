@@ -37,15 +37,24 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
         return {"error": "Missing required parameter 'symbol'"}
     timeframe = args.get("timeframe", "H4")
     count = int(args.get("count", 100))
+    as_csv = args.get("format") == "csv" or args.get("as_csv") is True
 
+    rates = None
     try:
         from execution.mt5_client import get_mt5_client
         client = get_mt5_client()
         rates = await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
-        if rates:
+        if rates and not as_csv:
             return rates
     except Exception as e:
         logger.debug(f"[{symbol}] MT5 get_rates unavailable: {e}")
+
+    if as_csv and rates:
+        lines = ["time,O,H,L,C,V"]
+        for r in rates:
+            if isinstance(r, dict):
+                lines.append(f"{r.get('time')},{r.get('open')},{r.get('high')},{r.get('low')},{r.get('close')},{r.get('tick_volume', r.get('volume', 0))}")
+        return "\n".join(lines)
 
     if session:
         rows = (await session.execute(
@@ -54,6 +63,12 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
             .order_by(PriceOHLCV.timestamp.desc())
             .limit(count)
         )).scalars().all()
+        if as_csv:
+            lines = ["time,O,H,L,C,V"]
+            for r in reversed(rows):
+                t_str = r.timestamp.strftime("%m-%d %H:%M") if hasattr(r.timestamp, "strftime") else str(r.timestamp)
+                lines.append(f"{t_str},{r.open:.5f},{r.high:.5f},{r.low:.5f},{r.close:.5f},{r.volume}")
+            return "\n".join(lines)
         return [
             {
                 "time": r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp),
