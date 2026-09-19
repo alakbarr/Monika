@@ -196,9 +196,11 @@ class ChatAgent:
         self.DENIAL_BREAKER_THRESHOLD: int = 3
         self._proposals_paused: bool = False
 
-        # M6: Active Turn Interruption
+        # 3-Tier Interruption State (steer, redirect, hard_cancel)
         self._active_task: Optional[asyncio.Task] = None
         self._interrupt_message: Optional[str] = None
+        self._steer_queue: list[str] = []
+        self._hard_cancelled: bool = False
 
         # Tool event listener for dashboard WebSocket streaming
         self.tool_event_listener: Optional[Any] = None
@@ -349,14 +351,43 @@ class ChatAgent:
             return True, "Circuit breaker triggered: 3 consecutive denials. Auto-proposals paused."
         return False, f"Denial recorded ({self._consecutive_denials}/{self.DENIAL_BREAKER_THRESHOLD})."
 
-    def interrupt(self, redirect_message: str = "Turn interrupted by user") -> bool:
-        """Interrupt current ongoing chat turn and cancel active background task."""
+    def steer(self, guidance: str) -> str:
+        """
+        Tier 1 Interruption: Injects guidance into current active turn without aborting.
+        Guidance is consumed before the next tool call / model turn.
+        """
+        self._steer_queue.append(guidance)
+        logger.info(f"[ChatAgent] Steer guidance queued for user {self.user_id}: {guidance}")
+        return f"Steer guidance registered: '{guidance}'. It will guide the next analytical step."
+
+    def redirect(self, new_task: str) -> bool:
+        """
+        Tier 2 Interruption: Gracefully cancels the current ongoing turn and sets up redirect message.
+        """
         if self._active_task and not self._active_task.done():
-            self._interrupt_message = redirect_message
+            self._interrupt_message = f"Redirected to: {new_task}"
             self._active_task.cancel()
             self._active_task = None
+            logger.info(f"[ChatAgent] Turn redirected for user {self.user_id}: {new_task}")
             return True
         return False
+
+    def hard_cancel(self) -> bool:
+        """
+        Tier 3 Interruption: Hard-aborts current turn, clears steer queue, and resets agent state.
+        """
+        self._hard_cancelled = True
+        self._steer_queue.clear()
+        if self._active_task and not self._active_task.done():
+            self._active_task.cancel()
+            self._active_task = None
+            logger.info(f"[ChatAgent] Hard cancel executed for user {self.user_id}.")
+            return True
+        return False
+
+    def interrupt(self, redirect_message: str = "Turn interrupted by user") -> bool:
+        """Backward compatibility: calls redirect."""
+        return self.redirect(redirect_message)
 
     def resume_proposals(self) -> str:
         """Reset denial circuit breaker and re-enable action proposals."""
@@ -755,6 +786,17 @@ class ChatAgent:
         elif preference in ('tier_deep', 'claude_sonnet'):
             preference = 'tier_deep'
             clean_message = re.sub(r'^/(analyze|analisis)\s+', '', user_message, flags=re.IGNORECASE)
+
+        # Check hard cancel state
+        if self._hard_cancelled:
+            self._hard_cancelled = False
+            return "⚠️ Sesi sebelumnya dibatalkan secara penuh (Hard Cancel).", None
+
+        # Check and inject steer guidance if present
+        if self._steer_queue:
+            guidance_text = "\n".join(f"- {g}" for g in self._steer_queue)
+            self._steer_queue.clear()
+            clean_message = f"[OPERATOR STEERING GUIDANCE]:\n{guidance_text}\n\n{clean_message}"
         
         # Auto-detect jika tidak ada manual preference
         if preference == 'auto':

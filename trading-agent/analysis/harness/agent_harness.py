@@ -682,6 +682,8 @@ class AgentHarness:
                 prefetch_satisfied_tools=prefetch_satisfied_tools,
                 symbol=stage_symbol,
             )
+        if executor is not None:
+            executor.verification_ledger = self.verification_ledger
 
         turns = 0
         ptc_refund_count = 0

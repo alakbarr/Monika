@@ -56,3 +56,54 @@ def test_plugin_hook_on_llm_error():
     """Verify ON_LLM_ERROR hook exists in PluginHook."""
     assert hasattr(PluginHook, "ON_LLM_ERROR")
     assert PluginHook.ON_LLM_ERROR == "on_llm_error"
+
+
+def test_provider_circuit_breaker():
+    """Verify ProviderCircuitBreaker transitions CLOSED -> OPEN -> HALF_OPEN -> CLOSED."""
+    import time
+    from analysis.providers.llm_factory import ProviderCircuitBreaker
+
+    ProviderCircuitBreaker.reset()
+    provider = "test_prov"
+
+    assert ProviderCircuitBreaker.is_provider_available(provider) is True
+
+    # 2 failures shouldn't trip breaker (threshold = 3)
+    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="500 Internal Error")
+    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="timeout")
+    assert ProviderCircuitBreaker.is_provider_available(provider) is True
+
+    # 3rd failure trips breaker
+    ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="503 Service Unavailable")
+    assert ProviderCircuitBreaker.is_provider_available(provider) is False
+
+    # Simulate cooldown expiry
+    ProviderCircuitBreaker._open_until[provider] = time.time() - 1.0
+    # Next check transitions to HALF_OPEN (returns True for 1 canary probe)
+    assert ProviderCircuitBreaker.is_provider_available(provider) is True
+    assert ProviderCircuitBreaker._states[provider] == "HALF_OPEN"
+
+    # Success restores to CLOSED
+    ProviderCircuitBreaker.record_provider_success(provider)
+    assert ProviderCircuitBreaker.is_provider_available(provider) is True
+    assert ProviderCircuitBreaker._states[provider] == "CLOSED"
+
+
+def test_capability_blacklist():
+    """Verify model blacklisting with expiration."""
+    import time
+    from analysis.providers.llm_factory import ProviderCircuitBreaker
+
+    ProviderCircuitBreaker.reset()
+    provider = "openrouter"
+    model = "anthropic/claude-3-haiku:broken"
+
+    assert ProviderCircuitBreaker.is_model_blacklisted(provider, model) is False
+
+    ProviderCircuitBreaker.blacklist_model(provider, model, reason="billing_exhausted", duration=60.0)
+    assert ProviderCircuitBreaker.is_model_blacklisted(provider, model) is True
+
+    # Expire blacklist
+    ProviderCircuitBreaker._blacklisted_models[(provider, model)] = time.time() - 1.0
+    assert ProviderCircuitBreaker.is_model_blacklisted(provider, model) is False
+

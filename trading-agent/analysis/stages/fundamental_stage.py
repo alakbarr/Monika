@@ -62,6 +62,9 @@ FALLBACK_SYSTEM_PROMPT = """You are a senior macro-economic analyst and fundamen
 Your task is to analyze the macroeconomic environment, central bank reaction functions (Fed, ECB, BoE, BoJ, RBA), interest rate differentials, geopolitical risks, and institutional positioning to provide a bias for major currency pairs and commodities. Suku bunga dan ekspektasi arahnya adalah penggerak paling dominan nilai tukar. Use the provided tools to gather data and record your final brief by calling the tool 'submit_fundamental_brief'.
 """
 
+from utils.llm.prompt_disciplines import get_universal_execution_discipline
+FALLBACK_SYSTEM_PROMPT = FALLBACK_SYSTEM_PROMPT.strip() + "\n\n" + get_universal_execution_discipline()
+
 USER_MESSAGE = """Please perform a complete fundamental macro analysis for the current market session.
 
 Core macro data (DXY, VIX, yields, calendar, FedWatch, interest rates, COT, news digest) is ALREADY PRE-FETCHED below in the [PRE-FETCHED DATA] block.

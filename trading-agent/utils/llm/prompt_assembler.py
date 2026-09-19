@@ -88,11 +88,13 @@ class PromptAssembler:
         """
         from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
         from analysis.memory.layered_memory import LayeredMemoryManager
+        from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
-        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE1_TIER1}\n\n{MANDATORY_RULES}"
+        discipline_block = get_universal_execution_discipline()
+        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE1_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}"
 
         discipline = ""
         if model_name:
@@ -212,7 +214,8 @@ class PromptAssembler:
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
-        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{MANDATORY_RULES}"
+        discipline_block = get_universal_execution_discipline()
+        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}"
 
         discipline = ""
         if model_name:

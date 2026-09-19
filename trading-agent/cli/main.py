@@ -758,7 +758,9 @@ async def _cmd_doctor(args):
 async def _cmd_setup(args):
     from cli.setup_wizard import SetupWizard
     wizard = SetupWizard(settings_path=getattr(args, "config", None))
-    wizard.run_wizard()
+    section = getattr(args, "section", "all")
+    quick = getattr(args, "quick", False)
+    wizard.run_wizard(section=section, quick=quick)
 
 
 async def _cmd_profile(args):
@@ -801,6 +803,72 @@ async def _cmd_profile(args):
             console.print(f"{stamp_ok('PROFILE')} Created profile [bold {BRASS}]{name}[/] at {p_dir}")
         except Exception as e:
             console.print(f"{stamp_err('PROFILE')} Failed to create profile: {e}")
+    elif action == "delete":
+        name = getattr(args, "name", "")
+        try:
+            pm.delete_profile(name)
+            console.print(f"{stamp_ok('PROFILE')} Deleted profile [bold {BRASS}]{name}[/]")
+        except Exception as e:
+            console.print(f"{stamp_err('PROFILE')} Failed to delete profile: {e}")
+    elif action == "export":
+        name = getattr(args, "name", "")
+        zip_path = getattr(args, "zip_path", f"{name}.zip")
+        try:
+            out_path = pm.export_profile(name, zip_path)
+            console.print(f"{stamp_ok('PROFILE')} Exported profile [bold {BRASS}]{name}[/] to {out_path}")
+        except Exception as e:
+            console.print(f"{stamp_err('PROFILE')} Failed to export profile: {e}")
+    elif action == "import":
+        zip_path = getattr(args, "zip_path", "")
+        name = getattr(args, "name", None)
+        try:
+            target_dir = pm.import_profile(zip_path, new_name=name)
+            console.print(f"{stamp_ok('PROFILE')} Imported profile to {target_dir}")
+        except Exception as e:
+            console.print(f"{stamp_err('PROFILE')} Failed to import profile: {e}")
+
+
+async def _cmd_ask(args):
+    console = get_console()
+    question = " ".join(args.question)
+    if not question.strip():
+        console.print(f"{stamp_err('ASK')} No question provided.")
+        return
+
+    console.print(f"{stamp_info('ASK')} Querying Monika: [bold]{question}[/]")
+    from telegram_bot.chat_agent import ChatAgent
+    from config.settings import load_all_config
+    settings = load_all_config()
+    agent = ChatAgent(settings, user_id="cli_user", is_admin=True)
+
+    reply_text, pending = await agent.handle(question)
+    console.print(f"\n{reply_text}\n")
+    if pending:
+        console.print(f"{stamp_warn('PROPOSAL')} Proposed action: {pending.description} (Action ID: {pending.action_id})")
+
+
+async def _cmd_analyze(args):
+    console = get_console()
+    symbol = args.symbol.strip().upper().replace("/", "")
+    context = getattr(args, "context", "")
+    console.print(f"{stamp_info('ANALYZE')} Running ad-hoc analysis for [bold {BRASS}]{symbol}[/]...")
+
+    from agent.agent_loop import SystemAgentLoop
+    from config.settings import load_all_config
+    settings = load_all_config()
+    agent_loop = SystemAgentLoop(settings=settings)
+
+    def _progress(msg):
+        console.print(f"  [{MUTED}]• {msg}[/]")
+
+    res = await agent_loop.execute_ad_hoc_analysis(
+        symbol=symbol,
+        progress_callback=_progress,
+        custom_context=context or f"Ad-hoc analysis requested via CLI for {symbol}"
+    )
+    summary = res.get("formatted_summary") or f"Analysis for {symbol} completed."
+    console.print(f"\n{summary}\n")
+
 
 
 class MonikaArgumentParser(argparse.ArgumentParser):
@@ -910,16 +978,35 @@ def parse_args(args_list=None):
     # Command: setup
     setup_parser = subparsers.add_parser("setup", help="Launch interactive onboarding setup wizard")
     setup_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
+    setup_parser.add_argument("--section", type=str, choices=["all", "mt5", "db", "llm", "risk"], default="all", help="Configure specific section only")
+    setup_parser.add_argument("--quick", action="store_true", default=False, help="Quick setup with sensible defaults")
 
     # Command: profile
     profile_parser = subparsers.add_parser("profile", help="Manage isolated trading environments and profiles")
-    prof_sub = profile_parser.add_subparsers(dest="profile_action", help="Profile actions: list, use, create")
+    prof_sub = profile_parser.add_subparsers(dest="profile_action", help="Profile actions: list, use, create, delete, export, import")
     prof_sub.add_parser("list", help="List all trading profiles")
     use_p = prof_sub.add_parser("use", help="Switch active profile")
     use_p.add_argument("name", type=str, help="Name of the profile to activate")
     create_p = prof_sub.add_parser("create", help="Create new isolated profile")
     create_p.add_argument("name", type=str, help="Name of the new profile")
     create_p.add_argument("--clone", type=str, default=None, help="Optional source profile to clone configuration from")
+    del_p = prof_sub.add_parser("delete", help="Delete an isolated profile")
+    del_p.add_argument("name", type=str, help="Name of the profile to delete")
+    exp_p = prof_sub.add_parser("export", help="Export profile to zip archive")
+    exp_p.add_argument("name", type=str, help="Name of the profile to export")
+    exp_p.add_argument("zip_path", type=str, help="Output path for zip archive")
+    imp_p = prof_sub.add_parser("import", help="Import profile from zip archive")
+    imp_p.add_argument("zip_path", type=str, help="Path to zip archive")
+    imp_p.add_argument("--name", type=str, default=None, help="Optional new profile name")
+
+    # Command: ask (one-shot question to agent)
+    ask_parser = subparsers.add_parser("ask", help="Send a single question or command to Monika chat agent")
+    ask_parser.add_argument("question", nargs="+", type=str, help="Question or instruction for Monika")
+
+    # Command: analyze (one-shot ad-hoc analysis for symbol)
+    analyze_parser = subparsers.add_parser("analyze", help="Trigger ad-hoc multi-timeframe analysis for a symbol")
+    analyze_parser.add_argument("symbol", type=str, help="Symbol to analyze (e.g. EURUSD, XAUUSD)")
+    analyze_parser.add_argument("--context", type=str, default="", help="Optional custom analytical context")
 
     # Backward compatibility when run without subcommand
     parser.add_argument("--mode", type=str, choices=["live", "paper"], default="paper", help="Trading execution mode")
@@ -941,7 +1028,7 @@ def parse_args(args_list=None):
             )
 
     if not parsed.command:
-        parsed.command = "run"
+        parsed.command = "status"
     return parsed
 
 
@@ -949,6 +1036,10 @@ async def _dispatch_cli(args):
     try:
         if args.command == "status":
             await _cmd_status(args)
+        elif args.command == "ask":
+            await _cmd_ask(args)
+        elif args.command == "analyze":
+            await _cmd_analyze(args)
         elif args.command == "pause":
             await _cmd_pause(args)
         elif args.command == "resume":

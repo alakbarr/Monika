@@ -970,7 +970,8 @@ class OpenAIProvider(BaseLLMClient):
             while turns < self.max_tool_turns:
                 turns += 1
 
-                if turns > 2:
+                # Cache-preserving proactive compaction gate: only mask when message volume threatens budget
+                if len(messages) >= 8 and compactor.calculate_history_tokens(messages) >= 16000:
                     messages = compactor.mask_aged_observations(messages, keep_recent_turns=2)
 
                 try:

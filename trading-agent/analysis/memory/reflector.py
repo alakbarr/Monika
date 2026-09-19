@@ -306,6 +306,17 @@ class TradeReflector:
                 reflection.outcome_process_classification = data.get('outcome_process_classification')
                 reflection.status = "resolved"
                 reflection.resolved_at = clock.now()
+
+                # Generate and store embedding for semantic precedent search
+                try:
+                    from utils.llm.embedding import generate_gemini_embedding
+                    embed_text = f"Symbol: {reflection.symbol} | Decision: {reflection.decision} | Rationale: {reflection.rationale_summary or ''} | Lesson: {reflection.specific_lesson} | Outcome: {reflection.exit_reason or ''}"
+                    vec = await generate_gemini_embedding(embed_text, settings=self.settings)
+                    if vec:
+                        reflection.embedding = vec
+                        logger.info(f"[TradeReflector] Generated vector embedding ({len(vec)} dim) for reflection #{reflection_id}")
+                except Exception as emb_err:
+                    logger.debug(f"[TradeReflector] Embedding generation non-fatal error: {emb_err}")
         except Exception as e:
             logger.error(f"Reflector JSON Parse Error: {e}")
         from database.safe_ops import safe_commit
