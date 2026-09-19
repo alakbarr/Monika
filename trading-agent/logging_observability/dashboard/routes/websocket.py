@@ -75,6 +75,17 @@ async def websocket_live_feed(websocket: WebSocket):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "connected",
         })
+        try:
+            from risk.approval_hub import ApprovalHub
+            open_reqs = ApprovalHub.get_instance().get_open_requests()
+            if open_reqs:
+                await websocket.send_json({
+                    "type": "open_approvals",
+                    "requests": open_reqs,
+                })
+        except Exception:
+            pass
+
         while True:
             data = await websocket.receive_text()
             if data == "ping":
@@ -86,31 +97,25 @@ async def websocket_live_feed(websocket: WebSocket):
                         await websocket.send_json({"type": "authenticated", "role": role.value if role else "viewer"})
                     elif msg.get("type") == "steer":
                         text = msg.get("message") or (msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None)
+                        symbol = msg.get("symbol") or "ALL"
                         if text:
-                            from database.db import AsyncSessionLocal
-                            from database.models import UserMarketIntel, ActivityLog, _utcnow
-                            from logging_observability.dashboard.routes.common import broadcast_live_event
-                            now = _utcnow()
-                            async with AsyncSessionLocal() as db_sess:
-                                db_sess.add(UserMarketIntel(
-                                    telegram_user_id="ws_client",
-                                    intel_type="tactical_directive",
-                                    title="WS Steer Directive",
-                                    summary=str(text),
-                                    directive="neutral",
-                                    target_cycle="continuous",
-                                    affected_symbols="ALL",
-                                    is_active=True,
-                                    created_at=now,
-                                ))
-                                db_sess.add(ActivityLog(
-                                    category="analysis",
-                                    description=f"WS Steer Directive received: {str(text)[:150]}",
-                                    actor="websocket",
-                                ))
-                                await db_sess.commit()
-                            await broadcast_live_event("steer_injected", {"message": text, "source": "ws"})
-                            await websocket.send_json({"type": "steer_acknowledged", "message": text})
+                            from risk.approval_hub import ApprovalHub
+                            operator_tag = f"ws:{role.value if role else 'client'}"
+                            steer_res = await ApprovalHub.get_instance().steer(symbol, str(text), operator=operator_tag)
+                            await websocket.send_json({"type": "steer_acknowledged", **steer_res})
+                    elif msg.get("type") in ("approve", "approval_approve"):
+                        req_id = msg.get("request_id") or msg.get("action_id")
+                        operator_tag = f"ws:{role.value if role else 'client'}"
+                        from risk.approval_hub import ApprovalHub
+                        ok, res_str = await ApprovalHub.get_instance().approve(str(req_id), operator=operator_tag)
+                        await websocket.send_json({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
+                    elif msg.get("type") in ("reject", "approval_reject"):
+                        req_id = msg.get("request_id") or msg.get("action_id")
+                        reason = msg.get("reason", "")
+                        operator_tag = f"ws:{role.value if role else 'client'}"
+                        from risk.approval_hub import ApprovalHub
+                        ok, res_str = await ApprovalHub.get_instance().reject(str(req_id), operator=operator_tag, reason=reason)
+                        await websocket.send_json({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
                 except Exception:
                     pass
     except WebSocketDisconnect:
@@ -225,6 +230,16 @@ async def websocket_agent_chat(websocket: WebSocket):
         "session_id": session_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
+    try:
+        from risk.approval_hub import ApprovalHub
+        open_reqs = ApprovalHub.get_instance().get_open_requests()
+        if open_reqs:
+            await websocket.send_json({
+                "type": "open_approvals",
+                "requests": open_reqs,
+            })
+    except Exception:
+        pass
 
     from config.settings import load_settings
     raw_settings = get_dashboard_dependency("settings") or load_settings()
@@ -304,6 +319,16 @@ async def websocket_agent_chat(websocket: WebSocket):
 
                 action_id = msg.get("action_id", "")
                 decision = str(msg.get("decision", "")).lower()
+                operator_tag = f"ws:{role.value if role else 'client'}"
+
+                try:
+                    from risk.approval_hub import ApprovalHub
+                    if decision in ("allow_once", "allow_session"):
+                        await ApprovalHub.get_instance().approve(action_id, operator=operator_tag)
+                    elif decision in ("deny", "reject"):
+                        await ApprovalHub.get_instance().reject(action_id, operator=operator_tag, reason=str(msg.get("reason", "")))
+                except Exception:
+                    pass
 
                 if decision == "allow_once":
                     ok, res_text = await agent.confirm_action(action_id)

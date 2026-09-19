@@ -57,6 +57,17 @@ class FailoverReason(str, Enum):
         }
         return self not in NO_FAILOVER
 
+    def can_failover(self, is_hot_path: bool = False) -> bool:
+        """Whether this error warrants trying a different model, accounting for hot-path zero-downtime urgency."""
+        if is_hot_path and self in (
+            FailoverReason.RATE_LIMIT_API,
+            FailoverReason.RATE_LIMIT_MODEL,
+            FailoverReason.UPSTREAM_RATE_LIMIT,
+            FailoverReason.MODEL_OVERLOADED,
+        ):
+            return True
+        return self.should_failover
+
     @property
     def should_compress(self) -> bool:
         """Whether to compact context instead of failover."""

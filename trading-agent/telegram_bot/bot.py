@@ -171,6 +171,7 @@ class TelegramBot:
         app.add_handler(CommandHandler("backtest", self._cmd_backtest))
         app.add_handler(CommandHandler("approve", self._cmd_approve))
         app.add_handler(CommandHandler("reject",  self._cmd_reject))
+        app.add_handler(CommandHandler("steer",   self._cmd_steer))
         app.add_handler(CommandHandler("interrupt", self._cmd_interrupt))
         app.add_handler(CommandHandler("resume_proposals", self._cmd_resume_proposals))
         # Model override commands → routed to chat with prefix intact
@@ -1783,6 +1784,11 @@ class TelegramBot:
         await update.message.reply_text(f"⏳ Mengeksekusi analisis #{analysis_id}...")
         try:
             result = await self.execution_service.execute_by_analysis_id(analysis_id)
+            try:
+                from risk.approval_hub import ApprovalHub
+                await ApprovalHub.get_instance().approve(str(analysis_id), operator=f"telegram:{update.effective_user.id}")
+            except Exception:
+                pass
             await update.message.reply_text(
                 f"✅ {result.summary()}" if hasattr(result, 'summary') else str(result)
             )
@@ -1800,20 +1806,23 @@ class TelegramBot:
         
         analysis_id_str = ctx.args[0]
         
+        try:
+            from risk.approval_hub import ApprovalHub
+            await ApprovalHub.get_instance().reject(str(analysis_id_str), operator=f"telegram:{update.effective_user.id}", reason="Rejected via Telegram by admin")
+        except Exception:
+            pass
+
         from database.db import get_session
         async with get_session() as session:
             from database.models import ActivityLog, PaperTradeRecord
             from sqlalchemy import select, update as sql_update
             
-            # Log rejection
             session.add(ActivityLog(
                 category="trading",
                 description=f"Trade proposal #{analysis_id_str} REJECTED by admin via Telegram",
                 actor="telegram_admin",
             ))
             
-            # Close any open paper trades for this analysis (should be none since we moved opening to execution)
-            # Defensive: close any that might exist
             try:
                 analysis_id = int(analysis_id_str)
                 
@@ -1841,6 +1850,35 @@ class TelegramBot:
             await session.commit()
         
         await update.message.reply_text(f"❌ Analisis #{analysis_id_str} ditolak dan tidak akan dieksekusi.")
+
+    async def _cmd_steer(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Mid-stream in-flight steer directive synchronized across Telegram, WS, and TUI."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args or len(ctx.args) < 2:
+            await update.message.reply_text(
+                "Usage: `/steer <symbol> <instruction>`\nContoh: `/steer EURUSD prioritize bearish sweep reclaim`",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        symbol = ctx.args[0].upper().strip()
+        instruction = " ".join(ctx.args[1:]).strip()
+
+        from risk.approval_hub import ApprovalHub
+        operator_tag = f"telegram:{update.effective_user.id}"
+        await ApprovalHub.get_instance().steer(symbol, instruction, operator=operator_tag)
+
+        await update.message.reply_text(
+            f"🎯 *Steer Synchronized Across All Surfaces*\n\n"
+            f"• *Symbol:* `{symbol}`\n"
+            f"• *Instruction:* {instruction}\n"
+            f"• *Surfaces:* Telegram, Dashboard CRT, TUI Terminal\n"
+            f"• *Status:* Injected into active trading cycle",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
     async def _cmd_tearsheet(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return

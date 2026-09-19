@@ -26,6 +26,7 @@ from analysis.tools.handlers import (
     smc_tools,
     db_tools,
     ptc_handler,
+    skills_tools,
 )
 from analysis.tools.domain import spill_reader_tool
 
@@ -50,4 +51,5 @@ __all__ = [
     "trading_tools",
     "smc_tools",
     "db_tools",
+    "skills_tools",
 ]

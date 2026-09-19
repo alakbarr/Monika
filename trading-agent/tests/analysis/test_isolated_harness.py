@@ -80,3 +80,86 @@ async def test_h3_subagent_timeout_watchdog():
     assert result["success"] is False
     assert "timed out" in result["error"].lower()
 
+
+@pytest.mark.asyncio
+async def test_h3_subagent_output_schema_validation_success():
+    """Subagent returns valid JSON adhering to output_schema."""
+    client = DummySubagentClient()
+    runner = IsolatedSubagentRunner()
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "bias": {"type": "string", "enum": ["bullish", "bearish", "neutral"]},
+            "confidence": {"type": "number"},
+        },
+        "required": ["bias", "confidence"],
+    }
+
+    client.mock_run.return_value = MockResponse(
+        content=[MockBlock("text", text='```json\n{"bias": "bullish", "confidence": 0.85}\n```')],
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=30,
+    )
+
+    result = await runner.run_isolated(
+        role_name="sentiment_analyst",
+        llm_client=client,
+        system_prompt="Analyze sentiment",
+        messages=[{"role": "user", "content": "Analyze EURUSD sentiment"}],
+        tools=[],
+        output_schema=schema,
+    )
+
+    assert result["success"] is True
+    assert result.get("schema_valid") is True
+    assert result["parsed_output"] == {"bias": "bullish", "confidence": 0.85}
+
+
+@pytest.mark.asyncio
+async def test_h3_subagent_output_schema_auto_correction():
+    """Subagent receives 1-turn auto-correction nudge when first output violates schema."""
+    client = DummySubagentClient()
+    runner = IsolatedSubagentRunner()
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "bias": {"type": "string"},
+            "level": {"type": "number"},
+        },
+        "required": ["bias", "level"],
+    }
+
+    # Turn 1: Plain text without required JSON schema
+    turn1_resp = MockResponse(
+        content=[MockBlock("text", text="I think it's bullish around 1.0850")],
+        stop_reason="end_turn",
+        input_tokens=100,
+        output_tokens=30,
+    )
+    # Turn 2: Corrected JSON response following nudge
+    turn2_resp = MockResponse(
+        content=[MockBlock("text", text='{"bias": "bullish", "level": 1.0850}')],
+        stop_reason="end_turn",
+        input_tokens=150,
+        output_tokens=40,
+    )
+
+    client.mock_run.side_effect = [turn1_resp, turn2_resp]
+
+    result = await runner.run_isolated(
+        role_name="technical_analyst",
+        llm_client=client,
+        system_prompt="Analyze level",
+        messages=[{"role": "user", "content": "Analyze key level"}],
+        tools=[],
+        output_schema=schema,
+    )
+
+    assert result["success"] is True
+    assert result.get("schema_valid") is True
+    assert result["parsed_output"]["bias"] == "bullish"
+    assert result["parsed_output"]["level"] == 1.0850
+

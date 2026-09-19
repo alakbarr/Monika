@@ -1807,9 +1807,50 @@ DELEGATE_SPECIALIST_ANALYSIS = _tool(
 )
 
 TELEGRAM_TOOLS.append(DELEGATE_SPECIALIST_ANALYSIS)
+if DELEGATE_SPECIALIST_ANALYSIS not in STAGE1_TOOLS:
+    STAGE1_TOOLS.append(DELEGATE_SPECIALIST_ANALYSIS)
+if DELEGATE_SPECIALIST_ANALYSIS not in STAGE2_ESSENTIAL_TOOLS:
+    STAGE2_ESSENTIAL_TOOLS.append(DELEGATE_SPECIALIST_ANALYSIS)
+
+SKILLS_LIST_TOOL = _tool(
+    name="skills_list",
+    description=(
+        "List all available institutional trading playbooks, analytical frameworks, and tactical skills. "
+        "Returns skill names, categories, and concise capability summaries. "
+        "Use this to discover specialized frameworks without prompt token bloat."
+    ),
+    properties={},
+    required=[],
+)
+
+SKILL_VIEW_TOOL = _tool(
+    name="skill_view",
+    description=(
+        "Retrieve and view the full content and operational guidelines of a specific trading skill or playbook by name. "
+        "Available skills include: 'central_banks_framework', 'event_probability_playbook', 'smc_ict_playbook', "
+        "'macro_analysis_framework', 'market_dynamics_framework', 'adjudication_framework', etc."
+    ),
+    properties={
+        "skill_name": {
+            "type": "string",
+            "description": "Exact name of the skill or playbook to inspect (without .md extension).",
+        }
+    },
+    required=["skill_name"],
+)
+
+TELEGRAM_TOOLS.extend([SKILLS_LIST_TOOL, SKILL_VIEW_TOOL])
+if SKILLS_LIST_TOOL not in STAGE1_TOOLS:
+    STAGE1_TOOLS.append(SKILLS_LIST_TOOL)
+if SKILL_VIEW_TOOL not in STAGE1_TOOLS:
+    STAGE1_TOOLS.append(SKILL_VIEW_TOOL)
+if SKILLS_LIST_TOOL not in STAGE2_ESSENTIAL_TOOLS:
+    STAGE2_ESSENTIAL_TOOLS.append(SKILLS_LIST_TOOL)
+if SKILL_VIEW_TOOL not in STAGE2_ESSENTIAL_TOOLS:
+    STAGE2_ESSENTIAL_TOOLS.append(SKILL_VIEW_TOOL)
 
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL]}.values())
 
 
 

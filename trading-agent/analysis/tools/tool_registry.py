@@ -26,12 +26,12 @@ LOAD_TOOL_CATEGORY_TOOL = _tool(
     name="load_tool_category",
     description=(
         "Dynamically loads full parameter schemas for a specialized tool category into your active context. "
-        "Available categories: 'MACRO', 'TECHNICAL', 'SENTIMENT', 'EXECUTION', 'POSITION'."
+        "Available categories: 'MACRO', 'TECHNICAL', 'SENTIMENT', 'EXECUTION', 'POSITION', 'KNOWLEDGE'."
     ),
     properties={
         "category": {
             "type": "string",
-            "enum": ["MACRO", "TECHNICAL", "SENTIMENT", "EXECUTION", "POSITION"],
+            "enum": ["MACRO", "TECHNICAL", "SENTIMENT", "EXECUTION", "POSITION", "KNOWLEDGE"],
             "description": "Category of tools to load into active session schema.",
         }
     },
@@ -116,6 +116,9 @@ class ProgressiveToolRegistry:
             "get_open_positions", "get_account_info", "get_trade_history",
             "get_trade_details", "get_paper_trading_performance", "get_risk_state",
             "get_asset_analysis", "get_edge_tracker_status", "get_market_correlations"
+        ],
+        "KNOWLEDGE": [
+            "skills_list", "skill_view"
         ],
     }
 

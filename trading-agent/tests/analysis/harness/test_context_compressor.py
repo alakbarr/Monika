@@ -145,3 +145,42 @@ async def test_compression_not_triggered_when_message_count_high_but_chars_withi
     # Should NOT be compressed because total_chars is well within 5000 budget
     assert res == messages
 
+
+def test_snap_boundary_preserves_tool_pair_integrity():
+    """Verify _snap_boundary pulls assistant tool_use into tail when split would land on tool_result."""
+    compressor = ContextCompressor(settings={})
+    messages = [
+        {"role": "user", "content": "Head prompt"},
+        {"role": "assistant", "content": "Turn 1"},
+        {"role": "user", "content": "Obs 1"},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "t_pair", "name": "get_quote"}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t_pair", "content": "1.0850"}]},
+        {"role": "assistant", "content": "Turn 3"},
+        {"role": "user", "content": "Obs 3"},
+    ]
+
+    # If tail_start landed on index 4 (the tool_result), _snap_boundary shifts back to index 3 (the tool_use)
+    snapped_idx = compressor._snap_boundary(messages, split_idx=4)
+    assert snapped_idx == 3
+
+
+@pytest.mark.asyncio
+async def test_iterative_summary_chaining():
+    """Verify that prior condensed summary in middle messages is retained and chained into new summary."""
+    compressor = ContextCompressor(settings={})
+    middle_msgs = [
+        {
+            "role": "user",
+            "content": (
+                "[CONDENSED CONTEXT SUMMARY — intermediate turns compressed for context budget]\n"
+                "• Prior note: Key H4 resistance at 1.0900\n"
+                "[END SUMMARY — continue analysis with recent observations below]"
+            ),
+        },
+        {"role": "assistant", "content": "New observation: EURUSD price = 1.0860, RSI = 55.0"},
+    ]
+
+    summary = await compressor.summarize_middle(middle_msgs)
+    assert "Prior Summary" in summary or "1.0900" in summary
+    assert "1.0860" in summary or "RSI" in summary
+
