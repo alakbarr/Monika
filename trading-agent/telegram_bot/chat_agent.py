@@ -595,8 +595,9 @@ class ChatAgent:
             else:
                 text = override_text if override_text is not None else user_message
 
-            # Stream response if requested and update is available
-            if stream and effective_update and (hasattr(effective_update, "message") or hasattr(effective_update, "reply_text")):
+            # Stream response if requested and update is available, provided it is not an action query requiring ToolExecutor and interactive cards
+            is_action_query = bool(re.search(r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi)\b', text, re.IGNORECASE))
+            if stream and not is_action_query and effective_update and (hasattr(effective_update, "message") or hasattr(effective_update, "reply_text")):
                 return await self._handle_streaming(
                     update=effective_update,
                     context=context,

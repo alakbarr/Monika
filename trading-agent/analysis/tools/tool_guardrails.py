@@ -113,8 +113,44 @@ class ToolCallSignature:
         return f"{tool_name}:{md5_hash}"
 
 
+class BatchCycleGuard:
+    """Mendeteksi perulangan siklus pemanggilan tool multi-langkah (periode 2 s/d 4: A->B->A->B)."""
+
+    def __init__(self, max_period: int = 4, history_len: int = 32):
+        self.max_period = max_period
+        self._history: deque[str] = deque(maxlen=history_len)
+
+    def record(self, sig: str) -> None:
+        self._history.append(sig)
+
+    def detect_cycle(self) -> Optional[tuple[int, int]]:
+        """Mengembalikan (period, laps) jika siklus berulang >= 2 lap penuh (3x putaran)."""
+        n = len(self._history)
+        for period in range(2, self.max_period + 1):
+            if n < period * 3:
+                continue
+            laps = 1
+            while True:
+                base = n - period * (laps + 1)
+                if base < 0:
+                    break
+                is_equal = all(
+                    self._history[base + i] == self._history[n - period + i]
+                    for i in range(period)
+                )
+                if not is_equal:
+                    break
+                laps += 1
+            if laps >= 3:
+                return period, laps
+        return None
+
+    def reset(self) -> None:
+        self._history.clear()
+
+
 class AntiOscillationGuard:
-    """Mendeteksi dan menekan perulangan panggilan tool identik."""
+    """Mendeteksi dan menekan perulangan panggilan tool identik serta siklus multi-tool bergantian."""
 
     def __init__(self, window_size: int = 10):
         self.window_size = window_size
@@ -122,8 +158,25 @@ class AntiOscillationGuard:
         self._counts: Dict[str, int] = {}
         self._last_sig: Optional[str] = None
         self._consecutive_count: int = 0
+        self._batch_cycle_guard = BatchCycleGuard(max_period=4, history_len=32)
 
     def evaluate(self, sig: str, tool_name: str) -> GuardrailVerdict:
+        # 1. Deteksi siklus bergantian (A->B->A->B)
+        cycle = self._batch_cycle_guard.detect_cycle()
+        if cycle:
+            period, laps = cycle
+            return GuardrailVerdict(
+                allowed=False,
+                guard_name="AntiOscillationGuard",
+                reason=(
+                    f"Multi-step batch cycle loop detected (period={period}, repeated {laps} laps). "
+                    f"Agent is alternating between tools without advancing analysis. "
+                    f"Do not cycle calls. Conclude analysis immediately."
+                ),
+                action="suppress",
+                suggested_fix="Synthesize existing observation and conclude analysis.",
+            )
+
         if sig == self._last_sig:
             self._consecutive_count += 1
         else:
@@ -151,12 +204,14 @@ class AntiOscillationGuard:
     def record(self, sig: str) -> None:
         self._history.append(sig)
         self._counts[sig] = self._counts.get(sig, 0) + 1
+        self._batch_cycle_guard.record(sig)
 
     def reset(self) -> None:
         self._history.clear()
         self._counts.clear()
         self._last_sig = None
         self._consecutive_count = 0
+        self._batch_cycle_guard.reset()
 
 
 class MonotonicRiskGuard:

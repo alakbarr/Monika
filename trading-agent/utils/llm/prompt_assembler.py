@@ -380,9 +380,14 @@ class PromptAssembler:
         is_crypto: bool = False,
         is_commodity: bool = False,
         detected_regime: Optional[str] = None,
+        volatile_tail: Optional[str] = None,
     ) -> Tuple[str, str]:
         """
         Returns (system_prompt, user_message) for Stage 2 Per-Asset Analysis.
+        Follows 3-Zone prompt caching architecture:
+        - Zone A (Immutable Anchor): Static instructions & SMC rules
+        - Zone B (Semi-Static Context): Target & multi-hour pre-fetched data
+        - Zone C (Volatile Tail): Live ticks and timestamps placed strictly at the end
         """
         tier1, tier2, tier3 = self.assemble_stage2_tiers(
             symbol=symbol,
@@ -397,7 +402,7 @@ class PromptAssembler:
         )
 
         system = "\n\n".join(filter(None, [tier1, tier2, tier3]))
-        user = (
+        user_parts = [
             f"=== CURRENT ANALYSIS TARGET ===\n"
             f"Symbol: {symbol}\n"
             f"COT Code: {cot_code or 'N/A'}\n"
@@ -405,5 +410,29 @@ class PromptAssembler:
             f"Minimum R:R Ratio: {min_rr_ratio}\n"
             f"================================\n\n"
             f"Please perform per-asset analysis for {symbol}.\n\n[PRE-FETCHED DATA]\n{data_bundle}"
-        )
+        ]
+        if volatile_tail:
+            user_parts.append(f"[VOLATILE TAIL: REAL-TIME TICKS & TIMESTAMPS]\n{volatile_tail}")
+
+        user = "\n\n".join(user_parts)
         return system, user
+
+    @staticmethod
+    def assemble_3zone_prompt(
+        zone_a_anchor: str,
+        zone_b_context: str,
+        zone_c_volatile_tail: str
+    ) -> Dict[str, str]:
+        """
+        Structured 3-Zone prompt pack:
+        - Zone A: Immutable Anchor (System level, 100% prefix cache hit)
+        - Zone B: Semi-Static Context (Multi-hour macro/technical structure)
+        - Zone C: Volatile Tail (Live price ticks and volatile updates at tail)
+        """
+        return {
+            "zone_a_anchor": zone_a_anchor.strip(),
+            "zone_b_context": zone_b_context.strip(),
+            "zone_c_volatile_tail": zone_c_volatile_tail.strip(),
+            "assembled_user_message": f"{zone_b_context.strip()}\n\n[VOLATILE TAIL]\n{zone_c_volatile_tail.strip()}".strip(),
+        }
+

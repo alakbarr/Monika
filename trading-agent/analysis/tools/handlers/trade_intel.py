@@ -300,3 +300,27 @@ async def handle_get_asset_analysis(args: dict, session: Optional[AsyncSession] 
         "debate_verdict": row.debate_verdict,
         "confluence_score": row.confluence_score,
     }
+
+
+async def handle_search_historical_memories(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Searches past decisions, reflections, lessons, and precedent trade sessions."""
+    from analysis.memory.session_search import SessionSearchEngine
+    effective_session = session or getattr(executor, "session", None)
+    query = str(args.get("query") or "").strip()
+    symbol = args.get("symbol")
+    limit = int(args.get("limit", 5))
+    engine = SessionSearchEngine()
+    if symbol:
+        results = await engine.get_symbol_precedents(symbol=symbol, limit=limit, session=effective_session)
+    else:
+        results = await engine.search(query=query, limit=limit, session=effective_session)
+    return {"query": query, "symbol": symbol, "count": len(results), "results": results}
+
+
+@register_tool("search_historical_memories")
+class SearchHistoricalMemoriesHandler(ToolHandler):
+    name = "search_historical_memories"
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_search_historical_memories(args, session=session, executor=executor, **kwargs)
+

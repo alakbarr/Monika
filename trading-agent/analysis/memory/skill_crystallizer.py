@@ -517,3 +517,9 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
         return deprecated_skills
 
+    def record_skill_attribution(self, skill_name: str, won: bool, pnl: float) -> None:
+        """Records outcome attribution for trade execution guided by a specific skill/playbook."""
+        if not skill_name:
+            return
+        logger.info(f"[SkillCrystallizer] Skill attribution recorded: {skill_name} (won={won}, pnl={pnl:.2f})")
+

@@ -52,8 +52,9 @@ backups/
 audit_reports/
 scripts/test_results/
 audit_prompt.md
-tui_error.md
 jev_documentation/
+trading-agent/skills/trading/playbooks/.backups/
+trading-agent/skills/trading/playbooks/.curator_ledger.jsonl
 
 # Database files & Backups
 *.sqlite

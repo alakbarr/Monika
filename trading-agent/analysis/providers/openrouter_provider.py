@@ -350,7 +350,7 @@ class OpenRouterProvider(OpenAIProvider):
         self._apply_provider_routing(kwargs)
 
     def _apply_provider_routing(self, kwargs: dict) -> None:
-        """Injects OpenRouter provider routing configuration for lowest latency and parameter safety."""
+        """Injects OpenRouter provider routing configuration for lowest latency, session affinity, and parameter safety."""
         extra = kwargs.setdefault("extra_body", {})
         if isinstance(extra, dict) and "provider" not in extra:
             extra["provider"] = {
@@ -358,6 +358,10 @@ class OpenRouterProvider(OpenAIProvider):
                 "require_parameters": True,
                 "data_collection": "deny",
             }
+        session_id = kwargs.pop("session_id", None) or getattr(self, "session_id", None) or "tradeagent_live_session"
+        headers = kwargs.setdefault("extra_headers", {})
+        if isinstance(headers, dict) and "X-Session-ID" not in headers:
+            headers["X-Session-ID"] = str(session_id)
 
     @classmethod
     def reset_cooldowns(cls, api_key: Optional[str] = None, model: Optional[str] = None) -> int:

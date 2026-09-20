@@ -248,6 +248,18 @@ class SetupWizard:
                     continue
 
                 console.print(f"\n{stamp_info('STEP 2/4')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+
+                if sys.platform != "win32":
+                    console.print(f"[{MUTED}]Linux/Unix host detected. MT5 typically runs via Remote Gateway, EA Bridge, or Wine.[/{MUTED}]")
+                    use_gateway = Confirm.ask("Use Remote MT5 Gateway / EA Bridge adapter?", default=True)
+                    if use_gateway:
+                        gw_url = _ask_step("Remote Gateway URL", default="http://127.0.0.1:8080")
+                        settings_updates.setdefault("execution", {})["adapter_type"] = "remote_gateway"
+                        settings_updates["execution"]["remote_gateway_url"] = gw_url
+                        console.print(f"{stamp_ok('GATEWAY')} Configured remote gateway adapter -> {gw_url}")
+                        current_step += 1
+                        continue
+
                 curr_acc = os.environ.get("MT5_ACCOUNT", "")
                 account = _ask_step("MT5 Account Number", default=curr_acc)
                 if account.lower() in ("b", "back"):
@@ -302,8 +314,34 @@ class SetupWizard:
 
                 if db_url:
                     env_updates["DATABASE_URL"] = db_url
+                    db_ok = True
                     if Confirm.ask("Test database connectivity now?", default=False):
-                        self._test_db_connection(db_url)
+                        db_ok = self._test_db_connection(db_url)
+
+                    if not db_ok:
+                        if Confirm.ask("PostgreSQL connection failed. Would you like to spawn a local PostgreSQL Docker container?", default=True):
+                            try:
+                                import subprocess
+                                import time
+                                console.print(f"{stamp_info('DOCKER')} Spawning PostgreSQL Docker container (monika-postgres)...")
+                                run_res = subprocess.run([
+                                    "docker", "run", "-d",
+                                    "--name", "monika-postgres",
+                                    "-e", "POSTGRES_PASSWORD=postgres",
+                                    "-e", "POSTGRES_DB=trading_agent",
+                                    "-p", "5432:5432",
+                                    "postgres:16-alpine"
+                                ], capture_output=True, text=True)
+                                if run_res.returncode == 0:
+                                    console.print(f"{stamp_ok('DOCKER')} Container monika-postgres started! Waiting 3s...")
+                                    time.sleep(3)
+                                    db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent"
+                                    env_updates["DATABASE_URL"] = db_url
+                                    self._test_db_connection(db_url)
+                                else:
+                                    console.print(f"{stamp_warn('DOCKER')} Docker failed: {run_res.stderr or run_res.stdout}")
+                            except Exception as d_err:
+                                console.print(f"{stamp_warn('DOCKER')} Could not run docker: {d_err}")
 
                     if Confirm.ask("Run database migrations (alembic upgrade head) now?", default=False):
                         try:

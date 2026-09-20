@@ -71,7 +71,56 @@ class VoiceHandler:
 
             transcript = transcript.strip()
 
-            # Brief transcription acknowledgment
+            # ── Deterministic Voice Safety Gate ──
+            from telegram_bot.voice_safety_gate import VoiceSafetyGate
+            proposal = VoiceSafetyGate.extract_trade_intent(transcript)
+            if proposal.is_trade_command:
+                if proposal.error:
+                    if status_msg:
+                        await status_msg.edit_text(f"🎤 \"{transcript}\"\n\n⚠️ {proposal.error}")
+                    return
+
+                from risk.approval_hub import ApprovalHub
+                import uuid
+                req_id = f"voice_{uuid.uuid4().hex[:8]}"
+                hub = ApprovalHub.get_instance()
+                req = hub.create_request(
+                    request_id=req_id,
+                    symbol=proposal.symbol or "UNKNOWN",
+                    action=proposal.action or "ORDER",
+                    request_type="trade_proposal",
+                    details={
+                        "lots": proposal.lots,
+                        "stop_loss": proposal.stop_loss,
+                        "take_profit": proposal.take_profit,
+                        "transcript": transcript,
+                    },
+                    ttl_minutes=3,
+                )
+                from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+                from telegram.constants import ParseMode
+                sl_str = f" | SL: `{proposal.stop_loss}`" if proposal.stop_loss else ""
+                tp_str = f" | TP: `{proposal.take_profit}`" if proposal.take_profit else ""
+                kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(f"✅ EKSEKUSI: {proposal.action} {proposal.lots} {proposal.symbol}", callback_data=f"confirm:{req_id}"),
+                        InlineKeyboardButton("❌ BATALKAN", callback_data=f"reject:{req_id}"),
+                    ]
+                ])
+                card_text = (
+                    f"🎤 *Perintah Suara Terdeteksi*\n"
+                    f"📝 _\"{transcript}\"_\n\n"
+                    f"📌 *Tindakan*: `{proposal.action}` *{proposal.symbol}*\n"
+                    f"📦 *Volume*: `{proposal.lots} Lot`{sl_str}{tp_str}\n\n"
+                    f"⚠️ *Konfirmasi*: Tekan tombol di bawah untuk mengeksekusi order ke broker."
+                )
+                if status_msg:
+                    await status_msg.edit_text(card_text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+                else:
+                    await update.message.reply_text(card_text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+                return
+
+            # Brief transcription acknowledgment for conversational text
             ack_text = f"🎤 Heard: \"{transcript}\""
             if status_msg:
                 try:
