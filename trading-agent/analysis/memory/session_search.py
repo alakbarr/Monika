@@ -391,11 +391,15 @@ class SessionSearchEngine:
         return await self.search(q, limit=limit, session=session, query_vector=query_vector, as_of=as_of)
 
     def index_session(self, *args, **kwargs):
-        """No-op kept for backwards compatibility. PostgreSQL inserts are handled natively via SQLAlchemy."""
-        pass
+        """No-op kept for backwards compatibility. Delegates to index_reflection if AsyncSession is provided."""
+        if args and hasattr(args[0], "get_bind"):
+            return self.index_reflection(*args, **kwargs)
+        return True
 
     def update_session_outcome(self, *args, **kwargs) -> bool:
-        """No-op kept for backwards compatibility. PostgreSQL updates are handled natively via SQLAlchemy."""
+        """No-op kept for backwards compatibility. Delegates to update_reflection_outcome if AsyncSession is provided."""
+        if args and hasattr(args[0], "get_bind"):
+            return self.update_reflection_outcome(*args, **kwargs)
         return True
 
     def compute_precedent_hybrid_score(
@@ -616,7 +620,7 @@ class SessionSearchEngine:
             logger.warning(f"[PostgreSQL] _execute_symbol_precedents_hybrid error: {e}")
             return []
 
-    async def index_session(
+    async def index_reflection(
         self,
         session: AsyncSession,
         reflection_id: int,
@@ -652,11 +656,11 @@ class SessionSearchEngine:
             await session.commit()
             return True
         except Exception as e:
-            logger.warning(f"[SessionSearch] index_session error for reflection {reflection_id}: {e}")
+            logger.warning(f"[SessionSearch] index_reflection error for reflection {reflection_id}: {e}")
             await session.rollback()
             return False
 
-    async def update_session_outcome(
+    async def update_reflection_outcome(
         self,
         session: AsyncSession,
         reflection_id: int,
@@ -688,9 +692,9 @@ class SessionSearchEngine:
                 r.resolved_at = datetime.now(timezone.utc)
 
             await session.commit()
-            return await self.index_session(session, reflection_id)
+            return await self.index_reflection(session, reflection_id)
         except Exception as e:
-            logger.warning(f"[SessionSearch] update_session_outcome error for reflection {reflection_id}: {e}")
+            logger.warning(f"[SessionSearch] update_reflection_outcome error for reflection {reflection_id}: {e}")
             await session.rollback()
             return False
 

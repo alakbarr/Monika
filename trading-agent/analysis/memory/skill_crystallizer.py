@@ -385,17 +385,39 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
     async def record_skill_attribution(
         self,
-        session: AsyncSession,
-        skill_name: str,
-        was_profitable: bool,
+        session_or_skill: Any = None,
+        skill_name: Optional[str] = None,
+        was_profitable: Optional[bool] = None,
         pnl: float = 0.0,
         min_eval_trades: int = 2,
+        won: Optional[bool] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Tracks win-rate attribution for a crystallized skill in PostgreSQL SystemConfig.
         If recent win rate drops below 50% across >= min_eval_trades, deprecates the skill.
+        Supports both direct session execution and lightweight sync/async caller interfaces.
         """
-        clean_name = skill_name.lower().replace(".md", "")
+        if isinstance(session_or_skill, str):
+            actual_skill = session_or_skill
+            session = kwargs.get("session")
+        else:
+            session = session_or_skill
+            actual_skill = skill_name or kwargs.get("skill_name", "")
+
+        eff_profitable = was_profitable if was_profitable is not None else (won if won is not None else kwargs.get("was_profitable", kwargs.get("won", True)))
+        eff_pnl = pnl if pnl != 0.0 else float(kwargs.get("pnl", 0.0))
+
+        if not actual_skill:
+            return {}
+
+        clean_name = actual_skill.lower().replace(".md", "")
+        if session is None:
+            logger.info(f"[SkillCrystallizer] Skill attribution recorded: {clean_name} (won={eff_profitable}, pnl={eff_pnl:.2f})")
+            return {"skill_name": clean_name, "status": "active"}
+
+        was_profitable = bool(eff_profitable)
+        pnl = eff_pnl
         reg_key = f"skill_attribution_{clean_name}"
 
         stmt = select(SystemConfig).where(SystemConfig.key == reg_key)
@@ -516,10 +538,4 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
                 logger.debug(f"[SkillCrystallizer] Curate check failed for {f.name}: {e}")
 
         return deprecated_skills
-
-    def record_skill_attribution(self, skill_name: str, won: bool, pnl: float) -> None:
-        """Records outcome attribution for trade execution guided by a specific skill/playbook."""
-        if not skill_name:
-            return
-        logger.info(f"[SkillCrystallizer] Skill attribution recorded: {skill_name} (won={won}, pnl={pnl:.2f})")
 

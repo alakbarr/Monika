@@ -420,11 +420,11 @@ class OpenAIProvider(BaseLLMClient):
             raw_response = await self._call_chat_completions_with_recovery(call_kwargs)
             if raw_response is None:
                 return None
+            if hasattr(raw_response, "choices") and raw_response.choices:
+                return raw_response
             if hasattr(raw_response, "__aiter__"):
                 return await self._consume_openai_stream(raw_response)
-            elif hasattr(raw_response, "choices") and raw_response.choices:
-                return raw_response
-            return await self._consume_openai_stream(raw_response)
+            return raw_response
         else:
             return await self._call_chat_completions_with_recovery(kwargs)
 

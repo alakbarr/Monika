@@ -98,7 +98,8 @@ async def test_evaluate_debate_fallback_preserves_regime_weights():
     )
     
     assert verdict["parse_error"] is True
-    assert verdict["final_decision"] == "sell"
+    assert verdict["final_decision"] == "avoid"
+    assert verdict["fail_closed_triggered"] is True
     assert verdict["regime_weights_used"]["detected_regime"] == "trending"
 
 
@@ -116,7 +117,8 @@ async def test_evaluate_debate_generate_content_empty_response_fallback():
     )
 
     assert verdict["parse_error"] is True
-    assert verdict["final_decision"] == "buy"
+    assert verdict["final_decision"] == "avoid"
+    assert verdict["fail_closed_triggered"] is True
     assert "Empty or invalid response" in verdict["reason"]
 
 
@@ -158,6 +160,7 @@ async def test_evaluate_debate_client_without_methods_fallback():
     )
 
     assert verdict["parse_error"] is True
-    assert verdict["final_decision"] == "sell"
+    assert verdict["final_decision"] == "avoid"
+    assert verdict["fail_closed_triggered"] is True
     assert "Empty or invalid response" in verdict["reason"]
 

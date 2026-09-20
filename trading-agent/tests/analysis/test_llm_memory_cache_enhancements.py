@@ -150,23 +150,28 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(call_kwargs.get("output_config", {}).get("effort"), "xhigh")
 
     async def test_ollama_generate_appends_human_message(self):
-        """Pastikan Ollama generate() menyertakan HumanMessage ke dalam array messages."""
+        """Pastikan Ollama generate() menyertakan messages yang sesuai ke dalam client chat.completions."""
         from analysis.providers.ollama_provider import OllamaProvider
-        from langchain_core.messages import HumanMessage, SystemMessage
 
         provider = OllamaProvider(model_name="qwen2.5-coder:7b", settings=self.settings)
         mock_client = AsyncMock()
-        mock_client.ainvoke.return_value = MagicMock(content="model response", response_metadata={})
-        provider._get_client = MagicMock(return_value=mock_client)
+        mock_resp = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "model response"
+        mock_resp.choices = [mock_choice]
+        mock_resp.usage = None
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        provider.client = mock_client
 
         result = await provider.generate("Test prompt query", system="System rule")
         self.assertEqual(result, "model response")
 
-        call_messages = mock_client.ainvoke.call_args[0][0]
+        call_messages = mock_client.chat.completions.create.call_args.kwargs["messages"]
         self.assertEqual(len(call_messages), 2)
-        self.assertIsInstance(call_messages[0], SystemMessage)
-        self.assertIsInstance(call_messages[1], HumanMessage)
-        self.assertEqual(call_messages[1].content, "Test prompt query")
+        self.assertEqual(call_messages[0]["role"], "system")
+        self.assertEqual(call_messages[0]["content"], "System rule")
+        self.assertEqual(call_messages[1]["role"], "user")
+        self.assertEqual(call_messages[1]["content"], "Test prompt query")
 
     def test_openai_dynamic_headroom(self):
         """Pastikan OpenAI provider menerapkan headroom dinamis bertingkat sesuai thinking level."""
