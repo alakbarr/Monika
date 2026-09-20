@@ -87,6 +87,7 @@ Monika/
     │   ├── agent_loop.py
     │   ├── startup_checks.py
     │   ├── task_registry.py
+    │   ├── turn_lease_manager.py
     │   └── monitors
     │       ├── __init__.py
     │       ├── db_health.py
@@ -177,6 +178,7 @@ Monika/
     │   │   ├── counterfactual_simulator.py
     │   │   ├── decision_log.py
     │   │   ├── failure_taxonomy.py
+    │   │   ├── frozen_snapshot.py
     │   │   ├── layered_memory.py
     │   │   ├── lesson_consolidator.py
     │   │   ├── outcome_linker.py
@@ -788,6 +790,9 @@ Monika/
         │   └── ssvp_coordinator.py
         ├── scheduling
         │   └── wall_clock.py
+        ├── streaming
+        │   ├── __init__.py
+        │   └── stream_scrubber.py
         ├── security
         │   ├── __init__.py
         │   └── threat_scanner.py
@@ -858,7 +863,8 @@ Monika/
         ├── agent
         │   ├── test_agent_loop.py
         │   ├── test_pgvector_startup_check.py
-        │   └── test_task_registry.py
+        │   ├── test_task_registry.py
+        │   └── test_turn_lease_manager.py
         ├── analysis
         │   ├── harness
         │   │   ├── test_agent_harness.py
@@ -877,6 +883,8 @@ Monika/
         │   ├── strategies
         │   │   ├── test_strategy_registry_summary.py
         │   │   └── test_synthesized_strategy_resilience.py
+        │   ├── test_agent_harness_steering_truncation.py
+        │   ├── test_frozen_memory_snapshot.py
         │   ├── test_jev_news_classifier.py
         │   ├── test_jev_verifiers_and_builders.py
         │   ├── test_level_optimizer_rr_pairing.py
@@ -907,9 +915,11 @@ Monika/
         │   ├── test_dashboard_phase2.py
         │   ├── test_modular_routes.py
         │   ├── test_tearsheet_generator.py
-        │   └── test_tracing.py
+        │   ├── test_tracing.py
+        │   └── test_websocket_stream_scrubber.py
         ├── scheduler
         │   ├── test_alpha_discovery_closed_loop.py
+        │   ├── test_news_watcher_turn_lease.py
         │   ├── test_scraper_runner.py
         │   ├── test_strategy_synthesis_historical_sandbox.py
         │   └── test_strategy_synthesis_scheduler.py
@@ -921,7 +931,8 @@ Monika/
         │   └── test_playbook_stress_challenge.py
         ├── utils
         │   ├── test_context_tracker.py
-        │   └── test_paper_trading_streak_policy.py
+        │   ├── test_paper_trading_streak_policy.py
+        │   └── test_stream_scrubber.py
         └── telegram_bot
             ├── test_backtest_command.py
             ├── test_chat_agent_deep_research_stress.py

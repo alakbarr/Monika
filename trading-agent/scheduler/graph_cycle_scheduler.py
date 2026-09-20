@@ -351,6 +351,14 @@ class GraphCycleScheduler(CycleScheduler):
         async with self._cycle_lock:
             logger.info(f'[SessionTrigger] Running Stage 2-only analysis for {reason}')
             
+            from agent.turn_lease_manager import SymbolTurnLeaseManager
+            lease_mgr = SymbolTurnLeaseManager.get_instance()
+            session_holder_id = f"session_trigger_{reason}_{int(datetime.now(timezone.utc).timestamp())}"
+            leased_symbols = []
+            for sym in self.asset_universe:
+                if await lease_mgr.acquire_lease(sym, holder_id=session_holder_id, ttl_seconds=300.0):
+                    leased_symbols.append(sym)
+
             from database.db import get_session as _gs
             try:
                 pa_results = await self._per_asset.run_all(
@@ -405,6 +413,9 @@ class GraphCycleScheduler(CycleScheduler):
             except Exception as e:
                 logger.error(f'[SessionTrigger] Failed: {e}')
                 return {'status': 'error', 'reason': str(e)}
+            finally:
+                for sym in leased_symbols:
+                    await lease_mgr.release_lease(sym, holder_id=session_holder_id)
 
     async def run_session_trigger_loop(self) -> None:
         self._session_trigger_running = True
@@ -527,6 +538,14 @@ class GraphCycleScheduler(CycleScheduler):
             
             # --- GRAPH EXECUTION ---
             cycle_id = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{os.urandom(4).hex()}"
+            from agent.turn_lease_manager import SymbolTurnLeaseManager
+            lease_mgr = SymbolTurnLeaseManager.get_instance()
+            cycle_holder_id = f"cycle_{cycle_id}"
+            leased_symbols = []
+            for sym in self.asset_universe:
+                if await lease_mgr.acquire_lease(sym, holder_id=cycle_holder_id, ttl_seconds=1800.0):
+                    leased_symbols.append(sym)
+
             config = {
                 "configurable": {
                     "scheduler": self,
@@ -978,6 +997,8 @@ class GraphCycleScheduler(CycleScheduler):
                 logger.debug(f"POST_CYCLE hook execution failed (non-fatal): {e}")
 
             logger.info(f"=== Graph Analysis Cycle Finished in {elapsed:.1f}s ===")
+            for sym in leased_symbols:
+                await lease_mgr.release_lease(sym, holder_id=cycle_holder_id)
             return final_state.get("summary", summary)
 
     async def _check_system_health_trend(self, session) -> None:

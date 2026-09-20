@@ -8,12 +8,24 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
 
+from datetime import datetime, timezone
+
+
 class PhaseAction(Enum):
     CONTINUE = "continue"    # Proceed to next phase or next turn
     RETRY = "retry"          # Retry current phase with backoff
     COMPACT = "compact"      # Trigger context compaction, then retry
     BREAK = "break"          # Exit loop successfully (agent completed work)
     ERROR = "error"          # Exit loop on fatal unrecoverable error
+
+
+@dataclass
+class SteeringMessage:
+    """External steering directive or follow-up instruction injected into active harness loop."""
+    content: str
+    sender: str = "operator"
+    timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
+    mode: str = "immediate"  # 'immediate' (drains next turn) or 'follow_up' (drains after completion)
 
 
 @dataclass
@@ -51,6 +63,30 @@ class HarnessState:
     # Error tracking
     consecutive_errors: int = 0
     max_consecutive_errors: int = 3
+
+    # Dual-queue steering & safety guards
+    steering_queue: List[SteeringMessage] = field(default_factory=list)
+    follow_up_queue: List[SteeringMessage] = field(default_factory=list)
+    length_truncated: bool = False
+
+    def enqueue_steering(self, message: SteeringMessage) -> None:
+        """Enqueue an incoming steering or follow-up directive."""
+        if message.mode == "follow_up":
+            self.follow_up_queue.append(message)
+        else:
+            self.steering_queue.append(message)
+
+    def drain_steering(self) -> List[SteeringMessage]:
+        """Drain and clear all pending immediate steering messages."""
+        msgs = list(self.steering_queue)
+        self.steering_queue.clear()
+        return msgs
+
+    def drain_follow_up(self) -> List[SteeringMessage]:
+        """Drain and clear all pending follow-up messages."""
+        msgs = list(self.follow_up_queue)
+        self.follow_up_queue.clear()
+        return msgs
 
     def record_tokens(
         self,
