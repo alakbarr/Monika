@@ -172,6 +172,21 @@ class ApprovalHub:
         await self._broadcast("approval_resolved", req.to_dict())
         return True, f"Rejected by {operator}: {req.rejection_reason}"
 
+    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+        """Fetch request by ID."""
+        return self._requests.get(request_id)
+
+    async def settle_expired_requests(self) -> List[ApprovalRequest]:
+        """Auto-settles and broadcasts expired status for pending requests past their TTL."""
+        expired = []
+        for req in list(self._requests.values()):
+            if req.status == "pending" and req.is_expired:
+                req.status = "expired"
+                expired.append(req)
+                await self._broadcast("approval_settled_expired", req.to_dict())
+                logger.info(f"[ApprovalHub] Auto-settled request {req.request_id} ({req.action} {req.symbol}) as EXPIRED.")
+        return expired
+
     def get_open_requests(self) -> List[Dict[str, Any]]:
         """Return list of valid, unexpired pending requests for handshake hydration."""
         open_list = []

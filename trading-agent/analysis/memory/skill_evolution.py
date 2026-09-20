@@ -20,6 +20,8 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 import utils.clock as clock
 from skills.loader import invalidate_cache
+from analysis.memory.playbook_linter import PlaybookLinter
+from analysis.memory.playbook_ledger import PlaybookLedger
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
 
@@ -128,32 +130,54 @@ class MicroPlaybookCompiler:
                     distinct_lessons = list(dict.fromkeys(top_lessons))[:5]
                     lessons_block = "\n".join(distinct_lessons) if distinct_lessons else "- Follow baseline SMC structure."
 
-                    content = f"""# Micro-Playbook: {sym} in {regime} Regime
+                    linter_regime = regime if regime in PlaybookLinter.VALID_REGIMES else "ANY"
+
+                    content = f"""---
+symbol: {sym}
+regime: {linter_regime}
+timeframe: H4
+min_rr: 1.3
+win_rate: {win_rate:.2f}
+sample_size: {len(trades)}
+---
+# Micro-Playbook: {sym} in {regime} Regime
 *Compiled autonomously by SkillEvolutionCompiler on {clock.now().strftime('%Y-%m-%d %H:%M UTC')}*
 
-## 1. Empirical Edge Profile
-- **Asset**: {sym}
-- **Market Regime**: {regime}
-- **Historical Sample**: {len(trades)} trades ({len(wins)} wins, {win_rate*100:.1f}% win rate)
-- **Active Winning Streak**: {consecutive_wins} trades
-
-## 2. Core Execution Protocols & Adjustments
+## Entry Conditions & Triggers
 {lessons_block}
+- Enter when higher timeframe trend aligns with multi-timeframe D1 and H4 structure.
+- Wait for liquidity sweep and displacement confirmation before triggering market entry.
 
-## 3. Mandatory Invariants
-- Verify multi-timeframe D1 and H4 trend alignment before executing.
+## Invalidation & Stop Loss Rules
+- Invalidate thesis immediately on break of swing high/low prior to entry block.
 - Enforce Stop Loss >= 1.0x verified ATR 14 buffer.
 - Ensure Take Profit satisfies minimum 1.3:1 Reward-to-Risk within ADR bounds.
 """
+                    linter = PlaybookLinter(min_rr_threshold=1.3)
+                    lint_res = linter.lint(content)
+                    if not lint_res.is_valid:
+                        logger.warning(f"MicroPlaybookCompiler: Lint failed for '{playbook_name}': {lint_res.errors}")
+                        continue
+
+                    ledger = PlaybookLedger(str(PLAYBOOKS_DIR))
+                    action = "update" if playbook_path.exists() else "create"
+                    blob_hash = ledger.record_mutation(
+                        playbook_name=playbook_name,
+                        content=content,
+                        action=action,
+                        reason=f"Empirical compilation ({len(trades)} trades, {win_rate*100:.1f}% WR)",
+                        author="micro_playbook_compiler",
+                    )
+
                     playbook_path.write_text(content, encoding="utf-8")
                     invalidate_cache()
-                    logger.info(f"MicroPlaybookCompiler: Compiled & promoted '{playbook_name}.md' ({win_rate*100:.0f}% WR).")
+                    logger.info(f"MicroPlaybookCompiler: Compiled & promoted '{playbook_name}.md' (hash={blob_hash[:8]}, {win_rate*100:.0f}% WR).")
 
                     # Log to activity log
                     session.add(ActivityLog(
                         timestamp=clock.now(),
                         category="learning",
-                        description=f"Autonomous Skill Compiler: Promoted micro-playbook '{playbook_name}.md' ({len(trades)} trades, {win_rate*100:.1f}% WR)",
+                        description=f"Autonomous Skill Compiler: Promoted micro-playbook '{playbook_name}.md' ({len(trades)} trades, {win_rate*100:.1f}% WR, hash={blob_hash[:8]})",
                         actor="skill_compiler"
                     ))
                     await session.commit()
@@ -164,7 +188,8 @@ class MicroPlaybookCompiler:
                         "filename": f"{playbook_name}.md",
                         "win_rate": win_rate,
                         "trades": len(trades),
-                        "streak": consecutive_wins
+                        "streak": consecutive_wins,
+                        "blob_hash": blob_hash,
                     })
 
         return compiled_playbooks

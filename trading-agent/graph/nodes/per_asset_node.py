@@ -112,6 +112,28 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
         logger.debug(f'SSVP Cross-agent sync failed (non-fatal): {ssvp_sync_err}')
     # ============================================================
 
+    # Ingest Ad-Hoc Investigation Verdicts from sidecar subagents
+    try:
+        from analysis.subagent.adhoc_manager import get_adhoc_manager
+        adhoc_mgr = get_adhoc_manager(settings=scheduler.settings)
+        adhoc_verdicts = {}
+        for sym, r in pa_results.items():
+            verdict = adhoc_mgr.get_latest_verdict(sym)
+            if verdict:
+                adhoc_verdicts[sym] = verdict.to_dict()
+                r["adhoc_investigation"] = verdict.to_dict()
+                if verdict.anomaly_detected:
+                    logger.warning(f"[PerAsset] Ad-hoc anomaly detected for {sym}: {verdict.findings} (rec={verdict.recommendation})")
+                    if verdict.recommendation in ("halt", "avoid"):
+                        r["decision"] = "skip"
+                        r["rationale"] = f"[AdHoc Anomaly Halt] {verdict.findings}"
+                    elif verdict.recommendation == "reduce_risk":
+                        r["risk_multiplier"] = min(float(r.get("risk_multiplier", 1.0) or 1.0), 0.5)
+        if adhoc_verdicts:
+            summary["adhoc_verdicts"] = adhoc_verdicts
+    except Exception as adhoc_err:
+        logger.debug(f"[PerAsset] Ad-hoc verdict ingestion note: {adhoc_err}")
+
     # TAMBAHKAN: Track dan notifikasi untuk failed analyses
     failed_symbols = []
     error_symbols = []

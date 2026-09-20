@@ -21,9 +21,11 @@ _UNSUPPORTED_SCHEMA_ROUTES: set[tuple[str, str]] = set()
 
 # Trading hot-path roles requiring zero-downtime eager failover
 HOT_PATH_ROLES: set[str] = {
-    "stage2", "stage2_essential", "debate", "bull_debater", "bear_debater",
-    "judge", "investment_judge", "risk_gate", "execution_verifier",
-    "position_guardian", "trailing_stop", "trigger_evaluator", "reactive_graph"
+    "stage1_fundamental", "stage2_per_asset_primary", "stage2_per_asset_secondary",
+    "stage2", "stage2_essential", "debate", "debate_judge", "bull_debater", "bear_debater",
+    "bull_analyst", "bear_analyst", "judge", "investment_judge", "risk_gate",
+    "pre_commit_gate", "execution_verifier", "position_guardian", "trailing_stop",
+    "trigger_evaluator", "reactive_graph", "alpha_synthesis", "signal_arbitrator"
 }
 
 class ProviderCircuitBreaker:
@@ -453,8 +455,20 @@ class FallbackClientWrapper(BaseLLMClient):
         self._dynamic_thinking_budget = quantized
 
     async def _execute_with_fallback(self, method_name: str, *args, **kwargs) -> Any:
-        import time
-        self._maybe_restore_primary()
+        # Check dynamic runtime model hot-swap overrides
+        try:
+            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            registry = RuntimeModelRegistry.get_instance()
+            hot_primary = registry.get_role_model(self.task_role, "primary")
+            if hot_primary:
+                self.primary = hot_primary
+            for i in range(len(self.fallbacks)):
+                hot_fb = registry.get_role_model(self.task_role, f"fallback_{i+1}")
+                if hot_fb:
+                    self.fallbacks[i] = hot_fb
+        except Exception:
+            pass
+
         if self._primary_cooldown_until or "primary" in self._slot_cooldowns:
             models_to_try = [
                 (f"fallback_{i+1}", model) for i, model in enumerate(self.fallbacks)
@@ -482,11 +496,6 @@ class FallbackClientWrapper(BaseLLMClient):
                 logger.debug(f"[CircuitBreaker] Cached budget check error: {e}")
         
         # Stage-aware fast timeouts for hot-path trading
-        HOT_PATH_ROLES = {
-            "stage1_fundamental", "stage2_per_asset_primary", "stage2_per_asset_secondary",
-            "debate_judge", "risk_gate", "bull_analyst", "bear_analyst", "investment_judge",
-            "execution_verifier", "pre_commit_gate"
-        }
         explicit_timeout = kwargs.pop("_per_model_timeout", None)
         if explicit_timeout is not None:
             per_model_timeout = float(explicit_timeout)
@@ -557,6 +566,15 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Memoized schema rejection check: strip native response_format if previously rejected
                     if (provider, model) in _UNSUPPORTED_SCHEMA_ROUTES and "response_format" in safe_kwargs:
                         safe_kwargs.pop("response_format", None)
+
+                    # Cleanse opaque reasoning signatures if cross-provider model switch occurs
+                    target_prov = getattr(client, "provider_name", "") or provider
+                    preserve_fn = getattr(client, "_preserve_reasoning_signatures", None)
+                    if callable(preserve_fn):
+                        if "messages" in safe_kwargs and isinstance(safe_kwargs["messages"], list):
+                            safe_kwargs["messages"] = preserve_fn(safe_kwargs["messages"], target_prov)
+                        elif safe_args and isinstance(safe_args[0], list):
+                            safe_args[0] = preserve_fn(safe_args[0], target_prov)
 
                     result = await asyncio.wait_for(
                         method(*safe_args, **safe_kwargs),

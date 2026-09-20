@@ -1849,8 +1849,34 @@ if SKILLS_LIST_TOOL not in STAGE2_ESSENTIAL_TOOLS:
 if SKILL_VIEW_TOOL not in STAGE2_ESSENTIAL_TOOLS:
     STAGE2_ESSENTIAL_TOOLS.append(SKILL_VIEW_TOOL)
 
+SEARCH_HISTORICAL_MEMORIES = _tool(
+    name="search_historical_memories",
+    description=(
+        "Search past trading decisions, post-trade reflections, lessons learned, and precedent market scenarios. "
+        "Use this tool when answering questions about previous trades, past win/loss outcomes, lessons from specific setups, "
+        "or how the system handled similar market conditions in the past."
+    ),
+    properties={
+        "query": {
+            "type": "string",
+            "description": "Keywords or semantic concepts to search across historical reflections and decisions.",
+        },
+        "symbol": {
+            "type": "string",
+            "description": "Optional symbol (e.g. 'EURUSD', 'XAUUSD') to narrow precedent search.",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Maximum number of precedent records to retrieve (default: 5).",
+        },
+    },
+    required=["query"],
+)
+
+TELEGRAM_TOOLS.append(SEARCH_HISTORICAL_MEMORIES)
+
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, SEARCH_HISTORICAL_MEMORIES]}.values())
 
 
 

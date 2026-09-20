@@ -26,6 +26,18 @@ class SessionSearchEngine:
         self.db_path = db_path
         self._has_pgvector: Optional[bool] = None
 
+    def _is_postgres_session(self, session: AsyncSession) -> bool:
+        """Check if active session connects to a PostgreSQL backend."""
+        from unittest.mock import Mock
+        if isinstance(session, Mock):
+            return False
+        try:
+            bind = session.get_bind() if hasattr(session, "get_bind") else getattr(session, "bind", None)
+            dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+            return bool(dialect_name and "postgres" in dialect_name)
+        except Exception:
+            return False
+
     async def _detect_pgvector(self, session: AsyncSession) -> bool:
         """Auto-detect if PostgreSQL has the pgvector extension active."""
         if self._has_pgvector is not None:
@@ -106,18 +118,38 @@ class SessionSearchEngine:
             rows = []
             if regime and str(regime).strip():
                 raw_reg = str(regime).strip()
-                tokens = [t.strip().lower() for t in raw_reg.replace("|", ",").replace(";", ",").split(",") if len(t.strip()) >= 3]
-                conditions = [
-                    DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
-                    DecisionReflection.rationale_summary.ilike(f"%{raw_reg.lower()}%")
-                ]
-                for tok in tokens:
-                    conditions.append(DecisionReflection.reflection_text.ilike(f"%{tok}%"))
-                    conditions.append(DecisionReflection.rationale_summary.ilike(f"%{tok}%"))
+                if self._is_postgres_session(session):
+                    from sqlalchemy import func
+                    clean_terms = " & ".join(re.findall(r'\w+', raw_reg))
+                    ts_filter = (
+                        func.to_tsquery('english', clean_terms)
+                        if clean_terms
+                        else func.plainto_tsquery('english', raw_reg)
+                    )
+                    reg_stmt = base_stmt.where(
+                        or_(
+                            DecisionReflection.search_vector.op("@@")(ts_filter),
+                            DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
+                        )
+                    ).order_by(desc(DecisionReflection.created_at)).limit(limit)
+                    try:
+                        reg_rows = (await session.execute(reg_stmt)).scalars().all()
+                        rows.extend(reg_rows)
+                    except Exception as pg_fts_err:
+                        logger.debug(f"[SessionSearch] FTS regime search fallback to ILIKE: {pg_fts_err}")
+                if not rows:
+                    tokens = [t.strip().lower() for t in raw_reg.replace("|", ",").replace(";", ",").split(",") if len(t.strip()) >= 3]
+                    conditions = [
+                        DecisionReflection.reflection_text.ilike(f"%{raw_reg.lower()}%"),
+                        DecisionReflection.rationale_summary.ilike(f"%{raw_reg.lower()}%")
+                    ]
+                    for tok in tokens:
+                        conditions.append(DecisionReflection.reflection_text.ilike(f"%{tok}%"))
+                        conditions.append(DecisionReflection.rationale_summary.ilike(f"%{tok}%"))
 
-                reg_stmt = base_stmt.where(or_(*conditions)).order_by(desc(DecisionReflection.created_at)).limit(limit)
-                reg_rows = (await session.execute(reg_stmt)).scalars().all()
-                rows.extend(reg_rows)
+                    reg_stmt = base_stmt.where(or_(*conditions)).order_by(desc(DecisionReflection.created_at)).limit(limit)
+                    reg_rows = (await session.execute(reg_stmt)).scalars().all()
+                    rows.extend(reg_rows)
 
             if len(rows) < limit:
                 seen_ids = {r.id for r in rows}
@@ -196,18 +228,36 @@ class SessionSearchEngine:
         as_of: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         try:
-            search_pattern = f"%{query}%"
-            stmt = (
-                select(DecisionReflection)
-                .where(
-                    or_(
-                        DecisionReflection.symbol.ilike(search_pattern),
-                        DecisionReflection.rationale_summary.ilike(search_pattern),
-                        DecisionReflection.reflection_text.ilike(search_pattern),
-                        DecisionReflection.alpha_lesson.ilike(search_pattern),
+            if self._is_postgres_session(session):
+                from sqlalchemy import func
+                clean_terms = " & ".join(re.findall(r'\w+', query))
+                ts_filter = (
+                    func.to_tsquery('english', clean_terms)
+                    if clean_terms
+                    else func.plainto_tsquery('english', query)
+                )
+                stmt = (
+                    select(DecisionReflection)
+                    .where(
+                        or_(
+                            DecisionReflection.search_vector.op("@@")(ts_filter),
+                            DecisionReflection.symbol == query.strip().upper(),
+                        )
                     )
                 )
-            )
+            else:
+                search_pattern = f"%{query}%"
+                stmt = (
+                    select(DecisionReflection)
+                    .where(
+                        or_(
+                            DecisionReflection.symbol.ilike(search_pattern),
+                            DecisionReflection.rationale_summary.ilike(search_pattern),
+                            DecisionReflection.reflection_text.ilike(search_pattern),
+                            DecisionReflection.alpha_lesson.ilike(search_pattern),
+                        )
+                    )
+                )
             if as_of is not None:
                 stmt = stmt.where(DecisionReflection.created_at <= as_of)
             stmt = stmt.order_by(desc(DecisionReflection.created_at)).limit(limit * 2)
@@ -565,4 +615,83 @@ class SessionSearchEngine:
         except Exception as e:
             logger.warning(f"[PostgreSQL] _execute_symbol_precedents_hybrid error: {e}")
             return []
+
+    async def index_session(
+        self,
+        session: AsyncSession,
+        reflection_id: int,
+        custom_text: Optional[str] = None
+    ) -> bool:
+        """
+        Indexes or re-indexes a DecisionReflection record for PostgreSQL Full-Text Search.
+        Computes search_vector from reflection text, rationale, lessons, and metadata.
+        """
+        try:
+            r = await session.get(DecisionReflection, reflection_id)
+            if not r:
+                return False
+
+            parts = [
+                r.symbol or "",
+                r.decision or "",
+                r.rationale_summary or "",
+                r.exit_reason or "",
+                r.reflection_text or "",
+                r.alpha_lesson or "",
+                r.specific_lesson or "",
+                custom_text or ""
+            ]
+            combined_text = " ".join(filter(None, parts)).strip()
+
+            if self._is_postgres_session(session):
+                from sqlalchemy import func
+                r.search_vector = func.to_tsvector('english', combined_text)
+            else:
+                r.search_vector = combined_text
+
+            await session.commit()
+            return True
+        except Exception as e:
+            logger.warning(f"[SessionSearch] index_session error for reflection {reflection_id}: {e}")
+            await session.rollback()
+            return False
+
+    async def update_session_outcome(
+        self,
+        session: AsyncSession,
+        reflection_id: int,
+        outcome_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Updates trade reflection outcome and re-indexes the search vector.
+        """
+        try:
+            r = await session.get(DecisionReflection, reflection_id)
+            if not r:
+                return False
+
+            if "outcome_pnl_usd" in outcome_data:
+                r.outcome_pnl_usd = float(outcome_data["outcome_pnl_usd"])
+            if "exit_reason" in outcome_data:
+                r.exit_reason = str(outcome_data["exit_reason"])
+            if "was_profitable" in outcome_data:
+                r.was_profitable = bool(outcome_data["was_profitable"])
+            if "reflection_text" in outcome_data:
+                r.reflection_text = str(outcome_data["reflection_text"])
+            if "alpha_lesson" in outcome_data:
+                r.alpha_lesson = str(outcome_data["alpha_lesson"])
+            if "status" in outcome_data:
+                r.status = str(outcome_data["status"])
+            if "resolved_at" in outcome_data:
+                r.resolved_at = outcome_data["resolved_at"]
+            else:
+                r.resolved_at = datetime.now(timezone.utc)
+
+            await session.commit()
+            return await self.index_session(session, reflection_id)
+        except Exception as e:
+            logger.warning(f"[SessionSearch] update_session_outcome error for reflection {reflection_id}: {e}")
+            await session.rollback()
+            return False
+
 

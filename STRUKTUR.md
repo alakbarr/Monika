@@ -49,6 +49,8 @@ Monika/
 │   ├── fix_venv_entrypoints.py
 │   ├── generate_model_quadrant.py
 │   ├── generate_showcase_screenshots.py
+│   ├── install.ps1
+│   ├── install.sh
 │   ├── reset_paper_trades.py
 │   └── update_index_toc.py
 └── trading-agent
@@ -95,6 +97,7 @@ Monika/
     ├── config
     │   ├── atomic_writer.py
     │   ├── config_manager.py
+    │   ├── config_migrations.py
     │   ├── hot_reload.py
     │   ├── key_validator.py
     │   ├── migrations.py
@@ -171,6 +174,7 @@ Monika/
     │   │   ├── alpha_calculator.py
     │   │   ├── background_review.py
     │   │   ├── chronicle_writer.py
+    │   │   ├── counterfactual_simulator.py
     │   │   ├── decision_log.py
     │   │   ├── failure_taxonomy.py
     │   │   ├── layered_memory.py
@@ -207,6 +211,7 @@ Monika/
     │   │   ├── openrouter_provider.py
     │   │   ├── pricing_catalog.py
     │   │   ├── provider_failover_classifier.py
+    │   │   ├── runtime_model_registry.py
     │   │   ├── structured_fallback.py
     │   │   └── typesafe_provider.py
     │   ├── schemas
@@ -243,6 +248,7 @@ Monika/
     │   │       └── alpha_xtiusd_f30ff5.py
     │   ├── subagent
     │   │   ├── __init__.py
+    │   │   ├── adhoc_manager.py
     │   │   └── isolated_harness.py
     │   ├── tools
     │   │   ├── base_handler.py
@@ -253,9 +259,13 @@ Monika/
     │   │   ├── tool_executor.py
     │   │   ├── tool_guardrails.py
     │   │   ├── tool_registry.py
+    │   │   ├── tool_result_storage.py
     │   │   ├── tool_spill.py
     │   │   ├── tools_definitions.py
     │   │   ├── unified_registry.py
+    │   │   ├── quant_sandbox
+    │   │   │   ├── __init__.py
+    │   │   │   └── rpc_server.py
     │   │   ├── kernel
     │   │   │   ├── __init__.py
     │   │   │   ├── env_sanitizer.py
@@ -469,6 +479,7 @@ Monika/
     │   ├── activity_logger.py
     │   ├── metrics_exporter.py
     │   ├── report_writer.py
+    │   ├── token_budgeter.py
     │   ├── reporting
     │   │   ├── __init__.py
     │   │   └── tearsheet_generator.py
@@ -677,7 +688,8 @@ Monika/
     │   ├── fuzzy_router.py
     │   ├── topic_manager.py
     │   ├── vintage_formatter.py
-    │   └── voice_handler.py
+    │   ├── voice_handler.py
+    │   └── voice_safety_gate.py
     ├── scripts
     │   ├── audit_token_usage.py
     │   ├── check_openrouter_keys.py
