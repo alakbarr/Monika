@@ -203,7 +203,7 @@ class TelegramBot:
             if self._app.updater:
                 await self._app.updater.start_polling(
                     allowed_updates=["message", "callback_query"],
-                    drop_pending_updates=True,
+                    drop_pending_updates=False,
                 )
             self._is_running = True
             logger.info(f"Telegram Bot online. Admin: {self.admin_chat_id}")
@@ -1235,6 +1235,15 @@ class TelegramBot:
                 await query.edit_message_text("⛔ Konfirmasi aksi hanya diizinkan untuk Admin.")
                 return
             action_id = data.split(":", 1)[1]
+
+            from risk.approval_hub import ApprovalHub
+            hub = ApprovalHub.get_instance()
+            if hub.get_request(action_id):
+                await query.edit_message_text(f"⏳ Mengeksekusi via ApprovalHub [{action_id}]...")
+                success, msg = await hub.approve(action_id, operator=f"tg_{user_id}")
+                await query.edit_message_text(f"{'✅' if success else '❌'} {msg}")
+                return
+
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
                 if action_id.isdigit() and self.execution_service:
@@ -1279,6 +1288,14 @@ class TelegramBot:
                 await query.edit_message_text("⛔ Penolakan aksi hanya diizinkan untuk Admin.")
                 return
             action_id = data.split(":", 1)[1]
+
+            from risk.approval_hub import ApprovalHub
+            hub = ApprovalHub.get_instance()
+            if hub.get_request(action_id):
+                success, msg = await hub.reject(action_id, operator=f"tg_{user_id}", reason="Dibatalkan via Telegram")
+                await query.edit_message_text(f"❌ Permintaan [{action_id}] telah dibatalkan.")
+                return
+
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
                 if action_id.isdigit():

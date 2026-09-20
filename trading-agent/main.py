@@ -204,6 +204,8 @@ class TradingAgent:
     post_release_analyzer: Optional['PostReleaseAnalyzer']
     alpha_discovery_scheduler: Optional['AlphaDiscoveryScheduler']
     strategy_synthesis_scheduler: Optional['StrategySynthesisScheduler']
+    background_review_engine: Optional[Any]
+    playbook_curator: Optional[Any]
     _active_scraper_runner: Optional[Any]
     fundamental_stage: Optional['FundamentalStage']
     per_asset_stage: Optional['PerAssetStage']
@@ -255,6 +257,8 @@ class TradingAgent:
         self.active_calendar_poller = None
         self.post_release_analyzer = None
         self.alpha_discovery_scheduler = None
+        self.background_review_engine = None
+        self.playbook_curator = None
         self._active_scraper_runner = None
         self.fundamental_stage = None
         self.per_asset_stage = None
@@ -538,6 +542,12 @@ class TradingAgent:
             notifier=self.notifier,
             edge_strategy_runner=self.edge_strategy_runner,
         )
+
+        from analysis.memory.background_review import BackgroundReviewEngine
+        self.background_review_engine = BackgroundReviewEngine(self.settings)
+
+        from scheduler.playbook_curator import PlaybookCurator
+        self.playbook_curator = PlaybookCurator(self.settings)
 
         logger.info("All components initialized")
 
@@ -1164,6 +1174,10 @@ class TradingAgent:
             _launch_task("AlphaDiscoveryScheduler", self.alpha_discovery_scheduler.start, "alpha_discovery_scheduler")
         if hasattr(self, "strategy_synthesis_scheduler") and self.strategy_synthesis_scheduler:
             _launch_task("StrategySynthesisScheduler", self.strategy_synthesis_scheduler.start, "strategy_synthesis_scheduler")
+        if hasattr(self, "background_review_engine") and self.background_review_engine:
+            _launch_task("BackgroundReviewEngine", self.background_review_engine.run, "background_review_engine")
+        if hasattr(self, "playbook_curator") and self.playbook_curator:
+            _launch_task("PlaybookCurator", self.playbook_curator.start, "playbook_curator")
 
         if self.telegram_bot:
             self._tg_task = _launch_task("TelegramBot", self.telegram_bot.start, "telegram_bot")
@@ -1586,6 +1600,8 @@ class TradingAgent:
             (self.post_release_analyzer, "PostReleaseAnalyzer"),
             (self.alpha_discovery_scheduler, "AlphaDiscoveryScheduler"),
             (getattr(self, "strategy_synthesis_scheduler", None), "StrategySynthesisScheduler"),
+            (getattr(self, "background_review_engine", None), "BackgroundReviewEngine"),
+            (getattr(self, "playbook_curator", None), "PlaybookCurator"),
             (self._active_scraper_runner, "ActiveScraperRunner"),
             (getattr(self, "execution_service", None), "ExecutionService"),
             (getattr(self, "mt5_health_checker", None), "MT5HealthChecker"),

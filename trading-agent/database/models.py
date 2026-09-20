@@ -17,6 +17,10 @@ from sqlalchemy import (
     Column, Integer, BigInteger, String, Float, DateTime, Boolean, Text,
     Index, ForeignKey, UniqueConstraint, JSON, text, func, ARRAY, Enum as SQLAlchemyEnum
 )
+try:
+    from sqlalchemy.dialects.postgresql import TSVECTOR
+except ImportError:
+    TSVECTOR = Text
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, synonym, validates
 
 
@@ -135,6 +139,12 @@ class MarketChronicle(Base):
     is_ongoing: Mapped[bool] = mapped_column(Boolean, default=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
+
+    __table_args__ = (
+        Index('idx_chronicle_fts', 'search_vector', postgresql_using='gin'),
+    )
+
 
 
 class EconomicCalendar(Base):
@@ -1350,12 +1360,32 @@ class DecisionReflection(Base):
     resolved_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
 
     __table_args__ = (
         Index('idx_drefl_symbol_status', 'symbol', 'status'),
         Index('idx_drefl_created', 'created_at'),
         Index('idx_drefl_paper', 'is_paper_whatif', 'status'),
+        Index('idx_drefl_fts', 'search_vector', postgresql_using='gin'),
     )
+
+
+class TradingStateLog(Base):
+    """Snapshot log of trading agent state, cycle context, and market observations."""
+    __tablename__ = "trading_state_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cycle_id: Mapped[str] = mapped_column(String(64), index=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    summary_text: Mapped[str] = mapped_column(Text)
+    state_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    search_vector: Mapped[Optional[Any]] = mapped_column(TSVECTOR, nullable=True)
+
+    __table_args__ = (
+        Index('idx_tslog_cycle', 'cycle_id'),
+        Index('idx_tslog_fts', 'search_vector', postgresql_using='gin'),
+    )
+
 
 
 # =============================================================================

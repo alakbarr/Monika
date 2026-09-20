@@ -63,6 +63,12 @@ class BackgroundReviewEngine:
             logger.info("BackgroundReviewEngine worker task started.")
         return self._worker_task
 
+    async def run(self) -> None:
+        """Runs the background worker loop directly as a coroutine."""
+        self._running = True
+        logger.info("BackgroundReviewEngine worker started.")
+        await self._worker_loop()
+
     async def stop(self) -> None:
         """Stops the worker task cleanly."""
         self._running = False

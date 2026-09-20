@@ -987,18 +987,32 @@ class AgentHarness:
                     if b_text and not getattr(block, "thinking", False):
                         final_text = b_text
 
-            # ── Repetition Guard (Degenerate Echo Loop Prevention) ──
+            # ── Repetition Guard (Degenerate Echo Loop Prevention & History Cleansing) ──
             if final_text:
                 from analysis.harness.repetition_guard import detect_text_repetition
                 is_degenerate, rep_snippet = detect_text_repetition(final_text)
                 if is_degenerate and turns < effective_max_turns:
                     logger.warning(
                         f"[{stage_name}][AgentHarness] Repetition loop detected ({rep_snippet}). "
-                        f"Injecting recovery nudge on turn {turns}/{effective_max_turns}..."
+                        f"Cleansing history and injecting recovery nudge on turn {turns}/{effective_max_turns}..."
                     )
+                    # Cleanse infected assistant message in history to avoid KV-cache poisoning
+                    REPETITION_PRUNED_MSG = (
+                        "[Analytical narrative truncated due to degenerate repetition loop. "
+                        "Proceed directly to final structured decision without repeating narrative.]"
+                    )
+                    for block in assistant_msg.get("content", []):
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            block["text"] = REPETITION_PRUNED_MSG
+                        elif hasattr(block, "text"):
+                            setattr(block, "text", REPETITION_PRUNED_MSG)
+
                     current_messages.append({
                         "role": "user",
-                        "content": "[System: Repetition loop detected in analysis text. Conclude directly with your structured analytical verdict now.]"
+                        "content": (
+                            "[GUARDRAIL ALERT: Degenerate repetition loop detected and pruned. "
+                            "Do NOT repeat previous narrative. Immediately submit your structured analytical verdict using the required tool now.]"
+                        )
                     })
                     continue
 
@@ -1310,6 +1324,37 @@ class AgentHarness:
                                 "is_error": True,
                             }
 
+                        # 2b. Verify parameter integrity (Ensure proposal SL matches verified sizing SL)
+                        prop_sl = None
+                        prop_entry = None
+                        try:
+                            if "stop_loss" in c_input:
+                                prop_sl = float(c_input["stop_loss"])
+                            if "entry" in c_input or "entry_price" in c_input:
+                                prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
+                        except (ValueError, TypeError):
+                            pass
+
+                        is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
+                            target_sym, entry_price=prop_entry, stop_loss=prop_sl
+                        )
+                        if not is_intact:
+                            logger.warning(
+                                f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
+                                f"BLOCKED: Parameter integrity check failed: {integrity_err}"
+                            )
+                            tool_calls_made += 1
+                            called_tools.add(c_name)
+                            return {
+                                "type": "tool_result",
+                                "tool_use_id": c_id,
+                                "content": json.dumps({
+                                    "status": "blocked_by_parameter_integrity",
+                                    "error": f"Trade proposal blocked: {integrity_err}",
+                                }),
+                                "is_error": True,
+                            }
+
                 # c. Dynamic Execution via ToolExecutor with OpenTelemetry Tool Span and Plugin Hooks
                 tool_calls_made += 1
                 called_tools.add(c_name)
@@ -1333,6 +1378,13 @@ class AgentHarness:
                 self.guardrail_controller.record_success()
                 self.stall_guard.record_call(c_name, res_obj)
                 self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
+
+                # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation
+                try:
+                    from analysis.tools.tool_result_storage import get_tool_result_storage
+                    res_obj, was_spilled = get_tool_result_storage().maybe_persist(c_name, c_input, res_obj)
+                except Exception as e:
+                    logger.debug(f"[AgentHarness] Tool result spillover check error: {e}")
 
                 # Format tool result block with validation and micro-pruning
                 try:

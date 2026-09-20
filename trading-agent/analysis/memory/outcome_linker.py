@@ -13,7 +13,17 @@ class OutcomeLinker:
     """Menghubungkan outcome (real/hypothetical) dengan keputusan awal, lalu memicu refleksi."""
     
     def __init__(self, settings: Optional[dict] = None):
+        self.settings = settings or {}
         self.reflector = TradeReflector(settings)
+        try:
+            from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+            from analysis.memory.skill_crystallizer import SkillCrystallizer
+            self.lifecycle_manager = PlaybookLifecycleManager()
+            self.crystallizer = SkillCrystallizer(self.settings)
+        except Exception as init_err:
+            logger.debug(f"Failed to initialize lifecycle/crystallizer in OutcomeLinker: {init_err}")
+            self.lifecycle_manager = None
+            self.crystallizer = None
 
     async def process_closed_position(self, session: AsyncSession, analysis_id: int, pnl: float, holding_hours: float, exit_reason: str, entry_time: Optional[datetime] = None, exit_time: Optional[datetime] = None, asset_return_pct: Optional[float] = None):
         """Dipanggil saat trade benar-benar ditutup (Real/Paper Trade yang dieksekusi)."""
@@ -69,6 +79,33 @@ class OutcomeLinker:
                     reflection.resolved_at = datetime.now(timezone.utc)
                     await safe_commit(session, label="outcome_linker_closed")
                     
+                    # Update PlaybookLifecycleManager and SkillCrystallizer attribution
+                    try:
+                        won = bool(reflection.was_profitable)
+                        sym_clean = (reflection.symbol or "").strip().upper()
+                        regime = "ranging"
+                        if analysis and getattr(analysis, "market_regime_at_analysis", None):
+                            regime = str(analysis.market_regime_at_analysis).lower()
+                        playbook_name = f"{sym_clean.lower()}_{regime}_playbook"
+                        r_mult = 1.0 if won else -1.0
+
+                        if self.lifecycle_manager:
+                            self.lifecycle_manager.record_trade_outcome(
+                                name=playbook_name,
+                                won=won,
+                                pnl=total_pnl,
+                                r_multiple=r_mult,
+                                auto_rollback_on_streak=True,
+                            )
+                        if self.crystallizer:
+                            self.crystallizer.record_skill_attribution(
+                                skill_name=playbook_name,
+                                won=won,
+                                pnl=total_pnl,
+                            )
+                    except Exception as life_err:
+                        logger.warning(f"Failed to record lifecycle outcome for {reflection.symbol}: {life_err}")
+
                     # Picu refleksi AI
                     await self.reflector.reflect_on_trade(session, reflection.id)
                 else:

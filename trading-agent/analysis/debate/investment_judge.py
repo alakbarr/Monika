@@ -62,6 +62,35 @@ def resolve_regime_weights(original_context: dict) -> dict:
     return weights
 
 
+def _snap_boundary(text: str, max_chars: int = 1000) -> str:
+    """Snaps text to the nearest sentence/paragraph boundary within max_chars to save tokens cleanly."""
+    if not text or len(text) <= max_chars:
+        return text
+    truncated = text[:max_chars]
+    for punct in ["\n\n", "\n", ". ", "; ", ", "]:
+        last_idx = truncated.rfind(punct)
+        if last_idx > max_chars // 2:
+            return truncated[:last_idx + len(punct)].strip() + " [compacted]"
+    return truncated.rstrip() + "... [compacted]"
+
+
+def compress_debate_trajectory(data: Any, max_text_len: int = 800) -> Any:
+    """Recursively compresses long narrative fields in debate payload while preserving numeric and key thesis fields."""
+    if isinstance(data, dict):
+        compressed = {}
+        for k, v in data.items():
+            if isinstance(v, str) and len(v) > max_text_len:
+                compressed[k] = _snap_boundary(v, max_chars=max_text_len)
+            elif isinstance(v, (dict, list)):
+                compressed[k] = compress_debate_trajectory(v, max_text_len=max_text_len)
+            else:
+                compressed[k] = v
+        return compressed
+    elif isinstance(data, list):
+        return [compress_debate_trajectory(item, max_text_len=max_text_len) for item in data]
+    return data
+
+
 async def evaluate_debate(
     client: BaseLLMClient,
     symbol: str,
@@ -146,13 +175,13 @@ Respond in valid JSON format conforming to the schema."""
     debate_payload = {
         "symbol": symbol,
         "direction": decision,
-        "original_context": original_context,
+        "original_context": compress_debate_trajectory(original_context, max_text_len=600),
         "regime_weights": regime_weights,
-        "bull_claim": bull_claim,
-        "bear_dissent": bear_dissent
+        "bull_claim": compress_debate_trajectory(bull_claim, max_text_len=800),
+        "bear_dissent": compress_debate_trajectory(bear_dissent, max_text_len=800),
     }
     if bull_rebuttal:
-        debate_payload["bull_rebuttal"] = bull_rebuttal
+        debate_payload["bull_rebuttal"] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
 
     user_prompt = f"Evaluate Debate for {symbol} ({decision}):\n{json.dumps(debate_payload, separators=(',', ':'), default=str)}\n\nProceed with evaluation based strictly on the data above."
     
@@ -214,14 +243,12 @@ Respond in valid JSON format conforming to the schema."""
         parsed["regime_weights_used"] = regime_weights
         return parsed
     except Exception as e:
-        logger.error(f"Failed to parse Investment Judge JSON: {e}")
-        orig_dec = str(original_context.get("decision", "buy")).lower()
-        if orig_dec not in ("buy", "sell"):
-            orig_dec = "buy"
+        logger.critical(f"FATAL: Failed to parse Investment Judge JSON: {e}. Enforcing fail-closed capital protection.")
         return {
-            "final_decision": orig_dec,
-            "reason": f"System error during evaluation (proceeding with caution): {e}",
-            "risk_multiplier": 0.60,
+            "final_decision": "avoid",
+            "reason": f"CRITICAL: Investment Judge evaluation failed or crashed ({e}). Trade rejected for capital protection.",
+            "risk_multiplier": 0.0,
             "regime_weights_used": regime_weights,
-            "parse_error": True
+            "parse_error": True,
+            "fail_closed_triggered": True
         }
