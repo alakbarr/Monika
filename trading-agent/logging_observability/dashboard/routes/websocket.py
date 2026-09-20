@@ -17,6 +17,7 @@ from logging_observability.dashboard.routes.common import (
     _active_websockets,
     get_dashboard_dependency,
 )
+from utils.streaming.stream_scrubber import StatefulStreamScrubber
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.WebSocket")
 
@@ -127,10 +128,16 @@ async def websocket_live_feed(websocket: WebSocket):
 class TokenCoalescingBuffer:
     """
     High-performance 30 FPS (~33ms flush interval) token coalescing stream buffer.
-    Coalesces incoming fine-grained tokens/chunks before dispatching over WebSocket,
-    preventing UI re-render thrashing and socket frame congestion.
+    Coalesces incoming fine-grained tokens/chunks and safely strips reasoning blocks
+    and credentials via StatefulStreamScrubber before dispatching over WebSocket.
     """
-    def __init__(self, websocket: WebSocket, flush_interval: float = 0.033, max_buffer_chars: int = 120):
+    def __init__(
+        self,
+        websocket: WebSocket,
+        flush_interval: float = 0.033,
+        max_buffer_chars: int = 120,
+        scrub: bool = True,
+    ):
         self.websocket = websocket
         self.flush_interval = flush_interval
         self.max_buffer_chars = max_buffer_chars
@@ -138,10 +145,15 @@ class TokenCoalescingBuffer:
         self._buffer_len: int = 0
         self._last_flush: float = 0.0
         self.has_streamed: bool = False
+        self.scrubber: Optional[StatefulStreamScrubber] = StatefulStreamScrubber() if scrub else None
 
     async def push(self, token: str):
         if not token:
             return
+        if self.scrubber is not None:
+            token = self.scrubber.process_delta(token)
+            if not token:
+                return
         self.has_streamed = True
         self._buffer.append(token)
         self._buffer_len += len(token)
@@ -155,7 +167,13 @@ class TokenCoalescingBuffer:
         if should_flush:
             await self.flush()
 
-    async def flush(self):
+    async def flush(self, final: bool = False):
+        if final and self.scrubber is not None:
+            trailing = self.scrubber.flush()
+            if trailing:
+                self._buffer.append(trailing)
+                self._buffer_len += len(trailing)
+
         if not self._buffer:
             return
         chunk = "".join(self._buffer)
@@ -176,7 +194,8 @@ class TokenCoalescingBuffer:
             if (now - self._last_flush) >= self.flush_interval:
                 await self.flush()
                 await asyncio.sleep(self.flush_interval)
-        await self.flush()
+        await self.flush(final=True)
+
 
 
 @router.websocket("/ws/agent-chat")
@@ -408,11 +427,12 @@ async def websocket_agent_chat(websocket: WebSocket):
                         if not coalescer.has_streamed:
                             await coalescer.stream_text(reply_text)
                         else:
-                            await coalescer.flush()
+                            await coalescer.flush(final=True)
 
+                        sanitized_reply = StatefulStreamScrubber.scrub_text(reply_text)
                         await websocket.send_json({
                             "type": "complete",
-                            "text": reply_text,
+                            "text": sanitized_reply,
                             "tools_used": list(tools_used),
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         })

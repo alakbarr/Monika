@@ -613,6 +613,32 @@ class NewsWatcher:
             self._forced_rerun_day = today_utc
             self._forced_reruns_today = 0
 
+        # Coalesce event into active turn leases if active
+        try:
+            from agent.turn_lease_manager import SymbolTurnLeaseManager
+            lease_mgr = SymbolTurnLeaseManager.get_instance()
+            top_title = high_items[0].title if high_items else "Breaking News Shock"
+            coalesce_msg = (
+                f"[BREAKING NEWS SHOCK] {top_title}. "
+                f"Immediate market volatility catalyst detected. "
+                f"Re-evaluate current bias, technical validity, and risk parameters."
+            )
+            coalesced_symbols = []
+            for sym in list(affected_symbols):
+                if await lease_mgr.coalesce_event(sym, coalesce_msg, sender="news_watcher"):
+                    coalesced_symbols.append(sym)
+            if coalesced_symbols:
+                logger.info(
+                    f"NewsWatcher: Successfully coalesced breaking shock into active analysis turns for {coalesced_symbols}."
+                )
+                affected_symbols = [s for s in affected_symbols if s not in coalesced_symbols]
+                affected_set = set(affected_symbols)
+                if not affected_symbols:
+                    logger.info("NewsWatcher: All affected symbols coalesced into active turns. Skipping redundant rerun.")
+                    return
+        except Exception as lease_err:
+            logger.debug(f"NewsWatcher: Event coalescence check non-fatal error: {lease_err}")
+
         want_full_cycle = (affected_set >= all_assets or len(affected_symbols) >= 4) and not fallback_mode
         if fallback_mode and (affected_set >= all_assets or len(affected_symbols) >= 4):
             logger.warning('Fallback mode aktif — full-cycle rerun DITOLAK meski affected_symbols besar. Downgrade ke targeted rerun per-simbol saja.')
@@ -727,7 +753,17 @@ class NewsWatcher:
         if self._per_asset_stage is None:
             return
         from database.db import get_session as _gs
+        from agent.turn_lease_manager import SymbolTurnLeaseManager
+
+        lease_mgr = SymbolTurnLeaseManager.get_instance()
+        holder_id = f"news_watcher_{int(datetime.now(timezone.utc).timestamp())}"
+        acquired_symbols = []
+
         try:
+            for sym in symbols:
+                if await lease_mgr.acquire_lease(sym, holder_id=holder_id, ttl_seconds=300.0):
+                    acquired_symbols.append(sym)
+
             pa_results = await self._per_asset_stage.run_all(
                 session_factory=_gs,
                 symbols=symbols,
@@ -765,6 +801,9 @@ class NewsWatcher:
                     logger.error(f"[NewsWatcher] LangGraph reactive execution failed: {e}", exc_info=True)
         except Exception as e:
             logger.error(f"[NewsWatcher] Targeted reanalysis failed: {e}")
+        finally:
+            for sym in acquired_symbols:
+                await lease_mgr.release_lease(sym, holder_id=holder_id)
 
     async def _tighten_sl_on_breaking_news(self, affected_symbols: list[str]) -> None:
         """

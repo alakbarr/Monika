@@ -263,6 +263,7 @@ class TradingAgent:
         self.fundamental_stage = None
         self.per_asset_stage = None
         self.flash_crash_detector = None
+        self.turn_lease_manager = None
         self.notifier = None
         self.mt5_client = None
         self.mt5_health_checker = None
@@ -405,6 +406,9 @@ class TradingAgent:
         )
         # Wire ActivityLogger to key components
         self.cycle_scheduler._activity_log = self._activity_log
+
+        from agent.turn_lease_manager import SymbolTurnLeaseManager
+        self.turn_lease_manager = SymbolTurnLeaseManager.get_instance()
         
         self.news_watcher = NewsWatcher(
             self.settings,
