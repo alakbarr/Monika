@@ -385,7 +385,7 @@ class TestVoiceMemoTranscription:
         update.message.message_thread_id = None
 
         # Mock transcription function
-        vh._transcribe = AsyncMock(return_value="tutup semua posisi trading sekarang")
+        vh._transcribe = AsyncMock(return_value="tolong jelaskan kondisi pasar hari ini")
 
         ctx = MagicMock()
         await vh.handle_voice(update, ctx)
@@ -398,11 +398,11 @@ class TestVoiceMemoTranscription:
         vh._transcribe.assert_called_once_with(b"fake_audio_bytes", mime_type="audio/ogg")
 
         # 3. Displayed acknowledgment
-        mock_status_msg.edit_text.assert_called_with('🎤 Heard: "tutup semua posisi trading sekarang"')
+        mock_status_msg.edit_text.assert_called_with('🎤 Heard: "tolong jelaskan kondisi pasar hari ini"')
 
         # 4. Routed to ChatAgent with override_text
         mock_agent.handle.assert_called_once()
-        assert mock_agent.handle.call_args[1].get("override_text") == "tutup semua posisi trading sekarang"
+        assert mock_agent.handle.call_args[1].get("override_text") == "tolong jelaskan kondisi pasar hari ini"
 
     @pytest.mark.asyncio
     async def test_voice_handler_in_topic_thread(self):

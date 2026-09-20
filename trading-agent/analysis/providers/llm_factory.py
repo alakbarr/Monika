@@ -650,7 +650,6 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=True, reason="timeout")
 
-                    import time
                     cnt = self._slot_backoff_count.get(slot_name, 0)
                     cd_duration = min(60.0 * (2 ** cnt), 1800.0)
                     self._slot_cooldowns[slot_name] = time.time() + cd_duration
@@ -737,7 +736,6 @@ class FallbackClientWrapper(BaseLLMClient):
                     if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
                         ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=1800.0)
 
-                    import time
                     cnt = self._slot_backoff_count.get(slot_name, 0)
                     cd_duration = min(60.0 * (2 ** cnt), 1800.0)
                     self._slot_cooldowns[slot_name] = time.time() + cd_duration
