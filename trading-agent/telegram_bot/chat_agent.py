@@ -60,6 +60,14 @@ def _sanitize_telegram_format(text: str) -> str:
     """
     if not text:
         return text
+
+    # 0. Saring blok thinking (<think>), context tags internal, dan rahasia
+    try:
+        from utils.streaming.stream_scrubber import StatefulStreamScrubber
+        scrubber = StatefulStreamScrubber()
+        text = scrubber.process_delta(text) + scrubber.flush()
+    except Exception:
+        pass
     
     # 1. Konversi heading markdown (#, ##, ###, ####) menjadi *Bold*
     text = re.sub(r'(?m)^#{1,6}\s*(.+?)\s*$', r'*\1*', text)

@@ -280,26 +280,14 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
                 setattr(checkpointer, "_needs_setup", True)
                 logger.info('LangGraph: PostgreSQL checkpointer created (setup pending)')
             except ImportError:
-                logger.warning('langgraph-checkpoint-postgres not installed, using SqliteCheckpointSaver fallback')
-                try:
-                    checkpointer = SqliteCheckpointSaver()
-                except Exception:
-                    checkpointer = MemorySaver() if MemorySaver is not None else None
-            except Exception as e:
-                logger.error(f'PostgreSQL checkpointer init failed: {e}. Using SqliteCheckpointSaver fallback.')
-                try:
-                    checkpointer = SqliteCheckpointSaver()
-                except Exception:
-                    checkpointer = MemorySaver() if MemorySaver is not None else None
-        else:
-            try:
-                checkpointer = SqliteCheckpointSaver()
-            except Exception:
+                logger.warning('langgraph-checkpoint-postgres not installed, using MemorySaver fallback')
                 checkpointer = MemorySaver() if MemorySaver is not None else None
-    else:
-        try:
-            checkpointer = SqliteCheckpointSaver()
-        except Exception:
+            except Exception as e:
+                logger.error(f'PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.')
+                checkpointer = MemorySaver() if MemorySaver is not None else None
+        else:
             checkpointer = MemorySaver() if MemorySaver is not None else None
+    else:
+        checkpointer = MemorySaver() if MemorySaver is not None else None
         
     return workflow.compile(checkpointer=checkpointer)

@@ -107,6 +107,29 @@ class AgentHarness:
         from analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
         self.verification_ledger = VerificationEvidenceLedger()
 
+        # Dual-Queue Steering Engine (Immediate Steering + Follow-Up Processing)
+        self._steering_queue: deque = deque()
+        self._follow_up_queue: deque = deque()
+
+    def enqueue_steering(
+        self,
+        content: str,
+        sender: str = "operator",
+        mode: str = "immediate",
+    ) -> None:
+        """
+        Enqueue an external steering directive or follow-up task.
+        - mode='immediate': drained at next inner turn before model call (live steering/invalidation).
+        - mode='follow_up': drained after current loop finishes before going idle.
+        """
+        from analysis.harness.harness_state import SteeringMessage
+        msg = SteeringMessage(content=content, sender=sender, mode=mode)
+        if mode == "follow_up":
+            self._follow_up_queue.append(msg)
+        else:
+            self._steering_queue.append(msg)
+        logger.info(f"[AgentHarness] Enqueued {mode} steering directive from '{sender}': {content[:80]}...")
+
     # --------------------------------------------------------------------------
     # Provider Response Normalization & Error Classification
     # --------------------------------------------------------------------------
@@ -695,6 +718,7 @@ class AgentHarness:
         total_thinking_tokens = 0
         total_cost_usd = 0.0
         is_paid = False
+        length_truncated = False
 
         called_tools: Set[str] = set()
         consecutive_tool_sig: Optional[str] = None
@@ -719,6 +743,27 @@ class AgentHarness:
         while turns < effective_max_turns:
             turns += 1
             self.guardrail_controller.reset_turn()
+
+            # ── Dual-Queue Steering Drainage (Immediate Steering) ──
+            if self._steering_queue:
+                steering_directives = []
+                while self._steering_queue:
+                    s_msg = self._steering_queue.popleft()
+                    steering_directives.append(f"[{s_msg.sender.upper()} STEERING DIRECTIVE]: {s_msg.content}")
+                if steering_directives:
+                    combined_steering = "\n".join(steering_directives)
+                    logger.info(
+                        f"[{stage_name}][AgentHarness] Injecting {len(steering_directives)} "
+                        f"steering directive(s) into active turn {turns}."
+                    )
+                    if current_messages and current_messages[-1].get("role") == "user":
+                        prev_c = current_messages[-1].get("content")
+                        if isinstance(prev_c, str):
+                            current_messages[-1]["content"] = f"{prev_c}\n\n{combined_steering}"
+                        elif isinstance(prev_c, list):
+                            current_messages[-1]["content"].append({"type": "text", "text": f"\n\n{combined_steering}"})
+                    else:
+                        current_messages.append({"role": "user", "content": combined_steering})
 
             # 1. Layer 1/2 Context Compaction & Observation Masking
             context_win = self.settings.get("context_window", 128000)
@@ -900,6 +945,7 @@ class AgentHarness:
                         "cached_tokens": total_cached_tokens,
                         "context_messages": current_messages,
                         "is_paid": is_paid,
+                        "length_truncated": length_truncated,
                     }
 
                 # 4. Normalize Response Across Providers (Anthropic, Gemini, OpenAI, Groq)
@@ -958,6 +1004,7 @@ class AgentHarness:
                         "cached_tokens": total_cached_tokens,
                         "context_messages": current_messages,
                         "is_paid": is_paid,
+                        "length_truncated": length_truncated,
                     }
 
             if getattr(response, "is_paid", False):
@@ -1021,6 +1068,7 @@ class AgentHarness:
             # truncated mid-value. Auto-repair JSON can "fix" syntax but produce
             # WRONG values (e.g., stop_loss: 1.08 → 1.0). Refuse all tool calls.
             if self._check_truncation(response, stop_reason):
+                length_truncated = True
                 tool_use_blocks_check = [
                     b for b in assistant_content
                     if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
@@ -1120,6 +1168,19 @@ class AgentHarness:
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
                     f"{tool_calls_made} tool executions."
                 )
+
+                # ── Dual-Queue Follow-Up Processing ──
+                if self._follow_up_queue and turns < effective_max_turns:
+                    f_msg = self._follow_up_queue.popleft()
+                    logger.info(
+                        f"[{stage_name}][AgentHarness] Draining follow-up directive from '{f_msg.sender}'."
+                    )
+                    current_messages.append({
+                        "role": "user",
+                        "content": f"[{f_msg.sender.upper()} FOLLOW-UP TASK]: {f_msg.content}"
+                    })
+                    continue
+
                 break
 
             # ── C1: PERSIST-BEFORE-EXECUTE INVARIANT ──
@@ -1522,4 +1583,5 @@ class AgentHarness:
             "error": None,
             "is_paid": is_paid,
             "is_billing_error": False,
+            "length_truncated": length_truncated,
         }

@@ -42,6 +42,11 @@ class LayeredMemoryManager:
         self._soul_cache: Optional[str] = None
         self.session_search = SessionSearchEngine()
 
+    async def get_frozen_snapshot(self, session: Optional[AsyncSession] = None):
+        """Retrieve frozen memory snapshot for prompt cache preservation."""
+        from analysis.memory.frozen_snapshot import get_frozen_snapshot_manager
+        return await get_frozen_snapshot_manager(self.settings).get_snapshot(session=session)
+
     def get_identity(self) -> str:
         """Layer 0: Permanent trading soul identity (100% cacheable)."""
         if self._soul_cache is None:

@@ -19,8 +19,10 @@ from sqlalchemy import (
 )
 try:
     from sqlalchemy.dialects.postgresql import TSVECTOR
+    TSVECTOR_TYPE = TSVECTOR().with_variant(Text, "sqlite")
 except ImportError:
-    TSVECTOR = Text
+    TSVECTOR_TYPE = Text
+TSVECTOR = TSVECTOR_TYPE
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, synonym, validates
 
 
