@@ -26,8 +26,12 @@ class TieredSystemPrompt:
     tier2_context: str = ""      # Skills catalog, instrument list, project context
     tier3_volatile: str = ""     # Chronicle, macro reality snapshot, session state
 
-    def assemble(self, provider: str = "default") -> Union[str, List[dict]]:
-        """Assemble prompt for the specific provider's caching capabilities."""
+    def assemble(self, provider: str = "default", quarantine_volatile: bool = False) -> Union[str, List[dict]]:
+        """Assemble prompt for the specific provider's caching capabilities.
+        
+        When quarantine_volatile is True, tier3_volatile is excluded from the system prompt
+        and should be placed into the trailing user message to keep the system prompt KV-cache invariant.
+        """
         if provider == "anthropic":
             blocks: List[dict] = []
             if self.tier1_stable:
@@ -42,15 +46,23 @@ class TieredSystemPrompt:
                     "text": self.tier2_context,
                     "cache_control": {"type": "ephemeral"},
                 })
-            if self.tier3_volatile:
+            if self.tier3_volatile and not quarantine_volatile:
                 blocks.append({
                     "type": "text",
                     "text": self.tier3_volatile,
                 })
             return blocks
 
-        # Default (OpenAI, Gemini, Ollama, Groq): single concatenated string
-        parts = [p.strip() for p in (self.tier1_stable, self.tier2_context, self.tier3_volatile) if p and p.strip()]
+        # Default (OpenAI, Gemini, Ollama, Groq):
+        if quarantine_volatile:
+            parts = [p.strip() for p in (self.tier1_stable, self.tier2_context) if p and p.strip()]
+        else:
+            parts = [p.strip() for p in (self.tier1_stable, self.tier2_context, self.tier3_volatile) if p and p.strip()]
+        return "\n\n".join(parts)
+
+    def compile_stable_system(self) -> str:
+        """Returns 100% cache-invariant system prompt (Tier 1 + Tier 2 only)."""
+        parts = [p.strip() for p in (self.tier1_stable, self.tier2_context) if p and p.strip()]
         return "\n\n".join(parts)
 
     def compile_tuple(self) -> Tuple[str, str]:

@@ -3,9 +3,11 @@ Self-registering tool registry with availability gating and bounded output (Phas
 Fully backward-compatible with legacy ToolHandler decorators, categories, and parallel safety.
 """
 
+import ast
 import importlib
 import inspect
 import logging
+import os
 import pkgutil
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast
@@ -13,6 +15,68 @@ from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast
 from analysis.tools.base_handler import ToolHandler
 
 logger = logging.getLogger("TradingAgent.ToolRegistry")
+
+_AST_REGISTRATION_CACHE: Dict[str, tuple[float, bool]] = {}
+
+
+def _module_has_tool_registration(file_path: str) -> bool:
+    """Pre-scan a python module file AST to verify if it contains tool registrations (Phase 4.4).
+    Prevents eager importing of heavy/optional dependencies at startup.
+    """
+    try:
+        mtime = os.path.getmtime(file_path)
+        cached = _AST_REGISTRATION_CACHE.get(file_path)
+        if cached is not None and cached[0] == mtime:
+            return cached[1]
+
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            source = f.read()
+
+        tree = ast.parse(source, filename=file_path)
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                for dec in node.decorator_list:
+                    dec_name = ""
+                    if isinstance(dec, ast.Name):
+                        dec_name = dec.id
+                    elif isinstance(dec, ast.Attribute):
+                        dec_name = dec.attr
+                    elif isinstance(dec, ast.Call):
+                        if isinstance(dec.func, ast.Name):
+                            dec_name = dec.func.id
+                        elif isinstance(dec.func, ast.Attribute):
+                            dec_name = dec.func.attr
+                    if "register" in dec_name.lower():
+                        _AST_REGISTRATION_CACHE[file_path] = (mtime, True)
+                        return True
+
+            if isinstance(node, ast.Call):
+                fn_name = ""
+                if isinstance(node.func, ast.Name):
+                    fn_name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    fn_name = node.func.attr
+                if "register" in fn_name.lower():
+                    _AST_REGISTRATION_CACHE[file_path] = (mtime, True)
+                    return True
+
+            if isinstance(node, ast.ClassDef):
+                for base in node.bases:
+                    b_name = ""
+                    if isinstance(base, ast.Name):
+                        b_name = base.id
+                    elif isinstance(base, ast.Attribute):
+                        b_name = base.attr
+                    if "ToolHandler" in b_name or "BaseHandler" in b_name:
+                        _AST_REGISTRATION_CACHE[file_path] = (mtime, True)
+                        return True
+
+        _AST_REGISTRATION_CACHE[file_path] = (mtime, False)
+        return False
+    except Exception as e:
+        logger.debug(f"[AST Pre-Scan] Error scanning {file_path}, falling back to import: {e}")
+        return True
 
 
 @dataclass
@@ -26,27 +90,70 @@ class ToolDefinition:
     check_fn: Optional[Callable[[], bool]] = None  # Availability gate
     max_output_chars: int = 10000
     requires_db: bool = False
+    timeout_seconds: float = 30.0
+    protected: bool = False
+    _last_check_time: float = field(default=0.0, init=False, repr=False)
+    _last_check_result: bool = field(default=True, init=False, repr=False)
+    _last_healthy_time: float = field(default=0.0, init=False, repr=False)
 
     def is_available(self) -> bool:
-        """Check whether tool is currently available for LLM binding."""
+        """Check whether tool is currently available for LLM binding with 30s TTL and 60s grace."""
         if self.check_fn is None:
             return True
+        import time
+        now = time.time()
+        if now - self._last_check_time < 30.0:
+            return self._last_check_result
+
+        self._last_check_time = now
         try:
-            return bool(self.check_fn())
+            res = bool(self.check_fn())
+            if res:
+                self._last_healthy_time = now
+            elif self._last_healthy_time > 0.0 and (now - self._last_healthy_time < 60.0):
+                # 60s grace window for transient glitches
+                res = True
+            self._last_check_result = res
+            return res
         except Exception as e:
             logger.debug(f"Availability check failed for tool {self.name}: {e}")
+            if self._last_healthy_time > 0.0 and (now - self._last_healthy_time < 60.0):
+                return True
+            self._last_check_result = False
             return False
 
-    async def execute(self, arguments: dict, session=None, executor=None, **context) -> Any:
-        """Adapter method for unified duck-typing with ToolHandler.execute."""
+    async def execute(self, arguments: dict, session=None, executor=None, timeout_seconds: Optional[float] = None, **context) -> Any:
+        """Adapter method with cooperative deadline timeout."""
+        import asyncio
         ctx = dict(context)
         if session is not None:
             ctx["session"] = session
         if executor is not None:
             ctx["executor"] = executor
-        if inspect.iscoroutinefunction(self.handler):
-            return await self.handler(arguments, **ctx)
-        return self.handler(arguments, **ctx)
+
+        effective_timeout = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
+        try:
+            if inspect.iscoroutinefunction(self.handler):
+                return await asyncio.wait_for(self.handler(arguments, **ctx), timeout=effective_timeout)
+            return self.handler(arguments, **ctx)
+        except asyncio.TimeoutError:
+            logger.error(f"[ToolTimeout] Tool '{self.name}' exceeded {effective_timeout:.1f}s deadline.")
+            return {
+                "error": "TOOL_TIMEOUT",
+                "message": f"Tool '{self.name}' timed out after {effective_timeout:.1f}s deadline.",
+                "tool_name": self.name,
+                "timeout_seconds": effective_timeout,
+            }
+
+
+CORE_PROTECTED_TOOLS: Set[str] = {
+    "submit_order",
+    "propose_action",
+    "calculate_position_size",
+    "get_open_positions",
+    "get_account_info",
+    "submit_asset_analysis",
+}
 
 
 class ToolRegistry:
@@ -80,11 +187,25 @@ class ToolRegistry:
         aliases: Optional[List[str]] = None,
         category: Optional[str] = None,
         parallel_safe: Optional[bool] = None,
+        allow_override: bool = False,
+        protected: bool = False,
     ):
-        """Register a tool definition, handler class, or handler instance."""
+        """Register a tool definition, handler class, or handler instance with core shadowing protection."""
         if isinstance(handler_cls_or_instance, ToolDefinition):
             tool = handler_cls_or_instance
             tool_name = name or tool.name
+
+            # Shadowing protection
+            existing = self._tools.get(tool_name)
+            if existing and not allow_override:
+                if getattr(existing, "protected", False) or tool_name in CORE_PROTECTED_TOOLS:
+                    raise PermissionError(
+                        f"Unauthorized tool override: Core execution tool '{tool_name}' is protected. "
+                        f"Pass allow_override=True to explicitly replace this tool."
+                    )
+            if protected:
+                tool.protected = True
+
             self._tools[tool_name] = tool
             toolset = getattr(tool, "toolset", "default")
             self._toolsets.setdefault(toolset, set()).add(tool_name)
@@ -108,6 +229,15 @@ class ToolRegistry:
         if not tool_name:
             raise ValueError(f"Tool name must be specified for handler {handler_cls}")
 
+        # Shadowing protection
+        existing = self._tools.get(tool_name) or self._handlers.get(tool_name)
+        if existing and not allow_override:
+            if getattr(existing, "protected", False) or tool_name in CORE_PROTECTED_TOOLS:
+                raise PermissionError(
+                    f"Unauthorized tool override: Core execution tool '{tool_name}' is protected. "
+                    f"Pass allow_override=True to explicitly replace this tool."
+                )
+
         tool_aliases = aliases if aliases is not None else list(getattr(instance or handler_cls, "aliases", []))
         tool_category = category or getattr(instance or handler_cls, "category", "GENERAL")
         tool_parallel_safe = parallel_safe if parallel_safe is not None else getattr(instance or handler_cls, "parallel_safe", True)
@@ -118,6 +248,8 @@ class ToolRegistry:
             instance.aliases = tool_aliases
             instance.category = tool_category
             instance.parallel_safe = tool_parallel_safe
+            if protected:
+                instance.protected = True
             self._handlers[tool_name] = instance
 
         for alias in tool_aliases:
@@ -130,6 +262,12 @@ class ToolRegistry:
             self._categories[cat_key].append(tool_name)
 
         return handler_cls_or_instance
+
+    def register_disposable(self, *args, **kwargs) -> tuple[Any, Callable[[], None]]:
+        """Register a tool and return (registered_tool, disposer_fn)."""
+        res = self.register(*args, **kwargs)
+        name = getattr(res, "name", None) or (args[1] if len(args) > 1 else kwargs.get("name"))
+        return res, lambda: self.unregister(str(name))
 
     def unregister(self, tool_name: str) -> None:
         """Remove a tool from registry."""
@@ -237,11 +375,23 @@ class ToolRegistry:
             return {"error": str(e)[:2048], "is_error": True}
 
     def auto_discover(self, package_name: str = "analysis.tools.handlers"):
-        """Dynamically import all handler submodules to trigger registration decorators."""
+        """Dynamically import all handler submodules with AST pre-filtering (Phase 4.4)."""
         try:
             pkg = importlib.import_module(package_name)
             if hasattr(pkg, "__path__"):
                 for _, modname, _ in pkgutil.iter_modules(pkg.__path__):
+                    # AST pre-scan: find file path and skip files with no tool registrations
+                    should_import = True
+                    for p in pkg.__path__:
+                        candidate_file = os.path.join(p, f"{modname}.py")
+                        if os.path.isfile(candidate_file):
+                            if not _module_has_tool_registration(candidate_file):
+                                should_import = False
+                                logger.debug(f"[AST Pre-Scan] Skipped module {modname} (no tool registrations found)")
+                            break
+                    if not should_import:
+                        continue
+
                     full_modname = f"{package_name}.{modname}"
                     try:
                         importlib.import_module(full_modname)

@@ -293,3 +293,103 @@ class TokenAuditor:
                 }
                 for log in rows
             ]
+
+    @staticmethod
+    async def get_stage_and_slot_breakdown(hours: int = 24) -> List[Dict[str, Any]]:
+        """Mengembalikan rincian konsumsi token yang dikelompokkan per stage subsistem dan slot model (primary vs fallback)."""
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        async with get_session() as session:
+            effective_subsystem = func.coalesce(TokenUsageLog.subsystem, "system")
+            effective_slot = func.coalesce(TokenUsageLog.slot_name, "primary")
+            stmt = (
+                select(
+                    effective_subsystem.label("subsystem"),
+                    effective_slot.label("slot_name"),
+                    func.count(TokenUsageLog.id).label("call_count"),
+                    func.sum(TokenUsageLog.input_tokens).label("sum_input"),
+                    func.sum(TokenUsageLog.output_tokens).label("sum_output"),
+                    func.sum(TokenUsageLog.total_tokens).label("sum_total"),
+                    func.sum(TokenUsageLog.cached_tokens).label("sum_cached"),
+                    func.sum(TokenUsageLog.cost_estimate).label("sum_cost"),
+                )
+                .where(TokenUsageLog.timestamp >= since)
+                .group_by(effective_subsystem, effective_slot)
+                .order_by(effective_subsystem, effective_slot)
+            )
+            rows = (await session.execute(stmt)).all()
+            results = []
+            for r in rows:
+                m = dict(r._mapping)
+                sum_in = int(m["sum_input"] or 0)
+                sum_cached = int(m["sum_cached"] or 0)
+                cache_hit_rate = round((sum_cached / sum_in * 100.0), 2) if sum_in > 0 else 0.0
+                results.append({
+                    "subsystem": m["subsystem"],
+                    "slot_name": m["slot_name"],
+                    "calls": m["call_count"],
+                    "sum_input": sum_in,
+                    "sum_output": int(m["sum_output"] or 0),
+                    "sum_total": int(m["sum_total"] or 0),
+                    "sum_cached": sum_cached,
+                    "cache_hit_rate_pct": cache_hit_rate,
+                    "sum_cost_usd": round(float(m["sum_cost"]), 6) if m["sum_cost"] else 0.0,
+                })
+            return results
+
+    @staticmethod
+    async def get_cache_performance_audit(hours: int = 24) -> Dict[str, Any]:
+        """Audit komprehensif performa cache prompt (rasio hit cache per model dan global)."""
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        async with get_session() as session:
+            stmt_global = (
+                select(
+                    func.count(TokenUsageLog.id).label("total_calls"),
+                    func.coalesce(func.sum(TokenUsageLog.input_tokens), 0).label("sum_input"),
+                    func.coalesce(func.sum(TokenUsageLog.cached_tokens), 0).label("sum_cached"),
+                    func.coalesce(func.sum(TokenUsageLog.cache_creation_tokens), 0).label("sum_cache_creation"),
+                )
+                .where(TokenUsageLog.timestamp >= since)
+            )
+            row_g = (await session.execute(stmt_global)).first()
+            sum_input = int(row_g.sum_input) if row_g else 0
+            sum_cached = int(row_g.sum_cached) if row_g else 0
+            sum_creation = int(row_g.sum_cache_creation) if row_g else 0
+            global_hit_rate = round((sum_cached / sum_input * 100.0), 2) if sum_input > 0 else 0.0
+
+            stmt_models = (
+                select(
+                    TokenUsageLog.model_name,
+                    func.count(TokenUsageLog.id).label("calls"),
+                    func.sum(TokenUsageLog.input_tokens).label("sum_input"),
+                    func.sum(TokenUsageLog.cached_tokens).label("sum_cached"),
+                )
+                .where(TokenUsageLog.timestamp >= since)
+                .group_by(TokenUsageLog.model_name)
+                .order_by(func.sum(TokenUsageLog.input_tokens).desc())
+            )
+            rows_m = (await session.execute(stmt_models)).all()
+            model_breakdown = []
+            for r in rows_m:
+                m = dict(r._mapping)
+                m_in = int(m["sum_input"] or 0)
+                m_cached = int(m["sum_cached"] or 0)
+                m_hit_rate = round((m_cached / m_in * 100.0), 2) if m_in > 0 else 0.0
+                model_breakdown.append({
+                    "model_name": m["model_name"],
+                    "calls": m["calls"],
+                    "input_tokens": m_in,
+                    "cached_tokens": m_cached,
+                    "cache_hit_rate_pct": m_hit_rate,
+                })
+
+            return {
+                "time_window_hours": hours,
+                "total_calls": int(row_g.total_calls) if row_g else 0,
+                "total_input_tokens": sum_input,
+                "cache_read_tokens": sum_cached,
+                "cache_creation_tokens": sum_creation,
+                "uncached_input_tokens": max(0, sum_input - sum_cached),
+                "global_cache_hit_rate_pct": global_hit_rate,
+                "model_cache_breakdown": model_breakdown,
+            }
+

@@ -77,3 +77,28 @@ def test_assemble_stage2_tiers_cache_invariance():
     assert "Symbol: GBPUSD" not in t3_gbp
     # Tier 1 + Tier 2 invariant prefix (>= 4,096 tokens) guarantees cross-asset KV-cache hit
     assert estimate_tokens(f"{t1_eur}\n\n{t2_eur}") >= 4096
+
+
+def test_canonical_prompt_section_ordering():
+    from utils.llm.prompt_assembler import (
+        SECTION_ORDERS,
+        PromptSection,
+        compare_sections,
+        compose_ordered_prompt,
+    )
+    s1 = PromptSection(name="DOMAIN_SKILLS", content="Skills Content", order=2000)
+    s2 = PromptSection(name="CANONICAL_TIER0_ANCHOR", content="Anchor Content", order=-2000)
+    s3 = PromptSection(name="ROLE_MISSION", content="Mission Content", order=0)
+    s4 = PromptSection(name="MANDATORY_RULES", content="Rules Content", order=500)
+
+    # Regardless of input list order, compose_ordered_prompt must sort deterministically
+    res = compose_ordered_prompt([s1, s4, s2, s3], separator=" | ")
+    expected = "Anchor Content | Mission Content | Rules Content | Skills Content"
+    assert res == expected
+
+    # Tie-break by name
+    t1 = PromptSection(name="B_SEC", content="Content B", order=500)
+    t2 = PromptSection(name="A_SEC", content="Content A", order=500)
+    res_tie = compose_ordered_prompt([t1, t2], separator=" | ")
+    assert res_tie == "Content A | Content B"
+

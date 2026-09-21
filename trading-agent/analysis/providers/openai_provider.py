@@ -58,6 +58,16 @@ def _extract_message_text(choice) -> str:
             
     return ""
 
+
+def _canonicalize_schema(schema: Any) -> Any:
+    """Recursively sort dictionary keys for 100% deterministic JSON serialization and KV-cache prefix stability."""
+    if isinstance(schema, dict):
+        return {k: _canonicalize_schema(v) for k, v in sorted(schema.items())}
+    if isinstance(schema, list):
+        return [_canonicalize_schema(item) for item in schema]
+    return schema
+
+
 class OpenAIProvider(BaseLLMClient):
     """
     Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
@@ -393,6 +403,12 @@ class OpenAIProvider(BaseLLMClient):
             raise RuntimeError("OpenAI API client not initialized")
 
         provider_name = self._get_provider_name()
+
+        # Session affinity headers for load balancer KV-cache replica pinning (OpenRouter, DeepSeek, OpenAI)
+        affinity_headers = self._get_session_affinity_headers()
+        if affinity_headers:
+            extra_headers = kwargs.get("extra_headers") or {}
+            kwargs["extra_headers"] = {**affinity_headers, **extra_headers}
 
         # Prompt cache key optimization for modern OpenAI models (o1, o3, gpt-4o, gpt-5)
         if provider_name == "openai":
@@ -840,7 +856,7 @@ class OpenAIProvider(BaseLLMClient):
         return None
 
     def _convert_tools(self, tools: list) -> list:
-        # Lexicographical sort by tool name guarantees 100% deterministic prefix order for DeepSeek & OpenAI KV cache
+        # Lexicographical sort by tool name and recursive schema key sorting guarantees 100% deterministic prefix order for DeepSeek & OpenAI KV cache
         sorted_tools = sorted(tools, key=lambda t: t.get("name", "") if isinstance(t, dict) else "")
         return [
             {
@@ -848,7 +864,7 @@ class OpenAIProvider(BaseLLMClient):
                 "function": {
                     "name": t["name"],
                     "description": t.get("description", ""),
-                    "parameters": t.get("input_schema", {"type": "object", "properties": {}})
+                    "parameters": _canonicalize_schema(t.get("input_schema", {"type": "object", "properties": {}}))
                 }
             }
             for t in sorted_tools
@@ -899,7 +915,7 @@ class OpenAIProvider(BaseLLMClient):
 
                 if role == "assistant" or tool_calls:
                     ast_msg: dict[str, Any] = {"role": "assistant"}
-                    ast_msg["content"] = " ".join(text_parts) if text_parts else None
+                    ast_msg["content"] = " ".join(text_parts) if text_parts else ""
                     if tool_calls:
                         ast_msg["tool_calls"] = tool_calls
                     if m.get("reasoning_content"):
@@ -919,10 +935,29 @@ class OpenAIProvider(BaseLLMClient):
             raise Exception("OpenAI API client not initialized")
         
         req_messages = []
-        flat_sys = _flatten_system_prompt(system_prompt)
+        static_sys = system_prompt
+        dynamic_sys = ""
+        if isinstance(system_prompt, tuple) and len(system_prompt) >= 2:
+            static_sys = system_prompt[0]
+            dynamic_sys = str(system_prompt[1]).strip() if system_prompt[1] else ""
+        elif hasattr(system_prompt, "compile_stable_system"):
+            static_sys = system_prompt.compile_stable_system()
+            dynamic_sys = getattr(system_prompt, "tier3_volatile", "")
+
+        flat_sys = _flatten_system_prompt(static_sys)
         if flat_sys:
             req_messages.append({"role": "system", "content": flat_sys})
-        req_messages.extend(self._normalize_messages(messages))
+
+        norm_msgs = self._normalize_messages(messages)
+        if dynamic_sys and norm_msgs:
+            last_user = next((m for m in reversed(norm_msgs) if m.get("role") == "user"), None)
+            if last_user and "<context_snapshot>" not in str(last_user.get("content", "")):
+                if isinstance(last_user.get("content"), str):
+                    last_user["content"] = f"{last_user['content']}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
+                elif isinstance(last_user.get("content"), list):
+                    last_user["content"].append({"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"})
+
+        req_messages.extend(norm_msgs)
         openai_tools = self._convert_tools(tools) if tools else None
         
         kwargs = {
@@ -970,9 +1005,9 @@ class OpenAIProvider(BaseLLMClient):
             while turns < self.max_tool_turns:
                 turns += 1
 
-                # Cache-preserving proactive compaction gate: only mask when message volume threatens budget
-                if len(messages) >= 8 and compactor.calculate_history_tokens(messages) >= 16000:
-                    messages = compactor.mask_aged_observations(messages, keep_recent_turns=2)
+                # NOTE: In-place observation masking REMOVED — it destroys server KV cache.
+                # Tool results are immutable once appended to messages.
+                # For token pressure, atomic compaction occurs at turn boundaries.
 
                 try:
                     response = await self.run_tool_agent(messages, tools, system_prompt)
@@ -1023,6 +1058,23 @@ class OpenAIProvider(BaseLLMClient):
 
                 if message.content:
                     final_text = message.content
+
+                # C1 Safety: Truncated tool call abort guard
+                if getattr(choice, 'finish_reason', None) == "length" and message.tool_calls:
+                    logger.critical(
+                        f"[SafetyGuard] Model output truncated (finish_reason=length) with {len(message.tool_calls)} "
+                        f"tool call(s). Aborting execution to prevent malformed trade/analysis parameters."
+                    )
+                    messages.append({
+                        "role": "user",
+                        "content": "[GUARDRAIL ERROR: Output was truncated mid-generation. Tool calls were aborted for safety. Please re-state concisely.]"
+                    })
+                    return {
+                        "success": False,
+                        "reply": "Respon model terpotong (max_tokens). Eksekusi tool dibatalkan demi keamanan parameter trading.",
+                        "error": "TRUNCATED_TOOL_CALLS",
+                        "aborted_tools": len(message.tool_calls)
+                    }
 
                 if not message.tool_calls:
                     break

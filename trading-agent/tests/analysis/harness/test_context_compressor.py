@@ -184,3 +184,77 @@ async def test_iterative_summary_chaining():
     assert "Prior Summary" in summary or "1.0900" in summary
     assert "1.0860" in summary or "RSI" in summary
 
+
+def test_warm_prefix_preservation():
+    from analysis.harness.context_compressor import ContextCompressor
+
+    compressor = ContextCompressor(settings={})
+    messages = [
+        {"role": "system", "content": "System Identity Invariant"},
+        {"role": "user", "content": "Initial User Objective: Trade breakout"},
+        {"role": "assistant", "content": "Mid turn 1"},
+        {"role": "user", "content": "Mid obs 1"},
+        {"role": "assistant", "content": "Mid turn 2"},
+        {"role": "user", "content": "Mid obs 2"},
+        {"role": "assistant", "content": "Tail turn 1"},
+        {"role": "user", "content": "Tail obs 1"},
+        {"role": "assistant", "content": "Tail turn 2"},
+        {"role": "user", "content": "Tail obs 2"},
+    ]
+
+    head, middle, tail = compressor.split_boundaries(messages, tail_turns=2)
+    # Both system AND initial user instruction are kept in head
+    assert len(head) == 2
+    assert head[0]["role"] == "system"
+    assert head[1]["role"] == "user"
+    assert head[1]["content"] == "Initial User Objective: Trade breakout"
+    assert len(middle) > 0
+
+
+def test_safe_unicode_slice():
+    from analysis.harness.context_compressor import safe_unicode_slice
+
+    # Japanese text & currency symbols & emoji
+    text = "東京市場 分析 🚀 EURUSD €1.0850 ¥155.20"
+    sliced = safe_unicode_slice(text, 10)
+    assert len(sliced) <= 10
+    # Must be valid utf-8 string without error
+    encoded = sliced.encode("utf-8")
+    assert isinstance(encoded.decode("utf-8"), str)
+
+
+def test_offload_historical_charts():
+    from analysis.harness.context_compressor import offload_historical_charts
+
+    messages = [
+        {"role": "user", "content": "Show chart"},
+        {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "Here is historical chart"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 5000}},
+            ],
+        },
+        {"role": "user", "content": "Next step"},
+        {"role": "assistant", "content": "Second turn"},
+        {"role": "user", "content": "Recent question"},
+        {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "Recent chart"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,RECENT_IMAGE"}},
+            ],
+        },
+    ]
+
+    offloaded = offload_historical_charts(messages, retain_recent_turns=1)
+    # Older assistant turn (turn 1) must have image offloaded
+    old_content = offloaded[1]["content"]
+    assert any("[CHART/IMAGE OFFLOADED" in b.get("text", "") for b in old_content if isinstance(b, dict))
+    assert not any(b.get("type") == "image_url" for b in old_content if isinstance(b, dict))
+
+    # Recent assistant turn (turn 3) must keep image intact
+    recent_content = offloaded[5]["content"]
+    assert any(b.get("type") == "image_url" for b in recent_content if isinstance(b, dict))
+
+

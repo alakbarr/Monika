@@ -61,6 +61,10 @@ import signal
 import sys
 import argparse
 from datetime import datetime, timezone, timedelta
+
+# Arm startup watchdog early before heavy application imports
+from agent.monitors.startup_watchdog import arm_startup_watchdog
+arm_startup_watchdog(timeout_s=180.0)
 from typing import Callable, Optional, Any, TYPE_CHECKING
 
 import utils.clock as clock
@@ -93,10 +97,22 @@ if TYPE_CHECKING:
 
 from dotenv import load_dotenv
 
-# Load .env before anything else
-load_dotenv()
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+# ---------------------------------------------------------------------------
+# Environment Variable Security Fence (Phase 6.3)
+# Protect host bootstrap variables against project-level .env hijacking
+# ---------------------------------------------------------------------------
+FORBIDDEN_ENV_OVERRIDES = {"PATH", "PYTHONPATH", "SYSTEMROOT", "COMSPEC"}
+_initial_host_env = {k: os.environ[k] for k in FORBIDDEN_ENV_OVERRIDES if k in os.environ}
+
+# Load .env safely without overriding existing host environment
+load_dotenv(override=False)
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=False)
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'), override=False)
+
+# Enforce security fence: restore host bootstrap values if overwritten
+for _fence_key, _fence_val in _initial_host_env.items():
+    if os.environ.get(_fence_key) != _fence_val:
+        os.environ[_fence_key] = _fence_val
 
 # ---------------------------------------------------------------------------
 # Bootstrap runtime & network hardening (RFC 8305 Happy Eyeballs & Windows UTF-8)

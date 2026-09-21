@@ -482,13 +482,15 @@ class GeminiProvider(BaseLLMClient):
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> MockResponse:
         gemini_tools = []
         if tools:
+            from analysis.providers.openai_provider import _canonicalize_schema
+            sorted_tools = sorted(tools, key=lambda t: t.get("name", "") if isinstance(t, dict) else "")
             declarations = []
-            for t in tools:
+            for t in sorted_tools:
                 if "input_schema" not in t: continue
                 decl = {
                     "name": t["name"],
-                    "description": t["description"],
-                    "parameters": _sanitize_schema_for_gemini(t["input_schema"])
+                    "description": t.get("description", ""),
+                    "parameters": _canonicalize_schema(_sanitize_schema_for_gemini(t["input_schema"]))
                 }
                 declarations.append(decl)
             if declarations:

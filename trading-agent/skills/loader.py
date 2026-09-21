@@ -33,9 +33,30 @@ def _sanitize_skill_name(name: str) -> str:
     return clean
 
 
-@lru_cache(maxsize=64)
-def load_skill(name: str) -> str:
-    """Muat isi skill markdown berdasarkan nama (tanpa .md), mencari di trading/, trading/playbooks/, dan crystallized/."""
+import yaml
+
+
+def parse_skill_frontmatter(content: str) -> tuple[dict, str]:
+    """Parse YAML frontmatter delimited by --- if present (Phase 4.5)."""
+    if not content or not content.startswith("---"):
+        return {}, content
+
+    parts = content.split("---", 2)
+    if len(parts) >= 3:
+        raw_yaml = parts[1]
+        body = parts[2].lstrip("\r\n")
+        try:
+            meta = yaml.safe_load(raw_yaml) or {}
+            if isinstance(meta, dict):
+                return meta, body
+        except Exception as e:
+            logger.debug(f"Failed to parse skill YAML frontmatter: {e}")
+            return {}, content
+    return {}, content
+
+
+def _read_skill_raw(name: str) -> str:
+    """Read raw file content without frontmatter processing."""
     clean_name = _sanitize_skill_name(name)
     skill_path = _SKILLS_DIR / f"{clean_name}.md"
     if not skill_path.exists():
@@ -59,7 +80,77 @@ def load_skill(name: str) -> str:
     if not resolved.is_relative_to(base_root):
         raise ValueError(f"Directory traversal detected outside skills folder: '{name}'")
 
-    content = skill_path.read_text(encoding="utf-8")
+    return skill_path.read_text(encoding="utf-8")
+
+
+@lru_cache(maxsize=64)
+def get_skill_metadata(name: str) -> dict:
+    """Retrieve frontmatter metadata dictionary for a skill (Phase 4.5)."""
+    try:
+        raw = _read_skill_raw(name)
+        meta, _ = parse_skill_frontmatter(raw)
+        return meta
+    except Exception:
+        return {}
+
+
+def is_skill_active(skill_name: str, context: Optional[dict] = None) -> bool:
+    """Check whether a skill should be activated given runtime context (Phase 4.5).
+    Evaluates:
+      - requires_tools: all required tools must be present in context['tools']
+      - fallback_for_tools: skill only activates if NONE of these tools are present
+      - markets: active market category or symbol must match
+    """
+    if not context:
+        return True
+
+    meta = get_skill_metadata(skill_name)
+    if not meta:
+        return True
+
+    active_tools = set(context.get("tools") or context.get("available_tools") or [])
+    active_market = str(context.get("market") or "").lower()
+    active_symbol = str(context.get("symbol") or "").upper()
+
+    # 1. requires_tools: all must be available
+    req_tools = meta.get("requires_tools")
+    if req_tools:
+        if isinstance(req_tools, str):
+            req_tools = [req_tools]
+        if active_tools and not all(t in active_tools for t in req_tools):
+            return False
+
+    # 2. fallback_for_tools: if any tool present, skill is skipped
+    fallback_tools = meta.get("fallback_for_tools")
+    if fallback_tools:
+        if isinstance(fallback_tools, str):
+            fallback_tools = [fallback_tools]
+        if any(t in active_tools for t in fallback_tools):
+            return False
+
+    # 3. markets: must match active market or symbol
+    markets = meta.get("markets")
+    if markets:
+        if isinstance(markets, str):
+            markets = [markets]
+        markets_lower = [m.lower() for m in markets]
+        matched = False
+        if active_market and active_market in markets_lower:
+            matched = True
+        if active_symbol and any(m.upper() in active_symbol for m in markets):
+            matched = True
+        if not matched and (active_market or active_symbol):
+            return False
+
+    return True
+
+
+@lru_cache(maxsize=64)
+def load_skill(name: str, strip_frontmatter: bool = True) -> str:
+    """Muat isi skill markdown berdasarkan nama (tanpa .md), mencari di trading/, trading/playbooks/, dan crystallized/."""
+    content = _read_skill_raw(name)
+    if strip_frontmatter:
+        _, content = parse_skill_frontmatter(content)
     logger.debug(f"Loaded skill '{name}' ({len(content)} chars)")
     return content
 
@@ -84,8 +175,13 @@ def compose_system_prompt(*skill_names: str, separator: str = "\n\n---\n\n", max
     if max_tokens is None and "max_tokens" in template_vars:
         max_tokens = template_vars.pop("max_tokens")
 
+    runtime_context = template_vars.pop("context", None) or template_vars.pop("active_context", None)
+
     parts = []
     for name in skill_names:
+        if runtime_context and not is_skill_active(name, runtime_context):
+            logger.debug(f"Skill '{name}' skipped by conditional activation (Phase 4.5)")
+            continue
         try:
             parts.append(load_skill(name))
         except FileNotFoundError as e:

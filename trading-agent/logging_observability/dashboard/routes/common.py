@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
+from collections import deque
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Routes")
@@ -19,6 +20,30 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Routes")
 _start_time = time.time()
 _dependencies: Dict[str, Any] = {}
 _active_websockets: set[WebSocket] = set()
+
+# WebSocket Monotonic Sequence Watermark & Replay Buffer (Phase 7.3)
+_stream_seq: int = 0
+_live_event_buffer: deque = deque(maxlen=500)
+
+
+def get_current_stream_seq() -> int:
+    """Return latest monotonic WebSocket event sequence number."""
+    return _stream_seq
+
+
+def get_buffered_events_since(since_seq: int) -> List[dict]:
+    """Retrieve buffered events strictly newer than since_seq for reconnect replay."""
+    return [ev for ev in list(_live_event_buffer) if ev.get("seq", 0) > since_seq]
+
+
+def record_stream_event(message: dict) -> dict:
+    """Stamp message with monotonic seq and as_of_seq and append to ring buffer."""
+    global _stream_seq
+    _stream_seq += 1
+    message["seq"] = _stream_seq
+    message["as_of_seq"] = _stream_seq
+    _live_event_buffer.append(dict(message))
+    return message
 
 
 def set_dashboard_dependencies(**kwargs) -> None:
@@ -42,14 +67,24 @@ def _safe_json(raw: Optional[str]) -> Any:
 
 
 async def broadcast_live_event(event_type: str, payload: dict) -> None:
-    """Broadcast an event to all connected dashboard live-feed WebSockets."""
+    """Broadcast an event to all connected dashboard live-feed WebSockets with monotonic sequence."""
     if not _active_websockets:
+        # Still record into buffer even without active subscribers for future reconnects
+        msg = {
+            "type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "payload": payload,
+        }
+        record_stream_event(msg)
         return
+
     message = {
         "type": event_type,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": payload,
     }
+    record_stream_event(message)
+
     dead = []
     for ws in list(_active_websockets):
         try:

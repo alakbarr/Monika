@@ -549,9 +549,8 @@ class AnthropicProvider(BaseLLMClient):
             while turns < self.max_tool_turns:
                 turns += 1
 
-                # Cache-preserving proactive compaction gate: only mask when message volume threatens budget
-                if len(messages) >= 8 and compactor.calculate_history_tokens(messages) >= 16000:
-                    messages = compactor.mask_aged_observations(messages, keep_recent_turns=2)
+                # NOTE: In-place observation masking REMOVED to preserve server KV cache.
+                # Tool results are immutable once appended to messages.
 
                 try:
                     response = await self.run_tool_agent(messages, tools, system_prompt)
@@ -574,6 +573,21 @@ class AnthropicProvider(BaseLLMClient):
                 for block in assistant_content:
                     if block.type == "text":
                         final_text = block.text
+
+                # C1 Safety: Truncated tool call abort guard
+                if response.stop_reason == "max_tokens":
+                    tool_blocks = [b for b in assistant_content if getattr(b, "type", "") == "tool_use"]
+                    if tool_blocks:
+                        logger.critical(
+                            f"[SafetyGuard] Claude output truncated (stop_reason=max_tokens) with {len(tool_blocks)} "
+                            f"pending tool calls. Aborting execution for safety."
+                        )
+                        return {
+                            "success": False,
+                            "reply": "Respon Claude terpotong (max_tokens). Eksekusi tool dibatalkan demi keamanan parameter trading.",
+                            "error": "TRUNCATED_TOOL_CALLS",
+                            "aborted_tools": len(tool_blocks)
+                        }
 
                 if response.stop_reason == "end_turn":
                     break

@@ -14,8 +14,20 @@ from typing import Optional, Tuple
 logger = logging.getLogger("TradingAgent.ToolSpill")
 
 
+def safe_unicode_slice(text: str, max_chars: int) -> str:
+    """
+    Slices string by Unicode code points without corrupting multi-byte characters
+    or splitting surrogate pairs.
+    """
+    if len(text) <= max_chars:
+        return text
+    clean = text.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
+    sub = clean[:max_chars]
+    return sub.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+
+
 def truncate_head_tail(text: str, max_chars: int = 2500, head_pct: float = 0.40) -> str:
-    """Standardized 40% Head / 60% Tail truncation to preserve initial setup and latest results."""
+    """Standardized 40% Head / 60% Tail truncation with Unicode code-point safety to preserve setup and latest results."""
     if len(text) <= max_chars:
         return text
 
@@ -23,8 +35,8 @@ def truncate_head_tail(text: str, max_chars: int = 2500, head_pct: float = 0.40)
     tail_chars = max_chars - head_chars
     omitted = len(text) - (head_chars + tail_chars)
 
-    head = text[:head_chars]
-    tail = text[-tail_chars:] if tail_chars > 0 else ""
+    head = safe_unicode_slice(text, head_chars)
+    tail = safe_unicode_slice(text[-tail_chars:], tail_chars) if tail_chars > 0 else ""
     return f"{head}\n\n... [OUTPUT TRUNCATED - {omitted} characters omitted out of {len(text)} total] ...\n\n{tail}"
 
 

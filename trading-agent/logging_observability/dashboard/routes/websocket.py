@@ -16,6 +16,8 @@ from logging_observability.dashboard.rbac import Role, resolve_role, require_rol
 from logging_observability.dashboard.routes.common import (
     _active_websockets,
     get_dashboard_dependency,
+    get_current_stream_seq,
+    get_buffered_events_since,
 )
 from utils.streaming.stream_scrubber import StatefulStreamScrubber
 
@@ -71,11 +73,26 @@ async def websocket_live_feed(websocket: WebSocket):
 
     _active_websockets.add(websocket)
     try:
+        current_seq = get_current_stream_seq()
         await websocket.send_json({
             "type": "connection_established",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "connected",
+            "seq": current_seq,
+            "as_of_seq": current_seq,
         })
+
+        # Replay catch-up on reconnect if since_seq was provided via query param
+        since_raw = websocket.query_params.get("since_seq") or websocket.query_params.get("last_seq")
+        if since_raw:
+            try:
+                since_seq = int(since_raw)
+                missed_events = get_buffered_events_since(since_seq)
+                for ev in missed_events:
+                    await websocket.send_json(ev)
+            except (ValueError, TypeError):
+                pass
+
         try:
             from risk.approval_hub import ApprovalHub
             open_reqs = ApprovalHub.get_instance().get_open_requests()
@@ -83,6 +100,8 @@ async def websocket_live_feed(websocket: WebSocket):
                 await websocket.send_json({
                     "type": "open_approvals",
                     "requests": open_reqs,
+                    "seq": get_current_stream_seq(),
+                    "as_of_seq": get_current_stream_seq(),
                 })
         except Exception:
             pass
@@ -96,6 +115,15 @@ async def websocket_live_feed(websocket: WebSocket):
                     msg = json.loads(data)
                     if msg.get("type") == "authenticate":
                         await websocket.send_json({"type": "authenticated", "role": role.value if role else "viewer"})
+                    elif msg.get("type") in ("replay", "catch_up", "sync"):
+                        since_seq = msg.get("since_seq") or msg.get("last_seq") or 0
+                        missed = get_buffered_events_since(int(since_seq))
+                        await websocket.send_json({
+                            "type": "replay_batch",
+                            "events": missed,
+                            "count": len(missed),
+                            "as_of_seq": get_current_stream_seq(),
+                        })
                     elif msg.get("type") == "steer":
                         text = msg.get("message") or (msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None)
                         symbol = msg.get("symbol") or "ALL"
