@@ -70,6 +70,57 @@ def _split_memory(mem: str) -> Tuple[str, str]:
     return "\n".join(stable_lines).strip(), "\n".join(volatile_lines).strip()
 
 
+from dataclasses import dataclass
+from functools import cmp_to_key
+
+SECTION_ORDERS: Dict[str, int] = {
+    "CANONICAL_TIER0_ANCHOR": -2000,
+    "SOUL_IDENTITY": -1000,
+    "ROLE_MISSION": 0,
+    "MANDATORY_RULES": 500,
+    "UNIVERSAL_DISCIPLINE": 600,
+    "MODEL_DISCIPLINE": 700,
+    "TOOL_STUBS": 1000,
+    "DOMAIN_SKILLS": 2000,
+    "TARGET_INFO": 3000,
+    "STABLE_MEMORY": 5000,
+    "REGIME_POLICY": 6000,
+    "SESSION_CONTEXT": 8000,
+    "DEPLOYMENT_PERSONA_SUFFIX": 10000,
+}
+
+
+@dataclass
+class PromptSection:
+    """Named system prompt section with deterministic sparse numeric ordering."""
+    name: str
+    content: str
+    order: Optional[int] = None
+
+    def __post_init__(self):
+        if self.order is None:
+            self.order = SECTION_ORDERS.get(self.name, 5000)
+
+
+def compare_sections(a: PromptSection, b: PromptSection) -> int:
+    """Sparse numeric order comparison with code-unit name tie-breaking."""
+    order_a = a.order if a.order is not None else SECTION_ORDERS.get(a.name, 5000)
+    order_b = b.order if b.order is not None else SECTION_ORDERS.get(b.name, 5000)
+    if order_a != order_b:
+        return -1 if order_a < order_b else 1
+    return -1 if a.name < b.name else (1 if a.name > b.name else 0)
+
+
+def compose_ordered_prompt(sections: List[PromptSection], separator: str = "\n\n---\n\n") -> str:
+    """Sort prompt sections deterministically by order then code-unit name.
+    
+    Guarantees 100% byte-identical rendering across turns and cycles for maximum KV-cache prefix hits.
+    """
+    valid = [s for s in sections if s and s.content and s.content.strip()]
+    sorted_sections = sorted(valid, key=cmp_to_key(compare_sections))
+    return separator.join(s.content.strip() for s in sorted_sections)
+
+
 class PromptAssembler:
     """Assembles prompts with strict 4-tier ordering for maximum KV-cache efficiency."""
 
@@ -91,10 +142,21 @@ class PromptAssembler:
         from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
-        soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         discipline_block = get_universal_execution_discipline()
-        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE1_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}"
+
+        tier1_sections = [
+            PromptSection(name="CANONICAL_TIER0_ANCHOR", content=anchor),
+        ]
+        if soul_identity:
+            tier1_sections.append(PromptSection(name="SOUL_IDENTITY", content=soul_identity))
+        tier1_sections.append(
+            PromptSection(
+                name="ROLE_MISSION",
+                content=f"{STAGE1_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}",
+            )
+        )
+        tier1 = compose_ordered_prompt(tier1_sections, separator="\n\n---\n\n")
 
         discipline = ""
         if model_name:
@@ -103,7 +165,12 @@ class PromptAssembler:
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
-        tier2 = f"{TIER2_TOOL_STUBS}\n\n{discipline}".strip() if discipline else TIER2_TOOL_STUBS
+        tier2_sections = [
+            PromptSection(name="TOOL_STUBS", content=TIER2_TOOL_STUBS),
+        ]
+        if discipline:
+            tier2_sections.append(PromptSection(name="MODEL_DISCIPLINE", content=discipline))
+        tier2 = compose_ordered_prompt(tier2_sections, separator="\n\n")
 
         # Tier 3: Skills + Stable Core Memory (invariable within cycle)
         stable_mem, _ = _split_memory(core_memory)
@@ -120,10 +187,12 @@ class PromptAssembler:
             *skill_names,
             max_tokens=5500
         )
-        tier3_parts = [_flatten_system_prompt(skills)]
+        tier3_sections = [
+            PromptSection(name="DOMAIN_SKILLS", content=_flatten_system_prompt(skills)),
+        ]
         if effective_mem:
-            tier3_parts.append(f"[AGENT MEMORY]\n{effective_mem}")
-        tier3 = "\n\n".join(filter(None, tier3_parts))
+            tier3_sections.append(PromptSection(name="STABLE_MEMORY", content=f"[AGENT MEMORY]\n{effective_mem}"))
+        tier3 = compose_ordered_prompt(tier3_sections, separator="\n\n")
 
         return tier1, tier2, tier3
 
@@ -214,10 +283,21 @@ class PromptAssembler:
         from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
-        soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         discipline_block = get_universal_execution_discipline()
-        tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}"
+
+        tier1_sections = [
+            PromptSection(name="CANONICAL_TIER0_ANCHOR", content=anchor),
+        ]
+        if soul_identity:
+            tier1_sections.append(PromptSection(name="SOUL_IDENTITY", content=soul_identity))
+        tier1_sections.append(
+            PromptSection(
+                name="ROLE_MISSION",
+                content=f"{STAGE2_TIER1}\n\n{MANDATORY_RULES}\n\n{discipline_block}",
+            )
+        )
+        tier1 = compose_ordered_prompt(tier1_sections, separator="\n\n---\n\n")
 
         discipline = ""
         if model_name:
@@ -226,7 +306,12 @@ class PromptAssembler:
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
-        tier2 = f"{TIER2_TOOL_STUBS}\n\n{discipline}".strip() if discipline else TIER2_TOOL_STUBS
+        tier2_sections = [
+            PromptSection(name="TOOL_STUBS", content=TIER2_TOOL_STUBS),
+        ]
+        if discipline:
+            tier2_sections.append(PromptSection(name="MODEL_DISCIPLINE", content=discipline))
+        tier2 = compose_ordered_prompt(tier2_sections, separator="\n\n")
 
         # Tier 3: Skills + Target metadata + Core Memory (Dynamic Micro-Agent Injection)
         skill_names = get_dynamic_micro_skills(symbol, {"regime": detected_regime or ""})
@@ -255,7 +340,9 @@ class PromptAssembler:
             tool_order_guidance=tool_order_guidance or ""
         )
 
-        tier3_parts = [_flatten_system_prompt(skills)]
+        tier3_sections = [
+            PromptSection(name="DOMAIN_SKILLS", content=_flatten_system_prompt(skills)),
+        ]
         if include_target_in_system:
             target_info = (
                 f"=== CURRENT ANALYSIS TARGET ===\n"
@@ -265,12 +352,12 @@ class PromptAssembler:
                 f"Minimum R:R Ratio (Intraday Range Strategy): {min_rr_ratio}\n"
                 f"=== END TARGET INFO ==="
             )
-            tier3_parts.append(target_info)
+            tier3_sections.append(PromptSection(name="TARGET_INFO", content=target_info))
 
         if core_memory:
-            tier3_parts.append(f"[AGENT MEMORY]\n{core_memory}")
+            tier3_sections.append(PromptSection(name="STABLE_MEMORY", content=f"[AGENT MEMORY]\n{core_memory}"))
 
-        tier3 = "\n\n".join(filter(None, tier3_parts))
+        tier3 = compose_ordered_prompt(tier3_sections, separator="\n\n")
         return tier1, tier2, tier3
 
     def assemble_stage2_tiered(
@@ -300,6 +387,21 @@ class PromptAssembler:
         )
         return TieredSystemPrompt(tier1_stable=tier1, tier2_context=tier2, tier3_volatile=tier3)
 
+    @staticmethod
+    def build_target_user_message(
+        symbol: str,
+        cot_code: str = "",
+        effective_threshold: int = 7,
+        min_rr_ratio: float = 1.3,
+    ) -> str:
+        """Asset-specific context as initial user message (preserves system prompt cache)."""
+        return (
+            f"[ANALYSIS TARGET]\n"
+            f"Symbol: {symbol} | COT Code: {cot_code or 'N/A'}\n"
+            f"Effective Confluence Threshold: {effective_threshold}/14\n"
+            f"Minimum R:R Ratio: {min_rr_ratio}\n"
+            f"[END TARGET]"
+        )
 
     def assemble_stage2_system_tuple(
         self,

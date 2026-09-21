@@ -7,26 +7,33 @@ from typing import Optional
 logger = logging.getLogger("TradingAgent.ConfigHotReload")
 
 
-class RiskParameterReloader:
-    """Watches configuration file for changes and updates RiskGate parameters dynamically."""
+class ConfigReloader:
+    """Watches configuration file for changes and updates subscribing components dynamically (Phase 6.1)."""
 
     def __init__(
         self,
         config_path: str,
-        risk_gate,
+        risk_gate=None,
         notifier=None,
-        check_interval_seconds: float = 10.0
+        check_interval_seconds: float = 10.0,
+        subscribers: Optional[list] = None,
     ):
         self.config_path = config_path
         self.risk_gate = risk_gate
         self.notifier = notifier
         self.check_interval_seconds = check_interval_seconds
+        self.subscribers = list(subscribers or [])
         self.last_mtime: Optional[float] = None
         if os.path.exists(self.config_path):
             try:
                 self.last_mtime = os.path.getmtime(self.config_path)
             except Exception:
                 pass
+
+    def subscribe(self, callback) -> None:
+        """Register a subscriber callback or object with on_config_reloaded."""
+        if callback not in self.subscribers:
+            self.subscribers.append(callback)
 
     def check_and_reload(self) -> bool:
         """Check if file was modified and reload parameters. Returns True if reloaded."""
@@ -48,25 +55,37 @@ class RiskParameterReloader:
                     if "trading" in new_config
                     else new_config.get("risk", new_config)
                 )
-                try:
+                if risk_dict and self.risk_gate is not None:
                     try:
-                        from config.schemas import RiskConfig
-                    except ImportError:
-                        from .schemas import RiskConfig
-                    RiskConfig.model_validate(risk_dict)
-                except Exception as val_err:
-                    logger.warning(
-                        f"[HotReload] Validation failed for new risk config in {self.config_path}, "
-                        f"rejecting reload: {val_err}"
-                    )
-                    return False
+                        try:
+                            from config.schemas import RiskConfig
+                        except ImportError:
+                            from .schemas import RiskConfig
+                        RiskConfig.model_validate(risk_dict)
+                    except Exception as val_err:
+                        logger.warning(
+                            f"[HotReload] Validation failed for new risk config in {self.config_path}, "
+                            f"rejecting reload: {val_err}"
+                        )
+                        return False
 
-                self.risk_gate.update_parameters(new_config)
+                    self.risk_gate.update_parameters(new_config)
+
+                # Notify all subscribing components
+                for sub in self.subscribers:
+                    try:
+                        if callable(sub):
+                            sub(new_config)
+                        elif hasattr(sub, "on_config_reloaded"):
+                            sub.on_config_reloaded(new_config)
+                    except Exception as sub_err:
+                        logger.warning(f"[HotReload] Subscriber notification error: {sub_err}")
+
                 self.last_mtime = current_mtime
-                logger.info(f"[HotReload] Reloaded risk parameters from {self.config_path}")
+                logger.info(f"[HotReload] Reloaded configuration from {self.config_path}")
                 if self.notifier and hasattr(self.notifier, "send_info"):
                     try:
-                        asyncio.create_task(self.notifier.send_info("Risk parameters hot-reloaded."))
+                        asyncio.create_task(self.notifier.send_info("Configuration hot-reloaded."))
                     except Exception:
                         pass
                 return True
@@ -86,3 +105,8 @@ class RiskParameterReloader:
                 await asyncio.sleep(self.check_interval_seconds)
             except asyncio.CancelledError:
                 break
+
+
+class RiskParameterReloader(ConfigReloader):
+    """Backward-compatible alias for ConfigReloader focusing on RiskGate."""
+    pass

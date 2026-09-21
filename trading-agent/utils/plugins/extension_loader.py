@@ -59,8 +59,13 @@ def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None)
                 module = _import_from_path(f"plugin_{name}_{mod_name.replace('.', '_')}", mod_file)
             else:
                 module = importlib.import_module(mod_name)
-            setup_func = getattr(module, func_name)
-            setup_func(mgr, manifest.get("config", {}))
+            target = getattr(module, func_name)
+            from utils.plugins.manager import BasePlugin
+            if isinstance(target, type) and issubclass(target, BasePlugin):
+                plugin_instance = target(config=manifest.get("config", {}))
+                plugin_instance.setup(mgr)
+            elif callable(target):
+                target(mgr, manifest.get("config", {}))
 
         # Register explicit hook mappings
         hooks = manifest.get("hooks", {})
@@ -77,11 +82,75 @@ def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None)
             mgr.register_hook(hook_event, handler)
             logger.info(f"[PluginLoader] Registered '{name}' handler '{hook_target}' for hook '{hook_event}'")
 
+        # Register declarative custom tools
+        tools = manifest.get("tools", [])
+        for tool_def in tools:
+            tool_name = tool_def.get("name")
+            tool_cat = tool_def.get("category", "custom")
+            tool_desc = tool_def.get("description")
+            handler_ref = tool_def.get("entrypoint")
+            model_ref = tool_def.get("model")
+
+            if not tool_name or not handler_ref:
+                continue
+
+            h_mod_name, h_func_name = handler_ref.split(":")
+            h_mod_file = os.path.join(plugin_dir, *h_mod_name.split(".")) + ".py"
+            if not os.path.isfile(h_mod_file):
+                h_mod_file = os.path.join(plugin_dir, f"{h_mod_name}.py")
+            if os.path.isfile(h_mod_file):
+                h_module = _import_from_path(f"plugin_{name}_{h_mod_name.replace('.', '_')}", h_mod_file)
+            else:
+                h_module = importlib.import_module(h_mod_name)
+            handler_fn = getattr(h_module, h_func_name)
+
+            if model_ref:
+                m_mod_name, m_cls_name = model_ref.split(":")
+                m_mod_file = os.path.join(plugin_dir, *m_mod_name.split(".")) + ".py"
+                if not os.path.isfile(m_mod_file):
+                    m_mod_file = os.path.join(plugin_dir, f"{m_mod_name}.py")
+                if os.path.isfile(m_mod_file):
+                    m_module = _import_from_path(f"plugin_{name}_{m_mod_name.replace('.', '_')}", m_mod_file)
+                else:
+                    m_module = importlib.import_module(m_mod_name)
+                model_cls = getattr(m_module, m_cls_name)
+            else:
+                from pydantic import BaseModel
+                model_cls = BaseModel
+
+            mgr.register_tool(
+                name=tool_name,
+                category=tool_cat,
+                input_model=model_cls,
+                handler=handler_fn,
+                description=tool_desc,
+            )
+            logger.info(f"[PluginLoader] Registered custom tool '{tool_name}' for plugin '{name}'")
+
         logger.info(f"[PluginLoader] Successfully loaded plugin '{name}' v{manifest.get('version', '1.0.0')}")
         return manifest
     except Exception as e:
         logger.error(f"[PluginLoader] Failed to load plugin from {plugin_dir}: {e}", exc_info=True)
         return None
+
+
+def teardown_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None) -> bool:
+    """Unload tools and handlers associated with a plugin."""
+    manifest_path = os.path.join(plugin_dir, "plugin.yaml")
+    if not os.path.isfile(manifest_path):
+        return False
+    mgr = manager or get_plugin_manager()
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = yaml.safe_load(f) or {}
+        for tool_def in manifest.get("tools", []):
+            tool_name = tool_def.get("name")
+            if tool_name:
+                mgr.unregister_tool(tool_name)
+        return True
+    except Exception as e:
+        logger.error(f"[PluginLoader] Error tearing down plugin {plugin_dir}: {e}")
+        return False
 
 
 def load_plugins(plugins_dir: Optional[str] = None, manager: Optional[PluginManager] = None) -> List[Dict[str, Any]]:

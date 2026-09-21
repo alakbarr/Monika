@@ -82,3 +82,50 @@ async def test_token_auditor_summary_and_breakdowns(db_session):
         assert len(recent) == 1
         assert recent[0]["thinking_tokens"] == 200
 
+        # Test stage and slot breakdown
+        stage_slots = await TokenAuditor.get_stage_and_slot_breakdown(hours=24)
+        assert isinstance(stage_slots, list)
+        assert len(stage_slots) == 1
+        assert stage_slots[0]["subsystem"] == "analysis"
+        assert stage_slots[0]["slot_name"] == "primary"
+        assert stage_slots[0]["cache_hit_rate_pct"] == 10.0  # 100 / 1000 * 100
+
+        # Test cache performance audit
+        cache_audit = await TokenAuditor.get_cache_performance_audit(hours=24)
+        assert isinstance(cache_audit, dict)
+        assert cache_audit["total_input_tokens"] == 1000
+        assert cache_audit["cache_read_tokens"] == 100
+        assert cache_audit["global_cache_hit_rate_pct"] == 10.0
+        assert len(cache_audit["model_cache_breakdown"]) == 1
+        assert cache_audit["model_cache_breakdown"][0]["model_name"] == "claude-3-7-sonnet"
+
+
+@pytest.mark.asyncio
+async def test_activity_logger_fallback_event(db_session):
+    from logging_observability.activity_logger import ActivityLogger
+    from database.models import ActivityLog
+    from sqlalchemy import select
+
+    logger_instance = ActivityLogger()
+    log_id = await logger_instance.log_fallback_event(
+        task_role="stage1_macro",
+        from_slot="primary",
+        from_model="gemini-2.5-pro",
+        to_slot="fallback_1",
+        to_model="claude-3-7-sonnet",
+        reason="rate_limited",
+        cycle_id="cycle-404",
+        session=db_session,
+    )
+    assert log_id is not None
+
+    stmt = select(ActivityLog).where(ActivityLog.id == log_id)
+    entry = (await db_session.execute(stmt)).scalar_one_or_none()
+    assert entry is not None
+    assert entry.actor == "failover_engine"
+    assert "LLM FALLBACK" in entry.description
+    assert "gemini-2.5-pro" in entry.description
+    assert "claude-3-7-sonnet" in entry.description
+    assert "cycle-404" in entry.description
+
+

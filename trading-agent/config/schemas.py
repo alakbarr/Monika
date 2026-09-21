@@ -127,6 +127,20 @@ class UIConfig(SubscriptableConfig):
     steer_mode: Optional[str] = Field(default="one-at-a-time")
 
 
+class HarnessConfig(SubscriptableConfig):
+    compaction_cooldown_seconds: Optional[float] = Field(default=120.0, ge=0.0)
+    max_context_chars: Optional[int] = Field(default=100000, ge=1000)
+    retain_recent_turns: Optional[int] = Field(default=2, ge=1)
+
+
+class EvalsConfig(SubscriptableConfig):
+    simulation_clock_enabled: Optional[bool] = True
+
+
+class BenchmarkConfig(SubscriptableConfig):
+    max_drift_pct: Optional[float] = Field(default=15.0, ge=0.0)
+
+
 class TradingAgentConfig(SubscriptableConfig):
     app_name: Optional[str] = None
     environment: Optional[str] = None
@@ -138,6 +152,9 @@ class TradingAgentConfig(SubscriptableConfig):
     llm: Optional[LLMConfig] = None
     scheduler: Optional[SchedulerConfig] = None
     ui: Optional[UIConfig] = None
+    harness: Optional[HarnessConfig] = None
+    evals: Optional[EvalsConfig] = None
+    benchmark: Optional[BenchmarkConfig] = None
 
     @model_validator(mode="after")
     def validate_all_sections(self) -> "TradingAgentConfig":
@@ -156,4 +173,11 @@ class TradingAgentConfig(SubscriptableConfig):
             ExecutionConfig.model_validate(self.execution)
         if self.indicators:
             IndicatorsConfig.model_validate(self.indicators)
+        if self.harness:
+            HarnessConfig.model_validate(self.harness)
+        if self.evals:
+            EvalsConfig.model_validate(self.evals)
+        if self.benchmark:
+            BenchmarkConfig.model_validate(self.benchmark)
         return self
+
