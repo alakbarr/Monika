@@ -6,7 +6,7 @@ import tempfile
 import os
 import yaml
 from pydantic import ValidationError
-from config.schemas import RiskConfig, TradingAgentConfig
+from config.schemas import RiskConfig, TradingAgentConfig, HarnessConfig, EvalsConfig, BenchmarkConfig
 from config.settings import _deep_merge, load_settings, validate_config
 
 
@@ -162,5 +162,43 @@ def test_subscriptable_config_dict_mapping_parity():
     assert items["max_daily_drawdown_percent"] == 3.5
     assert items["custom_extra_key"] == "active_val"
     assert len(cfg.values()) == len(keys)
+
+
+def test_harness_evals_benchmark_schemas():
+    """Verify HarnessConfig, EvalsConfig, and BenchmarkConfig validation and integration."""
+    harness = HarnessConfig.model_validate({
+        "compaction_cooldown_seconds": 60.0,
+        "max_context_chars": 50000,
+        "retain_recent_turns": 3,
+    })
+    assert harness.compaction_cooldown_seconds == 60.0
+    assert harness.max_context_chars == 50000
+    assert harness.retain_recent_turns == 3
+
+    evals = EvalsConfig.model_validate({"simulation_clock_enabled": False})
+    assert evals.simulation_clock_enabled is False
+
+    benchmark = BenchmarkConfig.model_validate({"max_drift_pct": 20.0})
+    assert benchmark.max_drift_pct == 20.0
+
+    # Integration via TradingAgentConfig
+    raw = {
+        "app_name": "TestHarnessApp",
+        "harness": {"compaction_cooldown_seconds": 90.0},
+        "evals": {"simulation_clock_enabled": True},
+        "benchmark": {"max_drift_pct": 12.5},
+    }
+    validated = validate_config(raw)
+    assert validated.harness.compaction_cooldown_seconds == 90.0
+    assert validated.evals.simulation_clock_enabled is True
+    assert validated.benchmark.max_drift_pct == 12.5
+
+    # Test invalid constraints
+    with pytest.raises(ValidationError):
+        HarnessConfig.model_validate({"max_context_chars": 100})  # < 1000
+
+    with pytest.raises(ValidationError):
+        BenchmarkConfig.model_validate({"max_drift_pct": -5.0})  # < 0.0
+
 
 

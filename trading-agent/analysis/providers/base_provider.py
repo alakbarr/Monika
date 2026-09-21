@@ -347,6 +347,61 @@ class MockResponse:
         self.usage.cache_read_input_tokens = cached_tokens
 
 
+def extract_retry_after(error_or_headers: Any) -> Optional[float]:
+    """
+    Extract upstream Retry-After delay (in seconds) from HTTP headers or exception payloads.
+    Honors provider-requested rate-limit backoff intervals instead of synthetic guesses.
+    """
+    if error_or_headers is None:
+        return None
+
+    # 1. Inspect dict-like headers or response/exception attributes
+    headers = getattr(error_or_headers, "headers", None)
+    if headers is None and isinstance(error_or_headers, dict):
+        if "headers" in error_or_headers and isinstance(error_or_headers["headers"], dict):
+            headers = error_or_headers["headers"]
+        else:
+            headers = error_or_headers
+    elif headers is not None and hasattr(headers, "get"):
+        pass
+    elif hasattr(error_or_headers, "response") and hasattr(error_or_headers.response, "headers"):
+        headers = error_or_headers.response.headers
+
+    if headers:
+        for key in ("retry-after", "Retry-After", "RETRY-AFTER"):
+            val = headers.get(key)
+            if val is not None:
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    pass
+        for key in ("retry-after-ms", "Retry-After-Ms", "x-retry-after-ms"):
+            val = headers.get(key)
+            if val is not None:
+                try:
+                    return float(val) / 1000.0
+                except (ValueError, TypeError):
+                    pass
+
+    # 2. Inspect exception message for explicit retry backoff patterns
+    msg = str(error_or_headers).lower()
+    m_sec = re.search(r"retry\s*(?:after|in)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*s(?:ec|econds)?\b", msg)
+    if m_sec:
+        try:
+            return float(m_sec.group(1))
+        except (ValueError, TypeError):
+            pass
+
+    m_ms = re.search(r"retry\s*(?:after|in)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*ms\b", msg)
+    if m_ms:
+        try:
+            return float(m_ms.group(1)) / 1000.0
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
+
 class BaseLLMClient(ABC):
     """Abstract base — setiap provider WAJIB implement SEMUA method ini."""
 
@@ -540,7 +595,6 @@ class BaseLLMClient(ABC):
     def _get_session_affinity_headers(self) -> Dict[str, str]:
         """Generate session affinity headers to pin requests to the same GPU replica.
         Increases prompt cache hit rate across consecutive calls.
-        Adopted from Pi's session routing pattern.
         """
         session_id = getattr(self, "_session_affinity_id", None)
         if not session_id:
@@ -549,10 +603,13 @@ class BaseLLMClient(ABC):
             session_id = hashlib.sha256(f"tradeagent_{role}".encode("utf-8")).hexdigest()[:32]
             self._session_affinity_id = session_id
 
-        provider = getattr(self, "provider_name", "").lower()
-        if "openrouter" in provider:
+        provider = str(getattr(self, "provider_name", "")).lower()
+        base_url = str(getattr(self, "base_url", "") or getattr(getattr(self, "client", None), "base_url", "")).lower()
+        if "openrouter" in provider or "openrouter" in base_url:
             return {"X-Session-ID": session_id}
-        elif "openai" in provider:
+        elif "deepseek" in provider or "deepseek" in base_url:
+            return {"X-Session-ID": session_id, "x-session-id": session_id}
+        elif "openai" in provider or "openai" in base_url:
             return {"X-Client-Request-ID": session_id}
         return {}
 
@@ -562,7 +619,6 @@ class BaseLLMClient(ABC):
         Models emit encrypted/opaque signatures (Anthropic redacted_thinking,
         Gemini thoughtSignature) that must be preserved when replaying the same model,
         but stripped when switching models to avoid schema errors.
-        Adopted from Pi's transformMessages() pattern.
         """
         if not messages or not isinstance(messages, list):
             return messages
@@ -739,16 +795,69 @@ class BaseLLMClient(ABC):
                 slot_name=slot_name,
             )
 
-            # CRITICAL FIX (Phase 1):
-            # If caller explicitly provided a session (e.g. test mock or direct session),
-            # add record but NEVER call commit on caller's session! Caller owns transaction lifecycle.
-            # When session is None (standard for background LLM calls), write via an isolated session and commit.
+            # Coalesced Asynchronous Token Logging:
+            # If caller explicitly provided a session, add directly (caller commits).
+            # When session is None, queue to background worker for coalesced batch writes (every 5s or 20 items),
+            # eliminating DB lock contention and connection pool exhaustion during concurrent asset analysis.
             if session is not None:
                 session.add(log_entry)
             else:
-                async with get_session() as s:
-                    s.add(log_entry)
-                    await s.commit()
+                try:
+                    q = _get_token_usage_queue()
+                    q.put_nowait(log_entry)
+                except Exception:
+                    async with get_session() as s:
+                        s.add(log_entry)
+                        await s.commit()
         except Exception as e:
             logger.debug(f"Failed to log token usage: {e}")
+
+
+_token_usage_queue: Optional[asyncio.Queue] = None
+_token_flush_task: Optional[asyncio.Task] = None
+
+
+def _get_token_usage_queue() -> asyncio.Queue:
+    global _token_usage_queue, _token_flush_task
+    if _token_usage_queue is None:
+        _token_usage_queue = asyncio.Queue(maxsize=5000)
+    if _token_flush_task is None or _token_flush_task.done():
+        try:
+            loop = asyncio.get_running_loop()
+            _token_flush_task = loop.create_task(_flush_token_usage_worker())
+        except RuntimeError:
+            pass
+    return _token_usage_queue
+
+
+async def _flush_token_usage_worker():
+    """Background worker coalescing token usage records and flushing every 5s or 20 items."""
+    while True:
+        try:
+            batch = []
+            try:
+                item = await asyncio.wait_for(_token_usage_queue.get(), timeout=5.0)
+                batch.append(item)
+                _token_usage_queue.task_done()
+            except asyncio.TimeoutError:
+                continue
+
+            while len(batch) < 20 and not _token_usage_queue.empty():
+                try:
+                    item = _token_usage_queue.get_nowait()
+                    batch.append(item)
+                    _token_usage_queue.task_done()
+                except asyncio.QueueEmpty:
+                    break
+
+            if batch:
+                from database.db import get_session
+                async with get_session() as s:
+                    s.add_all(batch)
+                    await s.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug(f"[TokenFlushWorker] Coalesced write non-fatal error: {e}")
+            await asyncio.sleep(1.0)
 

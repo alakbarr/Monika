@@ -1,10 +1,18 @@
-# ==============================================================================
-# File: analysis/tools/base_handler.py
-# ==============================================================================
-
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@dataclass
+class DisaggregatedToolResult:
+    """
+    Disaggregated tool execution result.
+    - content: Concise, synthesized text block returned directly to LLM context (saving tokens).
+    - details: Exhaustive raw data payload retained for audit logging, UI, and state persistence.
+    """
+    content: str
+    details: Dict[str, Any] = field(default_factory=dict)
 
 
 class ToolHandler(ABC):
@@ -14,6 +22,8 @@ class ToolHandler(ABC):
     - Single responsibility per tool handler
     - Explicit name, aliases, category, and parallel safety metadata
     - Self-registering decorator support
+    - Streaming progress callback (on_update) support
+    - Content/details disaggregation support
     """
     name: str = ""
     aliases: List[str] = []
@@ -30,7 +40,11 @@ class ToolHandler(ABC):
         args: Dict[str, Any],
         session: AsyncSession,
         executor: Optional[Any] = None,
+        on_update: Optional[Callable[[Dict[str, Any]], Any]] = None,
         **kwargs
     ) -> Any:
-        """Execute the tool logic and return the result payload (dict, str, or JSON-serializable)."""
+        """
+        Execute the tool logic and return result payload.
+        May return str, dict, or DisaggregatedToolResult(content=..., details=...).
+        """
         pass

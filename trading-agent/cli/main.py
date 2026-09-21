@@ -12,6 +12,30 @@ if _parent_dir not in sys.path:
 from bootstrap import install_bootstrap_hardening
 install_bootstrap_hardening()
 
+import atexit
+import threading
+import time
+
+def _reset_terminal_modes():
+    """Restore terminal mouse, bracketed paste, and cursor visibility on exit."""
+    try:
+        if sys.stdout.isatty():
+            sys.stdout.write("\x1b[?1000l\x1b[?2004l\x1b[?25h")
+            sys.stdout.flush()
+    except Exception:
+        pass
+
+atexit.register(_reset_terminal_modes)
+
+def arm_exit_watchdog(timeout_s: float = 15.0):
+    """Escort thread ensuring clean process termination if async loops hang during shutdown."""
+    def _force_exit():
+        time.sleep(timeout_s)
+        _reset_terminal_modes()
+        os._exit(0)
+    t = threading.Thread(target=_force_exit, daemon=True, name="exit-watchdog")
+    t.start()
+
 from cli.platform_compat import apply_platform_fixes
 apply_platform_fixes()
 

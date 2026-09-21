@@ -1614,3 +1614,25 @@ class UserMarketIntel(Base):
             return json.loads(self.metadata_json)
         except Exception:
             return {}
+
+
+# =============================================================================
+# Event-Sourced Decision Ledger
+# =============================================================================
+
+class CycleEvent(Base):
+    """Event-sourced analytical and execution decision ledger for quantitative audit trails."""
+    __tablename__ = "cycle_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cycle_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("cycle_id", "sequence", name="uq_cycle_event_seq"),
+        Index("idx_cycle_event_type", "event_type"),
+    )
+

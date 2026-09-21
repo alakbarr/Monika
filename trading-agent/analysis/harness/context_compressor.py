@@ -22,6 +22,60 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("TradingAgent.ContextCompressor")
 
 
+def safe_unicode_slice(text: str, max_chars: int) -> str:
+    """
+    Slices string by Unicode code points without corrupting multi-byte characters
+    or splitting surrogate pairs.
+    """
+    if len(text) <= max_chars:
+        return text
+    clean = text.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
+    sub = clean[:max_chars]
+    return sub.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+
+
+def offload_historical_charts(messages: List[dict], retain_recent_turns: int = 2) -> List[dict]:
+    """
+    Strips heavy base64 image / chart payloads from turns older than `retain_recent_turns`
+    assistant turns, replacing them with a compact text description to avoid multimodal context sinks.
+    """
+    if not messages:
+        return messages
+
+    assistant_indices = [i for i, m in enumerate(messages) if m.get("role") == "assistant"]
+    cutoff_idx = assistant_indices[-retain_recent_turns] if len(assistant_indices) >= retain_recent_turns else 0
+
+    processed = []
+    for i, msg in enumerate(messages):
+        if i >= cutoff_idx:
+            processed.append(msg)
+            continue
+
+        content = msg.get("content")
+        if isinstance(content, list):
+            new_blocks = []
+            has_image = False
+            for b in content:
+                if isinstance(b, dict) and (b.get("type") in ("image", "image_url") or "inline_data" in b):
+                    has_image = True
+                    new_blocks.append({
+                        "type": "text",
+                        "text": "[CHART/IMAGE OFFLOADED: Historical technical chart visual offloaded to conserve token budget]"
+                    })
+                else:
+                    new_blocks.append(b)
+            if has_image:
+                cloned = dict(msg)
+                cloned["content"] = new_blocks
+                processed.append(cloned)
+            else:
+                processed.append(msg)
+        else:
+            processed.append(msg)
+
+    return processed
+
+
 class ContextCompressor:
     """Multi-Phase Hierarchical Context Compressor for multi-turn LLM ReAct loops."""
 
@@ -37,7 +91,7 @@ class ContextCompressor:
 
         Identifies tool observations that failed or encountered errors that were
         subsequently retried successfully, prunes redundant bodies, and deduplicates
-        identical observations across turns.
+        identical observations across turns with Unicode code-point safety.
         """
         pruned_messages = copy.deepcopy(messages)
 
@@ -144,17 +198,28 @@ class ContextCompressor:
     def split_boundaries(
         self, messages: List[dict], tail_turns: int = 3
     ) -> Tuple[List[dict], List[dict], List[dict]]:
-        """Phase 2: Protected Boundary Split with Tool-Pair Snap.
+        """Phase 2: Protected Boundary Split with Warm-Prefix Preservation and Tool-Pair Snap.
 
         Preserves:
-        - Head: First message (system / task instruction).
+        - Head: Leading invariant turns (initial system prompt AND initial user task instruction).
         - Tail: Last `tail_turns` assistant turns + their tool observations (snapped).
         - Middle: The intermediate exploration history to be compressed.
         """
-        if len(messages) <= (tail_turns * 2) + 2:
-            return messages[:1], [], messages[1:]
+        # Warm-Prefix Preservation: Preserve initial system prompt AND initial user instruction
+        head = []
+        for m in messages:
+            r = m.get("role")
+            if r in ("system", "user") and len(head) < 2:
+                head.append(m)
+                if r == "user":
+                    break
+            else:
+                break
+        if not head:
+            head = messages[:1]
 
-        head = messages[:1]
+        if len(messages) <= (tail_turns * 2) + len(head):
+            return head, [], messages[len(head):]
 
         # Find starting index for Tail (last tail_turns assistant messages)
         assistant_indices = [
@@ -164,12 +229,13 @@ class ContextCompressor:
         if len(assistant_indices) >= tail_turns:
             tail_start = assistant_indices[-tail_turns]
         else:
-            tail_start = max(1, len(messages) - (tail_turns * 2))
+            tail_start = max(len(head), len(messages) - (tail_turns * 2))
 
+        tail_start = max(len(head), tail_start)
         # Snap boundary to guarantee tool-use / tool-result pair integrity
         tail_start = self._snap_boundary(messages, tail_start)
 
-        middle = messages[1:tail_start]
+        middle = messages[len(head):tail_start]
         tail = messages[tail_start:]
 
         return head, middle, tail
@@ -292,6 +358,9 @@ class ContextCompressor:
         4. Summarize Middle via aux model / rules with iterative chaining.
         5. Assemble Head + [Condensed Summary Message] + Tail.
         """
+        # Phase 0: Offload historical high-res charts older than 2 turns to eliminate multimodal sinks
+        messages = offload_historical_charts(messages, retain_recent_turns=2)
+
         total_chars = sum(len(str(m.get("content", ""))) for m in messages)
         if total_chars <= max_context_chars:
             return messages

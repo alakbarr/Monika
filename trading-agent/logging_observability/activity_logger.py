@@ -55,6 +55,17 @@ def shutdown_logging() -> None:
     logging.getLogger().handlers.clear()
 
 
+class _SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """Windows-safe rotating file handler that gracefully handles WinError 32 PermissionError during rotation."""
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except (PermissionError, OSError):
+            # Another process holds an open file handle on Windows.
+            # Continue writing to active file stream without crashing until handle is freed.
+            pass
+
+
 def setup_logging(
     log_dir: str = "logs",
     level: int = logging.INFO,
@@ -92,7 +103,7 @@ def setup_logging(
     try:
         from concurrent_log_handler import ConcurrentRotatingFileHandler as _RotHandler
     except ImportError:
-        _RotHandler = logging.handlers.RotatingFileHandler
+        _RotHandler = _SafeRotatingFileHandler
 
     file_handler = _RotHandler(
         filename=os.path.join(log_dir, "agent.log"),
@@ -219,6 +230,35 @@ class ActivityLogger:
     async def telegram(self, description: str, related_id: Optional[int] = None, actor: str = "telegram", session = None) -> Optional[int]:
         self._logger.info(f"[TELEGRAM] {description}")
         return await self.log("telegram", description, related_id, actor, session=session)
+
+    async def log_fallback_event(
+        self,
+        task_role: str,
+        from_slot: str,
+        from_model: str,
+        to_slot: str,
+        to_model: str,
+        reason: str,
+        cycle_id: Optional[str] = None,
+        session = None,
+    ) -> Optional[int]:
+        """
+        Catat peristiwa failover/fallback LLM ke ActivityLog DB dan file logger.
+        Menyediakan audit trail waktu-nyata untuk degradasi keandalan provider.
+        """
+        desc = (
+            f"[LLM FALLBACK] Role '{task_role}' failed on slot '{from_slot}' ({from_model}) "
+            f"-> falling back to slot '{to_slot}' ({to_model}). Reason: {reason}"
+        )
+        if cycle_id:
+            desc += f" [Cycle: {cycle_id}]"
+        self._logger.warning(desc)
+        return await self.log(
+            category="system",
+            description=desc,
+            actor="failover_engine",
+            session=session,
+        )
 
     # Bulk write (for batch inserts)
     async def bulk(self, entries: list[dict], session = None) -> int:

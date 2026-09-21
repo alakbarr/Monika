@@ -36,6 +36,16 @@ class FailoverReason(str, Enum):
     BROKER_MARGIN_CALL = "broker_margin_call"
     SILENT_OVERFLOW = "silent_overflow"
     LENGTH_STOP_OVERFLOW = "length_stop_overflow"
+    OUTPUT_CAP_REACHED = "output_cap_reached"
+    COMPLETION_CEILING_EXCEEDED = "completion_ceiling_exceeded"
+    HARD_QUOTA_EXHAUSTED = "hard_quota_exhausted"
+    TRANSIENT_RATE_LIMIT = "transient_rate_limit"
+    UPSTREAM_BLOCKED = "upstream_blocked"
+    IMAGE_TOO_LARGE = "image_too_large"
+    IMAGE_CORRUPT = "image_corrupt"
+    ROLE_ALTERNATION = "role_alternation"
+    THINKING_SIGNATURE = "thinking_signature"
+    MODEL_ENTITLEMENT = "model_entitlement"
     UNKNOWN = "unknown"
 
     @property
@@ -46,7 +56,10 @@ class FailoverReason(str, Enum):
             FailoverReason.PAYLOAD_TOO_LARGE,
             FailoverReason.SILENT_OVERFLOW,
             FailoverReason.LENGTH_STOP_OVERFLOW,
+            FailoverReason.OUTPUT_CAP_REACHED,
+            FailoverReason.COMPLETION_CEILING_EXCEEDED,
             FailoverReason.RATE_LIMIT_API,
+            FailoverReason.TRANSIENT_RATE_LIMIT,
             FailoverReason.MODEL_OVERLOADED,
             FailoverReason.NETWORK_TIMEOUT,
             FailoverReason.NETWORK_CONNECTION,
@@ -54,6 +67,8 @@ class FailoverReason(str, Enum):
             FailoverReason.SERVER_ERROR,
             FailoverReason.INVALID_REQUEST,
             FailoverReason.BROKER_MARGIN_CALL,
+            FailoverReason.IMAGE_TOO_LARGE,
+            FailoverReason.ROLE_ALTERNATION,
         }
         return self not in NO_FAILOVER
 
@@ -62,8 +77,12 @@ class FailoverReason(str, Enum):
         if is_hot_path and self in (
             FailoverReason.RATE_LIMIT_API,
             FailoverReason.RATE_LIMIT_MODEL,
+            FailoverReason.TRANSIENT_RATE_LIMIT,
             FailoverReason.UPSTREAM_RATE_LIMIT,
             FailoverReason.MODEL_OVERLOADED,
+            FailoverReason.UPSTREAM_BLOCKED,
+            FailoverReason.MODEL_ENTITLEMENT,
+            FailoverReason.THINKING_SIGNATURE,
         ):
             return True
         return self.should_failover
@@ -76,13 +95,27 @@ class FailoverReason(str, Enum):
             FailoverReason.PAYLOAD_TOO_LARGE,
             FailoverReason.SILENT_OVERFLOW,
             FailoverReason.LENGTH_STOP_OVERFLOW,
+            FailoverReason.IMAGE_TOO_LARGE,
         }
+
+    @property
+    def is_output_cap(self) -> bool:
+        return self in (FailoverReason.OUTPUT_CAP_REACHED, FailoverReason.LENGTH_STOP_OVERFLOW)
+
+    @property
+    def is_completion_ceiling(self) -> bool:
+        return self == FailoverReason.COMPLETION_CEILING_EXCEEDED
+
+    @property
+    def is_hard_quota_exhausted(self) -> bool:
+        return self in (FailoverReason.HARD_QUOTA_EXHAUSTED, FailoverReason.BILLING_EXHAUSTED)
 
     @property
     def backoff_seconds(self) -> float:
         _MAP = {
             FailoverReason.RATE_LIMIT_API: 15.0,
             FailoverReason.RATE_LIMIT_MODEL: 60.0,
+            FailoverReason.TRANSIENT_RATE_LIMIT: 15.0,
             FailoverReason.UPSTREAM_RATE_LIMIT: 20.0,
             FailoverReason.MODEL_OVERLOADED: 10.0,
             FailoverReason.NETWORK_TIMEOUT: 5.0,
@@ -93,6 +126,16 @@ class FailoverReason(str, Enum):
             FailoverReason.BROKER_MARGIN_CALL: 0.0,
             FailoverReason.SILENT_OVERFLOW: 0.0,
             FailoverReason.LENGTH_STOP_OVERFLOW: 0.0,
+            FailoverReason.OUTPUT_CAP_REACHED: 0.0,
+            FailoverReason.COMPLETION_CEILING_EXCEEDED: 0.0,
+            FailoverReason.HARD_QUOTA_EXHAUSTED: 0.0,
+            FailoverReason.BILLING_EXHAUSTED: 0.0,
+            FailoverReason.UPSTREAM_BLOCKED: 30.0,
+            FailoverReason.IMAGE_TOO_LARGE: 0.0,
+            FailoverReason.IMAGE_CORRUPT: 0.0,
+            FailoverReason.ROLE_ALTERNATION: 0.0,
+            FailoverReason.THINKING_SIGNATURE: 0.0,
+            FailoverReason.MODEL_ENTITLEMENT: 0.0,
         }
         return _MAP.get(self, 0.0)
 
@@ -101,6 +144,7 @@ class FailoverReason(str, Enum):
         _MAP = {
             FailoverReason.RATE_LIMIT_API: 3,
             FailoverReason.RATE_LIMIT_MODEL: 2,
+            FailoverReason.TRANSIENT_RATE_LIMIT: 3,
             FailoverReason.UPSTREAM_RATE_LIMIT: 1,
             FailoverReason.MODEL_OVERLOADED: 3,
             FailoverReason.NETWORK_TIMEOUT: 2,
@@ -108,16 +152,48 @@ class FailoverReason(str, Enum):
             FailoverReason.CONTEXT_OVERFLOW: 1,
             FailoverReason.PAYLOAD_TOO_LARGE: 1,
             FailoverReason.SILENT_OVERFLOW: 1,
-            FailoverReason.LENGTH_STOP_OVERFLOW: 1,
+            FailoverReason.LENGTH_STOP_OVERFLOW: 0,
+            FailoverReason.OUTPUT_CAP_REACHED: 0,
+            FailoverReason.COMPLETION_CEILING_EXCEEDED: 1,
+            FailoverReason.HARD_QUOTA_EXHAUSTED: 0,
+            FailoverReason.BILLING_EXHAUSTED: 0,
             FailoverReason.SERVER_ERROR: 2,
             FailoverReason.CONTENT_FILTERED: 1,
             FailoverReason.INVALID_REQUEST: 0,
             FailoverReason.BROKER_MARGIN_CALL: 0,
+            FailoverReason.UPSTREAM_BLOCKED: 1,
+            FailoverReason.IMAGE_TOO_LARGE: 1,
+            FailoverReason.IMAGE_CORRUPT: 0,
+            FailoverReason.ROLE_ALTERNATION: 1,
+            FailoverReason.THINKING_SIGNATURE: 0,
+            FailoverReason.MODEL_ENTITLEMENT: 0,
         }
         return _MAP.get(self, 0)
 
 
 # Pre-compiled patterns for fast classification
+_COMPLETION_CEILING_PATTERNS = re.compile(
+    r"max_(?:completion_)?tokens.?is.?too.?large|"
+    r"completion.?tokens.?exceed|"
+    r"maximum.?completion.?tokens|"
+    r"max_(?:completion_)?tokens.?cannot.?exceed|"
+    r"cannot.?be.?greater.?than.*max_(?:completion_)?tokens|"
+    r"max_(?:completion_)?tokens.*(?:must be |cannot be )?(?:less than or equal to|<=|greater than|exceeds|too large)|"
+    r"(?:must be |cannot be )?(?:less than or equal to|<=).*max_(?:completion_)?tokens|"
+    r"max_completion_tokens.?exceeded|"
+    r"max_(?:completion_)?tokens\s*:\s*\d+\s*>\s*\d+",
+    re.IGNORECASE,
+)
+_HARD_QUOTA_PATTERNS = re.compile(
+    r"insufficient_quota|"
+    r"exceeded.?your.?current.?quota|"
+    r"quota.?exceeded|"
+    r"credit.?balance.?is.?too.?low|"
+    r"account.?has.?run.?out.?of.?credits|"
+    r"monthly.?quota.?reached|"
+    r"check.?your.?plan.?and.?billing",
+    re.IGNORECASE,
+)
 _OVERFLOW_PATTERNS = re.compile(
     r"context.?length|maximum context|prompt.?is.?too.?long|token.?limit|"
     r"content.?too.?large|exceeds.?the.?model|exceeds.?the.?maximum.?number.?of.?tokens|"
@@ -136,6 +212,36 @@ _FILTER_PATTERNS = re.compile(r"content.?filter|content.?policy|safety|blocked|h
 _TIMEOUT_PATTERNS = re.compile(r"timeout|timed.?out|deadline.?exceeded", re.IGNORECASE)
 _CONN_PATTERNS = re.compile(r"connection.?(?:refused|reset|error|closed)|broken.?pipe|eof", re.IGNORECASE)
 _SERVER_PATTERNS = re.compile(r"500|502|internal.?server.?error|bad.?gateway", re.IGNORECASE)
+_WAF_PATTERNS = re.compile(r"cloudflare|just\s+a\s+moment|access\s+denied|cf-ray|blocked\s+by\s+waf|403\s+forbidden", re.IGNORECASE)
+_ROLE_ALT_PATTERNS = re.compile(r"role\s+alternation|consecutive\s+(?:user|assistant)|messages\s+must\s+alternate", re.IGNORECASE)
+_THINKING_PATTERNS = re.compile(r"thinking\s+signature|thought\s+signature|invalid\s+thought", re.IGNORECASE)
+_ENTITLEMENT_PATTERNS = re.compile(r"not\s+entitled|does\s+not\s+have\s+access|permission\s+denied|tier\s+required", re.IGNORECASE)
+_IMAGE_LARGE_PATTERNS = re.compile(r"image\s+too\s+large|maximum\s+image\s+size|exceeds\s+image\s+limit", re.IGNORECASE)
+_IMAGE_CORRUPT_PATTERNS = re.compile(r"cannot\s+decode\s+image|invalid\s+image\s+data|unsupported\s+image", re.IGNORECASE)
+
+
+def extract_completion_ceiling(error: Exception | str) -> int | None:
+    """
+    Extract allowed completion token ceiling from provider error message.
+    e.g. 'max_tokens is too large: 32000 > 8192' -> 8192
+    'max_tokens must be less than or equal to 4096' -> 4096
+    """
+    msg = str(error)
+    # Pattern: 32000 > 8192
+    m = re.search(r"\d+\s*>\s*(\d+)", msg)
+    if m:
+        try:
+            return int(m.group(1))
+        except (ValueError, IndexError):
+            pass
+    # Pattern: less than or equal to 8192 / cannot exceed 8192 / max 8192
+    m = re.search(r"(?:less than or equal to|cannot exceed|maximum allowed is|limit is|must be <=)\s*[`'\"]?(\d+)", msg, re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except (ValueError, IndexError):
+            pass
+    return None
 
 
 def classify_error(error: Exception) -> Tuple[FailoverReason, str]:
@@ -149,6 +255,10 @@ def classify_error(error: Exception) -> Tuple[FailoverReason, str]:
     error_type = type(error).__name__
 
     # Order matters: check specific patterns before generic ones
+
+    # 0. Completion ceiling limit (MUST check before generic overflow / 400)
+    if _COMPLETION_CEILING_PATTERNS.search(msg):
+        return FailoverReason.COMPLETION_CEILING_EXCEEDED, "Completion token limit exceeded model maximum"
 
     # 1. Context overflow (MUST check before generic 4xx)
     if _OVERFLOW_PATTERNS.search(msg):
@@ -164,7 +274,9 @@ def classify_error(error: Exception) -> Tuple[FailoverReason, str]:
             return FailoverReason.AUTH_TRANSIENT, "Auth token expired — refreshable"
         return FailoverReason.AUTH_PERMANENT, "API key permanently invalid"
 
-    # 4. Billing
+    # 4. Hard Quota & Billing
+    if _HARD_QUOTA_PATTERNS.search(msg):
+        return FailoverReason.HARD_QUOTA_EXHAUSTED, "Hard quota / credits depleted for provider"
     if _BILLING_PATTERNS.search(msg):
         return FailoverReason.BILLING_EXHAUSTED, "Credits/quota depleted"
 
@@ -174,33 +286,51 @@ def classify_error(error: Exception) -> Tuple[FailoverReason, str]:
     if _RATE_PATTERNS.search(msg):
         if re.search(r"retry.?after|model|provider", msg, re.IGNORECASE):
             return FailoverReason.RATE_LIMIT_MODEL, "Model-level rate limit"
+        if re.search(r"requests.?per.?minute|tokens.?per.?minute|RPM|TPM", msg, re.IGNORECASE):
+            return FailoverReason.TRANSIENT_RATE_LIMIT, "Transient rate limit (RPM/TPM)"
         return FailoverReason.RATE_LIMIT_API, "API gateway rate limit"
 
-    # 6. Invalid request / Schema failure
+    # 6. WAF / Cloudflare blockage (must check before generic filter or 403)
+    if _WAF_PATTERNS.search(msg):
+        return FailoverReason.UPSTREAM_BLOCKED, "Upstream WAF / Cloudflare block (403)"
+
+    # 7. Specific payload issues before generic 400
+    if _IMAGE_LARGE_PATTERNS.search(msg):
+        return FailoverReason.IMAGE_TOO_LARGE, "Attached chart image exceeds model size limits"
+    if _IMAGE_CORRUPT_PATTERNS.search(msg):
+        return FailoverReason.IMAGE_CORRUPT, "Attached chart image corrupt or undecodable"
+    if _ROLE_ALT_PATTERNS.search(msg):
+        return FailoverReason.ROLE_ALTERNATION, "Provider rejected turn due to consecutive same-role messages"
+    if _THINKING_PATTERNS.search(msg):
+        return FailoverReason.THINKING_SIGNATURE, "Provider failed reasoning/thinking signature validation"
+    if _ENTITLEMENT_PATTERNS.search(msg):
+        return FailoverReason.MODEL_ENTITLEMENT, "Account lacks access or entitlement for model"
+
+    # 8. Invalid request / Schema failure
     if _INVALID_REQ_PATTERNS.search(msg):
         return FailoverReason.INVALID_REQUEST, f"Invalid request / schema validation failed: {error_type}"
 
-    # 7. Model not found
+    # 9. Model not found
     if _NOT_FOUND_PATTERNS.search(msg):
         return FailoverReason.MODEL_NOT_FOUND, f"Model not found: {error_type}"
 
-    # 8. Overloaded
+    # 10. Overloaded
     if _OVERLOAD_PATTERNS.search(msg):
         return FailoverReason.MODEL_OVERLOADED, "Model overloaded — short backoff"
 
-    # 9. Content filtered
+    # 11. Content filtered
     if _FILTER_PATTERNS.search(msg):
         return FailoverReason.CONTENT_FILTERED, "Content safety filter triggered"
 
-    # 10. Timeout
+    # 12. Timeout
     if _TIMEOUT_PATTERNS.search(msg) or "TimeoutError" in error_type:
         return FailoverReason.NETWORK_TIMEOUT, "Request timed out"
 
-    # 11. Connection
+    # 13. Connection
     if _CONN_PATTERNS.search(msg) or "ConnectionError" in error_type:
         return FailoverReason.NETWORK_CONNECTION, "Network connection failed"
 
-    # 12. Server error
+    # 14. Server error
     if _SERVER_PATTERNS.search(msg):
         return FailoverReason.SERVER_ERROR, "Provider server error"
 

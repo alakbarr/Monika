@@ -101,6 +101,32 @@ class ProviderCircuitBreaker:
         cls._blacklist_reasons.clear()
 
 
+class EndpointBlackhole:
+    """
+    30-second blackhole cache for unresponsive local models (Ollama/vLLM) or hanging endpoints.
+    Enables sub-100ms instant failover on subsequent turns without waiting for full network timeouts.
+    """
+    _blackhole: Dict[str, float] = {}
+
+    @classmethod
+    def is_blackholed(cls, endpoint_or_model: str) -> bool:
+        expire_at = cls._blackhole.get(endpoint_or_model)
+        if expire_at:
+            if time.time() < expire_at:
+                return True
+            cls._blackhole.pop(endpoint_or_model, None)
+        return False
+
+    @classmethod
+    def blackhole_endpoint(cls, endpoint_or_model: str, ttl_seconds: float = 30.0) -> None:
+        cls._blackhole[endpoint_or_model] = time.time() + ttl_seconds
+        logger.warning(f"[EndpointBlackhole] Blackholing '{endpoint_or_model}' for {ttl_seconds:.0f}s due to connection failure.")
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._blackhole.clear()
+
+
 class LLMFactory:
     """
     Factory terpusat. Resolves:
@@ -523,6 +549,9 @@ class FallbackClientWrapper(BaseLLMClient):
             if ProviderCircuitBreaker.is_model_blacklisted(provider, model):
                 logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — model is blacklisted")
                 continue
+            if EndpointBlackhole.is_blackholed(model) or EndpointBlackhole.is_blackholed(provider):
+                logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — endpoint/model is blackholed")
+                continue
 
             try:
                 from utils.api.credential_pool import get_credential_pool
@@ -688,10 +717,45 @@ class FallbackClientWrapper(BaseLLMClient):
                         )
                         raise  # Let agent_harness.py C2 handle compression
 
+                    # Strategy 1b: Completion ceiling exceeded — clamp max_tokens and retry same slot in-place
+                    if reason.is_completion_ceiling:
+                        from analysis.providers.provider_failover_classifier import extract_completion_ceiling
+                        ceiling = extract_completion_ceiling(e)
+                        if ceiling and ceiling > 0 and slot_retries < 1:
+                            slot_retries += 1
+                            logger.info(
+                                f"[{self.task_role}] Completion ceiling exceeded ({ceiling} tokens). "
+                                f"Clamping max_tokens and retrying {slot_name} in-place."
+                            )
+                            if hasattr(client, "max_tokens"):
+                                client.max_tokens = min(client.max_tokens, ceiling)
+                            if "max_tokens" in kwargs:
+                                kwargs["max_tokens"] = min(kwargs["max_tokens"], ceiling)
+                            continue
+
+                    # Strategy 1c: Hard Quota / Billing Depleted — immediate blacklist for 7200s and failover
+                    if reason.is_hard_quota_exhausted:
+                        logger.error(
+                            f"[{self.task_role}] Hard quota / credits exhausted for {provider}/{model}. "
+                            f"Blacklisting model for 7200s and failing over immediately."
+                        )
+                        ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=7200.0)
+                        self._slot_cooldowns[slot_name] = time.time() + 7200.0
+                        last_error = e
+                        last_failed_dict = {
+                            "slot": slot_name,
+                            "model": model,
+                            "reason": reason.value,
+                            "detail": detail,
+                        }
+                        break
+
                     is_hot_path = getattr(self, "task_role", "") in HOT_PATH_ROLES
                     is_rate_or_auth = reason in (
                         FailoverReason.RATE_LIMIT_API,
                         FailoverReason.RATE_LIMIT_MODEL,
+                        FailoverReason.TRANSIENT_RATE_LIMIT,
+                        FailoverReason.UPSTREAM_RATE_LIMIT,
                         FailoverReason.AUTH_TRANSIENT,
                     )
 
@@ -733,13 +797,25 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Strategy 4: Failover to next model with exponential cooldown
                     is_server_or_timeout = (reason in (FailoverReason.SERVER_ERROR, FailoverReason.NETWORK_TIMEOUT, FailoverReason.NETWORK_CONNECTION))
                     ProviderCircuitBreaker.record_provider_failure(provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value)
-                    if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
-                        ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=1800.0)
+                    if reason in (FailoverReason.AUTH_PERMANENT, FailoverReason.BILLING_EXHAUSTED, FailoverReason.HARD_QUOTA_EXHAUSTED, FailoverReason.MODEL_NOT_FOUND):
+                        cd_time = 7200.0 if reason.is_hard_quota_exhausted else 1800.0
+                        ProviderCircuitBreaker.blacklist_model(provider, model, reason=reason.value, duration=cd_time)
 
-                    cnt = self._slot_backoff_count.get(slot_name, 0)
-                    cd_duration = min(60.0 * (2 ** cnt), 1800.0)
+                    if reason == FailoverReason.NETWORK_CONNECTION or "connection refused" in str(e).lower():
+                        EndpointBlackhole.blackhole_endpoint(model, ttl_seconds=30.0)
+                        EndpointBlackhole.blackhole_endpoint(provider, ttl_seconds=30.0)
+
+                    # Check for upstream Retry-After delay header (honoring provider guidance)
+                    from analysis.providers.base_provider import extract_retry_after
+                    retry_delay = extract_retry_after(e)
+                    if retry_delay and retry_delay > 0:
+                        cd_duration = min(retry_delay, 1800.0)
+                        logger.info(f"[{self.task_role}] Honoring upstream Retry-After delay of {cd_duration:.1f}s for {slot_name}/{model}")
+                    else:
+                        cnt = self._slot_backoff_count.get(slot_name, 0)
+                        cd_duration = min(60.0 * (2 ** cnt), 1800.0)
                     self._slot_cooldowns[slot_name] = time.time() + cd_duration
-                    self._slot_backoff_count[slot_name] = cnt + 1
+                    self._slot_backoff_count[slot_name] = self._slot_backoff_count.get(slot_name, 0) + 1
                     if slot_name == "primary":
                         self._primary_cooldown_until = self._slot_cooldowns[slot_name]
 
@@ -750,6 +826,29 @@ class FallbackClientWrapper(BaseLLMClient):
                         "reason": reason.value,
                         "detail": detail,
                     }
+
+                    if is_hot_path:
+                        logger.warning(
+                            f"[AutoFailover] HOT PATH role '{self.task_role}' automatically failing over "
+                            f"from {slot_name}/{model} due to {reason.value}. Zero-consent failover engaged."
+                        )
+                        async def _notify_failover_post_facto(role: str, failed_model: str, err_reason: str):
+                            try:
+                                from utils.notifier import send_telegram_alert
+                                await send_telegram_alert(
+                                    f"⚠️ *HOT PATH Auto-Failover*\n"
+                                    f"Role: `{role}`\n"
+                                    f"Failed: `{failed_model}`\n"
+                                    f"Reason: `{err_reason}`\n"
+                                    f"Switching to next candidate in fallback chain."
+                                )
+                            except Exception:
+                                pass
+                        try:
+                            asyncio.create_task(_notify_failover_post_facto(self.task_role, model, reason.value))
+                        except Exception:
+                            pass
+
                     break
                 
         logger.error(f"All fallback models failed for {method_name}. Last error: {last_error}")

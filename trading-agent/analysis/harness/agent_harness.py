@@ -111,6 +111,11 @@ class AgentHarness:
         self._steering_queue: deque = deque()
         self._follow_up_queue: deque = deque()
 
+        # Surface Node 0: Immutable System Prompt Tracking & Invariance
+        self._cached_surface_prompt: Optional[str] = None
+        self._cached_surface_prompt_hash: Optional[str] = None
+        self._last_injected_dynamic_overlay: Optional[str] = None
+
     def enqueue_steering(
         self,
         content: str,
@@ -570,6 +575,19 @@ class AgentHarness:
             return "submit_fundamental_brief"
         return None
 
+    @staticmethod
+    def _maybe_inject_wrapup_notice(elapsed_seconds: float, stage_timeout_seconds: Optional[float]) -> Optional[str]:
+        """Inject wrap-up directive if elapsed execution time reaches or exceeds 80% of budget."""
+        if not stage_timeout_seconds or stage_timeout_seconds <= 0:
+            return None
+        if elapsed_seconds >= 0.8 * stage_timeout_seconds:
+            return (
+                f"[TIME BUDGET WRAP-UP] Over 80% of stage time budget consumed "
+                f"({elapsed_seconds:.1f}s / {stage_timeout_seconds:.1f}s). "
+                f"Conclude analysis and issue final proposal immediately."
+            )
+        return None
+
     # --------------------------------------------------------------------------
     # Activity Log Integration
     # --------------------------------------------------------------------------
@@ -739,10 +757,32 @@ class AgentHarness:
         )
 
         _overflow_recovery_attempted = False
+        stage_timeout_seconds = kwargs.get("stage_timeout_seconds", self.settings.get("stage_timeout_seconds", 120.0))
+        _wrapup_injected = False
+        _stage_start_time = asyncio.get_event_loop().time()
 
         while turns < effective_max_turns:
             turns += 1
             self.guardrail_controller.reset_turn()
+
+            # Check wall-clock time budget and inject wrap-up directive at >= 80% (Phase 6.4)
+            if not _wrapup_injected and stage_timeout_seconds:
+                elapsed = asyncio.get_event_loop().time() - _stage_start_time
+                wrapup_msg = self._maybe_inject_wrapup_notice(elapsed, stage_timeout_seconds)
+                if wrapup_msg:
+                    _wrapup_injected = True
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Time budget 80% reached ({elapsed:.1f}s / {stage_timeout_seconds:.1f}s). "
+                        f"Injecting wrap-up directive."
+                    )
+                    if current_messages and current_messages[-1].get("role") == "user":
+                        prev_c = current_messages[-1].get("content")
+                        if isinstance(prev_c, str):
+                            current_messages[-1]["content"] = f"{prev_c}\n\n{wrapup_msg}"
+                        elif isinstance(prev_c, list):
+                            current_messages[-1]["content"].append({"type": "text", "text": f"\n\n{wrapup_msg}"})
+                    else:
+                        current_messages.append({"role": "user", "content": wrapup_msg})
 
             # ── Dual-Queue Steering Drainage (Immediate Steering) ──
             if self._steering_queue:
@@ -766,7 +806,17 @@ class AgentHarness:
                         current_messages.append({"role": "user", "content": combined_steering})
 
             # 1. Layer 1/2 Context Compaction & Observation Masking
-            context_win = self.settings.get("context_window", 128000)
+            from analysis.providers.capabilities import resolve_effective_context_window
+            from analysis.harness.context_compressor import offload_historical_charts
+
+            context_win = resolve_effective_context_window(
+                model_name=getattr(self.llm_client, "model", None),
+                provider_name=getattr(self.llm_client, "provider_name", None),
+                settings=self.settings,
+            )
+            # Offload heavy multimodal chart data from historical turns (>2 turns old)
+            current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
+
             current_messages = self.compactor.check_and_compact(
                 current_messages, context_window=context_win
             )
@@ -804,6 +854,7 @@ class AgentHarness:
             response = None
             last_exc = None
             max_attempts = 3
+            pre_turn_checkpoint = [dict(m) for m in current_messages]
 
             with llm_span(provider=provider_name, model=model_name, task_role=task_role) as active_llm_span:
                 for attempt in range(max_attempts):
@@ -830,18 +881,70 @@ class AgentHarness:
                                     cloned[k] = v
                             send_messages.append(cloned)
 
-                        # ── Prompt Cache Invariance Hardening ──
-                        effective_sys = system_prompt
+                        # ── Prompt Cache Invariance Hardening (Surface Node 0) ──
+                        from analysis.providers.base_provider import _flatten_system_prompt
+
+                        compile_stable_fn = getattr(system_prompt, "compile_stable_system", None)
                         assemble_fn = getattr(system_prompt, "assemble", None)
+
                         if callable(assemble_fn):
-                            effective_sys = assemble_fn(provider=provider_name)
-                        elif isinstance(system_prompt, tuple):
-                            static_sys, dynamic_sys = system_prompt
-                            effective_sys = static_sys
-                            if dynamic_sys and send_messages and send_messages[0].get("role") == "user":
-                                content = send_messages[0].get("content", "")
-                                if isinstance(content, str) and "<volatile_overlay>" not in content:
-                                    send_messages[0]["content"] = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>\n\n{content}"
+                            current_static_sys = assemble_fn(provider=provider_name)
+                            dynamic_sys = str(getattr(system_prompt, "tier3_volatile", "") or "").strip()
+                        elif isinstance(system_prompt, tuple) and len(system_prompt) >= 2:
+                            current_static_sys = system_prompt[0]
+                            dynamic_sys = str(system_prompt[1] or "").strip()
+                        else:
+                            current_static_sys = system_prompt
+                            dynamic_sys = ""
+
+                        if isinstance(current_static_sys, list):
+                            flat_static = json.dumps(current_static_sys, sort_keys=True)
+                        else:
+                            flat_static = _flatten_system_prompt(current_static_sys).strip()
+                        static_hash = hashlib.sha256(flat_static.encode("utf-8")).hexdigest()
+
+                        # 1.1: Surface Node 0 is immutable for the lifetime of this harness session
+                        if self._cached_surface_prompt is None:
+                            self._cached_surface_prompt = current_static_sys
+                            self._cached_surface_prompt_hash = static_hash
+                            effective_sys = current_static_sys
+                        else:
+                            effective_sys = self._cached_surface_prompt
+                            # 1.6: In-history system prompt updates (Append, Don't Replace)
+                            if static_hash != self._cached_surface_prompt_hash:
+                                update_notice = f"[SYSTEM INSTRUCTION UPDATE]:\n{flat_static}"
+                                if send_messages and send_messages[-1].get("role") == "user":
+                                    prev_c = send_messages[-1].get("content")
+                                    if isinstance(prev_c, str):
+                                        send_messages[-1]["content"] = f"{prev_c}\n\n{update_notice}"
+                                    elif isinstance(prev_c, list):
+                                        send_messages[-1]["content"].append({"type": "text", "text": f"\n\n{update_notice}"})
+                                else:
+                                    send_messages.append({"role": "user", "content": update_notice})
+                                logger.info(f"[{stage_name}][AgentHarness] System prompt update appended in-history (token 0 prefix preserved).")
+
+                        # 1.3: Dynamic context isolation: inject into user message tail, never system prompt
+                        if dynamic_sys and dynamic_sys != self._last_injected_dynamic_overlay:
+                            self._last_injected_dynamic_overlay = dynamic_sys
+                            snapshot_text = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>"
+                            if send_messages and send_messages[0].get("role") == "user" and "<volatile_overlay>" not in str(send_messages[0].get("content", "")):
+                                prev_c = send_messages[0].get("content")
+                                if isinstance(prev_c, str):
+                                    send_messages[0]["content"] = f"{prev_c}\n\n{snapshot_text}"
+                                elif isinstance(prev_c, list):
+                                    send_messages[0]["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
+                            else:
+                                last_user_msg = next((m for m in reversed(send_messages) if m.get("role") == "user"), None)
+                                if last_user_msg:
+                                    prev_c = last_user_msg.get("content")
+                                    if isinstance(prev_c, str) and "<volatile_overlay>" not in prev_c:
+                                        last_user_msg["content"] = f"{prev_c}\n\n{snapshot_text}"
+                                    elif isinstance(prev_c, list):
+                                        has_snapshot = any("<volatile_overlay>" in str(b.get("text", "")) for b in prev_c if isinstance(b, dict))
+                                        if not has_snapshot:
+                                            last_user_msg["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
+                                else:
+                                    send_messages.append({"role": "user", "content": snapshot_text})
 
                         response = await self.llm_client.run_tool_agent(
                             send_messages, tools, effective_sys
@@ -927,9 +1030,11 @@ class AgentHarness:
                             )
                         except Exception:
                             pass
-                    # Durable Failed Turn Sealing: prevent consecutive user messages
-                    if current_messages and current_messages[-1].get("role") == "user":
-                        current_messages.append({
+                    # Prevent negative prompt caching blackhole: rollback message state to pre-turn checkpoint
+                    current_messages = pre_turn_checkpoint
+                    reporting_messages = [dict(m) for m in current_messages]
+                    if reporting_messages and reporting_messages[-1].get("role") == "user":
+                        reporting_messages.append({
                             "role": "assistant",
                             "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]"
                         })
@@ -943,7 +1048,7 @@ class AgentHarness:
                         "output_tokens": total_output_tokens,
                         "thinking_tokens": total_thinking_tokens,
                         "cached_tokens": total_cached_tokens,
-                        "context_messages": current_messages,
+                        "context_messages": reporting_messages,
                         "is_paid": is_paid,
                         "length_truncated": length_truncated,
                     }
@@ -958,7 +1063,7 @@ class AgentHarness:
                     active_llm_span.set_attribute("cached_tokens", c_tok)
                     active_llm_span.set_attribute("thinking_tokens", th_tok)
 
-                    # ── Silent Overflow Detection (Pi Pattern) ──
+                    # ── Silent Overflow Detection (Input Token Ingestion Guard) ──
                     if in_tok > 0 and not _overflow_recovery_attempted:
                         from utils.llm.model_capabilities import MODEL_CAPABILITIES
                         model_name_check = getattr(self.llm_client, "model", "")
