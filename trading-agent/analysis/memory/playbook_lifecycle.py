@@ -128,6 +128,10 @@ class PlaybookLifecycleManager:
         meta = self._state.get(name)
         return meta.status if meta else None
 
+    def list_all_playbooks(self) -> Dict[str, PlaybookMetadata]:
+        """List all tracked playbooks and their metadata."""
+        return dict(self._state)
+
     def record_trade_outcome(
         self,
         name: str,

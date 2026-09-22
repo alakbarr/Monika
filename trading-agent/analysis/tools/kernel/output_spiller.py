@@ -14,7 +14,7 @@ import os
 import hashlib
 import logging
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional, Union
 
 logger = logging.getLogger("TradingAgent.Tools.OutputSpiller")
 
@@ -25,7 +25,7 @@ def truncate_and_spill_output(
     content: str,
     tool_name: str,
     max_chars: int = DEFAULT_MAX_CHARS,
-    cache_dir: str = None,
+    cache_dir: Optional[Union[str, Path]] = None,
 ) -> Tuple[str, bool]:
     """
     Truncate oversized output with 40/60 head/tail split and spill to disk.
@@ -50,15 +50,16 @@ def truncate_and_spill_output(
     tail_part = content[total_len - tail_len :]
 
     # Persist full output to disk
+    spill_dir: Path
     if not cache_dir:
         base = Path(__file__).resolve().parent.parent.parent.parent
-        cache_dir = base / "data" / "cache" / "spillover"
+        spill_dir = base / "data" / "cache" / "spillover"
     else:
-        cache_dir = Path(cache_dir)
+        spill_dir = Path(cache_dir)
 
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    spill_dir.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
-    file_path = cache_dir / f"spill_{tool_name}_{digest}.txt"
+    file_path = spill_dir / f"spill_{tool_name}_{digest}.txt"
 
     try:
         with open(file_path, "w", encoding="utf-8") as f:

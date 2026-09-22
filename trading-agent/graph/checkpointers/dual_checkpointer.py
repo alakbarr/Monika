@@ -112,14 +112,18 @@ class DualCheckpointSaver(BaseCheckpointSaver):
     ) -> AsyncIterator[CheckpointTuple]:
         """Async list checkpoints from primary, fallback to secondary."""
         try:
-            if hasattr(self.primary, "alist"):
-                return self.primary.alist(config, filter=filter, before=before, limit=limit)
-            return self.secondary.alist(config, filter=filter, before=before, limit=limit)
+            target = self.primary if hasattr(self.primary, "alist") else self.secondary
+            async for cp in target.alist(config, filter=filter, before=before, limit=limit):
+                yield cp
+            return
         except Exception as e:
             logger.warning(f"[DualCheckpointer] Primary alist failed ({e}). Falling back to secondary.")
             if hasattr(self.secondary, "alist"):
-                return self.secondary.alist(config, filter=filter, before=before, limit=limit)
-            return self.secondary.list(config, filter=filter, before=before, limit=limit)
+                async for cp in self.secondary.alist(config, filter=filter, before=before, limit=limit):
+                    yield cp
+            else:
+                for cp in self.secondary.list(config, filter=filter, before=before, limit=limit):
+                    yield cp
 
     def put(
         self,
@@ -178,14 +182,26 @@ class DualCheckpointSaver(BaseCheckpointSaver):
         config: RunnableConfig,
         writes: Sequence[tuple[str, Any]],
         task_id: str,
+        task_path: str = "",
     ) -> None:
         """Dual-write task writes sync."""
         try:
-            self.primary.put_writes(config, writes, task_id)
+            self.primary.put_writes(config, writes, task_id, task_path)
+        except TypeError:
+            try:
+                self.primary.put_writes(config, writes, task_id)
+            except Exception as e:
+                logger.error(f"[DualCheckpointer] Primary put_writes failed: {e}")
         except Exception as e:
             logger.error(f"[DualCheckpointer] Primary put_writes failed: {e}")
+
         try:
-            self.secondary.put_writes(config, writes, task_id)
+            self.secondary.put_writes(config, writes, task_id, task_path)
+        except TypeError:
+            try:
+                self.secondary.put_writes(config, writes, task_id)
+            except Exception as e:
+                logger.error(f"[DualCheckpointer] Secondary put_writes failed: {e}")
         except Exception as e:
             logger.error(f"[DualCheckpointer] Secondary put_writes failed: {e}")
 
@@ -194,19 +210,33 @@ class DualCheckpointSaver(BaseCheckpointSaver):
         config: RunnableConfig,
         writes: Sequence[tuple[str, Any]],
         task_id: str,
+        task_path: str = "",
     ) -> None:
         """Dual-write task writes async."""
         try:
             if hasattr(self.primary, "aput_writes"):
-                await self.primary.aput_writes(config, writes, task_id)
+                try:
+                    await self.primary.aput_writes(config, writes, task_id, task_path)
+                except TypeError:
+                    await self.primary.aput_writes(config, writes, task_id)
             else:
-                self.primary.put_writes(config, writes, task_id)
+                try:
+                    self.primary.put_writes(config, writes, task_id, task_path)
+                except TypeError:
+                    self.primary.put_writes(config, writes, task_id)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Primary aput_writes failed: {e}")
+
         try:
             if hasattr(self.secondary, "aput_writes"):
-                await self.secondary.aput_writes(config, writes, task_id)
+                try:
+                    await self.secondary.aput_writes(config, writes, task_id, task_path)
+                except TypeError:
+                    await self.secondary.aput_writes(config, writes, task_id)
             else:
-                self.secondary.put_writes(config, writes, task_id)
+                try:
+                    self.secondary.put_writes(config, writes, task_id, task_path)
+                except TypeError:
+                    self.secondary.put_writes(config, writes, task_id)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Secondary aput_writes failed: {e}")

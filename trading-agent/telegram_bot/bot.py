@@ -1803,7 +1803,8 @@ class TelegramBot:
             result = await self.execution_service.execute_by_analysis_id(analysis_id)
             try:
                 from risk.approval_hub import ApprovalHub
-                await ApprovalHub.get_instance().approve(str(analysis_id), operator=f"telegram:{update.effective_user.id}")
+                user_id = update.effective_user.id if update.effective_user else "unknown"
+                await ApprovalHub.get_instance().approve(str(analysis_id), operator=f"telegram:{user_id}")
             except Exception:
                 pass
             await update.message.reply_text(
@@ -1825,7 +1826,8 @@ class TelegramBot:
         
         try:
             from risk.approval_hub import ApprovalHub
-            await ApprovalHub.get_instance().reject(str(analysis_id_str), operator=f"telegram:{update.effective_user.id}", reason="Rejected via Telegram by admin")
+            user_id = update.effective_user.id if update.effective_user else "unknown"
+            await ApprovalHub.get_instance().reject(str(analysis_id_str), operator=f"telegram:{user_id}", reason="Rejected via Telegram by admin")
         except Exception:
             pass
 
@@ -1885,7 +1887,8 @@ class TelegramBot:
         instruction = " ".join(ctx.args[1:]).strip()
 
         from risk.approval_hub import ApprovalHub
-        operator_tag = f"telegram:{update.effective_user.id}"
+        user_id = update.effective_user.id if update.effective_user else "unknown"
+        operator_tag = f"telegram:{user_id}"
         await ApprovalHub.get_instance().steer(symbol, instruction, operator=operator_tag)
 
         await update.message.reply_text(

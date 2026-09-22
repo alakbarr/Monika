@@ -39,10 +39,21 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
             "checks_passed": checks_passed,
         }
 
+    raw_entry = decision_data.get("entry_price") or decision_data.get("entry") or fixture.get("current_price")
+    raw_sl = decision_data.get("stop_loss") or decision_data.get("sl")
+    raw_tp = decision_data.get("take_profit") or decision_data.get("tp")
+    if raw_entry is None or raw_sl is None or raw_tp is None:
+        violations.append("Invalid or missing numerical levels (entry/sl/tp)")
+        return {
+            "passed": False,
+            "violations": violations,
+            "checks_passed": checks_passed,
+        }
+
     try:
-        entry = float(decision_data.get("entry_price") or decision_data.get("entry") or fixture.get("current_price"))
-        sl = float(decision_data.get("stop_loss") or decision_data.get("sl"))
-        tp = float(decision_data.get("take_profit") or decision_data.get("tp"))
+        entry = float(raw_entry)
+        sl = float(raw_sl)
+        tp = float(raw_tp)
     except (ValueError, TypeError) as err:
         violations.append(f"Invalid or missing numerical levels (entry/sl/tp): {err}")
         return {
@@ -51,9 +62,10 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
             "checks_passed": checks_passed,
         }
 
-    tech = fixture.get("technical_context", {})
-    atr = float(tech.get("atr_14", 0.0) or 0.0)
-    min_rr = float(fixture.get("expected_outcome", {}).get("min_rr", 1.3))
+    tech = fixture.get("technical_context") or {}
+    atr = float(tech.get("atr_14") or 0.0)
+    exp = fixture.get("expected_outcome") or {}
+    min_rr = float(exp.get("min_rr") or 1.3)
 
     # 1. Directional sanity
     if decision == "BUY":

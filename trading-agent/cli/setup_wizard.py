@@ -33,7 +33,8 @@ class SetupWizard:
         from cli.theme import get_console, stamp_ok, stamp_err, stamp_warn, stamp_info, BRASS, PAPER, MUTED
         console = get_console()
         try:
-            import MetaTrader5 as mt5
+            import MetaTrader5 as _mt5
+            mt5: Any = _mt5
         except ImportError:
             console.print(f"{stamp_err('MT5 PKG')} MetaTrader5 Python package is not installed.")
             return False
@@ -130,7 +131,7 @@ class SetupWizard:
         console.print(f"{stamp_info('PROBE')} Testing {provider} API key validity...")
         try:
             if provider.lower() == "gemini":
-                from google import genai
+                from google import genai  # type: ignore
                 client = genai.Client(api_key=api_key)
                 client.models.generate_content(
                     model="gemini-2.5-flash",

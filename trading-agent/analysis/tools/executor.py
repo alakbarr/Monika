@@ -63,6 +63,8 @@ class ToolExecutor:
         self._submitted_analysis_id: Optional[int] = None
         self._submitted_brief_id: Optional[int] = None
         self._pending_charts: dict[str, Any] = {}
+        self.verification_ledger: Optional[Any] = None
+        self.is_admin: bool = False
         if session is not None:
             lock = getattr(session, "_session_lock", None)
             if lock is None:

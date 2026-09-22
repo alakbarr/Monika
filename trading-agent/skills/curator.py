@@ -7,7 +7,7 @@ import logging
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Union, FrozenSet
 
 from skills.usage_tracker import SkillUsageTracker
 
@@ -20,7 +20,7 @@ class SkillCurator:
     STALE_AFTER_DAYS: int = 14
     ARCHIVE_AFTER_DAYS: int = 30
 
-    PROTECTED_SKILLS: Set[str] = frozenset({
+    PROTECTED_SKILLS: FrozenSet[str] = frozenset({
         "smc_ict_playbook",
         "macro_analysis_framework",
         "risk_management_principles",

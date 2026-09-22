@@ -551,7 +551,8 @@ class ChatAgent:
                 )
                 if jev_res and isinstance(jev_res, dict):
                     tier = jev_res.get("model_tier")
-                    tier_str = (tier.get("choice") if isinstance(tier, dict) else str(tier or "")).lower()
+                    choice_val = tier.get("choice") if isinstance(tier, dict) else tier
+                    tier_str = str(choice_val or "").lower()
                     if tier_str in ("none", "light"):
                         return "simple"
                     elif tier_str == "medium":
@@ -588,6 +589,8 @@ class ChatAgent:
         override_text: Optional[str] = None,
         stream: bool = False,
         update: Optional[Any] = None,
+        token_callback: Optional[Any] = None,
+        **kwargs: Any,
     ) -> tuple[str, Optional[PendingAction]]:
         """Memproses pesan dari user dengan dukungan active turn interruption, topic isolation, dan token streaming."""
         self._active_task = asyncio.current_task()

@@ -74,7 +74,9 @@ class OfflineEvalRunner:
         passed_count = 0
 
         for fix in fixtures:
-            scen_id = fix.get("scenario_id")
+            scen_id = str(fix.get("scenario_id") or "")
+            if not scen_id:
+                continue
             dec_data = candidate_decisions.get(scen_id)
             if not dec_data:
                 # If no explicit candidate provided, test against fixture baseline
