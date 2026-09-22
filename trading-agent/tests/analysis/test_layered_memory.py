@@ -77,12 +77,12 @@ async def test_layered_memory_negative_constraints():
     mock_reflection.reflection_text = ""
     mock_reflection.next_trade_adjustment = None
 
-    # First execute call returns reflections, second returns empty trades
+    # Calls: 1. Reflections for symbol, 2. Trades for win rate, 3. Losing reflections for negative constraints, 4. Losing trades
     res1 = MagicMock()
     res1.scalars.return_value.all.return_value = [mock_reflection]
     res2 = MagicMock()
     res2.scalars.return_value.all.return_value = []
-    mock_session.execute = AsyncMock(side_effect=[res1, res2])
+    mock_session.execute = AsyncMock(side_effect=[res1, res2, res1, res2])
 
     mem = await mgr.get_symbol_memory(session=mock_session, symbol="GBPUSD", regime="trending")
     assert "NEGATIVE_CONSTRAINTS:" in mem
