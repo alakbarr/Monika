@@ -71,7 +71,7 @@ def test_error_classifier_broker_margin_call():
 
 
 def test_all_failover_reasons_exist():
-    assert len(FailoverReason) == 20
+    assert len(FailoverReason) == 30
     expected_members = {
         "AUTH_TRANSIENT", "AUTH_PERMANENT", "BILLING_EXHAUSTED",
         "RATE_LIMIT_API", "RATE_LIMIT_MODEL", "UPSTREAM_RATE_LIMIT",
@@ -79,7 +79,11 @@ def test_all_failover_reasons_exist():
         "MODEL_NOT_FOUND", "MODEL_UNAVAILABLE", "INVALID_REQUEST",
         "NETWORK_TIMEOUT", "NETWORK_CONNECTION", "CONTENT_FILTERED",
         "SERVER_ERROR", "BROKER_MARGIN_CALL", "SILENT_OVERFLOW",
-        "LENGTH_STOP_OVERFLOW", "UNKNOWN"
+        "LENGTH_STOP_OVERFLOW", "OUTPUT_CAP_REACHED",
+        "COMPLETION_CEILING_EXCEEDED", "HARD_QUOTA_EXHAUSTED",
+        "TRANSIENT_RATE_LIMIT", "UPSTREAM_BLOCKED", "IMAGE_TOO_LARGE",
+        "IMAGE_CORRUPT", "ROLE_ALTERNATION", "THINKING_SIGNATURE",
+        "MODEL_ENTITLEMENT", "UNKNOWN"
     }
     actual_members = {r.name for r in FailoverReason}
     assert actual_members == expected_members

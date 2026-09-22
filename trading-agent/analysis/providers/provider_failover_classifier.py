@@ -152,7 +152,7 @@ class FailoverReason(str, Enum):
             FailoverReason.CONTEXT_OVERFLOW: 1,
             FailoverReason.PAYLOAD_TOO_LARGE: 1,
             FailoverReason.SILENT_OVERFLOW: 1,
-            FailoverReason.LENGTH_STOP_OVERFLOW: 0,
+            FailoverReason.LENGTH_STOP_OVERFLOW: 1,
             FailoverReason.OUTPUT_CAP_REACHED: 0,
             FailoverReason.COMPLETION_CEILING_EXCEEDED: 1,
             FailoverReason.HARD_QUOTA_EXHAUSTED: 0,

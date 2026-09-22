@@ -125,11 +125,17 @@ class BackgroundReviewEngine:
         reflection = None
         if self.reflector:
             try:
-                reflection_id = outcome.get("reflection_id")
-                if reflection_id and hasattr(self.reflector, "reflect_on_trade"):
-                    from database.async_db import get_session
-                    async with get_session() as session:
-                        reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
+                if hasattr(self.reflector, "reflect_on_trade"):
+                    import inspect
+                    sig = inspect.signature(self.reflector.reflect_on_trade)
+                    if len(sig.parameters) >= 2:
+                        reflection_id = outcome.get("reflection_id") or outcome.get("ticket")
+                        if reflection_id:
+                            from database.async_db import get_session
+                            async with get_session() as session:
+                                reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
+                    else:
+                        reflection = await self.reflector.reflect_on_trade(outcome)
             except Exception as ref_err:
                 logger.warning(f"[BackgroundReview] Reflector failed on ticket {outcome.get('ticket')}: {ref_err}")
 
