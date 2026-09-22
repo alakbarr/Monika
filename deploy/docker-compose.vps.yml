@@ -1,7 +1,7 @@
 version: '3.8'
 
 # ==============================================================================
-# Monika v2 — VPS Production Multi-Container Compose
+# Monika — VPS Production Multi-Container Compose
 # Orchestrates PostgreSQL + pgvector, Monika Core Agent, and Headless MT5 Wine Bridge
 # ==============================================================================
 

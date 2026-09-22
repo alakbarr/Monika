@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.ContextCompressor")
 
-# Standardized 8-section standardized trading domain summary schema (PR-06)
+# 8-section standardized trading domain summary schema (PR-06)
 TRADING_SUMMARY_SECTIONS: List[str] = [
     "market_regime",
     "technical_structure",
@@ -380,7 +380,7 @@ class ContextCompressor:
     async def summarize_middle(self, middle_messages: List[dict]) -> str:
         """Phase 3: Auxiliary Model Summarization with Iterative Chaining.
 
-        Summarizes middle conversation turns into the 8-section trading summary schema
+        Summarizes middle conversation turns into the 8-section structured schema
         using an ultra-cheap model (gemini-3.5-flash-lite, thinking: none)
         or falls back to rule extraction structured into the 8 trading sections.
         """

@@ -1,5 +1,5 @@
 """
-Monika v2 Provider Subsystem.
+Monika Provider Subsystem.
 Centralized LLM provider abstractions, credential pooling, error classification, and failover management.
 """
 

@@ -25,7 +25,7 @@ class DualCheckpointSaver(BaseCheckpointSaver):
     """
     Dual-write LangGraph checkpointer orchestrating Primary (PostgreSQL) and Secondary (SQLite).
 
-    Note (Monika v2 / PR-04): Deprecated for primary workflow execution. Monika v2 uses PostgreSQL
+    Note (PR-04): Deprecated for primary workflow execution. Monika uses PostgreSQL
     directly as the authoritative checkpointer to eliminate redundant SQLite disk I/O.
     Retained for backward compatibility and test mock environments.
     """

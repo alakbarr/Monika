@@ -260,7 +260,7 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
     workflow.add_edge("prune_execution", "execution")
     workflow.add_edge("execution", END)
     
-    # Monika v2 (PR-04): Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
+    # PR-04: Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
     checkpointer = None
     if db_url:
         pg_url = db_url.replace('+asyncpg', '').replace('postgresql+psycopg2', 'postgresql')

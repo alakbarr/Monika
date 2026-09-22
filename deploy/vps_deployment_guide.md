@@ -1,4 +1,4 @@
-# Monika v2 — VPS & Containerized Deployment Guide
+# Monika — VPS & Containerized Deployment Guide
 
 Panduan resmi deployment produksi **Monika (AI MT5 Trading Agent)** pada Virtual Private Server (Linux Ubuntu 22.04 / 24.04 LTS).
 

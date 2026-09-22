@@ -10,7 +10,7 @@ Defines metadata, dependencies, custom tools, and 12 lifecycle hook endpoints.
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field, field_validator
 
-# 12 Core Monika v2 lifecycle hooks
+# 12 Core Monika lifecycle hooks
 SUPPORTED_HOOKS = [
     "pre_tool_call",
     "post_tool_call",

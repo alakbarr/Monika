@@ -158,7 +158,7 @@ class LiveTickerBanner(Static):
 
 
 class StatusBar(Static):
-    """Pi-inspired status footer showing tokens, cache hit rate, context gauge, cost, uptime, and busy status."""
+    """Interactive status footer showing tokens, cache hit rate, context gauge, cost, uptime, and busy status."""
 
     def update_metrics(
         self,
@@ -179,7 +179,7 @@ class StatusBar(Static):
 
         tok_str = f"↑{input_tokens / 1000:.1f}k ↓{output_tokens / 1000:.1f}k"
 
-        # Context window gauge (Pi-inspired)
+        # Context window gauge
         gauge_bar, gauge_color = bar_gauge(context_used, context_max, width=10)
         pct = (context_used / context_max * 100) if context_max > 0 else 0.0
         ctx_str = f"[{gauge_color}]{gauge_bar}[/] [{PAPER}]{pct:.0f}%[/]"
@@ -1023,7 +1023,7 @@ class TradingDashboard(App):
         self.set_focus(None)
 
     def action_dequeue(self) -> None:
-        """Restore all queued messages from busy buffer back to editor (Pi-inspired Alt+Up)."""
+        """Restore all queued messages from busy buffer back to editor (Alt+Up shortcut)."""
         restored = self.busy_buffer.dequeue_all()
         if restored:
             inp = self.query_one("#cmd_input", Input)

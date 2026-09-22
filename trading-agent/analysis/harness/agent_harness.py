@@ -1,7 +1,7 @@
 """
 File: trading-agent/analysis/harness/agent_harness.py
 
-Unified Pi-Pattern Multi-Turn ReAct Agent Harness.
+Unified Multi-Turn ReAct Agent Harness.
 Standardizes and centralizes:
 1. Turn & conversation state management across all LLM providers.
 2. Context compaction, observation masking, and token truncation guardrails.

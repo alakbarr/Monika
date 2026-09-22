@@ -1,6 +1,6 @@
 """
 File: analysis/memory/negative_constraint_generator.py
-PR-13: Negative Constraint Generator for Monika v2.
+PR-13: Negative Constraint Generator for Monika.
 Synthesizes actionable "DO NOT" rules from recent losing trades, reflections,
 and active market regimes to prevent recurring decision traps in Stage 2.
 """
