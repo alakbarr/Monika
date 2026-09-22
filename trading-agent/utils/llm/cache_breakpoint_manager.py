@@ -1,8 +1,8 @@
 """
 Cache Breakpoint Manager — Optimizes Anthropic / Gemini Prompt Caching.
 
-Note (Monika v2 / PR-05): In Monika v2, prefix KV-caching is primarily governed by
-DSH-aligned structural context layouts (frozen static prefixes + 8-section structured
+Note (PR-05): Prefix KV-caching is primarily governed by
+standardized structural context layouts (frozen static prefixes + 8-section structured
 summaries + volatile tails in analysis/harness/context_compressor.py).
 This class is maintained for backward compatibility with Anthropic/Gemini provider adapters.
 """

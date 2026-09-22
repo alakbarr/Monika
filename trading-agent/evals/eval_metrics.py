@@ -1,6 +1,6 @@
 """
 File: evals/eval_metrics.py
-PR-12: Core Evaluation Metrics & A/B Comparison Engine for Monika v2.
+PR-12: Core Evaluation Metrics & A/B Comparison Engine for Monika.
 Calculates directional accuracy, R:R capture, grounding pass rates,
 Brier score calibration, and token/cost efficiency deltas.
 """

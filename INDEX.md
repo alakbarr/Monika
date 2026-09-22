@@ -365,7 +365,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `busy_input.py`
   - **Classes**:
     - `InputDelivery(str, Enum)`: Input delivery modes (one_at_a_time, batch, immediate).
-    - `BusyInputBuffer`: Pi-inspired dual-queue buffer distinguishing high-priority steering from follow-up inputs.
+    - `BusyInputBuffer`: Dual-queue buffer distinguishing high-priority steering from follow-up inputs.
       - *Methods*: `submit()`, `has_pending_steer()`, `get_next_steer()`, `get_next_follow_up()`, `dequeue()`, `clear()`, `pending_count()`
 
 **File:** `platform_compat.py`
@@ -581,11 +581,11 @@ This document provides an exhaustive structural index of all directories, files,
 ##### Folder: `trading-agent/analysis/harness`
 **File:** `__init__.py`
 **File:** `agent_harness.py`
-  - **Docstring**: Unified Pi-Pattern Multi-Turn ReAct Agent Harness with turn management, context compaction, state preservation truncation, anti-oscillation, quota enforcement, and ToolExecutor routing.
+  - **Docstring**: Unified Multi-Turn ReAct Agent Harness with turn management, context compaction, state preservation truncation, anti-oscillation, quota enforcement, and ToolExecutor routing.
   - **Classes**: `AgentHarness`
     - *Methods*: `_is_transient_error()`, `_is_billing_error()`, `_normalize_response_content()`, `compute_tool_signature()`, `_preserve_state_summary()`, `_apply_truncation_guardrail()`, `_persist_assistant_turn()`, `_enforce_role_alternation()`, `_check_truncation()`, `_fail_truncated_tool_calls()`, `get_mandatory_tool_for_stage()`, `_log_tool_call()`, `enqueue_steering()`, `run_agent()`, `run_agent_from_messages()`
 **File:** `context_compressor.py`
-  - **Docstring**: Multi-Phase Hierarchical Context Compressor (PR-06 / DSH-Aligned) implementing deterministic tool pruning, protected boundary splitting with warm-prefix preservation, 8-section structured trading summarization (<compacted-summary>), robust tool-pair snapping, and token assembly.
+  - **Docstring**: Multi-Phase Hierarchical Context Compressor (PR-06 / Standardized) implementing deterministic tool pruning, protected boundary splitting with warm-prefix preservation, 8-section structured trading summarization (<compacted-summary>), robust tool-pair snapping, and token assembly.
   - **Variables**: `TRADING_SUMMARY_SECTIONS`
   - **Classes**: `ContextCompressor`
     - *Methods*: `compress()`, `prune_deterministic_tools()`, `split_boundaries()`, `_snap_boundary()`, `_feasibility_skip()`, `_extract_existing_summary()`, `_extract_structured_trading_sections()`, `_extract_deterministic_facts()`, `summarize_middle()`
@@ -2328,12 +2328,12 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `__init__.py`
 **File:** `dual_checkpointer.py`
   - **Classes**: `DualCheckpointSaver(BaseCheckpointSaver)`
-    - *Docstring*: Dual-write LangGraph checkpointer orchestrating Primary (PostgreSQL) and Secondary (SQLite). Deprecated in Monika v2 workflow in favor of authoritative PostgreSQL checkpointer; retained for test compatibility.
+    - *Docstring*: Dual-write LangGraph checkpointer orchestrating Primary (PostgreSQL) and Secondary (SQLite). Deprecated in favor of authoritative PostgreSQL checkpointer; retained for test compatibility.
     - *Properties*: `conn` (proxies primary connection pool), `_needs_setup`
     - *Methods*: `__init__()`, `a_setup()`, `get_tuple()`, `aget_tuple()`, `list()`, `alist()`, `put()`, `aput()`, `put_writes()`, `aput_writes()`
 **File:** `sqlite_checkpointer.py`
   - **Classes**: `SqliteCheckpointSaver(InMemorySaver)`
-    - *Docstring*: Local SQLite checkpointer providing crash-safe state persistence across restarts. Deprecated in Monika v2 workflow; retained for backward compatibility.
+    - *Docstring*: Local SQLite checkpointer providing crash-safe state persistence across restarts. Deprecated; retained for backward compatibility.
     - *Methods*: `__init__()`, `_init_db()`, `_load_from_sqlite()`, `put()`, `aput()`, `_persist_checkpoint_sync()`, `put_writes()`, `aput_writes()`, `_persist_writes_sync()`
 
 ##### Folder: `trading-agent/graph/nodes`
@@ -2833,13 +2833,13 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `__init__.py`
 
 **File:** `credential_pool.py`
-  - **Docstring**: Monika v2 Unified Credential Pool & Multi-Key Health Tracker.
+  - **Docstring**: Monika Unified Credential Pool & Multi-Key Health Tracker.
   - **Classes**: `KeyHealth` (alias `CredentialState`), `CredentialPool` (alias `APICredentialPool`), `LLMCredentialPool`
     - *Methods*: `add_key()`, `get_key()`, `get_active_key()`, `report_success()`, `report_rate_limit()`, `report_failure()`, `is_model_available()`, `all_exhausted()`, `get_cumulative_cost()`, `get_pool_status()`
   - **Functions**: `get_credential_pool()`
 
 **File:** `error_taxonomy.py`
-  - **Docstring**: Monika v2 Unified Error Taxonomy & Recovery Strategy Assignment.
+  - **Docstring**: Monika Unified Error Taxonomy & Recovery Strategy Assignment.
   - **Classes**: `FailoverReason`, `ErrorCategory`, `RecoveryAction`, `ClassifiedError`, `ErrorClassifier`
   - **Functions**: `sanitize_unicode_surrogates()`, `fallback_multimodal_to_text()`
 
@@ -4156,7 +4156,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `DispatchMode`, `DeferredRequest`, `DeferredResult`, `DeferredLLMDispatcher`
   - **Variables**: `global_deferred_dispatcher`
 **File:** `cache_breakpoint_manager.py`
-  - **Classes**: `CacheBreakpointManager` (Constants: `MIN_CACHEABLE_CHARS`, `GEMINI_3_MIN_CACHEABLE_CHARS`, `GEMINI_25_MIN_CACHEABLE_CHARS`, `CANONICAL_INVARIANT_RULES`, `CANONICAL_TIER0_ANCHOR`; Methods: `get_min_cacheable_chars`, `pad_system_prompt_to_threshold`, `wrap_system_tiers`, `apply_to_messages`, `find_completed_transaction_endpoints`, `wrap_classify_json` [padded anchor guarantee >= 1,024 tokens]). *Note*: Maintained as compatibility shim in Monika v2; structural context engine (PR-06) governs KV cache alignment.
+  - **Classes**: `CacheBreakpointManager` (Constants: `MIN_CACHEABLE_CHARS`, `GEMINI_3_MIN_CACHEABLE_CHARS`, `GEMINI_25_MIN_CACHEABLE_CHARS`, `CANONICAL_INVARIANT_RULES`, `CANONICAL_TIER0_ANCHOR`; Methods: `get_min_cacheable_chars`, `pad_system_prompt_to_threshold`, `wrap_system_tiers`, `apply_to_messages`, `find_completed_transaction_endpoints`, `wrap_classify_json` [padded anchor guarantee >= 1,024 tokens]). *Note*: Maintained as compatibility shim; structural context engine (PR-06) governs KV cache alignment.
 **File:** `caveman_compressor.py`
   - **Variables**: `PRECISION_BY_SYMBOL`, `DEFAULT_PRECISION`
   - **Functions**: `_round_for_symbol`, `compress_tool_payload`

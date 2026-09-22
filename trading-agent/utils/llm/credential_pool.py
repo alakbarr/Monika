@@ -1,5 +1,5 @@
 """
-Multi-provider Credential Pooling and Automatic Rotation (Phase 8 - I7 & Monika v2).
+Multi-provider Credential Pooling and Automatic Rotation (Phase 8 - I7).
 Re-exports LLMCredentialPool and CredentialState from `provider.credential_pool`.
 """
 

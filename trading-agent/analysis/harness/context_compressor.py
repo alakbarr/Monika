@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.ContextCompressor")
 
-# DSH-aligned 8-section standardized trading domain summary schema (PR-06)
+# 8-section standardized trading domain summary schema (PR-06)
 TRADING_SUMMARY_SECTIONS: List[str] = [
     "market_regime",
     "technical_structure",
@@ -277,7 +277,7 @@ class ContextCompressor:
         return head, middle, tail
 
     def _extract_structured_trading_sections(self, messages: List[dict]) -> Dict[str, List[str]]:
-        """Extract facts classified into 8 DSH-aligned trading domain sections."""
+        """Extract facts classified into 8 standardized trading domain sections."""
         categorized: Dict[str, List[str]] = {sec: [] for sec in TRADING_SUMMARY_SECTIONS}
         seen: set = set()
 
@@ -380,7 +380,7 @@ class ContextCompressor:
     async def summarize_middle(self, middle_messages: List[dict]) -> str:
         """Phase 3: Auxiliary Model Summarization with Iterative Chaining.
 
-        Summarizes middle conversation turns into the 8-section DSH schema
+        Summarizes middle conversation turns into the 8-section structured schema
         using an ultra-cheap model (gemini-3.5-flash-lite, thinking: none)
         or falls back to rule extraction structured into the 8 trading sections.
         """
@@ -425,7 +425,7 @@ class ContextCompressor:
                     prompt_parts.append(f"PREVIOUS CONTEXT SUMMARY:\n{existing_summary}")
                 prompt_parts.append(
                     "You are an expert quantitative trading context compactor. Summarize the following intermediate "
-                    "trading analysis conversation into the 8 standardized DSH trading sections: <market_regime>, "
+                    "trading analysis conversation into the 8 standardized trading sections: <market_regime>, "
                     "<technical_structure>, <liquidity_pois>, <intermarket_sentiment>, <active_hypotheses>, "
                     "<established_levels>, <risk_constraints>, <completed_actions_evidence>.\n"
                     "Enclose the output within <compacted-summary>...</compacted-summary>:\n\n"

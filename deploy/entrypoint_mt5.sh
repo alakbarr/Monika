@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Monika v2 — MT5 Wine Container Entrypoint
+# Monika — MT5 Wine Container Entrypoint
 # Initializes virtual X11 display (Xvfb) and launches terminal64.exe under Wine
 # ==============================================================================
 

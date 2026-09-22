@@ -977,7 +977,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             except Exception as e:
                 logger.debug(f"[{symbol}] Output verifier non-fatal execution: {e}")
 
-            # Pi-Inspired In-Harness Grounding Validator (Extended PR-07: lot_size, spread, margin, equity)
+            # In-Harness Grounding Validator (Extended PR-07: lot_size, spread, margin, equity)
             try:
                 from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
                 ez_parsed = json.loads(analysis.entry_zone) if analysis.entry_zone and isinstance(analysis.entry_zone, str) else (analysis.entry_zone if isinstance(analysis.entry_zone, dict) else {})

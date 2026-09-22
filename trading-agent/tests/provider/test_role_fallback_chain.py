@@ -1,5 +1,5 @@
 """
-Unit tests for Monika v2 Per-Role Fallback Chain & Cost-Aware Routing (PR-03).
+Unit tests for Monika Per-Role Fallback Chain & Cost-Aware Routing (PR-03).
 Tests list-based fallback configuration, deduplication, and max_cost_per_call guidance.
 """
 

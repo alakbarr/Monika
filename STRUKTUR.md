@@ -920,9 +920,9 @@ Monika/
         │   ├── harness
         │   │   ├── test_agent_harness.py
         │   │   ├── test_context_compressor.py
-        │   │   ├── test_dsh_context_engine.py
         │   │   ├── test_error_classifier.py
         │   │   ├── test_prompt_cache_architecture.py
+        │   │   ├── test_structured_context_engine.py
         │   │   └── test_trade_stop_and_segment_planner.py
         │   ├── memory
         │   │   ├── test_negative_constraint_generator.py

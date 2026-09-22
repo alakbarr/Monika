@@ -1,5 +1,5 @@
 # ==============================================================================
-# File: tests/analysis/harness/test_dsh_context_engine.py
+# File: tests/analysis/harness/test_structured_context_engine.py
 # ==============================================================================
 
 import pytest
@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 from analysis.harness.context_compressor import ContextCompressor, TRADING_SUMMARY_SECTIONS
 
 
-def test_dsh_8_section_trading_summary_constants():
-    """Verify standard 8 DSH trading sections are defined."""
+def test_structured_8_section_trading_summary_constants():
+    """Verify standard 8 structured trading sections are defined."""
     assert len(TRADING_SUMMARY_SECTIONS) == 8
     expected = [
         "market_regime",
@@ -75,7 +75,7 @@ def test_tool_pair_snapping_openai_format():
 async def test_kv_cache_prefix_invariance():
     """Verify Head (frozen static prefix) remains byte-for-byte identical across turns."""
     compressor = ContextCompressor(settings={})
-    head_sys = {"role": "system", "content": "FROZEN_STATIC_SYSTEM_PREFIX: Invariant rules and risk engine v2"}
+    head_sys = {"role": "system", "content": "FROZEN_STATIC_SYSTEM_PREFIX: Invariant rules and risk engine core"}
     head_usr = {"role": "user", "content": "FROZEN_INITIAL_TASK: Intraday scan for EURUSD and XAUUSD"}
 
     conversation = [head_sys, head_usr]

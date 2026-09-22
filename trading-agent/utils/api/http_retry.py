@@ -35,7 +35,7 @@ from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 _CIRCUIT_BREAKER: dict[str, float] = {}
 
 def _jittered_delay(base_delay: float, attempt: int, max_delay: float = 60.0) -> float:
-    """Exponential backoff with jitter (Pi-pattern: delay * (1 - random * 0.25))."""
+    """Exponential backoff with jitter (delay * (1 - random * 0.25))."""
     delay = min(base_delay * (2 ** attempt), max_delay)
     if delay <= 0:
         return 0.0

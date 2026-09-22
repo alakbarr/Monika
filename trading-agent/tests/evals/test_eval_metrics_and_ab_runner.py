@@ -86,7 +86,7 @@ def test_compare_ab_evaluations_promotion():
             input_tokens=300, output_tokens=60, cost_usd=0.003, latency_ms=700.0
         ),
     ]
-    report = compare_ab_evaluations(baseline, candidate, name="DSH Context Optimization")
+    report = compare_ab_evaluations(baseline, candidate, name="Structured Context Optimization")
     assert report.token_savings_pct == 40.0
     assert report.cost_savings_pct == 40.0
     assert report.recommendation == "PROMOTE"
