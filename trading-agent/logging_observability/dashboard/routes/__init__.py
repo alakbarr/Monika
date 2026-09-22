@@ -27,6 +27,7 @@ from logging_observability.dashboard.routes.tokens import tokens_router
 from logging_observability.dashboard.routes.trading import trading_router
 from logging_observability.dashboard.routes.websocket import websocket_router
 from logging_observability.dashboard.routes.trace_search import trace_search_router
+from logging_observability.dashboard.routes.backtest import backtest_router
 
 all_routers = [
     system_router,
@@ -36,6 +37,7 @@ all_routers = [
     trace_search_router,
     observability_router,
     websocket_router,
+    backtest_router,
 ]
 
 __all__ = [
@@ -46,6 +48,7 @@ __all__ = [
     "observability_router",
     "websocket_router",
     "trace_search_router",
+    "backtest_router",
     "all_routers",
     "set_dashboard_dependencies",
     "get_dashboard_dependency",

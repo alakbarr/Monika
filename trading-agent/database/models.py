@@ -1439,6 +1439,7 @@ class BacktestTrade(Base):
 class DecisionMemory(Base):
     __tablename__ = "decision_memory_backtest"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
     decision_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decision: Mapped[str] = mapped_column(String(10), nullable=False)

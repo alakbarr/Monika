@@ -38,6 +38,8 @@ class PairedComparisonReport:
     expectancy_delta: float
     token_cost_delta_usd: float
     is_candidate_superior: bool
+    p_value: float = 1.0
+    is_statistically_significant: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -129,6 +131,26 @@ class PairedStrategyEvaluator:
             and (c_metrics.profit_factor >= b_metrics.profit_factor)
         )
 
+        # Compute paired statistical significance across scenarios (H10)
+        import math
+        p_val = 1.0
+        is_sig = False
+        if len(scenarios) >= 3 and len(baseline_trades) == len(candidate_trades) == len(scenarios):
+            diffs = []
+            for b_t, c_t in zip(baseline_trades, candidate_trades):
+                b_pnl = float(b_t.get("pnl", b_t.get("profit", 0.0)))
+                c_pnl = float(c_t.get("pnl", c_t.get("profit", 0.0)))
+                diffs.append(c_pnl - b_pnl)
+
+            n = len(diffs)
+            mean_diff = sum(diffs) / n
+            var_diff = sum((d - mean_diff) ** 2 for d in diffs) / (n - 1) if n > 1 else 0.0
+            std_diff = var_diff ** 0.5
+            if std_diff > 1e-8:
+                t_stat = mean_diff / (std_diff / (n ** 0.5))
+                p_val = round(float(math.erfc(abs(t_stat) / (2.0 ** 0.5))), 4)
+                is_sig = bool(p_val < 0.05 and mean_diff > 0)
+
         return PairedComparisonReport(
             baseline=b_metrics,
             candidate=c_metrics,
@@ -137,4 +159,6 @@ class PairedStrategyEvaluator:
             expectancy_delta=exp_delta,
             token_cost_delta_usd=cost_delta,
             is_candidate_superior=is_superior,
+            p_value=p_val,
+            is_statistically_significant=is_sig,
         )

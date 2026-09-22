@@ -66,3 +66,42 @@ def test_validate_alpha_cost_stress_fail():
     res = validate_alpha(trades, cost_multiplier=2.0)
     assert res.cost_stress_ok is False
     assert res.passed is False
+
+
+def test_validate_alpha_backtest_trade_objects_dollar_consistency():
+    """Verify BacktestTrade objects (which have pnl_pct but not pnl) convert correctly to USD."""
+    from database.models import BacktestTrade
+    from datetime import datetime, timezone
+
+    t1 = BacktestTrade(
+        symbol="EURUSD",
+        direction="buy",
+        entry_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        entry_price=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1100,
+        pnl_pct=1.5,  # 1.5% profit on $10,000 = $150
+        executed_lots=1.0,
+    )
+    t1.friction_usd = 5.0  # $5 commission
+
+    t2 = BacktestTrade(
+        symbol="GBPUSD",
+        direction="sell",
+        entry_time=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        entry_price=1.3000,
+        stop_loss=1.3050,
+        take_profit=1.2900,
+        pnl_pct=1.0,  # 1.0% profit on $10,000 = $100
+        executed_lots=1.0,
+    )
+    t2.friction_usd = 5.0
+
+    # Under 2x cost stress:
+    # t1: $150 - $5.00 extra = $145.00
+    # t2: $100 - $5.00 extra = $95.00
+    # Total stress PnL = $240.00 > 0 -> should PASS cost stress test
+    res = validate_alpha([t1, t2], initial_equity=10000.0, cost_multiplier=2.0)
+    assert res.cost_stress_ok is True
+    assert res.stress_pnl == 240.0
+

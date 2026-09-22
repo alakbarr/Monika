@@ -875,6 +875,9 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
         days = 30
+        mode = "full"
+        equity = 10000.0
+
         if ctx.args:
             try:
                 days = int(ctx.args[0])
@@ -882,24 +885,63 @@ class TelegramBot:
                     await update.message.reply_text("❌ Parameter hari harus antara 1 dan 365.")
                     return
             except ValueError:
-                await update.message.reply_text("❌ Format salah. Contoh: `/backtest 30`", parse_mode=ParseMode.MARKDOWN)
+                await update.message.reply_text("❌ Format salah. Contoh: `/backtest 30 [mode] [equity]`", parse_mode=ParseMode.MARKDOWN)
                 return
+
+            if len(ctx.args) > 1:
+                arg_mode = ctx.args[1].lower()
+                if arg_mode in ("full", "replay", "walk_forward", "langgraph_parity"):
+                    mode = arg_mode
+
+            if len(ctx.args) > 2:
+                try:
+                    equity = float(ctx.args[2])
+                except ValueError:
+                    pass
 
         await update.message.reply_text(
             f"⏳ *Memulai Point-in-Time Backtest ({days} hari)...*\n\n"
             f"Proses berjalan di background. Anda akan menerima notifikasi ringkasan setelah selesai.",
             parse_mode=ParseMode.MARKDOWN,
         )
-        asyncio.create_task(self._run_backtest_and_notify(update, days))
+        if mode == "full" and equity == 10000.0:
+            asyncio.create_task(self._run_backtest_and_notify(update, days))
+        else:
+            asyncio.create_task(self._run_backtest_and_notify(update, days, mode=mode, initial_equity=equity))
 
-    async def _run_backtest_and_notify(self, update: Update, days: int) -> None:
+    async def _run_backtest_and_notify(
+        self, update: Update, days: int, mode: str = "full", initial_equity: float = 10000.0
+    ) -> None:
         if not update.message:
             return
         try:
             from backtest.point_in_time_engine import PointInTimeBacktestEngine
+            from backtest.walk_forward_engine import WalkForwardEngine
             end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(days=days)
-            engine = PointInTimeBacktestEngine(start_time, end_time, self.settings)
+
+            if mode == "walk_forward":
+                engine = WalkForwardEngine(
+                    start_date=start_time,
+                    end_date=end_time,
+                    settings=self.settings,
+                    mode="full",
+                )
+                result = await engine.run()
+                msg = (
+                    f"✅ <b>Walk-Forward Optimization Selesai!</b>\n\n"
+                    f"Overall WFE: <b>{result.overall_wfe:.2f}</b>\n"
+                    f"IS Sharpe: {result.aggregate_is_sharpe:.2f}\n"
+                    f"OOS Sharpe: {result.aggregate_oos_sharpe:.2f}\n"
+                    f"OOS Trades: {result.total_oos_trades}\n"
+                    f"Overfit: {'⚠️ YES' if result.is_overfit else '✅ NO'}\n"
+                )
+                await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+                return
+
+            engine = PointInTimeBacktestEngine(
+                start_time, end_time, self.settings, mode=mode, initial_equity=initial_equity
+            )
             run_record = await engine.run()
             
             # Calculate by_symbol aggregation manually
@@ -924,10 +966,16 @@ class TelegramBot:
                 f"✅ <b>Backtest {days} hari Selesai!</b>\n\n"
                 f"<b>📊 PERFORMANCE REPORT:</b>\n"
                 f"Total trades: {run_record.total_trades}\n"
-                f"Win rate: {run_record.win_rate:.2f}%\n"
-                f"Total PnL: {total_pnl_pct:+.2f}%\n\n"
-                f"<b>By Symbol:</b>\n"
+                f"Win rate: {float(run_record.win_rate):.2f}%\n"
             )
+            if hasattr(run_record, "profit_factor") and isinstance(run_record.profit_factor, (int, float)):
+                msg += f"Profit Factor: {run_record.profit_factor:.2f}\n"
+            if hasattr(run_record, "sharpe_ratio") and isinstance(run_record.sharpe_ratio, (int, float)):
+                msg += f"Sharpe (Ann): {run_record.sharpe_ratio:.2f}\n"
+            if hasattr(run_record, "max_drawdown_pct") and isinstance(run_record.max_drawdown_pct, (int, float)):
+                msg += f"Max Drawdown: {run_record.max_drawdown_pct:.2f}%\n"
+            msg += f"Total PnL: {total_pnl_pct:+.2f}%\n\n"
+            msg += "<b>By Symbol:</b>\n"
             for sym, data in by_symbol.items():
                 msg += f"• {sym}: {data['trades']} trades, {data['win_rate']}% WR, {data['total_pnl']:+.2f}% PnL\n"
                 

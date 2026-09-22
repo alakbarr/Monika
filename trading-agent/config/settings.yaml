@@ -553,6 +553,36 @@ data_retention_days:
   fvg_zones_filled: 30
 backtest:
   enforce_risk_gate: true
+  default_mode: "full"
+  step_hours: 6
+  initial_equity: 10000.0
+  min_bars_between_signals: 10
+  latency_ms: 50.0
+  commission_per_lot_usd: 5.0
+  max_holding_hours: 48
+  walk_forward:
+    is_window_days: 90
+    oos_window_days: 30
+    step_days: 30
+    purge_days: 2
+    embargo_pct: 0.05
+    n_trials: 20
+  friction_profiles:
+    EURUSD:
+      spread_pips: 1.2
+      slippage_pips: 0.3
+    GBPUSD:
+      spread_pips: 1.5
+      slippage_pips: 0.5
+    USDJPY:
+      spread_pips: 1.4
+      slippage_pips: 0.4
+    XAUUSD:
+      spread_pips: 30.0
+      slippage_pips: 10.0
+    BTCUSD:
+      spread_pips: 20.0
+      slippage_pips: 10.0
 analysis:
   stage2_max_bundle_chars: 50000
 agent_architecture:

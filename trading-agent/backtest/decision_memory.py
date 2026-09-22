@@ -18,10 +18,11 @@ class DecisionMemoryManager:
         self.settings = settings or load_all_config()
         self.client = get_client_for_task("trade_reflection", self.settings)
 
-    async def log_decision(self, symbol: str, decision: str, confidence: float, rationale: str, date: datetime):
+    async def log_decision(self, symbol: str, decision: str, confidence: float, rationale: str, date: datetime, run_id: Optional[int] = None):
         """Mencatat keputusan awal sebelum ada outcome."""
         async with get_session() as session:
             memory = DecisionMemory(
+                run_id=run_id,
                 symbol=symbol,
                 decision_date=date,
                 decision=decision,
@@ -60,7 +61,7 @@ class DecisionMemoryManager:
 
             await session.commit()
 
-    async def get_past_decisions_context(self, symbol: str, limit: int = 5) -> str:
+    async def get_past_decisions_context(self, symbol: str, limit: int = 5, run_id: Optional[int] = None) -> str:
         """Mengambil riwayat keputusan untuk konteks Stage 2."""
         import utils.clock as clock
         async with get_session() as session:
@@ -69,9 +70,10 @@ class DecisionMemoryManager:
                 .where(DecisionMemory.symbol == symbol)
                 .where(DecisionMemory.outcome_status != "pending")
                 .where(DecisionMemory.resolved_at <= clock.now())
-                .order_by(DecisionMemory.resolved_at.desc())
-                .limit(limit)
             )
+            if run_id is not None:
+                stmt = stmt.where(DecisionMemory.run_id == run_id)
+            stmt = stmt.order_by(DecisionMemory.resolved_at.desc()).limit(limit)
             past = (await session.execute(stmt)).scalars().all()
 
         if not past:
