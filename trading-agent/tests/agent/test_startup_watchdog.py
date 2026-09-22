@@ -36,6 +36,9 @@ def test_watchdog_triggers_on_timeout():
     watchdog.start()
 
     # Don't mark complete — wait for timeout
-    time.sleep(0.25)
+    for _ in range(30):
+        if deadlock_triggered:
+            break
+        time.sleep(0.05)
     assert deadlock_triggered is True
     assert watchdog.is_complete is False
