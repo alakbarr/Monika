@@ -68,3 +68,25 @@ def test_compute_sample_moments():
     m_const, s_const, sk_const, k_const = compute_sample_moments([0.05, 0.05, 0.05])
     assert s_const == 0.0
     assert sk_const == 0.0
+
+
+def test_bailey_lopez_de_prado_variance_term():
+    """Verify variance adjustment term includes the +0.5*SR^2 component from Bailey & Lopez de Prado (2012)."""
+    import math
+    import statistics
+    norm = statistics.NormalDist(0.0, 1.0)
+
+    # For Gaussian distribution: skew=0, excess_kurt=0
+    # var_term = 1 - 0 + ((0 + 2)/4)*SR^2 = 1 + 0.5*SR^2
+    # With SR=2.0: var_term = 1 + 0.5*4 = 3.0
+    # se = sqrt(3.0 / 99)
+    # z = 2.0 / sqrt(3.0 / 99)
+    sr = 2.0
+    n_obs = 100
+    expected_var = 1.0 + 0.5 * (sr ** 2)  # 3.0
+    expected_se = math.sqrt(expected_var / (n_obs - 1))
+    expected_z = sr / expected_se
+    expected_psr = norm.cdf(expected_z)
+
+    actual_psr = probabilistic_sharpe_ratio(observed_sr=sr, benchmark_sr=0.0, n_obs=n_obs, skew=0.0, excess_kurt=0.0)
+    assert abs(actual_psr - expected_psr) < 1e-6

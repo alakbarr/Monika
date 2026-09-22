@@ -29,6 +29,10 @@ class ReportGenerator:
         self.wilson_upper = 0.0
         self.expectancy_r = 0.0
         self.sortino_ratio = 0.0
+        self.calmar_ratio = 0.0
+        self.omega_ratio = 0.0
+        self.cvar_95 = 0.0
+        self.ulcer_index = 0.0
 
     def calculate_metrics(self):
         """Calculates institutional backtesting performance metrics."""
@@ -40,6 +44,10 @@ class ReportGenerator:
             self.run.sharpe_ratio = 0.0
             self.run.max_drawdown_pct = 0.0
             self.run.final_equity = initial_eq
+            self.calmar_ratio = 0.0
+            self.omega_ratio = 0.0
+            self.cvar_95 = 0.0
+            self.ulcer_index = 0.0
             return
 
         self.run.total_trades = len(self.trades)
@@ -49,8 +57,17 @@ class ReportGenerator:
 
         self.run.win_rate = round((len(wins) / len(self.trades)) * 100, 2)
 
-        gross_profit = sum(t.pnl_pct for t in wins if t.pnl_pct)
-        gross_loss = abs(sum(t.pnl_pct for t in losses if t.pnl_pct))
+        def _get_trade_usd(t):
+            if hasattr(t, "pnl_usd") and getattr(t, "pnl_usd", None) is not None:
+                return float(t.pnl_usd)
+            if hasattr(t, "pnl") and getattr(t, "pnl", None) is not None:
+                return float(t.pnl)
+            pnl_pct = getattr(t, "pnl_pct", None)
+            return (float(pnl_pct or 0.0) / 100.0) * initial_eq
+
+        trade_pnls = [_get_trade_usd(t) for t in self.trades]
+        gross_profit = sum(p for p in trade_pnls if p > 0)
+        gross_loss = abs(sum(p for p in trade_pnls if p < 0))
 
         self.run.profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
 
@@ -128,7 +145,41 @@ class ReportGenerator:
             self.wilson_lower = 0.0
             self.wilson_upper = 0.0
 
-        # 7. Monte Carlo Permutation Drawdown Analysis
+        # 7. Extended Risk Metrics (Nautilus Parity)
+        if len(daily_returns) > 1:
+            var_5 = float(np.percentile(daily_returns, 5))
+            tail_losses = [r for r in daily_returns if r <= var_5]
+            self.cvar_95 = round(abs(float(np.mean(tail_losses))) * 100.0, 2) if tail_losses else 0.0
+        else:
+            self.cvar_95 = 0.0
+
+        if len(daily_returns) > 0:
+            pos_excess = sum(max(r, 0.0) for r in daily_returns)
+            neg_excess = sum(max(-r, 0.0) for r in daily_returns)
+            self.omega_ratio = round(float(pos_excess / neg_excess), 2) if neg_excess > 1e-8 else (99.0 if pos_excess > 0 else 0.0)
+        else:
+            self.omega_ratio = 0.0
+
+        if self.equity_curve:
+            equities = [p.get("equity", initial_eq) if isinstance(p, dict) else float(p) for p in self.equity_curve]
+            peak = initial_eq
+            dd_sq = []
+            for eq in equities:
+                if eq > peak:
+                    peak = eq
+                dd_pct = ((peak - eq) / peak) * 100.0 if peak > 0 else 0.0
+                dd_sq.append(dd_pct ** 2)
+            self.ulcer_index = round(float(np.sqrt(np.mean(dd_sq))), 2) if dd_sq else 0.0
+        else:
+            self.ulcer_index = 0.0
+
+        if self.run.max_drawdown_pct > 0 and len(daily_returns) > 1:
+            ann_return = float(np.mean(daily_returns) * ann_factor) * 100.0
+            self.calmar_ratio = round(ann_return / self.run.max_drawdown_pct, 2)
+        else:
+            self.calmar_ratio = 0.0
+
+        # 8. Monte Carlo Permutation Drawdown Analysis
         self.compute_monte_carlo_drawdowns(num_simulations=1000)
 
     def compute_monte_carlo_drawdowns(self, num_simulations: int = 10000) -> Dict[str, float]:
@@ -137,11 +188,20 @@ class ReportGenerator:
         """
         from backtest.monte_carlo_engine import MonteCarloStressTester
         tester = MonteCarloStressTester(seed=42)
-        trade_pnls = [float(t.pnl_pct or 0.0) / 100.0 for t in self.trades]
+        initial_eq = float(getattr(self.run, "initial_equity", 10000.0) or 10000.0)
+        # Use actual fractional equity returns (dollar PnL / initial equity) rather than unleveraged price %
+        trade_returns = [
+            float(item["trade_pnl_usd"]) / initial_eq
+            for item in self.equity_curve
+            if "trade_pnl_usd" in item and item.get("trade_pnl_usd") is not None
+        ]
+        if not trade_returns:
+            trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in self.trades]
+
         res = tester.run_permutation_drawdown_test(
-            trade_returns=trade_pnls,
+            trade_returns=trade_returns,
             num_simulations=num_simulations,
-            initial_equity=float(getattr(self.run, "initial_equity", 10000.0))
+            initial_equity=initial_eq
         )
         self.monte_carlo_results = {
             "var_95_drawdown_pct": res.get("var_95_drawdown_pct", 0.0),
@@ -210,17 +270,42 @@ class ReportGenerator:
 
         return daily_rets
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Returns comprehensive dictionary of calculated metrics."""
+        return {
+            "total_trades": getattr(self.run, "total_trades", 0),
+            "win_rate": getattr(self.run, "win_rate", 0.0),
+            "win_rate_ci_95": (round(self.wilson_lower * 100, 1), round(self.wilson_upper * 100, 1)),
+            "profit_factor": getattr(self.run, "profit_factor", 0.0),
+            "sharpe_ratio": getattr(self.run, "sharpe_ratio", 0.0),
+            "sortino_ratio": self.sortino_ratio,
+            "calmar_ratio": self.calmar_ratio,
+            "omega_ratio": self.omega_ratio,
+            "cvar_95_pct": self.cvar_95,
+            "ulcer_index": self.ulcer_index,
+            "expectancy_r": self.expectancy_r,
+            "max_drawdown_pct": getattr(self.run, "max_drawdown_pct", 0.0),
+            "final_equity": getattr(self.run, "final_equity", 10000.0),
+            "initial_equity": getattr(self.run, "initial_equity", 10000.0),
+            "monte_carlo": getattr(self, "monte_carlo_results", {}),
+        }
+
     def print_summary(self):
         """Prints the summary report to console."""
         print(f"\n{'='*55}")
         print(f"  INSTITUTIONAL BACKTEST REPORT ({self.run.mode.upper()} MODE)")
         print(f"{'='*55}")
-        print(f"Period:       {self.run.start_date.strftime('%Y-%m-%d')} to {self.run.end_date.strftime('%Y-%m-%d')}")
+        if self.run.start_date and self.run.end_date:
+            print(f"Period:       {self.run.start_date.strftime('%Y-%m-%d')} to {self.run.end_date.strftime('%Y-%m-%d')}")
         print(f"Total Trades: {self.run.total_trades}")
         print(f"Win Rate:     {self.run.win_rate:.2f}% (95% CI: {self.wilson_lower*100:.1f}% - {self.wilson_upper*100:.1f}%)")
         print(f"Profit Factor:{self.run.profit_factor:.2f}")
-        print(f"Daily Sharpe: {self.run.sharpe_ratio:.2f}")
+        print(f"Sharpe (Ann): {self.run.sharpe_ratio:.2f}")
         print(f"Sortino:      {self.sortino_ratio:.2f}")
+        print(f"Calmar:       {self.calmar_ratio:.2f}")
+        print(f"Omega:        {self.omega_ratio:.2f}")
+        print(f"CVaR (95%):   {self.cvar_95:.2f}%")
+        print(f"Ulcer Index:  {self.ulcer_index:.2f}")
         print(f"Expectancy:   {self.expectancy_r:.2f} R")
         print(f"Max Drawdown: {self.run.max_drawdown_pct:.2f}%")
         if hasattr(self, "monte_carlo_results") and self.monte_carlo_results:

@@ -1021,6 +1021,61 @@ async def _cmd_analyze(args):
     console.print(f"\n{summary}\n")
 
 
+async def _cmd_backtest(args):
+    console = get_console()
+    from datetime import datetime, timezone, timedelta
+    from config.settings import load_all_config
+    from database.db import init_db
+    from backtest.point_in_time_engine import PointInTimeBacktestEngine
+    from backtest.walk_forward_engine import WalkForwardEngine
+
+    await init_db()
+    settings = load_all_config()
+
+    if getattr(args, "start", None) and getattr(args, "end", None):
+        try:
+            start_date = datetime.fromisoformat(args.start).replace(tzinfo=timezone.utc)
+            end_date = datetime.fromisoformat(args.end).replace(tzinfo=timezone.utc)
+        except Exception as date_err:
+            console.print(f"{stamp_err('BACKTEST')} Invalid date format (use YYYY-MM-DD): {date_err}")
+            return
+    else:
+        days = getattr(args, "days", 30) or 30
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days)
+
+    mode = getattr(args, "mode", "full") or "full"
+    initial_equity = float(getattr(args, "equity", 10000.0) or 10000.0)
+
+    console.print(f"{stamp_info('BACKTEST')} Initializing Backtest Engine [{BRASS}]{mode.upper()}[/] mode...")
+    console.print(f"  Period:         {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+    console.print(f"  Initial Equity: ${initial_equity:,.2f}")
+
+    if mode == "walk_forward":
+        engine = WalkForwardEngine(
+            start_date=start_date,
+            end_date=end_date,
+            settings=settings,
+            mode="full",
+            is_window_days=getattr(args, "is_days", 90),
+            oos_window_days=getattr(args, "oos_days", 30),
+        )
+        result = await engine.run()
+        report_md = engine.generate_markdown_report(result)
+        console.print(f"\n{report_md}\n")
+    else:
+        engine = PointInTimeBacktestEngine(
+            start_date=start_date,
+            end_date=end_date,
+            settings=settings,
+            mode=mode,
+            initial_equity=initial_equity,
+        )
+        run_record = await engine.run()
+        console.print(f"{stamp_ok('BACKTEST')} Backtest completed successfully. Run ID: [bold]{run_record.id}[/]")
+
+
+
 
 class MonikaArgumentParser(argparse.ArgumentParser):
     """Custom argument parser providing fuzzy suggestions for command typos."""
@@ -1176,6 +1231,16 @@ def parse_args(args_list=None):
     analyze_parser.add_argument("symbol", type=str, help="Symbol to analyze (e.g. EURUSD, XAUUSD)")
     analyze_parser.add_argument("--context", type=str, default="", help="Optional custom analytical context")
 
+    # Command: backtest (historical simulation and walk-forward analysis)
+    backtest_parser = subparsers.add_parser("backtest", help="Run historical backtest or walk-forward analysis")
+    backtest_parser.add_argument("--days", type=int, default=30, help="Lookback days from today (default: 30)")
+    backtest_parser.add_argument("--start", type=str, default=None, help="Start date (YYYY-MM-DD)")
+    backtest_parser.add_argument("--end", type=str, default=None, help="End date (YYYY-MM-DD)")
+    backtest_parser.add_argument("--mode", type=str, choices=["full", "replay", "walk_forward", "langgraph_parity"], default="full", help="Simulation mode")
+    backtest_parser.add_argument("--equity", type=float, default=10000.0, help="Initial account equity in USD")
+    backtest_parser.add_argument("--is-days", dest="is_days", type=int, default=90, help="Walk-forward In-Sample window days")
+    backtest_parser.add_argument("--oos-days", dest="oos_days", type=int, default=30, help="Walk-forward Out-of-Sample window days")
+
     # Command: mcp-serve (Launch Model Context Protocol server)
     mcp_parser = subparsers.add_parser("mcp-serve", help="Launch Monika as a Model Context Protocol (MCP) server over stdio")
     mcp_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
@@ -1221,6 +1286,8 @@ async def _dispatch_cli(args):
             await _cmd_ask(args)
         elif args.command == "analyze":
             await _cmd_analyze(args)
+        elif args.command == "backtest":
+            await _cmd_backtest(args)
         elif args.command == "pause":
             await _cmd_pause(args)
         elif args.command == "resume":

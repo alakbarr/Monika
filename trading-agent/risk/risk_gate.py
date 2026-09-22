@@ -266,8 +266,8 @@ class RiskGate:
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest)),
-            ("schmitt_regime", self._check_schmitt_regime(session, symbol, simulated_positions=simulated_positions)),
-            ("vpin_toxicity", self._check_vpin_toxicity(session, symbol)),
+            ("schmitt_regime", self._check_schmitt_regime(session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest)),
+            ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
         ]
         
         if analysis is not None:
@@ -1434,12 +1434,14 @@ class RiskGate:
         return True, "no recent SL hits"
 
     async def _check_schmitt_regime(
-        self, session: AsyncSession, symbol: str, simulated_positions: Optional[list] = None
+        self, session: AsyncSession, symbol: str, simulated_positions: Optional[list] = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check systemic correlation regime via Schmitt trigger.
         In FUSED regime: market contagion is high, cap concurrent positions to 2.
         """
+        if is_backtest:
+            return True, "schmitt_regime_backtest_exempt"
         try:
             from indicators.regime_detector import get_schmitt_regime_detector, RegimeState
             detector = get_schmitt_regime_detector()
@@ -1458,24 +1460,29 @@ class RiskGate:
             return True, "schmitt_regime_fallback_ok"
 
     async def _check_vpin_toxicity(
-        self, session: AsyncSession, symbol: str
+        self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
     ) -> tuple[bool, str]:
         """
         Check VPIN order flow toxicity for high-volatility assets (BTCUSD, XAUUSD).
         Blocks entry if VPIN > 0.75 (toxic informed order flow).
         """
+        if is_backtest and as_of is None:
+            return True, "vpin_check_backtest_exempt"
         try:
             from indicators.microstructure import VPIN_SYMBOLS
             if symbol.upper() not in VPIN_SYMBOLS:
                 return True, f"{symbol} exempt from VPIN check"
 
             from database.models import TechnicalIndicator
-            row = (await session.execute(
+            stmt = (
                 select(TechnicalIndicator)
                 .where(TechnicalIndicator.symbol == symbol)
                 .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
-                .order_by(TechnicalIndicator.timestamp.desc())
-                .limit(1)
+            )
+            if as_of is not None:
+                stmt = stmt.where(TechnicalIndicator.timestamp <= as_of)
+            row = (await session.execute(
+                stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
             )).scalar_one_or_none()
 
             if row and row.value_json:

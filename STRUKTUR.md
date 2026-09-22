@@ -321,6 +321,7 @@ Monika/
 
     ├── backtest
     │   ├── alpha_validation.py
+    │   ├── benchmark_tracker.py
     │   ├── decision_memory.py
     │   ├── monte_carlo_engine.py
     │   ├── offline_signal_engine.py
@@ -507,12 +508,12 @@ Monika/
     │       ├── rbac.py
     │       ├── routes
     │       │   ├── __init__.py
+    │       │   ├── backtest.py
     │       │   ├── common.py
     │       │   ├── config.py
     │       │   ├── observability.py
     │       │   ├── system.py
     │       │   ├── tokens.py
-    │       │   ├── trace_search.py
     │       │   ├── trace_search.py
     │       │   ├── trading.py
     │       │   └── websocket.py
@@ -831,6 +832,7 @@ Monika/
     │   │   ├── rbac.py
     │   │   ├── routes
     │   │   │   ├── __init__.py
+    │   │   │   ├── backtest.py
     │   │   │   ├── common.py
     │   │   │   ├── config.py
     │   │   │   ├── observability.py
@@ -914,6 +916,21 @@ Monika/
         │   ├── test_jev_verifiers_and_builders.py
         │   ├── test_level_optimizer_rr_pairing.py
         │   └── test_skill_crystallizer_curation.py
+        ├── backtest
+        │   ├── test_alpha_validation.py
+        │   ├── test_benchmark_tracker.py
+        │   ├── test_langgraph_backtest_parity.py
+        │   ├── test_monte_carlo_block_bootstrap.py
+        │   ├── test_offline_signal_engine_no_lookahead.py
+        │   ├── test_outcome_evaluator.py
+        │   ├── test_outcome_evaluator_dynamic_friction.py
+        │   ├── test_outcome_evaluator_realism.py
+        │   ├── test_point_in_time_engine.py
+        │   ├── test_point_in_time_full_mode.py
+        │   ├── test_report_generator_daily_sharpe_sortino.py
+        │   ├── test_statistical_tests.py
+        │   ├── test_time_machine.py
+        │   └── test_walk_forward_purged.py
         ├── benchmark
         │   └── test_paired_evaluator.py
         ├── cli

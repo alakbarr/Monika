@@ -51,6 +51,7 @@ def validate_alpha(
     equity_curve: Optional[List[float]] = None,
     cost_multiplier: float = 2.0,
     max_directional_threshold: float = 0.85,
+    initial_equity: float = 10000.0,
 ) -> AlphaValidation:
     """
     Validate trade sequence against directional bias, split-sample consistency, and fee stress.
@@ -60,6 +61,7 @@ def validate_alpha(
         equity_curve: Optional timeline of account equity values.
         cost_multiplier: Stress test multiplier for commission and slippage friction (default 2.0x).
         max_directional_threshold: Maximum allowed fraction of unidirectional trades (default 0.85).
+        initial_equity: Initial account equity in dollars for converting percentage PnL (default 10000.0).
     """
     if not trades:
         return AlphaValidation(
@@ -128,11 +130,11 @@ def validate_alpha(
     # 3. Cost Stress Test (Profitable under 2.0x friction)
     stress_pnls = []
     for t in trades:
-        base_pnl = getattr(t, "pnl", None)
-        if base_pnl is None and hasattr(t, "pnl_pct"):
-            base_pnl = getattr(t, "pnl_pct", 0.0)
+        base_pnl = getattr(t, "pnl_pct", None)
+        if base_pnl is None and hasattr(t, "pnl"):
+            base_pnl = getattr(t, "pnl", None)
         if base_pnl is None and isinstance(t, dict):
-            base_pnl = t.get("pnl", t.get("pnl_pct", 0.0))
+            base_pnl = t.get("pnl_pct", t.get("pnl", 0.0))
         base_pnl = float(base_pnl or 0.0)
 
         # Estimate cost or commission
@@ -147,7 +149,8 @@ def validate_alpha(
 
         # Extra cost penalty under multiplier
         extra_cost = comm * (cost_multiplier - 1.0)
-        stress_pnls.append(base_pnl - extra_cost)
+        base_pnl_usd = (float(base_pnl or 0.0) / 100.0) * initial_equity
+        stress_pnls.append(base_pnl_usd - extra_cost)
 
     stress_total = round(sum(stress_pnls), 4)
     cost_stress_ok = bool(stress_total > 0.0)
@@ -157,7 +160,7 @@ def validate_alpha(
     details = (
         f"Directional={max_dir_pct:.1%} ({'PASS' if directional_ok else 'FAIL'}), "
         f"HalfConsistency=[H1={h1_sortino}, H2={h2_sortino}] ({'PASS' if half_consistent else 'FAIL'}), "
-        f"CostStress2x={stress_total:.2f} ({'PASS' if cost_stress_ok else 'FAIL'})"
+        f"CostStress2x=${stress_total:.2f} ({'PASS' if cost_stress_ok else 'FAIL'})"
     )
 
     return AlphaValidation(

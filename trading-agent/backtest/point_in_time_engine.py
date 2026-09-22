@@ -49,6 +49,8 @@ class PointInTimeBacktestEngine:
         self.initial_equity = initial_equity
         self.equity = initial_equity
         self.trades: List[BacktestTrade] = []
+        self._evaluator: Optional[OutcomeEvaluator] = None
+        self._unsettled_trades: List[tuple[BacktestTrade, Dict[str, Any]]] = []
         self.equity_curve: List[Dict[str, Any]] = [
             {"timestamp": start_date, "equity": initial_equity}
         ]
@@ -152,6 +154,64 @@ class PointInTimeBacktestEngine:
         self.trades.append(trade)
         return trade
 
+    async def _record_and_evaluate_trade(self, trade: BacktestTrade) -> Dict[str, Any]:
+        """Evaluates trade outcome against H1 bars and registers it for dynamic settlement."""
+        if self._evaluator is None:
+            self._evaluator = OutcomeEvaluator(settings=self.settings)
+        outcome = await self._evaluator.evaluate_trade(trade, apply_costs=True)
+        trade.exit_time = outcome["exit_time"]
+        trade.exit_price = outcome["exit_price"]
+        trade.exit_reason = outcome["exit_reason"]
+        trade.pnl_pips = outcome["pnl_pips"]
+        trade.pnl_pct = outcome["pnl_pct"]
+        self._unsettled_trades.append((trade, outcome))
+        self.trades.append(trade)
+        return outcome
+
+    def _settle_trades_up_to(self, as_of: datetime) -> None:
+        """Settle any trades that exited at or before as_of, crediting their PnL to self.equity."""
+        still_unsettled = []
+        as_of_tz = as_of if as_of.tzinfo else as_of.replace(tzinfo=timezone.utc)
+        for trade, outcome in self._unsettled_trades:
+            exit_time = trade.exit_time or self.end_date
+            exit_tz = exit_time if exit_time.tzinfo else exit_time.replace(tzinfo=timezone.utc)
+            if exit_tz <= as_of_tz:
+                pnl_usd = outcome.get("pnl_usd")
+                if pnl_usd is None:
+                    pnl_pct = trade.pnl_pct or 0.0
+                    pnl_usd = (float(pnl_pct) / 100.0) * self.equity
+                self.equity = max(0.0, self.equity + pnl_usd)
+                self.equity_curve.append({
+                    "timestamp": exit_time,
+                    "equity": round(self.equity, 2),
+                    "trade_pnl_usd": pnl_usd,
+                })
+            else:
+                still_unsettled.append((trade, outcome))
+        self._unsettled_trades = still_unsettled
+
+    async def _resolve_trade(self, trade: BacktestTrade, evaluator: OutcomeEvaluator) -> float:
+        """Evaluate a single trade outcome and update equity. Returns dollar PnL."""
+        outcome = await evaluator.evaluate_trade(trade, apply_costs=True)
+        trade.exit_time = outcome["exit_time"]
+        trade.exit_price = outcome["exit_price"]
+        trade.exit_reason = outcome["exit_reason"]
+        trade.pnl_pips = outcome["pnl_pips"]
+        trade.pnl_pct = outcome["pnl_pct"]
+
+        pnl_usd = outcome.get("pnl_usd")
+        if pnl_usd is None:
+            pnl_pct = trade.pnl_pct
+            pnl_usd = (float(pnl_pct) / 100.0) * self.equity if pnl_pct is not None else 0.0
+        self.equity = max(0.0, self.equity + pnl_usd)
+        exit_ts = trade.exit_time or self.end_date
+        self.equity_curve.append({
+            "timestamp": exit_ts,
+            "equity": round(self.equity, 2),
+            "trade_pnl_usd": pnl_usd,
+        })
+        return pnl_usd
+
     async def run(self):
         """Main backtest execution routine."""
         async with get_session() as session:
@@ -166,6 +226,14 @@ class PointInTimeBacktestEngine:
             session.add(self.run_record)
             await session.commit()
 
+        # Create evaluator upfront so mode methods can resolve trades inline
+        self._evaluator = OutcomeEvaluator(settings=self.settings)
+        async with get_session() as session:
+            try:
+                await self._evaluator.calibrate_from_db(session, as_of=self.start_date)
+            except Exception as e:
+                logger.debug(f"Automated DB calibration in backtest skipped (fallback to defaults): {e}")
+
         if self.mode in ("langgraph_parity", "graph"):
             await self._run_langgraph_parity_mode()
         elif self.mode == "full":
@@ -173,34 +241,16 @@ class PointInTimeBacktestEngine:
         else:
             await self._run_replay_mode()
 
-        # Evaluate trade outcomes with dynamic empirical calibration
-        evaluator = OutcomeEvaluator()
-        async with get_session() as session:
-            try:
-                await evaluator.calibrate_from_db(session)
-            except Exception as e:
-                logger.debug(f"Automated DB calibration in backtest skipped (fallback to defaults): {e}")
+        # Settle all trades up to the end of time
+        self._settle_trades_up_to(datetime.max.replace(tzinfo=timezone.utc))
 
+        # Resolve any remaining trades that were not settled/evaluated inline
         for trade in self.trades:
-            outcome = await evaluator.evaluate_trade(trade, apply_costs=True)
-            trade.exit_time = outcome["exit_time"]
-            trade.exit_price = outcome["exit_price"]
-            trade.exit_reason = outcome["exit_reason"]
-            trade.pnl_pips = outcome["pnl_pips"]
-            trade.pnl_pct = outcome["pnl_pct"]
+            if trade.exit_time is None:
+                await self._resolve_trade(trade, self._evaluator)
 
-            # Calculate actual dollar PnL based on position sizing
-            pnl_usd = outcome.get("pnl_usd")
-            if pnl_usd is None:
-                pnl_pct = trade.pnl_pct
-                pnl_usd = (float(pnl_pct) / 100.0) * self.initial_equity if pnl_pct is not None else 0.0
-            self.equity += pnl_usd
-            exit_ts = trade.exit_time or self.end_date
-            self.equity_curve.append({
-                "timestamp": exit_ts,
-                "equity": round(self.equity, 2),
-                "trade_pnl_usd": pnl_usd
-            })
+        # Ensure equity curve is strictly chronological
+        self.equity_curve.sort(key=lambda x: x["timestamp"])
 
         # Generate comprehensive institutional report
         generator = ReportGenerator(
@@ -243,6 +293,7 @@ class PointInTimeBacktestEngine:
 
         async with get_session() as session:
             while current_time <= self.end_date:
+                self._settle_trades_up_to(current_time)
                 with clock.frozen_time(current_time):
                     for symbol in symbols:
                         # Check if symbol already has an active position in simulation
@@ -376,10 +427,18 @@ class PointInTimeBacktestEngine:
                                 rationale=f"Point-in-time confluence={confluence_score} (req={req_threshold})",
                                 model_used="point_in_time_pipeline"
                             )
-                            # Record calculated lot size in trade metadata
                             trade.executed_lots = sizing.recommended_lots
-                            self.trades.append(trade)
-                            active_positions[symbol] = current_time + timedelta(hours=48)
+                            if self._evaluator is not None:
+                                try:
+                                    outcome = await self._record_and_evaluate_trade(trade)
+                                    active_positions[symbol] = outcome["exit_time"] or (current_time + timedelta(hours=48))
+                                except Exception as eval_err:
+                                    logger.debug(f"Inline trade evaluation error: {eval_err}")
+                                    self.trades.append(trade)
+                                    active_positions[symbol] = current_time + timedelta(hours=48)
+                            else:
+                                self.trades.append(trade)
+                                active_positions[symbol] = current_time + timedelta(hours=48)
 
                 current_time += timedelta(hours=self.step_hours)
 
@@ -443,40 +502,42 @@ class PointInTimeBacktestEngine:
                 entry_p = analysis.price_at_analysis or analysis.entry_price
                 if not (entry_p and analysis.stop_loss and analysis.take_profit):
                     continue
+                self._settle_trades_up_to(analysis.generated_at)
 
-                sizing = await self.sizer.calculate_with_session(
-                    session=session,
-                    symbol=analysis.symbol,
-                    direction=analysis.decision,
-                    entry_price=entry_p,
-                    stop_loss=analysis.stop_loss,
-                    take_profit=analysis.take_profit,
-                    account_equity=self.equity,
-                    is_paper=True,
-                    as_of=analysis.generated_at
-                )
+                with clock.frozen_time(analysis.generated_at):
+                    sizing = await self.sizer.calculate_with_session(
+                        session=session,
+                        symbol=analysis.symbol,
+                        direction=analysis.decision,
+                        entry_price=entry_p,
+                        stop_loss=analysis.stop_loss,
+                        take_profit=analysis.take_profit,
+                        account_equity=self.equity,
+                        is_paper=True,
+                        as_of=analysis.generated_at
+                    )
 
-                if not sizing.is_valid:
-                    continue
+                    if not sizing.is_valid:
+                        continue
 
-                if self.gate is not None and self.settings.get("backtest", {}).get("enforce_risk_gate", False):
-                    try:
-                        verdict = await self.gate.check(
-                            session=session,
-                            symbol=analysis.symbol,
-                            direction=analysis.decision,
-                            sizing=sizing,
-                            account_equity=self.equity,
-                            analysis=analysis,
-                            as_of=analysis.generated_at,
-                            simulated_equity=self.equity,
-                            is_backtest=True
-                        )
-                        if not verdict.approved:
-                            logger.debug(f"RiskGate rejected replay trade {analysis.symbol}: {verdict.rejection_reasons}")
-                            continue
-                    except Exception as gate_err:
-                        logger.debug(f"RiskGate check in replay error: {gate_err}")
+                    if self.gate is not None and self.settings.get("backtest", {}).get("enforce_risk_gate", False):
+                        try:
+                            verdict = await self.gate.check(
+                                session=session,
+                                symbol=analysis.symbol,
+                                direction=analysis.decision,
+                                sizing=sizing,
+                                account_equity=self.equity,
+                                analysis=analysis,
+                                as_of=analysis.generated_at,
+                                simulated_equity=self.equity,
+                                is_backtest=True
+                            )
+                            if not verdict.approved:
+                                logger.debug(f"RiskGate rejected replay trade {analysis.symbol}: {verdict.rejection_reasons}")
+                                continue
+                        except Exception as gate_err:
+                            logger.debug(f"RiskGate check in replay error: {gate_err}")
 
                 trade = BacktestTrade(
                     symbol=analysis.symbol,
@@ -491,7 +552,14 @@ class PointInTimeBacktestEngine:
                     model_used="replay"
                 )
                 trade.executed_lots = sizing.recommended_lots
-                self.trades.append(trade)
+                if self._evaluator is not None:
+                    try:
+                        await self._record_and_evaluate_trade(trade)
+                    except Exception as eval_err:
+                        logger.debug(f"Replay trade evaluation error: {eval_err}")
+                        self.trades.append(trade)
+                else:
+                    self.trades.append(trade)
         logger.info(f"Replay Mode collected {len(self.trades)} recorded trade analyses.")
 
     async def _run_langgraph_parity_mode(self):
@@ -510,12 +578,38 @@ class PointInTimeBacktestEngine:
                 self.asset_universe = settings.get(
                     'trading', {}
                 ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
+                self.mt5_timeframes = ['H1', 'H4', 'D1']
                 self._mt5 = None
                 self.market_data_scheduler = None
                 self._cycle_lock = asyncio.Lock()
                 self._is_forex_blocked = False
+                self._stage1_consecutive_failures = 0
+                self._max_stage1_failures_before_alert = 5
 
-            async def _refresh_data_sources(self, session):
+                class _MockPaperTracker:
+                    async def check_and_suspend_poor_performers(self, *args, **kwargs):
+                        pass
+                    async def get_suspended_symbols(self, *args, **kwargs):
+                        return []
+                    async def open_paper_trade(self, *args, **kwargs):
+                        pass
+                self._paper_tracker = _MockPaperTracker()
+
+                class _MockFundamental:
+                    async def run(self, *args, **kwargs):
+                        return {"market_regime": "NORMAL", "macro_outlook": "NEUTRAL", "bias": {}}
+                self._fundamental = _MockFundamental()
+
+            async def _should_skip_full_cycle(self):
+                return False, ""
+
+            async def _log(self, session, msg, *args, **kwargs):
+                logger.debug(f"[MockScheduler] {msg}")
+
+            async def _get_symbol_paper_stats(self, session, sym):
+                return None
+
+            async def _refresh_data_sources(self, session=None):
                 pass
 
             async def _pre_cycle_setup(self, forced=True):
@@ -528,6 +622,7 @@ class PointInTimeBacktestEngine:
 
         async with get_session() as session:
             while current_time <= self.end_date:
+                self._settle_trades_up_to(current_time)
                 with clock.frozen_time(current_time):
                     initial_state = {
                         "cycle_id": f"BT_{current_time.strftime('%Y%m%d_%H%M')}",
@@ -598,7 +693,14 @@ class PointInTimeBacktestEngine:
                                             model_used="langgraph_parity"
                                         )
                                         trade.executed_lots = sizing.recommended_lots
-                                        self.trades.append(trade)
+                                        if self._evaluator is not None:
+                                            try:
+                                                await self._record_and_evaluate_trade(trade)
+                                            except Exception as eval_err:
+                                                logger.debug(f"LangGraph trade evaluation error: {eval_err}")
+                                                self.trades.append(trade)
+                                        else:
+                                            self.trades.append(trade)
                     except Exception as e:
                         logger.debug(f"LangGraph parity step at {current_time} error: {e}")
 
