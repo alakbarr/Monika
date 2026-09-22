@@ -169,19 +169,70 @@ def list_skills() -> list[str]:
     return list(dict.fromkeys(skills))
 
 
-def compose_system_prompt(*skill_names: str, separator: str = "\n\n---\n\n", max_tokens: Optional[int] = None, **template_vars) -> str:
+def is_playbook_eligible(skill_name: str, context: Optional[dict] = None) -> bool:
+    """Verify if a playbook is currently eligible for production use (not demoted/archived in ledger)."""
+    try:
+        from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+        mgr = PlaybookLifecycleManager()
+        meta = mgr.get_metadata(skill_name)
+        if meta and meta.status in ("archived", "demoted", "stale"):
+            logger.info(f"[ProgressiveDisclosure] Skipping ineligible/demoted playbook: {skill_name} (status={meta.status})")
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def get_progressive_playbook_index(symbol: Optional[str] = None) -> str:
+    """Level 0: Compact index of available playbooks and setups (< 150 tokens)."""
+    try:
+        from analysis.memory.progressive_loader import ProgressivePlaybookLoader
+        loader = ProgressivePlaybookLoader()
+        return loader.get_level0_index()
+    except Exception as e:
+        logger.debug(f"Progressive playbook loader fallback: {e}")
+        return "[AVAILABLE_PLAYBOOKS_INDEX (Level 0)]: SMC/ICT liquidity sweep, order block, and FVG playbooks active."
+
+
+def compose_system_prompt(*skill_names: str, separator: str = "\n\n---\n\n", max_tokens: Optional[int] = None, progressive: bool = False, **template_vars) -> str:
     """Rangkai beberapa skill menjadi satu system prompt dan isi template variables."""
-    # Check if max_tokens was passed via kwargs or explicitly
+    # Check if max_tokens or progressive was passed via kwargs or explicitly
     if max_tokens is None and "max_tokens" in template_vars:
         max_tokens = template_vars.pop("max_tokens")
+    if not progressive and "progressive" in template_vars:
+        progressive = bool(template_vars.pop("progressive"))
 
-    runtime_context = template_vars.pop("context", None) or template_vars.pop("active_context", None)
+    runtime_context = template_vars.pop("context", None) or template_vars.pop("active_context", None) or {}
 
     parts = []
+    included_index = False
+
     for name in skill_names:
+        # Filter with Playbook Ledger FSM
+        if not is_playbook_eligible(name, runtime_context):
+            continue
+
         if runtime_context and not is_skill_active(name, runtime_context):
             logger.debug(f"Skill '{name}' skipped by conditional activation (Phase 4.5)")
             continue
+
+        # Progressive Disclosure: list-then-load for bulky playbooks
+        is_bulky_playbook = "playbook" in name.lower() or name.startswith("alpha_")
+        if progressive and is_bulky_playbook:
+            active_setup = str(runtime_context.get("setup") or runtime_context.get("pattern") or runtime_context.get("focus_playbook") or "").lower()
+            # If explicit setup matches, load full content (Level 1)
+            if active_setup and (active_setup in name.lower() or name.lower() in active_setup):
+                try:
+                    parts.append(load_skill(name))
+                except FileNotFoundError:
+                    continue
+            else:
+                # Include compact index once instead of entire bulky text
+                if not included_index:
+                    parts.append(get_progressive_playbook_index(symbol=runtime_context.get("symbol")))
+                    included_index = True
+            continue
+
         try:
             parts.append(load_skill(name))
         except FileNotFoundError as e:

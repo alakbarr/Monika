@@ -1128,6 +1128,16 @@ class TradingAgent:
         # Notify Telegram admin
         self._create_background_task(self._send_startup_notification(), name="startup_notification")
 
+        # PR-22: Cold-Start Pre-Flight Verification before enabling schedulers
+        try:
+            from agent.monitors.startup_watchdog import run_cold_start_preflight
+            preflight = await run_cold_start_preflight(self)
+            logger.info(f"[Preflight] Cold-start verification: broker_ping={preflight.get('broker_ping')}, "
+                        f"positions_reconciled={preflight.get('positions_reconciled')}, "
+                        f"ready={preflight.get('ready')}")
+        except Exception as preflight_err:
+            logger.warning(f"[Preflight] Cold-start pre-flight note (non-fatal): {preflight_err}")
+
         # Launch all concurrent tasks
         logger.info("Launching concurrent tasks...")
         tasks_list: list[asyncio.Task] = []

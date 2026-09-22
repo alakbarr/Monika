@@ -435,6 +435,18 @@ class FundamentalStage:
             prefetched_json = prefetch_res
             prefetch_satisfied_tools = set()
 
+        # Check DataFeedCircuitBreaker status and inject warning if tripped
+        try:
+            from data_sources.circuit_breaker import get_data_feed_circuit_breaker
+            feed_breaker = get_data_feed_circuit_breaker()
+            if feed_breaker.is_tripped():
+                tripped = feed_breaker.get_tripped_feeds()
+                logger.warning(f"[FundamentalStage] Active data feed circuit breaker: {tripped}")
+                ctx_lines.append(f"\n[DATA FEED CIRCUIT BREAKER ACTIVE]: Stale feeds detected ({list(tripped.keys())}). Prioritize capital preservation.")
+                extra_context = '\n'.join([line for line in ctx_lines if isinstance(line, str)])
+        except Exception as e:
+            logger.debug(f"Circuit breaker alert check non-fatal error: {e}")
+
         # Pre-compute sticky currency biases (held >=4 distinct cycles) to alert the model upfront
         try:
             raw_briefs = (await session.execute(

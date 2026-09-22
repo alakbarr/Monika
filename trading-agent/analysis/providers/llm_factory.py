@@ -159,11 +159,25 @@ class LLMFactory:
             }
 
         primary_model = role_config.get("primary", "gemini-3.5-flash-lite")
-        fallback_chain: list[str] = [
-            str(role_config[f"fallback_{i}"])
-            for i in range(1, 11)
-            if role_config.get(f"fallback_{i}")
-        ]
+        fallback_chain: list[str] = []
+
+        # 1. Support list format: fallback: [...] or fallbacks: [...]
+        list_fb = role_config.get("fallback") or role_config.get("fallbacks")
+        if isinstance(list_fb, list):
+            for m in list_fb:
+                m_str = str(m).strip()
+                if m_str and m_str != primary_model and m_str not in fallback_chain:
+                    fallback_chain.append(m_str)
+        elif isinstance(list_fb, str) and list_fb.strip() and list_fb.strip() != primary_model:
+            fallback_chain.append(list_fb.strip())
+
+        # 2. Support numbered slots: fallback_1, fallback_2, ..., fallback_10
+        for i in range(1, 11):
+            fb_val = role_config.get(f"fallback_{i}")
+            if fb_val:
+                m_str = str(fb_val).strip()
+                if m_str and m_str != primary_model and m_str not in fallback_chain:
+                    fallback_chain.append(m_str)
 
         return self._create_client_with_fallback(primary_model, fallback_chain, role_config, task_role=task_role)
 
@@ -421,6 +435,11 @@ class FallbackClientWrapper(BaseLLMClient):
         self.fallbacks = fallbacks
         self.role_config = role_config
         self.task_role = task_role
+        self.max_cost_per_call = (
+            float(role_config["max_cost_per_call"])
+            if role_config.get("max_cost_per_call") is not None
+            else None
+        )
         self._primary_cooldown_until = None
         self._slot_cooldowns: dict[str, float] = {}
         self._slot_backoff_count: dict[str, int] = {}
@@ -557,6 +576,22 @@ class FallbackClientWrapper(BaseLLMClient):
                     continue
             except Exception:
                 pass
+
+            # Cost-aware guidance: check baseline pricing if max_cost_per_call is configured
+            if self.max_cost_per_call is not None:
+                try:
+                    from analysis.providers.pricing_catalog import get_model_pricing
+                    p = get_model_pricing(model)
+                    est_in = min(4096, self.max_tokens // 2)
+                    est_out = min(2048, self.max_tokens // 4)
+                    est_cost = (est_in / 1_000_000.0) * p.input + (est_out / 1_000_000.0) * p.output
+                    if est_cost > (self.max_cost_per_call * 1.5):
+                        logger.warning(
+                            f"[{self.task_role}] Slot '{slot_name}' model '{model}' baseline cost "
+                            f"(${est_cost:.4f}) exceeds max_cost_per_call (${self.max_cost_per_call:.4f})."
+                        )
+                except Exception:
+                    pass
 
             client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
             if not client:

@@ -601,6 +601,13 @@ search:
   cache_ttl_minutes: 15
   max_results_per_query: 5
 llm:
+  credential_pool:
+    enabled: true
+    exponential_backoff: true
+    base_cooldown_seconds: 60.0
+    max_cooldown_seconds: 14400.0  # 4 hours max cooldown
+    consecutive_error_threshold: 5
+    track_costs: true
   providers:
     openrouter:
       enabled: true
@@ -1411,6 +1418,7 @@ llm:
         openai_compatible: high
       max_tokens: 16384
       max_tool_turns: 12
+      max_cost_per_call: 0.05
       temperature: 0.0
     stage1_escalation:
       primary: gemini-3.5-flash-lite
@@ -1543,6 +1551,7 @@ llm:
         ollama: medium
         openai_compatible: medium
       max_tokens: 6144
+      max_cost_per_call: 0.15
       temperature: 0.0
     risk_gate_conservative:
       primary: gemini-3.5-flash-lite

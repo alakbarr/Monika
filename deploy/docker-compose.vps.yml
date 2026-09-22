@@ -1,0 +1,117 @@
+version: '3.8'
+
+# ==============================================================================
+# Monika v2 — VPS Production Multi-Container Compose
+# Orchestrates PostgreSQL + pgvector, Monika Core Agent, and Headless MT5 Wine Bridge
+# ==============================================================================
+
+networks:
+  monika-vps-net:
+    driver: bridge
+
+volumes:
+  vps_postgres_data:
+    driver: local
+  vps_agent_logs:
+    driver: local
+  vps_agent_data:
+    driver: local
+  vps_mt5_bridge:
+    driver: local
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Database Service: PostgreSQL 16 + pgvector
+  # ----------------------------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: monika-vps-db
+    restart: always
+    networks:
+      - monika-vps-net
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-monika_trading}
+      POSTGRES_USER: ${POSTGRES_USER:-monika}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-monika_vps_secure_password_2026}
+    volumes:
+      - vps_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-monika} -d $${POSTGRES_DB:-monika_trading}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 2. Core AI Trading Agent Service
+  # ----------------------------------------------------------------------------
+  agent:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: monika-vps-agent
+    restart: always
+    networks:
+      - monika-vps-net
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/trading-agent
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-monika_vps_secure_password_2026}@db:5432/${POSTGRES_DB:-monika_trading}
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=8000
+      - MT5_COMMON_FILES_PATH=/shared/mt5_bridge
+    volumes:
+      - ../trading-agent/config/settings.yaml:/app/trading-agent/config/settings.yaml:ro
+      - vps_agent_logs:/app/trading-agent/logs
+      - vps_agent_data:/app/trading-agent/data
+      - vps_mt5_bridge:/shared/mt5_bridge
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ----------------------------------------------------------------------------
+  # 3. Headless MT5 Wine Service
+  # ----------------------------------------------------------------------------
+  mt5-wine:
+    build:
+      context: .
+      dockerfile: Dockerfile.mt5-wine
+    container_name: monika-vps-mt5
+    restart: unless-stopped
+    networks:
+      - monika-vps-net
+    environment:
+      - DISPLAY=:99
+      - WINEPREFIX=/wine/prefix
+      - MT5_LOGIN=${MT5_ACCOUNT:-0}
+      - MT5_PASSWORD=${MT5_PASSWORD:-""}
+      - MT5_SERVER=${MT5_SERVER:-"FBS-Real"}
+    volumes:
+      - vps_mt5_bridge:/shared/mt5_bridge
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"

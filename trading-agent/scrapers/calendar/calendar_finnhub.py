@@ -143,6 +143,12 @@ class FinnhubCalendarScraper:
 
         events = self._parse_events(data.get("economicCalendar", []))
         logger.info(f"FinnhubCalendarScraper: fetched {len(events)} events ({today} to {end})")
+        try:
+            from data_sources.circuit_breaker import record_feed_heartbeat
+            record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
+            record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
+        except Exception:
+            pass
         return events
 
     def _parse_events(self, events_raw: list) -> List[CalendarEvent]:
@@ -236,6 +242,12 @@ class FinnhubCalendarScraper:
 
         events = self._parse_events(data.get("economicCalendar", []))
         logger.info(f"FinnhubCalendarScraper (async): fetched {len(events)} events ({today} to {end})")
+        try:
+            from data_sources.circuit_breaker import record_feed_heartbeat
+            record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
+            record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
+        except Exception:
+            pass
         return events
 
     # Uniform interface aliases matching InvestingCalendarScraper & ForexfactoryCalendarScraper

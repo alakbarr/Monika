@@ -208,5 +208,20 @@ class InHarnessGroundingValidator:
             except Exception as sp_err:
                 logger.debug(f"Scratchpad cross-verification non-fatal error: {sp_err}")
 
+        # 7. Extended Grounding Verification (PR-07: lot_size, spread, margin, equity)
+        try:
+            from analysis.grounding.provenance_tagger import ProvenanceLedger
+            ledger = ProvenanceLedger()
+            ext_ok, ext_errors, ext_meta = ledger.verify_trade_parameters(
+                proposal=decision_payload,
+                market_snapshot=data_bundle,
+            )
+            if not ext_ok:
+                errors.extend(ext_errors)
+                metadata["hallucination_flags"] += len(ext_errors)
+            metadata["verified_anchors"] += ext_meta.get("verified_extended", 0)
+        except Exception as prov_err:
+            logger.debug(f"Extended provenance verification non-fatal error: {prov_err}")
+
         is_grounded = len(errors) == 0
         return is_grounded, errors, metadata

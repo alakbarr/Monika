@@ -977,25 +977,50 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             except Exception as e:
                 logger.debug(f"[{symbol}] Output verifier non-fatal execution: {e}")
 
-            # Pi-Inspired In-Harness Grounding Validator
+            # Pi-Inspired In-Harness Grounding Validator (Extended PR-07: lot_size, spread, margin, equity)
             try:
                 from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
                 ez_parsed = json.loads(analysis.entry_zone) if analysis.entry_zone and isinstance(analysis.entry_zone, str) else (analysis.entry_zone if isinstance(analysis.entry_zone, dict) else {})
+                
+                # Fetch live or paper account equity and margin for grounding
+                acc_equity = None
+                free_margin = None
+                mt5_cli = getattr(self, "mt5_client", None)
+                if mt5_cli is not None and callable(getattr(mt5_cli, "get_account_info", None)):
+                    try:
+                        acc = getattr(mt5_cli, "get_account_info")()
+                        if acc and isinstance(acc, dict):
+                            acc_equity = float(acc.get("equity", 0.0)) or None
+                            free_margin = float(acc.get("margin_free", 0.0)) or None
+                    except Exception:
+                        pass
+                if acc_equity is None:
+                    acc_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+                if free_margin is None:
+                    free_margin = acc_equity * 0.95
+
+                bundle_for_grounding = dict(raw_bundle_data) if isinstance(raw_bundle_data, dict) else {}
+                bundle_for_grounding.setdefault("account_equity", acc_equity)
+                bundle_for_grounding.setdefault("free_margin", free_margin)
+
                 curr_payload = {
                     "decision": analysis.decision,
                     "entry_price": ez_parsed.get("price") or ez_parsed.get("price_high"),
                     "stop_loss": analysis.stop_loss,
                     "take_profit": analysis.take_profit,
                     "rationale": analysis.rationale,
+                    "lot_size": getattr(analysis, "lot_size", None),
+                    "account_equity": acc_equity,
+                    "free_margin": free_margin,
                 }
                 is_grounded, ground_errors, ground_meta = InHarnessGroundingValidator.verify_grounding(
                     decision_payload=curr_payload,
-                    data_bundle=raw_bundle_data if isinstance(raw_bundle_data, dict) else {},
+                    data_bundle=bundle_for_grounding,
                     symbol=symbol,
                 )
                 if not is_grounded:
                     logger.warning(f"[{symbol}] InHarnessGrounding violations detected: {ground_errors}")
-                    if any("too far" in err or "too tight" in err or "Ungrounded" in err for err in ground_errors):
+                    if any("too far" in err or "too tight" in err or "Ungrounded" in err or "margin" in err.lower() or "spread" in err.lower() or "lot" in err.lower() for err in ground_errors):
                         logger.warning(f"[{symbol}] Demoting {analysis.decision.upper()} to WAIT due to grounding failure: {ground_errors}")
                         analysis.decision = "wait"
                         analysis.rationale = (analysis.rationale or "") + f" [GROUNDING REJECT: {'; '.join(ground_errors)}]"
@@ -1003,6 +1028,24 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                         decision = "wait"
             except Exception as ground_err:
                 logger.debug(f"[{symbol}] InHarnessGroundingValidator non-fatal: {ground_err}")
+
+            # PR-11: Cross-Timeframe Confirmation Gate (HTF Alignment Sentinel)
+            try:
+                if str(analysis.decision or "").lower() in ("buy", "sell"):
+                    from analysis.validators.cross_timeframe_gate import CrossTimeframeConfirmationGate
+                    is_aligned, htf_reason, htf_meta = CrossTimeframeConfirmationGate.verify_htf_alignment(
+                        decision=analysis.decision,
+                        data_bundle=raw_bundle_data if isinstance(raw_bundle_data, dict) else {},
+                        symbol=symbol,
+                    )
+                    if not is_aligned:
+                        logger.warning(f"[{symbol}] CrossTimeframeGate REJECT: {htf_reason}")
+                        analysis.decision = "wait"
+                        analysis.rationale = (analysis.rationale or "") + f" [HTF MISALIGNMENT REJECT: {htf_reason}]"
+                        await session.commit()
+                        decision = "wait"
+            except Exception as htf_err:
+                logger.debug(f"[{symbol}] CrossTimeframeConfirmationGate non-fatal: {htf_err}")
 
             missing_fields = []
             if analysis.confluence_score is None:

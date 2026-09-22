@@ -35,16 +35,32 @@ class TradeAuditLogger:
     ) -> Optional[int]:
         """Create a Position and MT5Signal record in DB after successful order placement."""
         try:
+            req_lots = float(getattr(sizing, 'recommended_lots', 0.0) or 0.0)
+            filled_lots = float(mt5_result.get('volume') or req_lots)
+            partially_filled = filled_lots < (req_lots - 1e-5)
+
+            exec_price = float(mt5_result.get('price') or getattr(sizing, 'entry_price', 0.0) or 0.0)
+            req_price = float(getattr(sizing, 'entry_price', 0.0) or exec_price)
+
+            from risk.position_sizing import get_instrument_spec
+            spec = get_instrument_spec(analysis.symbol)
+            pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
+            slippage_pips = round(abs(exec_price - req_price) / pip_size, 2)
+
             pos = Position(
                 order_id=order_id,
                 analysis_id=analysis.id,
                 mt5_ticket=mt5_result.get('ticket'),
                 symbol=analysis.symbol,
                 direction=analysis.decision,
-                volume=sizing.recommended_lots,
-                entry_price=mt5_result.get('price') or sizing.entry_price,
+                volume=filled_lots,
+                initial_volume=filled_lots,
+                requested_volume=req_lots,
+                entry_price=exec_price,
                 sl=analysis.stop_loss,
                 tp=analysis.take_profit,
+                slippage_pips=slippage_pips,
+                partially_filled=partially_filled,
                 opened_at=datetime.now(timezone.utc),
                 status='open',
                 is_paper=dry_run,
