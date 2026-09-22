@@ -74,3 +74,124 @@ async def test_web_reader_body_stream_limit():
             res = await reader.read_url("https://example.com/huge-file.html")
             assert res["success"] is False
             assert "exceeded" in res["error"]
+
+
+@pytest.mark.asyncio
+async def test_web_reader_browser_fallback_on_403_challenge():
+    """Verify that HTTP 403 triggers browser fallback and returns rendered content."""
+    reader = WebReader(browser_fallback=True)
+
+    mock_response = MagicMock()
+    mock_response.status = 403
+    mock_response.reason = "Forbidden"
+
+    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+        mock_val.return_value = None
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_response
+            mock_get.return_value = mock_ctx
+
+            with patch.object(reader, "_read_url_with_browser", new_callable=AsyncMock) as mock_browser:
+                mock_browser.return_value = {
+                    "success": True,
+                    "url": "https://example.com/cf-protected",
+                    "title": "Unblocked Article",
+                    "content": "Full article content after Cloudflare Turnstile bypass.",
+                    "engine": "browser",
+                }
+
+                res = await reader.read_url("https://example.com/cf-protected")
+                assert res["success"] is True
+                assert res["engine"] == "browser"
+                assert "Full article content" in res["content"]
+                mock_browser.assert_awaited_once_with("https://example.com/cf-protected")
+
+
+@pytest.mark.asyncio
+async def test_web_reader_browser_fallback_on_challenge_content_in_200():
+    """Verify that HTTP 200 with Cloudflare challenge text triggers browser fallback."""
+    reader = WebReader(browser_fallback=True)
+
+    challenge_html = "<html><head><title>Just a moment...</title></head><body><div class='cf-turnstile'>Verify you are human</div></body></html>"
+
+    async def mock_chunk_iter(*args, **kwargs):
+        yield challenge_html.encode("utf-8")
+
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.headers = {}
+    mock_response.content.iter_chunked = mock_chunk_iter
+    mock_response.get_encoding.return_value = "utf-8"
+
+    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+        mock_val.return_value = None
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_response
+            mock_get.return_value = mock_ctx
+
+            with patch.object(reader, "_read_url_with_browser", new_callable=AsyncMock) as mock_browser:
+                mock_browser.return_value = {
+                    "success": True,
+                    "url": "https://example.com/turnstile-page",
+                    "title": "Rendered Page",
+                    "content": "Rendered paragraph after browser bypass.",
+                    "engine": "browser",
+                }
+
+                res = await reader.read_url("https://example.com/turnstile-page")
+                assert res["success"] is True
+                assert res["engine"] == "browser"
+                mock_browser.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_web_reader_browser_fallback_disabled():
+    """Verify that when browser_fallback is False, 403 returns HTTP error directly."""
+    reader = WebReader(browser_fallback=False)
+
+    mock_response = MagicMock()
+    mock_response.status = 403
+    mock_response.reason = "Forbidden"
+
+    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+        mock_val.return_value = None
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_response
+            mock_get.return_value = mock_ctx
+
+            with patch.object(reader, "_read_url_with_browser", new_callable=AsyncMock) as mock_browser:
+                res = await reader.read_url("https://example.com/blocked")
+                assert res["success"] is False
+                assert "HTTP 403" in res["error"]
+                mock_browser.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_web_reader_browser_fallback_graceful_failure():
+    """Verify that if browser fallback returns None, the original HTTP failure is returned."""
+    reader = WebReader(browser_fallback=True)
+
+    mock_response = MagicMock()
+    mock_response.status = 403
+    mock_response.reason = "Forbidden"
+
+    with patch("data_sources.web_reader.validate_url_ip", new_callable=AsyncMock) as mock_val:
+        mock_val.return_value = None
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_response
+            mock_get.return_value = mock_ctx
+
+            with patch.object(reader, "_read_url_with_browser", new_callable=AsyncMock) as mock_browser:
+                mock_browser.return_value = None  # Browser failed / unavailable
+
+                res = await reader.read_url("https://example.com/blocked")
+                assert res["success"] is False
+                assert "HTTP 403" in res["error"]

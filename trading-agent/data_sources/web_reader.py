@@ -38,6 +38,38 @@ DISALLOWED_TAGS = [
     "noscript", "svg", "button", "iframe", "menu", "template",
 ]
 
+CHALLENGE_PHRASES = [
+    "just a moment",
+    "attention required",
+    "security check",
+    "cf-turnstile",
+    "challenges.cloudflare.com",
+    "enable javascript and cookies to continue",
+    "checking your browser",
+    "verify you are human",
+    "pemeriksaan keamanan",
+    "tunggu sebentar",
+]
+
+
+def is_challenge_or_empty(status: int, content: str = "", html: str = "") -> bool:
+    """Detects if response indicates a bot challenge, WAF block, or unrendered SPA."""
+    if status in (403, 429, 503):
+        return True
+    content_lower = (content or "").lower()
+    html_lower = (html or "").lower()
+    if any(phrase in content_lower or phrase in html_lower for phrase in CHALLENGE_PHRASES):
+        return True
+    # Suspiciously empty text on rich JS/SPA document
+    if len(content_lower.strip()) < 80 and (
+        "<script" in html_lower
+        or "id=\"root\"" in html_lower
+        or "id=\"app\"" in html_lower
+        or "cf-" in html_lower
+    ):
+        return True
+    return False
+
 
 def is_prohibited_ip(ip_str: str) -> bool:
     """Check if IP address is loopback, private, link-local, multicast, or reserved."""
@@ -85,12 +117,74 @@ async def validate_url_ip(url: str) -> Optional[str]:
 
 
 class WebReader:
-    """Service to fetch full webpage content and extract clean text."""
+    """Service to fetch full webpage content and extract clean text with headless browser fallback."""
 
-    def __init__(self, max_chars: int = 12000, timeout_seconds: float = 12.0, max_body_bytes: int = MAX_BODY_BYTES):
+    def __init__(
+        self,
+        max_chars: int = 12000,
+        timeout_seconds: float = 12.0,
+        max_body_bytes: int = MAX_BODY_BYTES,
+        browser_fallback: bool = True,
+        browser_timeout_seconds: float = 20.0,
+    ):
         self.max_chars = max_chars
         self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
         self.max_body_bytes = max_body_bytes
+        self.browser_fallback = browser_fallback
+        self.browser_timeout_seconds = browser_timeout_seconds
+
+    def _read_url_with_browser_sync(self, url: str) -> Optional[Dict[str, Any]]:
+        """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
+        try:
+            try:
+                from scrapers.base_scraper import BaseScraper
+            except ImportError:
+                from trading_agent.scrapers.base_scraper import BaseScraper  # type: ignore[no-redef]
+            scraper = BaseScraper(headless=True, profile_name=None)
+        except Exception as e:
+            logger.warning(f"WebReader browser fallback unavailable (BaseScraper error): {e}")
+            return None
+
+        try:
+            logger.info(f"WebReader attempting headless browser fallback for: {url}")
+            success = scraper.navigate_with_fallback(url, disable_fallback=True, timeout=15)
+            if not success or not scraper.page:
+                logger.warning(f"WebReader browser fallback failed to navigate: {url}")
+                return None
+
+            page_obj: Any = scraper.page
+            if hasattr(page_obj, "wait"):
+                page_obj.wait(2)
+
+            html = getattr(page_obj, "html", "") or ""
+            if not html:
+                return None
+
+            result = self._extract_content(url, html)
+            result["engine"] = "browser"
+            return result
+        except Exception as e:
+            logger.warning(f"WebReader browser fallback error for {url}: {e}")
+            return None
+        finally:
+            try:
+                scraper.close()
+            except Exception:
+                pass
+
+    async def _read_url_with_browser(self, url: str) -> Optional[Dict[str, Any]]:
+        """Asynchronously executes browser fallback in a worker thread with a timeout."""
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._read_url_with_browser_sync, url),
+                timeout=self.browser_timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"WebReader browser fallback timed out for {url}")
+            return None
+        except Exception as e:
+            logger.warning(f"WebReader browser fallback execution failed for {url}: {e}")
+            return None
 
     async def read_url(self, url: str) -> Dict[str, Any]:
         """
@@ -105,6 +199,7 @@ class WebReader:
                 "error": f"Invalid URL: '{clean_url}'",
                 "content": "",
                 "title": "",
+                "engine": "http",
             }
 
         try:
@@ -121,6 +216,7 @@ class WebReader:
                         "error": ssrf_error,
                         "content": "",
                         "title": "",
+                        "engine": "http",
                     }
 
                 async with aiohttp.ClientSession(timeout=self.timeout, headers=DEFAULT_HEADERS) as session:
@@ -133,14 +229,20 @@ class WebReader:
                             continue
 
                         if response.status != 200:
-                            return {
+                            http_err_res = {
                                 "success": False,
                                 "url": clean_url,
                                 "status": response.status,
                                 "error": f"HTTP {response.status}: {response.reason}",
                                 "content": "",
                                 "title": "",
+                                "engine": "http",
                             }
+                            if self.browser_fallback and is_challenge_or_empty(response.status, "", ""):
+                                browser_res = await self._read_url_with_browser(current_url)
+                                if browser_res and browser_res.get("success") and browser_res.get("content"):
+                                    return browser_res
+                            return http_err_res
 
                         chunks = []
                         total_bytes = 0
@@ -154,6 +256,7 @@ class WebReader:
                                     "error": f"Response size exceeded {self.max_body_bytes} bytes limit",
                                     "content": "",
                                     "title": "",
+                                    "engine": "http",
                                 }
                             chunks.append(chunk)
 
@@ -164,7 +267,13 @@ class WebReader:
                         except Exception:
                             html = raw_bytes.decode("utf-8", errors="replace")
 
-                        return self._extract_content(clean_url, html)
+                        content_res = self._extract_content(clean_url, html)
+                        if self.browser_fallback and is_challenge_or_empty(response.status, content_res.get("content", ""), html):
+                            logger.info(f"WebReader detected challenge or empty SPA in HTTP response for {clean_url}, trying browser fallback")
+                            browser_res = await self._read_url_with_browser(current_url)
+                            if browser_res and browser_res.get("success") and browser_res.get("content"):
+                                return browser_res
+                        return content_res
 
             return {
                 "success": False,
@@ -172,16 +281,22 @@ class WebReader:
                 "error": "Too many redirects",
                 "content": "",
                 "title": "",
+                "engine": "http",
             }
 
         except asyncio.TimeoutError:
             logger.warning(f"WebReader timeout for URL: {clean_url}")
+            if self.browser_fallback:
+                browser_res = await self._read_url_with_browser(clean_url)
+                if browser_res and browser_res.get("success") and browser_res.get("content"):
+                    return browser_res
             return {
                 "success": False,
                 "url": clean_url,
                 "error": "Request timed out",
                 "content": "",
                 "title": "",
+                "engine": "http",
             }
         except Exception as e:
             logger.warning(f"WebReader error fetching {clean_url}: {e}")
@@ -191,6 +306,7 @@ class WebReader:
                 "error": str(e),
                 "content": "",
                 "title": "",
+                "engine": "http",
             }
 
     def _extract_content(self, url: str, html: str) -> Dict[str, Any]:
@@ -244,4 +360,5 @@ class WebReader:
             "content": extracted_text,
             "length": len(extracted_text),
             "truncated": is_truncated,
+            "engine": "http",
         }
