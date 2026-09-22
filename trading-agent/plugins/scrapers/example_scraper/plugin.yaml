@@ -1,0 +1,16 @@
+name: example_scraper_plugin
+version: 1.0.0
+description: Reference external news scraper plugin for market data feeds
+author: Monika Core Team
+enabled: true
+entrypoint: "example_scraper:initialize"
+dependencies: []
+hooks:
+  on_startup: "example_scraper:initialize"
+  pre_tool_call: "example_scraper:pre_tool_call"
+tools:
+  - name: fetch_external_wire_feed
+    description: Fetches financial wire feed news from external source
+    entrypoint: "example_scraper:fetch_external_wire_feed"
+    category: news
+config: {}

@@ -234,6 +234,7 @@ class TradingAgent:
     mt5_health_checker: Optional[Any]
     risk_parameter_reloader: Optional[Any]
     task_registry: Optional[Any]
+    plugin_loader: Optional[Any]
     _recovery_task: Optional[asyncio.Task]
     _tg_task: Optional[asyncio.Task]
     _mt5_degraded: bool
@@ -569,6 +570,17 @@ class TradingAgent:
 
         from scheduler.playbook_curator import PlaybookCurator
         self.playbook_curator = PlaybookCurator(self.settings)
+
+        # Initialize and load active plugins
+        try:
+            from plugins.loader import PluginLoader
+            self.plugin_loader = PluginLoader()
+            plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
+            loaded_plugins = self.plugin_loader.load_plugins_from_directory(plugins_dir)
+            if loaded_plugins:
+                logger.info(f"Loaded {len(loaded_plugins)} plugins: {', '.join(p.name for p in loaded_plugins)}")
+        except Exception as e:
+            logger.warning(f"Plugin initialization error: {e}")
 
         logger.info("All components initialized")
 
