@@ -60,3 +60,28 @@ async def get_tokens_recent(limit: int = Query(default=50, ge=1, le=200, descrip
     from utils.analytics.token_auditor import TokenAuditor
     logs = await TokenAuditor.get_recent_logs(limit=limit)
     return {"total": len(logs), "items": logs}
+
+
+@router.get("/api/v1/tokens/cycles", tags=["Token Audit"])
+async def get_tokens_by_cycle(
+    cycle_id: str = Query(None, description="Filter by specific cycle_id"),
+    hours: int = Query(24, description="Time window in hours"),
+):
+    """Get per-turn cost tracking and cost accumulator per cycle per model per role (PR-21)."""
+    from utils.analytics.token_auditor import TokenAuditor
+    return await TokenAuditor.get_cycle_cost_breakdown(cycle_id=cycle_id, hours=hours)
+
+
+@router.get("/api/v1/tokens/per-turn-cost", tags=["Token Audit"])
+async def get_per_turn_cost_metrics(hours: int = Query(24, description="Time window in hours")):
+    """Get average and aggregated turn cost metrics across AI models and roles (PR-21)."""
+    from utils.analytics.token_auditor import TokenAuditor
+    data = await TokenAuditor.get_cycle_cost_breakdown(hours=hours)
+    return {
+        "time_window_hours": hours,
+        "total_turns": data["total_turns"],
+        "total_cost_usd": data["total_cost_usd"],
+        "avg_cost_per_turn_usd": data["avg_cost_per_turn_usd"],
+        "cycle_count": data["total_cycles"],
+    }
+

@@ -1,8 +1,10 @@
 """
-Cache Breakpoint Manager — Optimizes Anthropic Prompt Caching for 4-Tier Prompts.
+Cache Breakpoint Manager — Optimizes Anthropic / Gemini Prompt Caching.
 
-Enables KV-cache prefix reuse up to 90%+ by inserting explicit `cache_control: {"type": "ephemeral"}`
-breakpoints at immutable Tier boundaries.
+Note (Monika v2 / PR-05): In Monika v2, prefix KV-caching is primarily governed by
+DSH-aligned structural context layouts (frozen static prefixes + 8-section structured
+summaries + volatile tails in analysis/harness/context_compressor.py).
+This class is maintained for backward compatibility with Anthropic/Gemini provider adapters.
 """
 
 import logging

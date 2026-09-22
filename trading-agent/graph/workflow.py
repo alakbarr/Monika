@@ -26,7 +26,6 @@ import asyncio
 import functools
 import inspect
 from graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate, prune_before_execution
-from graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
 from logging_observability.tracing.spans import node_span
 import time
 from analysis.event_broadcaster import emit_analysis_event
@@ -261,16 +260,7 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
     workflow.add_edge("prune_execution", "execution")
     workflow.add_edge("execution", END)
     
-    # Always initialize persistent local SQLite checkpointer (zero-loss fallback)
-    from graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
-    from graph.checkpointers.dual_checkpointer import DualCheckpointSaver
-
-    sqlite_checkpointer = None
-    try:
-        sqlite_checkpointer = SqliteCheckpointSaver(".agent_state/checkpoints.sqlite")
-    except Exception as sq_err:
-        logger.warning(f"SqliteCheckpointSaver init failed: {sq_err}")
-
+    # Monika v2 (PR-04): Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
     checkpointer = None
     if db_url:
         pg_url = db_url.replace('+asyncpg', '').replace('postgresql+psycopg2', 'postgresql')
@@ -286,23 +276,17 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
                 )
                 pg_checkpointer = AsyncPostgresSaver(pool)
                 setattr(pg_checkpointer, "_needs_setup", True)
-                logger.info('LangGraph: PostgreSQL checkpointer created (setup pending)')
-
-                if sqlite_checkpointer is not None:
-                    # Always-on Dual-Write: PostgreSQL Primary + SQLite Secondary
-                    checkpointer = DualCheckpointSaver(primary=pg_checkpointer, secondary=sqlite_checkpointer)
-                    logger.info('LangGraph: DualCheckpointSaver activated (PostgreSQL + SQLite dual-write)')
-                else:
-                    checkpointer = pg_checkpointer
+                checkpointer = pg_checkpointer
+                logger.info('LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)')
             except ImportError:
-                logger.warning('langgraph-checkpoint-postgres not installed, using SQLite checkpointer fallback')
-                checkpointer = sqlite_checkpointer or (MemorySaver() if MemorySaver is not None else None)
+                logger.warning('langgraph-checkpoint-postgres not installed, using MemorySaver fallback')
+                checkpointer = MemorySaver() if MemorySaver is not None else None
             except Exception as e:
-                logger.error(f'PostgreSQL checkpointer init failed: {e}. Using SQLite fallback.')
-                checkpointer = sqlite_checkpointer or (MemorySaver() if MemorySaver is not None else None)
+                logger.error(f'PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.')
+                checkpointer = MemorySaver() if MemorySaver is not None else None
         else:
-            checkpointer = sqlite_checkpointer or (MemorySaver() if MemorySaver is not None else None)
+            checkpointer = MemorySaver() if MemorySaver is not None else None
     else:
-        checkpointer = sqlite_checkpointer or (MemorySaver() if MemorySaver is not None else None)
+        checkpointer = MemorySaver() if MemorySaver is not None else None
         
     return workflow.compile(checkpointer=checkpointer)

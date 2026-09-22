@@ -24,7 +24,8 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+import math
+from typing import Optional, Any
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -316,6 +317,82 @@ class RiskGate:
 
     # Backward compatibility alias
     check = evaluate
+
+    async def evaluate_proposal(
+        self,
+        session: AsyncSession,
+        proposal: Any,
+        account_equity: Optional[float] = None,
+        as_of: Optional[datetime] = None,
+        is_backtest: bool = False,
+        is_paper: Optional[bool] = None,
+    ) -> RiskVerdict:
+        """
+        PR-14: Financial Fortress entrypoint validating an immutable TradeProposal.
+        First executes FortressAdmissionValidator boundary checks.
+        If admitted, transforms proposal parameters into SizingResult and delegates to evaluate().
+        """
+        from risk.trade_proposal import FortressAdmissionValidator
+        admitted, rejections = FortressAdmissionValidator.validate_proposal(proposal)
+        if not admitted:
+            logger.warning(f"[{proposal.symbol}] Fortress admission rejected proposal {proposal.proposal_id}: {rejections}")
+            return RiskVerdict(
+                approved=False,
+                symbol=proposal.symbol,
+                proposed_lots=proposal.lot_size,
+                checks_passed=[],
+                checks_failed=["fortress_admission"],
+                rejection_reasons=rejections,
+            )
+
+        if proposal.direction == "WAIT":
+            return RiskVerdict(
+                approved=True,
+                symbol=proposal.symbol,
+                proposed_lots=0.0,
+                checks_passed=["fortress_admission", "non_directional"],
+                checks_failed=[],
+                rejection_reasons=[],
+            )
+
+        eq = account_equity or proposal.account_equity or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        sl_dist = abs(proposal.entry_price - proposal.stop_loss)
+        tp_dist = abs(proposal.take_profit - proposal.entry_price) if proposal.take_profit else 0.0
+        rr = (tp_dist / sl_dist) if sl_dist > 1e-7 else 1.0
+        risk_pct = float(proposal.metadata.get("risk_pct", 1.0)) if isinstance(proposal.metadata, dict) else 1.0
+        risk_amount = eq * (risk_pct / 100.0)
+        pips = sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0
+
+        sizing = SizingResult(
+            symbol=proposal.symbol,
+            direction=proposal.direction.lower(),
+            entry_price=proposal.entry_price,
+            stop_loss=proposal.stop_loss,
+            take_profit=proposal.take_profit,
+            account_equity=eq,
+            risk_percent=risk_pct,
+            risk_amount_usd=risk_amount,
+            sl_distance_price=sl_dist,
+            sl_distance_pips=pips,
+            pip_value_per_lot=10.0,
+            raw_lots=proposal.lot_size,
+            recommended_lots=proposal.lot_size,
+            rr_ratio=rr,
+            is_valid=True,
+        )
+
+        return await self.evaluate(
+            session=session,
+            symbol=proposal.symbol,
+            direction=proposal.direction.lower(),
+            sizing=sizing,
+            account_equity=account_equity or proposal.account_equity,
+            as_of=as_of,
+            is_backtest=is_backtest,
+            is_paper=is_paper,
+        )
+
+    check_proposal = evaluate_proposal
 
     # ------------------------------------------------------------------
     # Individual checks
@@ -1107,8 +1184,12 @@ class RiskGate:
             
             if len(s2_rows) >= 30:
                 df2 = pd.DataFrame(s2_rows, columns=["timestamp", "close2"]).set_index("timestamp").sort_index()
-                std2 = df2["close2"].pct_change().std()
-                std2 = fallback_std if pd.isna(std2) else float(std2)
+                try:
+                    raw_val: Any = df2["close2"].pct_change().std()
+                    std2_raw = float(raw_val)
+                    std2 = fallback_std if math.isnan(std2_raw) else std2_raw
+                except (TypeError, ValueError):
+                    std2 = fallback_std
             else:
                 std2 = fallback_std
         except Exception:

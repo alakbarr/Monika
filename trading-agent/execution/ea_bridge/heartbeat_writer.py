@@ -18,7 +18,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 logger = logging.getLogger("TradingAgent.Heartbeat")
 
@@ -128,6 +128,14 @@ class HeartbeatManager:
         except Exception as e:
             logger.debug(f"EA heartbeat check error: {e}")
             return False, -1
+
+    def get_watchdog(self, check_interval_seconds: float = 15.0) -> Any:
+        """PR-16: Returns an active EAWatchdog instance bound to this manager."""
+        from execution.ea_bridge.watchdog import EAWatchdog
+        return EAWatchdog(
+            heartbeat_manager=self,
+            check_interval_seconds=check_interval_seconds,
+        )
 
 
 # Canonical backward compatibility alias

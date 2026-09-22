@@ -182,6 +182,19 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
     # Apply schema versioning and migrations
     if isinstance(settings, dict):
         settings, _ = migrate_config(settings)
+        llm_cfg = settings.get("llm")
+        if isinstance(llm_cfg, dict):
+            cp_cfg = llm_cfg.get("credential_pool")
+            if isinstance(cp_cfg, dict):
+                try:
+                    from provider.credential_pool import get_credential_pool
+                    pool = get_credential_pool()
+                    if "base_cooldown_seconds" in cp_cfg:
+                        pool.base_cooldown_seconds = float(cp_cfg["base_cooldown_seconds"])
+                    if "max_cooldown_seconds" in cp_cfg:
+                        pool.max_cooldown_seconds = float(cp_cfg["max_cooldown_seconds"])
+                except Exception:
+                    pass
 
     if validate or return_model:
         model = validate_config(settings)

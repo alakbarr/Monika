@@ -209,7 +209,7 @@ class SignalArbitrator:
                     use_dynamic = bool(self.arbitration_cfg.get("dynamic_brier_weighting", True))
                     
                     if use_dynamic and session:
-                        w_q, w_l = await compute_empirical_arbitrator_weights(session, def_wq, def_wl)
+                        w_q, w_l = await compute_empirical_arbitrator_weights(session, def_wq, def_wl, symbol=symbol)
                     else:
                         w_q, w_l = def_wq, def_wl
                         
@@ -519,20 +519,22 @@ async def compute_empirical_arbitrator_weights(
     session,
     default_quant: float = 0.45,
     default_llm: float = 0.55,
-    lookback_limit: int = 30
+    lookback_limit: int = 30,
+    decay_factor: float = 0.94,
+    symbol: Optional[str] = None,
 ) -> tuple[float, float]:
     """
     Menghitung bobot empiris dinamis untuk Quant vs LLM berbasis inverse Brier Score (1 - Brier)
-    dari trade historis tertutup.
+    dari trade historis tertutup dengan pembobotan peluruhan waktu (recency decay) dan streak penalty.
     Clamps bobot pada rentang aman [0.20, 0.80].
-    Fallback ke (default_quant, default_llm) jika sampel < 15.
+    Fallback ke (default_quant, default_llm) jika sampel < 10.
     """
     if not session:
         return default_quant, default_llm
     try:
         from database.models import PaperTradeRecord, AssetAnalysis
         from sqlalchemy import select
-        
+
         stmt = (
             select(PaperTradeRecord, AssetAnalysis)
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
@@ -545,22 +547,39 @@ async def compute_empirical_arbitrator_weights(
         records = exec_res.all() if hasattr(exec_res, 'all') else []
         if len(records) < 10:
             return default_quant, default_llm
-            
+
         brier_llm_list = []
         brier_quant_list = []
-        
-        for rec, ana in records:
+        recent_llm_outcomes = []
+        recent_quant_outcomes = []
+
+        clean_sym = symbol.strip().upper() if symbol else None
+
+        for idx, item in enumerate(records):
+            rec = item[0] if isinstance(item, (tuple, list)) else item
+            ana = item[1] if isinstance(item, (tuple, list)) and len(item) > 1 else None
+
             is_win = 1.0 if (getattr(rec, 'exit_reason', None) == 'tp_hit' or (getattr(rec, 'pnl_pct', None) and rec.pnl_pct > 0)) else 0.0
-            
+
+            # Exponential recency decay (idx 0 is most recent)
+            rec_w = float(decay_factor ** idx)
+            # Extra weight if symbol matches
+            rec_sym = (getattr(rec, 'symbol', '') or '').strip().upper()
+            if clean_sym and rec_sym == clean_sym:
+                rec_w *= 1.4
+
             # LLM Brier extraction
             if ana and getattr(ana, 'confidence', None) is not None:
                 try:
                     conf_l = float(ana.confidence)
-                    brier_llm_list.append((conf_l - is_win) ** 2)
+                    err_sq = (conf_l - is_win) ** 2
+                    brier_llm_list.append((err_sq, rec_w))
+                    if len(recent_llm_outcomes) < 5:
+                        recent_llm_outcomes.append(is_win)
                 except (ValueError, TypeError):
                     pass
-                
-            # Quant Brier extraction (from quant signals, strategy runners, or concordant executions)
+
+            # Quant Brier extraction
             rec_src = getattr(rec, 'decision_source', '') or ''
             has_quant_src = rec_src in ("quant", "strategy_runner", "concordant") or (ana and getattr(ana, "source_strategy_id", None) is not None)
             if has_quant_src:
@@ -570,20 +589,49 @@ async def compute_empirical_arbitrator_weights(
                         q_conf = float(ana.strategy_confidence)
                     except (ValueError, TypeError):
                         q_conf = 0.60
-                brier_quant_list.append((q_conf - is_win) ** 2)
-                
-        mean_brier_llm = sum(brier_llm_list) / len(brier_llm_list) if len(brier_llm_list) >= 8 else 0.25
-        mean_brier_quant = sum(brier_quant_list) / len(brier_quant_list) if len(brier_quant_list) >= 8 else 0.25
-        
-        acc_q = max(0.01, 1.0 - mean_brier_quant)
-        acc_l = max(0.01, 1.0 - mean_brier_llm)
-        
+                err_sq = (q_conf - is_win) ** 2
+                brier_quant_list.append((err_sq, rec_w))
+                if len(recent_quant_outcomes) < 5:
+                    recent_quant_outcomes.append(is_win)
+
+        # Weighted mean Brier calculations
+        if len(brier_llm_list) >= 8:
+            sum_weighted_err = sum(err * w for err, w in brier_llm_list)
+            sum_weights = sum(w for _, w in brier_llm_list)
+            mean_brier_llm = sum_weighted_err / max(1e-6, sum_weights)
+        else:
+            mean_brier_llm = 0.25
+
+        if len(brier_quant_list) >= 8:
+            sum_weighted_err = sum(err * w for err, w in brier_quant_list)
+            sum_weights = sum(w for _, w in brier_quant_list)
+            mean_brier_quant = sum_weighted_err / max(1e-6, sum_weights)
+        else:
+            mean_brier_quant = 0.25
+
+        # Streak adjustments: penalty for 3 consecutive losses
+        llm_streak_mult = 1.0
+        if len(recent_llm_outcomes) >= 3 and all(w == 0.0 for w in recent_llm_outcomes[:3]):
+            llm_streak_mult = 0.88  # 12% penalty on losing streak
+        elif len(recent_llm_outcomes) >= 3 and all(w == 1.0 for w in recent_llm_outcomes[:3]):
+            llm_streak_mult = 1.08  # 8% reward on winning streak
+
+        quant_streak_mult = 1.0
+        if len(recent_quant_outcomes) >= 3 and all(w == 0.0 for w in recent_quant_outcomes[:3]):
+            quant_streak_mult = 0.88
+        elif len(recent_quant_outcomes) >= 3 and all(w == 1.0 for w in recent_quant_outcomes[:3]):
+            quant_streak_mult = 1.08
+
+        acc_q = max(0.01, (1.0 - mean_brier_quant) * quant_streak_mult)
+        acc_l = max(0.01, (1.0 - mean_brier_llm) * llm_streak_mult)
+
         total_acc = acc_q + acc_l
         raw_w_q = acc_q / max(1e-6, total_acc)
-        
+
         clamped_w_q = max(0.20, min(0.80, raw_w_q))
         clamped_w_l = round(1.0 - clamped_w_q, 4)
         return round(clamped_w_q, 4), clamped_w_l
     except Exception as e:
         logger.debug(f"Dynamic arbitrator weight computation fallback: {e}")
         return default_quant, default_llm
+
