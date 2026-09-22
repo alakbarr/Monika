@@ -67,10 +67,27 @@ def upgrade() -> None:
         if bind_dialect == 'postgresql':
             op.create_index('idx_tslog_fts', 'trading_state_logs', ['search_vector'], postgresql_using='gin')
 
+    # 4. cycle_events
+    if 'cycle_events' not in tables:
+        op.create_table(
+            'cycle_events',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('cycle_id', sa.String(length=64), nullable=False, index=True),
+            sa.Column('sequence', sa.Integer(), nullable=False),
+            sa.Column('event_type', sa.String(length=64), nullable=False),
+            sa.Column('payload', sa.JSON(), nullable=False),
+            sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.UniqueConstraint('cycle_id', 'sequence', name='uq_cycle_event_seq'),
+        )
+        op.create_index('idx_cycle_event_type', 'cycle_events', ['event_type'])
+
 
 def downgrade() -> None:
     conn = op.get_bind()
     tables = _get_existing_tables(conn)
+
+    if 'cycle_events' in tables:
+        op.drop_table('cycle_events')
 
     if 'trading_state_logs' in tables:
         op.drop_table('trading_state_logs')
