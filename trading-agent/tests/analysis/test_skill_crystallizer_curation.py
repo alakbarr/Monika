@@ -44,7 +44,9 @@ async def test_skill_crystallizer_llm_synthesis(tmp_path):
     content = skill_file.read_text(encoding="utf-8")
     assert "status: active" in content
     # Ensure synthesized tactical directives exist and contain high conviction rules
+    assert "## Empirical Track Record" in content
     assert "## Core Tactical Directives" in content
+    assert "## Invalidation Scenarios" in content
     assert "- " in content
     assert any(term in content.lower() for term in ["breakout", "liquidity", "resistance", "risk", "entry", "retest"])
 
@@ -128,4 +130,38 @@ def test_is_skill_deprecated_helper(tmp_path):
     assert SkillCrystallizer.is_skill_deprecated("crystallized_deprecated_test", skills_dir=tmp_path) is True
     assert SkillCrystallizer.is_skill_deprecated("crystallized_active_test", skills_dir=tmp_path) is False
     assert SkillCrystallizer.is_skill_deprecated("non_existent_skill", skills_dir=tmp_path) is False
+
+
+@pytest.mark.asyncio
+async def test_skill_crystallizer_configurable_threshold(tmp_path):
+    """Verify min_crystallization_wins threshold gating."""
+    crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 3}})
+    crystallizer.SKILLS_DIR = tmp_path
+
+    mock_session = AsyncMock()
+    mock_r1 = MagicMock()
+    mock_r1.symbol = "ETHUSD"
+    mock_r1.confidence = 0.90
+    mock_r1.outcome_pnl_usd = 200.0
+    mock_r1.reflection_text = "TREND | Breakout"
+    mock_r1.alpha_lesson = "Test rule 1"
+    mock_r1.specific_lesson = None
+    mock_r1.rationale_summary = None
+
+    mock_r2 = MagicMock()
+    mock_r2.symbol = "ETHUSD"
+    mock_r2.confidence = 0.90
+    mock_r2.outcome_pnl_usd = 250.0
+    mock_r2.reflection_text = "TREND | Breakout"
+    mock_r2.alpha_lesson = "Test rule 2"
+    mock_r2.specific_lesson = None
+    mock_r2.rationale_summary = None
+
+    mock_execute_res = MagicMock()
+    mock_execute_res.scalars.return_value.all.return_value = [mock_r1, mock_r2]
+    mock_session.execute.return_value = mock_execute_res
+
+    # With min_crystallization_wins = 3, 2 reflections should not trigger crystallization
+    res = await crystallizer.evaluate_and_crystallize(mock_session, symbol="ETHUSD")
+    assert len(res) == 0
 

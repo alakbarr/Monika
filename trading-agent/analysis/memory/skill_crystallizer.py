@@ -102,9 +102,10 @@ class SkillCrystallizer:
                 key = f"{sym}_{regime}".replace(" ", "_").replace("/", "_")
                 clusters.setdefault(key, []).append(r)
 
-            # 3. Crystallize clusters with >= 2 successful instances
+            # 3. Crystallize clusters with >= min_wins successful instances
+            min_wins = int(self.settings.get("learning", {}).get("min_crystallization_wins", 2))
             for cluster_key, reflections in clusters.items():
-                if len(reflections) >= 2:
+                if len(reflections) >= min_wins:
                     skill_meta = await self._crystallize_cluster(session, cluster_key, reflections)
                     if skill_meta:
                         crystallized.append(skill_meta)
@@ -134,7 +135,7 @@ class SkillCrystallizer:
 
         skill_content = f"""---
 name: crystallized_{cluster_key.lower()}
-description: Crystallized institutional playbook for {symbol} verified across {len(reflections)} winning cycles.
+description: Institutional playbook for {symbol} verified across {len(reflections)} winning cycles.
 symbol: {symbol}
 win_count: {len(reflections)}
 avg_confidence: {avg_conf:.2f}
@@ -148,6 +149,11 @@ last_crystallized_at: {datetime.now(timezone.utc).isoformat()}
 ## Empirical Setup Verification
 This skill was autonomously crystallized by the Closed-Loop Learning engine based on {len(reflections)} profitable trading resolutions.
 
+## Empirical Track Record
+- Reliability Status: High-Conviction Institutional Setup
+- Sample Size: {len(reflections)} verified winning trades
+- Baseline Conviction: {avg_conf:.0%}
+
 ## Core Tactical Directives
 {rules_body}
 
@@ -155,6 +161,11 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Minimum Confluence Score: 7.5 / 14.0
 - Minimum Reward-to-Risk: 1.30
 - Mandatory Stop Loss Buffer: >= 1.0x verified H4 ATR 14
+
+## Invalidation Scenarios
+- Invalidate immediately if an opposing higher-timeframe structural break (BOS/ChoCH) occurs prior to entry trigger.
+- Cancel setup if Tier-1 macroeconomic volatility event occurs within 30 minutes before or after entry window.
+- Invalidate if price fails to generate immediate displacement following the initial liquidity sweep.
 """
 
         # Save to disk with read-before-write inspection
