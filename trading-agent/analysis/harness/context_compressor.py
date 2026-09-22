@@ -21,6 +21,18 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.ContextCompressor")
 
+# DSH-aligned 8-section standardized trading domain summary schema (PR-06)
+TRADING_SUMMARY_SECTIONS: List[str] = [
+    "market_regime",
+    "technical_structure",
+    "liquidity_pois",
+    "intermarket_sentiment",
+    "active_hypotheses",
+    "established_levels",
+    "risk_constraints",
+    "completed_actions_evidence",
+]
+
 
 def safe_unicode_slice(text: str, max_chars: int) -> str:
     """
@@ -149,27 +161,43 @@ class ContextCompressor:
         if split_idx <= 1 or split_idx >= len(messages):
             return split_idx
 
-        # If split_idx lands on a user message containing tool_result, shift back to include preceding assistant turn
+        # If split_idx lands on a message containing tool_result or role=="tool",
+        # walk back to include the initiating assistant turn
         msg = messages[split_idx]
         content = msg.get("content")
+        role = msg.get("role")
         has_tool_result = False
-        if isinstance(content, list):
+        if role == "tool":
+            has_tool_result = True
+        elif isinstance(content, list):
             has_tool_result = any(
                 isinstance(b, dict) and b.get("type") == "tool_result" for b in content
             )
-        elif isinstance(content, str) and msg.get("role") == "tool":
+        elif isinstance(content, str) and role in ("tool", "user") and "tool_result" in content:
             has_tool_result = True
 
         if has_tool_result and split_idx > 1:
-            return split_idx - 1
+            curr = split_idx
+            while curr > 1:
+                prev_msg = messages[curr - 1]
+                prev_role = prev_msg.get("role")
+                if prev_role == "assistant":
+                    return curr - 1
+                elif prev_role in ("tool", "user"):
+                    curr -= 1
+                else:
+                    break
+            return max(1, curr - 1)
 
-        # If preceding message has tool_use, verify tool_result is not severed
+        # If preceding message has tool_use or tool_calls, shift back to keep pair intact
         prev_msg = messages[split_idx - 1]
         prev_content = prev_msg.get("content")
         has_tool_use = False
-        if isinstance(prev_content, list):
+        if "tool_calls" in prev_msg and prev_msg["tool_calls"]:
+            has_tool_use = True
+        elif isinstance(prev_content, list):
             has_tool_use = any(
-                isinstance(b, dict) and b.get("type") == "tool_use" for b in prev_content
+                isinstance(b, dict) and b.get("type") in ("tool_use", "tool_call") for b in prev_content
             )
         if has_tool_use and split_idx > 1:
             return split_idx - 1
@@ -187,10 +215,18 @@ class ContextCompressor:
         filtered = []
         for m in middle_messages:
             cnt = str(m.get("content", ""))
-            if "[CONDENSED CONTEXT SUMMARY" in cnt:
+            if "<compacted-summary>" in cnt:
+                match = re.search(r"<compacted-summary>(.*?)</compacted-summary>", cnt, re.DOTALL)
+                if match:
+                    existing_summary = match.group(1).strip()
+                else:
+                    filtered.append(m)
+            elif "[CONDENSED CONTEXT SUMMARY" in cnt:
                 match = re.search(r"\[CONDENSED CONTEXT SUMMARY —.*?\]\n(.*?)\n\[END SUMMARY", cnt, re.DOTALL)
                 if match:
                     existing_summary = match.group(1).strip()
+                else:
+                    filtered.append(m)
             else:
                 filtered.append(m)
         return existing_summary, filtered
@@ -240,6 +276,72 @@ class ContextCompressor:
 
         return head, middle, tail
 
+    def _extract_structured_trading_sections(self, messages: List[dict]) -> Dict[str, List[str]]:
+        """Extract facts classified into 8 DSH-aligned trading domain sections."""
+        categorized: Dict[str, List[str]] = {sec: [] for sec in TRADING_SUMMARY_SECTIONS}
+        seen: set = set()
+
+        for msg in messages:
+            content = msg.get("content", "")
+            text = ""
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                text = " ".join(
+                    str(b.get("content", "")) for b in content if isinstance(b, dict)
+                )
+
+            # Rule patterns mapped to sections
+            section_patterns = [
+                # 1. Market Regime
+                ("market_regime", r"(DXY\s*[:=]\s*\d+\.?\d*)"),
+                ("market_regime", r"(VIX\s*[:=]\s*\d+\.?\d*)"),
+                ("market_regime", r"(regime\s*[:=]\s*[A-Z_]+)"),
+                ("market_regime", r"(macro\s*[:=]\s*[^,\n\.]+)"),
+                # 2. Technical Structure
+                ("technical_structure", r"(ATR(?:_14)?\s*[:=]\s*\d+\.?\d*)"),
+                ("technical_structure", r"(RSI(?:_14)?\s*[:=]\s*\d+\.?\d*)"),
+                ("technical_structure", r"(BOS\s*[:=]\s*[^,\n\.]+)"),
+                ("technical_structure", r"(ChoCH\s*[:=]\s*[^,\n\.]+)"),
+                ("technical_structure", r"(trend\s*[:=]\s*(?:bullish|bearish|neutral|ranging))"),
+                # 3. Liquidity POIs
+                ("liquidity_pois", r"((?:order\s*block|OB)\s*[:=]\s*[^,\n\.]+)"),
+                ("liquidity_pois", r"((?:FVG|fair\s*value\s*gap)\s*[:=]\s*[^,\n\.]+)"),
+                ("liquidity_pois", r"((?:liquidity|sweep)\s*[:=]\s*[^,\n\.]+)"),
+                ("liquidity_pois", r"(Asian\s*(?:range|high|low)\s*[:=]\s*[^,\n\.]+)"),
+                # 4. Intermarket Sentiment
+                ("intermarket_sentiment", r"((?:yield|10Y|treasury)\s*[:=]\s*[^,\n\.]+)"),
+                ("intermarket_sentiment", r"(COT\s*[:=]\s*[^,\n\.]+)"),
+                ("intermarket_sentiment", r"(sentiment\s*[:=]\s*[^,\n\.]+)"),
+                # 5. Active Hypotheses
+                ("active_hypotheses", r"(bias\s*[:=]\s*(?:bullish|bearish|neutral))"),
+                ("active_hypotheses", r"(confluence(?:\s*score)?\s*[:=]\s*[^,\n\.]+)"),
+                ("active_hypotheses", r"(thesis\s*[:=]\s*[^,\n\.]+)"),
+                # 6. Established Levels
+                ("established_levels", r"(\b[A-Z]{3,6}\b\s*price\s*[:=]\s*\d+\.?\d*)"),
+                ("established_levels", r"(Stop\s*Loss\s*[:=]\s*\d+\.?\d*)"),
+                ("established_levels", r"(Take\s*Profit\s*[:=]\s*\d+\.?\d*)"),
+                ("established_levels", r"(invalidation\s*[:=]\s*[^,\n\.]+)"),
+                ("established_levels", r"(entry\s*[:=]\s*\d+\.?\d*)"),
+                # 7. Risk Constraints
+                ("risk_constraints", r"((?:lot\s*size|lots)\s*[:=]\s*\d+\.?\d*)"),
+                ("risk_constraints", r"(R:R\s*[:=]\s*\d+\.?\d*)"),
+                ("risk_constraints", r"(ADR\s*[:=]\s*[^,\n\.]+)"),
+                ("risk_constraints", r"(max\s*risk\s*[:=]\s*[^,\n\.]+)"),
+                # 8. Completed Actions Evidence
+                ("completed_actions_evidence", r"((?:action|verified|tool)\s*[:=]\s*[^,\n\.]+)"),
+            ]
+
+            for sec, pat in section_patterns:
+                matches = re.findall(pat, text, re.IGNORECASE)
+                for m in matches:
+                    f = m.strip()
+                    if f and f.lower() not in seen:
+                        seen.add(f.lower())
+                        categorized[sec].append(f)
+
+        return categorized
+
     def _extract_deterministic_facts(self, messages: List[dict]) -> List[str]:
         """Fallback rule-based extraction when auxiliary LLM is unavailable."""
         facts = []
@@ -278,16 +380,16 @@ class ContextCompressor:
     async def summarize_middle(self, middle_messages: List[dict]) -> str:
         """Phase 3: Auxiliary Model Summarization with Iterative Chaining.
 
-        Summarizes middle conversation turns using an ultra-cheap model
-        (gemini-3.5-flash-lite, thinking: none) or falls back to rule extraction.
-        Feasibility check: If middle segment is small (< 1000 tokens / 4000 chars),
-        uses deterministic rule extraction to avoid wasteful LLM calls.
+        Summarizes middle conversation turns into the 8-section DSH schema
+        using an ultra-cheap model (gemini-3.5-flash-lite, thinking: none)
+        or falls back to rule extraction structured into the 8 trading sections.
         """
         if not middle_messages:
             return "No intermediate turns to summarize."
 
         existing_summary, clean_middle = self._extract_existing_summary(middle_messages)
         facts = self._extract_deterministic_facts(clean_middle)
+        categorized = self._extract_structured_trading_sections(clean_middle)
 
         # Feasibility check: only invoke aux LLM if middle has substantial content or aux_client is explicitly provided
         should_call_llm = self.aux_client is not None or not self._feasibility_skip(clean_middle)
@@ -322,26 +424,59 @@ class ContextCompressor:
                 if existing_summary:
                     prompt_parts.append(f"PREVIOUS CONTEXT SUMMARY:\n{existing_summary}")
                 prompt_parts.append(
-                    "Summarize the following intermediate trading analysis conversation into a dense, factual "
-                    "bulleted summary. Extract all established technical levels, indicators (RSI, ATR, DXY, VIX), "
-                    "order blocks, and conclusions. Do NOT invent new facts. Max 10 bullet points:\n\n"
+                    "You are an expert quantitative trading context compactor. Summarize the following intermediate "
+                    "trading analysis conversation into the 8 standardized DSH trading sections: <market_regime>, "
+                    "<technical_structure>, <liquidity_pois>, <intermarket_sentiment>, <active_hypotheses>, "
+                    "<established_levels>, <risk_constraints>, <completed_actions_evidence>.\n"
+                    "Enclose the output within <compacted-summary>...</compacted-summary>:\n\n"
                     f"{chunk}"
                 )
                 prompt = "\n\n".join(prompt_parts)
-                summary = await client.generate(prompt, max_tokens=350)
+                summary = await client.generate(prompt, max_tokens=450)
                 if summary and len(summary.strip()) > 30:
-                    return summary.strip()
+                    sum_clean = summary.strip()
+                    if "<compacted-summary>" not in sum_clean:
+                        sum_clean = f"<compacted-summary>\n{sum_clean}\n</compacted-summary>"
+                    return sum_clean
             except Exception as e:
                 logger.debug(f"Auxiliary model summarization failed, falling back to rule extraction: {e}")
 
-        # Fallback deterministic summary with chained history
-        if facts or existing_summary:
-            lines = ["Key established facts from prior turns:"]
+        # Fallback deterministic summary with 8-section structured format
+        if facts or existing_summary or any(categorized.values()):
+            lines = [
+                "Key established facts from prior turns:",
+                "<compacted-summary>",
+            ]
             if existing_summary:
-                lines.append(f"• Prior Summary: {existing_summary[:200]}")
-            lines.extend(f"• {f}" for f in facts)
+                lines.append(f"  • Prior Summary: {existing_summary[:200]}")
+            for sec in TRADING_SUMMARY_SECTIONS:
+                items = categorized.get(sec, [])
+                if items:
+                    lines.append(f"  <{sec}>")
+                    for item in items:
+                        lines.append(f"    • {item}")
+                    lines.append(f"  </{sec}>")
+            # If any unclassified flat facts remain, include them
+            classified_items = {item for sublist in categorized.values() for item in sublist}
+            unclassified = [f for f in facts if f not in classified_items]
+            if unclassified:
+                lines.extend(f"  • {f}" for f in unclassified)
+            lines.append("</compacted-summary>")
             return "\n".join(lines)
-        return "Intermediate turns summarized: market data and technical indicators queried and evaluated."
+
+        return (
+            "Intermediate turns summarized: market data and technical indicators queried and evaluated.\n"
+            "<compacted-summary>\n"
+            "  <market_regime>None recorded</market_regime>\n"
+            "  <technical_structure>None recorded</technical_structure>\n"
+            "  <liquidity_pois>None recorded</liquidity_pois>\n"
+            "  <intermarket_sentiment>None recorded</intermarket_sentiment>\n"
+            "  <active_hypotheses>None recorded</active_hypotheses>\n"
+            "  <established_levels>None recorded</established_levels>\n"
+            "  <risk_constraints>None recorded</risk_constraints>\n"
+            "  <completed_actions_evidence>Market data and indicators queried</completed_actions_evidence>\n"
+            "</compacted-summary>"
+        )
 
     async def compress(
         self,

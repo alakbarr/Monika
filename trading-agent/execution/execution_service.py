@@ -84,10 +84,12 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         from execution.verification_engine import EvidenceFirstVerifier
         from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
         from execution.effect_gate import EffectGate
+        from execution.idempotency_guard import get_idempotency_guard
         self.evidence_verifier = EvidenceFirstVerifier(settings)
         self.trajectory_logger = TradeTrajectoryLogger()
         self.rate_throttler = RateThrottler(settings=self.settings)
         self.effect_gate = EffectGate()
+        self.idempotency_guard = get_idempotency_guard()
 
 
 __all__ = [

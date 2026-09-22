@@ -1,0 +1,37 @@
+# ==============================================================================
+# Monika v2 — Headless MetaTrader 5 Container with Wine & Xvfb for Linux VPS
+# ==============================================================================
+
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV WINEARCH=win64
+ENV WINEPREFIX=/wine/prefix
+ENV DISPLAY=:99
+
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg2 \
+        xvfb \
+        wine \
+        wine64 \
+        wine32 \
+        procps \
+        winbind && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /wine
+
+# Create shared bridge folder and prefix
+RUN mkdir -p /wine/prefix /shared/mt5_bridge /opt/mt5
+
+COPY entrypoint_mt5.sh /wine/entrypoint.sh
+RUN chmod +x /wine/entrypoint.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD pgrep -f "terminal64.exe" > /dev/null || exit 1
+
+ENTRYPOINT ["/wine/entrypoint.sh"]

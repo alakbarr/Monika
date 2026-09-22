@@ -18,6 +18,11 @@ Monika/
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
 ├── contoh_pertanyaan.md
+├── deploy
+│   ├── Dockerfile.mt5-wine
+│   ├── docker-compose.vps.yml
+│   ├── entrypoint_mt5.sh
+│   └── vps_deployment_guide.md
 ├── DESIGN.md
 ├── Dockerfile
 ├── docker-compose.yml
@@ -37,6 +42,7 @@ Monika/
 ├── INDEX.md
 ├── LICENSE
 ├── Makefile
+├── prompt_benchmark.md
 ├── pyproject.toml
 ├── pyrightconfig.json
 ├── pytest.ini
@@ -183,6 +189,7 @@ Monika/
     │   │   ├── frozen_snapshot.py
     │   │   ├── layered_memory.py
     │   │   ├── lesson_consolidator.py
+    │   │   ├── negative_constraint_generator.py
     │   │   ├── outcome_linker.py
     │   │   ├── playbook_ledger.py
     │   │   ├── playbook_lifecycle.py
@@ -312,6 +319,7 @@ Monika/
     │       ├── adversarial_check.py
     │       ├── confluence_verifier.py
     │       ├── core_data_validator.py
+    │       ├── cross_timeframe_gate.py
     │       ├── float_coercion.py
     │       ├── fundamental_verifier.py
     │       ├── in_harness_grounding.py
@@ -374,6 +382,7 @@ Monika/
     │   ├── bond_yields_yfinance.py
     │   ├── central_bank_watch.py
     │   ├── cftc_cot.py
+    │   ├── circuit_breaker.py
     │   ├── coinglass_funding.py
     │   ├── dxy_yfinance.py
     │   ├── eia_oil_inventory.py
@@ -416,6 +425,8 @@ Monika/
     │   │   ├── risk_compliance_oracle.py
     │   │   ├── smc_geometry_oracle.py
     │   │   └── trade_discipline_oracle.py
+    │   ├── eval_metrics.py
+    │   ├── eval_runner.py
     │   ├── runner.py
     │   └── simulation_clock.py
     ├── execution
@@ -426,6 +437,7 @@ Monika/
     │   ├── effect_gate.py
     │   ├── execution_service.py
     │   ├── health_check.py
+    │   ├── idempotency_guard.py
     │   ├── mt5_client.py
     │   ├── order_emulator.py
     │   ├── rate_throttler.py
@@ -446,7 +458,8 @@ Monika/
     │   ├── verification_engine.py
     │   └── ea_bridge
     │       ├── AIAgent_EA.mq5
-    │       └── heartbeat_writer.py
+    │       ├── heartbeat_writer.py
+    │       └── watchdog.py
     ├── graph
     │   ├── reactive_graph.py
     │   ├── state.py
@@ -607,6 +620,14 @@ Monika/
     │               │   └── dashboardStore.ts
     │               └── types
     │                   └── api.ts
+    ├── plugins
+    │   ├── __init__.py
+    │   ├── loader.py
+    │   └── manifest.py
+    ├── provider
+    │   ├── __init__.py
+    │   ├── credential_pool.py
+    │   └── error_taxonomy.py
     ├── risk
     │   ├── approval_hub.py
     │   ├── correlation_matrix.py
@@ -614,10 +635,14 @@ Monika/
     │   ├── portfolio_correlation_gate.py
     │   ├── position_sizing.py
     │   ├── risk_gate.py
+    │   ├── trade_proposal.py
     │   └── invariants
     │       ├── __init__.py
     │       ├── risk_gate_invariant.py
     │       └── state_immutability_invariant.py
+    ├── security
+    │   ├── __init__.py
+    │   └── credential_vault.py
     ├── scheduler
     │   ├── active_calendar_poller.py
     │   ├── alpha_discovery_scheduler.py
@@ -884,17 +909,25 @@ Monika/
         ├── agent
         │   ├── test_agent_loop.py
         │   ├── test_pgvector_startup_check.py
+        │   ├── test_startup_watchdog_enhancement.py
         │   ├── test_task_registry.py
         │   └── test_turn_lease_manager.py
         ├── analysis
+        │   ├── arbitration
+        │   │   └── test_recency_brier_weighting.py
+        │   ├── grounding
+        │   │   └── test_extended_grounding.py
         │   ├── harness
         │   │   ├── test_agent_harness.py
         │   │   ├── test_context_compressor.py
+        │   │   ├── test_dsh_context_engine.py
         │   │   ├── test_error_classifier.py
         │   │   ├── test_prompt_cache_architecture.py
         │   │   └── test_trade_stop_and_segment_planner.py
         │   ├── memory
+        │   │   ├── test_negative_constraint_generator.py
         │   │   ├── test_playbook_ledger.py
+        │   │   ├── test_playbook_lifecycle.py
         │   │   └── test_skill_curator.py
         │   ├── tools
         │   │   ├── test_news_tools.py
@@ -911,6 +944,7 @@ Monika/
         │   │   ├── test_strategy_registry_summary.py
         │   │   └── test_synthesized_strategy_resilience.py
         │   ├── test_agent_harness_steering_truncation.py
+        │   ├── test_cross_timeframe_gate.py
         │   ├── test_frozen_memory_snapshot.py
         │   ├── test_jev_news_classifier.py
         │   ├── test_jev_verifiers_and_builders.py
@@ -941,24 +975,35 @@ Monika/
         │   ├── test_sparklines.py
         │   ├── test_theme_packs.py
         │   └── test_tui_components.py
+        ├── data_sources
+        │   └── test_circuit_breaker.py
+        ├── deploy
+        │   └── test_deployment_configs.py
         ├── evals
         │   ├── __init__.py
+        │   ├── test_eval_metrics_and_ab_runner.py
         │   ├── test_offline_evals.py
         │   ├── test_offline_oracles.py
         │   └── test_simulation_and_oracles.py
         ├── execution
+        │   ├── test_ea_watchdog.py
+        │   ├── test_idempotency_guard.py
         │   ├── test_mt5_client.py
         │   ├── test_mt5_priority_queue.py
         │   ├── test_mt5_tick_poller.py
         │   ├── test_order_emulator.py
         │   ├── test_order_reconciliation.py
+        │   ├── test_partial_fill_and_slippage.py
         │   ├── test_phase1_remediation.py
         │   ├── test_phase2_remediation.py
         │   ├── test_phase3_remediation.py
         │   ├── test_phase4_remediation.py
         │   └── test_rate_throttler.py
+        ├── graph
+        │   └── test_workflow_authoritative_checkpointer.py
         ├── logging_observability
         │   ├── test_activity_logger.py
+        │   ├── test_cost_tracking_dashboard.py
         │   ├── test_cycle_event_log_and_feedback.py
         │   ├── test_dashboard_api.py
         │   ├── test_dashboard_observability_endpoints.py
@@ -970,8 +1015,18 @@ Monika/
         ├── perf
         │   ├── test_memory_budget.py
         │   └── test_microstructure_perf.py
+        ├── plugins
+        │   └── test_plugin_manifest_and_loader.py
+        ├── provider
+        │   ├── __init__.py
+        │   ├── test_credential_pool.py
+        │   ├── test_error_taxonomy.py
+        │   └── test_role_fallback_chain.py
         ├── risk
-        │   └── test_invariants_and_replay.py
+        │   ├── test_invariants_and_replay.py
+        │   └── test_trade_proposal.py
+        ├── security
+        │   └── test_credential_vault.py
         ├── scheduler
         │   ├── test_alpha_discovery_closed_loop.py
         │   ├── test_news_watcher_turn_lease.py
@@ -983,7 +1038,8 @@ Monika/
         ├── skills
         │   ├── test_event_probability_playbook.py
         │   ├── test_event_probability_stress.py
-        │   └── test_playbook_stress_challenge.py
+        │   ├── test_playbook_stress_challenge.py
+        │   └── test_progressive_playbook_disclosure.py
         ├── support
         │   └── replay_provider.py
         ├── utils

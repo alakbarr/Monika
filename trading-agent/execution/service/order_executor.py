@@ -173,6 +173,106 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         # F-1: Execution lock dipisah menjadi Fase 2 (Validation berjalan paralel)
         return await self._execute_analysis_internal(session, analysis, account_equity)
 
+    async def execute_proposal(
+        self,
+        session: AsyncSession,
+        proposal: Any,
+        account_equity: Optional[float] = None,
+    ) -> ExecutionResult:
+        """
+        PR-14: Financial Fortress entrypoint executing an immutable TradeProposal.
+        First validates the proposal via FortressAdmissionValidator and RiskGate.evaluate_proposal.
+        If admitted and approved, executes order.
+        """
+        start = clock.now()
+        from risk.trade_proposal import FortressAdmissionValidator
+        admitted, rejections = FortressAdmissionValidator.validate_proposal(proposal)
+        if not admitted:
+            elapsed = (clock.now() - start).total_seconds() * 1000
+            logger.warning(f"[{proposal.symbol}] execute_proposal rejected by Fortress: {rejections}")
+            return ExecutionResult(
+                symbol=proposal.symbol,
+                analysis_id=proposal.metadata.get("analysis_id"),
+                decision=proposal.direction.lower(),
+                sizing=None,
+                risk_approved=False,
+                risk_checks_passed=[],
+                risk_checks_failed=["fortress_admission"],
+                risk_rejection_reasons=rejections,
+                executed=False,
+                mt5_ticket=None,
+                executed_price=None,
+                executed_lots=None,
+                mt5_error="Fortress admission rejection",
+                position_id=None,
+                timestamp=start,
+                elapsed_ms=elapsed,
+            )
+
+        # PR-15: Acquire idempotency lock to prevent duplicate order placement
+        from execution.idempotency_guard import get_idempotency_guard
+        guard = getattr(self, "idempotency_guard", None) or get_idempotency_guard()
+        idem_key = guard.generate_key(
+            symbol=proposal.symbol,
+            direction=proposal.direction,
+            entry_price=proposal.entry_price,
+            analysis_id=proposal.metadata.get("analysis_id"),
+            proposal_id=getattr(proposal, "proposal_id", None),
+        )
+        lock_acquired, reject_msg = await guard.acquire_lock(
+            key=idem_key,
+            symbol=proposal.symbol,
+            direction=proposal.direction,
+        )
+        if not lock_acquired:
+            elapsed = (clock.now() - start).total_seconds() * 1000
+            logger.warning(f"[{proposal.symbol}] Duplicate order blocked by IdempotencyGuard: {reject_msg}")
+            return ExecutionResult(
+                symbol=proposal.symbol,
+                analysis_id=proposal.metadata.get("analysis_id"),
+                decision=proposal.direction.lower(),
+                sizing=None,
+                risk_approved=False,
+                risk_checks_passed=[],
+                risk_checks_failed=["idempotency_blocked"],
+                risk_rejection_reasons=[reject_msg or "Duplicate order blocked"],
+                executed=False,
+                mt5_ticket=None,
+                executed_price=None,
+                executed_lots=None,
+                mt5_error="Duplicate order blocked by IdempotencyGuard",
+                position_id=None,
+                timestamp=start,
+                elapsed_ms=elapsed,
+            )
+
+        order_plan = {
+            "symbol": proposal.symbol,
+            "decision": proposal.direction.lower(),
+            "entry_price": proposal.entry_price,
+            "stop_loss": proposal.stop_loss,
+            "take_profit": proposal.take_profit,
+            "lot_size": proposal.lot_size,
+            "confluence_score": int(proposal.confluence_score),
+            "analysis_id": proposal.metadata.get("analysis_id"),
+            "pair_group_id": proposal.metadata.get("pair_group_id"),
+        }
+        res = await self.execute_preplanned_order(
+            session=session,
+            symbol=proposal.symbol,
+            order_plan=order_plan,
+            analysis_id=proposal.metadata.get("analysis_id"),
+            account_equity=account_equity or proposal.account_equity,
+        )
+
+        if res.executed and res.mt5_ticket:
+            await guard.mark_completed(idem_key, ticket=res.mt5_ticket)
+        elif not res.risk_approved:
+            await guard.release_lock(idem_key)
+        else:
+            await guard.mark_failed(idem_key, error=res.mt5_error or "Order execution failed")
+
+        return res
 
     async def execute_preplanned_order(
         self,
@@ -2462,9 +2562,10 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                                 pass
 
                     spec_out = {}
-                    if getattr(analysis, "specialist_biases_json", None):
+                    spec_biases = getattr(analysis, "specialist_biases_json", None)
+                    if isinstance(spec_biases, str):
                         try:
-                            spec_out = json.loads(analysis.specialist_biases_json)
+                            spec_out = json.loads(spec_biases)
                         except Exception:
                             pass
 

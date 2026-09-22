@@ -177,21 +177,18 @@ class LayeredMemoryManager:
                 wr = wins / len(trades) * 100
                 parts.append(f"- Win rate: {wr:.0f}% ({len(trades)} trades)")
 
-            # 4. Systematic Negative Constraints based on past failure modes
+            # 4. Systematic Negative Constraints based on past failure modes (PR-13)
             try:
-                from analysis.memory.failure_taxonomy import generate_negative_constraints
-                raw_tags = []
-                for r in reflections:
-                    tags = getattr(r, 'lesson_tags', None)
-                    if isinstance(tags, list):
-                        raw_tags.extend(tags)
-                    elif tags:
-                        raw_tags.append(str(tags))
-                if raw_tags:
-                    neg_constraints = generate_negative_constraints(raw_tags, symbol=symbol, max_constraints=2)
-                    if neg_constraints:
-                        parts.append("NEGATIVE_CONSTRAINTS:")
-                        parts.extend(neg_constraints)
+                from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+                neg_constraints = await NegativeConstraintGenerator.generate_negative_constraints_from_losses(
+                    session=session,
+                    symbol=symbol,
+                    current_regime=regime,
+                    max_constraints=3,
+                )
+                if neg_constraints:
+                    parts.append("NEGATIVE_CONSTRAINTS:")
+                    parts.extend(neg_constraints)
             except Exception as e:
                 logger.debug(f"[{symbol}] Failed to generate negative constraints: {e}")
 
@@ -208,9 +205,41 @@ class LayeredMemoryManager:
         return _wrap_market_memory(f"MACRO_REGIME: {regime}", 150)
 
     async def get_playbook_memory(self, symbol: str) -> str:
-        """Retrieve crystallized tactical playbook for symbol wrapped in isolated memory tags."""
+        """
+        Retrieve crystallized tactical playbook for symbol wrapped in isolated memory tags.
+        Enforces lifecycle gating: only ACTIVE playbooks are injected into prompt context.
+        STALE and ARCHIVED playbooks are strictly excluded.
+        """
         try:
             from analysis.memory.progressive_loader import ProgressiveMemoryLoader
+            from analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
+
+            clean_sym = symbol.strip().upper()
+            fsm = PlaybookLifecycleFSM()
+
+            # Check if there is a tracked status for this symbol's playbook
+            candidates = [
+                clean_sym,
+                clean_sym.lower(),
+                f"{clean_sym.lower()}_playbook",
+                f"{clean_sym}_playbook",
+                f"{clean_sym.lower()}_breakout",
+                f"{clean_sym}_breakout",
+            ]
+            status = None
+            for cand in candidates:
+                st = fsm.get_status(cand)
+                if st is not None:
+                    status = st
+                    break
+
+            # Strictly exclude STALE, ARCHIVED, or un-promoted CANDIDATE playbooks if tracked
+            if status is not None and status != PlaybookState.ACTIVE:
+                logger.info(
+                    f"[{symbol}] Skipping playbook memory injection: status is '{status.value}' (only ACTIVE allowed)"
+                )
+                return ""
+
             loader = ProgressiveMemoryLoader()
             playbook = loader.get_level1_playbook(symbol)
             if playbook:

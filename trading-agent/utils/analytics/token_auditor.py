@@ -393,3 +393,89 @@ class TokenAuditor:
                 "model_cache_breakdown": model_breakdown,
             }
 
+    @staticmethod
+    async def get_cycle_cost_breakdown(cycle_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
+        """
+        PR-21: Return hierarchical cost accumulation per cycle, per model, and per role.
+        """
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        async with get_session() as session:
+            effective_cycle = func.coalesce(TokenUsageLog.cycle_id, "unknown_cycle")
+            effective_model = func.coalesce(TokenUsageLog.model_name, "unknown_model")
+            effective_role = func.coalesce(TokenUsageLog.task_role, TokenUsageLog.task_name, "general")
+
+            stmt = (
+                select(
+                    effective_cycle.label("cycle_id"),
+                    effective_model.label("model_name"),
+                    effective_role.label("role"),
+                    func.count(TokenUsageLog.id).label("turns"),
+                    func.coalesce(func.sum(TokenUsageLog.total_tokens), 0).label("tokens"),
+                    func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0).label("cost_usd"),
+                    func.coalesce(func.avg(TokenUsageLog.execution_time_ms), 0.0).label("avg_latency_ms"),
+                )
+                .where(TokenUsageLog.timestamp >= since)
+            )
+            if cycle_id:
+                stmt = stmt.where(TokenUsageLog.cycle_id == cycle_id)
+            stmt = stmt.group_by(effective_cycle, effective_model, effective_role).order_by(desc("cost_usd"))
+
+            rows = (await session.execute(stmt)).all()
+
+            cycles_dict: Dict[str, Any] = {}
+            total_cost = 0.0
+            total_turns = 0
+            total_tokens = 0
+
+            for r in rows:
+                m = dict(r._mapping)
+                cid = str(m["cycle_id"])
+                c_cost = float(m["cost_usd"] or 0.0)
+                c_turns = int(m["turns"] or 0)
+                c_tokens = int(m["tokens"] or 0)
+
+                total_cost += c_cost
+                total_turns += c_turns
+                total_tokens += c_tokens
+
+                if cid not in cycles_dict:
+                    cycles_dict[cid] = {
+                        "cycle_id": cid,
+                        "total_cost_usd": 0.0,
+                        "total_turns": 0,
+                        "total_tokens": 0,
+                        "by_model": {},
+                        "by_role": {},
+                    }
+
+                cycles_dict[cid]["total_cost_usd"] = round(cycles_dict[cid]["total_cost_usd"] + c_cost, 6)
+                cycles_dict[cid]["total_turns"] += c_turns
+                cycles_dict[cid]["total_tokens"] += c_tokens
+
+                model = str(m["model_name"])
+                if model not in cycles_dict[cid]["by_model"]:
+                    cycles_dict[cid]["by_model"][model] = {"turns": 0, "tokens": 0, "cost_usd": 0.0}
+                cycles_dict[cid]["by_model"][model]["turns"] += c_turns
+                cycles_dict[cid]["by_model"][model]["tokens"] += c_tokens
+                cycles_dict[cid]["by_model"][model]["cost_usd"] = round(cycles_dict[cid]["by_model"][model]["cost_usd"] + c_cost, 6)
+
+                role = str(m["role"])
+                if role not in cycles_dict[cid]["by_role"]:
+                    cycles_dict[cid]["by_role"][role] = {"turns": 0, "tokens": 0, "cost_usd": 0.0}
+                cycles_dict[cid]["by_role"][role]["turns"] += c_turns
+                cycles_dict[cid]["by_role"][role]["tokens"] += c_tokens
+                cycles_dict[cid]["by_role"][role]["cost_usd"] = round(cycles_dict[cid]["by_role"][role]["cost_usd"] + c_cost, 6)
+
+            avg_turn_cost = round(total_cost / total_turns, 6) if total_turns > 0 else 0.0
+
+            return {
+                "time_window_hours": hours,
+                "total_cycles": len(cycles_dict),
+                "total_turns": total_turns,
+                "total_tokens": total_tokens,
+                "total_cost_usd": round(total_cost, 6),
+                "avg_cost_per_turn_usd": avg_turn_cost,
+                "cycles": list(cycles_dict.values()),
+            }
+
+

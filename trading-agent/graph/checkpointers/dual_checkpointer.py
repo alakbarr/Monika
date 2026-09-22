@@ -24,12 +24,21 @@ logger = logging.getLogger("TradingAgent.DualCheckpointSaver")
 class DualCheckpointSaver(BaseCheckpointSaver):
     """
     Dual-write LangGraph checkpointer orchestrating Primary (PostgreSQL) and Secondary (SQLite).
+
+    Note (Monika v2 / PR-04): Deprecated for primary workflow execution. Monika v2 uses PostgreSQL
+    directly as the authoritative checkpointer to eliminate redundant SQLite disk I/O.
+    Retained for backward compatibility and test mock environments.
     """
 
     def __init__(self, primary: Any, secondary: Any):
         super().__init__()
         self.primary = primary
         self.secondary = secondary
+
+    @property
+    def conn(self) -> Any:
+        """Proxy connection pool from primary checkpointer if available."""
+        return getattr(self.primary, "conn", None)
 
     # Pass-through setup attribute for scheduler initialization
     @property

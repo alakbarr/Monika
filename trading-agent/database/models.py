@@ -862,9 +862,13 @@ class Position(Base):
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
     volume: Mapped[float] = mapped_column(Float)
+    initial_volume: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    requested_volume: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     entry_price: Mapped[float] = mapped_column(Float)
     sl: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     tp: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
+    partially_filled: Mapped[bool] = mapped_column(Boolean, default=False)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(10), default='open')  # open, closed
@@ -946,6 +950,8 @@ class PaperTradeRecord(Base):
     pnl_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     holding_hours: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     slippage_applied: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    partially_filled: Mapped[bool] = mapped_column(Boolean, default=False)
+    requested_lot: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(10), default='open')  # open, closed
 
     # Phase 3 Context tracking

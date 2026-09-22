@@ -10,9 +10,88 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from enum import Enum
 import logging
 
 logger = logging.getLogger("TradingAgent.Memory.PlaybookLedger")
+
+
+class PlaybookState(str, Enum):
+    CANDIDATE = "candidate"  # Newly generated, undergoing validation
+    ACTIVE = "active"        # Proven and approved for production execution
+    STALE = "stale"          # Inactive or showing degrading performance (48h cooldown)
+    ARCHIVED = "archived"    # Deprecated or rolled back (< 45% WR over 20 trades)
+
+
+PlaybookStatus = PlaybookState
+
+
+@dataclass
+class PlaybookMetadata:
+    name: str
+    state: PlaybookState = PlaybookState.CANDIDATE
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    trades_count: int = 0
+    wins: int = 0
+    losses: int = 0
+    consecutive_losses: int = 0
+    avg_rr: float = 0.0
+    win_rate: float = 0.0
+    stale_until_ts: Optional[float] = None
+    version_hash: Optional[str] = None
+    trades: List[Dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def status(self) -> PlaybookState:
+        return self.state
+
+    @status.setter
+    def status(self, val: Any) -> None:
+        if isinstance(val, (str, PlaybookState)):
+            self.state = PlaybookState(val)
+        else:
+            self.state = val
+
+    @property
+    def total_trades(self) -> int:
+        return self.trades_count
+
+    @total_trades.setter
+    def total_trades(self, val: int) -> None:
+        self.trades_count = val
+
+    @property
+    def win_count(self) -> int:
+        return self.wins
+
+    @win_count.setter
+    def win_count(self, val: int) -> None:
+        self.wins = val
+
+    @property
+    def loss_count(self) -> int:
+        return self.losses
+
+    @loss_count.setter
+    def loss_count(self, val: int) -> None:
+        self.losses = val
+
+    @property
+    def current_win_rate(self) -> float:
+        return self.win_rate
+
+    @current_win_rate.setter
+    def current_win_rate(self, val: float) -> None:
+        self.win_rate = val
+
+    @property
+    def current_avg_rr(self) -> float:
+        return self.avg_rr
+
+    @current_avg_rr.setter
+    def current_avg_rr(self, val: float) -> None:
+        self.avg_rr = val
 
 
 @dataclass
@@ -137,3 +216,21 @@ class PlaybookLedger:
         )
         logger.info(f"[PlaybookLedger] Successfully rolled back '{playbook_name}' to {chosen_hash[:12]}")
         return True
+
+
+# Re-export lifecycle classes for backward compatibility
+from analysis.memory.playbook_lifecycle import (
+    PlaybookLifecycleFSM,
+    PlaybookLifecycleManager,
+)
+
+__all__ = [
+    "LedgerEntry",
+    "PlaybookLedger",
+    "PlaybookState",
+    "PlaybookStatus",
+    "PlaybookMetadata",
+    "PlaybookLifecycleFSM",
+    "PlaybookLifecycleManager",
+]
+

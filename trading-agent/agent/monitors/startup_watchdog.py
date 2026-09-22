@@ -124,3 +124,101 @@ def arm_startup_watchdog(timeout_s: float = 180.0):
     if ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ):
         return
     global_startup_watchdog.start(timeout_seconds=timeout_s)
+
+
+import asyncio
+
+
+async def verify_broker_ping(client, timeout: float = 8.0) -> bool:
+    """Verify broker connection and terminal responsiveness."""
+    if not client:
+        return False
+    try:
+        if hasattr(client, "is_connected") and asyncio.iscoroutinefunction(client.is_connected):
+            connected = await asyncio.wait_for(client.is_connected(), timeout=timeout)
+            if not connected:
+                return False
+        if hasattr(client, "get_account_info"):
+            fn = client.get_account_info
+            res = await asyncio.wait_for(fn(), timeout=timeout) if asyncio.iscoroutinefunction(fn) else fn()
+            return bool(res)
+        return True
+    except Exception as e:
+        logger.warning(f"[StartupWatchdog] Broker ping check failed: {e}")
+        return False
+
+
+async def verify_data_feed_freshness(client, symbols: list, max_stale_sec: float = 600.0) -> dict:
+    """Verify that market data feeds are active and returning valid quotes."""
+    results = {}
+    if not client or not symbols:
+        return results
+
+    now = time.time()
+    for sym in symbols[:5]:
+        try:
+            if hasattr(client, "get_current_price"):
+                fn = client.get_current_price
+                quote = await asyncio.wait_for(fn(sym), timeout=5.0) if asyncio.iscoroutinefunction(fn) else fn(sym)
+                if quote and isinstance(quote, dict):
+                    ask = float(quote.get("ask") or 0.0)
+                    bid = float(quote.get("bid") or 0.0)
+                    fetched_at = float(quote.get("fetched_at") or now)
+                    is_fresh = (ask > 0 and bid > 0) and ((now - fetched_at) < max_stale_sec)
+                    results[sym] = is_fresh
+                else:
+                    results[sym] = False
+            else:
+                results[sym] = True
+        except Exception as e:
+            logger.debug(f"[StartupWatchdog] Feed check for {sym} failed: {e}")
+            results[sym] = False
+    return results
+
+
+async def run_cold_start_preflight(agent, max_wait_sec: float = 30.0) -> dict:
+    """
+    PR-22: Cold-Start Pre-Flight Verification before enabling schedulers.
+    Runs broker ping, position reconciliation, and data feed freshness checks.
+    """
+    summary = {
+        "broker_ping": False,
+        "positions_reconciled": False,
+        "feed_freshness": {},
+        "ready": False,
+    }
+
+    watchdog = global_startup_watchdog
+
+    # 1. Broker Ping
+    watchdog.report_progress("broker_ping", lease_seconds=20.0)
+    broker_client = getattr(agent, "mt5_client", None)
+    if not broker_client and hasattr(agent, "execution_service") and agent.execution_service:
+        broker_client = getattr(agent.execution_service, "mt5", None)
+
+    is_alive = await verify_broker_ping(broker_client)
+    summary["broker_ping"] = is_alive or agent.dry_run
+
+    # 2. Position Reconciliation
+    watchdog.report_progress("position_reconciliation", lease_seconds=30.0)
+    try:
+        if agent.execution_service:
+            await agent.execution_service.sync_positions()
+            if hasattr(agent.execution_service, "reconcile_inflight_orders"):
+                await agent.execution_service.reconcile_inflight_orders()
+        summary["positions_reconciled"] = True
+    except Exception as e:
+        logger.warning(f"[StartupWatchdog] Position reconciliation non-fatal: {e}")
+        summary["positions_reconciled"] = agent.dry_run
+
+    # 3. Data Feed Freshness
+    watchdog.report_progress("data_feed_freshness", lease_seconds=20.0)
+    universe = agent.settings.get("trading", {}).get("asset_universe", ["EURUSD", "USDJPY", "XAUUSD"])
+    feeds = await verify_data_feed_freshness(broker_client, universe)
+    summary["feed_freshness"] = feeds
+
+    # Determine readiness
+    summary["ready"] = summary["broker_ping"] and summary["positions_reconciled"]
+    watchdog.report_progress("schedulers_arming", lease_seconds=30.0)
+    return summary
+

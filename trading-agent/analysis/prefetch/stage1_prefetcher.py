@@ -106,6 +106,24 @@ class Stage1DataBundler:
         except Exception as e:
             logger.debug(f"Data freshness prefetch check non-fatal error: {e}")
 
+        # Update DataFeedCircuitBreaker heartbeats and evaluate critical feeds
+        try:
+            from data_sources.circuit_breaker import get_data_feed_circuit_breaker
+            breaker = get_data_feed_circuit_breaker()
+            if "error" not in bundled_data.get("economic_calendar", {}):
+                breaker.record_feed_heartbeat("economic_calendar")
+            if "error" not in bundled_data.get("treasury_yields", {}):
+                breaker.record_feed_heartbeat("fred")
+            if "error" not in bundled_data.get("news_digest", {}):
+                breaker.record_feed_heartbeat("finnhub")
+
+            eval_res = breaker.evaluate_all_feeds(auto_trip=False)
+            bundled_data["circuit_breaker_status"] = eval_res
+            if breaker.is_tripped():
+                logger.warning(f"[Stage1DataBundler] Data feed circuit breaker is TRIPPED: {breaker.get_tripped_feeds()}")
+        except Exception as cb_err:
+            logger.debug(f"Circuit breaker prefetch check non-fatal error: {cb_err}")
+
         # Direct in-memory computation of satisfied tools
         satisfied_tools = set()
         for key in bundled_data:

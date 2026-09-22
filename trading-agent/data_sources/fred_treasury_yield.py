@@ -132,6 +132,11 @@ class FREDDataFetcher:
             f"FRED fetch complete. Treasury: {treasury_saved} new, "
             f"Interest rates: {rate_saved} new."
         )
+        try:
+            from data_sources.circuit_breaker import record_feed_heartbeat
+            record_feed_heartbeat("fred", metadata={"treasury_saved": treasury_saved, "rate_saved": rate_saved})
+        except Exception:
+            pass
         return {"treasury": treasury_saved, "interest_rates": rate_saved}
 
     # ------------------------------------------------------------------

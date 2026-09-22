@@ -2,7 +2,7 @@
 Pydantic Schemas for strongly-typed configuration validation (H6, M-3, M-4).
 """
 from pydantic import BaseModel, Field, model_validator
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 
 class SubscriptableConfig(BaseModel, extra="allow"):
@@ -61,6 +61,9 @@ class TaskRoleConfig(BaseModel, extra="allow"):
     fallback_1: Optional[str] = None
     fallback_2: Optional[str] = None
     fallback_3: Optional[str] = None
+    fallback: Optional[Union[List[str], str]] = None
+    fallbacks: Optional[List[str]] = None
+    max_cost_per_call: Optional[float] = None
     max_tokens: Optional[int] = Field(default=8192, ge=256, le=131072)
     max_tool_turns: Optional[int] = Field(default=15, ge=1, le=100)
     temperature: Optional[float] = Field(default=0.0, ge=0.0, le=2.0)
@@ -71,6 +74,7 @@ class LLMConfig(SubscriptableConfig):
     task_roles: Optional[Dict[str, TaskRoleConfig]] = None
     providers: Optional[Dict[str, Any]] = None
     model_catalog: Optional[Dict[str, Any]] = None
+    credential_pool: Optional[Dict[str, Any]] = None
 
 
 class SchedulerConfig(SubscriptableConfig):
