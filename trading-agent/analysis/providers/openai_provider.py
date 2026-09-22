@@ -937,11 +937,12 @@ class OpenAIProvider(BaseLLMClient):
         req_messages = []
         static_sys = system_prompt
         dynamic_sys = ""
+        compile_fn = getattr(system_prompt, "compile_stable_system", None)
         if isinstance(system_prompt, tuple) and len(system_prompt) >= 2:
             static_sys = system_prompt[0]
             dynamic_sys = str(system_prompt[1]).strip() if system_prompt[1] else ""
-        elif hasattr(system_prompt, "compile_stable_system"):
-            static_sys = system_prompt.compile_stable_system()
+        elif callable(compile_fn):
+            static_sys = compile_fn()
             dynamic_sys = getattr(system_prompt, "tier3_volatile", "")
 
         flat_sys = _flatten_system_prompt(static_sys)

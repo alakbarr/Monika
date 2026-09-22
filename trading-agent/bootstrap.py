@@ -21,10 +21,12 @@ import sys
 import socket
 import logging
 import platform
+from typing import Any
 
 logger = logging.getLogger("TradingAgent.Bootstrap")
 
 _BOOTSTRAP_INITIALIZED = False
+_DEFAULT_TIMEOUT: Any = getattr(socket, "_GLOBAL_DEFAULT_TIMEOUT", object())
 
 
 def _install_happy_eyeballs() -> None:
@@ -33,7 +35,7 @@ def _install_happy_eyeballs() -> None:
 
     def happy_eyeballs_create_connection(
         address,
-        timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+        timeout=_DEFAULT_TIMEOUT,
         source_address=None,
         *args,
         **kwargs,
@@ -59,7 +61,7 @@ def _install_happy_eyeballs() -> None:
             return orig_create_connection(address, timeout, source_address, *args, **kwargs)
 
         last_err = None
-        effective_timeout = timeout if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT else 15.0
+        effective_timeout = 15.0 if timeout is _DEFAULT_TIMEOUT else timeout
 
         for res in targets:
             af, socktype, proto, canonname, sa = res
@@ -106,7 +108,7 @@ def _install_console_guards() -> None:
     # Stub platform._syscmd_ver on Windows to prevent console flashing on subprocess calls
     if hasattr(platform, "_syscmd_ver"):
         try:
-            platform._syscmd_ver = lambda *args, **kwargs: "10.0.0"
+            setattr(platform, "_syscmd_ver", lambda *args, **kwargs: "10.0.0")
         except Exception:
             pass
 

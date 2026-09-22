@@ -112,7 +112,7 @@ class AgentHarness:
         self._follow_up_queue: deque = deque()
 
         # Surface Node 0: Immutable System Prompt Tracking & Invariance
-        self._cached_surface_prompt: Optional[str] = None
+        self._cached_surface_prompt: Optional[Any] = None
         self._cached_surface_prompt_hash: Optional[str] = None
         self._last_injected_dynamic_overlay: Optional[str] = None
 
@@ -725,6 +725,8 @@ class AgentHarness:
             )
         if executor is not None:
             executor.verification_ledger = self.verification_ledger
+        else:
+            raise RuntimeError("ToolExecutor failed to initialize in run_agent_loop")
 
         turns = 0
         ptc_refund_count = 0

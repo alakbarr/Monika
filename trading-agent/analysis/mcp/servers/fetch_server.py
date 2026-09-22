@@ -99,6 +99,8 @@ class FetchMcpServer:
         elif method == "tools/call":
             t_name = params.get("name")
             args = params.get("arguments", {}) or {}
+            if not isinstance(t_name, str):
+                return make_error_response(req_id, -32602, "Invalid params: 'name' must be a string")
             try:
                 res = self.handle_tool_call(t_name, args)
                 return make_result_response(

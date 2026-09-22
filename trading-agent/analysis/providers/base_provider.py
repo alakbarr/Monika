@@ -4,6 +4,7 @@ Base LLM Client — interface abstrak yang WAJIB diimplementasikan oleh setiap p
 
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict
+import asyncio
 import json
 import logging
 
@@ -832,21 +833,22 @@ def _get_token_usage_queue() -> asyncio.Queue:
 
 async def _flush_token_usage_worker():
     """Background worker coalescing token usage records and flushing every 5s or 20 items."""
+    q = _get_token_usage_queue()
     while True:
         try:
             batch = []
             try:
-                item = await asyncio.wait_for(_token_usage_queue.get(), timeout=5.0)
+                item = await asyncio.wait_for(q.get(), timeout=5.0)
                 batch.append(item)
-                _token_usage_queue.task_done()
+                q.task_done()
             except asyncio.TimeoutError:
                 continue
 
-            while len(batch) < 20 and not _token_usage_queue.empty():
+            while len(batch) < 20 and not q.empty():
                 try:
-                    item = _token_usage_queue.get_nowait()
+                    item = q.get_nowait()
                     batch.append(item)
-                    _token_usage_queue.task_done()
+                    q.task_done()
                 except asyncio.QueueEmpty:
                     break
 

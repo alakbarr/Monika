@@ -5,7 +5,7 @@ Runs on the main asyncio event loop without raw OS threads to preserve asyncpg p
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set, FrozenSet
 
 logger = logging.getLogger("TradingAgent.BackgroundReview")
 
@@ -18,7 +18,7 @@ class BackgroundReviewEngine:
     """
 
     # Transient infrastructure errors that should NOT be captured as trading strategy lessons
-    DO_NOT_CAPTURE: Set[str] = frozenset({
+    DO_NOT_CAPTURE: FrozenSet[str] = frozenset({
         "broker_connection_lost",
         "spread_widened_temporarily",
         "api_rate_limited",
@@ -125,8 +125,11 @@ class BackgroundReviewEngine:
         reflection = None
         if self.reflector:
             try:
-                if hasattr(self.reflector, "reflect_on_trade"):
-                    reflection = await self.reflector.reflect_on_trade(outcome)
+                reflection_id = outcome.get("reflection_id")
+                if reflection_id and hasattr(self.reflector, "reflect_on_trade"):
+                    from database.async_db import get_session
+                    async with get_session() as session:
+                        reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
             except Exception as ref_err:
                 logger.warning(f"[BackgroundReview] Reflector failed on ticket {outcome.get('ticket')}: {ref_err}")
 

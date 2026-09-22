@@ -101,7 +101,7 @@ def setup_logging(
 
     # --- Real file handler (rotating) ---
     try:
-        from concurrent_log_handler import ConcurrentRotatingFileHandler as _RotHandler
+        from concurrent_log_handler import ConcurrentRotatingFileHandler as _RotHandler  # type: ignore[import-not-found, import-untyped]
     except ImportError:
         _RotHandler = _SafeRotatingFileHandler
 

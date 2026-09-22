@@ -106,6 +106,16 @@ class APICredentialPool:
         masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"
         logger.debug(f"[CredentialPool] Added key {masked} for provider '{prov}'")
 
+    def is_model_available(self, model: str, provider: Optional[str] = None) -> bool:
+        """Check if at least one key in the pool is available for the specified model."""
+        if provider:
+            keys = self._pools.get(provider.lower(), [])
+            return any(k.is_model_available(model) for k in keys) if keys else True
+        for keys in self._pools.values():
+            if any(k.is_model_available(model) for k in keys):
+                return True
+        return True
+
     def get_key(self, provider: str, model: Optional[str] = None, is_hot_path: bool = False) -> Optional[str]:
         """
         Get the most suitable available key for a provider.

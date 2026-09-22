@@ -30,6 +30,7 @@ class ToolHandler(ABC):
     category: str = "GENERAL"
     description: str = ""
     parallel_safe: bool = True  # Whether this tool can be run in parallel with others
+    protected: bool = False  # Whether this tool is protected against unprivileged invocation
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
@@ -40,8 +41,7 @@ class ToolHandler(ABC):
         args: Dict[str, Any],
         session: AsyncSession,
         executor: Optional[Any] = None,
-        on_update: Optional[Callable[[Dict[str, Any]], Any]] = None,
-        **kwargs
+        **kwargs: Any
     ) -> Any:
         """
         Execute the tool logic and return result payload.

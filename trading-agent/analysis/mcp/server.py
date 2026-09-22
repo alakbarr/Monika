@@ -149,11 +149,11 @@ class MonikaMcpServer:
                     for r in real_rows:
                         positions_data.append({
                             "type": "real",
-                            "ticket": r.ticket,
+                            "ticket": r.mt5_ticket or r.id,
                             "symbol": r.symbol,
                             "direction": r.direction,
                             "volume": r.volume,
-                            "open_price": r.open_price,
+                            "open_price": r.entry_price,
                             "sl": r.sl,
                             "tp": r.tp,
                         })
@@ -163,13 +163,13 @@ class MonikaMcpServer:
                     for p in paper_rows:
                         positions_data.append({
                             "type": "paper",
-                            "ticket": p.ticket,
+                            "ticket": p.id,
                             "symbol": p.symbol,
                             "direction": p.direction,
-                            "volume": p.volume,
-                            "open_price": p.open_price,
-                            "sl": p.sl,
-                            "tp": p.tp,
+                            "volume": getattr(p, "risk_pct", 0.0),
+                            "open_price": p.entry_price,
+                            "sl": p.stop_loss,
+                            "tp": p.take_profit,
                         })
 
             return {"count": len(positions_data), "positions": positions_data}

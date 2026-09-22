@@ -9,7 +9,7 @@ import logging
 import copy
 import asyncio
 import inspect
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 from utils.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
 import time
@@ -196,10 +196,6 @@ class LLMFactory:
         if "deepseek" in name:
             return "deepseek"
         if "ollama" in name:
-            # ponytail: name-guess only; qwen/llama removed — bare names like
-            # "qwen3.8-27b" silently routed to local ollama (no tool calling).
-            # Catalog entries carry explicit provider; unknown names now fail
-            # visibly via openai_compatible + _check_model_roles startup guard.
             return "ollama"
         if "grok" in name:
             return "openai_compatible"
@@ -577,9 +573,12 @@ class FallbackClientWrapper(BaseLLMClient):
                     client.thinking_budget = self._dynamic_thinking_budget
                 
             slot_retries = 0
+            method = getattr(client, method_name, None)
             while True:
                 try:
-                    method = getattr(client, method_name)
+                    method = getattr(client, method_name, None)
+                    if not callable(method):
+                        raise AttributeError(f"Client {client} does not implement callable method '{method_name}'")
                     # Safely clone mutable message lists / dicts while preserving unpicklable session objects
                     safe_args = [_safe_clone(a) for a in args]
                     safe_kwargs = {k: _safe_clone(v) for k, v in kwargs.items()}
@@ -605,8 +604,9 @@ class FallbackClientWrapper(BaseLLMClient):
                         elif safe_args and isinstance(safe_args[0], list):
                             safe_args[0] = preserve_fn(safe_args[0], target_prov)
 
+                    call_coro: Any = method(*safe_args, **safe_kwargs)
                     result = await asyncio.wait_for(
-                        method(*safe_args, **safe_kwargs),
+                        call_coro,
                         timeout=per_model_timeout
                     )
                     
@@ -657,12 +657,13 @@ class FallbackClientWrapper(BaseLLMClient):
                     return result
                 except (asyncio.TimeoutError, StreamTimeoutError, StreamSafetyTimeoutError) as timeout_err:
                     # Attempt 1x dual-protocol non-streaming fallback if stream failed
-                    if kwargs.get("stream", True) and method_name in ["generate", "generate_content"]:
+                    if kwargs.get("stream", True) and method_name in ["generate", "generate_content"] and callable(method):
                         try:
                             logger.info(f"[{self.task_role}] Stream timeout on {slot_name}/{model}, attempting 1x non-streaming fallback...")
                             ns_kwargs = dict(kwargs)
                             ns_kwargs["stream"] = False
-                            ns_res = await asyncio.wait_for(method(*args, **ns_kwargs), timeout=25.0)
+                            ns_coro: Any = method(*args, **ns_kwargs)
+                            ns_res = await asyncio.wait_for(ns_coro, timeout=25.0)
                             if ns_res is not None:
                                 self.model = model
                                 self._slot_backoff_count[slot_name] = 0
@@ -771,11 +772,12 @@ class FallbackClientWrapper(BaseLLMClient):
                             if next_key and next_key != curr_key:
                                 logger.info(f"[{self.task_role}] In-flight key rotation for {provider} on {slot_name}. Retrying immediately.")
                                 if hasattr(client, "api_key"):
-                                    client.api_key = next_key
+                                    setattr(client, "api_key", next_key)
                                 if hasattr(client, "_api_key"):
-                                    client._api_key = next_key
-                                if hasattr(client, "client") and hasattr(client.client, "api_key"):
-                                    client.client.api_key = next_key
+                                    setattr(client, "_api_key", next_key)
+                                underlying = getattr(client, "client", None)
+                                if underlying is not None and hasattr(underlying, "api_key"):
+                                    setattr(underlying, "api_key", next_key)
                                 continue
                         except Exception as pool_err:
                             logger.debug(f"Credential pool rotation pass-through: {pool_err}")
@@ -834,8 +836,8 @@ class FallbackClientWrapper(BaseLLMClient):
                         )
                         async def _notify_failover_post_facto(role: str, failed_model: str, err_reason: str):
                             try:
-                                from utils.notifier import send_telegram_alert
-                                await send_telegram_alert(
+                                from utils.infra.notifier import get_notifier
+                                await get_notifier().send_alert(
                                     f"⚠️ *HOT PATH Auto-Failover*\n"
                                     f"Role: `{role}`\n"
                                     f"Failed: `{failed_model}`\n"
