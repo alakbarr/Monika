@@ -46,6 +46,100 @@ def safe_unicode_slice(text: str, max_chars: int) -> str:
     return sub.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
 
 
+TOOL_PRUNE_MARKER: str = "\n\n[... tool result middle pruned ...]\n\n"
+
+
+def safe_unicode_tail(text: str, max_chars: int) -> str:
+    """
+    Slices string tail by Unicode code points without corrupting multi-byte characters
+    or splitting surrogate pairs.
+    """
+    if len(text) <= max_chars:
+        return text
+    clean = text.encode("utf-8", errors="surrogatepass").decode("utf-8", errors="replace")
+    sub = clean[-max_chars:]
+    return sub.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+
+
+def prune_tool_result_content(
+    text: str,
+    threshold_chars: int = 8192,
+    head_chars: int = 4096,
+    tail_chars: int = 1024,
+) -> str:
+    """
+    Deterministic head/tail code-point-safe pruning for individual oversized tool outputs.
+    Preserves setup context at head and conclusion/status at tail while trimming verbose intermediate output.
+    """
+    if len(text) <= threshold_chars:
+        return text
+    head = safe_unicode_slice(text, head_chars)
+    tail = safe_unicode_tail(text, tail_chars)
+    return f"{head}{TOOL_PRUNE_MARKER}{tail}"
+
+
+def prune_oversized_tool_results(
+    messages: List[dict],
+    threshold_chars: int = 8192,
+    head_chars: int = 4096,
+    tail_chars: int = 1024,
+) -> List[dict]:
+    """
+    Scans conversation messages and deterministically prunes tool results that exceed threshold_chars
+    without an LLM invocation.
+    """
+    if not messages:
+        return messages
+
+    processed = []
+    for msg in messages:
+        content = msg.get("content")
+        role = msg.get("role")
+
+        if isinstance(content, list):
+            new_blocks = []
+            modified = False
+            for b in content:
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    res_text = str(b.get("content", ""))
+                    if len(res_text) > threshold_chars:
+                        pruned_text = prune_tool_result_content(
+                            res_text,
+                            threshold_chars=threshold_chars,
+                            head_chars=head_chars,
+                            tail_chars=tail_chars,
+                        )
+                        cloned_block = dict(b)
+                        cloned_block["content"] = pruned_text
+                        new_blocks.append(cloned_block)
+                        modified = True
+                        continue
+                new_blocks.append(b)
+            if modified:
+                cloned_msg = dict(msg)
+                cloned_msg["content"] = new_blocks
+                processed.append(cloned_msg)
+            else:
+                processed.append(msg)
+        elif isinstance(content, str) and role in ("tool", "user"):
+            if role == "tool" and len(content) > threshold_chars:
+                pruned_text = prune_tool_result_content(
+                    content,
+                    threshold_chars=threshold_chars,
+                    head_chars=head_chars,
+                    tail_chars=tail_chars,
+                )
+                cloned_msg = dict(msg)
+                cloned_msg["content"] = pruned_text
+                processed.append(cloned_msg)
+            else:
+                processed.append(msg)
+        else:
+            processed.append(msg)
+
+    return processed
+
+
 def offload_historical_charts(messages: List[dict], retain_recent_turns: int = 2) -> List[dict]:
     """
     Strips heavy base64 image / chart payloads from turns older than `retain_recent_turns`
@@ -97,6 +191,21 @@ class ContextCompressor:
         self._ineffective_compression_count: int = 0
         self._locked_until: float = 0.0
         self.cooldown_seconds: float = float(self.settings.get("compaction_cooldown_seconds", 120.0))
+
+    def prune_oversized_tool_results(
+        self,
+        messages: List[dict],
+        threshold_chars: int = 8192,
+        head_chars: int = 4096,
+        tail_chars: int = 1024,
+    ) -> List[dict]:
+        """Stage 0: Deterministic model-free pruning of individual oversized tool results."""
+        return prune_oversized_tool_results(
+            messages,
+            threshold_chars=threshold_chars,
+            head_chars=head_chars,
+            tail_chars=tail_chars,
+        )
 
     def prune_deterministic_tools(self, messages: List[dict]) -> List[dict]:
         """Phase 1: Deterministic Tool Pruning & Deduplication.
@@ -495,6 +604,9 @@ class ContextCompressor:
         """
         # Phase 0: Offload historical high-res charts older than 2 turns to eliminate multimodal sinks
         messages = offload_historical_charts(messages, retain_recent_turns=2)
+
+        # Stage 0: Deterministic model-free pruning of oversized tool results (> 8192 chars)
+        messages = prune_oversized_tool_results(messages)
 
         total_chars = sum(len(str(m.get("content", ""))) for m in messages)
         if total_chars <= max_context_chars:

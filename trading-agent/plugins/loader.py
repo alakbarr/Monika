@@ -101,23 +101,22 @@ class PluginLoader:
         self._loaded_manifests: Dict[str, PluginManifest] = {}
 
     def discover_plugins(self, plugins_dir: str) -> List[Tuple[PluginManifest, str]]:
-        """Scan a directory for valid plugin subdirectories containing plugin.yaml."""
+        """Scan a directory for valid plugin subdirectories containing plugin.yaml, supporting nested categories."""
         if not os.path.isdir(plugins_dir):
             return []
 
         discovered = []
-        for item in sorted(os.listdir(plugins_dir)):
-            item_path = os.path.join(plugins_dir, item)
-            manifest_file = os.path.join(item_path, "plugin.yaml")
-            if os.path.isdir(item_path) and os.path.isfile(manifest_file):
+        for root, dirs, files in os.walk(plugins_dir):
+            if "plugin.yaml" in files:
+                manifest_file = os.path.join(root, "plugin.yaml")
                 try:
                     manifest = load_manifest_file(manifest_file)
                     if manifest.enabled:
-                        discovered.append((manifest, item_path))
+                        discovered.append((manifest, root))
                     else:
                         logger.info(f"Skipping disabled plugin: {manifest.name}")
                 except Exception as e:
-                    logger.warning(f"Invalid plugin manifest in {item_path}: {e}")
+                    logger.warning(f"Invalid plugin manifest in {root}: {e}")
         return discovered
 
     def load_plugins_from_directory(self, plugins_dir: str) -> List[PluginManifest]:

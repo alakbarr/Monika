@@ -3,8 +3,14 @@
 import logging
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+from utils.retry_decorator import retryable
 
 logger = logging.getLogger("TradingAgent.SentimentHandlers")
+
+
+@retryable(max_retries=2, base_delay=0.5)
+async def _fetch_with_retry(fetcher: Any) -> Any:
+    return await fetcher.fetch()
 
 
 class SentimentToolHandlers:
@@ -38,7 +44,7 @@ class SentimentToolHandlers:
             try:
                 from data_sources.fear_greed import FearGreedFetcher
                 fetcher = FearGreedFetcher(session)
-                return await fetcher.fetch()
+                return await _fetch_with_retry(fetcher)
             except Exception as e:
                 logger.warning(f"Fear & Greed fetch failed: {e}")
         return {"status": "unavailable"}
@@ -53,17 +59,17 @@ class SentimentToolHandlers:
                 if target_symbol.startswith("BTC") or target_symbol.startswith("ETH"):
                     from scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
                     fetcher = BinanceSentimentFetcher(session)
-                    return await fetcher.fetch()
+                    return await _fetch_with_retry(fetcher)
                 else:
                     from scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
                     fetcher = MyFxBookSentimentFetcher(session)
-                    res = await fetcher.fetch()
+                    res = await _fetch_with_retry(fetcher)
                     if isinstance(res, dict) and "error" not in res and bool(res):
                         return res
                     # Graceful fallback to FXSSI if MyFxBook is blocked or unavailable
                     from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
                     fxssi_fetcher = FXSSISentimentFetcher(session)
-                    return await fxssi_fetcher.fetch()
+                    return await _fetch_with_retry(fxssi_fetcher)
             except Exception as e:
                 logger.warning(f"Retail sentiment fetch failed: {e}")
         return {"symbol": target_symbol, "status": "unavailable"}

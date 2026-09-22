@@ -5,7 +5,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from analysis.harness.context_compressor import ContextCompressor
+from analysis.harness.context_compressor import (
+    ContextCompressor,
+    safe_unicode_tail,
+    prune_tool_result_content,
+    prune_oversized_tool_results,
+    TOOL_PRUNE_MARKER,
+)
 
 
 def test_compression_not_triggered_when_within_budget():
@@ -256,5 +262,58 @@ def test_offload_historical_charts():
     # Recent assistant turn (turn 3) must keep image intact
     recent_content = offloaded[5]["content"]
     assert any(b.get("type") == "image_url" for b in recent_content if isinstance(b, dict))
+
+
+def test_safe_unicode_tail():
+    text = "Hello World"
+    assert safe_unicode_tail(text, 5) == "World"
+    assert safe_unicode_tail(text, 20) == "Hello World"
+
+
+def test_prune_tool_result_content():
+    short_text = "Small tool output"
+    assert prune_tool_result_content(short_text, threshold_chars=50) == short_text
+
+    long_text = "HEAD_" + "x" * 1000 + "_TAIL"
+    pruned = prune_tool_result_content(long_text, threshold_chars=100, head_chars=10, tail_chars=10)
+    assert pruned.startswith("HEAD_")
+    assert pruned.endswith("_TAIL")
+    assert TOOL_PRUNE_MARKER in pruned
+    assert len(pruned) < len(long_text)
+
+
+def test_prune_oversized_tool_results_in_messages():
+    huge_payload = "START_" + "0123456789" * 1000 + "_END"  # > 10,000 chars
+    messages = [
+        {"role": "user", "content": "Fetch massive data."},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "t1", "name": "get_heavy_data"}]},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "t1",
+                    "content": huge_payload,
+                }
+            ],
+        },
+        {"role": "tool", "content": huge_payload},
+    ]
+
+    pruned = prune_oversized_tool_results(messages, threshold_chars=500, head_chars=50, tail_chars=50)
+
+    # Check tool_result in list
+    res_block = pruned[2]["content"][0]["content"]
+    assert TOOL_PRUNE_MARKER in res_block
+    assert res_block.startswith("START_")
+    assert res_block.endswith("_END")
+    assert len(res_block) < 300
+
+    # Check tool role message
+    tool_msg = pruned[3]["content"]
+    assert TOOL_PRUNE_MARKER in tool_msg
+    assert tool_msg.startswith("START_")
+    assert tool_msg.endswith("_END")
+
 
 

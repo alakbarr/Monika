@@ -17,15 +17,18 @@ import traceback
 from typing import Dict, Any, Tuple
 from analysis.tools.kernel.env_sanitizer import get_sanitized_environment
 from analysis.tools.kernel.output_spiller import truncate_and_spill_output
+from analysis.tools.kernel.sandbox_runner import SandboxedKernel
 
 logger = logging.getLogger("TradingAgent.Tools.PersistentKernel")
 
 
 class PersistentCodeKernel:
-    """Isolated persistent Python execution session."""
+    """Isolated Python execution session with subprocess sandboxing."""
 
-    def __init__(self, session_id: str = "default"):
+    def __init__(self, session_id: str = "default", sandbox_mode: bool = True):
         self.session_id = session_id
+        self.sandbox_mode = sandbox_mode
+        self.sandbox = SandboxedKernel(session_id=session_id)
         self.namespace: Dict[str, Any] = {
             "__name__": "__main__",
             "__doc__": None,
@@ -34,9 +37,13 @@ class PersistentCodeKernel:
 
     def execute(self, code_str: str, timeout_seconds: float = 30.0) -> Tuple[str, bool]:
         """
-        Execute code string within the persistent namespace.
+        Execute code string within the isolated sandbox (or namespace in unsafe mode).
         Returns: (output_text, is_success)
         """
+        if self.sandbox_mode:
+            self.execution_count += 1
+            return self.sandbox.execute(code_str, timeout_seconds=timeout_seconds)
+
         self.execution_count += 1
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()

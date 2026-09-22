@@ -282,7 +282,8 @@ Monika/
     │   │   │   ├── __init__.py
     │   │   │   ├── env_sanitizer.py
     │   │   │   ├── output_spiller.py
-    │   │   │   └── persistent_kernel.py
+    │   │   │   ├── persistent_kernel.py
+    │   │   │   └── sandbox_runner.py
     │   │   ├── domain
     │   │   │   ├── execution_handlers.py
     │   │   │   ├── macro_handlers.py
@@ -623,7 +624,19 @@ Monika/
     ├── plugins
     │   ├── __init__.py
     │   ├── loader.py
-    │   └── manifest.py
+    │   ├── manifest.py
+    │   ├── alerts
+    │   │   └── discord_alert
+    │   │       ├── discord_alert.py
+    │   │       └── plugin.yaml
+    │   ├── indicators
+    │   │   └── custom_indicator
+    │   │       ├── custom_indicator.py
+    │   │       └── plugin.yaml
+    │   └── scrapers
+    │       └── example_scraper
+    │           ├── example_scraper.py
+    │           └── plugin.yaml
     ├── provider
     │   ├── __init__.py
     │   ├── credential_pool.py
@@ -638,6 +651,8 @@ Monika/
     │   ├── trade_proposal.py
     │   └── invariants
     │       ├── __init__.py
+    │       ├── position_count_invariant.py
+    │       ├── registry.py
     │       ├── risk_gate_invariant.py
     │       └── state_immutability_invariant.py
     ├── security
@@ -742,6 +757,7 @@ Monika/
         ├── chart_generator.py
         ├── clock.py
         ├── constants.py
+        ├── retry_decorator.py
         ├── turn_marker.py
         ├── analytics
         │   ├── adversarial_outcome_tracker.py

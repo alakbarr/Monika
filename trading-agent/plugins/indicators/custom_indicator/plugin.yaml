@@ -1,0 +1,16 @@
+name: custom_indicator_plugin
+version: 1.0.0
+description: Reference custom technical indicator plugin for volume and price analysis
+author: Monika Core Team
+enabled: true
+entrypoint: "custom_indicator:initialize"
+dependencies: []
+hooks:
+  on_startup: "custom_indicator:initialize"
+  post_cycle: "custom_indicator:post_cycle"
+tools:
+  - name: calculate_vwap_deviation
+    description: Calculates Volume-Weighted Average Price deviation for a symbol
+    entrypoint: "custom_indicator:calculate_vwap_deviation"
+    category: indicator
+config: {}
