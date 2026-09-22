@@ -435,17 +435,21 @@ class TimesFMEngine:
         symbol: str,
         timeframe: str = "H1",
         max_age_hours: Optional[float] = None,
+        as_of: Optional[datetime] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Mengambil proyeksi TimesFM terbaru dari database yang masih valid (belum basi).
+        Mendukung as_of point-in-time filtering untuk mencegah look-ahead bias dalam backtest.
         """
         max_age = max_age_hours if max_age_hours is not None else self.cache_ttl_hours
-        cutoff = clock.now() - timedelta(hours=max_age)
+        ref_time = as_of if as_of is not None else clock.now()
+        cutoff = ref_time - timedelta(hours=max_age)
 
         stmt = (
             select(TimesFMForecast)
             .where(TimesFMForecast.symbol == symbol, TimesFMForecast.timeframe == timeframe)
             .where(TimesFMForecast.generated_at >= cutoff)
+            .where(TimesFMForecast.generated_at <= ref_time)
             .order_by(desc(TimesFMForecast.generated_at))
             .limit(1)
         )

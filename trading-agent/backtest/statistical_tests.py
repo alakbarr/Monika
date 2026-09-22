@@ -27,13 +27,14 @@ def probabilistic_sharpe_ratio(
     adjusting for small sample size, return skewness, and non-normality (fat tails).
 
     Formula (Bailey & López de Prado, 2012):
-        PSR(SR*) = Phi( (SR - SR*) * sqrt(T - 1) / sqrt(1 - skew*SR + (excess_kurt/4)*SR^2) )
+        PSR(SR*) = Phi( (SR - SR*) * sqrt(T - 1) / sqrt(1 - skew*SR + ((excess_kurt + 2)/4)*SR^2) )
     """
     if n_obs < 3:
         return 0.5
 
-    # Variance adjustment term for non-normal returns
-    var_term = 1.0 - (skew * observed_sr) + ((excess_kurt / 4.0) * (observed_sr ** 2))
+    # Variance adjustment term for non-normal returns (Bailey & López de Prado 2012, eq. 6)
+    # (gamma4 - 1)/4 = (excess_kurt + 2)/4 = excess_kurt/4 + 0.5
+    var_term = 1.0 - (skew * observed_sr) + (((excess_kurt + 2.0) / 4.0) * (observed_sr ** 2))
     if var_term <= 1e-12:
         var_term = 1e-12
 
@@ -133,3 +134,30 @@ def compute_sample_moments(returns: Sequence[float]) -> tuple[float, float, floa
     excess_kurt = (m4 / (std ** 4)) - 3.0
 
     return mean, std, skew, excess_kurt
+
+
+def benjamini_hochberg(p_values: Sequence[float], alpha: float = 0.05) -> list[bool]:
+    """
+    Apply Benjamini-Hochberg False Discovery Rate (FDR) procedure for multiple hypothesis testing.
+    Controls FDR at level alpha across m strategy or parameter tests.
+
+    Returns:
+        List of booleans where True indicates rejection of H0 (statistically significant discovery).
+    """
+    m = len(p_values)
+    if m == 0:
+        return []
+
+    # Store original indices and sort by p-value
+    indexed_p = sorted(enumerate(p_values), key=lambda x: x[1])
+
+    # Find largest k such that P_(k) <= (k / m) * alpha (1-indexed rank)
+    max_k = -1
+    for rank, (orig_idx, p_val) in enumerate(indexed_p, start=1):
+        threshold = (rank / m) * alpha
+        if p_val <= threshold:
+            max_k = rank
+
+    # Any hypothesis with rank <= max_k is significant
+    significant_orig_indices = set(orig_idx for orig_idx, _ in indexed_p[:max_k]) if max_k > 0 else set()
+    return [i in significant_orig_indices for i in range(m)]

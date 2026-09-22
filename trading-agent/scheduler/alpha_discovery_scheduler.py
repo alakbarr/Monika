@@ -207,7 +207,7 @@ class AlphaDiscoveryScheduler:
             oos_window_days=self.oos_window_days,
             step_days=self.step_days,
             settings=test_settings,
-            mode="replay",
+            mode="full",
         )
 
         try:

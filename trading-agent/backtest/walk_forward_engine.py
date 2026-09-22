@@ -3,13 +3,14 @@ WalkForwardEngine: Rolling-Window Walk-Forward Optimization & Out-of-Sample Vali
 Evaluates strategy robustness, alpha degradation, and detects overfitting across chronological rolling folds.
 """
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Tuple, Optional, Literal, cast
 
 from backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
 from backtest.report_generator import ReportGenerator
-from backtest.statistical_tests import deflated_sharpe_ratio
+from backtest.statistical_tests import deflated_sharpe_ratio, compute_sample_moments
 from backtest.alpha_validation import validate_alpha, AlphaValidation
 from database.models import BacktestTrade
 
@@ -63,8 +64,9 @@ class WalkForwardEngine:
         settings: Optional[dict] = None,
         mode: BacktestMode = "replay",
         step_hours: int = 4,
-        purge_days: int = 1,
+        purge_days: int = 4,
         embargo_pct: float = 0.01,
+        n_trials: Optional[int] = None,
     ):
         self.start_date = start_date.replace(tzinfo=timezone.utc) if start_date.tzinfo is None else start_date
         self.end_date = end_date.replace(tzinfo=timezone.utc) if end_date.tzinfo is None else end_date
@@ -76,6 +78,7 @@ class WalkForwardEngine:
         self.step_hours = step_hours
         self.purge_days = max(0, purge_days)
         self.embargo_pct = max(0.0, embargo_pct)
+        self.n_trials = n_trials
 
     def generate_folds(self) -> List[Tuple[datetime, datetime, datetime, datetime]]:
         """
@@ -87,7 +90,7 @@ class WalkForwardEngine:
         current_is_start = self.start_date
         total_duration = (self.end_date - self.start_date).days
         min_required_days = self.is_window_days + min(7, self.oos_window_days)
-        embargo_days = max(0, int(self.oos_window_days * self.embargo_pct))
+        embargo_days = max(1, math.ceil(self.oos_window_days * self.embargo_pct)) if self.embargo_pct > 0 else 0
 
         if total_duration < min_required_days:
             # Fallback single fold with 75% IS / 25% OOS split
@@ -247,12 +250,21 @@ class WalkForwardEngine:
             overall_wfe = 1.0 if avg_oos_ret >= 0 else 0.0
 
         # Compute Deflated Sharpe Ratio (DSR) across folds
-        n_trials = max(1, len(results_folds))
+        effective_trials = self.n_trials if self.n_trials is not None and self.n_trials > 0 else max(1, len(results_folds))
+        total_oos_days = max(10, sum((f.oos_end - f.oos_start).days for f in results_folds))
+        n_obs = max(len(all_oos_trades), total_oos_days)
+        # De-annualize Sharpe to match daily frequency scale of n_obs
+        daily_oos_sr = avg_oos_sharpe / math.sqrt(252.0) if avg_oos_sharpe > 0 else avg_oos_sharpe
+        oos_trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in all_oos_trades] if all_oos_trades else []
+        _, _, oos_skew, oos_kurt = compute_sample_moments(oos_trade_returns) if len(oos_trade_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
+
         dsr_score = deflated_sharpe_ratio(
-            observed_sr=avg_oos_sharpe,
-            n_trials=n_trials,
-            n_obs=len(all_oos_trades),
-            sr_std=0.5,
+            observed_sr=daily_oos_sr,
+            n_trials=effective_trials,
+            n_obs=n_obs,
+            skew=oos_skew,
+            excess_kurt=oos_kurt,
+            sr_std=0.5 / math.sqrt(252.0),
         )
 
         # Alpha validation (directional balance, split-half consistency, cost stress)

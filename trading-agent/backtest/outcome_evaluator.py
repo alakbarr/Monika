@@ -43,11 +43,18 @@ class OutcomeEvaluator:
         custom_friction_profile: Optional[Dict[str, Dict[str, float]]] = None,
         latency_ms: float = 0.0,
         commission_per_lot_usd: float = 0.0,
+        settings: Optional[Dict[str, Any]] = None,
     ):
-        self.max_holding_hours = max_holding_hours
-        self.latency_ms = latency_ms
-        self.commission_per_lot_usd = commission_per_lot_usd
+        bt_cfg = (settings or {}).get("backtest", {})
+        self.max_holding_hours = bt_cfg.get("max_holding_hours", max_holding_hours)
+        self.latency_ms = bt_cfg.get("latency_ms", latency_ms)
+        self.commission_per_lot_usd = bt_cfg.get("commission_per_lot_usd", commission_per_lot_usd)
         self.friction_profile = dict(ASSET_FRICTION_PROFILE)
+        cfg_frictions = bt_cfg.get("friction_profiles", {})
+        if cfg_frictions:
+            for sym, prof in cfg_frictions.items():
+                self.friction_profile[sym] = dict(prof)
+        self.apply_costs = bt_cfg.get("apply_costs", False)
         if custom_friction_profile:
             for sym, prof in custom_friction_profile.items():
                 self.friction_profile[sym] = dict(prof)
@@ -68,20 +75,23 @@ class OutcomeEvaluator:
 
     _get_contract_size = get_contract_size
 
-    async def calibrate_from_db(self, session, lookback_days: int = 30) -> Dict[str, Dict[str, float]]:
+    async def calibrate_from_db(self, session, lookback_days: int = 30, as_of: Optional[datetime] = None) -> Dict[str, Dict[str, float]]:
         """
         Calibrate dynamic asset friction profiles from historical paper/live execution logs.
         Calculates empirical average slippage and spread per symbol.
+        Supports as_of parameter to prevent future slippage leakage in backtests.
         """
         from database.models import PaperTradeRecord
         from sqlalchemy import select
         import utils.clock as clock
         
-        since = clock.now() - timedelta(days=lookback_days)
+        now = as_of if as_of is not None else clock.now()
+        since = now - timedelta(days=lookback_days)
         stmt = (
             select(PaperTradeRecord)
             .where(PaperTradeRecord.status == 'closed')
             .where(PaperTradeRecord.closed_at >= since)
+            .where(PaperTradeRecord.closed_at <= now)
         )
         trades = (await session.execute(stmt)).scalars().all()
         
@@ -170,7 +180,7 @@ class OutcomeEvaluator:
     async def evaluate_trade(
         self,
         trade: BacktestTrade,
-        apply_costs: bool = False,
+        apply_costs: Optional[bool] = None,
         risk_gate: Optional[Any] = None,
         simulate_guardian: bool = False,
         atr_pips: Optional[float] = None,
@@ -179,6 +189,9 @@ class OutcomeEvaluator:
         Evaluate a trade against historical H1 OHLCV data.
         Returns outcome details including pips, percentage, dollar PnL, and cost friction.
         """
+        if apply_costs is None:
+            apply_costs = getattr(self, "apply_costs", False)
+
         if trade.entry_time.tzinfo is None:
             trade_entry_time = trade.entry_time.replace(tzinfo=timezone.utc)
         else:
@@ -246,22 +259,42 @@ class OutcomeEvaluator:
                         break
 
             if trade.direction.lower() == "buy":
-                # Check SL first (conservative)
-                if bar.low <= trade.stop_loss:
+                sl_hit = bar.low <= trade.stop_loss
+                tp_hit = bar.high >= trade.take_profit
+                if sl_hit and tp_hit:
+                    # Intra-bar collision resolution (NautilusTrader parity):
+                    # Check distance from bar open to TP vs SL. Closer price triggered first.
+                    bar_open = getattr(bar, "open", None)
+                    if bar_open is not None and abs(bar_open - trade.take_profit) < abs(bar_open - trade.stop_loss):
+                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    else:
+                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    break
+                elif sl_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
-                if bar.high >= trade.take_profit:
+                elif tp_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
             elif trade.direction.lower() == "sell":
                 # Posisi SELL ditutup pada harga ASK (Bid + Spread)
                 ask_high = bar.high + spread_pip
                 ask_low = bar.low + spread_pip
-                # Check SL first
-                if ask_high >= trade.stop_loss:
+                sl_hit = ask_high >= trade.stop_loss
+                tp_hit = ask_low <= trade.take_profit
+                if sl_hit and tp_hit:
+                    # Intra-bar collision resolution (NautilusTrader parity):
+                    bar_open = getattr(bar, "open", None)
+                    ask_open = (bar_open + spread_pip) if bar_open is not None else None
+                    if ask_open is not None and abs(ask_open - trade.take_profit) < abs(ask_open - trade.stop_loss):
+                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    else:
+                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    break
+                elif sl_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
-                if ask_low <= trade.take_profit:
+                elif tp_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
 

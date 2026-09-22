@@ -320,7 +320,7 @@ class PositionSizer:
             from indicators.timesfm_engine import TimesFMEngine
             from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
             tfm_engine = TimesFMEngine(self.settings)
-            tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0)
+            tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0, as_of=as_of)
             if tfm_fc:
                 vol_ratio = float(tfm_fc.get('volatility_expansion_ratio', 1.0))
                 if vol_ratio >= 1.40:
@@ -350,12 +350,15 @@ class PositionSizer:
             if streak_policy == "warn_and_scale":
                 from database.models import PaperTradeRecord
                 from sqlalchemy import select
-                recent = (await session.execute(
+                recent_stmt = (
                     select(PaperTradeRecord)
                     .where(PaperTradeRecord.symbol == symbol)
                     .where(PaperTradeRecord.status == 'closed')
-                    .order_by(PaperTradeRecord.closed_at.desc())
-                    .limit(3)
+                )
+                if as_of is not None:
+                    recent_stmt = recent_stmt.where(PaperTradeRecord.closed_at <= as_of)
+                recent = (await session.execute(
+                    recent_stmt.order_by(PaperTradeRecord.closed_at.desc()).limit(3)
                 )).scalars().all()
                 if len(recent) >= 3 and all((t.pnl_pct is not None and t.pnl_pct < 0) or t.exit_reason == 'sl_hit' for t in recent):
                     scale_mult = float(paper_cfg.get("streak_risk_scale_factor", 0.5))

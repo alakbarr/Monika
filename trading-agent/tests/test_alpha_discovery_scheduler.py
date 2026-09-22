@@ -86,6 +86,7 @@ async def test_evaluate_hypothesis_qualified(mock_settings):
         proposal = await scheduler.evaluate_hypothesis(hypothesis)
 
         assert proposal is not None
+        assert mock_engine_cls.call_args.kwargs.get("mode") == "full"
         assert proposal.overall_wfe == 0.72
         assert proposal.aggregate_oos_sharpe == 1.2
         assert proposal.is_overfit is False
