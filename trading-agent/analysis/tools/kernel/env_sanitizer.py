@@ -12,7 +12,7 @@ into user-facing script runners or arbitrary code execution environments.
 import os
 import sys
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 logger = logging.getLogger("TradingAgent.Tools.EnvSanitizer")
 
@@ -58,7 +58,7 @@ SAFE_SYSTEM_KEYS = frozenset({
 })
 
 
-def get_sanitized_environment(base_env: Dict[str, str] = None) -> Dict[str, str]:
+def get_sanitized_environment(base_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """
     Produce a scrubbed environment dictionary for child process execution.
     Removes all broker, database, and API credentials.

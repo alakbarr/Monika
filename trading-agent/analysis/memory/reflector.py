@@ -54,7 +54,7 @@ REFLECTION_SCHEMA = {
 }
 
 class TradeReflector:
-    def __init__(self, settings: Optional[dict] = None):
+    def __init__(self, settings: Optional[dict] = None, llm_client: Optional[Any] = None):
         if settings is None:
             import yaml, os
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,6 +64,7 @@ class TradeReflector:
             except Exception:
                 settings = {}
         self.settings: dict = settings or {}
+        self.llm_client = llm_client
         
     async def _fetch_enrichment_context(self, session, reflection) -> dict:
         """Kumpulkan konteks kaya: AssetAnalysis asli + temuan trade_autopsy."""
@@ -249,7 +250,7 @@ class TradeReflector:
             return
             
         enrichment = await self._fetch_enrichment_context(session, reflection)
-        client = get_client_for_task("trade_reflection", self.settings or {})
+        client = self.llm_client or get_client_for_task("trade_reflection", self.settings or {})
         
         alpha_text = f"Alpha vs {reflection.benchmark_name}: {reflection.alpha_return:.2f}%" if reflection.benchmark_name and reflection.alpha_return is not None else "No Alpha data."
         

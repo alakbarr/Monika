@@ -98,7 +98,7 @@ class OutcomeLinker:
                                 auto_rollback_on_streak=True,
                             )
                         if self.crystallizer:
-                            self.crystallizer.record_skill_attribution(
+                            await self.crystallizer.record_skill_attribution(
                                 skill_name=playbook_name,
                                 won=won,
                                 pnl=total_pnl,

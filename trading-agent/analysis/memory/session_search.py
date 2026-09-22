@@ -396,7 +396,7 @@ class SessionSearchEngine:
             return self.index_reflection(*args, **kwargs)
         return True
 
-    def update_session_outcome(self, *args, **kwargs) -> bool:
+    def update_session_outcome(self, *args, **kwargs) -> Any:
         """No-op kept for backwards compatibility. Delegates to update_reflection_outcome if AsyncSession is provided."""
         if args and hasattr(args[0], "get_bind"):
             return self.update_reflection_outcome(*args, **kwargs)

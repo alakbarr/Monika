@@ -108,6 +108,7 @@ class TradingSummary(TypedDict, total=False):
     custom_context: Optional[str]
     confluence_filter: Optional[Any]
     reactive_event: Optional[Any]
+    adhoc_verdicts: Optional[Dict[str, Any]]
 
 class AssetDecisionSummary(TypedDict, total=False):
     decision: str

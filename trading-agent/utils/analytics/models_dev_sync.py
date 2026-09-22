@@ -39,9 +39,11 @@ class ModelsDevSync:
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    cls._cached_data = json.load(f)
-                    cls._last_checked = time.time()
-                    return cls._cached_data
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        cls._cached_data = loaded
+                        cls._last_checked = time.time()
+                        return loaded
             except Exception as e:
                 logger.debug(f"[PricingSync] Failed loading cache: {e}")
         return {}

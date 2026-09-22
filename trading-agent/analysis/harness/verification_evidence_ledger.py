@@ -74,12 +74,15 @@ class VerificationEvidenceLedger:
         tp = None
         if isinstance(tool_input, dict):
             try:
-                if "entry" in tool_input or "entry_price" in tool_input:
-                    entry = float(tool_input.get("entry") or tool_input.get("entry_price"))
-                if "sl" in tool_input or "stop_loss" in tool_input:
-                    sl = float(tool_input.get("sl") or tool_input.get("stop_loss"))
-                if "tp" in tool_input or "take_profit" in tool_input:
-                    tp = float(tool_input.get("tp") or tool_input.get("take_profit"))
+                raw_entry = tool_input.get("entry") or tool_input.get("entry_price")
+                if raw_entry is not None:
+                    entry = float(raw_entry)
+                raw_sl = tool_input.get("sl") or tool_input.get("stop_loss")
+                if raw_sl is not None:
+                    sl = float(raw_sl)
+                raw_tp = tool_input.get("tp") or tool_input.get("take_profit")
+                if raw_tp is not None:
+                    tp = float(raw_tp)
             except (ValueError, TypeError):
                 pass
 

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from analysis.mcp.protocol import LATEST_PROTOCOL_VERSION
 from analysis.tools.base_handler import ToolHandler
 from analysis.tools.registry import default_tool_registry, ToolDefinition
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.MCP.Client")
 
@@ -103,7 +104,7 @@ class McpServerProcess:
         """Sends a JSON-RPC notification (no response expected)."""
         if not self.process or not self.process.stdin:
             return
-        payload = {"jsonrpc": "2.0", "method": method}
+        payload: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}
         if params is not None:
             payload["params"] = params
         line = json.dumps(payload) + "\n"
@@ -181,7 +182,13 @@ class McpBridgeHandler(ToolHandler):
         self.category = "MCP"
         self.parallel_safe = True
 
-    async def execute(self, args: Dict[str, Any], **kwargs) -> Any:
+    async def execute(
+        self,
+        args: Dict[str, Any],
+        session: Optional[AsyncSession] = None,
+        executor: Optional[Any] = None,
+        **kwargs: Any
+    ) -> Any:
         return await self.server.call_tool(self.remote_tool_name, args)
 
 

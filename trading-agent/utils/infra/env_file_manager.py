@@ -73,6 +73,7 @@ class EnvFileManager:
                     new_lines.append(f"{key}={val}\n")
 
         # Write to temporary file in same directory for atomic replace
+        tmp_path: Optional[str] = None
         try:
             fd, tmp_path = tempfile.mkstemp(dir=target_dir, prefix=".env_tmp_", text=True)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -82,7 +83,7 @@ class EnvFileManager:
             return True
         except Exception as e:
             logger.error(f"Atomic update failed for {target_path}: {e}")
-            if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            if tmp_path is not None and os.path.exists(tmp_path):
                 try:
                     os.remove(tmp_path)
                 except OSError:
