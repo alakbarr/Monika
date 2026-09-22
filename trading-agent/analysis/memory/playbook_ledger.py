@@ -218,11 +218,12 @@ class PlaybookLedger:
         return True
 
 
-# Re-export lifecycle classes for backward compatibility
-from analysis.memory.playbook_lifecycle import (
-    PlaybookLifecycleFSM,
-    PlaybookLifecycleManager,
-)
+def __getattr__(name: str):
+    if name in ("PlaybookLifecycleFSM", "PlaybookLifecycleManager"):
+        from analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookLifecycleManager
+        return locals()[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
 
 __all__ = [
     "LedgerEntry",
@@ -230,7 +231,6 @@ __all__ = [
     "PlaybookState",
     "PlaybookStatus",
     "PlaybookMetadata",
-    "PlaybookLifecycleFSM",
-    "PlaybookLifecycleManager",
 ]
+
 

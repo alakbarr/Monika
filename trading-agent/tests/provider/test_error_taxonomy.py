@@ -1,5 +1,5 @@
 """
-Unit tests for Monika v2 Unified Error Taxonomy (provider/error_taxonomy.py).
+Unit tests for Monika Unified Error Taxonomy (provider/error_taxonomy.py).
 Tests provider failover reasons, trading domain exceptions, and actionable properties.
 """
 

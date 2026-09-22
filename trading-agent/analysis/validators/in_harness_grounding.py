@@ -1,5 +1,5 @@
 """
-Pi-Inspired In-Harness Grounding Validator.
+In-Harness Grounding Validator.
 
 Verifies numerical evidence, cited levels, and structural claims in LLM output
 directly against the empirical data prefetch snapshot:

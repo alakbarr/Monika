@@ -3,7 +3,7 @@
 # ==============================================================================
 
 """
-Credential Pool & Multi-Key Health Tracker (M2 & Monika v2).
+Credential Pool & Multi-Key Health Tracker (M2).
 Re-exports unified APICredentialPool from `provider.credential_pool`.
 """
 

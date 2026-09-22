@@ -1,5 +1,5 @@
 """
-Monika v2 Unified Credential Pool & Multi-Key Health Tracker.
+Monika Unified Credential Pool & Multi-Key Health Tracker.
 Supports dynamic key rotation, health scoring, exponential cooldowns (60s -> 4h),
 cost tracking, model-level cooldowns, and seamless integration with FailoverReason.
 """

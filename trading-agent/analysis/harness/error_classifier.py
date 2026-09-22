@@ -1,5 +1,5 @@
 """
-Structured error classification and recovery strategy assignment (Phase 3 & Monika v2).
+Structured error classification and recovery strategy assignment (Phase 3).
 Re-exports unified taxonomy from `provider.error_taxonomy`.
 """
 

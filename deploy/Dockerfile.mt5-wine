@@ -1,5 +1,5 @@
 # ==============================================================================
-# Monika v2 — Headless MetaTrader 5 Container with Wine & Xvfb for Linux VPS
+# Monika — Headless MetaTrader 5 Container with Wine & Xvfb for Linux VPS
 # ==============================================================================
 
 FROM debian:bookworm-slim

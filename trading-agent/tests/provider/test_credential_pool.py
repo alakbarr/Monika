@@ -1,5 +1,5 @@
 """
-Unit tests for Monika v2 Credential Pool & Multi-Key Health Tracker (provider/credential_pool.py).
+Unit tests for Monika Credential Pool & Multi-Key Health Tracker (provider/credential_pool.py).
 Tests exponential cooldown backoff, FailoverReason integration, cost tracking, and model-level isolation.
 """
 

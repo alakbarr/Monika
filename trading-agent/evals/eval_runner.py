@@ -1,6 +1,6 @@
 """
 File: evals/eval_runner.py
-PR-12: A/B Evaluation Harness & Experiment Runner for Monika v2.
+PR-12: A/B Evaluation Harness & Experiment Runner for Monika.
 Compares baseline prompts/decisions against candidates across golden scenarios,
 incorporating deterministic oracles, grounding verification, and cross-timeframe gates.
 """

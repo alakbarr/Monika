@@ -1,6 +1,6 @@
 """
 File: execution/ea_bridge/watchdog.py
-PR-16: Dual Heartbeat EA Watchdog for Monika v2.
+PR-16: Dual Heartbeat EA Watchdog for Monika.
 Actively monitors MQL5 EA heartbeat and trips safety circuits if the broker EA freezes,
 disconnects, or fails to write its heartbeat within threshold.
 """

@@ -1,6 +1,6 @@
 """
 File: execution/idempotency_guard.py
-PR-15: Idempotency Guard & Order-Position Deduplication Engine for Monika v2.
+PR-15: Idempotency Guard & Order-Position Deduplication Engine for Monika.
 Guarantees at-most-once execution for all trade proposals and orders across restarts,
 network reconnects, and concurrent scheduler triggers.
 """

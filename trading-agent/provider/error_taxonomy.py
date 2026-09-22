@@ -1,5 +1,5 @@
 """
-Monika v2 Unified Error Taxonomy & Recovery Strategy Assignment.
+Monika Unified Error Taxonomy & Recovery Strategy Assignment.
 Synthesizes provider failover reasons, agent harness error categories, and MT5 trading domain constraints.
 """
 
