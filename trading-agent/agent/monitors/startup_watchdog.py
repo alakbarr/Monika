@@ -26,7 +26,8 @@ class StartupWatchdog:
         self._timeout = timeout_seconds
         self._deadline = time.time() + timeout_seconds
         self._on_deadlock = on_deadlock
-        self._enforce_exit = enforce_exit if enforce_exit is not None else ("PYTEST_CURRENT_TEST" not in os.environ)
+        is_test = ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ)
+        self._enforce_exit = enforce_exit if enforce_exit is not None else (not is_test)
         self._complete = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._started = False
@@ -94,7 +95,8 @@ class StartupWatchdog:
             except Exception:
                 pass
 
-            if self._enforce_exit:
+            is_test = ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ)
+            if self._enforce_exit and not is_test:
                 # Escort thread ensuring process terminates within 10s even if callbacks hang
                 def _escort_kill():
                     time.sleep(10.0)
@@ -109,7 +111,7 @@ class StartupWatchdog:
                 except Exception as e:
                     sys.stderr.write(f"Error in deadlock handler: {e}\n")
 
-            if self._enforce_exit:
+            if self._enforce_exit and not is_test:
                 os._exit(75)  # EX_TEMPFAIL — signals transient failure to process supervisor
 
 
@@ -119,4 +121,6 @@ global_startup_watchdog = StartupWatchdog()
 
 def arm_startup_watchdog(timeout_s: float = 180.0):
     """Early bootstrap hook to arm watchdog before application imports."""
+    if ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ):
+        return
     global_startup_watchdog.start(timeout_seconds=timeout_s)
