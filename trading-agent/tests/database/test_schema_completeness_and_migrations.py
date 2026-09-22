@@ -8,6 +8,7 @@ import glob
 import sys
 import types
 import importlib.util
+from typing import Any
 from datetime import datetime, timezone, timedelta
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -21,11 +22,12 @@ def _ensure_mock_alembic():
     if 'alembic' not in sys.modules or not hasattr(sys.modules['alembic'], 'op'):
         mock_alembic = types.ModuleType('alembic')
         mock_op = types.ModuleType('alembic.op')
-        mock_alembic.op = mock_op
-        mock_alembic.context = types.ModuleType('alembic.context')
+        setattr(mock_alembic, 'op', mock_op)
+        mock_ctx = types.ModuleType('alembic.context')
+        setattr(mock_alembic, 'context', mock_ctx)
         sys.modules['alembic'] = mock_alembic
         sys.modules['alembic.op'] = mock_op
-        sys.modules['alembic.context'] = mock_alembic.context
+        sys.modules['alembic.context'] = mock_ctx
 
 
 def test_alembic_migration_chain_continuity():
@@ -39,7 +41,8 @@ def test_alembic_migration_chain_continuity():
     nodes = {}
     for f in migration_files:
         spec = importlib.util.spec_from_file_location('mig_mod_' + os.path.basename(f)[:-3], f)
-        mod = importlib.util.module_from_spec(spec)
+        assert spec is not None and spec.loader is not None
+        mod: Any = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         nodes[mod.revision] = {'file': os.path.basename(f), 'down': mod.down_revision}
 
@@ -60,7 +63,7 @@ def test_alembic_migration_chain_continuity():
         curr = next_rev
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
-    assert visited[-1] == 'p1a2b3c4d5e6', f"Expected head revision to be p1a2b3c4d5e6, got {visited[-1]}"
+    assert visited[-1] == 'q1a2b3c4d5e6', f"Expected head revision to be q1a2b3c4d5e6, got {visited[-1]}"
 
 
 def test_schema_completeness_all_models():
@@ -142,14 +145,15 @@ def test_schema_completeness_all_models():
     nodes = {}
     for f in migration_files:
         spec = importlib.util.spec_from_file_location('mig_mod_' + os.path.basename(f)[:-3], f)
-        mod = importlib.util.module_from_spec(spec)
+        assert spec is not None and spec.loader is not None
+        mod: Any = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         nodes[mod.revision] = {'down': mod.down_revision, 'mod': mod}
 
     curr = '9c013c8f495b'
     while curr:
         mod = nodes[curr]['mod']
-        mod.op = MockOp
+        setattr(mod, 'op', MockOp)
         def mock_insp(conn):
             class MockInsp:
                 def get_table_names(self): return list(tables.keys())
