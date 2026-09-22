@@ -679,6 +679,7 @@ Monika/
     │   ├── trading_skill_linter.py
     │   ├── usage_tracker.py
     │   ├── crystallized
+    │   │   └── eurusd_trend.md
     │   └── trading
     │       ├── adjudication_framework.md
     │       ├── caveman_mode.md
