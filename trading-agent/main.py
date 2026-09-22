@@ -62,9 +62,10 @@ import sys
 import argparse
 from datetime import datetime, timezone, timedelta
 
-# Arm startup watchdog early before heavy application imports
-from agent.monitors.startup_watchdog import arm_startup_watchdog
-arm_startup_watchdog(timeout_s=180.0)
+# Arm startup watchdog early before heavy application imports (skipped in test runner)
+if "pytest" not in sys.modules and "PYTEST_CURRENT_TEST" not in os.environ:
+    from agent.monitors.startup_watchdog import arm_startup_watchdog
+    arm_startup_watchdog(timeout_s=180.0)
 from typing import Callable, Optional, Any, TYPE_CHECKING
 
 import utils.clock as clock
