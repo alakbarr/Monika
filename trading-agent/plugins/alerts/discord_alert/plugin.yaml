@@ -1,0 +1,16 @@
+name: discord_alert_plugin
+version: 1.0.0
+description: Reference notification plugin for dispatching trade execution alerts to Discord
+author: Monika Core Team
+enabled: true
+entrypoint: "discord_alert:initialize"
+dependencies: []
+hooks:
+  post_order: "discord_alert:post_order"
+  on_shutdown: "discord_alert:on_shutdown"
+tools:
+  - name: dispatch_discord_alert
+    description: Dispatches alert message payload to external notification channel
+    entrypoint: "discord_alert:dispatch_discord_alert"
+    category: alert
+config: {}

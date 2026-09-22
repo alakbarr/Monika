@@ -12,6 +12,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import utils.clock as clock
+from utils.retry_decorator import retryable
 from database.models import NewsItem, NewsDigest, NewsDigestSlice
 from analysis.tools.registry import ToolRegistry, ToolDefinition
 
@@ -233,6 +234,21 @@ async def handle_get_digest_slices(args: dict, **ctx) -> dict:
     }
 
 
+@retryable(max_retries=2, base_delay=0.5)
+async def _execute_web_search(search_service: Any, **kwargs) -> dict:
+    return await search_service.search(**kwargs)
+
+
+@retryable(max_retries=2, base_delay=0.5)
+async def _execute_read_url(reader: Any, url: str) -> dict:
+    return await reader.read_url(url)
+
+
+@retryable(max_retries=2, base_delay=0.5)
+async def _execute_search_academic(client: Any, query: str, max_results: int) -> dict:
+    return await client.search_papers(query=query, max_results=max_results)
+
+
 async def handle_web_search(args: dict, **ctx) -> dict:
     _, settings = _get_session(args, ctx)
     query = str(args.get("query", "")).strip()
@@ -250,7 +266,8 @@ async def handle_web_search(args: dict, **ctx) -> dict:
     try:
         from data_sources.web_search import get_web_search_service
         search_service = get_web_search_service(settings)
-        result = await search_service.search(
+        result = await _execute_web_search(
+            search_service,
             query=query,
             topic=topic,
             search_depth=search_depth,
@@ -278,7 +295,7 @@ async def handle_read_url(args: dict, **ctx) -> dict:
     try:
         from data_sources.web_reader import WebReader
         reader = WebReader(max_chars=max_chars)
-        result = await reader.read_url(url)
+        result = await _execute_read_url(reader, url)
         return result
     except Exception as e:
         logger.debug(f"Read URL error: {e}")
@@ -298,7 +315,7 @@ async def handle_search_academic(args: dict, **ctx) -> dict:
     try:
         from data_sources.academic_search import AcademicSearchClient
         client = AcademicSearchClient()
-        result = await client.search_papers(query=query, max_results=max_results)
+        result = await _execute_search_academic(client, query, max_results)
         return result
     except Exception as e:
         logger.debug(f"Search academic error: {e}")

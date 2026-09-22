@@ -96,3 +96,46 @@ def test_operator_feedback_capture():
     # Invalid rating bounds
     with pytest.raises(ValueError):
         mgr.submit_feedback(cycle_id="cycle_100", rating=6, category="bad", note="out of bounds")
+
+
+def test_cryptographic_hash_chain_integrity():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        log = TradingCycleEventLog(storage_dir=Path(tmp_dir))
+        cid = "cycle_chain_audit_001"
+
+        ev1 = log.record_event(cid, CycleEventType.CYCLE_START, {"phase": "start"})
+        assert ev1.chain_hash is not None
+        assert ev1.prev_hash is not None
+
+        ev2 = log.record_event(cid, CycleEventType.STAGE_FUNDAMENTAL, {"bias": "bullish"}, source_event_seqs=[1])
+        assert ev2.prev_hash == ev1.chain_hash
+
+        ev3 = log.record_event(cid, CycleEventType.ORDER_DISPATCH, {"lot": 0.05}, source_event_seqs=[2])
+        assert ev3.prev_hash == ev2.chain_hash
+
+        # Verify integrity
+        is_valid, reason = log.verify_cycle_integrity(cid)
+        assert is_valid is True
+        assert reason is None
+
+
+def test_hash_chain_tamper_detection():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        log = TradingCycleEventLog(storage_dir=Path(tmp_dir))
+        cid = "cycle_tamper_test_002"
+
+        log.record_event(cid, CycleEventType.CYCLE_START, {"phase": "start"})
+        log.record_event(cid, CycleEventType.STAGE_PER_ASSET, {"symbol": "EURUSD", "signal": "buy"})
+
+        events = log.get_events_for_cycle(cid)
+        assert len(events) == 2
+
+        # Tamper with the payload of the first event in memory
+        events[0].payload["phase"] = "tampered_value"
+
+        from logging_observability.trading_cycle_event_log import verify_chain_integrity
+        is_valid, reason = verify_chain_integrity(events)
+        assert is_valid is False
+        assert reason is not None
+        assert "Tampered event payload" in reason
+

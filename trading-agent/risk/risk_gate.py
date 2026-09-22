@@ -345,6 +345,32 @@ class RiskGate:
                 rejection_reasons=rejections,
             )
 
+        # PR-3: Validate against registered runtime invariants
+        try:
+            from risk.invariants import get_global_invariant_registry
+            inv_ctx = {
+                "proposal": proposal,
+                "max_drawdown_limit": self.max_daily_drawdown_pct,
+                "current_drawdown_pct": 0.0,
+                "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.0)),
+            }
+            inv_results = get_global_invariant_registry().run_all(inv_ctx, fail_fast=False)
+            inv_failures = [r for r in inv_results if r.failed]
+            if inv_failures:
+                failure_names = [f.name for f in inv_failures]
+                failure_msgs = [f"[{f.name}] {f.message}" for f in inv_failures]
+                logger.warning(f"[{proposal.symbol}] Runtime invariant failures for proposal {proposal.proposal_id}: {failure_msgs}")
+                return RiskVerdict(
+                    approved=False,
+                    symbol=proposal.symbol,
+                    proposed_lots=proposal.lot_size,
+                    checks_passed=[],
+                    checks_failed=failure_names,
+                    rejection_reasons=failure_msgs,
+                )
+        except Exception as e:
+            logger.debug(f"Runtime invariant registry check error: {e}")
+
         if proposal.direction == "WAIT":
             return RiskVerdict(
                 approved=True,

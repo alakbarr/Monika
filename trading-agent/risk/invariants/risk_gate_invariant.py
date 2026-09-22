@@ -71,3 +71,40 @@ def assert_risk_gate_invariants(
                 )
         except (ValueError, TypeError) as conv_err:
             raise InvariantViolationError(f"Corrupt numerical parameters in proposal: {conv_err}")
+
+
+def check_risk_gate_invariant(context: Dict[str, Any]) -> Any:
+    """
+    InvariantRegistry adapter for risk gate invariant.
+    Returns InvariantResult.
+    """
+    from .registry import InvariantResult, InvariantStatus
+
+    proposal = context.get("proposal", {})
+    current_drawdown_pct = float(context.get("current_drawdown_pct", 0.0))
+    max_drawdown_limit = float(context.get("max_drawdown_limit", 3.0))
+    min_rr_ratio = float(context.get("min_rr_ratio", 1.0))
+
+    try:
+        assert_risk_gate_invariants(
+            proposal=proposal,
+            current_drawdown_pct=current_drawdown_pct,
+            max_drawdown_limit=max_drawdown_limit,
+            min_rr_ratio=min_rr_ratio,
+        )
+        return InvariantResult(
+            name="risk_gate",
+            status=InvariantStatus.PASS,
+            message="Risk gate invariants satisfied.",
+            details={"drawdown": current_drawdown_pct, "max_limit": max_drawdown_limit},
+            package_name="risk.invariants.risk_gate",
+        )
+    except InvariantViolationError as e:
+        return InvariantResult(
+            name="risk_gate",
+            status=InvariantStatus.FAIL,
+            message=str(e),
+            details={"drawdown": current_drawdown_pct, "max_limit": max_drawdown_limit},
+            package_name="risk.invariants.risk_gate",
+        )
+
