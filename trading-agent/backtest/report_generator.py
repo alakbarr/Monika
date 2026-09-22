@@ -193,7 +193,7 @@ class ReportGenerator:
         trade_returns = [
             float(item["trade_pnl_usd"]) / initial_eq
             for item in self.equity_curve
-            if "trade_pnl_usd" in item and item.get("trade_pnl_usd") is not None
+            if isinstance(item, dict) and "trade_pnl_usd" in item and item.get("trade_pnl_usd") is not None
         ]
         if not trade_returns:
             trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in self.trades]
