@@ -29,10 +29,22 @@ async def test_trading_agent_plugin_engine_wiring():
         assert agent.plugin_engine is not None
         assert agent.container is not None
 
-        # Verify that plugins across categories were discovered
+        # Verify that all 7 plugins across categories were discovered
         registry = agent.plugin_engine.registry
-        assert len(registry) > 0
-        assert "macro_to_asset" in registry or "paper_trading" in registry
+        expected_plugins = [
+            "discord_alert_plugin",
+            "macro_to_asset",
+            "technical_scalping",
+            "mt5_local",
+            "paper_trading",
+            "custom_indicator_plugin",
+            "example_scraper_plugin",
+        ]
+        for pid in expected_plugins:
+            assert pid in registry, f"Plugin {pid} not discovered by PluginEngine"
+
+        if agent.risk_parameter_reloader:
+            assert agent.plugin_engine in agent.risk_parameter_reloader.subscribers
 
         # Test plugin initialization
         plugins_cfg = settings.get("plugins", {})

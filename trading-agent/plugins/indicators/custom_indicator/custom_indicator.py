@@ -6,6 +6,14 @@ Demonstrates custom volatility and VWAP indicator calculation without modifying 
 from typing import Dict, Any, Optional
 
 
+from harness.contract import (
+    TradingPlugin,
+    PluginMetadata,
+    PluginCategory,
+    PluginOrigin,
+)
+
+
 def calculate_vwap_deviation(args: Dict[str, Any]) -> Dict[str, Any]:
     """Calculates Volume-Weighted Average Price (VWAP) deviation for a symbol."""
     symbol = str(args.get("symbol", "EURUSD")).upper()
@@ -21,6 +29,25 @@ def calculate_vwap_deviation(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+class CustomIndicatorPlugin(TradingPlugin):
+    """Custom technical indicator plugin for volume and price analysis."""
+    metadata = PluginMetadata(
+        id="custom_indicator_plugin",
+        name="Custom Indicator Plugin",
+        version="1.0.0",
+        category=PluginCategory.TOOL,
+        description="Reference custom technical indicator plugin for volume and price analysis",
+        origin=PluginOrigin.LOCAL_DIRECTORY,
+    )
+
+    def calculate(self, symbol: str, current_price: float, vwap_reference: float) -> Dict[str, Any]:
+        return calculate_vwap_deviation({
+            "symbol": symbol,
+            "current_price": current_price,
+            "vwap_reference": vwap_reference,
+        })
+
+
 def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
     """Plugin startup lifecycle initialization."""
     pass
@@ -29,3 +56,4 @@ def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] =
 def post_cycle(cycle_data: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
     """Invoked after trading cycle completion."""
     pass
+

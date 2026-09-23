@@ -1,9 +1,11 @@
 name: discord_alert_plugin
+id: discord_alert_plugin
+category: notification
 version: 1.0.0
 description: Reference notification plugin for dispatching trade execution alerts to Discord
 author: Monika Core Team
 enabled: true
-entrypoint: "discord_alert:initialize"
+entrypoint: "discord_alert:DiscordAlertPlugin"
 dependencies: []
 hooks:
   post_order: "discord_alert:post_order"

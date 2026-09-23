@@ -136,6 +136,11 @@ class PluginEngine:
         self._is_started = False
         _GLOBAL_ENGINE = self
 
+    @property
+    def registry(self) -> Dict[str, TradingPlugin]:
+        """Alias for self.plugins for backward compatibility."""
+        return self.plugins
+
     @classmethod
     def get_instance(cls) -> Optional["PluginEngine"]:
         """Retrieve singleton PluginEngine."""

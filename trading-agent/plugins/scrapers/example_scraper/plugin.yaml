@@ -1,9 +1,11 @@
 name: example_scraper_plugin
+id: example_scraper_plugin
+category: data_source
 version: 1.0.0
 description: Reference external news scraper plugin for market data feeds
 author: Monika Core Team
 enabled: true
-entrypoint: "example_scraper:initialize"
+entrypoint: "example_scraper:ExampleScraperPlugin"
 dependencies: []
 hooks:
   on_startup: "example_scraper:initialize"
