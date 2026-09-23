@@ -10,7 +10,7 @@ import yaml
 
 logger = logging.getLogger("TradingAgent.Config.Migrations")
 
-CURRENT_CONFIG_VERSION = 1
+CURRENT_CONFIG_VERSION = 3
 SUPPORT_FLOOR_VERSION = 1
 
 # Registry of version migrations: target_version -> callable(config) -> migrated_config
@@ -94,5 +94,22 @@ def migrate_config(config: Dict[str, Any]) -> Tuple[Dict[str, Any], bool]:
         migrated_cfg["_config_version"] = next_ver
         current_ver = next_ver
         was_migrated = True
-
     return migrated_cfg, was_migrated
+
+
+# Unified bridge to config_migrations
+try:
+    from config.config_migrations import migrate_settings, DEFAULT_SUBSETS
+except ImportError:
+    from .config_migrations import migrate_settings, DEFAULT_SUBSETS
+
+__all__ = [
+    "CURRENT_CONFIG_VERSION",
+    "SUPPORT_FLOOR_VERSION",
+    "register_migration",
+    "get_config_version",
+    "require_parseable_config",
+    "migrate_config",
+    "migrate_settings",
+    "DEFAULT_SUBSETS",
+]

@@ -67,3 +67,18 @@ def test_install_plugin_mock_success():
         assert data["status"] == "ok"
         assert data["package_name"] == "monika-plugin-test"
         assert "Successfully installed" in data["output"]
+
+
+def test_get_all_plugin_config_schemas():
+    resp = client.get("/api/config/plugins/schemas")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+
+
+def test_get_specific_plugin_config_schema():
+    resp = client.get("/api/config/plugins/macro_to_asset/schema")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "$schema" in data or "type" in data
+

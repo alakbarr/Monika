@@ -168,8 +168,67 @@ class PluginEngine:
         pid = plugin.metadata.id
         self.plugins[pid] = plugin
         logger.debug(f"[PluginEngine] Registered plugin instance: {pid} v{plugin.metadata.version}")
+        self._dispatch_domain_registration(plugin)
 
     register_plugin = register_plugin_instance
+
+    def _dispatch_domain_registration(self, plugin: TradingPlugin) -> None:
+        """Bridge loaded plugins to their specialized domain registries."""
+        cat = getattr(plugin.metadata, "category", None)
+        # 1. Broker Plugins
+        if cat == PluginCategory.BROKER or hasattr(plugin, "submit_order"):
+            try:
+                from execution.broker_registry import BrokerAdapterRegistry
+                BrokerAdapterRegistry.register(plugin.metadata.id, plugin)
+            except Exception as e:
+                logger.debug(f"[PluginEngine] Broker domain dispatch note: {e}")
+
+        # 2. LLM Provider Plugins
+        if cat == PluginCategory.LLM_PROVIDER or hasattr(plugin, "create_client"):
+            try:
+                from analysis.providers.provider_registry import ProviderRegistry
+                ProviderRegistry.register(plugin.metadata.id, plugin)
+            except Exception as e:
+                logger.debug(f"[PluginEngine] LLM provider domain dispatch note: {e}")
+
+        # 3. Strategy Plugins
+        if cat == PluginCategory.STRATEGY and hasattr(plugin, "get_strategy_class"):
+            try:
+                from analysis.strategies.registry import StrategyRegistry
+                strat_cls = plugin.get_strategy_class()
+                StrategyRegistry.register(strat_cls)
+            except Exception as e:
+                logger.debug(f"[PluginEngine] Strategy domain dispatch note: {e}")
+
+        # 4. Risk Rule / Dynamic Sizing Plugins
+        if cat in (PluginCategory.RISK_RULE, PluginCategory.DYNAMIC_SIZING):
+            try:
+                from risk.risk_rule_plugin import ModularRiskRegistry
+                risk_reg = ModularRiskRegistry.get_instance()
+                if cat == PluginCategory.RISK_RULE and hasattr(risk_reg, "register_rule"):
+                    risk_reg.register_rule(plugin)
+                elif cat == PluginCategory.DYNAMIC_SIZING and hasattr(risk_reg, "register_sizing_plugin"):
+                    risk_reg.register_sizing_plugin(plugin)
+            except Exception as e:
+                logger.debug(f"[PluginEngine] Risk domain dispatch note: {e}")
+
+        # 5. Tool Plugins
+        if cat == PluginCategory.TOOL and hasattr(plugin, "get_handlers"):
+            try:
+                from analysis.tools.registry import ToolRegistry
+                tool_reg = ToolRegistry.get_instance()
+                for name, handler in plugin.get_handlers().items():
+                    tool_reg.register_handler(name, handler)
+            except Exception as e:
+                logger.debug(f"[PluginEngine] Tool domain dispatch note: {e}")
+
+    @property
+    def active_pipeline(self) -> Optional[TradingPlugin]:
+        """Retrieve active analysis pipeline plugin."""
+        for p in self.plugins.values():
+            if getattr(p.metadata, "category", None) == PluginCategory.ANALYSIS_PIPELINE and getattr(p, "is_enabled", True):
+                return p
+        return None
 
     def discover_entrypoints(self) -> List[TradingPlugin]:
         """
@@ -593,19 +652,29 @@ class PluginEngine:
         """Propagate configuration reload to active plugins."""
         self.apply_settings_overrides(new_config)
         plugins_cfg = new_config.get("plugins", {})
-        for plugin in self.ordered_plugins:
+        target_plugins = self.ordered_plugins if self.ordered_plugins else list(self.plugins.values())
+        for plugin in target_plugins:
             if not plugin.is_enabled:
                 continue
             pid = plugin.metadata.id
             cat = getattr(plugin.metadata.category, "value", str(plugin.metadata.category))
             p_conf = (
-                plugins_cfg.get(cat, {}).get("available", {}).get(pid, {})
+                plugins_cfg.get(pid, {})
+                or plugins_cfg.get(cat, {}).get("available", {}).get(pid, {})
                 or plugins_cfg.get(cat, {}).get("options", {}).get(pid, {})
                 or plugins_cfg.get("registry", {}).get(pid, {})
+                or new_config
             )
             try:
                 async with asyncio.timeout(LIFECYCLE_TIMEOUT_CONFIG_RELOAD):
-                    await plugin.on_config_reload(p_conf)
+                    if hasattr(plugin, "on_config_reloaded"):
+                        res = plugin.on_config_reloaded(p_conf)
+                        if inspect.isawaitable(res):
+                            await res
+                    if hasattr(plugin, "on_config_reload"):
+                        res = plugin.on_config_reload(p_conf)
+                        if inspect.isawaitable(res):
+                            await res
                 logger.info(f"[PluginEngine] Config reloaded for {pid}")
             except Exception as e:
                 logger.error(f"[PluginEngine] Config reload error in {pid}: {e}", exc_info=True)

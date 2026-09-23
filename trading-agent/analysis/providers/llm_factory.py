@@ -303,78 +303,18 @@ class LLMFactory:
             cred_pool = None
             pooled_key = None
 
-        client = None
-        key_kwargs = {"api_key": pooled_key} if pooled_key else {}
-        if provider_name == "anthropic":
-            from analysis.providers.anthropic_provider import AnthropicProvider
-            client = AnthropicProvider(model_name, max_tokens, max_tool_turns, thinking_level, self._settings, temperature, role=task_role, **key_kwargs)
-        elif provider_name == "gemini":
-            from analysis.providers.gemini_provider import GeminiProvider
-            client = GeminiProvider(model_name, max_tokens, max_tool_turns, thinking_level, self._settings, temperature, role=task_role, **key_kwargs)
-            if pooled_key and hasattr(client, "api_key"):
-                setattr(client, "api_key", pooled_key)
-        elif provider_name == "openai":
-            from analysis.providers.openai_provider import OpenAIProvider
-            client = OpenAIProvider(
-                model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-                thinking_level=thinking_level, settings=self._settings, temperature=temperature, role=task_role,
-                **key_kwargs
-            )
-        elif provider_name == "deepseek":
-            from analysis.providers.deepseek_provider import DeepSeekProvider
-            client = DeepSeekProvider(
-                model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-                thinking_level=thinking_level, settings=self._settings, temperature=temperature, role=task_role,
-                **key_kwargs
-            )
-        elif provider_name == "ollama":
-            from analysis.providers.ollama_provider import OllamaProvider
-            client = OllamaProvider(
-                model_name, self._settings, max_tokens=max_tokens,
-                max_tool_turns=max_tool_turns, thinking_level=thinking_level, role=task_role
-            )
-        elif provider_name == "groq":
-            from analysis.providers.groq_provider import GroqProvider
-            client = GroqProvider(
-                model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-                thinking_level=thinking_level, settings=self._settings, temperature=temperature, role=task_role,
-                **key_kwargs
-            )
-        elif provider_name == "openrouter":
-            from analysis.providers.openrouter_provider import OpenRouterProvider
-            client = OpenRouterProvider(
-                model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-                thinking_level=thinking_level, settings=self._settings,
-                temperature=temperature, role=task_role,
-                **key_kwargs
-            )
-        elif provider_name == "typesafe":
-            from analysis.providers.typesafe_provider import TypeSafeProvider
-            base_url = provider_config.get("base_url", "https://api.typesafe.ai")
-            confidence_thresh = float(role_config.get("confidence_threshold", 0.70))
-            client = TypeSafeProvider(
-                model=model_name,
-                max_tokens=max_tokens,
-                max_tool_turns=max_tool_turns,
-                thinking_level="none",
-                settings=self._settings,
-                temperature=temperature,
-                base_url=base_url,
-                confidence_threshold=confidence_thresh,
-                role=task_role,
-                **key_kwargs
-            )
-        elif provider_name in ("openai_compatible",):
-            from analysis.providers.openai_provider import OpenAIProvider
-            base_url = provider_config.get("base_url", "http://localhost:8000/v1")
-            client = OpenAIProvider(
-                model_name, max_tokens=max_tokens, max_tool_turns=max_tool_turns,
-                thinking_level=thinking_level, settings=self._settings,
-                temperature=temperature, base_url=base_url, role=task_role,
-                **key_kwargs
-            )
-        else:
-            logger.error(f"Provider {provider_name} not implemented yet.")
+        from analysis.providers.provider_registry import ProviderRegistry
+        client = ProviderRegistry.create_client(
+            provider_name=provider_name,
+            model_name=model_name,
+            settings=self._settings,
+            role_config=role_config,
+            task_role=task_role,
+            thinking_level=thinking_level,
+            api_key=pooled_key,
+            provider_config=provider_config,
+        )
+        if client is None:
             return None
 
         # SOTA Dynamic Thinking Budget Wiring

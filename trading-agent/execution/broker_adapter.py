@@ -21,6 +21,8 @@ from typing import Optional, List, Dict, Any
 
 import utils.clock as clock
 from database.models import Order, OrderStatus
+from execution.broker_plugin import OrderRequest, normalize_order_request
+from execution.broker_registry import BrokerAdapterRegistry
 
 logger = logging.getLogger("TradingAgent.BrokerAdapter")
 
@@ -74,7 +76,7 @@ class BrokerAdapter(ABC):
         pass
 
     @abstractmethod
-    async def submit_order(self, order: Order, **kwargs) -> dict:
+    async def submit_order(self, order: Any, **kwargs) -> dict:
         """
         Submit an order for execution.
         Returns:
@@ -261,7 +263,8 @@ class MT5LiveAdapter(BrokerAdapter):
                 "time": clock.now(),
             }
 
-    async def submit_order(self, order: Order, **kwargs) -> dict:
+    async def submit_order(self, order: Any, **kwargs) -> dict:
+        order = normalize_order_request(order)
         pip_size = _get_pip_size(order.symbol)
         is_pending_type = (order.order_type or "market").upper() in ("LIMIT", "STOP", "BUY_LIMIT", "SELL_LIMIT", "BUY_STOP", "SELL_STOP")
 
@@ -644,7 +647,7 @@ class SimulatedBrokerAdapter(BrokerAdapter):
         pos = {
             "ticket": ticket,
             "id": ticket,
-            "order_id": order.id,
+            "order_id": getattr(order, "id", None) or getattr(order, "client_order_id", "UNKNOWN"),
             "client_order_id": order.client_order_id,
             "symbol": symbol,
             "type": direction,
@@ -722,7 +725,8 @@ class SimulatedBrokerAdapter(BrokerAdapter):
 
         return filled_results
 
-    async def submit_order(self, order: Order, **kwargs) -> dict:
+    async def submit_order(self, order: Any, **kwargs) -> dict:
+        order = normalize_order_request(order)
         # 1. Fill latency simulation
         if self.fill_latency_ms > 0:
             await asyncio.sleep(self.fill_latency_ms / 1000.0)
@@ -821,11 +825,11 @@ class SimulatedBrokerAdapter(BrokerAdapter):
                 "direction": (o.direction or "buy").lower(),
                 "volume": float(o.requested_volume),
                 "volume_initial": float(o.requested_volume),
-                "volume_current": float(o.requested_volume - (o.filled_volume or 0.0)),
+                "volume_current": float(o.requested_volume - (getattr(o, "filled_volume", 0.0) or 0.0)),
                 "price_open": float(o.requested_price) if o.requested_price else 0.0,
                 "sl": getattr(o, "sl", None),
                 "tp": getattr(o, "tp", None),
-                "time": o.created_at,
+                "time": getattr(o, "created_at", None) or clock.now(),
                 "status": "pending",
             })
         return res
@@ -1029,16 +1033,17 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     async def get_current_price(self, symbol: str) -> dict:
         return await self.get_tick(symbol)
 
-    async def submit_order(self, order: Order, **kwargs) -> dict:
+    async def submit_order(self, order: Any, **kwargs) -> dict:
+        order = normalize_order_request(order)
         try:
             import aiohttp
             headers = {"Authorization": f"Bearer {self.api_token}"} if self.api_token else {}
             order_type_val = getattr(order.order_type, "value", str(order.order_type))
             volume = getattr(order, "volume", None) or getattr(order, "requested_volume", 0.0)
-            entry_price = getattr(order, "entry_price", None) or getattr(order, "requested_price", 0.0)
+            entry_price = getattr(order, "entry_price", None) or getattr(order, "requested_price", 0.0) or getattr(order, "price", 0.0)
             direction = getattr(order, "direction", "buy")
-            sl = kwargs.get("sl") or getattr(order, "stop_loss", None)
-            tp = kwargs.get("tp") or getattr(order, "take_profit", None)
+            sl = kwargs.get("sl") or getattr(order, "stop_loss", None) or getattr(order, "sl", None)
+            tp = kwargs.get("tp") or getattr(order, "take_profit", None) or getattr(order, "tp", None)
             comment = kwargs.get("comment", getattr(order, "comment", ""))
             payload = {
                 "symbol": order.symbol,
