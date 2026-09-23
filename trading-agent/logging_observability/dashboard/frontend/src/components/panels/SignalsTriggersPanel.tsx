@@ -46,6 +46,22 @@ export const SignalsTriggersPanel: React.FC = () => {
   const [triggersMeta, setTriggersMeta] = useState<{ total: number; fired: number; pending: number }>({ total: 0, fired: 0, pending: 0 });
   const [triggerStatusFilter, setTriggerStatusFilter] = useState<string>('all');
   const [signalStatusFilter, setSignalStatusFilter] = useState<string>('all');
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [approveMsg, setApproveMsg] = useState<string | null>(null);
+
+  const handleApproveTrigger = async (id: number) => {
+    setApprovingId(id);
+    setApproveMsg(null);
+    try {
+      await api.approveTrade(id);
+      setApproveMsg(`Trigger #${id} approved successfully for MT5 order execution.`);
+      await fetchData(true);
+    } catch (err: any) {
+      setApproveMsg(`Failed to approve trigger #${id}: ${err.message}`);
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -329,6 +345,20 @@ export const SignalsTriggersPanel: React.FC = () => {
           </div>
         }
       >
+        {approveMsg && (
+          <div
+            style={{
+              padding: '8px 14px',
+              background: 'var(--color-paper)',
+              borderBottom: '1.5px solid var(--color-rule)',
+              fontSize: '11px',
+              color: 'var(--color-ink)',
+              fontFamily: 'var(--font-precision)',
+            }}
+          >
+            ℹ {approveMsg}
+          </div>
+        )}
         <div style={{ overflowX: 'auto' }}>
           <table className="ledger-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
@@ -396,17 +426,40 @@ export const SignalsTriggersPanel: React.FC = () => {
                         {t.fired_at ? new Date(t.fired_at).toLocaleString() : '—'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <Badge
-                          variant={
-                            statusLower === 'fired'
-                              ? 'profit'
-                              : statusLower === 'pending'
-                                ? 'warn'
-                                : 'neutral'
-                          }
-                        >
-                          {t.status}
-                        </Badge>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                          <Badge
+                            variant={
+                              statusLower === 'fired'
+                                ? 'profit'
+                                : statusLower === 'pending'
+                                  ? 'warn'
+                                  : 'neutral'
+                            }
+                          >
+                            {t.status}
+                          </Badge>
+                          {isPending && (
+                            <button
+                              type="button"
+                              disabled={approvingId === t.id}
+                              onClick={() => handleApproveTrigger(t.id)}
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '11px',
+                                fontFamily: 'var(--font-precision)',
+                                fontWeight: 'bold',
+                                background: 'var(--color-profit-dim, rgba(22, 163, 74, 0.15))',
+                                color: 'var(--color-ledger-green, #16a34a)',
+                                border: '1px solid var(--color-ledger-green, #16a34a)',
+                                borderRadius: '2px',
+                                cursor: approvingId === t.id ? 'wait' : 'pointer',
+                              }}
+                              title="Approve this pending trigger for execution in MT5"
+                            >
+                              {approvingId === t.id ? '...' : 'APPROVE'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

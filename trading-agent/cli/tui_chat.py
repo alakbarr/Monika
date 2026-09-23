@@ -339,9 +339,21 @@ class ChatScreen(Screen):
                 desc = action.get("description", "Proposed trade action")
                 transcript.write(
                     f"\n[bold yellow]⚠️ APPROVAL REQUIRED:[/] {desc}\n"
-                    f"[dim]Type [bold green]/allow[/] to approve once, [bold cyan]/session[/] for 4h approval, "
-                    f"or [bold red]/deny[/] to reject.[/]\n"
+                    f"[dim]Modal prompt active or type [bold green]/allow[/], [bold cyan]/session[/], or [bold red]/deny[/].[/]\n"
                 )
+                try:
+                    from cli.overlays.approval_modal import ApprovalModalScreen
+                    action_id = str(action.get("id", ""))
+
+                    def _on_modal_result(decision: Optional[str]) -> None:
+                        if decision:
+                            import asyncio
+                            asyncio.create_task(self._handle_approval_decision(action_id, decision))
+
+                    if hasattr(self, "app") and self.app:
+                        self.app.push_screen(ApprovalModalScreen(action), callback=_on_modal_result)
+                except Exception as modal_err:
+                    logger.debug(f"[TUI Chat] Could not push ApprovalModalScreen: {modal_err}")
             elif etype == "complete":
                 try:
                     self.query_one("#streaming_output", Static).update("")
