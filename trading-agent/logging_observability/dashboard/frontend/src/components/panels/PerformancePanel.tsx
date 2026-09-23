@@ -4,6 +4,7 @@ import { Badge } from '../ui/Badge';
 import { WinRateGauge } from '../charts/WinRateGauge';
 import { FactorHeatmap } from '../charts/FactorHeatmap';
 import { DecisionDistChart } from '../charts/DecisionDistribution';
+import { EquityChart } from '../charts/EquityChart';
 import { Skeleton } from '../ui/Skeleton';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
@@ -35,6 +36,24 @@ export const PerformancePanel: React.FC = () => {
   const winRatePassed = winRate >= targetWinRate;
   const edgePassed = hasEdge;
   const isGraduated = tradesPassed && winRatePassed && edgePassed;
+
+  const equityPoints = React.useMemo(() => {
+    if (!paperStats?.recent_20 || paperStats.recent_20.length === 0) return [];
+    let eq = 10000;
+    const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
+      { index: 0, equity: eq, symbol: 'START' },
+    ];
+    paperStats.recent_20.forEach((t, i) => {
+      eq = eq * (1 + (t.pnl_pct || 0) / 100);
+      points.push({
+        index: i + 1,
+        equity: Number(eq.toFixed(2)),
+        symbol: t.symbol,
+        exit_reason: t.exit_reason,
+      });
+    });
+    return points;
+  }, [paperStats]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -275,6 +294,18 @@ export const PerformancePanel: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Paper Trading Simulated Equity Curve */}
+      {equityPoints.length > 1 && (
+        <Card
+          title="OUT-OF-SAMPLE SIMULATED EQUITY CURVE (LAST 20 PAPER TRADES)"
+          variant="green"
+        >
+          <div style={{ padding: '8px 0' }}>
+            <EquityChart data={equityPoints} startEquity={10000} height={140} />
+          </div>
+        </Card>
+      )}
 
       {/* Symbol breakdown */}
       {paperStats?.by_symbol && Object.keys(paperStats.by_symbol).length > 0 && (

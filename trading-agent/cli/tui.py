@@ -172,6 +172,7 @@ class StatusBar(Static):
         context_max: int = 200000,
         cache_hit_rate: float = 0.0,
         busy_status: str = "",
+        budget_tier: str = "T1 (100%)",
     ) -> None:
         hours, rem = divmod(uptime_seconds, 3600)
         minutes, seconds = divmod(rem, 60)
@@ -187,6 +188,10 @@ class StatusBar(Static):
         # Cache hit rate
         cache_str = f"[{BRASS}]◎ {cache_hit_rate:.1f}%[/]"
 
+        # Budget Tier
+        tier_color = BULL_PROFIT if "T1" in budget_tier else (BRASS if "T2" in budget_tier else BEAR_LOSS)
+        budget_str = f"  │  [dim {MUTED}]Budget:[/] [{tier_color}]{budget_tier}[/]"
+
         # Busy input indicator
         busy_str = f"  │  [{PHOSPHOR_AMBER}]{busy_status}[/]" if busy_status else ""
 
@@ -195,7 +200,8 @@ class StatusBar(Static):
             f"[dim {MUTED}]Cache:[/] {cache_str}  │  "
             f"[dim {MUTED}]Context:[/] {ctx_str}  │  "
             f"[dim {MUTED}]Cost:[/] [{BRASS}]${cost_usd:.4f}[/]  │  "
-            f"[dim {MUTED}]Uptime:[/] [{PAPER}]{uptime_str}[/]  │  "
+            f"[dim {MUTED}]Uptime:[/] [{PAPER}]{uptime_str}[/]"
+            f"{budget_str}  │  "
             f"[dim {MUTED}]Feed:[/] {ws_status}{busy_str}"
         )
         self.update(content)
@@ -284,6 +290,7 @@ class TradingDashboard(App):
         self._context_used: int = 0
         self._context_max: int = 200000
         self._cache_hit_rate: float = 0.0
+        self._budget_tier: str = "T1 (100%)"
 
         # Trend histories for sparklines
         self._pnl_history: List[float] = []
@@ -336,6 +343,14 @@ class TradingDashboard(App):
                     with Vertical(id="perf_right_container"):
                         yield Static("QUANTITATIVE EVALUATION LEDGER", classes="panel_title")
                         yield DataTable(id="perf_table", zebra_stripes=True)
+            with TabPane("Market", id="tab_market"):
+                with Horizontal(id="market_horizontal"):
+                    with Vertical(id="market_macro_container"):
+                        yield Static("MACRO CALENDAR & SENTIMENT", classes="panel_title")
+                        yield DataTable(id="market_table", zebra_stripes=True)
+                    with Vertical(id="market_rates_container"):
+                        yield Static("CENTRAL BANK & YIELD CURVE", classes="panel_title")
+                        yield DataTable(id="market_rates_table", zebra_stripes=True)
             with TabPane("Chat", id="tab_chat"):
                 with Vertical(id="chat_tab_container"):
                     yield Static("INTERACTIVE DESK CONSOLE (Press 'c' for full screen)", classes="panel_title")
@@ -378,6 +393,26 @@ class TradingDashboard(App):
             ("Profit Factor", "0.00", "≥ 1.50"),
             ("Max Daily Drawdown", "0.0%", "≤ 3.0%"),
             ("Max Consecutive Losses", "0", "≤ 3 (Circuit Breaker)"),
+        ])
+
+        # Setup Market Table
+        market_table = self.query_one("#market_table", DataTable)
+        market_table.add_columns("Time", "Currency", "Macro Event", "Impact", "Forecast", "Actual")
+        market_table.add_rows([
+            ("03:00 UTC", "JPY", "Bank of Japan (BoJ) Interest Rate Decision", "HIGH", "1.25%", "—"),
+            ("06:00 UTC", "GBP", "UK Core Retail Sales (MoM)", "MEDIUM", "-0.2%", "—"),
+            ("13:15 UTC", "USD", "US Industrial Production (MoM)", "MEDIUM", "0.3%", "—"),
+            ("14:00 UTC", "USD", "US Leading Economic Index (MoM)", "MEDIUM", "0.1%", "—"),
+        ])
+
+        # Setup Market Rates Table
+        market_rates_table = self.query_one("#market_rates_table", DataTable)
+        market_rates_table.add_columns("Benchmark", "Rate / Yield", "Spread / Bias", "Outlook")
+        market_rates_table.add_rows([
+            ("FOMC Fed Funds", "5.25% - 5.50%", "Hold: 85.2%", "Dovish Pause"),
+            ("US Treasury 2Y", "4.15%", "Tenor Benchmark", "Neutral"),
+            ("US Treasury 10Y", "4.38%", "2s10s: +0.23%", "Normal Curve"),
+            ("Fear & Greed Index", "50 / 100", "Neutral", "Balanced"),
         ])
 
         # Setup Activity Log
@@ -578,6 +613,9 @@ class TradingDashboard(App):
                     tokens_res = await session.get(f"{self.api_url}/api/v1/tokens/summary")
                     perf_res = await session.get(f"{self.api_url}/api/paper-trading")
                     signals_res = await session.get(f"{self.api_url}/api/mt5/signals?limit=20")
+                    scorecard_res = await session.get(f"{self.api_url}/api/risk/scorecard")
+                    yields_res = await session.get(f"{self.api_url}/api/market/yields")
+                    fg_res = await session.get(f"{self.api_url}/api/market/fear-greed")
 
                     if overview_res.status == 200 and positions_res.status == 200:
                         ov = await overview_res.json()
@@ -586,6 +624,9 @@ class TradingDashboard(App):
                         tok = await tokens_res.json() if tokens_res.status == 200 else {}
                         perf = await perf_res.json() if perf_res.status == 200 else {}
                         sig = await signals_res.json() if signals_res.status == 200 else []
+                        sc = await scorecard_res.json() if scorecard_res.status == 200 else []
+                        yd = await yields_res.json() if yields_res.status == 200 else {}
+                        fg = await fg_res.json() if fg_res.status == 200 else {}
                         return {
                             "source": "api",
                             "overview": ov,
@@ -594,6 +635,9 @@ class TradingDashboard(App):
                             "tokens": tok,
                             "performance": perf,
                             "signals": sig,
+                            "scorecard": sc,
+                            "yields": yd,
+                            "fear_greed": fg,
                         }
             except Exception:
                 pass
@@ -761,6 +805,16 @@ class TradingDashboard(App):
                     }
                     for a in analyses
                 ]
+
+                # 9. Deterministic Risk Gate Scorecard
+                try:
+                    from risk.risk_gate import RiskGate
+                    cfg = load_settings()
+                    gate = RiskGate(cfg)
+                    res_data["scorecard"] = await gate.get_current_scorecard(session)
+                except Exception as sc_err:
+                    logger.debug(f"[TUI] Scorecard DB fetch note: {sc_err}")
+                    res_data["scorecard"] = []
         except Exception as e:
             logger.debug(f"[TUI] DB fetch error: {e}")
 
@@ -940,21 +994,65 @@ class TradingDashboard(App):
         try:
             r_table = self.query_one("#risk_table", DataTable)
             r_table.clear()
-            pnl_pct = abs(float(self.daily_pnl_pct or 0.0))
-            dd_status = f"[bold {BULL_PROFIT}]NORMAL[/]" if pnl_pct < 2.5 else f"[bold {BEAR_LOSS}]BREACH[/]"
-            cb_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.system_paused else f"[bold {BEAR_LOSS}]TRIPPED[/]"
-            ks_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.kill_switch else f"[bold {BEAR_LOSS}]ACTIVE (HALTED)[/]"
-            ae_status = f"[bold {BULL_PROFIT}]PAPER ONLY[/]" if not self.auto_execute else f"[bold {BRASS}]AUTO LIVE[/]"
+            scorecard = data.get("scorecard", [])
+            if scorecard:
+                for item in scorecard:
+                    pass_val = item.get("passed", False)
+                    status_styled = f"[bold {BULL_PROFIT}]PASS[/]" if pass_val else f"[bold {BEAR_LOSS}]FAIL[/]"
+                    name = str(item.get("name", "Check")).replace("_", " ").title()
+                    curr = str(item.get("current_value", "-"))
+                    limit = str(item.get("limit_value", "-"))
+                    r_table.add_row(name, curr, limit, status_styled)
+            else:
+                pnl_pct = abs(float(self.daily_pnl_pct or 0.0))
+                dd_status = f"[bold {BULL_PROFIT}]NORMAL[/]" if pnl_pct < 2.5 else f"[bold {BEAR_LOSS}]BREACH[/]"
+                cb_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.system_paused else f"[bold {BEAR_LOSS}]TRIPPED[/]"
+                ks_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.kill_switch else f"[bold {BEAR_LOSS}]ACTIVE (HALTED)[/]"
+                ae_status = f"[bold {BULL_PROFIT}]PAPER ONLY[/]" if not self.auto_execute else f"[bold {BRASS}]AUTO LIVE[/]"
 
-            r_table.add_rows([
-                ("Daily Realized Drawdown", f"{pnl_pct:.2f}%", "≤ 3.0%", dd_status),
-                ("Circuit Breaker State", "HEALTHY" if not self.system_paused else "TRIPPED", "Auto-trips on 3 consecutive losses", cb_status),
-                ("Margin Utilization", "12.4%", "≤ 80.0%", f"[bold {BULL_PROFIT}]SAFE[/]"),
-                ("Kill Switch State", "READY", "Emergency System Halt", ks_status),
-                ("Auto-Execution Guard", "ACTIVE", "Live requires approval", ae_status),
-            ])
+                r_table.add_rows([
+                    ("Daily Realized Drawdown", f"{pnl_pct:.2f}%", "≤ 3.0%", dd_status),
+                    ("Circuit Breaker State", "HEALTHY" if not self.system_paused else "TRIPPED", "Auto-trips on 3 consecutive losses", cb_status),
+                    ("Margin Utilization", "12.4%", "≤ 80.0%", f"[bold {BULL_PROFIT}]SAFE[/]"),
+                    ("Kill Switch State", "READY", "Emergency System Halt", ks_status),
+                    ("Auto-Execution Guard", "ACTIVE", "Live requires approval", ae_status),
+                ])
         except Exception as r_err:
             logger.debug(f"[TUI] Risk update error: {r_err}")
+
+        # 9. Update Market Rates Table
+        try:
+            m_rates = self.query_one("#market_rates_table", DataTable)
+            yields_info = data.get("yields", {})
+            fg_info = data.get("fear_greed", {})
+            if yields_info or fg_info:
+                m_rates.clear()
+                spread = yields_info.get("spread_2s10s")
+                is_inv = yields_info.get("is_inverted", False)
+                spread_txt = f"{spread:+.2f}%" if spread is not None else "+0.23%"
+                curve_bias = f"[bold {BEAR_LOSS}]INVERTED (RECESSION)[/]" if is_inv else f"[bold {BULL_PROFIT}]NORMAL CURVE[/]"
+
+                fg_val = fg_info.get("current_value", 50)
+                fg_cls = fg_info.get("classification", "Neutral")
+                fg_style = f"[bold {BEAR_LOSS}]{fg_cls.upper()}[/]" if fg_val <= 30 else f"[bold {BULL_PROFIT}]{fg_cls.upper()}[/]" if fg_val >= 70 else f"[dim]{fg_cls.upper()}[/]"
+
+                m_rates.add_rows([
+                    ("FOMC Target Rate", "5.25% - 5.50%", "Policy Stance", "[dim]HOLD / NEUTRAL[/]"),
+                    ("US 2s10s Spread", spread_txt, "Recession Gauge", curve_bias),
+                    ("Fear & Greed Index", f"{fg_val} / 100", "Market Sentiment", fg_style),
+                ])
+                for y in yields_info.get("treasury_yields", [])[:3]:
+                    m_rates.add_row(f"US Treasury {y.get('tenor')}", f"{float(y.get('yield_percent', 0.0)):.2f}%", "Yield Benchmark", "[dim]BENCHMARK[/]")
+        except Exception as m_err:
+            logger.debug(f"[TUI] Market update error: {m_err}")
+
+        # Determine token budget degradation tier
+        if self._cost_usd > 5.0:
+            self._budget_tier = "T3 (CRIT 20%)"
+        elif self._cost_usd > 3.0:
+            self._budget_tier = "T2 (WARN 50%)"
+        else:
+            self._budget_tier = "T1 (FULL 100%)"
 
         self._refresh_status_bar()
 
@@ -973,6 +1071,7 @@ class TradingDashboard(App):
                 context_max=self._context_max,
                 cache_hit_rate=self._cache_hit_rate,
                 busy_status=self.busy_buffer.status_text,
+                budget_tier=getattr(self, "_budget_tier", "T1 (100%)"),
             )
         except Exception:
             pass

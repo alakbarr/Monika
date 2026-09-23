@@ -161,10 +161,20 @@ export interface Brief {
     risk_sentiment: 'risk-on' | 'risk-off' | 'mixed';
     confidence: number;
     priced_in_assessment?: {
-      dominant_driver: string;
-      priced_in_score: number;
-      sell_the_news_risk: string;
-    };
+      dominant_driver?: string;
+      priced_in_score?: number;
+      sell_the_news_risk?: string;
+    } | string;
+    contrarian_opportunities?: Array<{
+      asset?: string;
+      rationale?: string;
+      opportunity?: string;
+    }> | string[];
+    cross_asset_confirmations?: Array<{
+      pair?: string;
+      status?: string;
+      confirmation?: string;
+    }> | string[];
   } | null;
 }
 
@@ -671,3 +681,327 @@ export interface PlaybookRuleItem {
   deprecated_at: string | null;
   deprecation_reason: string | null;
 }
+
+export interface CalendarEventItem {
+  id: number;
+  event_name: string;
+  country: string;
+  currency: string;
+  impact: string;
+  actual: string | null;
+  forecast: string | null;
+  previous: string | null;
+  event_time: string | null;
+  surprise_score: number | null;
+}
+
+export interface COTReportItem {
+  id: number;
+  report_date: string | null;
+  market_code: string;
+  dealer_long: number;
+  dealer_short: number;
+  asset_mgr_long: number;
+  asset_mgr_short: number;
+  leveraged_long: number;
+  leveraged_short: number;
+  net_position: number;
+}
+
+export interface ClassifiedNewsItem {
+  id: number;
+  source: string;
+  title: string;
+  summary: string;
+  url: string | null;
+  published_at: string | null;
+  currency_tags: string | null;
+  fetched_at: string | null;
+  impact: string | null;
+  sentiment: string | null;
+  key_data_point: string | null;
+}
+
+export interface AggregatedSentimentItem {
+  period_hours: number;
+  total_articles: number;
+  currencies: Record<string, {
+    bullish: number;
+    bearish: number;
+    neutral: number;
+    total: number;
+  }>;
+  timestamp: string;
+}
+
+export interface SkillCatalogItem {
+  name: string;
+  description: string;
+  markets: string[];
+  requires_tools: string[];
+  fallback_for_tools: string[];
+  is_playbook: boolean;
+}
+
+export interface PluginCatalogItem {
+  [key: string]: any;
+}
+
+export interface QuantTearsheetItem {
+  initial_equity: number;
+  final_equity: number;
+  total_net_pnl: number;
+  total_return_pct: number;
+  annualized_return_pct: number;
+  annualized_sharpe: number;
+  annualized_sortino: number;
+  calmar_ratio: number;
+  gain_to_pain_ratio: number;
+  max_drawdown_pct: number;
+  current_drawdown_pct: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate_pct: number;
+  profit_factor: number;
+  payoff_ratio: number;
+  expectancy_r: number;
+  expectancy_usd: number;
+  generated_at: string;
+}
+
+export interface RiskScorecardItem {
+  symbol: string;
+  account_equity: number;
+  total_checks: number;
+  passed_count: number;
+  failed_count: number;
+  pass_rate_pct: number;
+  checks_passed: string[];
+  checks_failed: string[];
+  checks: Record<string, { passed: boolean; reason: string }>;
+  timestamp: string;
+}
+
+export interface CorrelationMatrixItem {
+  symbols: string[];
+  matrix: Record<string, Record<string, number>>;
+  portfolio_heat: number;
+  status: string;
+  correlated_pairs: Array<{
+    pair: string;
+    correlation: number;
+    effective_risk: number;
+    weight: number;
+  }>;
+  timestamp: string;
+}
+
+export interface PlaybookHistoryEntry {
+  timestamp: string;
+  action: string;
+  playbook_name: string;
+  sha256_hash: string;
+  reason: string;
+  author: string;
+}
+
+export interface FedWatchItem {
+  id: number;
+  meeting_date: string;
+  probabilities: Record<string, number>;
+  fetched_at: string | null;
+}
+
+export interface CentralBankExpectationItem {
+  id: number;
+  bank: string;
+  meeting_date: string;
+  current_rate: number;
+  prob_hike: number;
+  prob_hold: number;
+  prob_cut: number;
+  source: string;
+  fetched_at: string | null;
+}
+
+export interface FedWatchResponse {
+  fedwatch: FedWatchItem[];
+  central_banks: CentralBankExpectationItem[];
+  total_fedwatch: number;
+  total_central_banks: number;
+}
+
+export interface TreasuryYieldItem {
+  tenor: string;
+  yield_percent: number;
+  date: string | null;
+}
+
+export interface GlobalBondItem {
+  country_tenor: string;
+  yield_percent: number;
+  date: string | null;
+}
+
+export interface YieldsResponse {
+  treasury_yields: TreasuryYieldItem[];
+  spread_2s10s: number | null;
+  is_inverted: boolean;
+  global_bonds: GlobalBondItem[];
+}
+
+export interface FearGreedResponse {
+  current_value: number;
+  classification: string;
+  wow_change: number | null;
+  history_7d: Array<{
+    value: number;
+    classification: string;
+    timestamp: string;
+  }>;
+  interpretation: string;
+  fetched_at: string;
+}
+
+export interface SentimentCompositeResponse {
+  crypto: any;
+  forex_myfxbook: any;
+  forex_fxssi: any;
+  institutional_cot: Array<{
+    market_code: string;
+    report_date: string | null;
+    dealer_long: number;
+    dealer_short: number;
+    asset_mgr_long: number;
+    asset_mgr_short: number;
+    leveraged_long: number;
+    leveraged_short: number;
+    net_position: number;
+  }>;
+  timestamp: string;
+}
+
+export interface TechnicalIndicatorsResponse {
+  symbol: string;
+  timeframe: string;
+  indicators: Record<string, any>;
+  total_indicators: number;
+  timestamp: string;
+}
+
+export interface OrderBlockItem {
+  id: number;
+  direction: string;
+  price_high: number;
+  price_low: number;
+  formed_at: string | null;
+}
+
+export interface StructureBreakItem {
+  id: number;
+  type: string;
+  direction: string;
+  price: number;
+  formed_at: string | null;
+}
+
+export interface FVGItem {
+  id: number;
+  direction: string;
+  gap_high?: number;
+  gap_low?: number;
+  top_price?: number;
+  bottom_price?: number;
+  formed_at: string | null;
+}
+
+export interface MarketStructureResponse {
+  symbol: string;
+  timeframe: string;
+  order_blocks: OrderBlockItem[];
+  structure_breaks: StructureBreakItem[];
+  fair_value_gaps: FVGItem[];
+  timestamp: string;
+}
+
+export interface ModifyPositionResponse {
+  status: string;
+  result: any;
+}
+
+export interface CrystallizedSkillItem {
+  name: string;
+  file: string;
+  symbol: string;
+  description: string;
+  status: 'active' | 'deprecated';
+  is_deprecated: boolean;
+  deprecation_reason?: string | null;
+  win_count: number;
+  total_trades: number;
+  win_rate: number;
+  recent_win_rate?: number | null;
+  total_pnl_usd: number;
+  avg_confidence?: number | null;
+  last_crystallized_at?: string | null;
+}
+
+export interface SkillStatsItem {
+  skill_name: string;
+  times_triggered: number;
+  wins_count: number;
+  losses_count: number;
+  total_pnl: number;
+  win_rate: number;
+  recent_win_rate?: number;
+  recent_outcomes: boolean[];
+  status: string;
+  deprecation_reason?: string;
+  updated_at: string;
+}
+
+export interface TradeTrajectoryItem {
+  symbol: string;
+  decision: string;
+  ticket?: number | null;
+  timestamp: string;
+  fundamental_brief?: Record<string, any>;
+  specialist_outputs?: Record<string, any>;
+  debate_verdict?: Record<string, any>;
+  risk_decision?: Record<string, any>;
+  execution_details?: Record<string, any>;
+  pnl_pct?: number | null;
+  pnl_usd?: number | null;
+  mae_points?: number | null;
+  mfe_points?: number | null;
+  reflection_tags?: string[];
+}
+
+export interface TrajectoriesResponse {
+  total: number;
+  trajectories: TradeTrajectoryItem[];
+}
+
+export interface CycleEventItem {
+  seq: number;
+  cycle_id: string;
+  event_type: string;
+  timestamp: string;
+  payload: Record<string, any>;
+  source_event_seqs: number[];
+  prev_hash?: string | null;
+  chain_hash?: string | null;
+}
+
+export interface CycleLineageResponse {
+  cycle_id: string;
+  integrity_valid: boolean;
+  integrity_error?: string | null;
+  total_events: number;
+  events: CycleEventItem[];
+  lineage: CycleEventItem[];
+  start_time?: string | null;
+  end_time?: string | null;
+}
+

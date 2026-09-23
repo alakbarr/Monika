@@ -317,6 +317,106 @@ export const api = {
   // Steer Directive
   steer: (body: { message: string; mode?: string; symbols?: string[] }) =>
     post<{ status: string; message: string; mode?: string; injected_at?: string }>('/actions/steer', body),
+
+  // Market Intelligence & Calendar
+  calendarEvents: (params?: { currency?: string; impact?: string; days_ahead?: number; limit?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.currency) sp.append('currency', params.currency);
+    if (params?.impact) sp.append('impact', params.impact);
+    if (params?.days_ahead !== undefined) sp.append('days_ahead', String(params.days_ahead));
+    if (params?.limit !== undefined) sp.append('limit', String(params.limit));
+    const qs = sp.toString();
+    return get<import('../types/api').CalendarEventItem[]>(`/calendar/events${qs ? `?${qs}` : ''}`);
+  },
+  calendarUpcoming: () =>
+    get<import('../types/api').CalendarEventItem[]>('/calendar/upcoming'),
+  marketCot: (marketCode?: string, limit = 20) =>
+    get<import('../types/api').COTReportItem[]>(
+      `/market/cot?limit=${limit}${marketCode ? `&market_code=${encodeURIComponent(marketCode)}` : ''}`
+    ),
+  newsClassified: (params?: { symbol?: string; sentiment?: string; impact?: string; hours?: number; limit?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.symbol) sp.append('symbol', params.symbol);
+    if (params?.sentiment) sp.append('sentiment', params.sentiment);
+    if (params?.impact) sp.append('impact', params.impact);
+    if (params?.hours !== undefined) sp.append('hours', String(params.hours));
+    if (params?.limit !== undefined) sp.append('limit', String(params.limit));
+    const qs = sp.toString();
+    return get<import('../types/api').ClassifiedNewsItem[]>(`/news/classified${qs ? `?${qs}` : ''}`);
+  },
+  newsSentiment: () =>
+    get<import('../types/api').AggregatedSentimentItem>('/news/sentiment'),
+  skillsList: () =>
+    get<{ skills: import('../types/api').SkillCatalogItem[]; total: number }>('/skills'),
+  pluginsList: () =>
+    get<{ plugins: import('../types/api').PluginCatalogItem[]; total: number }>('/plugins'),
+  tearsheetLatest: () =>
+    get<import('../types/api').QuantTearsheetItem>('/reports/tearsheet/latest'),
+
+  // Risk Scorecard & Correlation Matrix
+  riskScorecard: (symbol = 'EURUSD') =>
+    get<import('../types/api').RiskScorecardItem>(`/risk/scorecard?symbol=${encodeURIComponent(symbol)}`),
+  riskCorrelationMatrix: () =>
+    get<import('../types/api').CorrelationMatrixItem>('/risk/correlation-matrix'),
+
+  // Playbook Mutation History & 1-Click Rollback
+  playbookHistory: (name: string) =>
+    get<import('../types/api').PlaybookHistoryEntry[]>(`/memory/playbooks/${encodeURIComponent(name)}/history`),
+  playbookRollback: (name: string, targetHash?: string) =>
+    post<{ status: string; message: string; target_hash?: string }>(
+      `/memory/playbooks/${encodeURIComponent(name)}/rollback`,
+      { target_hash: targetHash, reason: 'Operator rollback from dashboard' }
+    ),
+
+  // Market Intelligence & Sentiment
+  marketFedWatch: () =>
+    get<import('../types/api').FedWatchResponse>('/market/fedwatch'),
+  marketYields: () =>
+    get<import('../types/api').YieldsResponse>('/market/yields'),
+  marketFearGreed: () =>
+    get<import('../types/api').FearGreedResponse>('/market/fear-greed'),
+  marketSentimentComposite: () =>
+    get<import('../types/api').SentimentCompositeResponse>('/market/sentiment-composite'),
+
+  // Technical Indicators & SMC Structure
+  marketIndicators: (symbol: string, timeframe = 'H1') =>
+    get<import('../types/api').TechnicalIndicatorsResponse>(
+      `/market/indicators/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}`
+    ),
+  marketStructure: (symbol: string, timeframe = 'H4') =>
+    get<import('../types/api').MarketStructureResponse>(
+      `/market/structure/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}`
+    ),
+
+  // Position Management & Modification
+  positionModify: (ticket: number, body: { sl?: number; tp?: number; comment?: string }) =>
+    post<import('../types/api').ModifyPositionResponse>(`/positions/${ticket}/modify`, body),
+
+  // Autonomous Skill Crystallizer & Lifecycle
+  skillsCrystallized: () =>
+    get<{ skills: import('../types/api').CrystallizedSkillItem[]; total: number }>('/skills/crystallized'),
+  skillStats: (name: string) =>
+    get<import('../types/api').SkillStatsItem>(`/skills/${encodeURIComponent(name)}/stats`),
+  skillCurate: () =>
+    post<{ status: string; pruned_skills: any[]; pruned_count: number }>('/skills/curate', {}),
+  skillDeprecate: (name: string, reason?: string) =>
+    post<{ status: string; skill_name: string; success: boolean }>(
+      `/skills/${encodeURIComponent(name)}/deprecate`,
+      { reason: reason || 'Operator manual deprecation' }
+    ),
+  skillCrystallize: (symbol?: string) =>
+    post<{ status: string; new_skills: any[]; count: number }>(
+      '/skills/crystallize',
+      symbol ? { symbol } : {}
+    ),
+
+  // Trajectories & Decision Lineage (FASE 5)
+  tradeTrajectories: (limit = 50) =>
+    get<import('../types/api').TrajectoriesResponse>(`/observability/trajectories?limit=${limit}`),
+  cycleLineage: (cycleId: string, targetSeq?: number) =>
+    get<import('../types/api').CycleLineageResponse>(
+      `/observability/cycles/${encodeURIComponent(cycleId)}/lineage${targetSeq !== undefined ? `?target_seq=${targetSeq}` : ''}`
+    ),
 };
 
 

@@ -13,26 +13,21 @@ import { GraphControls } from './graph/GraphControls';
 import { GraphEdge } from './graph/GraphEdge';
 import { GraphNodeComponent } from './graph/GraphNode';
 import { GraphInspector } from './graph/GraphInspector';
+import { computeGraphLayout, CANONICAL_POSITIONS } from './graph/graphUtils';
 
 // Visual canvas dimensions & node geometry
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 120;
 
-// Coordinate layout for the 7 LangGraph nodes
-const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
-  fundamental_brief: { x: 50, y: 260 },
-  prefetch_data: { x: 330, y: 260 },
-  bull_advocate: { x: 650, y: 130 },
-  bear_dissent: { x: 650, y: 390 },
-  debate_judge: { x: 950, y: 260 },
-  risk_gate: { x: 1250, y: 260 },
-  execution: { x: 1510, y: 260 },
-};
-
 export const GraphVisualizerPanel: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCycle, setSelectedCycle] = useState<string>('');
+
+  const nodePositions = React.useMemo(() => {
+    if (!graphData) return CANONICAL_POSITIONS;
+    return computeGraphLayout(graphData.nodes, graphData.edges);
+  }, [graphData]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [triggering, setTriggering] = useState<boolean>(false);
@@ -44,6 +39,10 @@ export const GraphVisualizerPanel: React.FC = () => {
   const [steerMode, setSteerMode] = useState<string>('steer');
   const [steerSymbols, setSteerSymbols] = useState<string>('');
   const [steerLoading, setSteerLoading] = useState<boolean>(false);
+
+  // Cycle Telemetry & Token Cost State
+  const [cycleTrace, setCycleTrace] = useState<any | null>(null);
+  const [cycleTokens, setCycleTokens] = useState<any | null>(null);
 
   // Viewport transform state: scale and translation
   const [transform, setTransform] = useState<{ x: number; y: number; k: number }>({
@@ -65,8 +64,14 @@ export const GraphVisualizerPanel: React.FC = () => {
   const loadGraphState = useCallback(async (cycleId?: string) => {
     try {
       setLoading(true);
-      const res = await api.graphState(cycleId);
+      const [res, traceRes, tokensRes] = await Promise.all([
+        api.graphState(cycleId),
+        cycleId ? api.cycleTraceSummary(cycleId).catch(() => null) : Promise.resolve(null),
+        api.tokenCycles(cycleId).catch(() => null),
+      ]);
       setGraphData(res);
+      setCycleTrace(traceRes);
+      setCycleTokens(tokensRes);
       lastFetchedCycleRef.current = res.cycle_id;
       setSelectedCycle(res.cycle_id);
       setSelectedNodeId(curr => curr || (res.nodes.length > 0 ? res.nodes[0].id : null));
@@ -509,8 +514,8 @@ export const GraphVisualizerPanel: React.FC = () => {
 
               {/* Edge Bezier Connectors */}
               {graphData?.edges.map((edge, idx) => {
-                const srcPos = NODE_POSITIONS[edge.from];
-                const dstPos = NODE_POSITIONS[edge.to];
+                const srcPos = nodePositions[edge.from];
+                const dstPos = nodePositions[edge.to];
                 if (!srcPos || !dstPos) return null;
 
                 const srcNode = graphData.nodes.find(n => n.id === edge.from);
@@ -533,7 +538,7 @@ export const GraphVisualizerPanel: React.FC = () => {
 
               {/* Interactive Graph Nodes */}
               {graphData?.nodes.map((node: GraphNode) => {
-                const pos = NODE_POSITIONS[node.id] || { x: 100, y: 100 };
+                const pos = nodePositions[node.id] || { x: 100, y: 100 };
                 const isSelected = selectedNodeId === node.id;
 
                 return (
@@ -595,6 +600,8 @@ export const GraphVisualizerPanel: React.FC = () => {
             onClose={() => setSelectedNodeId(null)}
             copied={copied}
             onCopyPayload={handleCopyPayload}
+            cycleTrace={cycleTrace}
+            cycleTokens={cycleTokens}
           />
         )}
       </div>
