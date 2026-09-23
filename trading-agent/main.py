@@ -288,6 +288,8 @@ class TradingAgent:
         self.risk_parameter_reloader = None
         self.position_supervisor = None
         self.task_registry = None
+        self.container = None
+        self.plugin_engine = None
         self._background_tasks: set[asyncio.Task] = set()
         self._tasks: list[asyncio.Task] = []
 
@@ -607,6 +609,33 @@ class TradingAgent:
                 logger.info(f"Loaded {len(loaded_plugins)} plugins: {', '.join(p.name for p in loaded_plugins)}")
         except Exception as e:
             logger.warning(f"Plugin initialization error: {e}")
+
+        # Initialize Universal PluginEngine Harness
+        try:
+            from utils.infra.container import get_container
+            from harness.engine import PluginEngine
+            self.container = get_container()
+            self.container.register_instance("settings", self.settings)
+            if self.event_bus:
+                self.container.register_instance("event_bus", self.event_bus)
+            if self.task_registry:
+                self.container.register_instance("task_registry", self.task_registry)
+            if self.mt5_client:
+                self.container.register_instance("mt5_client", self.mt5_client)
+            if self.execution_service:
+                self.container.register_instance("execution_service", self.execution_service)
+
+            self.plugin_engine = PluginEngine(
+                container=self.container,
+                event_bus=self.event_bus,
+                task_registry=self.task_registry,
+            )
+            plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
+            self.plugin_engine.discover_directory(plugins_dir)
+            self.plugin_engine.discover_entrypoints()
+            logger.info(f"[PluginEngine] Discovered {len(self.plugin_engine.registry)} plugins.")
+        except Exception as e:
+            logger.warning(f"PluginEngine initialization error: {e}")
 
         logger.info("All components initialized")
 
@@ -1251,6 +1280,15 @@ class TradingAgent:
         if self.telegram_bot:
             self._tg_task = _launch_task("TelegramBot", self.telegram_bot.start, "telegram_bot")
 
+        # Initialize and launch discovered plugins via PluginEngine
+        if hasattr(self, "plugin_engine") and self.plugin_engine:
+            try:
+                plugin_cfg = self.settings.get("plugins", {})
+                await self.plugin_engine.initialize(plugin_cfg)
+                await self.plugin_engine.start()
+            except Exception as e:
+                logger.error(f"[PluginEngine] Launch error: {e}", exc_info=True)
+
         self._tasks = tasks_list
         if hasattr(self, "_recovery_task") and self._recovery_task:
             self._tasks.append(self._recovery_task)
@@ -1691,6 +1729,14 @@ class TradingAgent:
                     logger.info(f"  [OK] {name} stopped")
             except Exception as e:
                 logger.warning(f"  [WARN] {name} stop failed: {e}")
+
+        # Stop PluginEngine
+        if hasattr(self, "plugin_engine") and self.plugin_engine:
+            try:
+                await self.plugin_engine.stop()
+                logger.info("  [OK] PluginEngine stopped")
+            except Exception as e:
+                logger.warning(f"  [WARN] PluginEngine stop failed: {e}")
 
         # Notify Telegram admin
         try:

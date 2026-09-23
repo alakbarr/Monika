@@ -140,6 +140,8 @@ class RiskGate:
             correlation_threshold=float(risk_cfg.get("correlation_threshold", 0.65)),
         )
         self.correlation_matrix = self.dynamic_correlation_matrix
+        from risk.risk_rule_plugin import ModularRiskRegistry
+        self.modular_risk_registry = ModularRiskRegistry()
 
     def update_parameters(self, new_risk_cfg: dict) -> None:
         """Hot-reload risk parameters dynamically without restarting."""
@@ -276,6 +278,23 @@ class RiskGate:
             
         for name, coro in checks:
             await run_check(name, coro)
+
+        if hasattr(self, "modular_risk_registry") and self.modular_risk_registry:
+            try:
+                mod_ok, mod_passed, mod_failed, mod_reasons = await self.modular_risk_registry.evaluate_modular_rules(
+                    session=session,
+                    symbol=symbol,
+                    direction=direction,
+                    sizing=sizing,
+                    account_equity=equity,
+                    analysis=analysis,
+                    is_backtest=is_backtest,
+                )
+                checks_passed.extend(mod_passed)
+                checks_failed.extend(mod_failed)
+                rejections.extend(mod_reasons)
+            except Exception as e:
+                logger.error(f"Modular risk registry evaluation failed: {e}")
 
         approved = len(checks_failed) == 0
 

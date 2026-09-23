@@ -243,20 +243,6 @@ async def get_skills_catalog():
     return {"skills": skills_list, "total": len(skills_list)}
 
 
-@intelligence_router.get("/api/plugins", tags=["Plugins"])
-@require_role(Role.VIEWER)
-async def get_plugins_catalog():
-    """List all installed plugins with manifests."""
-    plugins_dir = Path(__file__).resolve().parents[3] / "plugins"
-    plugins_list = []
-    if plugins_dir.exists():
-        for manifest_path in plugins_dir.rglob("plugin.yaml"):
-            try:
-                manifest = load_manifest_file(str(manifest_path))
-                plugins_list.append(manifest.model_dump() if hasattr(manifest, "model_dump") else manifest.dict())
-            except Exception as e:
-                logger.debug(f"Error loading manifest {manifest_path}: {e}")
-    return {"plugins": plugins_list, "total": len(plugins_list)}
 
 
 @intelligence_router.get("/api/reports/tearsheet/latest", tags=["Observability"])

@@ -1245,6 +1245,17 @@ def parse_args(args_list=None):
     mcp_parser = subparsers.add_parser("mcp-serve", help="Launch Monika as a Model Context Protocol (MCP) server over stdio")
     mcp_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
+    # Command: plugin (Manage Monika plugins)
+    plugin_parser = subparsers.add_parser("plugin", help="Manage plugins: list, install, uninstall, info")
+    plugin_sub = plugin_parser.add_subparsers(dest="plugin_action", help="Plugin actions: list, install, uninstall, info")
+    plugin_sub.add_parser("list", help="List all detected plugins")
+    inst_p = plugin_sub.add_parser("install", help="Install plugin package via pip")
+    inst_p.add_argument("package_name", type=str, help="Package name to install (e.g. discord or monika-plugin-discord)")
+    uninst_p = plugin_sub.add_parser("uninstall", help="Uninstall plugin package via pip")
+    uninst_p.add_argument("package_name", type=str, help="Package name to uninstall")
+    info_p = plugin_sub.add_parser("info", help="Show plugin metadata and configuration")
+    info_p.add_argument("package_name", type=str, help="Plugin ID")
+
     # Backward compatibility and top-level headless query flag
     parser.add_argument("-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit")
     parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without formatting")
@@ -1320,6 +1331,9 @@ async def _dispatch_cli(args):
             cfg = load_settings(getattr(args, "config", None))
             server = MonikaMcpServer(settings=cfg)
             await server.run_stdio()
+        elif args.command == "plugin":
+            from cli.plugins import handle_plugin_command
+            handle_plugin_command(args)
         else:
             # First-run interceptor for daemon execution
             from utils.infra.env_file_manager import EnvFileManager

@@ -1,0 +1,12 @@
+id: "technical_scalping"
+name: "Technical & Price Action Scalping Pipeline"
+version: "1.0.0"
+category: "analysis_pipeline"
+description: "High-frequency technical SMC and liquidity sweep scalping pipeline bypassing macro stage"
+author: "Monika Core Team"
+entrypoint: "scalping_pipeline:TechnicalScalpingPipeline"
+is_core: false
+dependencies: []
+config:
+  timeframes: ["M5", "M15"]
+  require_smc_confirmation: true

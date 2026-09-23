@@ -85,8 +85,10 @@ Monika/
     │   ├── onboarding_trader.py
     │   ├── overlays
     │   │   ├── __init__.py
-    │   │   └── approval_modal.py
+    │   │   ├── approval_modal.py
+    │   │   └── plugin_install_modal.py
     │   ├── platform_compat.py
+    │   ├── plugins.py
     │   ├── profile_manager.py
     │   ├── setup_wizard.py
     │   ├── sparklines.py
@@ -119,6 +121,7 @@ Monika/
     │   └── settings.yaml
     ├── analysis
     │   ├── event_broadcaster.py
+    │   ├── pipeline_plugin.py
     │   ├── scenario_tree.py
     │   ├── subagent_blackboard.py
     │   ├── subagent_spawner.py
@@ -438,6 +441,7 @@ Monika/
     │   │   ├── __init__.py
     │   │   └── base.py
     │   ├── broker_adapter.py
+    │   ├── broker_plugin.py
     │   ├── effect_gate.py
     │   ├── execution_service.py
     │   ├── health_check.py
@@ -496,6 +500,11 @@ Monika/
     │       ├── reflection_node.py
     │       ├── risk_gate_node.py
     │       └── state_pruner.py
+    ├── harness
+    │   ├── __init__.py
+    │   ├── contract.py
+    │   ├── engine.py
+    │   └── installer.py
     ├── indicators
     │   ├── microstructure.py
     │   ├── order_flow.py
@@ -531,6 +540,7 @@ Monika/
     │       │   ├── intelligence.py
     │       │   ├── memory.py
     │       │   ├── observability.py
+    │       │   ├── plugins.py
     │       │   ├── system.py
     │       │   ├── tokens.py
     │       │   ├── trace_search.py
@@ -575,6 +585,7 @@ Monika/
     │               │   │   ├── MemoryBrowserPanel.tsx
     │               │   │   ├── ObservabilityPanel.tsx
     │               │   │   ├── PerformancePanel.tsx
+    │               │   │   ├── PluginManagerPanel.tsx
     │               │   │   ├── PositionsTable.tsx
     │               │   │   ├── RetroCockpitBar.tsx
     │               │   │   ├── RiskPanel.tsx
@@ -639,6 +650,20 @@ Monika/
     │   │   └── discord_alert
     │   │       ├── discord_alert.py
     │   │       └── plugin.yaml
+    │   ├── analysis_pipelines
+    │   │   ├── macro_to_asset
+    │   │   │   ├── macro_to_asset_pipeline.py
+    │   │   │   └── plugin.yaml
+    │   │   └── technical_scalping
+    │   │       ├── plugin.yaml
+    │   │       └── scalping_pipeline.py
+    │   ├── brokers
+    │   │   ├── mt5_local
+    │   │   │   ├── mt5_plugin.py
+    │   │   │   └── plugin.yaml
+    │   │   └── paper_trading
+    │   │       ├── paper_plugin.py
+    │   │       └── plugin.yaml
     │   ├── indicators
     │   │   └── custom_indicator
     │   │       ├── custom_indicator.py
@@ -658,6 +683,7 @@ Monika/
     │   ├── portfolio_correlation_gate.py
     │   ├── position_sizing.py
     │   ├── risk_gate.py
+    │   ├── risk_rule_plugin.py
     │   ├── trade_proposal.py
     │   └── invariants
     │       ├── __init__.py
@@ -687,6 +713,7 @@ Monika/
     │   ├── post_release_analyzer.py
     │   ├── scraper_runner.py
     │   ├── strategy_synthesis_scheduler.py
+    │   ├── task_plugin.py
     │   ├── trailing_stop_manager.py
     │   └── trigger_checker.py
     ├── scrapers
@@ -977,6 +1004,7 @@ Monika/
         │   ├── test_jev_news_classifier.py
         │   ├── test_jev_verifiers_and_builders.py
         │   ├── test_level_optimizer_rr_pairing.py
+        │   ├── test_pipeline_plugins.py
         │   └── test_skill_crystallizer_curation.py
         ├── backtest
         │   ├── test_alpha_validation.py
@@ -1001,6 +1029,7 @@ Monika/
         │   ├── test_busy_input.py
         │   ├── test_doctor_and_profile.py
         │   ├── test_platform_compat.py
+        │   ├── test_plugin_cli.py
         │   ├── test_sparklines.py
         │   ├── test_theme_packs.py
         │   └── test_tui_components.py
@@ -1015,6 +1044,7 @@ Monika/
         │   ├── test_offline_oracles.py
         │   └── test_simulation_and_oracles.py
         ├── execution
+        │   ├── test_broker_plugins.py
         │   ├── test_ea_watchdog.py
         │   ├── test_idempotency_guard.py
         │   ├── test_mt5_client.py
@@ -1030,6 +1060,13 @@ Monika/
         │   └── test_rate_throttler.py
         ├── graph
         │   └── test_workflow_authoritative_checkpointer.py
+        ├── harness
+        │   ├── test_installer_service.py
+        │   ├── test_message_repair.py
+        │   ├── test_plugin_engine.py
+        │   ├── test_repetition_and_candidate.py
+        │   ├── test_threat_scanner.py
+        │   └── test_trading_agent_harness_integration.py
         ├── logging_observability
         │   ├── test_activity_logger.py
         │   ├── test_cost_tracking_dashboard.py
@@ -1038,6 +1075,7 @@ Monika/
         │   ├── test_dashboard_memory_routes.py
         │   ├── test_dashboard_observability_endpoints.py
         │   ├── test_dashboard_phase2.py
+        │   ├── test_dashboard_plugins_routes.py
         │   ├── test_modular_routes.py
         │   ├── test_tearsheet_generator.py
         │   ├── test_tracing.py
@@ -1046,7 +1084,8 @@ Monika/
         │   ├── test_memory_budget.py
         │   └── test_microstructure_perf.py
         ├── plugins
-        │   └── test_plugin_manifest_and_loader.py
+        │   ├── test_plugin_manifest_and_loader.py
+        │   └── test_reference_plugins.py
         ├── provider
         │   ├── __init__.py
         │   ├── test_credential_pool.py
@@ -1054,6 +1093,7 @@ Monika/
         │   └── test_role_fallback_chain.py
         ├── risk
         │   ├── test_invariants_and_replay.py
+        │   ├── test_risk_rule_pipeline.py
         │   └── test_trade_proposal.py
         ├── security
         │   └── test_credential_vault.py
@@ -1062,7 +1102,8 @@ Monika/
         │   ├── test_news_watcher_turn_lease.py
         │   ├── test_scraper_runner.py
         │   ├── test_strategy_synthesis_historical_sandbox.py
-        │   └── test_strategy_synthesis_scheduler.py
+        │   ├── test_strategy_synthesis_scheduler.py
+        │   └── test_task_plugin_lifecycle.py
         ├── scrapers
         │   └── test_base_scraper.py
         ├── skills
@@ -1085,5 +1126,6 @@ Monika/
             ├── test_chat_database_access.py
             ├── test_chat_tool_router_semantic.py
             ├── test_chat_tool_router_stress.py
+            ├── test_plugins_telegram.py
             ├── test_session_approval.py
             └── test_telegram_enhancements.py
