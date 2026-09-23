@@ -599,17 +599,6 @@ class TradingAgent:
         from scheduler.playbook_curator import PlaybookCurator
         self.playbook_curator = PlaybookCurator(self.settings)
 
-        # Initialize and load active plugins
-        try:
-            from plugins.loader import PluginLoader
-            self.plugin_loader = PluginLoader()
-            plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
-            loaded_plugins = self.plugin_loader.load_plugins_from_directory(plugins_dir)
-            if loaded_plugins:
-                logger.info(f"Loaded {len(loaded_plugins)} plugins: {', '.join(p.name for p in loaded_plugins)}")
-        except Exception as e:
-            logger.warning(f"Plugin initialization error: {e}")
-
         # Initialize Universal PluginEngine Harness
         try:
             from utils.infra.container import get_container
@@ -634,6 +623,8 @@ class TradingAgent:
             self.plugin_engine.discover_directory(plugins_dir)
             self.plugin_engine.discover_entrypoints()
             logger.info(f"[PluginEngine] Discovered {len(self.plugin_engine.registry)} plugins.")
+            if self.risk_parameter_reloader:
+                self.risk_parameter_reloader.subscribe(self.plugin_engine)
         except Exception as e:
             logger.warning(f"PluginEngine initialization error: {e}")
 
