@@ -8,7 +8,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { TypewriterButton } from '../ui/TypewriterButton';
 import { api } from '../../lib/api';
-import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult, PlaybookRuleItem } from '../../types/api';
+import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult, PlaybookRuleItem, PlaybookHistoryEntry } from '../../types/api';
 import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
 import {
@@ -17,6 +17,8 @@ import {
   Lightbulb,
   RefreshCw,
   BookOpen,
+  History,
+  RotateCcw,
 } from 'lucide-react';
 
 type ViewMode = 'all' | 'profitable' | 'losses' | 'whatif' | 'lessons' | 'playbooks';
@@ -30,6 +32,70 @@ export const MemoryBrowserPanel: React.FC = () => {
   const [lessons, setLessons] = useState<CandidateLessonItem[]>([]);
   const [playbooks, setPlaybooks] = useState<PlaybookRuleItem[]>([]);
   const [searchResults, setSearchResults] = useState<MemorySearchResult | null>(null);
+  const [selectedPlaybookForHistory, setSelectedPlaybookForHistory] = useState<string | null>(null);
+  const [playbookHistoryEntries, setPlaybookHistoryEntries] = useState<PlaybookHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+  const [rollbackStatus, setRollbackStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const openPlaybookHistory = async (symbol: string) => {
+    if (selectedPlaybookForHistory === symbol) {
+      setSelectedPlaybookForHistory(null);
+      return;
+    }
+    setSelectedPlaybookForHistory(symbol);
+    setHistoryLoading(true);
+    setRollbackStatus(null);
+    sounds.playClick('typewriter');
+    try {
+      const hData = await api.playbookHistory(symbol);
+      setPlaybookHistoryEntries(hData || []);
+    } catch (err: any) {
+      console.error('Failed to load playbook history:', err);
+      setRollbackStatus({ type: 'err', text: err.message || 'Failed to fetch playbook history' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleRollback = async (symbol: string, targetHash?: string) => {
+    try {
+      setRollbackStatus(null);
+      const res = await api.playbookRollback(symbol, targetHash);
+      if (res.status === 'success') {
+        setRollbackStatus({ type: 'ok', text: res.message || 'Rollback successful!' });
+        sounds.playClick('typewriter');
+        fetchMemory();
+        const updated = await api.playbookHistory(symbol);
+        setPlaybookHistoryEntries(updated || []);
+      } else {
+        setRollbackStatus({ type: 'err', text: res.message || 'Rollback failed.' });
+      }
+    } catch (err: any) {
+      setRollbackStatus({ type: 'err', text: err.message || 'Rollback execution error.' });
+    }
+  };
+
+  const renderProcessOutcomeBadge = (classification?: string | null) => {
+    if (!classification) return null;
+    const c = classification.toLowerCase();
+    if (c.includes('good_process_good_outcome') || c === 'deserved_win') {
+      return <Badge variant="active">🟢 EARNED WIN (Good Process + Win)</Badge>;
+    }
+    if (c.includes('good_process_bad_outcome') || c === 'bad_luck') {
+      return <Badge variant="warn">🟡 BAD BREAK (Good Process + Loss)</Badge>;
+    }
+    if (c.includes('bad_process_good_outcome') || c === 'dumb_luck') {
+      return <Badge variant="warn">🟠 DUMB LUCK (Flawed Process + Win)</Badge>;
+    }
+    if (c.includes('bad_process_bad_outcome') || c === 'deserved_loss') {
+      return <Badge variant="neutral">🔴 DESERVED LOSS (Flawed Process + Loss)</Badge>;
+    }
+    return (
+      <span className="stamp-badge" style={{ fontSize: '9px' }}>
+        [{classification.toUpperCase()}]
+      </span>
+    );
+  };
 
   const fetchMemory = async () => {
     setLoading(true);
@@ -434,6 +500,17 @@ export const MemoryBrowserPanel: React.FC = () => {
                         PnL: {fmt.usd(rule.total_pnl, true)}
                       </span>
                     </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <TypewriterButton
+                        size="sm"
+                        variant={selectedPlaybookForHistory === rule.symbol ? 'primary' : 'secondary'}
+                        onClick={() => openPlaybookHistory(rule.symbol)}
+                        title="View mutation history and 1-click rollback"
+                      >
+                        <History size={12} /> [ REVISIONS / ROLLBACK ]
+                      </TypewriterButton>
+                    </div>
                   </div>
 
                   <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', lineHeight: '1.6', fontWeight: 500 }}>
@@ -449,6 +526,96 @@ export const MemoryBrowserPanel: React.FC = () => {
                   {rule.last_triggered_at && (
                     <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--color-ink-muted)' }}>
                       Last Triggered: {new Date(rule.last_triggered_at).toLocaleString()}
+                    </div>
+                  )}
+
+                  {/* Playbook Mutation History & Rollback Drawer */}
+                  {selectedPlaybookForHistory === rule.symbol && (
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        padding: '10px 12px',
+                        background: 'var(--color-paper-raised)',
+                        border: '1px solid var(--color-rule)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-ink)' }}>
+                          MUTATION AUDIT TRAIL // {rule.symbol}
+                        </span>
+                        {rollbackStatus && (
+                          <span
+                            style={{
+                              fontSize: 'var(--text-xs)',
+                              fontWeight: 700,
+                              color: rollbackStatus.type === 'ok' ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
+                            }}
+                          >
+                            {rollbackStatus.text}
+                          </span>
+                        )}
+                      </div>
+
+                      {historyLoading ? (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
+                          Retrieving content-addressed version history...
+                        </div>
+                      ) : playbookHistoryEntries.length === 0 ? (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
+                          — No version history entries found in audit ledger for {rule.symbol} —
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {playbookHistoryEntries.map((h, idx) => (
+                            <div
+                              key={`${h.sha256_hash}-${idx}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '6px 10px',
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-rule)',
+                                borderRadius: 'var(--radius-sm)',
+                                fontSize: 'var(--text-xs)',
+                                gap: '8px',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800 }}>
+                                  #{h.sha256_hash.substring(0, 8)}
+                                </span>
+                                <Badge variant={h.action === 'rollback' ? 'warn' : h.action === 'deprecate' ? 'neutral' : 'active'}>
+                                  {h.action.toUpperCase()}
+                                </Badge>
+                                <span>{h.reason || 'Version commit'}</span>
+                                <span style={{ color: 'var(--color-ink-soft)' }}>
+                                  ({new Date(h.timestamp).toLocaleString()} by {h.author})
+                                </span>
+                              </div>
+
+                              <div>
+                                {idx === 0 ? (
+                                  <span style={{ fontSize: '10px', color: 'var(--color-ledger-green)', fontWeight: 800 }}>
+                                    [ ACTIVE HEAD ]
+                                  </span>
+                                ) : (
+                                  <TypewriterButton
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => handleRollback(rule.symbol, h.sha256_hash)}
+                                    title="Roll back playbook rule to this historical snapshot"
+                                  >
+                                    <RotateCcw size={10} /> [ ROLLBACK TO THIS ]
+                                  </TypewriterButton>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -508,11 +675,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {ref.outcome_process_classification && (
-                        <span className="stamp-badge" style={{ fontSize: '9px' }}>
-                          [{ref.outcome_process_classification.toUpperCase()}]
-                        </span>
-                      )}
+                      {renderProcessOutcomeBadge(ref.outcome_process_classification)}
 
                       {ref.macro_thesis_correct !== null && ref.macro_thesis_correct !== undefined && (
                         <Badge variant={ref.macro_thesis_correct ? 'active' : 'warn'}>

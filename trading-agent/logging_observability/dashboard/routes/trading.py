@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from logging_observability.dashboard.rbac import Role, require_role
 from logging_observability.dashboard.routes.common import (
     ClosePositionRequest,
+    ModifyPositionRequest,
     OverrideRiskRequest,
     SteerRequest,
     TriggerCycleRequest,
@@ -420,6 +421,59 @@ async def get_risk():
             "avg_spread_pips": 1.2,
             "avg_rr_ratio": 1.5,
             "is_weekend": is_weekend,
+        }
+
+
+@trading_router.get("/api/risk/scorecard", tags=["Risk"])
+@require_role(Role.VIEWER)
+async def get_risk_scorecard(symbol: str = Query(default="EURUSD", description="Asset symbol to evaluate against risk gate")):
+    """Evaluate 22-point deterministic Risk Gate rules scorecard for live telemetry."""
+    from database.db import AsyncSessionLocal
+    from risk.risk_gate import RiskGate
+    from config.settings import load_settings
+
+    async with AsyncSessionLocal() as session:
+        settings = load_settings()
+        risk_gate = RiskGate(settings=settings)
+        return await risk_gate.get_current_scorecard(session=session, symbol=symbol.upper())
+
+
+@trading_router.get("/api/risk/correlation-matrix", tags=["Risk"])
+@require_role(Role.VIEWER)
+async def get_risk_correlation_matrix():
+    """Compute rolling cross-asset correlation matrix and aggregate portfolio heat score."""
+    from database.db import AsyncSessionLocal
+    from risk.correlation_matrix import DynamicCorrelationMatrix
+    from database.models import Position
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as session:
+        open_positions = (await session.execute(
+            select(Position).where(Position.status == "open")
+        )).scalars().all()
+
+        pos_list = [
+            {"symbol": p.symbol, "direction": p.direction, "volume": float(p.volume or 0.01)}
+            for p in open_positions
+        ]
+
+        active_symbols = list({p.symbol.upper() for p in open_positions if p.symbol})
+        default_symbols = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
+        for s in default_symbols:
+            if s not in active_symbols:
+                active_symbols.append(s)
+
+        corr_engine = DynamicCorrelationMatrix()
+        matrix = await corr_engine.get_matrix(session, active_symbols)
+        heat = corr_engine.calculate_portfolio_heat(pos_list, matrix)
+
+        return {
+            "symbols": active_symbols,
+            "matrix": matrix,
+            "portfolio_heat": heat.get("portfolio_heat", 0.0),
+            "status": heat.get("status", "normal"),
+            "correlated_pairs": heat.get("correlated_pairs", []),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
 
@@ -1122,3 +1176,197 @@ async def action_approve_trade(trade_id: int, request: Request):
         status_code=404,
         content={"status": "error", "message": f"No pending trade or trigger found with ID {trade_id}."}
     )
+
+
+@trading_router.post("/api/positions/{ticket}/modify", tags=["Actions"])
+@require_role(Role.OPERATOR)
+async def modify_position(ticket: int, payload: ModifyPositionRequest, request: Request):
+    """Modify Stop Loss and Take Profit levels of an active position."""
+    from database.db import AsyncSessionLocal
+    from database.models import Position
+    from sqlalchemy import select
+
+    exec_svc = get_dashboard_dependency("execution_service")
+    mt5_client = get_dashboard_dependency("mt5_client")
+
+    res = None
+    if exec_svc and hasattr(exec_svc, "modify_position_sl_tp"):
+        try:
+            res = await exec_svc.modify_position_sl_tp(
+                ticket=ticket,
+                new_sl=payload.sl,
+                new_tp=payload.tp,
+                comment=payload.comment or "Mod:dashboard",
+            )
+        except Exception as e:
+            logger.warning(f"Execution service modify failed: {e}")
+
+    if not res and mt5_client and hasattr(mt5_client, "modify_position"):
+        try:
+            res = await mt5_client.modify_position(
+                ticket=ticket,
+                sl=payload.sl,
+                tp=payload.tp,
+            )
+        except Exception as e:
+            logger.warning(f"MT5 client modify failed: {e}")
+
+    async with AsyncSessionLocal() as session:
+        pos = (await session.execute(
+            select(Position).where(Position.mt5_ticket == ticket)
+        )).scalar_one_or_none()
+        if pos:
+            if payload.sl is not None:
+                pos.sl = payload.sl
+            if payload.tp is not None:
+                pos.tp = payload.tp
+            await session.commit()
+            if not res:
+                res = {"success": True, "ticket": ticket, "note": "Updated in DB"}
+
+    if not res:
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": f"Position with ticket {ticket} not found."}
+        )
+
+    await broadcast_live_event("position_modified", {
+        "ticket": ticket,
+        "sl": payload.sl,
+        "tp": payload.tp,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success", "result": res}
+
+
+@trading_router.get("/api/market/indicators/{symbol}", tags=["Market Data"])
+@require_role(Role.VIEWER)
+async def get_technical_indicators_snapshot(
+    symbol: str,
+    timeframe: str = Query(default="H1", description="Timeframe e.g. M15, H1, H4, D1"),
+):
+    """Retrieve computed technical indicators (MA, RSI, MACD, BB, ATR) for a symbol."""
+    from database.db import AsyncSessionLocal
+    from database.models import TechnicalIndicator
+    from sqlalchemy import select
+
+    sym = symbol.strip().upper().replace("/", "")
+
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(
+            select(TechnicalIndicator)
+            .where(TechnicalIndicator.symbol == sym)
+            .where(TechnicalIndicator.timeframe == timeframe.upper())
+            .order_by(TechnicalIndicator.timestamp.desc())
+            .limit(20)
+        )).scalars().all()
+
+        indicators_map = {}
+        for r in rows:
+            if r.indicator_name not in indicators_map:
+                try:
+                    val = json.loads(r.value_json) if isinstance(r.value_json, str) else r.value_json
+                except Exception:
+                    val = r.value_json
+                indicators_map[r.indicator_name] = {
+                    "value": val,
+                    "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                }
+
+        if not indicators_map:
+            try:
+                from indicators.technical import TechnicalIndicatorCalculator
+                from config.settings import load_settings
+                settings = load_settings() or {}
+                calc = TechnicalIndicatorCalculator(session, settings)
+                snapshot = await calc.get_snapshot(sym, timeframe.upper())
+                if snapshot:
+                    indicators_map = snapshot
+            except Exception as e:
+                logger.debug(f"Indicator calculation on the fly failed for {sym}: {e}")
+
+        return {
+            "symbol": sym,
+            "timeframe": timeframe.upper(),
+            "indicators": indicators_map,
+            "total_indicators": len(indicators_map),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+
+@trading_router.get("/api/market/structure/{symbol}", tags=["Market Data"])
+@require_role(Role.VIEWER)
+async def get_market_structure_levels(
+    symbol: str,
+    timeframe: str = Query(default="H4", description="Timeframe e.g. M15, H1, H4, D1"),
+):
+    """Retrieve SMC market structure levels: Order Blocks, FVGs, and Structure Breaks."""
+    from database.db import AsyncSessionLocal
+    from database.models import OrderBlock, StructureBreak, FVGZone
+    from sqlalchemy import select
+
+    sym = symbol.strip().upper().replace("/", "")
+
+    async with AsyncSessionLocal() as session:
+        ob_rows = (await session.execute(
+            select(OrderBlock)
+            .where(OrderBlock.symbol == sym)
+            .where(OrderBlock.timeframe == timeframe.upper())
+            .where(OrderBlock.mitigated_at == None)
+            .order_by(OrderBlock.formed_at.desc())
+            .limit(10)
+        )).scalars().all()
+
+        sb_rows = (await session.execute(
+            select(StructureBreak)
+            .where(StructureBreak.symbol == sym)
+            .where(StructureBreak.timeframe == timeframe.upper())
+            .order_by(StructureBreak.formed_at.desc())
+            .limit(10)
+        )).scalars().all()
+
+        fvg_rows = (await session.execute(
+            select(FVGZone)
+            .where(FVGZone.symbol == sym)
+            .where(FVGZone.timeframe == timeframe.upper())
+            .where(FVGZone.filled_at == None)
+            .order_by(FVGZone.formed_at.desc())
+            .limit(10)
+        )).scalars().all()
+
+        return {
+            "symbol": sym,
+            "timeframe": timeframe.upper(),
+            "order_blocks": [
+                {
+                    "id": ob.id,
+                    "direction": ob.direction,
+                    "price_high": ob.price_high,
+                    "price_low": ob.price_low,
+                    "formed_at": ob.formed_at.isoformat() if ob.formed_at else None,
+                }
+                for ob in ob_rows
+            ],
+            "structure_breaks": [
+                {
+                    "id": sb.id,
+                    "type": sb.type,
+                    "direction": sb.direction,
+                    "price": sb.price,
+                    "formed_at": sb.formed_at.isoformat() if sb.formed_at else None,
+                }
+                for sb in sb_rows
+            ],
+            "fair_value_gaps": [
+                {
+                    "id": f.id,
+                    "direction": f.direction,
+                    "gap_high": f.gap_high,
+                    "gap_low": f.gap_low,
+                    "formed_at": f.formed_at.isoformat() if f.formed_at else None,
+                }
+                for f in fvg_rows
+            ],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }

@@ -38,6 +38,10 @@ export const PositionsTable: React.FC = () => {
   const [sortAsc, setSortAsc] = useState(false);
   const [closingPos, setClosingPos] = useState<Position | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [editingPos, setEditingPos] = useState<Position | null>(null);
+  const [editSl, setEditSl] = useState('');
+  const [editTp, setEditTp] = useState('');
+  const [isModifying, setIsModifying] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   const open = positions.filter((p) => p.status === 'open');
@@ -51,6 +55,41 @@ export const PositionsTable: React.FC = () => {
     } else {
       setSortField(field);
       setSortAsc(false);
+    }
+  };
+
+  const handleOpenEdit = (pos: Position) => {
+    sounds.playClick('typewriter');
+    setEditingPos(pos);
+    setEditSl(pos.sl !== null && pos.sl !== undefined ? String(pos.sl) : '');
+    setEditTp(pos.tp !== null && pos.tp !== undefined ? String(pos.tp) : '');
+  };
+
+  const handleConfirmModify = async () => {
+    if (!editingPos) return;
+    const ticket = editingPos.mt5_ticket;
+    if (!ticket) {
+      setActionMsg(`Position #${editingPos.id} has no MT5 ticket.`);
+      setEditingPos(null);
+      return;
+    }
+    setIsModifying(true);
+    setActionMsg(null);
+    try {
+      sounds.playClick('toggle');
+      const slVal = editSl.trim() === '' ? undefined : Number(editSl);
+      const tpVal = editTp.trim() === '' ? undefined : Number(editTp);
+      await api.positionModify(ticket, {
+        sl: slVal !== undefined && !isNaN(slVal) ? slVal : undefined,
+        tp: tpVal !== undefined && !isNaN(tpVal) ? tpVal : undefined,
+      });
+      setActionMsg(`Modified SL/TP for ${editingPos.symbol} (#${ticket}) successfully.`);
+      await fetchAll();
+    } catch (err: any) {
+      setActionMsg(`Failed to modify position: ${err.message}`);
+    } finally {
+      setIsModifying(false);
+      setEditingPos(null);
     }
   };
 
@@ -235,12 +274,71 @@ export const PositionsTable: React.FC = () => {
                   isEven={i % 2 === 1}
                   showClosed={showClosed}
                   onCloseClick={(target) => setClosingPos(target)}
+                  onEditClick={(target) => handleOpenEdit(target)}
                 />
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Modify SL/TP Modal */}
+      <ConfirmModal
+        isOpen={Boolean(editingPos)}
+        title="MODIFY POSITION SL / TP"
+        actionSummary={`MODIFY: ${editingPos?.symbol} (#${editingPos?.mt5_ticket || editingPos?.id})`}
+        details={
+          editingPos && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: 'var(--text-body-sm)' }}>
+              <div><strong>Symbol:</strong> {editingPos.symbol} ({editingPos.direction.toUpperCase()})</div>
+              <div><strong>Entry:</strong> {fmt.price(editingPos.entry_price, editingPos.symbol)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>STOP LOSS (SL):</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editSl}
+                  onChange={(e) => setEditSl(e.target.value)}
+                  placeholder="Leave empty or set 0 to remove"
+                  style={{
+                    padding: '6px 8px',
+                    fontFamily: 'var(--font-precision)',
+                    fontSize: 'var(--text-xs)',
+                    border: '1.5px solid var(--color-rule)',
+                    borderRadius: '2px',
+                    background: 'var(--color-paper)',
+                    color: 'var(--color-ink)',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>TAKE PROFIT (TP):</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editTp}
+                  onChange={(e) => setEditTp(e.target.value)}
+                  placeholder="Leave empty or set 0 to remove"
+                  style={{
+                    padding: '6px 8px',
+                    fontFamily: 'var(--font-precision)',
+                    fontSize: 'var(--text-xs)',
+                    border: '1.5px solid var(--color-rule)',
+                    borderRadius: '2px',
+                    background: 'var(--color-paper)',
+                    color: 'var(--color-ink)',
+                  }}
+                />
+              </div>
+            </div>
+          )
+        }
+        confirmLabel={isModifying ? "UPDATING..." : "UPDATE SL/TP"}
+        cancelLabel="CANCEL"
+        danger={false}
+        onConfirm={handleConfirmModify}
+        onCancel={() => setEditingPos(null)}
+      />
 
       {/* Close Position Confirmation Modal */}
       <ConfirmModal
@@ -275,7 +373,8 @@ const PositionRow: React.FC<{
   isEven: boolean;
   showClosed: boolean;
   onCloseClick: (pos: Position) => void;
-}> = ({ pos, isEven, showClosed, onCloseClick }) => {
+  onEditClick: (pos: Position) => void;
+}> = ({ pos, isEven, showClosed, onCloseClick, onEditClick }) => {
   const slDist = pos.entry_price && pos.sl ? Math.abs(pos.entry_price - pos.sl) : null;
   const tpDist = pos.entry_price && pos.tp ? Math.abs(pos.entry_price - pos.tp) : null;
   const rr = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
@@ -344,7 +443,26 @@ const PositionRow: React.FC<{
         {fmt.datetime(pos.opened_at)}
       </td>
       {!showClosed && (
-        <td style={{ padding: '6px 12px', textAlign: 'center' }}>
+        <td style={{ padding: '6px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <button
+            type="button"
+            onClick={() => onEditClick(pos)}
+            style={{
+              padding: '2px 8px',
+              marginRight: '6px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 'bold',
+              background: 'var(--color-paper)',
+              color: 'var(--color-ink)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            title="Modify Stop Loss and Take Profit in MT5"
+          >
+            EDIT
+          </button>
           <button
             type="button"
             onClick={() => onCloseClick(pos)}

@@ -5,6 +5,9 @@
 
 from logging_observability.dashboard.routes.common import (
     ClosePositionRequest,
+    CrystallizeSkillRequest,
+    DeprecateSkillRequest,
+    ModifyPositionRequest,
     OverrideRiskRequest,
     SteerRequest,
     TriggerCycleRequest,
@@ -68,5 +71,8 @@ __all__ = [
     "TriggerCycleRequest",
     "OverrideRiskRequest",
     "ClosePositionRequest",
+    "ModifyPositionRequest",
+    "DeprecateSkillRequest",
+    "CrystallizeSkillRequest",
     "SteerRequest",
 ]

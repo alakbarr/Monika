@@ -191,3 +191,317 @@ def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
         "```",
     ])
     return "\n".join(lines)
+
+
+def format_risk_deep_slip(
+    scorecard: List[Dict[str, Any]],
+    edge_summary: Optional[Dict[str, Any]] = None,
+    token_budget: Optional[Dict[str, Any]] = None,
+    width: int = 46,
+) -> str:
+    """Format 22-point deterministic risk scorecard as teletype slip."""
+    passed_count = sum(1 for c in scorecard if c.get("passed", False))
+    total_count = len(scorecard)
+    status_label = "ALL PASSED" if passed_count == total_count else f"{total_count - passed_count} BREACHES"
+
+    lines = [
+        "```",
+        make_header("DETERMINISTIC RISK SCORECARD", width),
+        f"GATE EVALUATION: [ {status_label} ({passed_count}/{total_count}) ]",
+        "-" * width,
+    ]
+
+    for item in scorecard:
+        pass_tag = "[PASS]" if item.get("passed", False) else "[FAIL]"
+        name = item.get("name", "check")[:20].ljust(20)
+        curr = str(item.get("current_value", "-"))[:8]
+        limit = str(item.get("limit_value", "-"))[:8]
+        lines.append(f"{pass_tag} {name}: {curr} / {limit}")
+
+    if edge_summary:
+        lines.extend([
+            "-" * width,
+            "STATISTICAL EDGE:",
+            f"  Exp: {edge_summary.get('expectancy', '-')} | WR: {edge_summary.get('win_rate', '-')}",
+        ])
+
+    if token_budget:
+        tier = token_budget.get("tier", "TIER 1 (FULL)")
+        capacity = token_budget.get("capacity_pct", 100)
+        lines.extend([
+            "-" * width,
+            f"TOKEN BUDGET : [{tier}] {capacity}% CAP",
+        ])
+
+    lines.extend([
+        make_footer(width),
+        "```",
+    ])
+    return "\n".join(lines)
+
+
+def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = 46) -> str:
+    """Format open approval requests as teletype slip."""
+    if not open_requests:
+        return "```\n" + make_header("APPROVAL QUEUE", width) + "\n[ NIHIL ] Tidak ada proposal pending approval.\n" + make_footer(width) + "\n```"
+
+    lines = [
+        "```",
+        make_header(f"PENDING APPROVALS ({len(open_requests)})", width),
+    ]
+    for req in open_requests:
+        action_id = req.get("id", req.get("action_id", "N/A"))
+        symbol = req.get("symbol", "N/A")
+        action = req.get("action", req.get("direction", "TRADE")).upper()
+        lots = req.get("volume", req.get("lots", "-"))
+        conf = req.get("confidence", "-")
+        reason = req.get("reason", req.get("rationale", "-"))[:36]
+        lines.extend([
+            f"[{action}] #{action_id} {symbol} | {lots} LOT",
+            f"  Confidence : {conf}",
+            f"  Rationale  : {reason}",
+            f"  Command    : /approve {action_id} | /reject {action_id}",
+            "-" * width,
+        ])
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_trailing_slip(positions: List[Dict[str, Any]], width: int = 46) -> str:
+    """Format trailing stop positions as teletype slip."""
+    if not positions:
+        return "```\n" + make_header("TRAILING STOP STATUS", width) + "\n[ NIHIL ] Tidak ada posisi dengan trailing stop aktif.\n" + make_footer(width) + "\n```"
+
+    lines = [
+        "```",
+        make_header(f"TRAILING STOP POSITIONS ({len(positions)})", width),
+    ]
+    for p in positions:
+        ticket = p.get("ticket", "N/A")
+        symbol = p.get("symbol", "N/A")
+        side = p.get("direction", "BUY").upper()
+        be_hit = "[BE TRIGGERED]" if p.get("be_triggered") else "[TRACKING]"
+        entry = p.get("entry_price", "-")
+        curr_sl = p.get("current_sl", "-")
+        dist = p.get("atr_distance", "-")
+        lines.extend([
+            f"[{side}] #{ticket} {symbol} | {be_hit}",
+            f"  Entry: {entry} | Curr SL: {curr_sl} | ATR Dist: {dist}",
+            "-" * width,
+        ])
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_reconcile_slip(stats: Dict[str, Any], width: int = 46) -> str:
+    """Format MT5 vs DB reconciliation report as teletype slip."""
+    lines = [
+        "```",
+        make_header("MT5 // DB RECONCILIATION REPORT", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+        "-" * width,
+        "ORDERS RECONCILED   :",
+        f"  Total Checked : {stats.get('orders_checked', stats.get('orders_evaluated', 0))}",
+        f"  Updated/Filled: {stats.get('orders_updated', 0)}",
+        f"  Orphaned/Ccl  : {stats.get('orders_cancelled', 0)}",
+        "-" * width,
+        "POSITIONS RECONCILED:",
+        f"  Total Checked : {stats.get('positions_checked', stats.get('positions_evaluated', 0))}",
+        f"  In-Sync Match : {stats.get('positions_synced', 0)}",
+        f"  Adopted MT5   : {stats.get('positions_adopted', 0)}",
+        f"  Closed Extern : {stats.get('positions_closed_externally', 0)}",
+        "-" * width,
+        f"OVERALL STATUS : [ {stats.get('status', 'COMPLETED').upper()} ]",
+        make_footer(width),
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+def format_fedwatch_slip(data: Dict[str, Any], width: int = 46) -> str:
+    """Format CME FedWatch outlook as teletype slip."""
+    lines = [
+        "```",
+        make_header("CME FEDWATCH RATE OUTLOOK", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "-" * width,
+    ]
+    fw_list = data.get("fedwatch", [])
+    if fw_list:
+        first = fw_list[0]
+        lines.append(f"NEXT FOMC DATE : {first.get('meeting_date', 'N/A')}")
+        probs = first.get("probabilities", {})
+        if isinstance(probs, dict):
+            for k, v in probs.items():
+                v_str = f"{v:.1f}%" if isinstance(v, (int, float)) else str(v)
+                lines.append(f"  {k.replace('_', ' ').upper():<16}: {v_str}")
+        lines.append("-" * width)
+
+    cb_list = data.get("central_banks", [])
+    if cb_list:
+        lines.append("CENTRAL BANK POLICY RATES:")
+        for cb in cb_list[:5]:
+            bank = cb.get("bank", "CB")
+            rate = cb.get("current_rate", 0.0)
+            cut = cb.get("prob_cut", 0.0)
+            lines.append(f"  {bank:<6} Rate: {rate:.2f}% | Prob Cut: {cut:.0f}%")
+        lines.append("-" * width)
+
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_yields_slip(data: Dict[str, Any], width: int = 46) -> str:
+    """Format US Treasury Yield Curve and 2s10s spread as teletype slip."""
+    spread = data.get("spread_2s10s")
+    inverted = data.get("is_inverted", False)
+    spread_str = f"{spread:+.2f}%" if spread is not None else "N/A"
+    status_stamp = "[ INVERTED (RECESSION) ]" if inverted else "[ NORMAL CURVE ]"
+
+    lines = [
+        "```",
+        make_header("US TREASURY YIELDS & 2S10S", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"2S10S SPREAD   : {spread_str} {status_stamp}",
+        "-" * width,
+        "US TREASURY BENCHMARKS:",
+    ]
+    for y in data.get("treasury_yields", [])[:6]:
+        tenor = y.get("tenor", "-")
+        y_val = y.get("yield_percent", 0.0)
+        lines.append(f"  {tenor:<6}: {y_val:.2f}%")
+
+    gb = data.get("global_bonds", [])
+    if gb:
+        lines.append("-" * width)
+        lines.append("SOVEREIGN 10Y BENCHMARKS:")
+        for b in gb[:4]:
+            lines.append(f"  {b.get('country_tenor', '-'):<10}: {b.get('yield_percent', 0.0):.2f}%")
+
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_fear_greed_slip(data: Dict[str, Any], width: int = 46) -> str:
+    """Format Fear & Greed sentiment index as teletype slip."""
+    val = data.get("current_value", 50)
+    classification = str(data.get("classification", "Neutral")).upper()
+    wow = data.get("wow_change")
+    wow_str = f"{wow:+d} WoW" if wow is not None else "0 WoW"
+
+    lines = [
+        "```",
+        make_header("FEAR & GREED SENTIMENT INDEX", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"SCORE          : {val} / 100 [ {classification} ]",
+        f"WOW CHANGE     : {wow_str}",
+        "-" * width,
+        "SIGNAL INTERPRETATION:",
+        f"  {data.get('interpretation', 'Balanced sentiment')}",
+        make_footer(width),
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+def format_cot_slip(data: List[Dict[str, Any]], width: int = 46) -> str:
+    """Format CFTC COT institutional positioning as teletype slip."""
+    lines = [
+        "```",
+        make_header("CFTC COT POSITIONING", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "-" * width,
+    ]
+    if not data:
+        lines.append("  No recent COT positioning records found.")
+    else:
+        for r in data[:5]:
+            m = r.get("market_code", "N/A")
+            net = r.get("net_position", 0)
+            sign = "+" if net >= 0 else ""
+            lines.append(f"MARKET {m:<10} Net: {sign}{net:,} contracts")
+            lines.append(f"  AssetMgr Long: {r.get('asset_mgr_long', 0):,} | Short: {r.get('asset_mgr_short', 0):,}")
+            lines.append(f"  Leveraged Long: {r.get('leveraged_long', 0):,} | Short: {r.get('leveraged_short', 0):,}")
+            lines.append("-" * width)
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_playbooks_slip(playbooks: List[Dict[str, Any]], width: int = 46) -> str:
+    """Format trading playbooks and FSM lifecycle status as teletype slip."""
+    lines = [
+        "```",
+        make_header("TRADING PLAYBOOKS LIFECYCLE", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"TOTAL COUNT    : {len(playbooks)}",
+        "-" * width,
+    ]
+    if not playbooks:
+        lines.append("  No active or candidate playbooks registered.")
+    else:
+        for p in playbooks[:6]:
+            name = p.get("name", "Unknown")[:20]
+            st = p.get("status", "ACTIVE").upper()
+            wr = p.get("win_rate", 0.0)
+            trades = p.get("total_trades", 0)
+            lines.append(f"{name:<20} [{st}]")
+            lines.append(f"  Win Rate: {wr:.1%} ({trades} trades)")
+            if p.get("cooldown_until"):
+                lines.append(f"  Cooldown: {p.get('cooldown_until')}")
+            lines.append("-" * width)
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_crystallized_slip(skills: List[Dict[str, Any]], width: int = 46) -> str:
+    """Format autonomously crystallized procedural skills as teletype slip."""
+    lines = [
+        "```",
+        make_header("CRYSTALLIZED SKILLS LEDGER", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"TOTAL SKILLS   : {len(skills)}",
+        "-" * width,
+    ]
+    if not skills:
+        lines.append("  No crystallized procedural skills found.")
+    else:
+        for s in skills[:6]:
+            name = s.get("name", "Unknown")[:22]
+            sym = s.get("symbol", "-")
+            st = "DEP" if s.get("is_deprecated") or s.get("status") == "deprecated" else "ACT"
+            wr = s.get("win_rate", 0.0)
+            pnl = s.get("total_pnl_usd", 0.0)
+            lines.append(f"{name:<22} ({sym}) [{st}]")
+            lines.append(f"  WinRate: {wr:.1%} | PnL: ${pnl:+,.2f}")
+            lines.append("-" * width)
+    lines.append(make_footer(width))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def format_rollback_slip(result: Dict[str, Any], width: int = 46) -> str:
+    """Format playbook rollback result as teletype slip."""
+    st = result.get("status", "UNKNOWN").upper()
+    name = result.get("name", "Unknown")
+    msg = result.get("message", "-")
+    lines = [
+        "```",
+        make_header("PLAYBOOK ROLLBACK RECEIPT", width),
+        f"TIMESTAMP      : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"TARGET         : {name}",
+        f"STATUS         : [ {st} ]",
+        "-" * width,
+        f"DETAIL: {msg}",
+        make_footer(width),
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+

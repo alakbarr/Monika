@@ -528,6 +528,7 @@ Monika/
     │       │   ├── backtest.py
     │       │   ├── common.py
     │       │   ├── config.py
+    │       │   ├── intelligence.py
     │       │   ├── memory.py
     │       │   ├── observability.py
     │       │   ├── system.py
@@ -579,6 +580,7 @@ Monika/
     │               │   │   ├── RiskPanel.tsx
     │               │   │   ├── SessionBrowserPanel.tsx
     │               │   │   ├── SignalsTriggersPanel.tsx
+    │               │   │   ├── SkillManagerPanel.tsx
     │               │   │   ├── SystemPanel.tsx
     │               │   │   ├── TokenAuditPanel.tsx
     │               │   │   ├── config

@@ -573,3 +573,44 @@ async def get_tool_latencies():
         "total_tool_calls": len(tool_spans),
         "tools": summary,
     }
+
+
+@observability_router.get("/api/observability/trajectories", tags=["Observability"])
+async def get_trade_trajectories(limit: int = Query(50, ge=1, le=500)):
+    """
+    Retrieve logged trade decision trajectories from TradeTrajectoryLogger JSONL logs.
+    """
+    from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+    logger_inst = TradeTrajectoryLogger()
+    records = logger_inst.load_recent_trajectories(limit=limit)
+    return {
+        "total": len(records),
+        "trajectories": records,
+    }
+
+
+@observability_router.get("/api/observability/cycles/{cycle_id}/lineage", tags=["Observability"])
+async def get_cycle_decision_lineage(cycle_id: str, target_seq: Optional[int] = Query(None)):
+    """
+    Retrieve decision lineage and SHA-256 chain integrity for a trading cycle from TradingCycleEventLog.
+    """
+    from logging_observability.trading_cycle_event_log import get_cycle_event_log
+    event_log = get_cycle_event_log()
+    reconstruction = event_log.reconstruct_cycle(cycle_id)
+    is_valid, reason = event_log.verify_cycle_integrity(cycle_id)
+    lineage = []
+    if target_seq is not None:
+        raw_lineage = event_log.trace_decision_lineage(cycle_id, target_seq)
+        lineage = [e.to_dict() for e in raw_lineage]
+
+    return {
+        "cycle_id": cycle_id,
+        "integrity_valid": is_valid,
+        "integrity_error": reason,
+        "total_events": reconstruction.get("total_events", 0),
+        "events": reconstruction.get("events", []),
+        "lineage": lineage,
+        "start_time": reconstruction.get("start_time"),
+        "end_time": reconstruction.get("end_time"),
+    }
+

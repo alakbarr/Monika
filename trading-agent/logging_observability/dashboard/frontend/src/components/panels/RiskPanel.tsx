@@ -3,7 +3,7 @@
 // Description: Comprehensive Quantitative Risk Cockpit with Analog VU Meters & Circuit Breakers
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { RetroVuMeter } from '../ui/RetroVuMeter';
@@ -13,13 +13,45 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
 import { api } from '../../lib/api';
-import { ShieldCheck, AlertOctagon, Power } from 'lucide-react';
+import type { RiskScorecardItem, CorrelationMatrixItem } from '../../types/api';
+import { ShieldCheck, AlertOctagon, Power, CheckCircle, XCircle } from 'lucide-react';
 
 export const RiskPanel: React.FC = () => {
   const { overview, riskState, positions, fetchAll } = useDashboardStore();
   const [toggling, setToggling] = useState(false);
   const [toggleMsg, setToggleMsg] = useState<string | null>(null);
   const [showKillConfirm, setShowKillConfirm] = useState(false);
+
+  // Scorecard & Correlation state
+  const [scorecard, setScorecard] = useState<RiskScorecardItem | null>(null);
+  const [scorecardSymbol, setScorecardSymbol] = useState<string>('EURUSD');
+  const [correlation, setCorrelation] = useState<CorrelationMatrixItem | null>(null);
+  const [scorecardLoading, setScorecardLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchRiskDeep = async () => {
+      try {
+        setScorecardLoading(true);
+        const [sc, corr] = await Promise.all([
+          api.riskScorecard(scorecardSymbol).catch(() => null),
+          api.riskCorrelationMatrix().catch(() => null),
+        ]);
+        if (mounted) {
+          if (sc) setScorecard(sc);
+          if (corr) setCorrelation(corr);
+        }
+      } finally {
+        if (mounted) setScorecardLoading(false);
+      }
+    };
+    fetchRiskDeep();
+    const interval = setInterval(fetchRiskDeep, 30_000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [scorecardSymbol]);
 
   // Derived risk metrics from live backend risk state with graceful fallbacks
   const openPositions = positions.filter((p) => p.status === 'open');
@@ -272,7 +304,7 @@ export const RiskPanel: React.FC = () => {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {riskState ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
                 <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>Current P&L</div>
                   <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: riskState.daily_pnl >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
@@ -283,6 +315,28 @@ export const RiskPanel: React.FC = () => {
                   <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>Peak Drawdown</div>
                   <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: riskState.current_drawdown < 0 ? 'var(--color-ledger-red)' : 'var(--color-ink)' }}>
                     {fmt.usd(riskState.current_drawdown)}
+                  </div>
+                </div>
+                {riskState.margin_free != null && (
+                  <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>Free Margin</div>
+                    <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-ink)' }}>
+                      {fmt.usd(riskState.margin_free)}
+                    </div>
+                  </div>
+                )}
+                {riskState.margin_level_pct != null && (
+                  <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>Margin Level</div>
+                    <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 800, color: riskState.margin_level_pct < 150 ? 'var(--color-ledger-red)' : 'var(--color-ink)' }}>
+                      {riskState.margin_level_pct.toFixed(0)}%
+                    </div>
+                  </div>
+                )}
+                <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>Weekend Gate</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: riskState.is_weekend ? 'var(--color-brass)' : 'var(--color-ledger-green)', marginTop: '2px' }}>
+                    {riskState.is_weekend ? 'CLOSED' : 'OPEN'}
                   </div>
                 </div>
                 <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
@@ -332,6 +386,170 @@ export const RiskPanel: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* 22-Point Risk Gate Scorecard & Correlation Matrix Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
+        {/* Risk Gate Scorecard */}
+        <Card
+          title={`22-POINT DETERMINISTIC RISK GATE SCORECARD // ${scorecardSymbol}`}
+          variant="salmon"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-ink-muted)' }}>SYMBOL:</span>
+                {['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setScorecardSymbol(s)}
+                    style={{
+                      padding: '2px 6px',
+                      background: scorecardSymbol === s ? 'var(--color-brass)' : 'transparent',
+                      color: scorecardSymbol === s ? '#000' : 'var(--color-ink)',
+                      border: '1px solid var(--color-rule)',
+                      borderRadius: '2px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              {scorecard && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+                    Pass Rate: <strong>{scorecard.passed_count}/{scorecard.total_checks} ({scorecard.pass_rate_pct}%)</strong>
+                  </span>
+                  <Badge variant={scorecard.pass_rate_pct >= 90 ? 'profit' : scorecard.pass_rate_pct >= 70 ? 'warn' : 'error'} size="sm">
+                    {scorecard.pass_rate_pct >= 90 ? 'CLEAR' : scorecard.pass_rate_pct >= 70 ? 'CAUTION' : 'BLOCKED'}
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {scorecard ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px', maxHeight: '340px', overflowY: 'auto' }}>
+                {Object.entries(scorecard.checks).map(([checkName, checkVal]) => (
+                  <div
+                    key={checkName}
+                    style={{
+                      padding: '6px 8px',
+                      background: 'var(--color-paper)',
+                      border: `1px solid ${checkVal.passed ? 'var(--color-rule)' : 'var(--color-loss)'}`,
+                      borderRadius: '2px',
+                      fontSize: '11px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--color-ink)' }}>{checkName}</span>
+                      {checkVal.passed ? (
+                        <span style={{ color: 'var(--color-ledger-green)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <CheckCircle size={12} /> PASS
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--color-ledger-red)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <XCircle size={12} /> FAIL
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal.reason}>
+                      {checkVal.reason}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: 'var(--color-ink-soft)', textAlign: 'center', padding: '16px', fontSize: '12px' }}>
+                {scorecardLoading ? 'Evaluating 22-point deterministic rules...' : 'Scorecard unavailable'}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Dynamic Correlation Matrix */}
+        <Card
+          title="PORTFOLIO CORRELATION & COVARIANCE HEATMAP"
+          variant="yellow"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {correlation ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                  <span>Portfolio Heat: <strong className="tabular-nums">{correlation.portfolio_heat.toFixed(2)}</strong></span>
+                  <Badge variant={correlation.status === 'normal' ? 'profit' : 'warn'} size="sm">
+                    {correlation.status.toUpperCase()}
+                  </Badge>
+                </div>
+
+                {/* Matrix Heatmap Table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', textAlign: 'center' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '4px' }}>SYM</th>
+                        {correlation.symbols.map((s) => (
+                          <th key={s} style={{ padding: '4px' }}>{s}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {correlation.symbols.map((rSym) => (
+                        <tr key={rSym} style={{ borderBottom: '1px solid var(--color-rule)' }}>
+                          <td style={{ textAlign: 'left', padding: '4px', fontWeight: 'bold' }}>{rSym}</td>
+                          {correlation.symbols.map((cSym) => {
+                            const val = correlation.matrix[rSym]?.[cSym] ?? 0;
+                            const isSelf = rSym === cSym;
+                            const isHigh = Math.abs(val) >= 0.65;
+                            const isMed = Math.abs(val) >= 0.40;
+                            const bg = isSelf
+                              ? 'transparent'
+                              : isHigh
+                              ? 'rgba(239, 68, 68, 0.2)'
+                              : isMed
+                              ? 'rgba(234, 179, 8, 0.15)'
+                              : 'transparent';
+                            const color = isSelf
+                              ? 'var(--color-ink-muted)'
+                              : isHigh
+                              ? 'var(--color-ledger-red)'
+                              : isMed
+                              ? 'var(--color-brass)'
+                              : 'var(--color-ink)';
+                            return (
+                              <td key={cSym} style={{ padding: '4px', background: bg, color, fontWeight: isHigh ? 'bold' : 'normal' }}>
+                                {isSelf ? '1.0' : val.toFixed(2)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Correlated pairs warning list */}
+                {correlation.correlated_pairs.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
+                    <span style={{ fontWeight: 'bold', color: 'var(--color-brass)' }}>[ CORRELATED RISK PAIRS ]</span>
+                    {correlation.correlated_pairs.slice(0, 3).map((cp, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                        <span>{cp.pair}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-ledger-red)', fontWeight: 'bold' }}>r = {cp.correlation.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ color: 'var(--color-ink-soft)', textAlign: 'center', padding: '16px', fontSize: '12px' }}>
+                Loading correlation matrix...
+              </div>
+            )}
           </div>
         </Card>
       </div>

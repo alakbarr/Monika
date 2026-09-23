@@ -129,10 +129,27 @@ class SteerRequest(BaseModel):
     symbols: Optional[List[str]] = Field(default=None, description="Optional target symbols affected")
 
 
+class ModifyPositionRequest(BaseModel):
+    sl: Optional[float] = Field(default=None, description="New stop loss price")
+    tp: Optional[float] = Field(default=None, description="New take profit price")
+    comment: Optional[str] = Field(default="Mod:dashboard", description="Audit note or comment")
+
+
+class DeprecateSkillRequest(BaseModel):
+    reason: Optional[str] = Field(default="Operator manual deprecation", description="Reason for deprecating skill")
+
+
+class CrystallizeSkillRequest(BaseModel):
+    symbol: Optional[str] = Field(default=None, description="Optional symbol filter, e.g. EURUSD")
+
+
 TriggerCycleRequest.model_rebuild()
 OverrideRiskRequest.model_rebuild()
 ClosePositionRequest.model_rebuild()
 SteerRequest.model_rebuild()
+ModifyPositionRequest.model_rebuild()
+DeprecateSkillRequest.model_rebuild()
+CrystallizeSkillRequest.model_rebuild()
 
 
 def _get_settings_path() -> str:

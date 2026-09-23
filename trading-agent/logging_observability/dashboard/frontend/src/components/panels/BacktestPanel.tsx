@@ -5,11 +5,14 @@ import { Skeleton } from '../ui/Skeleton';
 import { TypewriterButton } from '../ui/TypewriterButton';
 import { api } from '../../lib/api';
 import type { BacktestRunItem, BacktestTradeItem, BacktestRunDetails } from '../../types/api';
+import { EquityChart } from '../charts/EquityChart';
 import {
   Play,
   RotateCw,
   Layers,
   Activity,
+  TrendingUp,
+  BarChart2,
 } from 'lucide-react';
 
 export const BacktestPanel: React.FC = () => {
@@ -63,6 +66,83 @@ export const BacktestPanel: React.FC = () => {
       fetchRunDetails(selectedRunId);
     }
   }, [selectedRunId, fetchRunDetails]);
+
+  // Cumulative Equity Curve
+  const equityCurve = React.useMemo(() => {
+    if (!runDetails || !runDetails.trades || runDetails.trades.length === 0) return [];
+    const startEq = runDetails.run.initial_equity || 10000;
+    let curr = startEq;
+    const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
+      { index: 0, equity: curr, symbol: 'START' },
+    ];
+    const sortedTrades = [...runDetails.trades].sort((a, b) => {
+      const ta = a.entry_time ? new Date(a.entry_time).getTime() : 0;
+      const tb = b.entry_time ? new Date(b.entry_time).getTime() : 0;
+      return ta - tb;
+    });
+
+    sortedTrades.forEach((t, i) => {
+      curr = curr * (1 + (t.pnl_pct || 0) / 100);
+      points.push({
+        index: i + 1,
+        equity: Number(curr.toFixed(2)),
+        symbol: t.symbol,
+        exit_reason: t.exit_reason,
+      });
+    });
+    return points;
+  }, [runDetails]);
+
+  // Institutional Quant Metrics calculation
+  const quantMetrics = React.useMemo(() => {
+    if (!runDetails || !runDetails.trades || runDetails.trades.length === 0) return null;
+    const trades = runDetails.trades;
+    const returns = trades.map(t => (t.pnl_pct || 0) / 100);
+    const n = trades.length;
+
+    const meanReturn = returns.reduce((a, b) => a + b, 0) / n;
+    const negativeReturns = returns.filter(r => r < 0);
+    const downsideVariance = negativeReturns.length > 0
+      ? negativeReturns.reduce((acc, r) => acc + Math.pow(r, 2), 0) / n
+      : 0;
+    const downsideDev = Math.sqrt(downsideVariance);
+    const sortino = downsideDev > 0 ? (meanReturn / downsideDev) * Math.sqrt(252) : null;
+
+    const run = runDetails.run;
+    const totalReturnPct = run.initial_equity > 0 ? (run.final_equity - run.initial_equity) / run.initial_equity : 0;
+    const maxDdPct = run.max_drawdown_pct > 0 ? run.max_drawdown_pct : 0.001;
+    const calmar = totalReturnPct / maxDdPct;
+
+    const sortedReturns = [...returns].sort((a, b) => a - b);
+    const cutoffIndex = Math.max(1, Math.floor(n * 0.05));
+    const worstReturns = sortedReturns.slice(0, cutoffIndex);
+    const cvar95 = (worstReturns.reduce((a, b) => a + b, 0) / worstReturns.length) * 100;
+
+    const wins = trades.filter(t => (t.pnl_pct || 0) > 0).length;
+    const p = wins / n;
+    const z = 1.95996;
+    const denominator = 1 + (z * z) / n;
+    const centerAdjusted = p + (z * z) / (2 * n);
+    const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
+    const wilsonLow = Math.max(0, (centerAdjusted - margin) / denominator) * 100;
+    const wilsonHigh = Math.min(1, (centerAdjusted + margin) / denominator) * 100;
+
+    const winningTrades = trades.filter(t => (t.pnl_pct || 0) > 0);
+    const avgWin = winningTrades.length > 0 ? winningTrades.reduce((a, t) => a + t.pnl_pct, 0) / winningTrades.length : 0;
+    const avgLoss = negativeReturns.length > 0 ? Math.abs(negativeReturns.reduce((a, r) => a + r * 100, 0) / negativeReturns.length) : 0;
+    const payoffRatio = avgLoss > 0 ? avgWin / avgLoss : 0;
+    const expectancy = (p * avgWin) - ((1 - p) * avgLoss);
+
+    return {
+      sortino: sortino !== null ? sortino.toFixed(2) : '—',
+      calmar: calmar.toFixed(2),
+      cvar95: `${cvar95.toFixed(2)}%`,
+      wilsonLow: wilsonLow.toFixed(1),
+      wilsonHigh: wilsonHigh.toFixed(1),
+      payoffRatio: payoffRatio.toFixed(2),
+      expectancy: `${expectancy >= 0 ? '+' : ''}${expectancy.toFixed(2)}%`,
+    };
+  }, [runDetails]);
 
   const handleLaunchBacktest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,6 +433,87 @@ export const BacktestPanel: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Selected Run Details: Equity Curve & Quant Metrics */}
+      {selectedRunId !== null && runDetails && runDetails.trades.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1.2fr) 1fr', gap: '16px' }}>
+          {/* Equity Curve Chart */}
+          <Card
+            header={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingUp size={14} color="var(--color-profit)" />
+                <span>[ SIMULATED EQUITY CURVE — RUN #{selectedRunId} ]</span>
+              </div>
+            }
+          >
+            <div style={{ padding: '8px 0' }}>
+              <EquityChart data={equityCurve} startEquity={runDetails.run.initial_equity || 10000} height={170} />
+            </div>
+          </Card>
+
+          {/* Institutional Quant Risk & Edge Metrics */}
+          {quantMetrics && (
+            <Card
+              header={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BarChart2 size={14} color="var(--color-profit)" />
+                  <span>[ INSTITUTIONAL QUANT METRICS ]</span>
+                </div>
+              }
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>SORTINO (ANN.)</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-profit)' }}>
+                    {quantMetrics.sortino}
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Downside penalty</div>
+                </div>
+
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CALMAR RATIO</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
+                    {quantMetrics.calmar}
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Return / Max DD</div>
+                </div>
+
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CVaR (95%)</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-loss)' }}>
+                    {quantMetrics.cvar95}
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Tail expected shortfall</div>
+                </div>
+
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>WILSON 95% CI</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
+                    {quantMetrics.wilsonLow}% - {quantMetrics.wilsonHigh}%
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>True WR confidence</div>
+                </div>
+
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>PAYOFF RATIO</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
+                    {quantMetrics.payoffRatio}x
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Avg Win / Avg Loss</div>
+                </div>
+
+                <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>EXPECTANCY</div>
+                  <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-profit)' }}>
+                    {quantMetrics.expectancy}
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Per trade edge</div>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Selected Run Details: Executed Trades */}
       {selectedRunId !== null && (
