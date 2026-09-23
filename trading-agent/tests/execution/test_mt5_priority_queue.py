@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import time
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -52,9 +53,11 @@ async def test_mt5_priority_queue_preemption():
 async def test_mt5_disconnect_drains_pending_futures():
     """Verify that calling disconnect() rejects all pending tasks instead of hanging forever."""
     client = MT5Client()
+    blocker_started = threading.Event()
 
     def slow_blocker():
-        time.sleep(0.1)
+        blocker_started.set()
+        time.sleep(0.4)
         return "done"
 
     def pending_task():
@@ -62,12 +65,13 @@ async def test_mt5_disconnect_drains_pending_futures():
 
     # Hold worker
     t_block = asyncio.create_task(client._run(slow_blocker, priority=PRIORITY_BACKGROUND))
-    await asyncio.sleep(0.01)
+    while not blocker_started.is_set():
+        await asyncio.sleep(0.001)
 
-    # Queue pending task
+    # Queue pending task while worker is actively occupied
     t_pending = asyncio.create_task(client._run(pending_task, priority=PRIORITY_BACKGROUND))
 
-    # Trigger disconnect while pending_task is in queue
+    # Trigger disconnect while pending_task is guaranteed in queue
     with patch("execution.mt5_client._disconnect", return_value=None):
         await client.disconnect()
     await t_block
