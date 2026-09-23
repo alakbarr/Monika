@@ -106,6 +106,10 @@ class TestCommandRouter:
         assert "Monika" in text
         assert "AI Trading Agent" in text
         assert "/status" in text
+        assert "/fedwatch" in text
+        assert "/yields" in text
+        assert "/fear_greed" in text
+        assert "/cot" in text
 
     def test_keyboards(self):
         kb1 = CommandRouter.build_confirm_keyboard("act123")
@@ -113,3 +117,41 @@ class TestCommandRouter:
         
         kb2 = CommandRouter.build_close_keyboard(999)
         assert kb2.inline_keyboard[0][0].callback_data == "close:999"
+
+    def test_parse_market_intelligence_commands(self):
+        router = CommandRouter(admin_chat_id=123, allowed_user_ids={123})
+        for cmd in ["fedwatch", "yields", "fear_greed", "cot"]:
+            update = MagicMock()
+            update.message.text = f"/{cmd}"
+            update.effective_user.id = 123
+            parsed = router.parse(update)
+            assert parsed is not None
+            assert parsed.command == cmd
+            assert parsed.command_type == CommandType.DIRECT
+            assert not parsed.requires_admin
+
+    def test_parse_playbook_and_skill_commands(self):
+        router = CommandRouter(admin_chat_id=123, allowed_user_ids={123})
+        # playbooks & crystallized are direct
+        for cmd in ["playbooks", "crystallized"]:
+            update = MagicMock()
+            update.message.text = f"/{cmd}"
+            update.effective_user.id = 123
+            parsed = router.parse(update)
+            assert parsed is not None
+            assert parsed.command == cmd
+            assert parsed.command_type == CommandType.DIRECT
+            assert not parsed.requires_admin
+
+        # rollback is admin
+        update = MagicMock()
+        update.message.text = "/rollback eurusd_trend"
+        update.effective_user.id = 123
+        parsed = router.parse(update)
+        assert parsed is not None
+        assert parsed.command == "rollback"
+        assert parsed.args == ["eurusd_trend"]
+        assert parsed.command_type == CommandType.ADMIN
+        assert parsed.requires_admin
+
+

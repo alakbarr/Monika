@@ -1603,6 +1603,78 @@ class RiskGate:
             logger.debug(f"VPIN toxicity check error: {e}")
             return True, "vpin_check_fallback_ok"
 
+    async def get_current_scorecard(
+        self,
+        session: AsyncSession,
+        symbol: str = "EURUSD",
+        equity: Optional[float] = None,
+    ) -> dict[str, Any]:
+        """Menghasilkan evaluasi scorecard 22-poin Risk Gate saat ini untuk status inspeksi."""
+        fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        eq = equity or fallback_equity
+        dummy_sizing = SizingResult(
+            recommended_lots=0.01,
+            risk_amount_usd=eq * (self.max_risk_pct / 100.0),
+            stop_loss_pips=20.0,
+            take_profit_pips=30.0,
+            risk_percent=self.max_risk_pct,
+            sizing_method="scorecard_check",
+        )
+
+        checks_data: dict[str, Any] = {}
+        passed: list[str] = []
+        failed: list[str] = []
+
+        checks = [
+            ("daily_trade_count", self._check_daily_trade_count(session)),
+            ("trading_not_paused", self._check_not_paused(session)),
+            ("edge_status_not_paused", self._check_edge_status_not_paused(session)),
+            ("vix_threshold", self._check_vix_threshold(session)),
+            ("flash_crash_cooldown", self._check_flash_crash_cooldown(symbol)),
+            ("sizing_valid", self._check_sizing_valid(dummy_sizing)),
+            ("lot_size", self._check_lot_size(dummy_sizing)),
+            ("daily_drawdown", self._check_daily_drawdown(session, eq)),
+            ("weekly_drawdown", self._check_weekly_drawdown(session, eq)),
+            ("max_concurrent_positions", self._check_max_positions(session)),
+            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol)),
+            ("portfolio_heat", self._check_total_portfolio_heat(session, dummy_sizing, eq)),
+            ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol)),
+            ("rollover_window", self._check_rollover_window(symbol)),
+            ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol)),
+            ("news_window", self._check_news_window(session, symbol)),
+            ("correlation_exposure", self._check_correlation(session, symbol, "buy")),
+            ("consecutive_losses", self._check_consecutive_losses(session, symbol)),
+            ("data_freshness", self._check_data_freshness(session, symbol)),
+            ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, "buy", dummy_sizing)),
+            ("schmitt_regime", self._check_schmitt_regime(session, symbol)),
+            ("vpin_toxicity", self._check_vpin_toxicity(session, symbol)),
+        ]
+
+        for name, coro in checks:
+            try:
+                ok, reason = await coro
+                checks_data[name] = {"passed": bool(ok), "reason": str(reason)}
+                if ok:
+                    passed.append(name)
+                else:
+                    failed.append(name)
+            except Exception as e:
+                checks_data[name] = {"passed": False, "reason": f"Check error: {e}"}
+                failed.append(name)
+
+        return {
+            "symbol": symbol,
+            "account_equity": eq,
+            "total_checks": len(checks),
+            "passed_count": len(passed),
+            "failed_count": len(failed),
+            "pass_rate_pct": round((len(passed) / len(checks)) * 100, 1),
+            "checks_passed": passed,
+            "checks_failed": failed,
+            "checks": checks_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
 
 async def get_current_risk_state(session: Optional[AsyncSession] = None, settings: Optional[dict] = None) -> dict:
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""

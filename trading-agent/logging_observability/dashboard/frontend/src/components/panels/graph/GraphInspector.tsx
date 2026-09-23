@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Clock, AlertCircle, X, Copy, Check } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, X, Copy, Check, Activity, Coins } from 'lucide-react';
 import type { GraphNode } from '../../../types/api';
 import { getStatusColor } from './graphUtils';
 
@@ -8,6 +8,8 @@ interface GraphInspectorProps {
   onClose: () => void;
   copied: boolean;
   onCopyPayload: () => void;
+  cycleTrace?: any;
+  cycleTokens?: any;
 }
 
 export const GraphInspector: React.FC<GraphInspectorProps> = ({
@@ -15,6 +17,8 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
   onClose,
   copied,
   onCopyPayload,
+  cycleTrace,
+  cycleTokens,
 }) => {
   return (
     <div
@@ -330,6 +334,54 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             </pre>
           </div>
         </div>
+
+        {/* Cycle Telemetry Summary (from api.cycleTraceSummary) */}
+        {cycleTrace && (
+          <div style={{ marginTop: '4px', borderTop: '1px solid var(--color-rule)', paddingTop: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <Activity size={14} color="var(--color-brass)" />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-ink)' }}>
+                CYCLE TRACE TELEMETRY // {cycleTrace.cycle_id || 'ACTIVE'}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px' }}>
+              <div style={{ background: 'var(--color-surface)', padding: '6px 8px', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                <span style={{ color: 'var(--color-ink-muted)' }}>Recorded Spans: </span>
+                <strong>{cycleTrace.spans?.length ?? (cycleTrace.summary?.span_count ?? '—')}</strong>
+              </div>
+              <div style={{ background: 'var(--color-surface)', padding: '6px 8px', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
+                <span style={{ color: 'var(--color-ink-muted)' }}>Trace Root: </span>
+                <strong>{cycleTrace.summary?.root_name ?? 'Workflow'}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cycle Token Cost Attribution (from api.tokenCycles) */}
+        {cycleTokens && (
+          <div style={{ marginTop: '4px', borderTop: '1px solid var(--color-rule)', paddingTop: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <Coins size={14} color="var(--color-profit)" />
+              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-ink)' }}>
+                CYCLE TOKEN ATTRIBUTION
+              </span>
+            </div>
+            <div style={{ background: 'var(--color-surface)', padding: '8px', borderRadius: '2px', border: '1px solid var(--color-rule)', fontSize: '11px' }}>
+              {cycleTokens.total_cost_usd != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--color-ink-muted)' }}>Total Cycle Cost:</span>
+                  <strong style={{ color: 'var(--color-profit)' }}>${Number(cycleTokens.total_cost_usd).toFixed(4)}</strong>
+                </div>
+              )}
+              {cycleTokens.total_tokens != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-ink-muted)' }}>Total Tokens:</span>
+                  <strong>{Number(cycleTokens.total_tokens).toLocaleString()}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

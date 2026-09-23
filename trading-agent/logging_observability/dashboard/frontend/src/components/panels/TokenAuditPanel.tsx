@@ -48,6 +48,14 @@ export const TokenAuditPanel: React.FC = () => {
   const [roleSortKey, setRoleSortKey] = useState<keyof TokenRoleItem>('sum_total');
   const [roleSortAsc, setRoleSortAsc] = useState<boolean>(false);
 
+  const budgetTier = useMemo<'NORMAL' | 'COMPRESSED' | 'DEGRADED'>(() => {
+    const util = contextTracker?.utilization_pct || 0;
+    const errors = summary?.error_count || 0;
+    if (util > 80 || errors > 5) return 'DEGRADED';
+    if (util > 60 || (summary?.cache_hit_rate_pct || 100) < 40) return 'COMPRESSED';
+    return 'NORMAL';
+  }, [contextTracker, summary]);
+
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
@@ -423,6 +431,87 @@ export const TokenAuditPanel: React.FC = () => {
             {turnCost?.total_turns?.toLocaleString() || 0} turns across {turnCost?.cycle_count || 0} cycles
           </div>
         </Card>
+      </div>
+
+      {/* Subsystem Budget Quotas & Degradation Tier */}
+      <div
+        className="ledger-card"
+        style={{
+          padding: '16px 20px',
+          background: 'var(--color-surface-card)',
+          borderRadius: '2px',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase', fontFamily: 'var(--font-precision)' }}>
+              Subsystem Quota Budgets & Dynamic Degradation
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '2px' }}>
+              Enforced token allocation thresholds across agent execution stages.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-ink-muted)' }}>DEGRADATION TIER:</span>
+            <Badge variant={budgetTier === 'NORMAL' ? 'profit' : budgetTier === 'COMPRESSED' ? 'warn' : 'loss'}>
+              {budgetTier}
+            </Badge>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+          {[
+            { name: 'Stage 1 Macro', targetPct: 20, key: 'stage1' },
+            { name: 'Stage 2 Asset Analysis', targetPct: 45, key: 'stage2' },
+            { name: 'Debate Arbitration', targetPct: 15, key: 'debate' },
+            { name: 'Schedulers & Guardians', targetPct: 10, key: 'scheduler' },
+            { name: 'Reserve / Buffer', targetPct: 10, key: 'reserve' },
+          ].map((quota) => {
+            const subMatch = subsystems.find((s) => s.subsystem.toLowerCase().includes(quota.key));
+            const actualPct = subMatch ? subMatch.pct_tokens : 0;
+            const isOver = actualPct > quota.targetPct;
+            return (
+              <div
+                key={quota.key}
+                style={{
+                  padding: '10px 12px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-rule)',
+                  borderRadius: '2px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold' }}>
+                  <span>{quota.name}</span>
+                  <span style={{ color: isOver ? 'var(--color-loss)' : 'var(--color-profit)' }}>
+                    {actualPct}% / {quota.targetPct}%
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: '5px',
+                    width: '100%',
+                    background: 'var(--color-paper-dark)',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                    marginTop: '8px',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${Math.min(100, (actualPct / quota.targetPct) * 100)}%`,
+                      background: isOver ? 'var(--color-loss)' : 'var(--color-brass)',
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>
+                  {isOver ? `⚠ Exceeds budget by +${(actualPct - quota.targetPct).toFixed(1)}%` : `✓ Within ${quota.targetPct}% quota limit`}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Subsystem & Symbol Attribution */}

@@ -100,3 +100,21 @@ def test_tab_activation_handler():
     app.notify.assert_called_once()
     args, _ = app.notify.call_args
     assert "ANALYSIS" in args[0]
+
+
+def test_market_tab_activation():
+    """Verify Market tab activation triggers appropriate notification."""
+    from unittest.mock import MagicMock
+    from cli.tui import TradingDashboard
+
+    app = TradingDashboard()
+    app.notify = MagicMock()
+    app._tabs_mounted = True
+
+    mock_event = MagicMock()
+    mock_event.tab.label_text = "Market"
+    app.on_tabbed_content_tab_activated(mock_event)
+    app.notify.assert_called_once()
+    args, _ = app.notify.call_args
+    assert "MARKET" in args[0]
+

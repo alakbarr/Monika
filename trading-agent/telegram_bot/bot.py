@@ -183,6 +183,17 @@ class TelegramBot:
         app.add_handler(CommandHandler("plugins", self._cmd_plugins))
         app.add_handler(CommandHandler("memory", self._cmd_memory))
         app.add_handler(CommandHandler("strategies", self._cmd_strategies))
+        app.add_handler(CommandHandler("risk_deep",  self._cmd_risk_deep))
+        app.add_handler(CommandHandler("approvals",  self._cmd_approvals))
+        app.add_handler(CommandHandler("trailing",   self._cmd_trailing))
+        app.add_handler(CommandHandler("reconcile",  self._cmd_reconcile))
+        app.add_handler(CommandHandler("fedwatch",   self._cmd_fedwatch))
+        app.add_handler(CommandHandler("yields",     self._cmd_yields))
+        app.add_handler(CommandHandler("fear_greed", self._cmd_fear_greed))
+        app.add_handler(CommandHandler("cot",        self._cmd_cot))
+        app.add_handler(CommandHandler("playbooks",   self._cmd_playbooks))
+        app.add_handler(CommandHandler("rollback",    self._cmd_rollback))
+        app.add_handler(CommandHandler("crystallized", self._cmd_crystallized))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -617,6 +628,88 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         text = await self._build_risk_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_risk_deep(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_risk_deep_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_approvals(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_approvals_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_trailing(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_trailing_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_reconcile(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_reconcile_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_fedwatch(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_fedwatch_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_yields(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_yields_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_fear_greed(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_fear_greed_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_cot(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        market_code = ctx.args[0] if ctx.args else None
+        text = await self._build_cot_text(market_code)
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_playbooks(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_playbooks_text()
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_rollback(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        if not ctx.args:
+            await update.message.reply_text("Format: `/rollback <playbook_name>`\nContoh: `/rollback eurusd_trend`", parse_mode=ParseMode.MARKDOWN)
+            return
+        name = ctx.args[0].strip()
+        text = await self._build_rollback_text(name)
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_crystallized(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        text = await self._build_crystallized_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_vix(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1995,6 +2088,282 @@ class TelegramBot:
                     drawdown=drawdown,
                     reason=reason,
                 )
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_risk_deep_text(self) -> str:
+        from database.db import get_session
+        from risk.risk_gate import RiskGate
+        from telegram_bot.vintage_formatter import format_risk_deep_slip
+
+        try:
+            gate = RiskGate(self.settings)
+            async with get_session() as session:
+                scorecard = await gate.get_current_scorecard(session)
+            
+            # Statistical edge info
+            edge_summary = None
+            try:
+                from utils.analytics.paper_tracker import PaperTracker
+                tracker = PaperTracker(self.settings)
+                async with get_session() as session:
+                    stats = await tracker.get_stats(session)
+                    edge_summary = {
+                        "expectancy": f"{stats.get('expectancy_per_trade_R', 0):+.2f}R",
+                        "win_rate": f"{stats.get('win_rate_pct', 0):.1f}%",
+                    }
+            except Exception:
+                pass
+
+            # Token budget info
+            token_budget = None
+            try:
+                from logging_observability.token_budgeter import TokenBudgetManager
+                tbm = TokenBudgetManager.get_instance()
+                summary = tbm.get_budget_summary()
+                token_budget = {
+                    "tier": "NORMAL" if summary.get("total_pct_used", 0) < 70 else ("COMPRESSED" if summary.get("total_pct_used", 0) < 90 else "DEGRADED"),
+                    "capacity_pct": max(0, 100 - summary.get("total_pct_used", 0)),
+                }
+            except Exception:
+                pass
+
+            return format_risk_deep_slip(scorecard, edge_summary=edge_summary, token_budget=token_budget)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_approvals_text(self) -> str:
+        from risk.approval_hub import ApprovalHub
+        from telegram_bot.vintage_formatter import format_approvals_slip
+
+        try:
+            hub = ApprovalHub.get_instance()
+            open_reqs = hub.get_open_requests()
+            return format_approvals_slip(open_reqs)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_trailing_text(self) -> str:
+        from database.db import get_session
+        from database.models import Position
+        from sqlalchemy import select
+        from telegram_bot.vintage_formatter import format_trailing_slip
+
+        try:
+            async with get_session() as session:
+                stmt = select(Position).where(Position.closed_at.is_(None)).order_by(Position.opened_at.desc())
+                positions = (await session.execute(stmt)).scalars().all()
+                pos_list = []
+                for p in positions:
+                    pos_list.append({
+                        "ticket": getattr(p, "mt5_ticket", getattr(p, "ticket", p.id)),
+                        "symbol": p.symbol,
+                        "direction": p.direction,
+                        "entry_price": p.entry_price,
+                        "current_sl": p.sl or "-",
+                        "be_triggered": p.sl is not None and ((p.direction == "buy" and p.sl >= p.entry_price) or (p.direction == "sell" and p.sl <= p.entry_price)),
+                        "atr_distance": getattr(p, "atr_trailing_distance", "-"),
+                    })
+                return format_trailing_slip(pos_list)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_reconcile_text(self) -> str:
+        from scheduler.order_reconciler import OrderReconciler
+        from telegram_bot.vintage_formatter import format_reconcile_slip
+
+        try:
+            reconciler = OrderReconciler(settings=self.settings, execution_service=self.execution_service)
+            stats = await reconciler.reconcile_once()
+            return format_reconcile_slip(stats)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_fedwatch_text(self) -> str:
+        from database.db import get_session
+        from database.models import FedWatchProbability, CentralBankRateExpectation
+        from sqlalchemy import select
+        from telegram_bot.vintage_formatter import format_fedwatch_slip
+        import json
+
+        try:
+            async with get_session() as session:
+                fw_rows = (await session.execute(
+                    select(FedWatchProbability).order_by(FedWatchProbability.fetched_at.desc()).limit(5)
+                )).scalars().all()
+                cb_rows = (await session.execute(
+                    select(CentralBankRateExpectation).order_by(CentralBankRateExpectation.fetched_at.desc()).limit(5)
+                )).scalars().all()
+
+                fw_data = []
+                for p in fw_rows:
+                    probs = p.probabilities_json
+                    if isinstance(probs, str):
+                        try:
+                            probs = json.loads(probs)
+                        except Exception:
+                            probs = {}
+                    fw_data.append({
+                        "meeting_date": p.meeting_date,
+                        "probabilities": probs,
+                    })
+
+                cb_data = [
+                    {
+                        "bank": cb.bank,
+                        "current_rate": cb.current_rate,
+                        "prob_cut": cb.prob_cut,
+                    }
+                    for cb in cb_rows
+                ]
+                return format_fedwatch_slip({"fedwatch": fw_data, "central_banks": cb_data})
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_yields_text(self) -> str:
+        from database.db import get_session
+        from database.models import TreasuryYield, BondYieldData
+        from sqlalchemy import select
+        from telegram_bot.vintage_formatter import format_yields_slip
+
+        try:
+            async with get_session() as session:
+                y_rows = (await session.execute(
+                    select(TreasuryYield).order_by(TreasuryYield.date.desc()).limit(30)
+                )).scalars().all()
+                b_rows = (await session.execute(
+                    select(BondYieldData).order_by(BondYieldData.date.desc()).limit(10)
+                )).scalars().all()
+
+                latest: dict = {}
+                for y in y_rows:
+                    if y.tenor not in latest:
+                        latest[y.tenor] = y
+
+                y2 = latest.get("2Y")
+                y10 = latest.get("10Y")
+                spread = round(y10.yield_percent - y2.yield_percent, 3) if (y2 and y10) else None
+
+                return format_yields_slip({
+                    "treasury_yields": [{"tenor": y.tenor, "yield_percent": y.yield_percent} for y in latest.values()],
+                    "spread_2s10s": spread,
+                    "is_inverted": (spread < 0.0) if spread is not None else False,
+                    "global_bonds": [{"country_tenor": b.country_tenor, "yield_percent": b.yield_percent} for b in b_rows],
+                })
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_fear_greed_text(self) -> str:
+        from database.db import get_session
+        from database.models import SystemConfig
+        from sqlalchemy import select
+        from telegram_bot.vintage_formatter import format_fear_greed_slip
+        import json
+
+        try:
+            async with get_session() as session:
+                cfg = (await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == "fear_greed_latest").limit(1)
+                )).scalar_one_or_none()
+                if cfg and cfg.value:
+                    data = json.loads(cfg.value)
+                    return format_fear_greed_slip(data)
+                return format_fear_greed_slip({"current_value": 50, "classification": "Neutral", "wow_change": 0})
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_cot_text(self, market_code: Optional[str] = None) -> str:
+        from database.db import get_session
+        from database.models import COTReport
+        from sqlalchemy import select
+        from telegram_bot.vintage_formatter import format_cot_slip
+
+        try:
+            async with get_session() as session:
+                q = select(COTReport)
+                if market_code:
+                    q = q.where(COTReport.market_code == market_code.upper())
+                q = q.order_by(COTReport.report_date.desc()).limit(10)
+                records = (await session.execute(q)).scalars().all()
+
+                data = [
+                    {
+                        "market_code": r.market_code,
+                        "asset_mgr_long": r.asset_mgr_long,
+                        "asset_mgr_short": r.asset_mgr_short,
+                        "leveraged_long": r.leveraged_long,
+                        "leveraged_short": r.leveraged_short,
+                        "net_position": (r.asset_mgr_long + r.leveraged_long) - (r.asset_mgr_short + r.leveraged_short),
+                    }
+                    for r in records
+                ]
+                return format_cot_slip(data)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_playbooks_text(self) -> str:
+        from telegram_bot.vintage_formatter import format_playbooks_slip
+        try:
+            from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+            mgr = PlaybookLifecycleManager()
+            all_pb = mgr.list_all_playbooks()
+            items = []
+            for name, meta in all_pb.items():
+                items.append({
+                    "name": name,
+                    "status": meta.status.value if hasattr(meta.status, "value") else str(meta.status),
+                    "win_rate": getattr(meta, "win_rate", 0.0),
+                    "total_trades": getattr(meta, "total_trades", 0),
+                    "cooldown_until": meta.cooldown_until.isoformat() if getattr(meta, "cooldown_until", None) else None,
+                })
+            return format_playbooks_slip(items)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_rollback_text(self, name: str) -> str:
+        from telegram_bot.vintage_formatter import format_rollback_slip
+        try:
+            from analysis.memory.playbook_ledger import PlaybookLedger
+            ledger = PlaybookLedger()
+            success = ledger.rollback(name)
+            res = {
+                "name": name,
+                "status": "SUCCESS" if success else "FAILED",
+                "message": f"Rolled back playbook '{name}' to prior ledger checkpoint." if success else f"No previous history snapshot found for '{name}'."
+            }
+            return format_rollback_slip(res)
+        except Exception as e:
+            return f"[ GAGAL ] Error: {e}"
+
+    async def _build_crystallized_text(self) -> str:
+        from telegram_bot.vintage_formatter import format_crystallized_slip
+        try:
+            from analysis.memory.skill_crystallizer import SkillCrystallizer
+            import yaml
+            crystallizer = SkillCrystallizer()
+            skills_dir = crystallizer.SKILLS_DIR
+            items = []
+            if skills_dir.exists():
+                for f in sorted(skills_dir.glob("*.md")):
+                    try:
+                        content = f.read_text(encoding="utf-8")
+                        meta = {}
+                        if content.startswith("---"):
+                            parts = content.split("---", 2)
+                            if len(parts) >= 3:
+                                meta = yaml.safe_load(parts[1]) or {}
+                        clean_name = f.stem.lower()
+                        items.append({
+                            "name": meta.get("name", clean_name),
+                            "symbol": meta.get("symbol", "-"),
+                            "status": meta.get("status", "active"),
+                            "is_deprecated": meta.get("is_deprecated", False),
+                            "win_rate": float(meta.get("win_count", 1.0)) / max(1.0, float(meta.get("win_count", 1.0))),
+                            "total_pnl_usd": float(meta.get("total_pnl_usd", 0.0)),
+                        })
+                    except Exception:
+                        pass
+            return format_crystallized_slip(items)
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
 

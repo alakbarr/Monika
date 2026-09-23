@@ -56,9 +56,41 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                   fontSize: 'var(--text-xs)',
                   color: 'var(--color-ink)',
                   fontWeight: 'var(--weight-bold)',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
                 {FACTOR_LABELS[factor] || factor}
+                {stats.assessment && (
+                  <span
+                    style={{
+                      marginLeft: '8px',
+                      fontSize: '9px',
+                      padding: '1px 5px',
+                      borderRadius: '2px',
+                      fontWeight: 700,
+                      background: stats.assessment === 'STRONG_PREDICTOR'
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : stats.assessment === 'NEGATIVE_PREDICTOR'
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : 'rgba(217, 119, 6, 0.15)',
+                      color: stats.assessment === 'STRONG_PREDICTOR'
+                        ? 'var(--color-profit)'
+                        : stats.assessment === 'NEGATIVE_PREDICTOR'
+                        ? 'var(--color-loss)'
+                        : 'var(--color-warning)',
+                      border: `1px solid ${
+                        stats.assessment === 'STRONG_PREDICTOR'
+                          ? 'var(--color-profit)'
+                          : stats.assessment === 'NEGATIVE_PREDICTOR'
+                          ? 'var(--color-loss)'
+                          : 'var(--color-warning)'
+                      }`,
+                    }}
+                  >
+                    {stats.assessment.replace('_', ' ')}
+                  </span>
+                )}
               </span>
               <span
                 className="tabular-nums"

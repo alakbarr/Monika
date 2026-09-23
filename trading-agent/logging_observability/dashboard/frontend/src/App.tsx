@@ -27,6 +27,7 @@ import { GraphVisualizerPanel } from './components/panels/GraphVisualizerPanel';
 import { RiskPanel } from './components/panels/RiskPanel';
 import { MemoryBrowserPanel } from './components/panels/MemoryBrowserPanel';
 import { BacktestPanel } from './components/panels/BacktestPanel';
+import { SkillManagerPanel } from './components/panels/SkillManagerPanel';
 import { useDashboardStore } from './store/dashboardStore';
 import { usePolling } from './hooks/usePolling';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -169,6 +170,7 @@ const ConfigTab: React.FC = () => <ConfigEditorPanel />;
 const SystemTab: React.FC = () => <SystemPanel />;
 const MemoryTab: React.FC = () => <MemoryBrowserPanel />;
 const BacktestTab: React.FC = () => <BacktestPanel />;
+const SkillsTab: React.FC = () => <SkillManagerPanel />;
 
 const TAB_MAP: Record<string, React.FC> = {
   overview: OverviewTab,
@@ -190,6 +192,7 @@ const TAB_MAP: Record<string, React.FC> = {
   system: SystemTab,
   memory: MemoryTab,
   backtest: BacktestTab,
+  skills: SkillsTab,
 };
 
 const SkeletonFallback: React.FC = () => (

@@ -11,15 +11,20 @@ interface LiveEvent {
     | 'risk_override_updated'
     | 'order_state_change'
     | 'connection_established'
+    | 'open_approvals'
     | string;
   payload?: Record<string, unknown>;
   timestamp?: string;
+  seq?: number;
+  as_of_seq?: number;
+  requests?: any[];
 }
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pingTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const lastSeq = useRef<number>(0);
 
   const connect = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -35,7 +40,8 @@ export const useWebSocket = () => {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const url = `${protocol}//${host}/ws/live-feed`;
+    const seqQuery = lastSeq.current > 0 ? `?since_seq=${lastSeq.current}` : '';
+    const url = `${protocol}//${host}/ws/live-feed${seqQuery}`;
 
     try {
       const socket = new WebSocket(url);
@@ -65,7 +71,16 @@ export const useWebSocket = () => {
           const event: LiveEvent = JSON.parse(e.data);
           const state = useDashboardStore.getState();
 
+          if (event.seq != null) {
+            lastSeq.current = Math.max(lastSeq.current, event.seq);
+          } else if (event.as_of_seq != null) {
+            lastSeq.current = Math.max(lastSeq.current, event.as_of_seq);
+          }
+
           switch (event.type) {
+            case 'open_approvals':
+              state.fetchQuick();
+              break;
             case 'tick':
               if (event.payload) {
                 state.updateTickPrice(event.payload);
