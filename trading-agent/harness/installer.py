@@ -276,11 +276,16 @@ def toggle_plugin_state(
             item = custom.setdefault(plugin_id, {})
             item["enabled"] = enabled
 
-        # Write atomically
-        temp_file = path.with_suffix(".tmp")
-        with open(temp_file, "w", encoding="utf-8") as f:
-            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-        os.replace(temp_file, path)
+        # Write atomically with comment preservation and backup rotation
+        try:
+            from config.atomic_writer import AtomicConfigWriter
+            AtomicConfigWriter.write(path, cfg, create_backup=True)
+        except Exception as write_err:
+            logger.debug(f"[Harness.Installer] AtomicConfigWriter fallback: {write_err}")
+            temp_file = path.with_suffix(".tmp")
+            with open(temp_file, "w", encoding="utf-8") as f:
+                yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            os.replace(temp_file, path)
 
         # Notify in-memory engine
         engine = get_plugin_engine()

@@ -21,6 +21,7 @@ KNOWN_TOP_LEVEL_KEYS: Set[str] = set(TradingAgentConfig.model_fields.keys()) | {
     "telegram",
     "scraping",
     "data_quality",
+    "plugins",
     "_config_version",
 }
 

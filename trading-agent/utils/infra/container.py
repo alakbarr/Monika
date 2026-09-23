@@ -15,9 +15,10 @@ T = TypeVar("T")
 
 
 class ServiceContainer:
-    """Lightweight inversion of control (IoC) service container."""
+    """Lightweight inversion of control (IoC) service container with hierarchical scoping."""
 
-    def __init__(self):
+    def __init__(self, parent: Optional['ServiceContainer'] = None):
+        self._parent: Optional['ServiceContainer'] = parent
         self._services: Dict[str, Any] = {}
         self._factories: Dict[str, Callable[['ServiceContainer'], Any]] = {}
 
@@ -27,6 +28,7 @@ class ServiceContainer:
         logger.debug(f"[Container] Registered instance for '{name}'")
 
     register_instance = register
+    provide = register
 
     def register_factory(self, name: str, factory: Callable[['ServiceContainer'], Any]) -> None:
         """Register a lazy factory for a service."""
@@ -34,23 +36,47 @@ class ServiceContainer:
         logger.debug(f"[Container] Registered factory for '{name}'")
 
     def get(self, name: str, default: Any = None) -> Any:
-        """Resolve a service by name, instantiating via factory if necessary."""
+        """Resolve a service by name, walking parent chain if not present locally."""
         if name in self._services:
             return self._services[name]
         if name in self._factories:
             instance = self._factories[name](self)
             self._services[name] = instance
             return instance
+        if self._parent is not None:
+            return self._parent.get(name, default)
         return default
 
     def has(self, name: str) -> bool:
-        """Check if service is registered."""
-        return name in self._services or name in self._factories
+        """Check if service is registered in local container or any parent."""
+        if name in self._services or name in self._factories:
+            return True
+        if self._parent is not None:
+            return self._parent.has(name)
+        return False
+
+    def extend(self) -> 'ServiceContainer':
+        """Returns a child scope inheriting this container (DeepSeek Cordis Context.extend)."""
+        return ServiceContainer(parent=self)
+
+    def isolate(self, name: str) -> 'ServiceContainer':
+        """Returns an independent child bucket isolated under a namespace."""
+        child = self.extend()
+        child.register("_scope_name", name)
+        return child
+
+    def intercept(self, overrides: Dict[str, Any]) -> 'ServiceContainer':
+        """Returns a child scope with injected configuration or mock overrides."""
+        child = self.extend()
+        for k, v in overrides.items():
+            child.register(k, v)
+        return child
 
     def clear(self) -> None:
-        """Clear all registered services."""
+        """Clear all registered services in this container."""
         self._services.clear()
         self._factories.clear()
+
 
     # Typed convenience properties
     @property
@@ -72,6 +98,10 @@ class ServiceContainer:
     @property
     def plugin_manager(self) -> Any:
         return self.get("plugin_manager")
+
+
+# Cordis Context alias for ServiceContainer
+Context = ServiceContainer
 
 
 _GLOBAL_CONTAINER: Optional[ServiceContainer] = None
