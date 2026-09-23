@@ -35,6 +35,10 @@ def handle_plugin_command(args) -> int:
         return cmd_plugin_uninstall(args)
     elif subaction == "info":
         return cmd_plugin_info(args)
+    elif subaction == "enable":
+        return cmd_plugin_enable(args)
+    elif subaction == "disable":
+        return cmd_plugin_disable(args)
     else:
         console.print(f"[red]Unknown plugin action: {subaction}[/red]")
         return 1
@@ -179,3 +183,45 @@ def cmd_plugin_info(args) -> int:
 """
     console.print(Panel(info_text.strip(), title=f"Plugin Info: {meta.id}", border_style="cyan"))
     return 0
+
+
+def cmd_plugin_enable(args) -> int:
+    """Enable a plugin by ID."""
+    plugin_id = getattr(args, "plugin_name", None) or getattr(args, "target", None)
+    if not plugin_id:
+        console.print("[red]Error: Plugin ID is required to enable (e.g. monika plugin enable discord_alert)[/red]")
+        return 1
+
+    from harness.installer import list_all_plugins_status, toggle_plugin_state
+    plugins = list_all_plugins_status()
+    target = next((p for p in plugins if p["id"] == plugin_id), None)
+    category = target["category"] if target else "middleware"
+
+    ok, msg = toggle_plugin_state(plugin_id, category, True)
+    if ok:
+        console.print(f"[bold green]Successfully enabled plugin '{plugin_id}'[/]")
+        return 0
+    else:
+        console.print(f"[bold red]Failed to enable plugin '{plugin_id}': {msg}[/]")
+        return 1
+
+
+def cmd_plugin_disable(args) -> int:
+    """Disable a plugin by ID."""
+    plugin_id = getattr(args, "plugin_name", None) or getattr(args, "target", None)
+    if not plugin_id:
+        console.print("[red]Error: Plugin ID is required to disable (e.g. monika plugin disable discord_alert)[/red]")
+        return 1
+
+    from harness.installer import list_all_plugins_status, toggle_plugin_state
+    plugins = list_all_plugins_status()
+    target = next((p for p in plugins if p["id"] == plugin_id), None)
+    category = target["category"] if target else "middleware"
+
+    ok, msg = toggle_plugin_state(plugin_id, category, False)
+    if ok:
+        console.print(f"[bold yellow]Successfully disabled plugin '{plugin_id}'[/]")
+        return 0
+    else:
+        console.print(f"[bold red]Failed to disable plugin '{plugin_id}': {msg}[/]")
+        return 1

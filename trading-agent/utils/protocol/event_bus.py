@@ -82,6 +82,34 @@ class CircuitBreakerEvent(AppEvent):
     cooldown_seconds: int = 0
 
 
+@dataclass(frozen=True)
+class PreRiskGateEvent(AppEvent):
+    """Domain hook triggered prior to RiskGate evaluation."""
+    symbol: str = ""
+    direction: str = ""
+    proposal: Any = None
+    context: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PreOrderEvent(AppEvent):
+    """Domain hook triggered immediately before order dispatch to broker."""
+    symbol: str = ""
+    order_request: Any = None
+    context: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PostFillEvent(AppEvent):
+    """Domain hook triggered immediately after order fill confirmation."""
+    ticket: Optional[int] = None
+    symbol: str = ""
+    volume: float = 0.0
+    price: float = 0.0
+    fill_time: Optional[datetime] = None
+    context: dict = field(default_factory=dict)
+
+
 # ==============================================================================
 # 2. Subscription Metadata
 # ==============================================================================
@@ -298,6 +326,73 @@ class EventBus:
             logger.warning("[EventBus] publish_threadsafe called with no running event loop.")
             return None
 
+    async def publish_waterfall(self, event: AppEvent, initial_payload: Any = None) -> Any:
+        """
+        Waterfall dispatch mode: invokes subscribers sequentially in priority order.
+        Each handler receives (event, current_payload) and its returned result is passed as
+        the payload to the next handler.
+        """
+        if not isinstance(event, AppEvent):
+            raise TypeError(f"Expected AppEvent instance, got {type(event).__name__}")
+
+        subscriptions = self.get_subscribers(type(event))
+        current_val = initial_payload
+
+        for sub in subscriptions:
+            try:
+                sig = inspect.signature(sub.handler)
+                takes_payload = len(sig.parameters) >= 2
+                if inspect.iscoroutinefunction(sub.handler):
+                    if takes_payload:
+                        current_val = await sub.handler(event, current_val)
+                    else:
+                        current_val = await sub.handler(event)
+                else:
+                    if takes_payload:
+                        res = sub.handler(event, current_val)
+                    else:
+                        res = sub.handler(event)
+                    if inspect.isawaitable(res):
+                        current_val = await res
+                    else:
+                        current_val = res
+            except Exception as exc:
+                handler_name = getattr(sub.handler, "__name__", str(sub.handler))
+                logger.error(
+                    f"[EventBus.waterfall] Error in {handler_name} processing {event.__class__.__name__}: {exc}",
+                    exc_info=True,
+                )
+        return current_val
+
+    async def publish_bail(self, event: AppEvent) -> Optional[Any]:
+        """
+        Bail dispatch mode: invokes subscribers sequentially in priority order,
+        stopping and returning immediately upon the first truthy / non-None result.
+        Useful for pre-trade interceptors, gating decisions, and permission checks.
+        """
+        if not isinstance(event, AppEvent):
+            raise TypeError(f"Expected AppEvent instance, got {type(event).__name__}")
+
+        subscriptions = self.get_subscribers(type(event))
+
+        for sub in subscriptions:
+            try:
+                if inspect.iscoroutinefunction(sub.handler):
+                    res = await sub.handler(event)
+                else:
+                    res = sub.handler(event)
+                    if inspect.isawaitable(res):
+                        res = await res
+                if res:
+                    return res
+            except Exception as exc:
+                handler_name = getattr(sub.handler, "__name__", str(sub.handler))
+                logger.error(
+                    f"[EventBus.bail] Error in {handler_name} processing {event.__class__.__name__}: {exc}",
+                    exc_info=True,
+                )
+        return None
+
     # --------------------------------------------------------------------------
     # Buffered Queue Delivery (for decoupling high-frequency streams)
     # --------------------------------------------------------------------------
@@ -480,3 +575,38 @@ def reset_event_bus() -> EventBus:
     bus.clear()
     EventBus._default_instance = EventBus()
     return EventBus._default_instance
+
+
+class ServicePredicate:
+    """
+    Service availability registry and predicate checker (Phase 5).
+    Provides Service.check() mechanism for conditional dispatch and graceful degradation.
+    """
+    _predicates: Dict[str, Callable[[], bool]] = {}
+
+    @classmethod
+    def register(cls, service_name: str, check_fn: Callable[[], bool]) -> None:
+        """Register an availability predicate for a service name."""
+        cls._predicates[service_name.lower().strip()] = check_fn
+
+    @classmethod
+    def check(cls, service_name: str) -> bool:
+        """Evaluate availability predicate for a service. Defaults to True if unconstrained."""
+        fn = cls._predicates.get(service_name.lower().strip())
+        if fn is None:
+            return True
+        try:
+            return bool(fn())
+        except Exception as e:
+            logger.debug(f"[ServicePredicate] Check failed for {service_name}: {e}")
+            return False
+
+    @classmethod
+    def check_all(cls) -> Dict[str, bool]:
+        """Return status mapping for all registered service predicates."""
+        return {name: cls.check(name) for name in cls._predicates}
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset registered predicates."""
+        cls._predicates.clear()

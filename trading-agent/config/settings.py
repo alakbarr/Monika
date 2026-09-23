@@ -143,6 +143,26 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
                 except Exception as e:
                     logger.warning(f"Failed to merge split config {split_path}: {e}")
 
+        # Per-plugin configuration directory scanning (Phase 4)
+        plugins_config_dir = os.path.join(config_dir, "plugins")
+        if os.path.isdir(plugins_config_dir):
+            if "plugins" not in settings or not isinstance(settings["plugins"], dict):
+                settings["plugins"] = {}
+            for fname in os.listdir(plugins_config_dir):
+                fpath = os.path.join(plugins_config_dir, fname)
+                if fname.endswith((".yaml", ".yml")) and os.path.isfile(fpath):
+                    plugin_id = os.path.splitext(fname)[0]
+                    try:
+                        with open(fpath, "r", encoding="utf-8") as pf:
+                            p_data = yaml.safe_load(pf) or {}
+                        if isinstance(p_data, dict):
+                            settings["plugins"][plugin_id] = _deep_merge(
+                                settings["plugins"].get(plugin_id, {}), p_data
+                            )
+                            logger.info(f"Loaded per-plugin config from {fpath} for '{plugin_id}'")
+                    except Exception as pe:
+                        logger.warning(f"Failed to load plugin config {fpath}: {pe}")
+
         logger.info(f"Settings loaded from {path}")
 
     if isinstance(settings, dict) and ("trading" in settings or "paper_trading" in settings):

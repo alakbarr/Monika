@@ -247,6 +247,7 @@ class TradingDashboard(App):
         Binding("i", "install_plugin", "Install Plugin", show=True),
         Binding("colon", "focus_input", "Command Bar", show=False),
         Binding("escape", "blur_input", "Unfocus Bar", show=False),
+        Binding("ctrl+c", "quit", "Quit", show=False),
         Binding("alt+up", "dequeue", "Dequeue Buffer", show=False),
     ]
 

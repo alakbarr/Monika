@@ -1,0 +1,12 @@
+# ==============================================================================
+# File: config/plugins/discord_alert.yaml
+# Per-plugin configuration for Discord Alerting Plugin
+# ==============================================================================
+
+enabled: true
+webhook_url: ""
+channel: "#trading-signals"
+notify_on_entry: true
+notify_on_exit: true
+notify_on_risk_breach: true
+rate_limit_per_minute: 30

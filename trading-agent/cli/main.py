@@ -1255,6 +1255,10 @@ def parse_args(args_list=None):
     uninst_p.add_argument("package_name", type=str, help="Package name to uninstall")
     info_p = plugin_sub.add_parser("info", help="Show plugin metadata and configuration")
     info_p.add_argument("package_name", type=str, help="Plugin ID")
+    enable_p = plugin_sub.add_parser("enable", help="Enable a plugin by ID")
+    enable_p.add_argument("plugin_name", type=str, help="Plugin identifier to enable")
+    disable_p = plugin_sub.add_parser("disable", help="Disable a plugin by ID")
+    disable_p.add_argument("plugin_name", type=str, help="Plugin identifier to disable")
 
     # Backward compatibility and top-level headless query flag
     parser.add_argument("-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit")

@@ -279,6 +279,24 @@ class ToolRegistry:
         self._handlers.pop(canonical, None)
         self._handler_classes.pop(canonical, None)
 
+    def register_handler(self, name: str, handler: Any) -> None:
+        """Register a callable or handler instance directly by name."""
+        self._handlers[name] = handler
+        if hasattr(handler, "name") and not getattr(handler, "name"):
+            try:
+                setattr(handler, "name", name)
+            except Exception:
+                pass
+
+    def has_tool(self, name: str) -> bool:
+        """Check if a tool or handler is registered under the given name."""
+        canonical = self.resolve_name(name)
+        return (
+            canonical in self._tools
+            or canonical in self._handlers
+            or canonical in self._handler_classes
+        )
+
     def get(self, name: str, settings: Optional[dict] = None) -> Any:
         """Resolve canonical name and return an instantiated ToolHandler or ToolDefinition."""
         canonical = self.resolve_name(name)

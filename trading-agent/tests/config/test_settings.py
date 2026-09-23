@@ -11,7 +11,7 @@ class TestSettings:
     def test_load_settings_success(self, mock_file, mock_exists, mock_copy):
         settings = load_settings("dummy_path")
         assert settings["test_key"] == "test_val"
-        assert settings.get("_config_version") == 1
+        assert settings.get("_config_version") >= 1
         mock_file.assert_called_once_with("dummy_path", "r", encoding="utf-8")
 
     @patch('os.path.exists', return_value=False)

@@ -92,11 +92,18 @@ class ModularRiskRegistry:
     Central registry for active modular risk rules and dynamic sizing plugins.
     Integrated into RiskGate to extend validation while preserving core safety invariants.
     """
+    _instance: Optional["ModularRiskRegistry"] = None
 
     def __init__(self):
         self._rules: Dict[str, IRiskRulePlugin] = {}
         self._sizing_plugins: Dict[str, IDynamicSizingPlugin] = {}
         self._post_trade_plugins: Dict[str, IPostTradeInspectionPlugin] = {}
+
+    @classmethod
+    def get_instance(cls) -> "ModularRiskRegistry":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     def register_rule(self, plugin: IRiskRulePlugin) -> None:
         rule_id = plugin.metadata.id if hasattr(plugin, "metadata") else type(plugin).__name__

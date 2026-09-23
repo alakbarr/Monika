@@ -79,6 +79,57 @@ async def get_config_schema(request: Request):
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
+@router.get("/api/config/plugins/schemas", tags=["Config"])
+@require_role(Role.VIEWER)
+async def get_all_plugin_config_schemas(request: Request):
+    """Return dictionary of plugin_id -> JSON Schema for registered plugins."""
+    from harness.engine import get_plugin_engine
+    engine = get_plugin_engine()
+    schemas = {}
+    if engine:
+        for pid, plugin in engine.plugins.items():
+            if hasattr(plugin, "config_model") and plugin.config_model:
+                try:
+                    schemas[pid] = plugin.config_model.model_json_schema()
+                    continue
+                except Exception:
+                    pass
+            schemas[pid] = {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "title": f"{pid.capitalize()}Config",
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean", "default": True},
+                },
+                "additionalProperties": True,
+            }
+    return schemas
+
+
+@router.get("/api/config/plugins/{plugin_id}/schema", tags=["Config"])
+@require_role(Role.VIEWER)
+async def get_plugin_config_schema(plugin_id: str, request: Request):
+    """Return JSON Schema for a specific plugin configuration if available."""
+    from harness.engine import get_plugin_engine
+    engine = get_plugin_engine()
+    if engine and plugin_id in engine.plugins:
+        plugin = engine.plugins[plugin_id]
+        if hasattr(plugin, "config_model") and plugin.config_model:
+            try:
+                return plugin.config_model.model_json_schema()
+            except Exception:
+                pass
+    return {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": f"{plugin_id.capitalize()}Config",
+        "type": "object",
+        "properties": {
+            "enabled": {"type": "boolean", "default": True},
+        },
+        "additionalProperties": True,
+    }
+
+
 @router.put("/api/config/settings", tags=["Config"])
 @require_role(Role.ADMIN)
 async def update_config_settings(payload: ConfigUpdateRequest, request: Request):
