@@ -226,3 +226,113 @@ async def test_plugin_slot_options_available_fallback():
     assert plugin.config.get("slippage_pips") == 1.5
     assert plugin.config.get("mock_fill") is True
 
+
+@pytest.mark.asyncio
+async def test_plugin_disposer_lifo_execution():
+    container = ServiceContainer()
+    event_bus = EventBus()
+    engine = PluginEngine(container=container, event_bus=event_bus)
+
+    disposer_order = []
+
+    class DisposerTestPlugin(TradingPlugin):
+        metadata = PluginMetadata(
+            id="disposer_test",
+            name="Disposer Test",
+            category=PluginCategory.MIDDLEWARE,
+        )
+
+        async def on_register(self, c, eb):
+            self.add_disposer(lambda: disposer_order.append("first_registered"))
+            self.add_disposer(lambda: disposer_order.append("second_registered"))
+
+    plugin = DisposerTestPlugin()
+    engine.register_plugin_instance(plugin)
+
+    settings = {"plugins": {"enabled": True, "directories": []}}
+    await engine.initialize(settings)
+    await engine.start()
+    await engine.stop()
+
+    # LIFO order: second registered should run before first registered
+    assert disposer_order == ["second_registered", "first_registered"]
+    assert plugin.status == "STOPPED"
+
+
+@pytest.mark.asyncio
+async def test_plugin_config_reload_propagation():
+    container = ServiceContainer()
+    event_bus = EventBus()
+    engine = PluginEngine(container=container, event_bus=event_bus)
+
+    class ReloadTestPlugin(TradingPlugin):
+        metadata = PluginMetadata(
+            id="reload_test",
+            name="Reload Test",
+            category=PluginCategory.BROKER,
+        )
+
+    plugin = ReloadTestPlugin()
+    engine.register_plugin_instance(plugin)
+
+    settings = {
+        "plugins": {
+            "enabled": True,
+            "directories": [],
+            "broker": {
+                "active": "reload_test",
+                "available": {"reload_test": {"lot_size": 0.05}}
+            }
+        }
+    }
+    await engine.initialize(settings)
+    assert plugin.config.get("lot_size") == 0.05
+
+    # Propagate reload
+    new_settings = {
+        "plugins": {
+            "enabled": True,
+            "broker": {
+                "active": "reload_test",
+                "available": {"reload_test": {"lot_size": 0.10, "max_slippage": 2.0}}
+            }
+        }
+    }
+    await engine.propagate_config_reload(new_settings)
+    assert plugin.config.get("lot_size") == 0.10
+    assert plugin.config.get("max_slippage") == 2.0
+
+
+@pytest.mark.asyncio
+async def test_plugin_timeout_isolation_non_core(monkeypatch):
+    import harness.engine as eng
+    monkeypatch.setattr(eng, "LIFECYCLE_TIMEOUT_PREFLIGHT", 0.05)
+
+    container = ServiceContainer()
+    event_bus = EventBus()
+    engine = PluginEngine(container=container, event_bus=event_bus)
+
+    class HangingPlugin(TradingPlugin):
+        metadata = PluginMetadata(
+            id="hanging_plugin",
+            name="Hanging Plugin",
+            category=PluginCategory.MIDDLEWARE,
+            is_core=False,
+        )
+
+        async def on_preflight(self, c):
+            await asyncio.sleep(1.0)
+            return True, []
+
+    plugin = HangingPlugin()
+    engine.register_plugin_instance(plugin)
+
+    settings = {"plugins": {"enabled": True, "directories": []}}
+    success = await engine.initialize(settings)
+
+    # Non-core plugin should be disabled without crashing initialization
+    assert success is True
+    assert plugin.is_enabled is False
+    assert plugin.status == "PREFLIGHT_TIMEOUT"
+
+
