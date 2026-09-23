@@ -298,8 +298,9 @@ class PluginEngine:
                 if p.metadata.category == PluginCategory.ANALYSIS_PIPELINE:
                     p.is_enabled = (p.metadata.id == active_pipeline)
             # Inject options if provided
-            opts = plugins_cfg.get("analysis_pipeline", {}).get("options", {}).get(active_pipeline, {})
-            if active_pipeline in self.plugins:
+            ap_sec = plugins_cfg.get("analysis_pipeline", {})
+            opts = ap_sec.get("available", {}).get(active_pipeline, {}) or ap_sec.get("options", {}).get(active_pipeline, {})
+            if active_pipeline in self.plugins and isinstance(opts, dict):
                 self.plugins[active_pipeline].config.update(opts)
 
         # 2. Active Broker Slot
@@ -308,8 +309,9 @@ class PluginEngine:
             for p in self.plugins.values():
                 if p.metadata.category == PluginCategory.BROKER:
                     p.is_enabled = (p.metadata.id == active_broker)
-            opts = plugins_cfg.get("broker", {}).get("options", {}).get(active_broker, {})
-            if active_broker in self.plugins:
+            br_sec = plugins_cfg.get("broker", {})
+            opts = br_sec.get("available", {}).get(active_broker, {}) or br_sec.get("options", {}).get(active_broker, {})
+            if active_broker in self.plugins and isinstance(opts, dict):
                 self.plugins[active_broker].config.update(opts)
 
         # 3. Schedulers overrides
