@@ -630,28 +630,62 @@ async def _cmd_config_unset(args):
 
 
 async def _cmd_config_edit(args):
-    """Open settings.yaml in default editor and validate upon close."""
+    """Open settings.yaml or plugin config in default editor and validate upon close."""
     import subprocess
+    import yaml
     console = get_console()
-    settings_path = getattr(args, "config", None) or "config/settings.yaml"
-    if not os.path.exists(settings_path):
-        for cand in ("trading-agent/config/settings.yaml", "config/settings.yaml"):
+    plugin_id = getattr(args, "plugin_id", None)
+
+    if plugin_id:
+        plugin_cands = [
+            os.path.join(_parent_dir, "config", "plugins", f"{plugin_id}.yaml"),
+            f"config/plugins/{plugin_id}.yaml",
+            f"trading-agent/config/plugins/{plugin_id}.yaml",
+        ]
+        target_path = None
+        for cand in plugin_cands:
             if os.path.exists(cand):
-                settings_path = cand
+                target_path = cand
                 break
+        if not target_path:
+            target_dir = os.path.join(_parent_dir, "config", "plugins")
+            os.makedirs(target_dir, exist_ok=True)
+            target_path = os.path.join(target_dir, f"{plugin_id}.yaml")
+            if not os.path.exists(target_path):
+                with open(target_path, "w", encoding="utf-8") as f:
+                    f.write(f"# Plugin configuration for {plugin_id}\nenabled: true\n")
+        edit_target = target_path
+        is_plugin = True
+    else:
+        settings_path = getattr(args, "config", None) or "config/settings.yaml"
+        if not os.path.exists(settings_path):
+            for cand in ("trading-agent/config/settings.yaml", "config/settings.yaml"):
+                if os.path.exists(cand):
+                    settings_path = cand
+                    break
+        edit_target = settings_path
+        is_plugin = False
 
     editor = os.environ.get("EDITOR") or ("notepad" if sys.platform == "win32" else "nano")
-    console.print(f"{stamp_info('EDIT')} Opening {settings_path} with {editor}...")
+    console.print(f"{stamp_info('EDIT')} Opening {edit_target} with {editor}...")
     try:
-        res = subprocess.run([editor, settings_path])
+        res = subprocess.run([editor, edit_target])
         if res.returncode == 0:
-            from config.settings import load_settings, validate_config
-            try:
-                cfg = load_settings(settings_path)
-                validate_config(cfg)
-                console.print(f"{stamp_ok('VALIDATED')} Configuration file is valid and ready.")
-            except Exception as val_err:
-                console.print(f"{stamp_err('INVALID')} Configuration error detected: {val_err}")
+            if is_plugin:
+                try:
+                    with open(edit_target, "r", encoding="utf-8") as f:
+                        yaml.safe_load(f)
+                    console.print(f"{stamp_ok('VALIDATED')} Plugin configuration '{plugin_id}' is valid YAML.")
+                except Exception as y_err:
+                    console.print(f"{stamp_err('INVALID')} YAML syntax error in plugin config: {y_err}")
+            else:
+                from config.settings import load_settings, validate_config
+                try:
+                    cfg = load_settings(edit_target)
+                    validate_config(cfg)
+                    console.print(f"{stamp_ok('VALIDATED')} Configuration file is valid and ready.")
+                except Exception as val_err:
+                    console.print(f"{stamp_err('INVALID')} Configuration error detected: {val_err}")
     except Exception as e:
         console.print(f"{stamp_err('EDIT')} Failed to launch editor: {e}")
 
@@ -1168,7 +1202,8 @@ def parse_args(args_list=None):
     unset_parser.add_argument("key", type=str, help="Parameter key path to remove")
     unset_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
-    edit_parser = config_sub.add_parser("edit", help="Open settings.yaml in default editor and validate upon exit")
+    edit_parser = config_sub.add_parser("edit", help="Open settings.yaml or plugin config in default editor and validate upon exit")
+    edit_parser.add_argument("plugin_id", nargs="?", default=None, help="Optional plugin ID or name to edit specific plugin config (e.g. discord_alert)")
     edit_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     # Command: onboarding

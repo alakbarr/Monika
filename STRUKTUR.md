@@ -511,6 +511,8 @@ Monika/
     │   ├── contract.py
     │   ├── engine.py
     │   └── installer.py
+    ├── plugin_kernel
+    │   └── __init__.py
     ├── indicators
     │   ├── microstructure.py
     │   ├── order_flow.py
@@ -1090,6 +1092,7 @@ Monika/
         │   ├── test_installer_service.py
         │   ├── test_message_repair.py
         │   ├── test_plugin_engine.py
+        │   ├── test_plugin_kernel_namespace.py
         │   ├── test_repetition_and_candidate.py
         │   ├── test_threat_scanner.py
         │   └── test_trading_agent_harness_integration.py
@@ -1140,6 +1143,7 @@ Monika/
         ├── support
         │   └── replay_provider.py
         ├── utils
+        │   ├── test_container_hierarchical.py
         │   ├── test_context_tracker.py
         │   ├── test_event_bus_enhancements.py
         │   ├── test_paper_trading_streak_policy.py
