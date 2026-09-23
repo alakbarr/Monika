@@ -44,6 +44,7 @@ export const WORKSPACES: WorkspaceItem[] = [
       { id: 'debates', label: 'Debate Arbitration' },
       { id: 'analysis', label: 'Market Analysis' },
       { id: 'brief', label: 'Macroeconomic Intelligence Brief' },
+      { id: 'memory', label: 'Memory Vault & Lessons' },
     ],
   },
   {

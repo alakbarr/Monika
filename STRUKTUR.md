@@ -83,6 +83,9 @@ Monika/
     │   ├── doctor.py
     │   ├── main.py
     │   ├── onboarding_trader.py
+    │   ├── overlays
+    │   │   ├── __init__.py
+    │   │   └── approval_modal.py
     │   ├── platform_compat.py
     │   ├── profile_manager.py
     │   ├── setup_wizard.py
@@ -525,6 +528,7 @@ Monika/
     │       │   ├── backtest.py
     │       │   ├── common.py
     │       │   ├── config.py
+    │       │   ├── memory.py
     │       │   ├── observability.py
     │       │   ├── system.py
     │       │   ├── tokens.py
@@ -566,6 +570,7 @@ Monika/
     │               │   │   ├── EdgeMetricsPanel.tsx
     │               │   │   ├── GraphVisualizerPanel.tsx
     │               │   │   ├── MarketDataPanel.tsx
+    │               │   │   ├── MemoryBrowserPanel.tsx
     │               │   │   ├── ObservabilityPanel.tsx
     │               │   │   ├── PerformancePanel.tsx
     │               │   │   ├── PositionsTable.tsx
@@ -589,6 +594,7 @@ Monika/
     │               │   │       └── TokenRoleTable.tsx
     │               │   └── ui
     │               │       ├── AnalogDial.tsx
+    │               │       ├── ApprovalModal.tsx
     │               │       ├── Badge.tsx
     │               │       ├── BootSequence.tsx
     │               │       ├── Card.tsx
@@ -608,6 +614,7 @@ Monika/
     │               │       ├── TickerTape.tsx
     │               │       ├── TypewriterButton.tsx
     │               │       ├── VintageIcons.tsx
+    │               │       ├── WeekendGapBanner.tsx
     │               │       └── WindowFrame.tsx
     │               ├── hooks
     │               │   ├── useAgentChatWs.ts
@@ -985,6 +992,7 @@ Monika/
         │   └── test_paired_evaluator.py
         ├── cli
         │   ├── test_analysis_tree.py
+        │   ├── test_approval_modal.py
         │   ├── test_busy_input.py
         │   ├── test_doctor_and_profile.py
         │   ├── test_platform_compat.py
@@ -1022,6 +1030,7 @@ Monika/
         │   ├── test_cost_tracking_dashboard.py
         │   ├── test_cycle_event_log_and_feedback.py
         │   ├── test_dashboard_api.py
+        │   ├── test_dashboard_memory_routes.py
         │   ├── test_dashboard_observability_endpoints.py
         │   ├── test_dashboard_phase2.py
         │   ├── test_modular_routes.py

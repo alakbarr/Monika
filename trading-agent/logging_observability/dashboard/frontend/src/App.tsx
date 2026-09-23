@@ -7,6 +7,7 @@ import { GlobalStatusBar } from './components/layout/GlobalStatusBar';
 import { MobileNavDrawer } from './components/layout/MobileNavDrawer';
 import { BootSequence } from './components/ui/BootSequence';
 import { TickerTape } from './components/ui/TickerTape';
+import { WeekendGapBanner } from './components/ui/WeekendGapBanner';
 import { RetroCockpitBar } from './components/panels/RetroCockpitBar';
 import { PositionsTable } from './components/panels/PositionsTable';
 import { ActivityFeed } from './components/panels/ActivityFeed';
@@ -24,6 +25,7 @@ import { SessionBrowserPanel } from './components/panels/SessionBrowserPanel';
 import { ConfigEditorPanel } from './components/panels/ConfigEditorPanel';
 import { GraphVisualizerPanel } from './components/panels/GraphVisualizerPanel';
 import { RiskPanel } from './components/panels/RiskPanel';
+import { MemoryBrowserPanel } from './components/panels/MemoryBrowserPanel';
 import { useDashboardStore } from './store/dashboardStore';
 import { usePolling } from './hooks/usePolling';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -164,6 +166,7 @@ const ChatTab: React.FC = () => <AgentChatPanel />;
 const SessionsTab: React.FC = () => <SessionBrowserPanel />;
 const ConfigTab: React.FC = () => <ConfigEditorPanel />;
 const SystemTab: React.FC = () => <SystemPanel />;
+const MemoryTab: React.FC = () => <MemoryBrowserPanel />;
 
 const TAB_MAP: Record<string, React.FC> = {
   overview: OverviewTab,
@@ -183,6 +186,7 @@ const TAB_MAP: Record<string, React.FC> = {
   sessions: SessionsTab,
   config: ConfigTab,
   system: SystemTab,
+  memory: MemoryTab,
 };
 
 const SkeletonFallback: React.FC = () => (
@@ -343,6 +347,7 @@ const App: React.FC = () => {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <main style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 42px', position: 'relative' }}>
+          <WeekendGapBanner />
           <Suspense fallback={<SkeletonFallback />}>
             <div key={activeTab}>
               <ErrorBoundary>

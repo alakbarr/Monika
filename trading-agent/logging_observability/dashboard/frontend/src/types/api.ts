@@ -490,5 +490,63 @@ export interface CycleTraceSummaryResponse {
   graph_state?: GraphStateResponse;
 }
 
+export interface DecisionReflectionItem {
+  id: number;
+  symbol: string;
+  decision: string;
+  confidence: number;
+  confluence_score?: number | null;
+  rationale_summary?: string | null;
+  outcome_pnl_usd?: number | null;
+  holding_hours?: number | null;
+  exit_reason?: string | null;
+  was_profitable?: boolean | null;
+  reflection_text?: string | null;
+  next_trade_adjustment?: string | null;
+  specific_lesson?: string | null;
+  lesson_tags?: string | null;
+  alpha_return?: number | null;
+  process_was_sound?: boolean | null;
+  outcome_process_classification?: string | null;
+  macro_thesis_correct?: boolean | null;
+  debate_verdict?: string | null;
+  debate_summary?: string | null;
+  is_paper_whatif: boolean;
+  whatif_reason?: string | null;
+}
 
+export interface CandidateLessonItem {
+  id: number;
+  symbol: string;
+  lesson_text: string;
+  status: 'shadow' | 'promoted' | 'rejected' | string;
+  proposed_at?: string | null;
+  evaluated_trades_count: number;
+  win_rate_delta: number;
+  sharpe_delta: number;
+  promoted_at?: string | null;
+  rejection_reason?: string | null;
+  condition_tags?: string | null;
+}
 
+export interface MemorySearchResult {
+  query: string;
+  total_matches: number;
+  reflections: Array<{
+    id: number;
+    symbol: string;
+    decision: string;
+    outcome_pnl_usd?: number | null;
+    reflection_text?: string | null;
+    specific_lesson?: string | null;
+    next_trade_adjustment?: string | null;
+    was_profitable?: boolean | null;
+  }>;
+  lessons: Array<{
+    id: number;
+    symbol: string;
+    lesson_text: string;
+    status: string;
+    win_rate_delta: number;
+  }>;
+}

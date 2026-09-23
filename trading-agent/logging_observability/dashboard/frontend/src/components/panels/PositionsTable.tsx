@@ -3,8 +3,10 @@ import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { FloppyDiskIcon } from '../ui/RetroIcons';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
+import { api } from '../../lib/api';
 import type { Position } from '../../types/api';
 
 import { sounds } from '../../lib/soundEffects';
@@ -30,10 +32,13 @@ const COLUMNS: ColumnDef[] = [
 import { EmptyState } from '../ui/EmptyState';
 
 export const PositionsTable: React.FC = () => {
-  const { positions, loading } = useDashboardStore();
+  const { positions, loading, fetchAll } = useDashboardStore();
   const [showClosed, setShowClosed] = useState(false);
   const [sortField, setSortField] = useState<SortField>('opened_at');
   const [sortAsc, setSortAsc] = useState(false);
+  const [closingPos, setClosingPos] = useState<Position | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
@@ -46,6 +51,27 @@ export const PositionsTable: React.FC = () => {
     } else {
       setSortField(field);
       setSortAsc(false);
+    }
+  };
+
+  const handleConfirmClose = async () => {
+    if (!closingPos) return;
+    setIsClosing(true);
+    setActionMsg(null);
+    try {
+      sounds.playClick('toggle');
+      await api.closePosition({
+        ticket: closingPos.mt5_ticket ?? undefined,
+        position_id: closingPos.id,
+        reason: 'Manual close from Dashboard',
+      });
+      setActionMsg(`Closed position ${closingPos.symbol} (#${closingPos.mt5_ticket || closingPos.id}) successfully.`);
+      await fetchAll();
+    } catch (err: any) {
+      setActionMsg(`Failed to close position: ${err.message}`);
+    } finally {
+      setIsClosing(false);
+      setClosingPos(null);
     }
   };
 
@@ -109,6 +135,20 @@ export const PositionsTable: React.FC = () => {
       }
       padding="0"
     >
+      {actionMsg && (
+        <div
+          style={{
+            padding: '8px 14px',
+            background: 'var(--color-paper)',
+            borderBottom: '1.5px solid var(--color-rule)',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-ink)',
+            fontFamily: 'var(--font-precision)',
+          }}
+        >
+          ℹ {actionMsg}
+        </div>
+      )}
       {loading ? (
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[1, 2, 3].map((i) => (
@@ -169,21 +209,73 @@ export const PositionsTable: React.FC = () => {
                     </th>
                   );
                 })}
+                {!showClosed && (
+                  <th
+                    style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 'bold',
+                      color: 'var(--color-ink)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {sorted.map((pos, i) => (
-                <PositionRow key={pos.id} pos={pos} isEven={i % 2 === 1} />
+                <PositionRow
+                  key={pos.id}
+                  pos={pos}
+                  isEven={i % 2 === 1}
+                  showClosed={showClosed}
+                  onCloseClick={(target) => setClosingPos(target)}
+                />
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Close Position Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(closingPos)}
+        title="CLOSE POSITION ORDER"
+        actionSummary={`CLOSE: ${closingPos?.symbol} (${closingPos?.direction?.toUpperCase()})`}
+        details={
+          closingPos && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-body-sm)' }}>
+              <div><strong>Ticket:</strong> #{closingPos.mt5_ticket || closingPos.id}</div>
+              <div><strong>Volume:</strong> {fmt.lots(closingPos.volume)} lots</div>
+              <div><strong>Entry:</strong> {fmt.price(closingPos.entry_price, closingPos.symbol)}</div>
+              <div><strong>Current Floating P&L:</strong> {closingPos.pnl !== null ? fmt.usd(closingPos.pnl) : '—'}</div>
+              <p style={{ margin: '8px 0 0', color: 'var(--color-ledger-red)', fontSize: 'var(--text-xs)' }}>
+                This will submit a market close order to MT5 and liquidate this ticket immediately.
+              </p>
+            </div>
+          )
+        }
+        confirmLabel={isClosing ? "CLOSING..." : "CONFIRM CLOSE"}
+        cancelLabel="KEEP OPEN"
+        danger={true}
+        onConfirm={handleConfirmClose}
+        onCancel={() => setClosingPos(null)}
+      />
     </WindowFrame>
   );
 };
 
-const PositionRow: React.FC<{ pos: Position; isEven: boolean }> = ({ pos, isEven }) => {
+const PositionRow: React.FC<{
+  pos: Position;
+  isEven: boolean;
+  showClosed: boolean;
+  onCloseClick: (pos: Position) => void;
+}> = ({ pos, isEven, showClosed, onCloseClick }) => {
   const slDist = pos.entry_price && pos.sl ? Math.abs(pos.entry_price - pos.sl) : null;
   const tpDist = pos.entry_price && pos.tp ? Math.abs(pos.entry_price - pos.tp) : null;
   const rr = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
@@ -248,9 +340,31 @@ const PositionRow: React.FC<{ pos: Position; isEven: boolean }> = ({ pos, isEven
           </div>
         )}
       </td>
-      <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', whiteSpace: 'nowrap', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
+      <td style={{ padding: '8px 12px', borderRight: !showClosed ? '1px solid var(--color-rule)' : 'none', whiteSpace: 'nowrap', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
         {fmt.datetime(pos.opened_at)}
       </td>
+      {!showClosed && (
+        <td style={{ padding: '6px 12px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => onCloseClick(pos)}
+            style={{
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 'bold',
+              background: 'var(--color-loss-dim)',
+              color: 'var(--color-ledger-red)',
+              border: '1px solid var(--color-ledger-red)',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            title="Liquidate this open position immediately in MT5"
+          >
+            CLOSE
+          </button>
+        </td>
+      )}
     </tr>
   );
 };

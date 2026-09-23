@@ -203,6 +203,8 @@ export const api = {
     post<{ status: string; message: string }>('/actions/trigger-cycle', { forced, reason }),
   overrideRisk: (payload: Record<string, unknown>) =>
     post<{ status: string; message: string }>('/actions/override-risk', payload),
+  emergencyKill: () =>
+    post<{ status: string; message: string }>('/actions/emergency-kill', {}),
   closePosition: (ticketOrId: { ticket?: number; position_id?: number; reason?: string }) =>
     post<{ status: string; result: unknown }>('/actions/close-position', ticketOrId),
   approveTrade: (tradeId: number) =>
@@ -223,6 +225,34 @@ export const api = {
     get<any>(`/observability/prompt-cache-metrics?limit=${limit}`),
   toolLatencies: () =>
     get<{ tools: any[] }>('/observability/tool-latencies'),
+
+  // Phase 5: Memory System Browser & Search
+  memoryReflections: (params?: {
+    symbol?: string;
+    limit?: number;
+    profitable_only?: boolean;
+    whatif_only?: boolean;
+    search?: string;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params?.symbol) sp.append('symbol', params.symbol);
+    if (params?.limit) sp.append('limit', String(params.limit));
+    if (params?.profitable_only !== undefined) sp.append('profitable_only', String(params.profitable_only));
+    if (params?.whatif_only !== undefined) sp.append('whatif_only', String(params.whatif_only));
+    if (params?.search) sp.append('search', params.search);
+    const qs = sp.toString();
+    return get<import('../types/api').DecisionReflectionItem[]>(`/memory/reflections${qs ? `?${qs}` : ''}`);
+  },
+  memoryLessons: (params?: { symbol?: string; status?: string; limit?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.symbol) sp.append('symbol', params.symbol);
+    if (params?.status) sp.append('status', params.status);
+    if (params?.limit) sp.append('limit', String(params.limit));
+    const qs = sp.toString();
+    return get<import('../types/api').CandidateLessonItem[]>(`/memory/lessons${qs ? `?${qs}` : ''}`);
+  },
+  memorySearch: (query: string, symbol?: string, limit = 50) =>
+    post<import('../types/api').MemorySearchResult>('/memory/search', { query, symbol, limit }),
 };
 
 
