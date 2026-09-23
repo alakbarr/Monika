@@ -10,22 +10,68 @@ Provides standardized interfaces, lifecycle stages, and typed reactive hooks.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, Callable, Coroutine, Protocol, runtime_checkable
 import inspect
 import logging
 
-from utils.infra.container import ServiceContainer
-from utils.protocol.event_bus import (
-    EventBus,
-    TickPriceEvent,
-    BarClosedEvent,
-    OrderStateChangedEvent,
-    RiskBreachEvent,
-    CircuitBreakerEvent,
-)
-from agent.task_registry import TaskRegistry
+try:
+    from utils.infra.container import ServiceContainer
+except ImportError:
+    ServiceContainer = Any  # type: ignore
+
+try:
+    from utils.protocol.event_bus import (
+        EventBus,
+        TickPriceEvent,
+        BarClosedEvent,
+        OrderStateChangedEvent,
+        RiskBreachEvent,
+        CircuitBreakerEvent,
+    )
+except ImportError:
+    EventBus = Any  # type: ignore
+
+try:
+    from agent.task_registry import TaskRegistry
+except ImportError:
+    TaskRegistry = Any  # type: ignore
 
 logger = logging.getLogger("TradingAgent.Harness.Contract")
+
+
+@runtime_checkable
+class TaskRegistryProtocol(Protocol):
+    """Protocol for background task registration decoupling contract from agent."""
+    def register_task(self, name: str, coro_fn: Any, *args: Any, **kwargs: Any) -> Any: ...
+
+
+@runtime_checkable
+class EventBusProtocol(Protocol):
+    """Protocol for event pub-sub decoupling contract from concrete bus implementation."""
+    async def publish(self, event: Any) -> None: ...
+    def subscribe(self, event_type: Any, handler: Any, priority: int = 0) -> Any: ...
+
+
+@runtime_checkable
+class ServiceContainerProtocol(Protocol):
+    """Protocol for service locator / DI container."""
+    def get(self, name: str) -> Any: ...
+    def register(self, name: str, instance: Any) -> None: ...
+
+
+class PluginState(str, Enum):
+    INITIALIZED = "INITIALIZED"
+    PENDING = "PENDING"
+    LOADING = "LOADING"
+    ACTIVE = "ACTIVE"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    PREFLIGHT_FAILED = "PREFLIGHT_FAILED"
+    START_FAILED = "START_FAILED"
+    UNLOADING = "UNLOADING"
+    STOPPED = "STOPPED"
+    DISPOSED = "DISPOSED"
+    DEGRADED = "DEGRADED"
 
 
 class PluginCategory(str, Enum):
@@ -81,26 +127,32 @@ class TradingPlugin(ABC):
             config = kwargs["config"]
         self.config: Dict[str, Any] = config or {}
         self.is_enabled: bool = True
-        self.status: str = "INITIALIZED"
+        self.status: str = PluginState.INITIALIZED.value
+        self.state: PluginState = PluginState.INITIALIZED
         self.status_message: str = ""
+        self._disposers: List[Callable[[], Any]] = []
+
+    def add_disposer(self, disposer: Callable[[], Any]) -> None:
+        """Register a cleanup callable to be executed when the plugin stops (LIFO order)."""
+        self._disposers.append(disposer)
 
     # 1. Dependency Registration
-    async def on_register(self, container: ServiceContainer, event_bus: EventBus) -> None:
+    async def on_register(self, container: ServiceContainerProtocol, event_bus: EventBusProtocol) -> None:
         """Register services, singletons, factories into DI container & subscribe to EventBus."""
         pass
 
     # 2. Modular Pre-flight Health & Environment Checks
-    async def on_preflight(self, container: ServiceContainer) -> Tuple[bool, List[str]]:
+    async def on_preflight(self, container: ServiceContainerProtocol) -> Tuple[bool, List[str]]:
         """Validate plugin requirements (credentials, DB tables, endpoints). Returns (is_healthy, warnings)."""
         return True, []
 
     # 3. Post-Restart State Recovery Hook
-    async def on_recovery(self, container: ServiceContainer) -> None:
+    async def on_recovery(self, container: ServiceContainerProtocol) -> None:
         """Perform crash/restart synchronization (sync positions, reconcile in-flight orders)."""
         pass
 
     # 4. Background Concurrency Launch
-    async def on_start(self, container: ServiceContainer, task_registry: TaskRegistry) -> None:
+    async def on_start(self, container: ServiceContainerProtocol, task_registry: TaskRegistryProtocol) -> None:
         """Register persistent background tasks/loops with TaskRegistry."""
         pass
 
@@ -128,4 +180,15 @@ class TradingPlugin(ABC):
     # 7. Graceful Teardown
     async def on_stop(self) -> None:
         """Orderly resource teardown, cancel background loops, flush outbox."""
-        self.status = "STOPPED"
+        self.state = PluginState.UNLOADING
+        for disposer in reversed(self._disposers):
+            try:
+                res = disposer()
+                if inspect.isawaitable(res):
+                    await res
+            except Exception as e:
+                logger.debug(f"Disposer error in {self.metadata.id}: {e}")
+        self._disposers.clear()
+        self.status = PluginState.STOPPED.value
+        self.state = PluginState.STOPPED
+
