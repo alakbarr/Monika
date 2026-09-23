@@ -159,6 +159,7 @@ class TradingAgentConfig(SubscriptableConfig):
     harness: Optional[HarnessConfig] = None
     evals: Optional[EvalsConfig] = None
     benchmark: Optional[BenchmarkConfig] = None
+    plugins: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_all_sections(self) -> "TradingAgentConfig":
