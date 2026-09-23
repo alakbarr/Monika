@@ -89,6 +89,11 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "audit":     {"type": CommandType.DIRECT, "admin_only": False},
     "closeall":  {"type": CommandType.ADMIN,  "admin_only": True},
     "steer":     {"type": CommandType.ADMIN,  "admin_only": True},
+    "calendar":  {"type": CommandType.DIRECT, "admin_only": False},
+    "skills":    {"type": CommandType.DIRECT, "admin_only": False},
+    "plugins":   {"type": CommandType.DIRECT, "admin_only": False},
+    "memory":    {"type": CommandType.DIRECT, "admin_only": False},
+    "strategies": {"type": CommandType.DIRECT, "admin_only": False},
     "fuzzy_suggest": {"type": CommandType.DIRECT, "admin_only": False},
 }
 
@@ -128,6 +133,11 @@ COMMAND_HELP: dict[str, str] = {
     "emergency":   "[Admin] Mode darurat dan evaluasi risiko sistem",
     "interrupt":   "[Interrupt] Hentikan eksekusi AI turn yang sedang berjalan",
     "resume_proposals": "[Proposals] Aktifkan kembali auto-proposals trade",
+    "calendar":    "[Kalender] Event ekonomi makro mendatang: /calendar [currency]",
+    "skills":      "[Skills] Daftar autonomous skills & playbooks AI yang terdaftar",
+    "plugins":     "[Plugins] Daftar plugin & ekstensi sistem yang terpasang",
+    "memory":      "[Memory] Cari atau tampilkan refleksi & pelajaran trading: /memory [query]",
+    "strategies":  "[Strategi] Daftar strategi trading & performa aturan playbook",
     "(any text)":  "[Chat] Diskusi dengan asisten AI terkait pasar dan trading",
 }
 

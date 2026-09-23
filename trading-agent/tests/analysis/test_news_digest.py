@@ -93,6 +93,9 @@ class TestNewsDigestProcessor:
         mock_session.execute = AsyncMock(return_value=mock_result)
         
         processor._flash.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
+        processor._macro_synth.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
+        processor._digest_generator.generate = AsyncMock(return_value="Broad Market Sentiment & Macro Drivers: This is a summary digest")
+        processor._verifier.classify_json = AsyncMock(return_value={"has_contradictions": False, "contradictions": []})
     
         digest = await processor.create_news_digest(mock_session)
     

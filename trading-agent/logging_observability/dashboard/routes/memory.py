@@ -150,6 +150,18 @@ async def get_playbooks(limit: int = Query(50, ge=1, le=200)) -> List[Dict[str, 
                 out.append({
                     "id": p.id,
                     "rule_hash": p.rule_hash,
+                    "symbol": p.symbol,
+                    "rule_text": p.rule_text,
+                    "status": p.status,
+                    "times_triggered": p.times_triggered,
+                    "wins_count": p.wins_count,
+                    "losses_count": p.losses_count,
+                    "total_pnl": p.total_pnl,
+                    "win_rate": p.win_rate,
+                    "last_triggered_at": p.last_triggered_at.isoformat() if p.last_triggered_at else None,
+                    "promoted_at": p.promoted_at.isoformat() if p.promoted_at else None,
+                    "deprecated_at": p.deprecated_at.isoformat() if p.deprecated_at else None,
+                    "deprecation_reason": p.deprecation_reason,
                 })
             return out
     except Exception as e:

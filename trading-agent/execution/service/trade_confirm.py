@@ -57,6 +57,22 @@ class TradeConfirmManager:
         )
         self._pending_actions[confirm_id] = action
         logger.info(f"Created pending action {confirm_id} [{action_type}]: {description} (TTL: {ttl_seconds}s)")
+
+        # Cross-surface synchronization with ApprovalHub
+        try:
+            from risk.approval_hub import ApprovalHub
+            sym = str(payload.get("symbol") or "ALL")
+            ApprovalHub.get_instance().create_request(
+                request_id=confirm_id,
+                symbol=sym,
+                action=action_type.upper(),
+                request_type=action_type,
+                details={"description": description, "channel_origin": channel_origin, **payload},
+                ttl_minutes=max(1, int(round(ttl_seconds / 60.0))),
+            )
+        except Exception as hub_err:
+            logger.debug(f"[TradeConfirmManager] ApprovalHub sync register error: {hub_err}")
+
         return action
 
     def get_action(self, confirm_id: str) -> Optional[PendingTradeAction]:
@@ -64,9 +80,28 @@ class TradeConfirmManager:
         action = self._pending_actions.get(confirm_id)
         if not action:
             return None
+
+        # Cross-check with ApprovalHub state: if already resolved elsewhere, invalidate local
+        try:
+            from risk.approval_hub import ApprovalHub
+            hub_req = ApprovalHub.get_instance()._requests.get(confirm_id)
+            if hub_req and hub_req.status != "pending":
+                self._pending_actions.pop(confirm_id, None)
+                logger.info(f"Pending action {confirm_id} already resolved via ApprovalHub ({hub_req.status}).")
+                return None
+        except Exception:
+            pass
+
         if time.time() - action.created_at > action.ttl_seconds:
             self._pending_actions.pop(confirm_id, None)
             logger.warning(f"Pending action {confirm_id} expired and was discarded.")
+            try:
+                from risk.approval_hub import ApprovalHub
+                hub = ApprovalHub.get_instance()
+                if confirm_id in hub._requests:
+                    hub._requests[confirm_id].status = "expired"
+            except Exception:
+                pass
             return None
         return action
 
@@ -87,6 +122,13 @@ class TradeConfirmManager:
             return False, "Aksi tidak ditemukan atau sudah pernah dieksekusi.", None
 
         if time.time() - action.created_at > action.ttl_seconds:
+            try:
+                from risk.approval_hub import ApprovalHub
+                hub = ApprovalHub.get_instance()
+                if confirm_id in hub._requests:
+                    hub._requests[confirm_id].status = "expired"
+            except Exception:
+                pass
             return False, f"Aksi kedaluwarsa (batas waktu {action.ttl_seconds} detik terlampaui).", None
 
         # 2. Pre-commit sanity check (e.g. price drift or margin)
@@ -103,9 +145,26 @@ class TradeConfirmManager:
         try:
             logger.info(f"Executing confirmed action {confirm_id} [{action.action_type}]...")
             result = await handler(action.payload)
+            # Sync approval to ApprovalHub
+            try:
+                from risk.approval_hub import ApprovalHub
+                hub = ApprovalHub.get_instance()
+                if confirm_id in hub._requests:
+                    hub._requests[confirm_id].status = "approved"
+                    hub._requests[confirm_id].operator = action.channel_origin
+            except Exception:
+                pass
             return True, f"Aksi '{action.description}' berhasil dieksekusi.", result
         except Exception as exec_err:
             logger.error(f"Execution error on confirmed action {confirm_id}: {exec_err}", exc_info=True)
+            try:
+                from risk.approval_hub import ApprovalHub
+                hub = ApprovalHub.get_instance()
+                if confirm_id in hub._requests:
+                    hub._requests[confirm_id].status = "rejected"
+                    hub._requests[confirm_id].rejection_reason = str(exec_err)
+            except Exception:
+                pass
             return False, f"Eksekusi gagal: {exec_err}", None
 
     def cancel_action(self, confirm_id: str) -> bool:
@@ -113,6 +172,14 @@ class TradeConfirmManager:
         if confirm_id in self._pending_actions:
             self._pending_actions.pop(confirm_id, None)
             logger.info(f"Pending action {confirm_id} was cancelled by operator.")
+            try:
+                from risk.approval_hub import ApprovalHub
+                hub = ApprovalHub.get_instance()
+                if confirm_id in hub._requests:
+                    hub._requests[confirm_id].status = "rejected"
+                    hub._requests[confirm_id].rejection_reason = "Cancelled by operator"
+            except Exception:
+                pass
             return True
         return False
 

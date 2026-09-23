@@ -35,6 +35,8 @@ export const TokenAuditPanel: React.FC = () => {
   const [subsystems, setSubsystems] = useState<TokenSubsystemItem[]>([]);
   const [symbols, setSymbols] = useState<TokenSymbolItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<TokenRecentLog[]>([]);
+  const [contextTracker, setContextTracker] = useState<Record<string, any> | null>(null);
+  const [turnCost, setTurnCost] = useState<import('../../types/api').TokenTurnCostMetrics | null>(null);
   const [roleSearch, setRoleSearch] = useState<string>('');
   const [subsystemFilter, setSubsystemFilter] = useState<string>('all');
 
@@ -51,12 +53,14 @@ export const TokenAuditPanel: React.FC = () => {
     else setLoading(true);
 
     try {
-      const [sumRes, rolesRes, subsRes, symsRes, logsRes] = await Promise.allSettled([
+      const [sumRes, rolesRes, subsRes, symsRes, logsRes, ctxRes, turnRes] = await Promise.allSettled([
         api.tokensSummary(hours),
         api.tokensRoles(hours),
         api.tokensSubsystems(hours),
         api.tokensSymbols(hours),
         api.tokensRecent(50),
+        api.tokenContextTracker(),
+        api.tokenPerTurnCost(hours),
       ]);
 
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value);
@@ -64,6 +68,8 @@ export const TokenAuditPanel: React.FC = () => {
       if (subsRes.status === 'fulfilled') setSubsystems(subsRes.value.items || []);
       if (symsRes.status === 'fulfilled') setSymbols(symsRes.value.items || []);
       if (logsRes.status === 'fulfilled') setRecentLogs(logsRes.value.items || []);
+      if (ctxRes.status === 'fulfilled') setContextTracker(ctxRes.value);
+      if (turnRes.status === 'fulfilled') setTurnCost(turnRes.value);
     } catch (err) {
       console.error('Failed to load token audit data:', err);
     } finally {
@@ -355,6 +361,66 @@ export const TokenAuditPanel: React.FC = () => {
             {(summary?.error_count || 0) > 0 && (
               <span style={{ color: 'var(--color-loss)' }}>✗ {summary?.error_count} err</span>
             )}
+          </div>
+        </Card>
+
+        {/* Context Headroom Gauge Card */}
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-precision)' }}>
+                Context Window Headroom
+              </div>
+              <div
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color: (contextTracker?.utilization_pct || 0) > 80 ? 'var(--color-loss)' : 'var(--color-profit)',
+                  marginTop: '4px',
+                  fontFamily: 'var(--font-precision)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {contextTracker?.utilization_pct !== undefined ? `${contextTracker.utilization_pct}%` : '—'}
+              </div>
+            </div>
+            <div style={{ padding: '6px', borderRadius: '2px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', color: 'var(--color-profit)' }}>
+              <Layers size={18} />
+            </div>
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <div style={{ height: '6px', width: '100%', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${Math.min(100, contextTracker?.utilization_pct || 0)}%`,
+                  height: '100%',
+                  background: (contextTracker?.utilization_pct || 0) > 80 ? 'var(--color-loss)' : 'var(--color-profit)',
+                }}
+              />
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px', fontFamily: 'var(--font-precision)' }}>
+              {contextTracker?.used_tokens?.toLocaleString() || 0} / {contextTracker?.max_context_window?.toLocaleString() || 200000} tok ({contextTracker?.model || 'active'})
+            </div>
+          </div>
+        </Card>
+
+        {/* Avg Turn Cost Stat Card */}
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-precision)' }}>
+                Avg Turn Cost ({hours}h)
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-ink)', marginTop: '4px', fontFamily: 'var(--font-precision)', fontVariantNumeric: 'tabular-nums' }}>
+                ${(turnCost?.avg_cost_per_turn_usd || 0).toFixed(4)}
+              </div>
+            </div>
+            <div style={{ padding: '6px', borderRadius: '2px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', color: 'var(--color-brass)' }}>
+              <DollarSign size={18} />
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginTop: '8px', fontFamily: 'var(--font-precision)' }}>
+            {turnCost?.total_turns?.toLocaleString() || 0} turns across {turnCost?.cycle_count || 0} cycles
           </div>
         </Card>
       </div>

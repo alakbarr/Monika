@@ -3,6 +3,9 @@ import {
   Workflow,
   Sparkles,
   Loader2,
+  Compass,
+  Send,
+  X,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import type { GraphStateResponse, GraphNode, CycleItem } from '../../types/api';
@@ -34,6 +37,13 @@ export const GraphVisualizerPanel: React.FC = () => {
   const [copied, setCopied] = useState<boolean>(false);
   const [triggering, setTriggering] = useState<boolean>(false);
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
+
+  // Steer Directive Modal State
+  const [showSteerModal, setShowSteerModal] = useState<boolean>(false);
+  const [steerMessage, setSteerMessage] = useState<string>('');
+  const [steerMode, setSteerMode] = useState<string>('steer');
+  const [steerSymbols, setSteerSymbols] = useState<string>('');
+  const [steerLoading, setSteerLoading] = useState<boolean>(false);
 
   // Viewport transform state: scale and translation
   const [transform, setTransform] = useState<{ x: number; y: number; k: number }>({
@@ -152,6 +162,30 @@ export const GraphVisualizerPanel: React.FC = () => {
     navigator.clipboard.writeText(JSON.stringify(selectedNode.output_payload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendSteer = async () => {
+    if (!steerMessage.trim()) return;
+    try {
+      setSteerLoading(true);
+      const symList = steerSymbols
+        .split(',')
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+      await api.steer({
+        message: steerMessage.trim(),
+        mode: steerMode,
+        symbols: symList.length > 0 ? symList : undefined,
+      });
+      setTriggerMsg(`Steer directive successfully dispatched (${steerMode})`);
+      setShowSteerModal(false);
+      setSteerMessage('');
+      setSteerSymbols('');
+    } catch (err: any) {
+      alert(`Steer failed: ${err.message || String(err)}`);
+    } finally {
+      setSteerLoading(false);
+    }
   };
 
   const selectedNode = graphData?.nodes.find((n: GraphNode) => n.id === selectedNodeId) || null;
@@ -311,13 +345,37 @@ export const GraphVisualizerPanel: React.FC = () => {
         )}
 
         {/* Viewport controls & Actions */}
-        <GraphControls
-          onZoom={handleZoom}
-          onFitScreen={handleFitScreen}
-          onReset={handleReset}
-          onTriggerCycle={handleTriggerCycle}
-          triggering={triggering}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setShowSteerModal(true)}
+            title="Inject operator directive into current or next cycle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 12px',
+              background: 'var(--color-surface)',
+              color: 'var(--color-ink)',
+              border: '1.5px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 700,
+              fontSize: 'var(--text-xs)',
+              cursor: 'pointer',
+              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              fontFamily: 'var(--font-precision)',
+            }}
+          >
+            <Compass size={14} color="var(--color-brass)" />
+            <span>[ STEER DIRECTIVE ]</span>
+          </button>
+          <GraphControls
+            onZoom={handleZoom}
+            onFitScreen={handleFitScreen}
+            onReset={handleReset}
+            onTriggerCycle={handleTriggerCycle}
+            triggering={triggering}
+          />
+        </div>
       </div>
 
       {triggerMsg && (
@@ -540,6 +598,167 @@ export const GraphVisualizerPanel: React.FC = () => {
           />
         )}
       </div>
+
+      {showSteerModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowSteerModal(false)}
+        >
+          <div
+            className="win-window ledger-card"
+            style={{
+              background: 'var(--color-paper-raised)',
+              border: '2px solid var(--color-rule)',
+              borderRadius: 'var(--radius-card)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              width: '520px',
+              maxWidth: '90vw',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-rule)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Compass size={18} color="var(--color-brass)" />
+                <span style={{ fontSize: 'var(--text-body)', fontWeight: 800, fontFamily: 'var(--font-precision)', textTransform: 'uppercase' }}>
+                  OPERATOR STEER DIRECTIVE
+                </span>
+              </div>
+              <button
+                onClick={() => setShowSteerModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                Directive Instruction / Message
+              </label>
+              <textarea
+                value={steerMessage}
+                onChange={e => setSteerMessage(e.target.value)}
+                placeholder="e.g. Prioritize risk containment on EURUSD. Invalidate bullish confluence if DXY breaks above 104.50."
+                rows={4}
+                style={{
+                  width: '100%',
+                  background: 'var(--color-paper)',
+                  border: '1.5px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px',
+                  color: 'var(--color-ink)',
+                  fontSize: 'var(--text-body-sm)',
+                  fontFamily: 'var(--font-precision)',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                  Delivery Mode
+                </label>
+                <select
+                  value={steerMode}
+                  onChange={e => setSteerMode(e.target.value)}
+                  style={{
+                    background: 'var(--color-paper)',
+                    border: '1.5px solid var(--color-rule)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px',
+                    color: 'var(--color-ink)',
+                    fontSize: 'var(--text-body-sm)',
+                    fontFamily: 'var(--font-precision)',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="steer">steer (Cycle State Injection)</option>
+                  <option value="follow_up">follow_up (Direct Agent Follow-up)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                  Symbols (Optional comma-sep)
+                </label>
+                <input
+                  type="text"
+                  value={steerSymbols}
+                  onChange={e => setSteerSymbols(e.target.value)}
+                  placeholder="EURUSD, XAUUSD"
+                  style={{
+                    background: 'var(--color-paper)',
+                    border: '1.5px solid var(--color-rule)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 10px',
+                    color: 'var(--color-ink)',
+                    fontSize: 'var(--text-body-sm)',
+                    fontFamily: 'var(--font-precision)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <button
+                onClick={() => setShowSteerModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: '1px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-body-sm)',
+                  cursor: 'pointer',
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-precision)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendSteer}
+                disabled={steerLoading || !steerMessage.trim()}
+                style={{
+                  padding: '8px 20px',
+                  background: 'var(--color-brass)',
+                  border: '1.5px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-body-sm)',
+                  fontWeight: 'bold',
+                  cursor: steerLoading || !steerMessage.trim() ? 'not-allowed' : 'pointer',
+                  color: '#000',
+                  fontFamily: 'var(--font-precision)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  opacity: steerLoading || !steerMessage.trim() ? 0.6 : 1,
+                }}
+              >
+                {steerLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
+                <span>Dispatch Steer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

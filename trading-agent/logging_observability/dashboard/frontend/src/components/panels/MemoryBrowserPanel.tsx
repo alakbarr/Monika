@@ -8,7 +8,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { TypewriterButton } from '../ui/TypewriterButton';
 import { api } from '../../lib/api';
-import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult } from '../../types/api';
+import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult, PlaybookRuleItem } from '../../types/api';
 import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
 import {
@@ -16,9 +16,10 @@ import {
   Search,
   Lightbulb,
   RefreshCw,
+  BookOpen,
 } from 'lucide-react';
 
-type ViewMode = 'all' | 'profitable' | 'losses' | 'whatif' | 'lessons';
+type ViewMode = 'all' | 'profitable' | 'losses' | 'whatif' | 'lessons' | 'playbooks';
 
 export const MemoryBrowserPanel: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('all');
@@ -27,6 +28,7 @@ export const MemoryBrowserPanel: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [reflections, setReflections] = useState<DecisionReflectionItem[]>([]);
   const [lessons, setLessons] = useState<CandidateLessonItem[]>([]);
+  const [playbooks, setPlaybooks] = useState<PlaybookRuleItem[]>([]);
   const [searchResults, setSearchResults] = useState<MemorySearchResult | null>(null);
 
   const fetchMemory = async () => {
@@ -37,7 +39,10 @@ export const MemoryBrowserPanel: React.FC = () => {
         setSearchResults(res);
       } else {
         setSearchResults(null);
-        if (viewMode === 'lessons') {
+        if (viewMode === 'playbooks') {
+          const pData = await api.memoryPlaybooks(50);
+          setPlaybooks(selectedSymbol === 'ALL' ? pData : pData.filter(p => p.symbol === selectedSymbol));
+        } else if (viewMode === 'lessons') {
           const lData = await api.memoryLessons({
             symbol: selectedSymbol === 'ALL' ? undefined : selectedSymbol,
             limit: 50,
@@ -192,6 +197,17 @@ export const MemoryBrowserPanel: React.FC = () => {
               }}
             >
               <Lightbulb size={12} /> [ CANDIDATE LESSONS ]
+            </TypewriterButton>
+
+            <TypewriterButton
+              size="sm"
+              variant={viewMode === 'playbooks' ? 'primary' : 'secondary'}
+              onClick={() => {
+                setViewMode('playbooks');
+                clearSearch();
+              }}
+            >
+              <BookOpen size={12} /> [ PLAYBOOK RULES ]
             </TypewriterButton>
           </div>
 
@@ -381,6 +397,65 @@ export const MemoryBrowserPanel: React.FC = () => {
             ))
           )}
         </div>
+      ) : viewMode === 'playbooks' ? (
+        /* Playbook Rules View */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {playbooks.length === 0 ? (
+            <Card padding="36px" variant="gray">
+              <div style={{ textAlign: 'center', color: 'var(--color-ink-soft)' }}>
+                — No empirical playbook rules currently active for {selectedSymbol} —
+              </div>
+            </Card>
+          ) : (
+            playbooks.map((rule) => {
+              const statusVariant = rule.status === 'golden' ? 'active' : rule.status === 'deprecated' ? 'neutral' : 'warn';
+              return (
+                <Card key={rule.id} padding="14px 18px" variant={rule.status === 'golden' ? 'green' : rule.status === 'deprecated' ? 'gray' : 'yellow'}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Badge variant="active">{rule.symbol}</Badge>
+                      <Badge variant={statusVariant}>{rule.status.toUpperCase()}</Badge>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', fontFamily: 'monospace' }}>
+                        #{rule.rule_hash.substring(0, 8)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: 'var(--text-xs)' }}>
+                      <span>
+                        Triggers: <strong>{rule.times_triggered}</strong>
+                      </span>
+                      <span>
+                        Wins / Losses: <strong style={{ color: 'var(--color-ledger-green)' }}>{rule.wins_count}</strong> / <strong style={{ color: 'var(--color-ledger-red)' }}>{rule.losses_count}</strong>
+                      </span>
+                      <span style={{ fontWeight: 800, color: rule.win_rate >= 0.5 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+                        Win Rate: {(rule.win_rate * 100).toFixed(1)}%
+                      </span>
+                      <span style={{ fontWeight: 800, color: rule.total_pnl >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+                        PnL: {fmt.usd(rule.total_pnl, true)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', lineHeight: '1.6', fontWeight: 500 }}>
+                    {rule.rule_text}
+                  </div>
+
+                  {rule.deprecated_at && rule.deprecation_reason && (
+                    <div style={{ marginTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--color-ledger-red)' }}>
+                      <strong>Deprecated ({new Date(rule.deprecated_at).toLocaleDateString()}):</strong> {rule.deprecation_reason}
+                    </div>
+                  )}
+
+                  {rule.last_triggered_at && (
+                    <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--color-ink-muted)' }}>
+                      Last Triggered: {new Date(rule.last_triggered_at).toLocaleString()}
+                    </div>
+                  )}
+                </Card>
+              );
+            })
+          )}
+        </div>
       ) : (
         /* Reflections View */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -419,6 +494,12 @@ export const MemoryBrowserPanel: React.FC = () => {
                         </span>
                       )}
 
+                      {ref.alpha_return !== null && ref.alpha_return !== undefined && (
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: ref.alpha_return >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+                          α: {(ref.alpha_return * 100).toFixed(2)}%
+                        </span>
+                      )}
+
                       {ref.exit_reason && (
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
                           · Exit: {ref.exit_reason}
@@ -427,6 +508,18 @@ export const MemoryBrowserPanel: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {ref.outcome_process_classification && (
+                        <span className="stamp-badge" style={{ fontSize: '9px' }}>
+                          [{ref.outcome_process_classification.toUpperCase()}]
+                        </span>
+                      )}
+
+                      {ref.macro_thesis_correct !== null && ref.macro_thesis_correct !== undefined && (
+                        <Badge variant={ref.macro_thesis_correct ? 'active' : 'warn'}>
+                          {ref.macro_thesis_correct ? 'THESIS CORRECT' : 'THESIS FAILED'}
+                        </Badge>
+                      )}
+
                       {ref.process_was_sound !== null && ref.process_was_sound !== undefined && (
                         <Badge variant={ref.process_was_sound ? 'active' : 'warn'}>
                           {ref.process_was_sound ? 'SOUND PROCESS' : 'FLAWED PROCESS'}

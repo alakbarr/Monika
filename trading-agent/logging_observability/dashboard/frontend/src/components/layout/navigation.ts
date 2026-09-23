@@ -59,6 +59,7 @@ export const WORKSPACES: WorkspaceItem[] = [
       { id: 'edge', label: 'Edge & Expectancy' },
       { id: 'risk', label: 'Risk & Limits' },
       { id: 'tokens', label: 'LLM Token Audit' },
+      { id: 'backtest', label: 'Historical Backtest' },
     ],
   },
   {
