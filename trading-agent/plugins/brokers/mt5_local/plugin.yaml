@@ -1,0 +1,12 @@
+id: "mt5_local"
+name: "MetaTrader 5 Windows Local Broker"
+version: "1.0.0"
+category: "broker"
+description: "Live execution broker connecting to local MT5 Windows terminal via IPC"
+author: "Monika Core Team"
+entrypoint: "mt5_plugin:MT5LocalBrokerPlugin"
+is_core: true
+dependencies: []
+required_packages: []
+config:
+  magic_number: 20250101

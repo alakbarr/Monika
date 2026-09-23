@@ -33,6 +33,7 @@ from logging_observability.dashboard.routes.trace_search import trace_search_rou
 from logging_observability.dashboard.routes.backtest import backtest_router
 from logging_observability.dashboard.routes.memory import memory_router
 from logging_observability.dashboard.routes.intelligence import intelligence_router
+from logging_observability.dashboard.routes.plugins import plugins_router
 
 all_routers = [
     system_router,
@@ -45,6 +46,7 @@ all_routers = [
     backtest_router,
     memory_router,
     intelligence_router,
+    plugins_router,
 ]
 
 __all__ = [
@@ -53,6 +55,12 @@ __all__ = [
     "config_router",
     "trading_router",
     "observability_router",
+    "websocket_router",
+    "trace_search_router",
+    "backtest_router",
+    "memory_router",
+    "intelligence_router",
+    "plugins_router",
     "websocket_router",
     "trace_search_router",
     "backtest_router",

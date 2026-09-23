@@ -417,6 +417,26 @@ export const api = {
     get<import('../types/api').CycleLineageResponse>(
       `/observability/cycles/${encodeURIComponent(cycleId)}/lineage${targetSeq !== undefined ? `?target_seq=${targetSeq}` : ''}`
     ),
+
+  // Plugin Marketplace & Harness Lifecycle
+  plugins: () =>
+    get<import('../types/api').PluginsResponse>('/plugins'),
+  pluginCatalog: () =>
+    get<import('../types/api').PluginCatalogResponse>('/plugins/catalog'),
+  pluginToggle: (pluginId: string, category: string, enabled: boolean) =>
+    post<import('../types/api').PluginToggleResponse>('/plugins/toggle', {
+      plugin_id: pluginId,
+      category,
+      enabled,
+    }),
+  pluginInstall: (packageName: string) =>
+    post<import('../types/api').PluginInstallResponse>('/plugins/install', {
+      package_name: packageName,
+    }),
+  pluginUninstall: (packageName: string) =>
+    post<{ status: string; output: string; plugins: import('../types/api').PluginItem[] }>('/plugins/uninstall', {
+      package_name: packageName,
+    }),
 };
 
 

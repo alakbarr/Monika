@@ -230,6 +230,7 @@ class TradingDashboard(App):
         Binding("f3", "tab_analysis", "F3 Intel", show=True),
         Binding("f4", "tab_performance", "F4 Performance", show=True),
         Binding("f5", "tab_chat", "F5 Chat", show=True),
+        Binding("f6", "tab_plugins", "F6 Plugins", show=True),
         Binding("f8", "pause", "F8 Pause", show=True),
         Binding("f9", "kill", "F9 Kill", show=True),
         Binding("f10", "quit", "F10 Quit", show=True),
@@ -242,6 +243,8 @@ class TradingDashboard(App):
         Binding("k", "kill", "Kill Switch", show=False),
         Binding("c", "chat", "Chat Mode", show=False),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("t", "toggle_plugin", "Toggle ON/OFF", show=True),
+        Binding("i", "install_plugin", "Install Plugin", show=True),
         Binding("colon", "focus_input", "Command Bar", show=False),
         Binding("escape", "blur_input", "Unfocus Bar", show=False),
         Binding("alt+up", "dequeue", "Dequeue Buffer", show=False),
@@ -351,14 +354,18 @@ class TradingDashboard(App):
                     with Vertical(id="market_rates_container"):
                         yield Static("CENTRAL BANK & YIELD CURVE", classes="panel_title")
                         yield DataTable(id="market_rates_table", zebra_stripes=True)
+            with TabPane("Plugins", id="tab_plugins"):
+                with Vertical(id="plugins_container"):
+                    yield Static("PLUG-IN HARNESS & MARKETPLACE LEDGER (Press [t] to toggle ON/OFF, [i] to install via pip)", classes="panel_title")
+                    yield DataTable(id="plugins_table", zebra_stripes=True)
             with TabPane("Chat", id="tab_chat"):
                 with Vertical(id="chat_tab_container"):
                     yield Static("INTERACTIVE DESK CONSOLE (Press 'c' for full screen)", classes="panel_title")
                     yield RichLog(id="inline_chat_log", wrap=True, highlight=True, markup=True)
         yield Input(
             id="cmd_input",
-            placeholder="Commands: [s]tatus [p]ause [res]ume [k]ill [c]hat [r]efresh [config] [theme] [steer] [queue] [help] [q]uit",
-            suggester=SuggestFromList(COMMAND_SUGGESTIONS, case_sensitive=False),
+            placeholder="Commands: [s]tatus [p]ause [res]ume [k]ill [c]hat [r]efresh [plugin] [config] [theme] [steer] [queue] [help] [q]uit",
+            suggester=SuggestFromList(COMMAND_SUGGESTIONS + ["plugin", "plugins", "install"], case_sensitive=False),
         )
         yield StatusBar(id="status_bar")
         yield Footer()
@@ -429,6 +436,12 @@ class TradingDashboard(App):
         inline_chat.write(f"[bold {PHOSPHOR_AMBER}][ DESK CONSOLE ][/] Monika Autonomous AI Desk Console Ready.")
         inline_chat.write(f"[dim {MUTED}]Type your query in the bottom input bar to chat inline, or press 'c' for full overlay.[/]\n")
 
+        # Setup Plugins Table
+        plugins_table = self.query_one("#plugins_table", DataTable)
+        plugins_table.cursor_type = "row"
+        plugins_table.add_columns("ID", "Name", "Category", "Ver", "Origin", "Status", "Description")
+        asyncio.create_task(self.refresh_plugins_table())
+
         # Initial refresh
         await self.refresh_data()
 
@@ -493,12 +506,93 @@ class TradingDashboard(App):
     def action_tab_chat(self) -> None:
         self.query_one("#main_tabs", TabbedContent).active = "tab_chat"
 
+    def action_tab_plugins(self) -> None:
+        try:
+            self.query_one("#main_tabs", TabbedContent).active = "tab_plugins"
+            asyncio.create_task(self.refresh_plugins_table())
+        except Exception:
+            pass
+
+    async def refresh_plugins_table(self) -> None:
+        """Fetch unified plugin statuses and refresh DataTable."""
+        try:
+            from harness.installer import list_all_plugins_status
+            plugins = list_all_plugins_status()
+            table = self.query_one("#plugins_table", DataTable)
+            table.clear()
+            for p in plugins:
+                if p["enabled"]:
+                    status_styled = "[bold green]ACTIVE[/]"
+                elif p["status"].startswith("DEGRADED"):
+                    status_styled = "[bold yellow]DEGRADED[/]"
+                else:
+                    status_styled = "[dim]DISABLED[/]"
+
+                desc_short = p["description"][:45] + ("..." if len(p["description"]) > 45 else "")
+                table.add_row(
+                    p["id"],
+                    p["name"],
+                    p["category"],
+                    p["version"],
+                    p["origin"],
+                    status_styled,
+                    desc_short,
+                    key=p["id"],
+                )
+        except Exception as ex:
+            logger.debug(f"Error refreshing plugins table in TUI: {ex}")
+
+    async def action_toggle_plugin(self) -> None:
+        """Toggle active state of highlighted plugin in plugins table."""
+        try:
+            tabs = self.query_one("#main_tabs", TabbedContent)
+            if tabs.active != "tab_plugins":
+                tabs.active = "tab_plugins"
+                await self.refresh_plugins_table()
+                return
+
+            table = self.query_one("#plugins_table", DataTable)
+            if table.cursor_row is None:
+                return
+
+            row_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key
+            if not row_key or not row_key.value:
+                return
+
+            plugin_id = str(row_key.value)
+            from harness.installer import list_all_plugins_status, toggle_plugin_state
+            plugins = {p["id"]: p for p in list_all_plugins_status()}
+            if plugin_id in plugins:
+                p = plugins[plugin_id]
+                if not p["can_toggle"]:
+                    self.notify(f"Plugin '{plugin_id}' is a core non-bypassable invariant.", severity="warning")
+                    return
+                next_state = not p["enabled"]
+                ok, msg = toggle_plugin_state(plugin_id, p["category"], next_state)
+                if ok:
+                    self.notify(msg, severity="information")
+                    await self.refresh_plugins_table()
+                else:
+                    self.notify(msg, severity="error")
+        except Exception as ex:
+            logger.error(f"Error in action_toggle_plugin: {ex}")
+
+    def action_install_plugin(self) -> None:
+        """Open plugin installation modal dialog."""
+        from cli.overlays.plugin_install_modal import PluginInstallModalScreen
+        self.push_screen(PluginInstallModalScreen(), self._on_plugin_install_modal_closed)
+
+    async def _on_plugin_install_modal_closed(self, result: Any) -> None:
+        await self.refresh_plugins_table()
+
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         """Provide visual notification and audit log when user switches tabs."""
         if not getattr(self, "_tabs_mounted", False):
             self._tabs_mounted = True
             return
         label = event.tab.label_text if hasattr(event.tab, "label_text") and event.tab.label_text else "TAB"
+        if event.tab.id == "tab_plugins":
+            asyncio.create_task(self.refresh_plugins_table())
         try:
             self.notify(f"Switched to [{label.upper()}] workspace", title="MONIKA TUI", timeout=1.5)
         except Exception:
@@ -1452,10 +1546,44 @@ class TradingDashboard(App):
         elif cmd == "logs":
             activity_log.write("[cyan]📜 Triggered activity log refresh...[/]")
             await self.refresh_data()
+        elif cmd in ("plugin", "plugins"):
+            if len(parts) > 1 and parts[1].lower() == "install":
+                if len(parts) > 2:
+                    from harness.installer import run_pip_install
+                    pkg = parts[2]
+                    activity_log.write(f"[bold cyan]Installing plugin via pip:[/] {pkg}...")
+                    success, out = await asyncio.to_thread(run_pip_install, pkg)
+                    if success:
+                        activity_log.write(f"[bold green]✓ Successfully installed {pkg}[/]")
+                    else:
+                        activity_log.write(f"[bold red]✗ Failed to install {pkg}: {out}[/]")
+                    await self.refresh_plugins_table()
+                else:
+                    self.action_install_plugin()
+            elif len(parts) > 1 and parts[1].lower() in ("toggle", "on", "off"):
+                if len(parts) > 2:
+                    target_id = parts[2].lower()
+                    from harness.installer import list_all_plugins_status, toggle_plugin_state
+                    plugins = {p["id"]: p for p in list_all_plugins_status()}
+                    if target_id in plugins:
+                        p = plugins[target_id]
+                        new_state = True if parts[1].lower() == "on" else (False if parts[1].lower() == "off" else not p["enabled"])
+                        ok, msg = toggle_plugin_state(target_id, p["category"], new_state)
+                        activity_log.write(f"[{'green' if ok else 'red'}]{msg}[/]")
+                        await self.refresh_plugins_table()
+                    else:
+                        activity_log.write(f"[yellow]Plugin '{target_id}' not found in registry.[/]")
+                else:
+                    activity_log.write("[yellow]Usage: :plugin toggle <id> | :plugin on <id> | :plugin off <id>[/]")
+            else:
+                self.action_tab_plugins()
         elif cmd in ("help", "h", "?"):
             activity_log.write(
                 "[bold cyan]Interactive Command & Keyboard Reference:[/]\n"
-                " • [bold white]Tab[/]           : Cycle Active Workspace (Overview, Analysis, Performance, Chat)\n"
+                " • [bold white]Tab[/]           : Cycle Active Workspace (Overview, Analysis, Signals, Risk, Performance, Market, Plugins, Chat)\n"
+                " • [bold white]t[/]             : Toggle ON/OFF selected plugin (Plugins tab)\n"
+                " • [bold white]i[/]             : Install new plugin via pip modal (Plugins tab)\n"
+                " • [bold white]plugin [cmd][/]  : Manage plugins (:plugin toggle <id>, :plugin install <pkg>, :plugin on/off <id>)\n"
                 " • [bold white]theme [name][/]  : Switch UI theme (retro_vintage, modern_dark, high_contrast, daylight)\n"
                 " • [bold white]steer [msg][/]   : Inject mid-stream steering guidance into active analysis cycle\n"
                 " • [bold white]queue [msg][/]   : Queue follow-up directive for subsequent cycle evaluation\n"

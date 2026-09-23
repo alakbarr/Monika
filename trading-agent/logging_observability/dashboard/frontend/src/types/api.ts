@@ -1005,3 +1005,57 @@ export interface CycleLineageResponse {
   end_time?: string | null;
 }
 
+// Plugin Marketplace & Harness Lifecycle Types
+export interface PluginItem {
+  id: string;
+  name: string;
+  category: string;
+  version: string;
+  origin: string;
+  enabled: boolean;
+  status: string;
+  status_message?: string;
+  description: string;
+  author?: string;
+  can_uninstall: boolean;
+  can_toggle: boolean;
+}
+
+export interface PluginsResponse {
+  status: string;
+  count: number;
+  plugins: PluginItem[];
+}
+
+export interface PluginCatalogItem {
+  id: string;
+  name: string;
+  package: string;
+  category: string;
+  version: string;
+  author: string;
+  description: string;
+  default_enabled: boolean;
+}
+
+export interface PluginCatalogResponse {
+  status: string;
+  count: number;
+  catalog: PluginCatalogItem[];
+}
+
+export interface PluginToggleResponse {
+  status: string;
+  message: string;
+  plugin_id: string;
+  enabled: boolean;
+  plugins: PluginItem[];
+}
+
+export interface PluginInstallResponse {
+  status: string;
+  package_name: string;
+  output: string;
+  plugins: PluginItem[];
+}
+

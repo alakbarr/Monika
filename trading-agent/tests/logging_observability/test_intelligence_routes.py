@@ -25,7 +25,6 @@ def test_intelligence_router_routes_registered():
     assert "/api/news/classified" in routes
     assert "/api/news/sentiment" in routes
     assert "/api/skills" in routes
-    assert "/api/plugins" in routes
     assert "/api/reports/tearsheet/latest" in routes
     assert "/api/market/fedwatch" in routes
     assert "/api/market/yields" in routes
