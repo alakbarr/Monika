@@ -116,12 +116,15 @@ Monika/
     │   ├── hot_reload.py
     │   ├── key_validator.py
     │   ├── migrations.py
+    │   ├── plugins
+    │   │   └── discord_alert.yaml
     │   ├── schemas.py
     │   ├── security.py
     │   ├── settings.py
     │   └── settings.yaml
     ├── analysis
     │   ├── event_broadcaster.py
+    │   ├── macro_pipeline_plugin.py
     │   ├── pipeline_plugin.py
     │   ├── scenario_tree.py
     │   ├── subagent_blackboard.py
@@ -229,6 +232,7 @@ Monika/
     │   │   ├── openrouter_provider.py
     │   │   ├── pricing_catalog.py
     │   │   ├── provider_failover_classifier.py
+    │   │   ├── provider_registry.py
     │   │   ├── runtime_model_registry.py
     │   │   ├── structured_fallback.py
     │   │   └── typesafe_provider.py
@@ -254,6 +258,7 @@ Monika/
     │   │   ├── liquidity_sweep_edge.py
     │   │   ├── pretrade_gate.py
     │   │   ├── registry.py
+    │   │   ├── strategy_plugin.py
     │   │   ├── tsm_momentum.py
     │   │   ├── xau_trend_engine.py
     │   │   ├── xti_pairs_readiness.py
@@ -277,6 +282,7 @@ Monika/
     │   │   ├── tool_catalog.py
     │   │   ├── tool_executor.py
     │   │   ├── tool_guardrails.py
+    │   │   ├── tool_plugin.py
     │   │   ├── tool_registry.py
     │   │   ├── tool_result_storage.py
     │   │   ├── tool_spill.py
@@ -440,6 +446,7 @@ Monika/
     ├── execution
     │   ├── broker_adapter.py
     │   ├── broker_plugin.py
+    │   ├── broker_registry.py
     │   ├── effect_gate.py
     │   ├── execution_service.py
     │   ├── health_check.py
@@ -996,6 +1003,7 @@ Monika/
         │   │   ├── test_failover_expanded.py
         │   │   ├── test_fallback_wrapper_cooldown.py
         │   │   ├── test_prompt_caching_enhancements.py
+        │   │   ├── test_provider_registry.py
         │   │   ├── test_structured_fallback.py
         │   │   └── test_typesafe_provider.py
         │   ├── strategies
@@ -1037,6 +1045,18 @@ Monika/
         │   ├── test_sparklines.py
         │   ├── test_theme_packs.py
         │   └── test_tui_components.py
+        ├── config
+        │   ├── test_atomic_writer.py
+        │   ├── test_config_manager.py
+        │   ├── test_config_migrations.py
+        │   ├── test_config_schemas.py
+        │   ├── test_hot_reload.py
+        │   ├── test_key_validator.py
+        │   ├── test_migrations.py
+        │   ├── test_modular_config.py
+        │   ├── test_settings.py
+        │   ├── test_settings_llm.py
+        │   └── test_settings_task_roles.py
         ├── data_sources
         │   └── test_circuit_breaker.py
         ├── deploy
@@ -1049,6 +1069,7 @@ Monika/
         │   └── test_simulation_and_oracles.py
         ├── execution
         │   ├── test_broker_plugins.py
+        │   ├── test_broker_registry.py
         │   ├── test_ea_watchdog.py
         │   ├── test_idempotency_guard.py
         │   ├── test_mt5_client.py
@@ -1065,6 +1086,7 @@ Monika/
         ├── graph
         │   └── test_workflow_authoritative_checkpointer.py
         ├── harness
+        │   ├── test_domain_plugins_integration.py
         │   ├── test_installer_service.py
         │   ├── test_message_repair.py
         │   ├── test_plugin_engine.py
@@ -1119,6 +1141,7 @@ Monika/
         │   └── replay_provider.py
         ├── utils
         │   ├── test_context_tracker.py
+        │   ├── test_event_bus_enhancements.py
         │   ├── test_paper_trading_streak_policy.py
         │   ├── test_plugins_extended.py
         │   ├── test_spill_store.py

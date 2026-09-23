@@ -87,6 +87,94 @@ class AccountInfo:
     currency: str = "USD"
 
 
+@dataclass
+class OrderRequest:
+    """
+    Decoupled Domain Data Transfer Object for order placement.
+    Eliminates tight coupling to SQLAlchemy ORM models in broker layer.
+    """
+    symbol: str
+    direction: str  # 'buy' or 'sell'
+    volume: float
+    order_type: str = "MARKET"
+    price: Optional[float] = None
+    sl: Optional[float] = None
+    tp: Optional[float] = None
+    comment: str = ""
+    magic: int = 0
+    client_order_id: Optional[str] = None
+    id: Optional[Any] = None
+    mt5_ticket: Optional[int] = None
+    filled_volume: float = 0.0
+    created_at: Optional[Any] = None
+
+    @property
+    def requested_volume(self) -> float:
+        return self.volume
+
+    @property
+    def requested_price(self) -> Optional[float]:
+        return self.price
+
+
+def normalize_order_request(order: Any) -> OrderRequest:
+    """
+    Convert any order representation (OrderRequest, ORM Order, dict) into standard OrderRequest.
+    """
+    if isinstance(order, OrderRequest):
+        return order
+    if isinstance(order, dict):
+        return OrderRequest(
+            symbol=order.get("symbol", ""),
+            direction=order.get("direction", "buy"),
+            volume=float(order.get("volume", order.get("requested_volume", 0.01))),
+            order_type=str(order.get("order_type", "MARKET")).upper(),
+            price=order.get("price", order.get("requested_price")),
+            sl=order.get("sl", order.get("stop_loss")),
+            tp=order.get("tp", order.get("take_profit")),
+            comment=order.get("comment", ""),
+            magic=int(order.get("magic", 0)),
+            client_order_id=order.get("client_order_id", order.get("id")),
+            id=order.get("id", order.get("client_order_id")),
+            mt5_ticket=order.get("mt5_ticket", order.get("ticket")),
+            filled_volume=float(order.get("filled_volume", 0.0)),
+            created_at=order.get("created_at"),
+        )
+    symbol = getattr(order, "symbol", "")
+    direction = str(getattr(order, "direction", "buy"))
+    volume = getattr(order, "requested_volume", None) or getattr(order, "volume", 0.01)
+    order_type = getattr(order, "order_type", "MARKET")
+    if hasattr(order_type, "value"):
+        order_type = order_type.value
+    price = getattr(order, "requested_price", None) or getattr(order, "price", None)
+    sl = getattr(order, "stop_loss", None) or getattr(order, "sl", None)
+    tp = getattr(order, "take_profit", None) or getattr(order, "tp", None)
+    comment = getattr(order, "comment", "")
+    magic = getattr(order, "magic", 0)
+    client_order_id = getattr(order, "client_order_id", None) or getattr(order, "id", None)
+    order_id = getattr(order, "id", None) or client_order_id
+    ticket = getattr(order, "mt5_ticket", None) or getattr(order, "ticket", None)
+    filled = getattr(order, "filled_volume", 0.0) or 0.0
+    created = getattr(order, "created_at", None)
+
+    return OrderRequest(
+        symbol=symbol,
+        direction=direction,
+        volume=float(volume),
+        order_type=str(order_type).upper(),
+        price=float(price) if price is not None else None,
+        sl=float(sl) if sl is not None else None,
+        tp=float(tp) if tp is not None else None,
+        comment=str(comment),
+        magic=int(magic),
+        client_order_id=str(client_order_id) if client_order_id is not None else None,
+        id=order_id,
+        mt5_ticket=ticket,
+        filled_volume=float(filled),
+        created_at=created,
+    )
+
+
 class BrokerPlugin(TradingPlugin, ABC):
     """
     Standard interface for all Broker & Execution plugins in Monika.

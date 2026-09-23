@@ -172,18 +172,57 @@ def format_alert_slip(title: str, detail: str, severity: str = "PERINGATAN", wid
 
 
 def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
-    """Format bot command index."""
+    """Format bot command index with logical section grouping."""
     lines = [
         "```",
         make_header("COMMAND INDEX", width),
     ]
-    for cmd, desc in commands.items():
-        prefix = f"/{cmd}".ljust(14)
-        # Clean desc of brackets
+
+    categories = [
+        ("TRADING & OPS", [
+            "status", "positions", "close", "closeall", "trailing", "reconcile", "approvals", "approve", "reject",
+        ]),
+        ("INTEL & MACRO", [
+            "brief", "analysis", "steer", "intel", "research", "archive_intel", "calendar", "fedwatch", "yields", "fear_greed", "cot",
+        ]),
+        ("RISK & SAFETY", [
+            "risk", "risk_deep", "override", "vix", "edge", "unsuspend", "emergency", "pause", "resume", "kill", "interrupt", "resume_proposals",
+        ]),
+        ("PLUGINS & HARNESS", [
+            "plugins", "plugin_catalog", "plugin_install", "plugin_uninstall", "plugin_toggle", "skills", "playbooks", "rollback", "crystallized", "strategies", "memory",
+        ]),
+        ("METRICS & REPORTS", [
+            "report", "tearsheet", "stats", "cost", "tokens", "credits", "calibration", "history", "audit", "run", "backtest",
+        ]),
+    ]
+
+    def _format_item(cmd: str, desc: str) -> str:
+        prefix = f"/{cmd}".ljust(14) if not cmd.startswith("(") else f"{cmd}".ljust(14)
         clean_desc = desc
         if clean_desc.startswith("[") and "]" in clean_desc:
             clean_desc = clean_desc.split("]", 1)[1].strip()
-        lines.append(f"{prefix}: {clean_desc}")
+        return f"{prefix}: {clean_desc}"
+
+    # Group if commands dict contains full set (> 5 commands)
+    has_categorized = any(cmd in commands for _, group in categories for cmd in group)
+    if len(commands) > 5 and has_categorized:
+        seen = set()
+        for cat_name, cmd_list in categories:
+            cat_cmds = [c for c in cmd_list if c in commands]
+            if cat_cmds:
+                lines.append(f"-- {cat_name} --")
+                for c in cat_cmds:
+                    lines.append(_format_item(c, commands[c]))
+                    seen.add(c)
+        remaining = [c for c in commands if c not in seen]
+        if remaining:
+            lines.append("-- GENERAL & CHAT --")
+            for c in remaining:
+                lines.append(_format_item(c, commands[c]))
+    else:
+        for cmd, desc in commands.items():
+            lines.append(_format_item(cmd, desc))
+
     lines.extend([
         "-" * width,
         "Monika AI Trading Agent // Terminal Dispatch",
@@ -191,6 +230,7 @@ def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
         "```",
     ])
     return "\n".join(lines)
+
 
 
 def format_risk_deep_slip(
