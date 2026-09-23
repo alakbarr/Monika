@@ -23,6 +23,7 @@ from harness.contract import (
     PluginMetadata,
     PluginCategory,
     PluginOrigin,
+    PluginState,
 )
 from utils.infra.container import ServiceContainer, get_container
 from utils.protocol.event_bus import (
@@ -34,9 +35,21 @@ from utils.protocol.event_bus import (
     RiskBreachEvent,
     CircuitBreakerEvent,
 )
-from agent.task_registry import TaskRegistry
+
+try:
+    from agent.task_registry import TaskRegistry
+except ImportError:
+    TaskRegistry = None  # type: ignore
 
 logger = logging.getLogger("TradingAgent.Harness.Engine")
+
+# Standard lifecycle timeouts (in seconds)
+LIFECYCLE_TIMEOUT_REGISTER = 10.0
+LIFECYCLE_TIMEOUT_PREFLIGHT = 15.0
+LIFECYCLE_TIMEOUT_RECOVERY = 15.0
+LIFECYCLE_TIMEOUT_START = 15.0
+LIFECYCLE_TIMEOUT_STOP = 10.0
+LIFECYCLE_TIMEOUT_CONFIG_RELOAD = 5.0
 
 
 class PluginDependencyError(Exception):
@@ -381,30 +394,58 @@ class PluginEngine:
         # 5. Execute on_register
         for plugin in self.ordered_plugins:
             try:
-                await plugin.on_register(self.container, self.event_bus)
+                plugin.state = PluginState.LOADING
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_REGISTER):
+                    await plugin.on_register(self.container, self.event_bus)
                 self._wire_reactive_events(plugin)
                 logger.debug(f"[PluginEngine] on_register complete for {plugin.metadata.id}")
-            except Exception as e:
-                logger.error(f"[PluginEngine] Error in on_register for {plugin.metadata.id}: {e}", exc_info=True)
+            except TimeoutError:
+                logger.error(f"[PluginEngine] Timeout ({LIFECYCLE_TIMEOUT_REGISTER}s) in on_register for {plugin.metadata.id}")
+                plugin.status = "REGISTER_TIMEOUT"
+                plugin.state = PluginState.FAILED
                 if plugin.metadata.is_core:
                     return False
+                plugin.is_enabled = False
+            except Exception as e:
+                logger.error(f"[PluginEngine] Error in on_register for {plugin.metadata.id}: {e}", exc_info=True)
+                plugin.status = "REGISTER_FAILED"
+                plugin.state = PluginState.FAILED
+                if plugin.metadata.is_core:
+                    return False
+                plugin.is_enabled = False
 
         # 6. Execute on_preflight
         all_passed = True
         for plugin in self.ordered_plugins:
+            if not plugin.is_enabled:
+                continue
             try:
-                passed, warnings = await plugin.on_preflight(self.container)
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_PREFLIGHT):
+                    passed, warnings = await plugin.on_preflight(self.container)
                 for w in warnings:
                     logger.warning(f"[PluginEngine] Preflight warning from {plugin.metadata.id}: {w}")
                 if not passed:
                     logger.error(f"[PluginEngine] Preflight FAILED for {plugin.metadata.id}")
                     plugin.status = "PREFLIGHT_FAILED"
+                    plugin.state = PluginState.PREFLIGHT_FAILED
                     if plugin.metadata.is_core:
                         all_passed = False
                     else:
                         plugin.is_enabled = False
+                else:
+                    plugin.state = PluginState.PENDING
+            except TimeoutError:
+                logger.error(f"[PluginEngine] Timeout ({LIFECYCLE_TIMEOUT_PREFLIGHT}s) in on_preflight for {plugin.metadata.id}")
+                plugin.status = "PREFLIGHT_TIMEOUT"
+                plugin.state = PluginState.FAILED
+                if plugin.metadata.is_core:
+                    all_passed = False
+                else:
+                    plugin.is_enabled = False
             except Exception as e:
                 logger.error(f"[PluginEngine] Preflight exception in {plugin.metadata.id}: {e}", exc_info=True)
+                plugin.status = "PREFLIGHT_EXCEPTION"
+                plugin.state = PluginState.FAILED
                 if plugin.metadata.is_core:
                     all_passed = False
                 else:
@@ -466,22 +507,42 @@ class PluginEngine:
             if not plugin.is_enabled:
                 continue
             try:
-                await plugin.on_recovery(self.container)
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_RECOVERY):
+                    await plugin.on_recovery(self.container)
+            except TimeoutError:
+                logger.error(f"[PluginEngine] Timeout ({LIFECYCLE_TIMEOUT_RECOVERY}s) in on_recovery for {plugin.metadata.id}")
+                plugin.status = "RECOVERY_TIMEOUT"
+                plugin.state = PluginState.FAILED
             except Exception as e:
                 logger.error(f"[PluginEngine] Error in on_recovery for {plugin.metadata.id}: {e}", exc_info=True)
+                plugin.status = "RECOVERY_FAILED"
+                plugin.state = PluginState.FAILED
 
         # 2. Start stage
-        tr = self.task_registry or TaskRegistry(asyncio.Event())
+        if self.task_registry is not None:
+            tr = self.task_registry
+        elif TaskRegistry is not None:
+            tr = TaskRegistry(asyncio.Event())
+        else:
+            tr = None
+
         for plugin in self.ordered_plugins:
             if not plugin.is_enabled:
                 continue
             try:
-                await plugin.on_start(self.container, tr)
-                plugin.status = "RUNNING"
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_START):
+                    await plugin.on_start(self.container, tr)
+                plugin.status = PluginState.RUNNING.value
+                plugin.state = PluginState.RUNNING
                 logger.info(f"[PluginEngine] Started plugin: {plugin.metadata.id} v{plugin.metadata.version}")
+            except TimeoutError:
+                logger.error(f"[PluginEngine] Timeout ({LIFECYCLE_TIMEOUT_START}s) in on_start for {plugin.metadata.id}")
+                plugin.status = "START_TIMEOUT"
+                plugin.state = PluginState.START_FAILED
             except Exception as e:
                 logger.error(f"[PluginEngine] Error in on_start for {plugin.metadata.id}: {e}", exc_info=True)
                 plugin.status = "START_FAILED"
+                plugin.state = PluginState.START_FAILED
 
         self._is_started = True
 
@@ -491,20 +552,58 @@ class PluginEngine:
         for plugin in reversed(self.ordered_plugins):
             pid = plugin.metadata.id
             try:
-                await plugin.on_stop()
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_STOP):
+                    await plugin.on_stop()
                 logger.debug(f"[PluginEngine] on_stop complete for {pid}")
+            except TimeoutError:
+                logger.error(f"[PluginEngine] Timeout ({LIFECYCLE_TIMEOUT_STOP}s) in on_stop for {pid}")
+                plugin.status = "STOP_TIMEOUT"
+                plugin.state = PluginState.STOPPED
             except Exception as e:
                 logger.error(f"[PluginEngine] Error in on_stop for {pid}: {e}", exc_info=True)
+                plugin.status = "STOP_FAILED"
+                plugin.state = PluginState.STOPPED
 
-            # Run registered disposers
+            # Run registered engine disposers
             for disposer in self._disposers.get(pid, []):
                 try:
-                    disposer()
+                    res = disposer()
+                    if inspect.isawaitable(res):
+                        await res
                 except Exception as d_err:
                     logger.debug(f"[PluginEngine] Disposer note for {pid}: {d_err}")
 
         self._disposers.clear()
         logger.info("[PluginEngine] All plugins stopped and resources disposed cleanly.")
+
+    def on_config_reloaded(self, new_config: dict) -> None:
+        """Synchronous callback for ConfigReloader, scheduling async propagation."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.propagate_config_reload(new_config))
+        except RuntimeError:
+            asyncio.run(self.propagate_config_reload(new_config))
+
+    async def propagate_config_reload(self, new_config: dict) -> None:
+        """Propagate configuration reload to active plugins."""
+        self.apply_settings_overrides(new_config)
+        plugins_cfg = new_config.get("plugins", {})
+        for plugin in self.ordered_plugins:
+            if not plugin.is_enabled:
+                continue
+            pid = plugin.metadata.id
+            cat = getattr(plugin.metadata.category, "value", str(plugin.metadata.category))
+            p_conf = (
+                plugins_cfg.get(cat, {}).get("available", {}).get(pid, {})
+                or plugins_cfg.get(cat, {}).get("options", {}).get(pid, {})
+                or plugins_cfg.get("registry", {}).get(pid, {})
+            )
+            try:
+                async with asyncio.timeout(LIFECYCLE_TIMEOUT_CONFIG_RELOAD):
+                    await plugin.on_config_reload(p_conf)
+                logger.info(f"[PluginEngine] Config reloaded for {pid}")
+            except Exception as e:
+                logger.error(f"[PluginEngine] Config reload error in {pid}: {e}", exc_info=True)
 
     def get_plugin(self, plugin_id: str) -> Optional[TradingPlugin]:
         """Retrieve plugin by ID."""
@@ -513,3 +612,4 @@ class PluginEngine:
     def get_plugins_by_category(self, category: PluginCategory) -> List[TradingPlugin]:
         """List active plugins for a specific category."""
         return [p for p in self.ordered_plugins if p.metadata.category == category and p.is_enabled]
+
