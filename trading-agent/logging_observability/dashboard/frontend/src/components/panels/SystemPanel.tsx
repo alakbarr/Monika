@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { StatusIndicator } from '../ui/StatusIndicator';
+import { Badge } from '../ui/Badge';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
-import { Database, Terminal, Cpu, Activity, AlertTriangle } from 'lucide-react';
+import { api } from '../../lib/api';
+import type { SSVPHealthMetrics } from '../../types/api';
+import { Database, Terminal, Cpu, Activity, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export const SystemPanel: React.FC = () => {
   const { health, geminiQuota, analysisQuality } = useDashboardStore();
+  const [ssvpHealth, setSsvpHealth] = useState<SSVPHealthMetrics | null>(null);
+
+  useEffect(() => {
+    api.ssvpHealth().then(setSsvpHealth).catch(() => {});
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -363,6 +371,86 @@ export const SystemPanel: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* SSVP / CDS Health Telemetry */}
+      {ssvpHealth && (
+        <Card header={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{
+              fontSize: 'var(--text-caption)',
+              fontWeight: 'var(--weight-bold)',
+              color: 'var(--color-ink-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              fontFamily: 'var(--font-precision)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <ShieldCheck size={16} color="var(--color-profit)" />
+              <span>[ SSVP & CDS CALIBRATION TELEMETRY ]</span>
+            </div>
+            <Badge variant={ssvpHealth.status === 'healthy' ? 'profit' : 'warn'}>
+              {ssvpHealth.status.toUpperCase()}
+            </Badge>
+          </div>
+        }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              background: 'var(--color-surface)',
+              padding: '16px',
+              borderRadius: '2px',
+              border: '1px solid var(--color-rule)'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-precision)' }}>
+                  CDS Predictive Signal
+                </span>
+                <span style={{
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: 'var(--weight-bold)',
+                  fontSize: 'var(--text-body)',
+                  color: ssvpHealth.status === 'healthy' ? 'var(--color-profit)' : 'var(--color-brass)'
+                }}>
+                  {ssvpHealth.calibration?.result?.is_cds_predictive !== false ? 'VALID / PREDICTIVE' : 'CALIBRATION DRIFT'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-precision)' }}>
+                  CDS Threshold
+                </span>
+                <span style={{ fontFamily: 'var(--font-precision)', fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body)', color: 'var(--color-ink)' }}>
+                  {ssvpHealth.calibration?.calibrated_threshold ? `${ssvpHealth.calibration.calibrated_threshold.toFixed(2)}` : 'DEFAULT (60.0)'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-precision)' }}>
+                  Score Inflation
+                </span>
+                <span style={{
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: 'var(--weight-bold)',
+                  fontSize: 'var(--text-body)',
+                  color: ssvpHealth.inflation?.detected ? 'var(--color-loss)' : 'var(--color-profit)'
+                }}>
+                  {ssvpHealth.inflation?.detected ? 'INFLATION DETECTED' : 'NORMAL / UNBIASED'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-precision)' }}>
+                  Telemetry Updated
+                </span>
+                <span style={{ fontFamily: 'var(--font-precision)', fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)' }}>
+                  {new Date(ssvpHealth.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

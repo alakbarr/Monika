@@ -253,6 +253,70 @@ export const api = {
   },
   memorySearch: (query: string, symbol?: string, limit = 50) =>
     post<import('../types/api').MemorySearchResult>('/memory/search', { query, symbol, limit }),
+  memoryPlaybooks: (limit = 50) =>
+    get<import('../types/api').PlaybookRuleItem[]>(`/memory/playbooks?limit=${limit}`),
+
+  // Backtest Management & Telemetry
+  backtestRuns: (limit = 20, offset = 0) =>
+    get<{ total: number; runs: import('../types/api').BacktestRunItem[] }>(
+      `/backtest/runs?limit=${limit}&offset=${offset}`
+    ),
+  backtestRunDetails: (runId: number) =>
+    get<import('../types/api').BacktestRunDetails>(`/backtest/runs/${runId}`),
+  triggerBacktest: (body: { days: number; mode: string; initial_equity: number; step_hours: number }) =>
+    post<{ status: string; message: string }>('/backtest/run', body),
+
+  // Trace Search & Distributed Spans
+  searchTraces: (params?: {
+    kind?: string;
+    min_duration_ms?: number;
+    status?: string;
+    provider?: string;
+    model?: string;
+    limit?: number;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params?.kind) sp.append('kind', params.kind);
+    if (params?.min_duration_ms !== undefined) sp.append('min_duration_ms', String(params.min_duration_ms));
+    if (params?.status) sp.append('status', params.status);
+    if (params?.provider) sp.append('provider', params.provider);
+    if (params?.model) sp.append('model', params.model);
+    if (params?.limit) sp.append('limit', String(params.limit));
+    const qs = sp.toString();
+    return get<{ count: number; spans: import('../types/api').TraceSpanItem[] }>(`/traces/search${qs ? `?${qs}` : ''}`);
+  },
+  slowLlmCalls: (thresholdMs = 15000, limit = 20) =>
+    get<{ threshold_ms: number; count: number; spans: import('../types/api').SlowLlmSpanItem[] }>(
+      `/traces/slow-llm?threshold_ms=${thresholdMs}&limit=${limit}`
+    ),
+  traceTree: (traceId: string) =>
+    get<{ trace_id: string; roots: any[] }>(`/traces/${encodeURIComponent(traceId)}`),
+
+  // Token Context & Turn Cost
+  tokenContextTracker: () =>
+    get<Record<string, any>>('/v1/tokens/context-tracker'),
+  tokenCycles: (cycleId?: string, hours = 24) => {
+    const sp = new URLSearchParams();
+    if (cycleId) sp.append('cycle_id', cycleId);
+    sp.append('hours', String(hours));
+    return get<Record<string, any>>(`/v1/tokens/cycles?${sp.toString()}`);
+  },
+  tokenPerTurnCost: (hours = 24) =>
+    get<import('../types/api').TokenTurnCostMetrics>(`/v1/tokens/per-turn-cost?hours=${hours}`),
+
+  // Orders Audit Trail
+  orders: (limit = 50, action?: string) =>
+    get<import('../types/api').OrderLogItem[]>(
+      `/orders?limit=${limit}${action ? `&action=${encodeURIComponent(action)}` : ''}`
+    ),
+
+  // SSVP Health Telemetry
+  ssvpHealth: () =>
+    get<import('../types/api').SSVPHealthMetrics>('/ssvp-health'),
+
+  // Steer Directive
+  steer: (body: { message: string; mode?: string; symbols?: string[] }) =>
+    post<{ status: string; message: string; mode?: string; injected_at?: string }>('/actions/steer', body),
 };
 
 

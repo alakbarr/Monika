@@ -160,6 +160,8 @@ class TelegramBot:
         app.add_handler(CommandHandler("calibration", self._cmd_calibration))
         app.add_handler(CommandHandler("intel",       self._cmd_intel))
         app.add_handler(CommandHandler("archive_intel", self._cmd_archive_intel))
+        app.add_handler(CommandHandler("regime",      self._cmd_regime))
+        app.add_handler(CommandHandler("audit",       self._cmd_audit))
         # Admin commands
         app.add_handler(CommandHandler("pause",  self._cmd_pause))
         app.add_handler(CommandHandler("resume", self._cmd_resume))
@@ -167,6 +169,8 @@ class TelegramBot:
         app.add_handler(CommandHandler("kill",   self._cmd_kill))
         app.add_handler(CommandHandler("emergency", self._cmd_emergency))
         app.add_handler(CommandHandler("close",  self._cmd_close))
+        app.add_handler(CommandHandler("closeall", self._cmd_closeall))
+        app.add_handler(CommandHandler("override", self._cmd_override))
         app.add_handler(CommandHandler("run",    self._cmd_run))
         app.add_handler(CommandHandler("backtest", self._cmd_backtest))
         app.add_handler(CommandHandler("approve", self._cmd_approve))
@@ -174,6 +178,11 @@ class TelegramBot:
         app.add_handler(CommandHandler("steer",   self._cmd_steer))
         app.add_handler(CommandHandler("interrupt", self._cmd_interrupt))
         app.add_handler(CommandHandler("resume_proposals", self._cmd_resume_proposals))
+        app.add_handler(CommandHandler("calendar", self._cmd_calendar))
+        app.add_handler(CommandHandler("skills", self._cmd_skills))
+        app.add_handler(CommandHandler("plugins", self._cmd_plugins))
+        app.add_handler(CommandHandler("memory", self._cmd_memory))
+        app.add_handler(CommandHandler("strategies", self._cmd_strategies))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -843,6 +852,240 @@ class TelegramBot:
             reply_markup=keyboard,
         )
 
+    async def _cmd_closeall(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Tutup semua posisi aktif (Admin only)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not self.execution_service:
+            await update.message.reply_text("⚠️ ExecutionService tidak terhubung.")
+            return
+
+        await update.message.reply_text("🚨 Memproses penutupan seluruh posisi terbuka...")
+        try:
+            if hasattr(self.execution_service, "close_all_positions"):
+                result = await self.execution_service.close_all_positions(comment="TG:CloseAll")
+            elif hasattr(self.execution_service, "kill_switch"):
+                result = await self.execution_service.kill_switch("Telegram /closeall command")
+            else:
+                result = {"status": "error", "message": "Method close_all_positions not available"}
+
+            closed = result.get("closed", 0)
+            total = result.get("total", 0)
+            await update.message.reply_text(
+                f"✅ *Close All Selesai*: {closed}/{total} posisi berhasil ditutup.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except Exception as e:
+            await update.message.reply_text(f"❌ Gagal menutup semua posisi: {e}")
+
+    async def _cmd_override(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Ubah parameter risiko secara dinamis (Admin only)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args or len(ctx.args) < 2:
+            help_text = (
+                "⚙️ *Penggunaan /override:*\n"
+                "• `/override max_risk <0.1-5.0>` — Risk per trade (%)\n"
+                "• `/override max_daily_dd <0.5-20.0>` — Max daily drawdown (%)\n"
+                "• `/override max_positions <1-20>` — Max concurrent positions\n"
+                "• `/override auto_execute <true|false>` — Auto execution mode\n"
+                "• `/override reset` — Reset semua override"
+            )
+            await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
+            return
+
+        param = ctx.args[0].lower().strip()
+        val_str = ctx.args[1].lower().strip()
+
+        field_map = {
+            "max_risk": "risk_percent_per_trade",
+            "risk": "risk_percent_per_trade",
+            "max_daily_dd": "max_daily_drawdown_percent",
+            "daily_dd": "max_daily_drawdown_percent",
+            "max_positions": "max_concurrent_positions",
+            "positions": "max_concurrent_positions",
+            "auto_execute": "auto_execute",
+        }
+
+        updated_fields: dict[str, Any] = {}
+        if param == "reset":
+            updated_fields = {}
+        elif param in field_map:
+            key = field_map[param]
+            try:
+                if key == "auto_execute":
+                    updated_fields[key] = val_str in ("true", "1", "yes")
+                elif key == "max_concurrent_positions":
+                    updated_fields[key] = int(val_str)
+                else:
+                    updated_fields[key] = float(val_str)
+            except ValueError:
+                await update.message.reply_text(f"❌ Nilai tidak valid untuk `{param}`: {val_str}")
+                return
+        else:
+            await update.message.reply_text(f"❌ Parameter `{param}` tidak dikenali. Ketik `/override` untuk opsi.")
+            return
+
+        from database.db import get_session
+        from database.models import SystemConfig, ActivityLog
+        from sqlalchemy import select
+        import json
+
+        async with get_session() as session:
+            cfg_row = (await session.execute(
+                select(SystemConfig).where(SystemConfig.key == "risk_override")
+            )).scalar_one_or_none()
+
+            current_cfg = {}
+            if cfg_row and cfg_row.value:
+                try:
+                    current_cfg = json.loads(cfg_row.value)
+                except Exception:
+                    pass
+
+            if param == "reset":
+                current_cfg.clear()
+            else:
+                current_cfg.update(updated_fields)
+
+            if cfg_row:
+                cfg_row.value = json.dumps(current_cfg)
+            else:
+                session.add(SystemConfig(key="risk_override", value=json.dumps(current_cfg)))
+
+            session.add(ActivityLog(
+                category="risk",
+                description=f"Risk override via Telegram: {updated_fields if param != 'reset' else 'RESET'}",
+                actor="telegram_admin",
+            ))
+            await session.commit()
+
+        if hasattr(self, "settings") and isinstance(self.settings, dict):
+            trading_risk = self.settings.setdefault("trading", {}).setdefault("risk", {})
+            trading_risk.update(current_cfg)
+
+        try:
+            from logging_observability.dashboard.routes.common import broadcast_live_event
+            await broadcast_live_event("risk_override_updated", {
+                "updated_fields": current_cfg,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception:
+            pass
+
+        await update.message.reply_text(
+            f"✅ *Risk Override Diterapkan:*\n`{json.dumps(current_cfg, indent=2)}`",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
+    async def _cmd_regime(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Deteksi rezim makro dan volatilitas terkini."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        symbol = ctx.args[0].upper().strip() if ctx.args else "XAUUSD"
+        await update.message.reply_text(f"🔍 Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN)
+
+        from database.db import get_session
+        from database.models import FundamentalBrief, VIXData
+        from analysis.calculators.regime_classifier import classify_market_regime
+        from sqlalchemy import select, desc
+
+        async with get_session() as session:
+            try:
+                regime_data = await classify_market_regime(session, symbol, settings=self.settings)
+                final_regime = regime_data.get("regime", "UNKNOWN")
+                quality = regime_data.get("composite_quality", 0.0)
+                adx = regime_data.get("adx")
+                vol_ratio = regime_data.get("vol_ratio")
+            except Exception as e:
+                final_regime = f"Calculated ({e})"
+                quality = 0.0
+                adx = None
+                vol_ratio = None
+
+            vix_row = (await session.execute(
+                select(VIXData).order_by(desc(VIXData.date)).limit(1)
+            )).scalar_one_or_none()
+            vix_val = vix_row.close if vix_row else 15.0
+
+            brief_row = (await session.execute(
+                select(FundamentalBrief).order_by(desc(FundamentalBrief.generated_at)).limit(1)
+            )).scalar_one_or_none()
+            macro_sentiment = brief_row.risk_sentiment if brief_row else "neutral"
+
+        lines = [
+            f"📊 *Rezim Pasar & Volatilitas* — `{symbol}`",
+            f"• *Rezim Komposit:* `{final_regime}`",
+            f"• *Kualitas Sinyal:* `{quality:.2f}`",
+            f"• *ADX Trend Strength:* `{adx if adx is not None else 'N/A'}`",
+            f"• *Rasio Ekspansi Volatilitas:* `{vol_ratio:.2f}`" if vol_ratio else "• *Rasio Volatilitas:* `N/A`",
+            f"• *VIX Indeks:* `{vix_val:.2f}`",
+            f"• *Sentimen Makro Global:* `{macro_sentiment.upper()}`",
+        ]
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_audit(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Jejak audit penalaran trade dan event lifecycle."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        from database.db import get_session
+        from database.models import Position, AssetAnalysis
+        from sqlalchemy import select, desc
+
+        ticket_arg = int(ctx.args[0]) if ctx.args and ctx.args[0].isdigit() else None
+
+        async with get_session() as session:
+            if ticket_arg:
+                pos = (await session.execute(
+                    select(Position).where(Position.mt5_ticket == ticket_arg)
+                )).scalar_one_or_none()
+
+                if not pos:
+                    await update.message.reply_text(f"❌ Posisi dengan ticket *#{ticket_arg}* tidak ditemukan.")
+                    return
+
+                analysis = None
+                if pos.analysis_id:
+                    analysis = await session.get(AssetAnalysis, pos.analysis_id)
+
+                lines = [
+                    f"📜 *Audit Trail — Ticket #{ticket_arg}*",
+                    f"• Simbol: `{pos.symbol}` | Side: `{pos.direction}` | Lot: `{pos.volume}`",
+                    f"• Entry: `{pos.entry_price}` | SL: `{pos.sl}` | TP: `{pos.tp}`",
+                    f"• Status: `{pos.status}` | PnL: `${pos.pnl:,.2f}`" if pos.pnl is not None else f"• Status: `{pos.status}`",
+                    f"• Waktu Buka: `{pos.opened_at.strftime('%Y-%m-%d %H:%M:%S UTC')}`" if pos.opened_at else "",
+                ]
+                if analysis:
+                    lines.extend([
+                        f"\n🧠 *AI Reasoning:*",
+                        f"• Confluence Score: `{analysis.confluence_score}`",
+                        f"• Confidence: `{analysis.confidence:.0%}`",
+                        f"• Regime: `{analysis.market_regime_at_analysis or 'N/A'}`",
+                        f"• Rasional: _{analysis.rationale[:250]}..._" if analysis.rationale else "",
+                    ])
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+            else:
+                positions = (await session.execute(
+                    select(Position).order_by(desc(Position.opened_at)).limit(5)
+                )).scalars().all()
+
+                if not positions:
+                    await update.message.reply_text("ℹ️ Belum ada riwayat posisi untuk diaudit.")
+                    return
+
+                lines = ["📜 *Audit 5 Posisi Terakhir:*"]
+                for p in positions:
+                    pnl_str = f"+${p.pnl:,.2f}" if p.pnl and p.pnl >= 0 else f"-${abs(p.pnl or 0):,.2f}"
+                    lines.append(f"• `#{p.mt5_ticket or p.id}` {p.symbol} {p.direction} {p.volume}L — {p.status} ({pnl_str})")
+                lines.append("\nKetik `/audit <ticket>` untuk detail lengkap satu posisi.")
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
     async def _cmd_run(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
@@ -986,6 +1229,186 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Backtest error: {e}", exc_info=True)
             await update.message.reply_text(f"❌ Backtest gagal: {e}")
+
+    async def _cmd_calendar(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        from database.db import AsyncSessionLocal
+        from database.models import EconomicCalendar
+        from sqlalchemy import select
+
+        currency = ctx.args[0].upper() if ctx.args else None
+        now = datetime.now(timezone.utc)
+        until = now + timedelta(hours=36)
+
+        try:
+            async with AsyncSessionLocal() as session:
+                q = select(EconomicCalendar).where(
+                    EconomicCalendar.event_time >= now - timedelta(hours=2),
+                    EconomicCalendar.event_time <= until
+                )
+                if currency:
+                    q = q.where(EconomicCalendar.currency.contains(currency))
+                q = q.order_by(EconomicCalendar.event_time.asc()).limit(15)
+                events = (await session.execute(q)).scalars().all()
+
+                if not events:
+                    filter_txt = f" untuk {currency}" if currency else ""
+                    await update.message.reply_text(f"ℹ️ Tidak ada event kalender signifikan dalam 36 jam ke depan{filter_txt}.")
+                    return
+
+                lines = ["📅 <b>Jadwal Kalender Ekonomi Makro (Next 36h):</b>\n"]
+                for e in events:
+                    impact_emoji = "🔴" if (e.impact or "").lower() == "high" else "🟡" if (e.impact or "").lower() == "medium" else "⚪"
+                    t_str = e.event_time.strftime("%d %b %H:%M UTC") if e.event_time else "TBD"
+                    act = f" | Act: {e.actual}" if e.actual else ""
+                    fcst = f" | Fct: {e.forecast}" if e.forecast else ""
+                    lines.append(f"{impact_emoji} <b>[{e.currency}]</b> {e.event_name}\n   ⏰ <code>{t_str}</code>{fcst}{act}")
+
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error fetching calendar: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal memuat kalender ekonomi: {e}")
+
+    async def _cmd_skills(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        try:
+            from skills.loader import list_skills
+            all_s = list_skills()
+            playbooks = [s for s in all_s if "playbook" in s.lower() or s.startswith("alpha_")]
+            core = [s for s in all_s if s not in playbooks]
+
+            lines = [
+                f"🧠 <b>Autonomous Skills & Playbooks ({len(all_s)} Total)</b>\n",
+                f"<b>Core Prompt Skills ({len(core)}):</b>",
+            ]
+            for s in core[:8]:
+                lines.append(f"• <code>{s}</code>")
+            if len(core) > 8:
+                lines.append(f"<i>...dan {len(core)-8} lainnya</i>")
+
+            lines.append(f"\n<b>Playbook Strategies ({len(playbooks)}):</b>")
+            for p in playbooks[:8]:
+                lines.append(f"• <code>{p}</code>")
+            if len(playbooks) > 8:
+                lines.append(f"<i>...dan {len(playbooks)-8} lainnya</i>")
+
+            await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error listing skills: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal memuat daftar skills: {e}")
+
+    async def _cmd_plugins(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        try:
+            from pathlib import Path
+            from plugins.loader import load_manifest_file
+
+            plugins_dir = Path(__file__).resolve().parent.parent / "plugins"
+            manifests = []
+            if plugins_dir.exists():
+                for mp in plugins_dir.rglob("plugin.yaml"):
+                    try:
+                        manifests.append(load_manifest_file(str(mp)))
+                    except Exception:
+                        pass
+
+            if not manifests:
+                await update.message.reply_text("ℹ️ Belum ada modul plugin eksternal yang terpasang.")
+                return
+
+            lines = [f"🔌 <b>Sistem Plugins & Ekstensi ({len(manifests)} Terpasang)</b>\n"]
+            for m in manifests:
+                lines.append(f"• <b>{m.name}</b> <code>v{m.version}</code>\n  {m.description}")
+
+            await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error listing plugins: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal memuat status plugins: {e}")
+
+    async def _cmd_memory(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        query = " ".join(ctx.args).strip() if ctx.args else ""
+        from database.db import AsyncSessionLocal
+        from database.models import DecisionReflection
+        from sqlalchemy import select, or_
+
+        try:
+            async with AsyncSessionLocal() as session:
+                if query:
+                    q = select(DecisionReflection).where(
+                        or_(
+                            DecisionReflection.symbol.ilike(f"%{query}%"),
+                            DecisionReflection.reflection_text.ilike(f"%{query}%"),
+                            DecisionReflection.specific_lesson.ilike(f"%{query}%"),
+                        )
+                    ).order_by(DecisionReflection.id.desc()).limit(5)
+                else:
+                    q = select(DecisionReflection).order_by(DecisionReflection.id.desc()).limit(5)
+
+                reflections = (await session.execute(q)).scalars().all()
+
+                if not reflections:
+                    await update.message.reply_text("ℹ️ Belum ada rekaman refleksi memori yang cocok.")
+                    return
+
+                lines = [f"🏛️ <b>Autonomous Memory Vault ({len(reflections)} Terkini)</b>\n"]
+                for r in reflections:
+                    res_emoji = "🟢" if (r.outcome_pnl_usd or 0) > 0 else "🔴"
+                    pnl_str = f"${r.outcome_pnl_usd:+,.2f}" if r.outcome_pnl_usd is not None else "N/A"
+                    lesson_snippet = r.specific_lesson or (r.reflection_text[:120] if r.reflection_text else "No lesson recorded.")
+                    lines.append(
+                        f"{res_emoji} <b>[{r.symbol}]</b> {r.decision.upper()} | PnL: <code>{pnl_str}</code>\n"
+                        f"💡 <i>{lesson_snippet}</i>\n"
+                    )
+
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error retrieving memory: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal membaca memori: {e}")
+
+    async def _cmd_strategies(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        from database.db import AsyncSessionLocal
+        from database.models import PlaybookRuleAttribution
+        from sqlalchemy import select
+
+        try:
+            async with AsyncSessionLocal() as session:
+                rules = (
+                    await session.execute(
+                        select(PlaybookRuleAttribution).order_by(PlaybookRuleAttribution.times_triggered.desc()).limit(10)
+                    )
+                ).scalars().all()
+
+                if not rules:
+                    await update.message.reply_text("ℹ️ Belum ada aturan playbook / strategi empiris terdaftar di DB.")
+                    return
+
+                lines = ["⚔️ <b>Empirical Playbook Strategies & Rules:</b>\n"]
+                for rule in rules:
+                    wr = (rule.win_rate or 0.0) * 100
+                    pnl = rule.total_pnl or 0.0
+                    rule_snippet = (rule.rule_text[:90] + "...") if len(rule.rule_text) > 90 else rule.rule_text
+                    lines.append(
+                        f"• <b>[{rule.symbol}]</b> <code>{rule.status.upper()}</code>\n"
+                        f"  Rule: <i>{rule_snippet}</i>\n"
+                        f"  Triggers: <b>{rule.times_triggered}</b> | WR: <b>{wr:.1f}%</b> | PnL: <code>${pnl:+,.2f}</code>\n"
+                    )
+
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        except Exception as e:
+            logger.error(f"Error retrieving strategies: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal memuat playbook strategies: {e}")
 
     # ------------------------------------------------------------------
     # AI chat handler

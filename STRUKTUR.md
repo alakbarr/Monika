@@ -565,6 +565,7 @@ Monika/
     │               │   │   ├── AgentChatPanel.tsx
     │               │   │   ├── AgentStatusBar.tsx
     │               │   │   ├── AnalysisGrid.tsx
+│   │   ├── BacktestPanel.tsx
     │               │   │   ├── ConfigEditorPanel.tsx
     │               │   │   ├── DebateOutcomesPanel.tsx
     │               │   │   ├── EdgeMetricsPanel.tsx
@@ -929,6 +930,7 @@ Monika/
         ├── test_audit_round3_remediation.py
         ├── test_audit_round4_remediation.py
         ├── test_audit_remediation_consolidated.py
+        ├── test_fase0_critical_fixes.py
         ├── agent
         │   ├── test_agent_loop.py
         │   ├── test_pgvector_startup_check.py
@@ -967,6 +969,7 @@ Monika/
         │   │   ├── test_strategy_registry_summary.py
         │   │   └── test_synthesized_strategy_resilience.py
         │   ├── test_agent_harness_steering_truncation.py
+│   │   ├── test_news_digest.py
         │   ├── test_cross_timeframe_gate.py
         │   ├── test_frozen_memory_snapshot.py
         │   ├── test_jev_news_classifier.py

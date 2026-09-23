@@ -19,6 +19,7 @@ from logging_observability.dashboard.routes import (
     trace_search_router,
     backtest_router,
     memory_router,
+    intelligence_router,
     set_dashboard_dependencies,
     get_dashboard_dependency,
     _safe_json,
@@ -29,8 +30,8 @@ from logging_observability.dashboard.routes import (
 
 
 def test_modular_routers_exported_and_mounted():
-    """Verify all 9 routers are properly populated and included in all_routers."""
-    assert len(all_routers) == 9
+    """Verify all 10 routers are properly populated and included in all_routers."""
+    assert len(all_routers) == 10
     assert system_router in all_routers
     assert tokens_router in all_routers
     assert config_router in all_routers
@@ -40,6 +41,7 @@ def test_modular_routers_exported_and_mounted():
     assert trace_search_router in all_routers
     assert backtest_router in all_routers
     assert memory_router in all_routers
+    assert intelligence_router in all_routers
 
 
 def test_dependency_injection_registry():

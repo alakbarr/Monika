@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
+import { TypewriterButton } from '../ui/TypewriterButton';
 import { api } from '../../lib/api';
 import type { MT5SignalItem, TradeTriggerItem } from '../../types/api';
 import {
@@ -38,14 +39,17 @@ const formatTimeAgo = (isoString?: string | null): string => {
 };
 
 export const SignalsTriggersPanel: React.FC = () => {
+  const [panelTab, setPanelTab] = useState<'signals' | 'orders'>('signals');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [signals, setSignals] = useState<MT5SignalItem[]>([]);
   const [triggers, setTriggers] = useState<TradeTriggerItem[]>([]);
+  const [orders, setOrders] = useState<import('../../types/api').OrderLogItem[]>([]);
   const [signalsMeta, setSignalsMeta] = useState<{ total: number; executed: number }>({ total: 0, executed: 0 });
   const [triggersMeta, setTriggersMeta] = useState<{ total: number; fired: number; pending: number }>({ total: 0, fired: 0, pending: 0 });
   const [triggerStatusFilter, setTriggerStatusFilter] = useState<string>('all');
   const [signalStatusFilter, setSignalStatusFilter] = useState<string>('all');
+  const [orderActionFilter, setOrderActionFilter] = useState<string>('all');
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [approveMsg, setApproveMsg] = useState<string | null>(null);
 
@@ -68,9 +72,10 @@ export const SignalsTriggersPanel: React.FC = () => {
     else setLoading(true);
 
     try {
-      const [signalsRes, triggersRes] = await Promise.allSettled([
+      const [signalsRes, triggersRes, ordersRes] = await Promise.allSettled([
         api.mt5Signals(100),
         api.triggers(undefined, 100),
+        api.orders(100),
       ]);
 
       if (signalsRes.status === 'fulfilled') {
@@ -89,6 +94,9 @@ export const SignalsTriggersPanel: React.FC = () => {
           fired: val.fired_count || (triggersRes.value.items || []).filter((t: any) => t.status?.toLowerCase() === 'fired').length,
           pending: val.pending_count || (triggersRes.value.items || []).filter((t: any) => t.status?.toLowerCase() === 'pending').length,
         });
+      }
+      if (ordersRes.status === 'fulfilled') {
+        setOrders(ordersRes.value || []);
       }
     } catch (err) {
       console.error('Failed to load signals & triggers data:', err);
@@ -219,8 +227,101 @@ export const SignalsTriggersPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* KPI Cards */}
-      <div
+      {/* Sub-tab Navigation */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid var(--color-rule)', paddingBottom: '8px' }}>
+        <TypewriterButton
+          size="sm"
+          variant={panelTab === 'signals' ? 'primary' : 'secondary'}
+          onClick={() => setPanelTab('signals')}
+        >
+          <Radio size={12} /> [ SIGNALS & TRIGGERS ({signals.length + triggers.length}) ]
+        </TypewriterButton>
+        <TypewriterButton
+          size="sm"
+          variant={panelTab === 'orders' ? 'primary' : 'secondary'}
+          onClick={() => setPanelTab('orders')}
+        >
+          <CheckCircle2 size={12} /> [ ORDER AUDIT TRAIL ({orders.length}) ]
+        </TypewriterButton>
+      </div>
+
+      {panelTab === 'orders' ? (
+        /* Orders Audit Trail Card */
+        <Card
+          header={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>[ ORDER LOG AUDIT TRAIL ({orders.length}) ]</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>ACTION:</span>
+                <select
+                  value={orderActionFilter}
+                  onChange={(e) => setOrderActionFilter(e.target.value)}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-rule)',
+                    color: 'var(--color-ink)',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  <option value="all">All Actions</option>
+                  <option value="place">Place</option>
+                  <option value="modify">Modify</option>
+                  <option value="close">Close</option>
+                </select>
+              </div>
+            </div>
+          }
+        >
+          <div style={{ overflowX: 'auto', maxHeight: '520px', overflowY: 'auto' }}>
+            <table className="ledger-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                  <th>ID</th>
+                  <th>ACTION</th>
+                  <th>SYMBOL</th>
+                  <th>REQUESTED / APPROVED</th>
+                  <th>PARAMS</th>
+                  <th>RESULT</th>
+                  <th style={{ textAlign: 'right' }}>TIMESTAMP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders
+                  .filter((o) => orderActionFilter === 'all' || o.action?.toLowerCase() === orderActionFilter.toLowerCase())
+                  .map((o) => (
+                    <tr key={o.id} style={{ borderBottom: '1px solid var(--color-rule)' }}>
+                      <td style={{ color: 'var(--color-ink-muted)' }}>#{o.id}</td>
+                      <td>
+                        <Badge variant={o.action === 'place' ? 'active' : o.action === 'close' ? 'warn' : 'neutral'}>
+                          {o.action.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{o.symbol}</td>
+                      <td style={{ fontSize: '11px' }}>
+                        <div>By: {o.requested_by || 'system'}</div>
+                        {o.approved_by && <div style={{ color: 'var(--color-brass)' }}>Appr: {o.approved_by}</div>}
+                      </td>
+                      <td style={{ maxWidth: '200px', fontSize: '11px', fontFamily: 'monospace' }}>
+                        {typeof o.params === 'object' ? JSON.stringify(o.params) : String(o.params || '—')}
+                      </td>
+                      <td style={{ maxWidth: '240px', fontSize: '11px', fontFamily: 'monospace' }}>
+                        {typeof o.result === 'object' ? JSON.stringify(o.result) : String(o.result || '—')}
+                      </td>
+                      <td style={{ textAlign: 'right', fontSize: '11px', color: 'var(--color-ink-muted)' }}>
+                        {o.timestamp ? new Date(o.timestamp).toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : (
+        <>
+        {/* KPI Cards */}
+        <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -607,6 +708,8 @@ export const SignalsTriggersPanel: React.FC = () => {
           </table>
         </div>
       </Card>
+      </>
+      )}
     </div>
   );
 };

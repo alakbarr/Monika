@@ -175,6 +175,19 @@ export interface RiskState {
   current_drawdown: number;
   trading_paused: boolean;
   reason: string | null;
+  margin_used?: number;
+  margin_free?: number;
+  margin_level_pct?: number;
+  margin_usage_pct?: number;
+  total_open_risk_pct?: number;
+  consecutive_losses?: number;
+  max_consecutive_losses?: number;
+  max_risk_pct?: number;
+  max_daily_drawdown_pct?: number;
+  max_positions?: number;
+  avg_spread_pips?: number;
+  avg_rr_ratio?: number;
+  is_weekend?: boolean;
 }
 
 export interface DecisionDistribution {
@@ -549,4 +562,112 @@ export interface MemorySearchResult {
     status: string;
     win_rate_delta: number;
   }>;
+}
+
+export interface BacktestRunItem {
+  id: number;
+  mode: string;
+  start_date: string | null;
+  end_date: string | null;
+  initial_equity: number;
+  final_equity: number;
+  total_trades: number;
+  win_rate: number;
+  profit_factor: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  created_at: string | null;
+}
+
+export interface BacktestTradeItem {
+  id: number;
+  symbol: string;
+  direction: string;
+  entry_time: string | null;
+  entry_price: number;
+  exit_time: string | null;
+  exit_price: number;
+  exit_reason: string;
+  pnl_pips: number;
+  pnl_pct: number;
+  executed_lots: number;
+  confidence: number;
+  rationale: string;
+}
+
+export interface BacktestRunDetails {
+  run: BacktestRunItem & { step_hours?: number };
+  trades_count: number;
+  trades: BacktestTradeItem[];
+}
+
+export interface TraceSpanItem {
+  name: string;
+  trace_id: string;
+  span_id: string;
+  parent_span_id?: string | null;
+  kind: string;
+  start_time: string;
+  end_time?: string | null;
+  duration_ms: number;
+  status: string;
+  error?: string | null;
+  attributes: Record<string, any>;
+}
+
+export interface SlowLlmSpanItem {
+  name: string;
+  provider?: string | null;
+  model?: string | null;
+  duration_ms: number;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cost_usd?: number | null;
+  cycle_id?: string | null;
+  status: string;
+  error?: string | null;
+  start_time: string;
+}
+
+export interface TokenTurnCostMetrics {
+  time_window_hours: number;
+  total_turns: number;
+  total_cost_usd: number;
+  avg_cost_per_turn_usd: number;
+  cycle_count: number;
+}
+
+export interface OrderLogItem {
+  id: number;
+  action: string;
+  symbol: string;
+  params: Record<string, any> | string | null;
+  requested_by?: string | null;
+  approved_by?: string | null;
+  result: Record<string, any> | string | null;
+  timestamp: string | null;
+}
+
+export interface SSVPHealthMetrics {
+  calibration: Record<string, any>;
+  inflation: Record<string, any>;
+  status: 'healthy' | 'warning' | 'degraded';
+  timestamp: string;
+}
+
+export interface PlaybookRuleItem {
+  id: number;
+  rule_hash: string;
+  symbol: string;
+  rule_text: string;
+  status: 'active' | 'golden' | 'deprecated' | 'candidate' | string;
+  times_triggered: number;
+  wins_count: number;
+  losses_count: number;
+  total_pnl: number;
+  win_rate: number;
+  last_triggered_at: string | null;
+  promoted_at: string | null;
+  deprecated_at: string | null;
+  deprecation_reason: string | null;
 }
