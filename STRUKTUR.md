@@ -98,6 +98,7 @@ Monika/
     ├── agent
     │   ├── __init__.py
     │   ├── agent_loop.py
+    │   ├── chat_agent.py
     │   ├── startup_checks.py
     │   ├── task_registry.py
     │   ├── turn_lease_manager.py
@@ -445,6 +446,7 @@ Monika/
     │   ├── idempotency_guard.py
     │   ├── mt5_client.py
     │   ├── order_emulator.py
+    │   ├── paper_tracker.py
     │   ├── rate_throttler.py
     │   ├── service
     │   │   ├── __init__.py
@@ -748,6 +750,11 @@ Monika/
     │   │   └── myfxbook_sentiment.py
     │   └── social
     │       └── twitter_watch.py
+    ├── services
+    │   ├── __init__.py
+    │   ├── market_data_service.py
+    │   ├── portfolio_service.py
+    │   └── system_status_service.py
     ├── skills
     │   ├── curator.py
     │   ├── loader.py

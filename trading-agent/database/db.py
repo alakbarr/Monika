@@ -20,28 +20,41 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://user:password@localhost/trading_db")
 
-# Buat engine dengan konfigurasi pool
-engine = create_async_engine(
-    DATABASE_URL, 
-    echo=False, 
-    pool_size=20,       # Naik dari 10
-    max_overflow=30,    # Naik dari 20
-    pool_pre_ping=True, # Auto-reconnect jika koneksi stale
-    pool_recycle=3600,  # Recycle connections setiap jam
-)
+engine = None
+AsyncSessionLocal = None
 
-# Konfigurasi sessionmaker
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
-)
+def get_engine():
+    """Lazy engine factory with connection pooling."""
+    global engine
+    if engine is None:
+        db_url = os.getenv("DATABASE_URL", DATABASE_URL)
+        engine = create_async_engine(
+            db_url,
+            echo=False,
+            pool_size=20,
+            max_overflow=30,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
+    return engine
+
+def get_sessionmaker():
+    """Lazy sessionmaker factory bound to engine."""
+    global AsyncSessionLocal
+    if AsyncSessionLocal is None:
+        AsyncSessionLocal = async_sessionmaker(
+            bind=get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+    return AsyncSessionLocal
 
 async def init_db() -> None:
     """Inisialisasi database (buat semua tabel)."""
     logger.info("Initializing database tables...")
     try:
-        async with engine.begin() as conn:
+        eng = engine if engine is not None else get_engine()
+        async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created successfully.")
     except Exception as e:
@@ -50,13 +63,15 @@ async def init_db() -> None:
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Menghasilkan session database (untuk dependency injection FastAPI/lainnya)."""
-    async with AsyncSessionLocal() as session:
+    sm = AsyncSessionLocal if AsyncSessionLocal is not None else get_sessionmaker()
+    async with sm() as session:
         yield session
 
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Mengembalikan session async dengan context manager."""
-    async with AsyncSessionLocal() as session:
+    sm = AsyncSessionLocal if AsyncSessionLocal is not None else get_sessionmaker()
+    async with sm() as session:
         try:
             yield session
         except (Exception, asyncio.CancelledError) as e:
@@ -129,6 +144,12 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
 
 async def close_db() -> None:
     """Tutup koneksi database dengan aman."""
-    logger.info("Disposing database engine...")
-    await engine.dispose()
-    logger.info("Database engine disposed.")
+    global engine, AsyncSessionLocal
+    if engine is not None:
+        logger.info("Disposing database engine...")
+        await engine.dispose()
+        engine = None
+        AsyncSessionLocal = None
+        logger.info("Database engine disposed.")
+
+
