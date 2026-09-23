@@ -1,9 +1,11 @@
 name: custom_indicator_plugin
+id: custom_indicator_plugin
+category: tool
 version: 1.0.0
 description: Reference custom technical indicator plugin for volume and price analysis
 author: Monika Core Team
 enabled: true
-entrypoint: "custom_indicator:initialize"
+entrypoint: "custom_indicator:CustomIndicatorPlugin"
 dependencies: []
 hooks:
   on_startup: "custom_indicator:initialize"
