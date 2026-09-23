@@ -8,12 +8,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 
 from database.db import get_session
 from database.models import BacktestRun, BacktestTrade
+from logging_observability.dashboard.rbac import Role, require_role
 from logging_observability.dashboard.routes.common import _safe_json
 
 logger = logging.getLogger("TradingAgent.Dashboard.Backtest")
@@ -29,7 +30,9 @@ class BacktestRunRequest(BaseModel):
 
 
 @backtest_router.get("/runs")
+@require_role(Role.VIEWER)
 async def list_backtest_runs(
+    request: Request,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> Dict[str, Any]:
@@ -66,7 +69,8 @@ async def list_backtest_runs(
 
 
 @backtest_router.get("/runs/{run_id}")
-async def get_backtest_run_details(run_id: int) -> Dict[str, Any]:
+@require_role(Role.VIEWER)
+async def get_backtest_run_details(run_id: int, request: Request) -> Dict[str, Any]:
     """Get detailed telemetry and executed trades for a specific backtest run."""
     async with get_session() as session:
         run = await session.get(BacktestRun, run_id)
@@ -139,9 +143,11 @@ async def _execute_background_backtest(days: int, mode: str, initial_equity: flo
 
 
 @backtest_router.post("/run")
+@require_role(Role.OPERATOR)
 async def trigger_backtest_run(
     req: BacktestRunRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
 ) -> Dict[str, Any]:
     """Trigger an asynchronous backtest run in the background."""
     background_tasks.add_task(

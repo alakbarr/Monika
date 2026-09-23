@@ -77,13 +77,39 @@ export const useWebSocket = () => {
               state.fetchQuick();
               break;
             case 'risk_override_updated':
+            case 'config_updated':
               state.fetchAll();
               break;
+            case 'kill_switch_activated':
+            case 'circuit_breaker':
+            case 'risk_breach':
+              if (event.payload) {
+                state.addActivity(event.payload);
+              }
+              state.fetchAll();
+              break;
+            case 'approval_requested':
+            case 'approval_resolved':
             case 'trade_approved':
+            case 'steer_injected':
               if (event.payload) {
                 state.addActivity(event.payload);
               }
               state.fetchQuick();
+              break;
+            case 'analysis_cycle_start':
+            case 'analysis_step_start':
+              if (event.payload) {
+                state.addActivity(event.payload);
+              }
+              state.fetchQuick();
+              break;
+            case 'analysis_step_complete':
+            case 'analysis_cycle_complete':
+              if (event.payload) {
+                state.addActivity(event.payload);
+              }
+              state.fetchAll();
               break;
             default:
               break;

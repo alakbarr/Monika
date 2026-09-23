@@ -532,7 +532,7 @@ class TradingAgent:
             except Exception as ws_err:
                 logger.debug(f"Dashboard WebSocket EventBus subscriber wiring note: {ws_err}")
 
-            from utils.protocol.event_bus import CircuitBreakerEvent
+            from utils.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
             async def _on_circuit_breaker(evt: CircuitBreakerEvent):
                 logger.warning(f"[EventBus] Circuit breaker received from {evt.component}: {evt.reason} (active={evt.is_active})")
                 if evt.is_active and self.execution_service and hasattr(self.execution_service, "trigger_circuit_breaker"):
@@ -540,9 +540,35 @@ class TradingAgent:
                         await self.execution_service.trigger_circuit_breaker(f"{evt.component}: {evt.reason}")
                     except Exception as cb_err:
                         logger.error(f"[EventBus] Failed to dispatch circuit breaker to ExecutionService: {cb_err}")
+                try:
+                    from logging_observability.dashboard.api import broadcast_live_event
+                    await broadcast_live_event("circuit_breaker", {
+                        "component": evt.component,
+                        "reason": evt.reason,
+                        "is_active": evt.is_active,
+                        "cooldown_seconds": evt.cooldown_seconds,
+                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
+                    })
+                except Exception as ws_err:
+                    logger.debug(f"Circuit breaker websocket broadcast error: {ws_err}")
+
+            async def _on_risk_breach(evt: RiskBreachEvent):
+                logger.warning(f"[EventBus] Risk breach received: {evt.breach_type} (severity={evt.severity})")
+                try:
+                    from logging_observability.dashboard.api import broadcast_live_event
+                    await broadcast_live_event("risk_breach", {
+                        "breach_type": evt.breach_type,
+                        "symbol": evt.symbol,
+                        "severity": evt.severity,
+                        "details": evt.details,
+                        "timestamp": evt.timestamp.isoformat() if hasattr(evt.timestamp, "isoformat") else str(evt.timestamp),
+                    })
+                except Exception as ws_err:
+                    logger.debug(f"Risk breach websocket broadcast error: {ws_err}")
 
             self.event_bus.subscribe(CircuitBreakerEvent, _on_circuit_breaker, priority=10)
-            logger.info("  [OK] EventBus CircuitBreakerEvent subscribed for safety protection")
+            self.event_bus.subscribe(RiskBreachEvent, _on_risk_breach, priority=10)
+            logger.info("  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection and WebSocket broadcast")
 
 
         # Berikan recovery_complete event ke cycle_scheduler agar bisa menunggu
@@ -1401,12 +1427,16 @@ class TradingAgent:
     async def _run_dashboard(self):
         """Run the FastAPI dashboard server as an asyncio task with bind-retry resilience."""
         from logging_observability.dashboard.api import run_dashboard_async, set_dashboard_dependencies
+        rg = getattr(self.execution_service, "risk_gate", None)
+        reloader = getattr(self, "risk_parameter_reloader", None)
         set_dashboard_dependencies(
             cycle_scheduler=self.cycle_scheduler,
             execution_service=self.execution_service,
             mt5_client=self.mt5_client,
             settings=self.settings,
             agent=self,
+            risk_gate=rg,
+            risk_parameter_reloader=reloader,
         )
         host = os.getenv("DASHBOARD_HOST", "127.0.0.1")
         port = int(os.getenv("DASHBOARD_PORT", 8000))

@@ -29,6 +29,7 @@ from logging_observability.dashboard.routes.websocket import websocket_router
 from logging_observability.dashboard.routes.trace_search import trace_search_router
 from logging_observability.dashboard.routes.backtest import backtest_router
 from logging_observability.dashboard.routes.memory import memory_router
+from logging_observability.dashboard.routes.intelligence import intelligence_router
 
 all_routers = [
     system_router,
@@ -40,6 +41,7 @@ all_routers = [
     websocket_router,
     backtest_router,
     memory_router,
+    intelligence_router,
 ]
 
 __all__ = [
@@ -52,6 +54,7 @@ __all__ = [
     "trace_search_router",
     "backtest_router",
     "memory_router",
+    "intelligence_router",
     "all_routers",
     "set_dashboard_dependencies",
     "get_dashboard_dependency",

@@ -21,13 +21,20 @@ export const RiskPanel: React.FC = () => {
   const [toggleMsg, setToggleMsg] = useState<string | null>(null);
   const [showKillConfirm, setShowKillConfirm] = useState(false);
 
-  // Derived risk metrics
+  // Derived risk metrics from live backend risk state with graceful fallbacks
   const openPositions = positions.filter((p) => p.status === 'open');
-  const totalOpenRiskPct = openPositions.length * 1.0;
-  const dailyDrawdownPct = Math.min(5.0, Math.abs(Math.min(0, overview?.daily_pnl ?? 0)) / 100);
-  const marginUsagePct = openPositions.length * 2.5;
+  const maxRiskPerTrade = riskState?.max_risk_pct ?? 1.0;
+  const totalOpenRiskPct = riskState?.total_open_risk_pct ?? (openPositions.length * maxRiskPerTrade);
+  const dailyDrawdownPct = Math.abs(riskState?.daily_pnl_pct ?? overview?.daily_pnl_pct ?? (overview?.daily_pnl ? Math.min(5.0, Math.abs(overview.daily_pnl) / 100) : 0));
+  const marginUsagePct = riskState?.margin_usage_pct ?? (openPositions.length * 2.5);
+  const consecutiveLosses = riskState?.consecutive_losses ?? 0;
+  const maxConsecutiveLosses = riskState?.max_consecutive_losses ?? 3;
+  const maxDailyDrawdown = riskState?.max_daily_drawdown_pct ?? 3.0;
+  const maxPositions = riskState?.max_positions ?? 5;
+  const avgSpread = riskState?.avg_spread_pips ?? 1.2;
+  const avgRR = riskState?.avg_rr_ratio ?? 1.5;
 
-  const isPaused = overview?.trading_paused ?? false;
+  const isPaused = overview?.trading_paused ?? riskState?.trading_paused ?? false;
 
   const handleToggleKillSwitch = async () => {
     sounds.playClick('toggle');
@@ -218,12 +225,12 @@ export const RiskPanel: React.FC = () => {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: 'var(--text-body-sm)' }}>
             {[
-              { rule: 'Max Risk Limit per Trade', limit: '1.0% Equity', current: `${(1.0).toFixed(1)}%`, status: 'OK' },
-              { rule: 'Max Daily Drawdown', limit: '3.0% Balance', current: `${dailyDrawdownPct.toFixed(1)}%`, status: dailyDrawdownPct > 2.5 ? 'WARN' : 'OK' },
-              { rule: 'Max Concurrent Positions', limit: '5 Positions', current: `${openPositions.length} Positions`, status: openPositions.length >= 5 ? 'MAX' : 'OK' },
-              { rule: 'Consecutive Loss Circuit Breaker', limit: '3 Consecutive Losses', current: '0 / 3', status: 'OK' },
-              { rule: 'Max Allowable Spread', limit: '3.0 Pips', current: '1.2 Pips (Avg)', status: 'OK' },
-              { rule: 'Min Reward-to-Risk (R:R)', limit: '1 : 1.5 R', current: '1 : 2.1 R', status: 'OK' },
+              { rule: 'Max Risk Limit per Trade', limit: `${maxRiskPerTrade.toFixed(1)}% Equity`, current: `${maxRiskPerTrade.toFixed(1)}%`, status: 'OK' },
+              { rule: 'Max Daily Drawdown', limit: `${maxDailyDrawdown.toFixed(1)}% Balance`, current: `${dailyDrawdownPct.toFixed(1)}%`, status: dailyDrawdownPct > (maxDailyDrawdown * 0.8) ? 'WARN' : 'OK' },
+              { rule: 'Max Concurrent Positions', limit: `${maxPositions} Positions`, current: `${openPositions.length} Positions`, status: openPositions.length >= maxPositions ? 'MAX' : 'OK' },
+              { rule: 'Consecutive Loss Circuit Breaker', limit: `${maxConsecutiveLosses} Consecutive Losses`, current: `${consecutiveLosses} / ${maxConsecutiveLosses}`, status: consecutiveLosses >= maxConsecutiveLosses ? 'MAX' : consecutiveLosses >= 2 ? 'WARN' : 'OK' },
+              { rule: 'Max Allowable Spread', limit: '3.0 Pips', current: `${avgSpread.toFixed(1)} Pips`, status: avgSpread > 2.5 ? 'WARN' : 'OK' },
+              { rule: 'Min Reward-to-Risk (R:R)', limit: '1 : 1.3 R', current: `1 : ${avgRR.toFixed(1)} R`, status: 'OK' },
             ].map((item, idx) => (
               <div
                 key={idx}
