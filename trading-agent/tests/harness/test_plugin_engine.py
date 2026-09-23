@@ -190,3 +190,39 @@ async def test_plugin_missing_package_degraded():
     assert plugin.is_enabled is False
     assert plugin.status == "DEGRADED_MISSING_DEPENDENCIES"
     assert "definitely_non_existent_package_xyz123" in plugin.status_message
+
+
+@pytest.mark.asyncio
+async def test_plugin_slot_options_available_fallback():
+    container = ServiceContainer()
+    event_bus = EventBus()
+    engine = PluginEngine(container=container, event_bus=event_bus)
+
+    class CustomBrokerPlugin(TradingPlugin):
+        metadata = PluginMetadata(
+            id="test_broker",
+            name="Test Broker",
+            category=PluginCategory.BROKER,
+        )
+
+    plugin = CustomBrokerPlugin()
+    engine.register_plugin_instance(plugin)
+
+    settings = {
+        "plugins": {
+            "enabled": True,
+            "directories": [],
+            "broker": {
+                "active": "test_broker",
+                "available": {
+                    "test_broker": {"slippage_pips": 1.5, "mock_fill": True}
+                }
+            }
+        }
+    }
+    await engine.initialize(settings)
+
+    assert plugin.is_enabled is True
+    assert plugin.config.get("slippage_pips") == 1.5
+    assert plugin.config.get("mock_fill") is True
+
