@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { TypewriterButton } from '../ui/TypewriterButton';
+import { ApprovalModal, type TradeApprovalRequest } from '../ui/ApprovalModal';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { useAgentChatWs } from '../../hooks/useAgentChatWs';
 import {
@@ -13,6 +14,7 @@ import {
   Check,
   X,
   ShieldCheck,
+  Maximize2,
 } from 'lucide-react';
 
 export const AgentChatPanel: React.FC = () => {
@@ -30,9 +32,29 @@ export const AgentChatPanel: React.FC = () => {
 
   const [inputText, setInputText] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('auto');
+  const [modalRequest, setModalRequest] = useState<TradeApprovalRequest | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const isOperatorOrAdmin = userRole === 'operator' || userRole === 'admin';
+
+  const createApprovalRequest = (action: { action_id: string; action_type: string; params?: Record<string, any> }): TradeApprovalRequest => {
+    const p = action.params || {};
+    return {
+      id: action.action_id,
+      symbol: (p.symbol || 'XAUUSD').toUpperCase(),
+      direction: (p.direction?.toLowerCase() === 'sell' ? 'sell' : 'buy') as 'buy' | 'sell',
+      volume: Number(p.volume || p.lot_size || 0.01),
+      entry_price: p.entry_price || p.price,
+      sl: p.sl || p.stop_loss,
+      tp: p.tp || p.take_profit,
+      risk_usd: p.risk_usd,
+      risk_pct: p.risk_pct,
+      confluence_score: p.confluence_score,
+      debate_verdict: p.debate_verdict,
+      reason: p.reason || `Execute ${action.action_type}`,
+      ttl_seconds: 90,
+    };
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -302,6 +324,14 @@ export const AgentChatPanel: React.FC = () => {
 
                       <TypewriterButton
                         size="sm"
+                        onClick={() => setModalRequest(createApprovalRequest(msg.pendingAction!))}
+                        title="Open interactive R:R ladder and order review modal"
+                      >
+                        <Maximize2 size={12} /> [ EXPAND ORDER LADDER ]
+                      </TypewriterButton>
+
+                      <TypewriterButton
+                        size="sm"
                         variant="danger"
                         onClick={() => handleApproval(msg.pendingAction!.action_id, 'deny')}
                         disabled={!isOperatorOrAdmin}
@@ -428,6 +458,25 @@ export const AgentChatPanel: React.FC = () => {
         </div>
       </div>
     </div>
-  </div>
+
+      {/* HITL Visual Approval Modal */}
+      <ApprovalModal
+        isOpen={!!modalRequest}
+        request={modalRequest}
+        onAllowOnce={(id) => {
+          handleApproval(id, 'allow_once');
+          setModalRequest(null);
+        }}
+        onAllowSession={(id) => {
+          handleApproval(id, 'allow_session');
+          setModalRequest(null);
+        }}
+        onDeny={(id) => {
+          handleApproval(id, 'deny');
+          setModalRequest(null);
+        }}
+        onClose={() => setModalRequest(null)}
+      />
+    </div>
   );
 };

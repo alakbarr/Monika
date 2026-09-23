@@ -200,55 +200,16 @@ class SetupWizard:
             return clean_terminal_input(val)
 
         current_step = 1
-        max_step = 4
+        max_step = 6
 
         while 1 <= current_step <= max_step:
-            # ── STEP 1: TRADING MODE & SAFETY LIMITS ──
+            # ── STEP 1: METATRADER 5 CONFIGURATION & LIVE TEST ──
             if current_step == 1:
-                if section not in ("all", "risk"):
-                    current_step += 1
-                    continue
-
-                console.print(f"\n{stamp_info('STEP 1/4')} [bold {BRASS}]Trading Mode & Risk Limits[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
-                if quick and not missing_items.get("mt5", True):
-                    settings_updates.setdefault("paper_trading", {})["enabled"] = True
-                    settings_updates.setdefault("trading", {}).setdefault("risk", {})["risk_percent_per_trade"] = 1.0
-                    settings_updates["trading"]["risk"]["max_daily_drawdown_percent"] = 3.0
-                    console.print(f"  [{MUTED}]Quick mode default: Paper=True, Risk=1.0%, Max DD=3.0%[/{MUTED}]")
-                    current_step += 1
-                    continue
-
-                is_paper_str = _ask_step("Enable Paper Trading Mode? (y/n, atau 'b' kembali)", default="y")
-                if is_paper_str.lower() in ("b", "back"):
-                    console.print(f"[{MUTED}]Di langkah pertama. Ketik 'q' untuk keluar jika ingin membatalkan.[/{MUTED}]")
-                    continue
-                is_paper = is_paper_str.lower() in ("y", "yes", "true", "1")
-
-                max_risk_str = _ask_step("Max risk per trade percent (e.g. 1.0)", default="1.0")
-                if max_risk_str.lower() in ("b", "back"):
-                    continue
-                max_risk = float(max_risk_str) if max_risk_str.replace(".", "", 1).isdigit() else 1.0
-
-                max_dd_str = _ask_step("Max daily drawdown percent (e.g. 3.0)", default="3.0")
-                if max_dd_str.lower() in ("b", "back"):
-                    continue
-                max_daily_dd = float(max_dd_str) if max_dd_str.replace(".", "", 1).isdigit() else 3.0
-
-                settings_updates["paper_trading"] = {"enabled": is_paper}
-                settings_updates.setdefault("trading", {})["risk"] = {
-                    "risk_percent_per_trade": max_risk,
-                    "max_daily_drawdown_percent": max_daily_dd,
-                }
-                current_step += 1
-                continue
-
-            # ── STEP 2: METATRADER 5 CONFIGURATION & LIVE TEST ──
-            if current_step == 2:
                 if section not in ("all", "mt5"):
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 2/4')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"\n{stamp_info('STEP 1/6')} [bold {BRASS}]MetaTrader 5 (MT5) Terminal Configuration[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
 
                 if sys.platform != "win32":
                     console.print(f"[{MUTED}]Linux/Unix host detected. MT5 typically runs via Remote Gateway, EA Bridge, or Wine.[/{MUTED}]")
@@ -264,24 +225,21 @@ class SetupWizard:
                 curr_acc = os.environ.get("MT5_ACCOUNT", "")
                 account = _ask_step("MT5 Account Number", default=curr_acc)
                 if account.lower() in ("b", "back"):
-                    current_step -= 1
+                    console.print(f"[{MUTED}]Di langkah pertama. Ketik 'q' untuk keluar jika ingin membatalkan.[/{MUTED}]")
                     continue
 
                 password = _ask_step("MT5 Account Password", password=True, default="")
                 if password.lower() in ("b", "back"):
-                    current_step -= 1
                     continue
 
                 curr_server = os.environ.get("MT5_SERVER", "MetaQuotes-Demo")
                 server = _ask_step("MT5 Broker Server Name", default=curr_server)
                 if server.lower() in ("b", "back"):
-                    current_step -= 1
                     continue
 
                 curr_path = os.environ.get("MT5_PATH", "")
                 mt5_path = _ask_step("MT5 terminal64.exe path (leave blank for auto-detect)", default=curr_path)
                 if mt5_path.lower() in ("b", "back"):
-                    current_step -= 1
                     continue
 
                 if account:
@@ -300,13 +258,13 @@ class SetupWizard:
                 current_step += 1
                 continue
 
-            # ── STEP 3: DATABASE CONFIGURATION ──
-            if current_step == 3:
+            # ── STEP 2: DATABASE CONFIGURATION & STORAGE ──
+            if current_step == 2:
                 if section not in ("all", "db"):
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 3/4')} [bold {BRASS}]Database Connection & Storage[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"\n{stamp_info('STEP 2/6')} [bold {BRASS}]Database Connection & Storage Engine[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
                 curr_db = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agent")
                 db_url = _ask_step("PostgreSQL Connection URL (asyncpg format)", default=curr_db)
                 if db_url.lower() in ("b", "back"):
@@ -360,13 +318,13 @@ class SetupWizard:
                 current_step += 1
                 continue
 
-            # ── STEP 4: AI PROVIDERS & API KEYS ──
-            if current_step == 4:
+            # ── STEP 3: AI PROVIDERS & API KEYS ──
+            if current_step == 3:
                 if section not in ("all", "llm"):
                     current_step += 1
                     continue
 
-                console.print(f"\n{stamp_info('STEP 4/4')} [bold {BRASS}]LLM Provider Credentials[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"\n{stamp_info('STEP 3/6')} [bold {BRASS}]LLM Provider Credentials & Architecture[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
                 console.print(f"[{MUTED}]Masukkan API key provider (kosongkan jika sudah ada di environment):[/{MUTED}]")
                 gemini_key = _ask_step("Google Gemini API Key", password=True, default="")
                 if gemini_key.lower() in ("b", "back"):
@@ -436,7 +394,123 @@ class SetupWizard:
                 current_step += 1
                 continue
 
-        # ── STEP 5: ATOMIC PERSISTENCE ──
+            # ── STEP 4: RISK PROFILE & EXPOSURE GUARDRAILS ──
+            if current_step == 4:
+                if section not in ("all", "risk"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 4/6')} [bold {BRASS}]Risk Profile & Exposure Guardrails[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"[{MUTED}]Pilih profil toleransi risiko trading otomatis:[/{MUTED}]")
+                console.print(f"  1. [bold green]Conservative / Prop-Firm Safe[/]: Risk 0.5%/trade, Max Daily DD 2.0%, Max 2 Open Positions")
+                console.print(f"  2. [bold {BRASS}]Moderate / Standard Growth[/]: Risk 1.0%/trade, Max Daily DD 3.5%, Max 3 Open Positions")
+                console.print(f"  3. [bold red]Aggressive / High Yield[/]: Risk 2.0%/trade, Max Daily DD 5.0%, Max 5 Open Positions")
+                console.print(f"  4. [bold cyan]Custom Parameters[/]: Input manual parameter risiko")
+
+                profile_choice = _ask_step("Pilih profil risiko (1/2/3/4)", default="2")
+                if profile_choice.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                if profile_choice == "1":
+                    risk_pct, max_dd, max_pos = 0.5, 2.0, 2
+                elif profile_choice == "3":
+                    risk_pct, max_dd, max_pos = 2.0, 5.0, 5
+                elif profile_choice == "4":
+                    r_str = _ask_step("Max risk per trade percent (e.g. 1.0)", default="1.0")
+                    risk_pct = float(r_str) if r_str.replace(".", "", 1).isdigit() else 1.0
+                    dd_str = _ask_step("Max daily drawdown percent (e.g. 3.5)", default="3.5")
+                    max_dd = float(dd_str) if dd_str.replace(".", "", 1).isdigit() else 3.5
+                    pos_str = _ask_step("Max concurrent open positions (e.g. 3)", default="3")
+                    max_pos = int(pos_str) if pos_str.isdigit() else 3
+                else:
+                    risk_pct, max_dd, max_pos = 1.0, 3.5, 3
+
+                settings_updates.setdefault("trading", {}).setdefault("risk", {})
+                settings_updates["trading"]["risk"]["risk_percent_per_trade"] = risk_pct
+                settings_updates["trading"]["risk"]["max_daily_drawdown_percent"] = max_dd
+                settings_updates["trading"]["risk"]["max_open_positions"] = max_pos
+                console.print(f"  {stamp_ok('RISK SET')} Risk: {risk_pct}% | Max DD: {max_dd}% | Max Positions: {max_pos}")
+
+                current_step += 1
+                continue
+
+            # ── STEP 5: PAPER TRADING MODE & GRADUATION INVARIANT ──
+            if current_step == 5:
+                if section not in ("all", "paper"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 5/6')} [bold {BRASS}]Paper Trading Mode & Graduation Invariant[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"[{MUTED}]Sistem Monika mewajibkan paper trading sandbox sebelum live execution.[/{MUTED}]")
+
+                is_paper_str = _ask_step("Aktifkan Paper Trading Mode? (y/n)", default="y")
+                if is_paper_str.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+                is_paper = is_paper_str.lower() in ("y", "yes", "true", "1")
+
+                min_trades_str = _ask_step("Target minimum paper trades sebelum live graduation (default: 50)", default="50")
+                if min_trades_str.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+                min_trades = int(min_trades_str) if min_trades_str.isdigit() else 50
+
+                min_wr_str = _ask_step("Target minimum win rate percent sebelum live (default: 55.0)", default="55.0")
+                if min_wr_str.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+                min_wr = float(min_wr_str) if min_wr_str.replace(".", "", 1).isdigit() else 55.0
+
+                settings_updates["paper_trading"] = {
+                    "enabled": is_paper,
+                    "min_paper_trades_before_live": min_trades,
+                    "min_paper_win_rate_pct": min_wr,
+                }
+                console.print(f"  {stamp_ok('PAPER GATE')} Paper Trading: {is_paper} | Gate: {min_trades} Trades @ {min_wr}% Win Rate")
+
+                current_step += 1
+                continue
+
+            # ── STEP 6: TELEGRAM BOT & MOBILE OVERSIGHT ──
+            if current_step == 6:
+                if section not in ("all", "telegram"):
+                    current_step += 1
+                    continue
+
+                console.print(f"\n{stamp_info('STEP 6/6')} [bold {BRASS}]Telegram Bot & Mobile Oversight[/] [{MUTED}('b' untuk kembali)[/{MUTED}]")
+                console.print(f"[{MUTED}]Konfigurasi integrasi Telegram bot untuk notifikasi real-time & approval cards:[/{MUTED}]")
+
+                curr_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+                bot_token = _ask_step("Telegram Bot Token (kosongkan jika belum ada)", password=True, default=curr_bot_token)
+                if bot_token.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                curr_chat_id = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
+                chat_id = _ask_step("Telegram Admin Chat ID", default=curr_chat_id)
+                if chat_id.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+
+                voice_str = _ask_step("Enable Voice Trading Notes? (y/n)", default="y")
+                if voice_str.lower() in ("b", "back"):
+                    current_step -= 1
+                    continue
+                voice_enabled = voice_str.lower() in ("y", "yes", "true", "1")
+
+                if bot_token:
+                    env_updates["TELEGRAM_BOT_TOKEN"] = bot_token
+                if chat_id:
+                    env_updates["TELEGRAM_ADMIN_CHAT_ID"] = chat_id
+
+                settings_updates.setdefault("telegram", {})["voice_enabled"] = voice_enabled
+                console.print(f"  {stamp_ok('TELEGRAM')} Telegram oversight configured (Voice: {voice_enabled})")
+
+                current_step += 1
+                continue
+
+        # ── ATOMIC PERSISTENCE ──
         console.print(f"\n{stamp_info('FINAL')} [bold {BRASS}]Saving Configuration & Credentials[/]")
 
         # 1. Update .env atomically

@@ -8,6 +8,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { RetroVuMeter } from '../ui/RetroVuMeter';
 import { TypewriterButton } from '../ui/TypewriterButton';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
@@ -18,6 +19,7 @@ export const RiskPanel: React.FC = () => {
   const { overview, riskState, positions, fetchAll } = useDashboardStore();
   const [toggling, setToggling] = useState(false);
   const [toggleMsg, setToggleMsg] = useState<string | null>(null);
+  const [showKillConfirm, setShowKillConfirm] = useState(false);
 
   // Derived risk metrics
   const openPositions = positions.filter((p) => p.status === 'open');
@@ -29,19 +31,33 @@ export const RiskPanel: React.FC = () => {
 
   const handleToggleKillSwitch = async () => {
     sounds.playClick('toggle');
+    if (isPaused) {
+      setToggling(true);
+      setToggleMsg(null);
+      try {
+        await api.overrideRisk({ system_paused: false });
+        setToggleMsg('System successfully restored. Trade execution resumed.');
+        await fetchAll();
+      } catch (err: any) {
+        setToggleMsg(`Failed to resume system: ${err.message}`);
+      } finally {
+        setToggling(false);
+      }
+    } else {
+      setShowKillConfirm(true);
+    }
+  };
+
+  const executeEmergencyKill = async () => {
+    setShowKillConfirm(false);
     setToggling(true);
     setToggleMsg(null);
     try {
-      if (isPaused) {
-        await api.overrideRisk({ system_paused: false });
-        setToggleMsg('System successfully restored. Trade execution resumed.');
-      } else {
-        await api.overrideRisk({ system_paused: true });
-        setToggleMsg('WARNING: Kill switch engaged. All incoming order submissions blocked.');
-      }
+      await api.emergencyKill();
+      setToggleMsg('CRITICAL: Emergency kill switch activated! Daemon position liquidation dispatched and incoming orders blocked.');
       await fetchAll();
     } catch (err: any) {
-      setToggleMsg(`Failed to toggle kill switch: ${err.message}`);
+      setToggleMsg(`Failed to execute emergency kill: ${err.message}`);
     } finally {
       setToggling(false);
     }
@@ -312,6 +328,30 @@ export const RiskPanel: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Emergency Kill Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showKillConfirm}
+        title="EMERGENCY SYSTEM HALT"
+        actionSummary="ACTIVATE EMERGENCY KILL SWITCH & LIQUIDATE POSITIONS"
+        details={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: 'var(--text-body-sm)' }}>
+            <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--color-ledger-red)' }}>
+              WARNING: This is a fail-safe capital preservation command.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>Emergency market order close will be dispatched to MT5 for all open positions.</li>
+              <li>Pending orders, conditional triggers, and analysis cycles will be aborted.</li>
+              <li>System state will transition to PAUSED until manually reset.</li>
+            </ul>
+          </div>
+        }
+        confirmLabel="YES, ENGAGE KILL SWITCH"
+        cancelLabel="ABORT / CANCEL"
+        danger={true}
+        onConfirm={executeEmergencyKill}
+        onCancel={() => setShowKillConfirm(false)}
+      />
     </div>
   );
 };

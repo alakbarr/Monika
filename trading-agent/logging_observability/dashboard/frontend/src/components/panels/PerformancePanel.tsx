@@ -1,11 +1,13 @@
 import React from 'react';
 import { Card } from '../ui/Card';
+import { Badge } from '../ui/Badge';
 import { WinRateGauge } from '../charts/WinRateGauge';
 import { FactorHeatmap } from '../charts/FactorHeatmap';
 import { DecisionDistChart } from '../charts/DecisionDistribution';
 import { Skeleton } from '../ui/Skeleton';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
+import { Lock, Unlock, CheckCircle2, AlertTriangle, GraduationCap } from 'lucide-react';
 
 export const PerformancePanel: React.FC = () => {
   const { paperStats, factorAnalysis, decisionDist, loading } = useDashboardStore();
@@ -22,8 +24,167 @@ export const PerformancePanel: React.FC = () => {
     </div>
   );
 
+  const totalTrades = paperStats?.total_trades ?? 0;
+  const winRate = paperStats?.win_rate_pct ?? 0;
+  const hasEdge = paperStats?.has_positive_edge ?? false;
+  const targetTrades = 50;
+  const targetWinRate = 55.0;
+
+  const tradeProgress = Math.min(100, Math.round((totalTrades / targetTrades) * 100));
+  const tradesPassed = totalTrades >= targetTrades;
+  const winRatePassed = winRate >= targetWinRate;
+  const edgePassed = hasEdge;
+  const isGraduated = tradesPassed && winRatePassed && edgePassed;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {/* Graduation Gate Progress Card */}
+      <Card
+        title="PAPER TRADING GRADUATION GATE & LIVE READINESS"
+        variant={isGraduated ? 'green' : 'yellow'}
+        header={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GraduationCap size={16} color={isGraduated ? 'var(--color-profit)' : 'var(--color-brass)'} />
+              <span style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '12px' }}>
+                Paper Trading Graduation Gate
+              </span>
+            </div>
+            <Badge variant={isGraduated ? 'profit' : 'warn'}>
+              {isGraduated ? 'GRADUATION READY (55%+ WR & 50+ TRADES)' : `LOCKED (${Math.max(0, targetTrades - totalTrades)} TRADES REMAINING)`}
+            </Badge>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '4px 0' }}>
+          {/* Progress Bar & Status Line */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-precision)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
+                Sample Size Progress: {totalTrades} / {targetTrades} Completed Trades ({tradeProgress}%)
+              </span>
+              <span style={{ color: 'var(--color-ink-muted)' }}>
+                Requirement: 50 Out-of-Sample Trades @ ≥55% Win Rate
+              </span>
+            </div>
+            {/* Visual Progress Bar */}
+            <div
+              style={{
+                width: '100%',
+                height: '14px',
+                background: 'var(--color-paper)',
+                border: '1.5px solid var(--color-rule)',
+                borderRadius: '3px',
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              <div
+                style={{
+                  width: `${tradeProgress}%`,
+                  height: '100%',
+                  background: isGraduated
+                    ? 'linear-gradient(90deg, var(--color-profit-dim, #16a34a) 0%, var(--color-profit, #22c55e) 100%)'
+                    : 'linear-gradient(90deg, var(--color-brass, #b45309) 0%, var(--color-warning, #f59e0b) 100%)',
+                  transition: 'width 0.4s ease',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* 3 Qualification Verification Checkpoints */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            <div
+              style={{
+                padding: '10px 14px',
+                background: 'var(--color-surface-card)',
+                border: `1.5px solid ${tradesPassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                borderRadius: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              {tradesPassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Target Sample Size
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: tradesPassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+                  {totalTrades} / {targetTrades} Trades {tradesPassed ? '✓' : `(${tradeProgress}%)`}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '10px 14px',
+                background: 'var(--color-surface-card)',
+                border: `1.5px solid ${winRatePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                borderRadius: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              {winRatePassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Win Rate Benchmark
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: winRatePassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+                  {fmt.pct(winRate)} / ≥{targetWinRate.toFixed(1)}% {winRatePassed ? '✓' : '✗'}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '10px 14px',
+                background: 'var(--color-surface-card)',
+                border: `1.5px solid ${edgePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                borderRadius: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              {edgePassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Positive Edge
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: edgePassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+                  {fmt.r(paperStats?.expectancy_per_trade_R)} {edgePassed ? '✓ (Positive)' : '✗ (Negative)'}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '10px 14px',
+                background: isGraduated ? 'var(--color-profit-dim, rgba(22, 163, 74, 0.1))' : 'var(--color-surface-card)',
+                border: `1.5px solid ${isGraduated ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                borderRadius: '3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              {isGraduated ? <Unlock size={18} color="var(--color-profit)" /> : <Lock size={18} color="var(--color-warning)" />}
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Live Mode Lock Status
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: isGraduated ? 'var(--color-profit)' : 'var(--color-warning)', fontFamily: 'var(--font-precision)' }}>
+                  {isGraduated ? 'UNLOCKED' : 'LOCKED'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Top row: Win Rate + Key Stats */}
       <div style={{
