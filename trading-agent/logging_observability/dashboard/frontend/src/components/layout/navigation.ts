@@ -85,6 +85,7 @@ export const WORKSPACES: WorkspaceItem[] = [
     defaultTab: 'config',
     subTabs: [
       { id: 'config', label: 'Configuration Settings' },
+      { id: 'plugins', label: 'Plugin Marketplace & Harness' },
       { id: 'system', label: 'Host Diagnostics' },
     ],
   },

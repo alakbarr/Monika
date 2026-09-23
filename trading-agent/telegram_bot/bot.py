@@ -181,6 +181,10 @@ class TelegramBot:
         app.add_handler(CommandHandler("calendar", self._cmd_calendar))
         app.add_handler(CommandHandler("skills", self._cmd_skills))
         app.add_handler(CommandHandler("plugins", self._cmd_plugins))
+        app.add_handler(CommandHandler("plugin_catalog", self._cmd_plugin_catalog))
+        app.add_handler(CommandHandler("plugin_install", self._cmd_plugin_install))
+        app.add_handler(CommandHandler("plugin_uninstall", self._cmd_plugin_uninstall))
+        app.add_handler(CommandHandler("plugin_toggle", self._cmd_plugin_toggle))
         app.add_handler(CommandHandler("memory", self._cmd_memory))
         app.add_handler(CommandHandler("strategies", self._cmd_strategies))
         app.add_handler(CommandHandler("risk_deep",  self._cmd_risk_deep))
@@ -1394,35 +1398,138 @@ class TelegramBot:
             logger.error(f"Error listing skills: {e}", exc_info=True)
             await update.message.reply_text(f"❌ Gagal memuat daftar skills: {e}")
 
+    def _build_plugins_text(self, plugins: list[dict]) -> str:
+        active_count = sum(1 for p in plugins if p.get("enabled", False))
+        lines = [
+            f"🔌 <b>MONIKA PLUG-IN HARNESS ({active_count}/{len(plugins)} AKTIF)</b>",
+            "<i>Ketuk tombol di bawah untuk toggle ON/OFF secara instan:</i>\n",
+        ]
+        for p in plugins:
+            icon = "🟢" if p.get("enabled") else "⚪"
+            status = "ACTIVE" if p.get("enabled") else ("DEGRADED" if str(p.get("status", "")).startswith("DEGRADED") else "DISABLED")
+            cat = p.get("category", "custom")
+            lines.append(f"{icon} <b>{p.get('name', p['id'])}</b> <code>v{p.get('version', '1.0')}</code> [{cat}]")
+            lines.append(f"   <i>Status: {status}</i> • <code>{p['id']}</code>")
+        return "\n".join(lines)
+
+    def _build_plugins_keyboard(self, plugins: list[dict]) -> InlineKeyboardMarkup:
+        keyboard = []
+        row = []
+        for p in plugins:
+            btn_icon = "🟢" if p.get("enabled") else "⚪"
+            btn_label = f"{btn_icon} {p.get('name', p['id'])[:15]}"
+            cb_data = f"plg:t:{p['id'][:32]}"
+            row.append(InlineKeyboardButton(btn_label, callback_data=cb_data))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+
+        keyboard.append([
+            InlineKeyboardButton("📦 Marketplace Catalog", callback_data="plg:cat"),
+            InlineKeyboardButton("🔄 Refresh", callback_data="plg:ref"),
+        ])
+        return InlineKeyboardMarkup(keyboard)
+
     async def _cmd_plugins(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         try:
-            from pathlib import Path
-            from plugins.loader import load_manifest_file
-
-            plugins_dir = Path(__file__).resolve().parent.parent / "plugins"
-            manifests = []
-            if plugins_dir.exists():
-                for mp in plugins_dir.rglob("plugin.yaml"):
-                    try:
-                        manifests.append(load_manifest_file(str(mp)))
-                    except Exception:
-                        pass
-
-            if not manifests:
-                await update.message.reply_text("ℹ️ Belum ada modul plugin eksternal yang terpasang.")
+            from harness.installer import list_all_plugins_status
+            plugins = list_all_plugins_status()
+            if not plugins:
+                await update.message.reply_text("ℹ️ Belum ada modul plugin yang terdaftar di sistem.")
                 return
 
-            lines = [f"🔌 <b>Sistem Plugins & Ekstensi ({len(manifests)} Terpasang)</b>\n"]
-            for m in manifests:
-                lines.append(f"• <b>{m.name}</b> <code>v{m.version}</code>\n  {m.description}")
-
-            await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+            text = self._build_plugins_text(plugins)
+            markup = self._build_plugins_keyboard(plugins)
+            await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=markup)
         except Exception as e:
-            logger.error(f"Error listing plugins: {e}", exc_info=True)
+            logger.error(f"Error listing plugins in Telegram: {e}", exc_info=True)
             await update.message.reply_text(f"❌ Gagal memuat status plugins: {e}")
+
+    async def _cmd_plugin_catalog(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+
+        try:
+            from harness.installer import get_community_catalog
+            catalog = get_community_catalog()
+            lines = ["📦 <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
+            kb = []
+            for item in catalog:
+                lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
+                kb.append([InlineKeyboardButton(f"📥 Install {item['name'][:20]}", callback_data=f"plg:inst:{item['package'][:30]}")])
+            kb.append([InlineKeyboardButton("🔌 Plugins Terpasang", callback_data="plg:ref")])
+            await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+        except Exception as e:
+            logger.error(f"Error viewing plugin catalog: {e}", exc_info=True)
+            await update.message.reply_text(f"❌ Gagal memuat katalog plugin: {e}")
+
+    async def _cmd_plugin_install(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args:
+            await update.message.reply_text(
+                "ℹ️ Format: <code>/plugin_install &lt;package_name&gt;</code>\nContoh: <code>/plugin_install monika-plugin-deepseek</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        pkg = ctx.args[0].strip()
+        from harness.installer import validate_package_spec, run_pip_install
+        valid, err = validate_package_spec(pkg)
+        if not valid:
+            await update.message.reply_text(f"❌ <b>Validasi Paket Ditolak:</b>\n{err}", parse_mode=ParseMode.HTML)
+            return
+
+        msg = await update.message.reply_text(f"⏳ <b>Menginstall plugin via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
+        success, out = await asyncio.to_thread(run_pip_install, pkg)
+        
+        status_icon = "✅" if success else "❌"
+        status_word = "Berhasil" if success else "Gagal"
+        tail_out = out[-400:] if len(out) > 400 else out
+        await msg.edit_text(f"{status_icon} <b>Instalasi {status_word}:</b> <code>{pkg}</code>\n\n<pre>{tail_out}</pre>", parse_mode=ParseMode.HTML)
+
+    async def _cmd_plugin_uninstall(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args:
+            await update.message.reply_text("ℹ️ Format: <code>/plugin_uninstall &lt;package_name&gt;</code>", parse_mode=ParseMode.HTML)
+            return
+
+        pkg = ctx.args[0].strip()
+        from harness.installer import run_pip_uninstall
+        msg = await update.message.reply_text(f"⏳ <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML)
+        success, out = await asyncio.to_thread(run_pip_uninstall, pkg)
+        status_icon = "✅" if success else "❌"
+        await msg.edit_text(f"{status_icon} <b>Uninstall {'Berhasil' if success else 'Gagal'}:</b> <code>{pkg}</code>", parse_mode=ParseMode.HTML)
+
+    async def _cmd_plugin_toggle(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args:
+            await update.message.reply_text("ℹ️ Format: <code>/plugin_toggle &lt;plugin_id&gt;</code>", parse_mode=ParseMode.HTML)
+            return
+
+        plugin_id = ctx.args[0].strip()
+        from harness.installer import list_all_plugins_status, toggle_plugin_state
+        plugins = {p["id"]: p for p in list_all_plugins_status()}
+        if plugin_id in plugins:
+            p = plugins[plugin_id]
+            if not p["can_toggle"]:
+                await update.message.reply_text("⚠️ Komponen inti (core) tidak dapat dinonaktifkan.")
+                return
+            new_state = not p["enabled"]
+            ok, res_msg = toggle_plugin_state(plugin_id, p["category"], new_state)
+            await update.message.reply_text(f"{'🟢' if new_state else '⚪'} {res_msg}")
+        else:
+            await update.message.reply_text(f"❌ Plugin '<code>{plugin_id}</code>' tidak ditemukan.", parse_mode=ParseMode.HTML)
 
     async def _cmd_memory(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1674,6 +1781,81 @@ class TelegramBot:
         if data == "cancel":
             await query.edit_message_text("❌ Dibatalkan.")
             return
+
+        if data.startswith("plg:"):
+            from harness.installer import (
+                list_all_plugins_status,
+                toggle_plugin_state,
+                run_pip_install,
+                get_community_catalog,
+            )
+
+            if data == "plg:ref":
+                plugins = list_all_plugins_status()
+                text = self._build_plugins_text(plugins)
+                markup = self._build_plugins_keyboard(plugins)
+                try:
+                    await query.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=markup)
+                except Exception:
+                    pass
+                return
+
+            if data == "plg:cat":
+                catalog = get_community_catalog()
+                lines = ["📦 <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
+                kb = []
+                for item in catalog:
+                    lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
+                    kb.append([InlineKeyboardButton(f"📥 Install {item['name'][:20]}", callback_data=f"plg:inst:{item['package'][:30]}")])
+                kb.append([InlineKeyboardButton("🔌 Plugins Terpasang", callback_data="plg:ref")])
+                try:
+                    await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+                except Exception:
+                    pass
+                return
+
+            if data.startswith("plg:t:"):
+                if not self._is_admin(update):
+                    await query.answer("⛔ Hanya Admin yang berhak mengubah status plugin.", show_alert=True)
+                    return
+                plugin_id = data.split(":", 2)[2]
+                plugins = {p["id"]: p for p in list_all_plugins_status()}
+                if plugin_id in plugins:
+                    p = plugins[plugin_id]
+                    if not p.get("can_toggle", True):
+                        await query.answer("⚠️ Komponen inti (core) tidak dapat dinonaktifkan.", show_alert=True)
+                        return
+                    new_state = not p["enabled"]
+                    ok, msg = toggle_plugin_state(plugin_id, p["category"], new_state)
+                    await query.answer(f"{'🟢 Diaktifkan' if new_state else '⚪ Dinonaktifkan'}: {plugin_id}")
+                    new_plugins = list_all_plugins_status()
+                    new_text = self._build_plugins_text(new_plugins)
+                    new_markup = self._build_plugins_keyboard(new_plugins)
+                    try:
+                        await query.edit_message_text(new_text, parse_mode=ParseMode.HTML, reply_markup=new_markup)
+                    except Exception:
+                        pass
+                else:
+                    await query.answer(f"Plugin {plugin_id} tidak ditemukan.")
+                return
+
+            if data.startswith("plg:inst:"):
+                if not self._is_admin(update):
+                    await query.answer("⛔ Hanya Admin yang berhak menginstall plugin.", show_alert=True)
+                    return
+                pkg = data.split(":", 2)[2]
+                await query.answer(f"Memulai instalasi {pkg}...", show_alert=False)
+                await query.edit_message_text(f"⏳ <b>Sedang menginstall via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
+                
+                success, out = await asyncio.to_thread(run_pip_install, pkg)
+                if success:
+                    res_text = f"✅ <b>Instalasi Berhasil:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
+                else:
+                    res_text = f"❌ <b>Instalasi Gagal:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
+                
+                kb = [[InlineKeyboardButton("🔌 Kembali ke Plugins", callback_data="plg:ref")]]
+                await query.edit_message_text(res_text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+                return
 
         if data.startswith("fallback:"):
             if not self._is_admin(update):

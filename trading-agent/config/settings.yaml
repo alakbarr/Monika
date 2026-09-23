@@ -2160,3 +2160,87 @@ mcp:
       #   env:
       #     ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
       #   description: "Macroeconomic series and fundamental data"
+
+# ==============================================================================
+# "Everything is Plug-in" Modular Trading Harness Configuration
+# ==============================================================================
+plugins:
+  analysis_pipeline:
+    active: "macro_to_asset"  # Options: "macro_to_asset", "technical_scalping"
+    available:
+      macro_to_asset:
+        enabled: true
+        description: "Default 2-stage Fundamental & Per-Asset multi-agent debate workflow"
+      technical_scalping:
+        enabled: true
+        description: "High-frequency SMC / Price-Action technical scalping pipeline"
+
+  broker:
+    active: "paper_trading"    # Options: "paper_trading", "mt5_local"
+    available:
+      paper_trading:
+        enabled: true
+        description: "Built-in simulated execution and synthetic fill engine"
+      mt5_local:
+        enabled: true
+        description: "Direct MetaTrader 5 local terminal IPC bridge"
+
+  schedulers:
+    graph_cycle_scheduler:
+      enabled: true
+    news_watcher:
+      enabled: true
+    order_reconciler:
+      enabled: true
+    position_guardian:
+      enabled: true
+    trailing_stop_manager:
+      enabled: true
+    flash_crash_detector:
+      enabled: true
+    position_supervisor:
+      enabled: true
+    market_data_scheduler:
+      enabled: true
+    macro_data_scheduler:
+      enabled: true
+    active_calendar_poller:
+      enabled: true
+    digest_slice_scheduler:
+      enabled: true
+    post_release_analyzer:
+      enabled: true
+    edge_strategy_runner:
+      enabled: true
+    alpha_discovery_scheduler:
+      enabled: true
+    strategy_synthesis_scheduler:
+      enabled: true
+    playbook_curator:
+      enabled: true
+
+  risk_rules:
+    enabled: true
+    core_invariants_enforced: true
+    modular_rules:
+      sector_exposure:
+        enabled: true
+      regime_filter:
+        enabled: true
+
+  data_sources:
+    forexfactory:
+      enabled: true
+    bloomberg:
+      enabled: true
+    fred:
+      enabled: true
+    finnhub:
+      enabled: true
+
+  notifications:
+    telegram:
+      enabled: true
+    console:
+      enabled: true
+
