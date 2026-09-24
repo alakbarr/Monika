@@ -106,10 +106,12 @@ class OutcomeLinker:
                         if analysis and getattr(analysis, "source_strategy_id", None):
                             try:
                                 from analysis.strategies.decay_monitor import get_strategy_decay_monitor
-                                get_strategy_decay_monitor().record_trade_outcome(
+                                decay_mon = get_strategy_decay_monitor()
+                                decay_mon.record_trade_outcome(
                                     strategy_id=analysis.source_strategy_id,
                                     win=won,
                                 )
+                                await decay_mon.save_to_db(session)
                             except Exception as d_err:
                                 logger.debug(f"Failed to record decay outcome for {analysis.source_strategy_id}: {d_err}")
                     except Exception as life_err:
