@@ -177,7 +177,7 @@ class AlphaDiscoveryScheduler:
         Evaluates a single alpha hypothesis using WalkForwardEngine over historical window.
         Returns CandidateAlphaProposal if WFE > min_wfe (0.60) and OOS Sharpe > min_oos_sharpe (0.50).
         """
-        logger.info(
+        logger.debug(
             f"[AlphaDiscovery] Evaluating hypothesis '{hypothesis.name}' "
             f"on {hypothesis.symbol}..."
         )
@@ -252,7 +252,7 @@ class AlphaDiscoveryScheduler:
             and max_dd_pct <= self.max_drawdown_limit
         )
 
-        logger.info(
+        logger.debug(
             f"[AlphaDiscovery] Hypothesis '{hypothesis.name}' Result: "
             f"WFE={wfe:.2f} (min {self.min_wfe}), OOS Sharpe={oos_sharpe:.2f} "
             f"(min {self.min_oos_sharpe}), MaxDD={max_dd_pct:.1f}% (max {self.max_drawdown_limit}%), "
@@ -353,7 +353,7 @@ class AlphaDiscoveryScheduler:
                     related_id=None,
                 ))
                 await session.commit()
-                logger.info(f"[AlphaDiscovery] Successfully persisted proposal {proposal.proposal_id} ({proposal.status}) to DB.")
+                logger.debug(f"[AlphaDiscovery] Successfully persisted proposal {proposal.proposal_id} ({proposal.status}) to DB.")
 
             # Notify operator if notifier is available
             if self.notifier and hasattr(self.notifier, "send_info"):
@@ -404,7 +404,7 @@ class AlphaDiscoveryScheduler:
 
                 target_prop.status = "PAPER_ACTIVE"
                 await self._persist_proposal(target_prop)
-                logger.info(f"[AlphaDiscovery] Promoted proposal {proposal_id} to PAPER_ACTIVE and hot-reloaded.")
+                logger.debug(f"[AlphaDiscovery] Promoted proposal {proposal_id} to PAPER_ACTIVE and hot-reloaded.")
                 return True
         except Exception as e:
             logger.warning(f"[AlphaDiscovery] Promotion failed for {proposal_id}: {e}")
@@ -419,12 +419,12 @@ class AlphaDiscoveryScheduler:
         untried = [h for h in all_hypotheses if h.hypothesis_id not in self._evaluated_hypothesis_ids]
 
         if not untried:
-            logger.info("[AlphaDiscovery] All hypotheses evaluated. Resetting tracking cache.")
+            logger.debug("[AlphaDiscovery] All hypotheses evaluated. Resetting tracking cache.")
             self._evaluated_hypothesis_ids.clear()
             untried = all_hypotheses
 
         batch = untried[:max_evaluations]
-        logger.info(f"[AlphaDiscovery] Starting discovery cycle with {len(batch)} hypotheses...")
+        logger.debug(f"[AlphaDiscovery] Starting discovery cycle with {len(batch)} hypotheses...")
 
         found_proposals: List[CandidateAlphaProposal] = []
         for hyp in batch:
@@ -433,7 +433,7 @@ class AlphaDiscoveryScheduler:
             if proposal:
                 found_proposals.append(proposal)
 
-        logger.info(
+        logger.debug(
             f"[AlphaDiscovery] Discovery cycle complete: {len(found_proposals)} "
             f"new qualified alpha proposals discovered."
         )
