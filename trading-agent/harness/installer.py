@@ -332,16 +332,36 @@ def toggle_plugin_state(
             item = custom.setdefault(plugin_id, {})
             item["enabled"] = enabled
 
-        # Write atomically with comment preservation and backup rotation
+        # Update in-place to strictly preserve comments, formatting, and AST
         try:
             from config.atomic_writer import AtomicConfigWriter
-            AtomicConfigWriter.write(path, cfg, create_backup=True)
+            update_delta: Dict[str, Any] = {}
+            if cat_norm in ("analysis_pipeline", "analysis_pipelines"):
+                delta = {"available": {plugin_id: {"enabled": enabled}}}
+                if enabled and not ap.get("active"):
+                    delta["active"] = plugin_id
+                update_delta = {"analysis_pipeline": delta}
+            elif cat_norm in ("broker", "brokers"):
+                delta = {"available": {plugin_id: {"enabled": enabled}}}
+                if enabled and not br.get("active"):
+                    delta["active"] = plugin_id
+                update_delta = {"broker": delta}
+            elif cat_norm in ("risk_rules", "risk_rule"):
+                update_delta = {"risk_rules": {"modular_rules": {plugin_id: {"enabled": enabled}}}}
+            elif cat_norm in ("schedulers", "scheduler", "task"):
+                update_delta = {"schedulers": {plugin_id: {"enabled": enabled}}}
+            elif cat_norm in ("data_sources", "data_source", "scraper", "scrapers"):
+                update_delta = {"data_sources": {plugin_id: {"enabled": enabled}}}
+            elif cat_norm in ("notifications", "notification", "alert", "alerts"):
+                update_delta = {"notifications": {plugin_id: {"enabled": enabled}}}
+            else:
+                update_delta = {"custom": {plugin_id: {"enabled": enabled}}}
+
+            AtomicConfigWriter.update_in_place(path, {"plugins": update_delta}, create_backup=True)
         except Exception as write_err:
-            logger.debug(f"[Harness.Installer] AtomicConfigWriter fallback: {write_err}")
-            temp_file = path.with_suffix(".tmp")
-            with open(temp_file, "w", encoding="utf-8") as f:
-                yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-            os.replace(temp_file, path)
+            logger.debug(f"[Harness.Installer] update_in_place fallback to write: {write_err}")
+            from config.atomic_writer import AtomicConfigWriter
+            AtomicConfigWriter.write(path, cfg, create_backup=True)
 
         # Notify in-memory engine
         engine = get_plugin_engine()
