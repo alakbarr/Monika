@@ -207,6 +207,52 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_caching=False,
         supports_native_thinking=False,
     ),
+
+    # 9Router Key & Free Models
+    "kr/claude-sonnet-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "kr/claude-opus-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "oc/union-alpha": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "if/kimi-k2": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "if/deepseek-v3.2": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "mmf/mimo-auto": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=4096,
+        context_window=32768,
+    ),
+    "combo/free-fallback": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
 }
 
 DEFAULT_CAPABILITIES = ModelCapabilities()
@@ -224,6 +270,15 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
     # Exact match
     if clean_name in MODEL_CAPABILITIES:
         return MODEL_CAPABILITIES[clean_name]
+
+    # Handle 9Router prefix stripping (e.g. 9r/kr/claude-sonnet-4.5 -> kr/claude-sonnet-4.5 or claude-sonnet-4.5)
+    for prefix in ("9router/", "9r/"):
+        if clean_name.startswith(prefix):
+            stripped = clean_name[len(prefix):]
+            if stripped in MODEL_CAPABILITIES:
+                return MODEL_CAPABILITIES[stripped]
+            clean_name = stripped
+            break
 
     # Partial / prefix match
     for key, caps in MODEL_CAPABILITIES.items():
@@ -250,6 +305,8 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
         return ModelCapabilities(supports_caching=True, supports_structured_output=True)
     if "deepseek-reasoner" in clean_name or "r1" in clean_name:
         return ModelCapabilities(supports_tool_choice=False, requires_reasoning_roundtrip=True, prompt_cache_strategy="none")
+    if clean_name.startswith(("kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "ag/", "cx/", "cc/", "combo/")):
+        return ModelCapabilities(supports_caching=False, supports_structured_output=True, max_output_tokens=8192, context_window=128000)
 
     return DEFAULT_CAPABILITIES
 
@@ -319,6 +376,8 @@ def resolve_effective_context_window(
         return 64000
     if clean_prov == "ollama":
         return 32768
+    if clean_prov in ("9router", "ninerouter", "nine_router"):
+        return 128000
 
     # Tier 5: Safe lower bound default
     return DEFAULT_CAPABILITIES.context_window if DEFAULT_CAPABILITIES.context_window > 0 else 32768

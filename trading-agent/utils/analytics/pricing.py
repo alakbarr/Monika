@@ -233,7 +233,27 @@ FREE_TIER_MODELS = {
     "qwen3.6-27b", "groq-qwen3.6-27b", "groq-qwen3.8-27b",
 
     # Ollama Local
-    "llama3.2", "ollama", "local"
+    "llama3.2", "ollama", "local",
+
+    # 9Router Free Tier Models
+    "kr/claude-sonnet-4.5", "kr/claude-sonnet-4.5-thinking", "kr/claude-sonnet-4.5-agentic",
+    "kr/claude-sonnet-5", "kr/claude-sonnet-5-thinking",
+    "kr/claude-opus-5", "kr/claude-opus-5-thinking", "kr/claude-opus-5-agentic",
+    "kr/claude-opus-4.8", "kr/claude-opus-4.7", "kr/claude-opus-4.5",
+    "kr/claude-haiku-4.5", "kr/claude-haiku-4.5-thinking",
+    "kr/glm-5", "kr/minimax-m2.5", "kr/deepseek-3.2", "kr/qwen3-coder-next",
+    "kr/gpt-5.6-sol", "kr/gpt-5.6-terra", "kr/gpt-5.6-luna",
+    "oc/muse-spark-1.2-contributor-free", "oc/muse-spark-1.3-contributor-free",
+    "oc/union-alpha", "oc/jev-1.13-free",
+    "ocz/deepseek-v4-flash-free", "ocz/mimo-v2.6-flash-free", "ocz/mimo-v2.5-free",
+    "ocz/ling-3.0-flash-fin-free", "ocz/nemotron-3-ultra-free", "ocz/nemotron-3.5-lightning-free",
+    "ocz/muse-spark-1.3-contributor-free", "ocz/muse-spark-1.2-contributor-free", "ocz/jev-1.13-free",
+    "if/kimi-k2", "if/qwen3-coder-plus", "if/qwen3-max", "if/qwen3-235b",
+    "if/deepseek-v3.2", "if/deepseek-v3", "if/deepseek-r1", "if/glm-4.7", "if/iflow-rome-30ba3b",
+    "mmf/mimo-auto",
+    "gc/gemini-2.5-flash", "gc/gemini-2.5-pro", "gc/gemini-3-flash-preview", "gc/gemini-3.1-pro-preview",
+    "af/gpt-oss-120b", "af/gpt-oss-20b", "af/kimi-k2.7-code",
+    "combo/free-fallback",
 }
 
 
@@ -242,6 +262,8 @@ def infer_provider_from_model(model_name: str) -> str:
     if not model_name:
         return "unknown"
     clean = str(model_name).strip().lower()
+    if clean.startswith(("9router/", "9r/", "kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "combo/")):
+        return "9router"
     if clean.startswith("vertex/"):
         return "vertex"
     if clean.startswith(("gemini-", "models/gemini", "google/gemini-")):
@@ -270,7 +292,7 @@ def is_free_tier(
 ) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
-    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, dan Ollama.
+    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, dan 9Router Free Tier.
     """
     if is_direct_free_tier is True:
         return True
@@ -282,13 +304,18 @@ def is_free_tier(
     if not prov:
         prov = infer_provider_from_model(model_name)
 
-    # 1. OpenRouter free models & endpoint suffix :free
+    # 1. OpenRouter & 9Router free models & endpoint suffix :free
     if clean_name.endswith(":free") or ":free" in clean_name:
         return True
     if clean_name in FREE_TIER_MODELS or clean_name == "openrouter/free" or clean_name.startswith("stealth/"):
         return True
 
-    # 2. Provider Free Tiers
+    # 2. 9Router Free Tier Models (with or without 9r/ or 9router/ prefix)
+    for pfx in ("9router/", "9r/"):
+        if clean_name.startswith(pfx) and clean_name[len(pfx):] in FREE_TIER_MODELS:
+            return True
+
+    # 3. Provider Free Tiers
     if prov in ("groq", "ollama"):
         return True
     if prov == "gemini" and not clean_name.startswith("vertex/"):

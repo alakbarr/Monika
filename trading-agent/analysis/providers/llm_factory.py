@@ -187,8 +187,17 @@ class LLMFactory:
         if "provider" in model_info:
             return model_info["provider"]
             
-        # Guess provider
         name = model_name.lower()
+
+        # 9Router prefix & provider resolution
+        if (
+            name.startswith(("9router/", "9r/", "kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "combo/"))
+            or "9router" in name
+            or "ninerouter" in name
+        ):
+            return "9router"
+
+        # Guess provider
         if "openrouter" in name or "ox-alpha" in name or name.startswith("stealth/"):
             return "openrouter"
         if "jev" in name or "typesafe" in name:

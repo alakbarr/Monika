@@ -36,24 +36,38 @@ else
     echo "[1/4] MT5_PATH tidak ditemukan di .env -- lewati."
 fi
 
-# ── 2. Jalankan Dashboard Frontend di background ─────────────────────────────
-echo "[2/4] Menjalankan Dashboard Frontend (localhost:5173)..."
+# ── 2. Jalankan 9Router AI Gateway di background ─────────────────────────────
+echo "[2/5] Memeriksa dan Menjalankan 9Router AI Gateway (localhost:20128)..."
+ROUTER_PID=""
+if ! nc -z localhost 20128 2>/dev/null && ! curl -s http://localhost:20128/v1/models >/dev/null 2>&1; then
+    echo "[*] Menjalankan 9Router AI Gateway..."
+    if command -v 9router &>/dev/null; then
+        9router --no-browser --skip-update &
+        ROUTER_PID=$!
+    elif command -v npx &>/dev/null; then
+        npx -y 9router --no-browser --skip-update &
+        ROUTER_PID=$!
+    fi
+fi
+
+# ── 3. Jalankan Dashboard Frontend di background ─────────────────────────────
+echo "[3/5] Menjalankan Dashboard Frontend (localhost:5173)..."
 (cd logging_observability/dashboard/frontend && npm run dev) &
 UI_PID=$!
 
-# Trap SIGINT/SIGTERM: matikan frontend dan MT5 Wine saat Ctrl+C
-trap "echo 'Stopping all services...'; kill $UI_PID 2>/dev/null; [ -n \"$MT5_PID\" ] && kill $MT5_PID 2>/dev/null; exit" SIGINT SIGTERM
+# Trap SIGINT/SIGTERM: matikan frontend, 9router, dan MT5 Wine saat Ctrl+C
+trap "echo 'Stopping all services...'; kill $UI_PID 2>/dev/null; [ -n \"$ROUTER_PID\" ] && kill $ROUTER_PID 2>/dev/null; [ -n \"$MT5_PID\" ] && kill $MT5_PID 2>/dev/null; exit" SIGINT SIGTERM
 
-# ── 3. Run database migrations ────────────────────────────────────────────────
-echo "[3/4] Checking and running database migrations..."
+# ── 4. Run database migrations ────────────────────────────────────────────────
+echo "[4/5] Checking and running database migrations..."
 python -m alembic upgrade head
 if [ $? -ne 0 ]; then
     echo "[ERROR] Alembic migration failed! Please check database connection."
     exit 1
 fi
 
-# ── 4. Restart-loop: jalankan agent via CLI ───────────────────────────────────
-echo "[4/4] Menjalankan Monika via CLI (mode: $TRADE_MODE)..."
+# ── 5. Restart-loop: jalankan agent via CLI ───────────────────────────────────
+echo "[5/5] Menjalankan Monika via CLI (mode: $TRADE_MODE)..."
 while true; do
     echo "Starting AI Trading Agent in $TRADE_MODE mode..."
     if [ "$TRADE_MODE" = "live" ]; then
