@@ -266,7 +266,9 @@ Monika/
     │   │   ├── xti_pairs_readiness.py
     │   │   └── synthesized
     │   │       ├── alpha_eurusd_6d622a.py
+    │   │       ├── alpha_gbpusd_e73efc.py
     │   │       ├── alpha_usdjpy_13a603.py
+    │   │       ├── alpha_xauusd_3af460.py
     │   │       ├── alpha_xauusd_94ad53.py
     │   │       ├── alpha_xauusd_b01980.py
     │   │       ├── alpha_xbrusd_e55dbf.py
