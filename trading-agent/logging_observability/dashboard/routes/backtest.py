@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 from database.db import get_session
 from database.models import BacktestRun, BacktestTrade
@@ -70,7 +70,12 @@ async def list_backtest_runs(
 
 @backtest_router.get("/runs/{run_id}")
 @require_role(Role.VIEWER)
-async def get_backtest_run_details(run_id: int, request: Request) -> Dict[str, Any]:
+async def get_backtest_run_details(
+    run_id: int,
+    request: Request,
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Max trades to return"),
+    offset: int = Query(0, ge=0, description="Offset for trades pagination"),
+) -> Dict[str, Any]:
     """Get detailed telemetry and executed trades for a specific backtest run."""
     async with get_session() as session:
         run = await session.get(BacktestRun, run_id)
@@ -78,6 +83,10 @@ async def get_backtest_run_details(run_id: int, request: Request) -> Dict[str, A
             raise HTTPException(status_code=404, detail=f"Backtest run {run_id} not found")
 
         stmt = select(BacktestTrade).where(BacktestTrade.run_id == run_id).order_by(BacktestTrade.entry_time.asc())
+        if offset:
+            stmt = stmt.offset(offset)
+        if limit is not None:
+            stmt = stmt.limit(limit)
         trades = (await session.execute(stmt)).scalars().all()
 
         return {
@@ -97,6 +106,9 @@ async def get_backtest_run_details(run_id: int, request: Request) -> Dict[str, A
                 "created_at": run.created_at.isoformat() if run.created_at else None,
             },
             "trades_count": len(trades),
+            "total_trades": len(trades),
+            "offset": offset,
+            "limit": limit,
             "trades": [
                 {
                     "id": t.id,

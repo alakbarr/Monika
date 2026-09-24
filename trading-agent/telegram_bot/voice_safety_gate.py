@@ -82,12 +82,16 @@ class VoiceSafetyGate:
                 if candidate in ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF"):
                     symbol = candidate
 
-        # Check lots / volume (e.g., "0.1 lot", "nol koma satu lot", "0.05", "1 lot")
+        # Check lots / volume (requires explicit 'lot' or 'volume' keyword to avoid capturing price levels)
         lots = None
-        lot_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:lot|volume)?", text)
+        lot_match = re.search(r"(?:volume\s*)?(\d+(?:[.,]\d+)?)\s*(?:lot|lots|volume)\b|(?:volume\s+)(\d+(?:[.,]\d+)?)", text)
         if lot_match:
             try:
-                lots = float(lot_match.group(1).replace(",", "."))
+                val_str = lot_match.group(1) or lot_match.group(2)
+                if val_str:
+                    parsed = float(val_str.replace(",", "."))
+                    if 0.01 <= parsed <= 100.0:
+                        lots = parsed
             except ValueError:
                 pass
 

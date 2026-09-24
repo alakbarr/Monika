@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from sqlalchemy import select, desc
 
 from database.db import AsyncSessionLocal
@@ -132,7 +132,7 @@ async def get_cot_reports(
         return [
             {
                 "id": r.id,
-                "report_date": r.report_date.date().isoformat() if r.report_date else None,
+                "report_date": (r.report_date.date() if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date")) else r.report_date).isoformat() if r.report_date else None,
                 "market_code": r.market_code,
                 "dealer_long": r.dealer_long,
                 "dealer_short": r.dealer_short,
@@ -478,7 +478,7 @@ async def get_market_sentiment_composite():
         cot_summary = [
             {
                 "market_code": r.market_code,
-                "report_date": r.report_date.date().isoformat() if r.report_date else None,
+                "report_date": (r.report_date.date() if hasattr(r.report_date, "date") and callable(getattr(r.report_date, "date")) else r.report_date).isoformat() if r.report_date else None,
                 "dealer_long": r.dealer_long,
                 "dealer_short": r.dealer_short,
                 "asset_mgr_long": r.asset_mgr_long,
@@ -605,7 +605,7 @@ async def get_skill_stats(name: str):
 
 @intelligence_router.post("/api/skills/curate", tags=["Skills"])
 @require_role(Role.OPERATOR)
-async def curate_crystallized_skills():
+async def curate_crystallized_skills(request: Request):
     """Evaluate and prune degraded crystallized skills whose win rate dropped below threshold."""
     from analysis.memory.skill_crystallizer import SkillCrystallizer
 
@@ -621,7 +621,7 @@ async def curate_crystallized_skills():
 
 @intelligence_router.post("/api/skills/{name}/deprecate", tags=["Skills"])
 @require_role(Role.OPERATOR)
-async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest):
+async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest, request: Request):
     """Manually deprecate an underperforming or stale crystallized skill."""
     from analysis.memory.skill_crystallizer import SkillCrystallizer
 
@@ -657,7 +657,7 @@ async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest
 
 @intelligence_router.post("/api/skills/crystallize", tags=["Skills"])
 @require_role(Role.OPERATOR)
-async def crystallize_skills_now(payload: Optional[CrystallizeSkillRequest] = None):
+async def crystallize_skills_now(request: Request, payload: Optional[CrystallizeSkillRequest] = None):
     """Trigger on-demand skill crystallization for a symbol or all resolved profitable setups."""
     from analysis.memory.skill_crystallizer import SkillCrystallizer
 

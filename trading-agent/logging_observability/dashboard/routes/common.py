@@ -20,6 +20,7 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.Routes")
 _start_time = time.time()
 _dependencies: Dict[str, Any] = {}
 _active_websockets: set[WebSocket] = set()
+_client_queues: Dict[WebSocket, asyncio.Queue] = {}
 
 # WebSocket Monotonic Sequence Watermark & Replay Buffer (Phase 7.3)
 _stream_seq: int = 0
@@ -67,17 +68,7 @@ def _safe_json(raw: Optional[str]) -> Any:
 
 
 async def broadcast_live_event(event_type: str, payload: dict) -> None:
-    """Broadcast an event to all connected dashboard live-feed WebSockets with monotonic sequence."""
-    if not _active_websockets:
-        # Still record into buffer even without active subscribers for future reconnects
-        msg = {
-            "type": event_type,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "payload": payload,
-        }
-        record_stream_event(msg)
-        return
-
+    """Broadcast an event to all connected dashboard live-feed WebSockets non-blockingly via per-client queues."""
     message = {
         "type": event_type,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -85,14 +76,30 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
     }
     record_stream_event(message)
 
+    if not _active_websockets and not _client_queues:
+        return
+
     dead = []
-    for ws in list(_active_websockets):
+    for ws, q in list(_client_queues.items()):
         try:
-            await ws.send_json(message)
+            q.put_nowait(message)
+        except asyncio.QueueFull:
+            logger.warning("[Dashboard WS] Client queue full, marking dead")
+            dead.append(ws)
         except Exception:
             dead.append(ws)
+
+    # Fallback for any raw websockets without queues
+    for ws in list(_active_websockets):
+        if ws not in _client_queues:
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead.append(ws)
+
     for ws in dead:
         _active_websockets.discard(ws)
+        _client_queues.pop(ws, None)
 
 
 class TriggerCycleRequest(BaseModel):

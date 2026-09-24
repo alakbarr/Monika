@@ -9,7 +9,7 @@ Vintage Teletype Slip Formatters for Telegram Bot.
 Converts trading agent outputs into clean monospace banking ledgers / dispatch slips:
 - Fixed-width ASCII telegraph borders
 - Monospace wrapping (``` ... ```)
-- Telegraph stamps ([ OK ], [ GAGAL ], [ EKSEKUSI ], [ SIAGA ])
+- Telegraph stamps ([ OK ], [ FAILED ], [ EXECUTION ], [ STANDBY ])
 - Zero emoji clutter or AI-slop gradients
 """
 
@@ -48,14 +48,14 @@ def format_status_slip(
         "```",
         make_header("SYSTEM STATUS", width),
         f"STATUS         : {stamp}",
-        f"WAKTU          : {now_str}",
+        f"TIME           : {now_str}",
         "-" * width,
-        "PORTOFOLIO:",
-        f"  Posisi Open  : {pos_count} LOT",
-        f"  Daily P&L    : {daily_pnl}",
-        f"  Drawdown     : {drawdown}",
+        "PORTFOLIO:",
+        f"  Open Positions : {pos_count} LOT",
+        f"  Daily P&L      : {daily_pnl}",
+        f"  Drawdown       : {drawdown}",
         "-" * width,
-        f"Analisis Terakhir : {last_analysis}",
+        f"Last Analysis  : {last_analysis}",
         make_footer(width),
         "```",
     ]
@@ -65,7 +65,7 @@ def format_status_slip(
 def format_positions_slip(positions: Sequence[Any], width: int = 46) -> str:
     """Format open positions as fixed-width ledger."""
     if not positions:
-        return "```\n" + make_header("OPEN POSITIONS", width) + "\n[ NIHIL ] Tidak ada posisi terbuka saat ini.\n" + make_footer(width) + "\n```"
+        return "```\n" + make_header("OPEN POSITIONS", width) + "\n[ NONE ] No open positions at this time.\n" + make_footer(width) + "\n```"
 
     lines = [
         "```",
@@ -108,7 +108,7 @@ def format_risk_slip(
         f"SUSPENDED    : {susp_str}",
     ]
     if reason:
-        lines.append(f"ALASAN       : {reason}")
+        lines.append(f"REASON       : {reason}")
     lines.append("-" * width)
     if daily_pnl is not None:
         lines.append(f"DAILY P&L    : {daily_pnl}")
@@ -124,7 +124,7 @@ def format_risk_slip(
 def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, Any]] = None, width: int = 46) -> str:
     """Format paper trading performance as telegraph slip."""
     if not stats or stats.get("total_trades", 0) == 0:
-        return "```\n" + make_header("PERFORMANCE STATS", width) + "\n[ NIHIL ] Belum ada data trading tercatat.\n" + make_footer(width) + "\n```"
+        return "```\n" + make_header("PERFORMANCE STATS", width) + "\n[ NONE ] No trading records found.\n" + make_footer(width) + "\n```"
 
     lines = [
         "```",
@@ -137,7 +137,7 @@ def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, An
     ]
     exp = stats.get("expectancy_per_trade_R")
     if exp is not None:
-        exp_badge = "POSITIF" if exp > 0 else ("UNCERTAIN" if exp > -0.1 else "NEGATIF")
+        exp_badge = "POSITIVE" if exp > 0 else ("UNCERTAIN" if exp > -0.1 else "NEGATIVE")
         lines.append(f"EDGE EXPECT. : [{exp_badge}] {exp:+.2f}R")
 
     if equity_curve:
@@ -157,12 +157,12 @@ def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, An
     return "\n".join(lines)
 
 
-def format_alert_slip(title: str, detail: str, severity: str = "PERINGATAN", width: int = 46) -> str:
+def format_alert_slip(title: str, detail: str, severity: str = "WARNING", width: int = 46) -> str:
     """Format system dispatch alert."""
     lines = [
         "```",
         make_header(f"ALERT // {severity.upper()}", width),
-        f"SUBJEK : {title.upper()}",
+        f"SUBJECT : {title.upper()}",
         "-" * width,
         detail,
         make_footer(width),
@@ -183,7 +183,7 @@ def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
             "status", "positions", "close", "closeall", "trailing", "reconcile", "approvals", "approve", "reject",
         ]),
         ("INTEL & MACRO", [
-            "brief", "analysis", "steer", "intel", "research", "archive_intel", "calendar", "fedwatch", "yields", "fear_greed", "cot",
+            "pipeline", "brief", "analysis", "steer", "intel", "research", "archive_intel", "calendar", "fedwatch", "yields", "fear_greed", "cot",
         ]),
         ("RISK & SAFETY", [
             "risk", "risk_deep", "override", "vix", "edge", "unsuspend", "emergency", "pause", "resume", "kill", "interrupt", "resume_proposals",
@@ -234,15 +234,36 @@ def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
 
 
 def format_risk_deep_slip(
-    scorecard: List[Dict[str, Any]],
+    scorecard: Any,
     edge_summary: Optional[Dict[str, Any]] = None,
     token_budget: Optional[Dict[str, Any]] = None,
     width: int = 46,
 ) -> str:
     """Format 22-point deterministic risk scorecard as teletype slip."""
-    passed_count = sum(1 for c in scorecard if c.get("passed", False))
-    total_count = len(scorecard)
-    status_label = "ALL PASSED" if passed_count == total_count else f"{total_count - passed_count} BREACHES"
+    items: List[Dict[str, Any]] = []
+    if isinstance(scorecard, dict):
+        raw_checks = scorecard.get("checks", {})
+        for name, data in raw_checks.items():
+            if isinstance(data, dict):
+                items.append({
+                    "name": name,
+                    "passed": data.get("passed", False),
+                    "current_value": data.get("current_value", "OK" if data.get("passed") else "BREACH"),
+                    "limit_value": data.get("limit_value", data.get("reason", "-")),
+                })
+            else:
+                items.append({
+                    "name": name,
+                    "passed": bool(data),
+                    "current_value": "OK" if data else "FAIL",
+                    "limit_value": "-",
+                })
+    elif isinstance(scorecard, (list, tuple)):
+        items = list(scorecard)
+
+    passed_count = sum(1 for c in items if c.get("passed", False))
+    total_count = len(items)
+    status_label = "ALL PASSED" if passed_count == total_count and total_count > 0 else f"{total_count - passed_count} BREACHES"
 
     lines = [
         "```",
@@ -251,7 +272,7 @@ def format_risk_deep_slip(
         "-" * width,
     ]
 
-    for item in scorecard:
+    for item in items:
         pass_tag = "[PASS]" if item.get("passed", False) else "[FAIL]"
         name = item.get("name", "check")[:20].ljust(20)
         curr = str(item.get("current_value", "-"))[:8]
@@ -283,7 +304,7 @@ def format_risk_deep_slip(
 def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = 46) -> str:
     """Format open approval requests as teletype slip."""
     if not open_requests:
-        return "```\n" + make_header("APPROVAL QUEUE", width) + "\n[ NIHIL ] Tidak ada proposal pending approval.\n" + make_footer(width) + "\n```"
+        return "```\n" + make_header("APPROVAL QUEUE", width) + "\n[ NONE ] No proposals pending approval.\n" + make_footer(width) + "\n```"
 
     lines = [
         "```",
@@ -311,7 +332,7 @@ def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = 46) 
 def format_trailing_slip(positions: List[Dict[str, Any]], width: int = 46) -> str:
     """Format trailing stop positions as teletype slip."""
     if not positions:
-        return "```\n" + make_header("TRAILING STOP STATUS", width) + "\n[ NIHIL ] Tidak ada posisi dengan trailing stop aktif.\n" + make_footer(width) + "\n```"
+        return "```\n" + make_header("TRAILING STOP STATUS", width) + "\n[ NONE ] No positions with active trailing stop.\n" + make_footer(width) + "\n```"
 
     lines = [
         "```",
@@ -542,6 +563,48 @@ def format_rollback_slip(result: Dict[str, Any], width: int = 46) -> str:
         "```",
     ]
     return "\n".join(lines)
+
+
+def format_pipeline_slip(data: Dict[str, Any], width: int = 46) -> str:
+    """Format LangGraph Analysis Pipeline DAG execution flow as teletype slip."""
+    status = data.get("status", "IDLE").upper()
+    stage = data.get("current_stage", "STAGE 1").upper()
+    last_cycle = data.get("last_cycle", "N/A")
+    duration = data.get("duration", "-")
+    active_nodes = data.get("active_nodes", "5/5")
+    health = data.get("health", "OPTIMAL").upper()
+
+    lines = [
+        "```",
+        make_header("LANGGRAPH PIPELINE DAG", width),
+        f"STATUS         : [ {status} ]",
+        f"CURRENT STAGE  : {stage}",
+        f"LAST CYCLE     : {last_cycle}",
+        f"CYCLE DURATION : {duration}",
+        "-" * width,
+        "ANALYSIS PIPELINE DAG FLOW:",
+        "  [●] Stage 1: Macro & Fundamental Ingestion",
+        "       │ (Econ Calendar, News, FedWatch, Yields)",
+        "       ▼",
+        "  [●] Stage 2: Multi-Asset Technical & Quant",
+        "       │ (TimesFM, MT5 Price Action, Indicators)",
+        "       ▼",
+        "  [●] Stage 2b: Multi-Agent Debate Node",
+        "       │ (Bull vs Bear vs Risk Arbitrator)",
+        "       ▼",
+        "  [●] Stage 3: Deterministic Risk Gate (22 Rules)",
+        "       │ (Drawdown, Exposure, VPIN, Volatility)",
+        "       ▼",
+        "  [●] Stage 4: Order Execution / Paper Trading",
+        "       │ (MT5 Client, Slippage & Spread Guard)",
+        "-" * width,
+        f"NODES STATUS   : {active_nodes} Active / Evaluated",
+        f"PIPELINE HEALTH: [ {health} ]",
+        make_footer(width),
+        "```",
+    ]
+    return "\n".join(lines)
+
 
 
 

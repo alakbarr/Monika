@@ -45,6 +45,9 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
 }) => {
   const initialTTL = request?.ttl_seconds ?? 120;
   const [timeLeft, setTimeLeft] = useState<number>(initialTTL);
+  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const onDenyRef = React.useRef(onDeny);
+  onDenyRef.current = onDeny;
 
   // Reset timer on new request
   useEffect(() => {
@@ -55,19 +58,21 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
 
   // Countdown TTL loop
   useEffect(() => {
-    if (!isOpen || !request || timeLeft <= 0) return;
-    const interval = setInterval(() => {
+    if (!isOpen || !request) return;
+    timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
-          onDeny(request.id);
+          if (timerRef.current) clearInterval(timerRef.current);
+          setTimeout(() => onDenyRef.current(request.id), 0);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
-  }, [isOpen, request, timeLeft, onDeny]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isOpen, request]);
 
   // Keyboard shortcut listener (1: Allow Once, 2: Allow Session, 3/Esc: Deny)
   useEffect(() => {
@@ -98,6 +103,9 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="approval-modal-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -126,6 +134,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
       >
         {/* Retro Dialog Title Bar */}
         <div
+          id="approval-modal-title"
           className="win-titlebar"
           style={{
             background: 'var(--color-win-yellow)',

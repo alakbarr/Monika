@@ -152,7 +152,25 @@ class ProfileManager:
         """Exports profile directory to a zip archive."""
         import zipfile
         clean_name = name.strip().lower()
-        p_dir = os.path.join(self.root_dir, clean_name) if clean_name != "default" else self.root_dir
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        if clean_name == "default":
+            # Export default settings and data folder safely without packing other profiles
+            with zipfile.ZipFile(export_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                default_cfg = os.path.join(base_dir, "config", "settings.yaml")
+                if os.path.exists(default_cfg):
+                    zipf.write(default_cfg, "settings.yaml")
+                default_data = os.path.join(base_dir, "data")
+                if os.path.exists(default_data):
+                    for root, _, files in os.walk(default_data):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.join("data", os.path.relpath(file_path, default_data))
+                            zipf.write(file_path, arcname)
+            logger.info(f"Exported profile 'default' to {export_zip_path}")
+            return export_zip_path
+
+        p_dir = os.path.join(self.root_dir, clean_name)
         if not os.path.exists(p_dir):
             raise FileNotFoundError(f"Profile '{clean_name}' does not exist.")
 
@@ -167,7 +185,7 @@ class ProfileManager:
         return export_zip_path
 
     def import_profile(self, zip_path: str, new_name: Optional[str] = None) -> str:
-        """Imports profile from a zip archive."""
+        """Imports profile from a zip archive with Zip Slip path traversal protection."""
         import zipfile
         if not os.path.exists(zip_path):
             raise FileNotFoundError(f"Zip archive not found: {zip_path}")
@@ -176,12 +194,16 @@ class ProfileManager:
         if target_name == "default":
             raise ValueError("Cannot import as 'default' profile name.")
 
-        target_dir = os.path.join(self.root_dir, target_name)
+        target_dir = os.path.abspath(os.path.join(self.root_dir, target_name))
         if os.path.exists(target_dir):
             raise FileExistsError(f"Profile '{target_name}' already exists.")
 
         os.makedirs(target_dir, exist_ok=True)
         with zipfile.ZipFile(zip_path, 'r') as zipf:
+            for member in zipf.infolist():
+                member_path = os.path.abspath(os.path.join(target_dir, member.filename))
+                if not member_path.startswith(target_dir + os.sep) and member_path != target_dir:
+                    raise ValueError(f"Security error: Attempted Zip Slip path traversal in member {member.filename}")
             zipf.extractall(target_dir)
 
         logger.info(f"Imported profile '{target_name}' from {zip_path}")

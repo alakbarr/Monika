@@ -108,38 +108,51 @@ def require_role(minimum: Role):
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             request: Optional[Request] = kwargs.get("request")
-            if not request:
+            if request is None:
                 for arg in args:
-                    if isinstance(arg, Request):
+                    if isinstance(arg, Request) or hasattr(arg, "state"):
                         request = arg
                         break
 
-            if request:
-                role = getattr(request.state, "role", None)
-                if role is None:
-                    is_localhost = getattr(request.state, "is_localhost", False)
-                    role = Role.ADMIN if is_localhost else None
+            if request is None:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Forbidden: Request context missing for RBAC validation"
+                )
 
-                if role is None:
-                    raise HTTPException(status_code=401, detail="Unauthorized: Role not found or not authenticated")
+            role = getattr(request.state, "role", None)
+            if role is None:
+                is_localhost = getattr(request.state, "is_localhost", False)
+                role = Role.ADMIN if is_localhost else None
 
-                if isinstance(role, str):
-                    try:
-                        role = Role(role)
-                    except ValueError:
-                        role = Role.VIEWER
+            if role is None:
+                raise HTTPException(status_code=401, detail="Unauthorized: Role not found or not authenticated")
 
-                if ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(minimum, 0):
-                    raise HTTPException(
-                        status_code=403,
-                        detail=f"Forbidden: Action requires '{minimum.value}' role, current role is '{role.value}'"
-                    )
+            if isinstance(role, str):
+                try:
+                    role = Role(role)
+                except ValueError:
+                    role = Role.VIEWER
+
+            if ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(minimum, 0):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Forbidden: Action requires '{minimum.value}' role, current role is '{role.value}'"
+                )
 
             call_kwargs = dict(kwargs)
             if not has_request_param and "request" in call_kwargs:
                 del call_kwargs["request"]
 
             return await func(*args, **call_kwargs)
+
+        if not has_request_param:
+            new_params = list(sig.parameters.values()) + [
+                inspect.Parameter("request", inspect.Parameter.KEYWORD_ONLY, annotation=Request)
+            ]
+            wrapper.__signature__ = sig.replace(parameters=new_params)
+            if hasattr(wrapper, "__wrapped__"):
+                del wrapper.__wrapped__
 
         return wrapper
 

@@ -125,12 +125,13 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {actions}
           {showControls && (
-            <div className="win-controls" aria-hidden="true">
+            <div className="win-controls">
               <button
                 type="button"
                 className="win-control-btn"
                 onClick={handleMinimize}
                 title={isCollapsed ? 'Restore Window' : 'Minimize Window'}
+                aria-label={isCollapsed ? 'Restore Window' : 'Minimize Window'}
               >
                 _
               </button>
@@ -139,6 +140,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
                 className="win-control-btn"
                 onClick={handleMaximize}
                 title={isMaximized ? 'Restore Size' : 'Maximize Window'}
+                aria-label={isMaximized ? 'Restore Size' : 'Maximize Window'}
               >
                 □
               </button>
@@ -148,6 +150,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
                   className="win-control-btn"
                   onClick={handleClose}
                   title="Close Window"
+                  aria-label="Close Window"
                   style={{ color: 'var(--color-ink)' }}
                 >
                   ×

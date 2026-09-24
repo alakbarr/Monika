@@ -181,9 +181,14 @@ class ApprovalModalScreen(ModalScreen[Optional[str]]):
                             yield Label("TAKE PROFIT (TP):", classes="detail_label")
                             yield Label(f"[green]{tp}[/]", classes="detail_value")
                     if risk_usd is not None:
+                        try:
+                            clean_risk = float(str(risk_usd).replace("$", "").replace(",", "").strip())
+                            risk_str = f"${clean_risk:.2f}"
+                        except (ValueError, TypeError):
+                            risk_str = str(risk_usd)
                         with Horizontal(classes="detail_row"):
                             yield Label("PROJECTED RISK:", classes="detail_label")
-                            yield Label(f"${risk_usd:.2f}", classes="detail_value")
+                            yield Label(risk_str, classes="detail_value")
 
             yield Static(
                 "⚠ Live capital at risk. Verifying MT5 margin and RiskGate invariants before placement.",

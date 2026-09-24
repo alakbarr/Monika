@@ -25,10 +25,25 @@ export const ConfigDiffModal: React.FC<ConfigDiffModalProps> = ({
   diffItems,
   targetConfig,
 }) => {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !saving) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, saving, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="config-diff-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -57,6 +72,7 @@ export const ConfigDiffModal: React.FC<ConfigDiffModalProps> = ({
         }}
       >
         <div
+          id="config-diff-title"
           style={{
             padding: '16px 20px',
             borderBottom: '1px solid var(--color-border)',

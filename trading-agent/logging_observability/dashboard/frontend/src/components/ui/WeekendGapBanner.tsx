@@ -91,17 +91,24 @@ export const WeekendGapBanner: React.FC = () => {
 
   const handleFlatten = async () => {
     setFlattening(true);
-    let closedCount = 0;
     try {
-      for (const pos of nonCryptoPositions) {
-        await api.closePosition({
-          ticket: pos.mt5_ticket || pos.id,
-          position_id: pos.id,
-          reason: 'Weekend Gap Protocol Flatten',
-        });
-        closedCount++;
+      const results = await Promise.allSettled(
+        nonCryptoPositions.map((pos) =>
+          api.closePosition({
+            ticket: pos.mt5_ticket || pos.id,
+            position_id: pos.id,
+            reason: 'Weekend Gap Protocol Flatten',
+          })
+        )
+      );
+      const closedCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+
+      if (failedCount > 0) {
+        setFeedbackMsg(`Flattened ${closedCount} position(s). ${failedCount} failed to close.`);
+      } else {
+        setFeedbackMsg(`Successfully flattened all ${closedCount} non-crypto position(s).`);
       }
-      setFeedbackMsg(`Successfully flattened ${closedCount} non-crypto position(s).`);
       sounds.playClick('bell');
       await fetchQuick();
     } catch (err: any) {

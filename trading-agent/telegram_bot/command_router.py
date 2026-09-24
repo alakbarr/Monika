@@ -68,6 +68,7 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "close":     {"type": CommandType.ADMIN,  "admin_only": True},  # /close <ticket>
     "run":       {"type": CommandType.ADMIN,  "admin_only": True},  # /run — paksa siklus analisis manual
     "analysis":  {"type": CommandType.DIRECT, "admin_only": False},
+    "pipeline":  {"type": CommandType.DIRECT, "admin_only": False},
     "approve":   {"type": CommandType.ADMIN,  "admin_only": True},
     "reject":    {"type": CommandType.ADMIN,  "admin_only": True},
     "report":    {"type": CommandType.DIRECT, "admin_only": False},
@@ -117,6 +118,7 @@ COMMAND_HELP: dict[str, str] = {
     "positions":   "[Posisi] Daftar semua posisi terbuka beserta PnL",
     "brief":       "[Brief] Ringkasan fundamental terkini dari analisis AI",
     "analysis":    "[Analisis] Analisis terkini untuk simbol: /analysis <symbol>",
+    "pipeline":    "[Pipeline] Ringkasan alur graf DAG LangGraph dan status node pipeline",
     "history":     "[Riwayat] 10 aktivitas terakhir",
     "risk":        "[Risiko] Status risiko terkini (PnL harian, drawdown)",
     "risk_deep":   "[Risk Deep] Evaluasi 22-point deterministic scorecard & token budget",

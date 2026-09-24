@@ -61,9 +61,9 @@ export const GraphVisualizerPanel: React.FC = () => {
   const lastFetchedCycleRef = useRef<string | null>(null);
 
   // Load graph state from backend
-  const loadGraphState = useCallback(async (cycleId?: string) => {
+  const loadGraphState = useCallback(async (cycleId?: string, isBackground: boolean = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       const [res, traceRes, tokensRes] = await Promise.all([
         api.graphState(cycleId),
         cycleId ? api.cycleTraceSummary(cycleId).catch(() => null) : Promise.resolve(null),
@@ -73,23 +73,25 @@ export const GraphVisualizerPanel: React.FC = () => {
       setCycleTrace(traceRes);
       setCycleTokens(tokensRes);
       lastFetchedCycleRef.current = res.cycle_id;
-      setSelectedCycle(res.cycle_id);
-      setSelectedNodeId(curr => curr || (res.nodes.length > 0 ? res.nodes[0].id : null));
+      if (res.cycle_id && res.cycle_id !== selectedCycle) {
+        setSelectedCycle(res.cycle_id);
+      }
+      setSelectedNodeId(curr => curr || (res.nodes && res.nodes.length > 0 ? res.nodes[0].id : null));
     } catch (err) {
       console.error('Failed to load graph state:', err);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  }, []);
+  }, [selectedCycle]);
 
   useEffect(() => {
-    loadGraphState(selectedCycle || undefined);
+    loadGraphState(selectedCycle || undefined, false);
   }, [selectedCycle, loadGraphState]);
 
-  // Polling fallback
+  // Polling fallback without loading flash
   useEffect(() => {
     const interval = setInterval(() => {
-      loadGraphState(selectedCycle || undefined);
+      loadGraphState(selectedCycle || undefined, true);
     }, 4000);
     return () => clearInterval(interval);
   }, [selectedCycle, loadGraphState]);
@@ -555,6 +557,31 @@ export const GraphVisualizerPanel: React.FC = () => {
               })}
             </g>
           </svg>
+
+          {/* Idle Empty State Overlay */}
+          {(!graphData?.nodes || graphData.nodes.length === 0) && !loading && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                color: 'var(--color-ink-muted)',
+                pointerEvents: 'none',
+              }}
+            >
+              <Workflow size={36} color="var(--color-brass)" style={{ opacity: 0.6 }} />
+              <div style={{ fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--color-ink)' }}>
+                NO ACTIVE PIPELINE CYCLE
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
+                The trading pipeline is currently idle. Trigger a manual cycle above or wait for the next scheduled 8-hour graph run.
+              </div>
+            </div>
+          )}
 
           {/* Minimap / Legend Badge */}
           <div style={{

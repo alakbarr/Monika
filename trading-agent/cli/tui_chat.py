@@ -301,7 +301,11 @@ class ChatScreen(Screen):
         response_chunks: List[str] = []
         while True:
             try:
-                msg = await ws.receive()
+                msg = await asyncio.wait_for(ws.receive(), timeout=60.0)
+            except asyncio.TimeoutError:
+                logger.warning("[TUI Chat] WebSocket stream receive timeout after 60s")
+                transcript.write("[bold red]❌ WebSocket stream timed out after 60s.[/]\n")
+                break
             except (aiohttp.ClientError, ConnectionResetError, OSError) as recv_err:
                 logger.warning(f"[TUI Chat] WebSocket stream receive error: {recv_err}")
                 transcript.write("[bold red]❌ WebSocket connection dropped while receiving response stream.[/]\n")
@@ -563,7 +567,11 @@ async def run_cli_chat(
             try:
                 await ws.send_json({"type": "message", "text": text, "model": model})
                 while True:
-                    msg = await ws.receive()
+                    try:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=60.0)
+                    except asyncio.TimeoutError:
+                        console.print(f"\n{stamp_err()} WebSocket stream timed out after 60s.\n")
+                        break
                     if msg.type != aiohttp.WSMsgType.TEXT:
                         break
                     data = json.loads(msg.data)
@@ -586,6 +594,7 @@ async def run_cli_chat(
                             f"\n\n{stamp_warn('AUTHORIZATION REQUIRED')} {desc}\n"
                             f"[dim {MUTED}]Type [bold {BULL_PROFIT}]/allow[/] to authorize, [bold {BRASS}]/session[/] for 4h session, or [bold {BEAR_LOSS}]/deny[/] to reject.[/]"
                         )
+                        break
                     elif etype == "complete":
                         console.print("\n")
                         break

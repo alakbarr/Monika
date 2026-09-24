@@ -64,7 +64,7 @@ export const PluginManagerPanel: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to toggle plugin:', err);
-      alert(`Gagal mengubah status plugin: ${err}`);
+      alert(`Failed to toggle plugin status: ${err}`);
     } finally {
       setActionPendingId(null);
     }
@@ -96,13 +96,13 @@ export const PluginManagerPanel: React.FC = () => {
   };
 
   const handleUninstall = async (packageName: string) => {
-    if (!window.confirm(`Yakin ingin meng-uninstall paket ${packageName}?`)) return;
+    if (!window.confirm(`Are you sure you want to uninstall package ${packageName}?`)) return;
     sounds.playClick('toggle');
     setActionPendingId(packageName);
 
     try {
       const res = await api.pluginUninstall(packageName);
-      alert(res.output || `Paket ${packageName} berhasil di-uninstall.`);
+      alert(res.output || `Package ${packageName} uninstalled successfully.`);
       if (res?.plugins) {
         setPlugins(res.plugins);
       } else {
@@ -782,42 +782,49 @@ export const PluginManagerPanel: React.FC = () => {
           }}
         >
           <div
-            className="win-window ledger-card"
+            className="win-window ledger-card console-scanline"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plugin-console-title"
             style={{
-              background: '#18181b',
-              color: '#f4f4f5',
-              border: '2px solid #3f3f46',
-              borderRadius: '8px',
+              background: 'var(--color-console-bg)',
+              color: 'var(--color-console-phosphor)',
+              border: '2px solid var(--color-rule)',
+              borderRadius: 'var(--radius-card)',
               width: '100%',
               maxWidth: '720px',
               maxHeight: '80vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              boxShadow: 'var(--shadow-elevated)',
               overflow: 'hidden',
             }}
           >
             <div
+              className="win-titlebar"
               style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid #3f3f46',
+                padding: '8px 14px',
+                borderBottom: '2px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#27272a',
+                background: 'var(--color-win-yellow)',
+                color: '#1C1917',
               }}
             >
-              <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.85rem', fontWeight: 700 }}>
-                {installing ? '⏳ Installing Plugin via Pip...' : 'Terminal Installation Output'}
+              <span id="plugin-console-title" style={{ fontFamily: 'var(--font-precision)', fontSize: 'var(--text-body-sm)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                {installing ? '⏳ [INSTALLING PLUGIN VIA PIP...]' : '[TERMINAL INSTALLATION OUTPUT]'}
               </span>
               <button
                 onClick={() => setShowConsoleModal(false)}
                 disabled={installing}
+                aria-label="Close terminal output"
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#a1a1aa',
-                  fontSize: '1.1rem',
+                  color: '#1C1917',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
                   cursor: installing ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -829,13 +836,14 @@ export const PluginManagerPanel: React.FC = () => {
               style={{
                 padding: '16px',
                 overflowY: 'auto',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '0.8rem',
-                lineHeight: 1.5,
+                fontFamily: 'var(--font-precision)',
+                fontSize: 'var(--text-body-sm)',
+                lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
                 flex: 1,
                 minHeight: '260px',
-                color: '#e4e4e7',
+                color: 'var(--color-console-phosphor)',
+                background: 'var(--color-console-bg)',
               }}
             >
               {consoleOutput}
@@ -844,10 +852,10 @@ export const PluginManagerPanel: React.FC = () => {
             <div
               style={{
                 padding: '10px 16px',
-                borderTop: '1px solid #3f3f46',
+                borderTop: '2px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'flex-end',
-                background: '#27272a',
+                background: 'var(--color-paper-raised)',
               }}
             >
               <button
@@ -856,7 +864,7 @@ export const PluginManagerPanel: React.FC = () => {
                 className="win-btn"
                 style={{
                   fontFamily: 'var(--font-precision)',
-                  fontSize: '0.8rem',
+                  fontSize: 'var(--text-body-sm)',
                   padding: '6px 16px',
                   cursor: installing ? 'not-allowed' : 'pointer',
                 }}

@@ -212,6 +212,16 @@ class ChatAgent:
 
         # Tool event listener for dashboard WebSocket streaming
         self.tool_event_listener: Optional[Any] = None
+        self._last_turn_streamed: bool = False
+
+    @property
+    def was_last_turn_streamed(self) -> bool:
+        """Returns True if the most recent turn was successfully rendered via live streaming."""
+        return getattr(self, "_last_turn_streamed", False)
+
+    @was_last_turn_streamed.setter
+    def was_last_turn_streamed(self, value: bool) -> None:
+        self._last_turn_streamed = bool(value)
 
     def set_tool_event_listener(self, listener: Optional[Any]):
         """Register a callback for tool events ('start' and 'result')."""
@@ -594,6 +604,8 @@ class ChatAgent:
     ) -> tuple[str, Optional[PendingAction]]:
         """Memproses pesan dari user dengan dukungan active turn interruption, topic isolation, dan token streaming."""
         self._active_task = asyncio.current_task()
+        self.was_last_turn_streamed = False
+        self._last_turn_streamed = False
         try:
             effective_update = update
             if not isinstance(user_message, str):
@@ -692,6 +704,8 @@ class ChatAgent:
 
             final_text = await self._stream_response(update, context, generator)
             await self._save_message(session, "assistant", final_text, session_id=session_id)
+            self._last_turn_streamed = True
+            self.was_last_turn_streamed = True
             return final_text, None
 
     async def _stream_response(
@@ -753,7 +767,8 @@ class ChatAgent:
                     except Exception as e:
                         logger.debug(f"[ChatAgent] Final stream edit error: {e}")
             else:
-                chunks = [final_clean[i:i + 4000] for i in range(0, len(final_clean), 4000)]
+                from telegram_bot.bot import TelegramBot
+                chunks = TelegramBot._chunk_text(final_clean, max_len=4000)
                 first_chunk = chunks[0] if chunks else final_clean[:4000]
                 first_html = sanitize_telegram_html(first_chunk)
                 try:
@@ -779,6 +794,7 @@ class ChatAgent:
         session_id: Optional[str] = None,
     ) -> tuple[str, Optional[PendingAction]]:
         """Logika internal pemrosesan pesan dari user."""
+        self._last_turn_streamed = False
         import re
         from analysis.tools.tool_executor import ToolExecutor
         
@@ -1294,7 +1310,7 @@ class ChatAgent:
         if action.is_expired():
             self._pending_actions.pop(action_id, None)
             await self._delete_persisted_pending_action(action_id)
-            return False, "Action expired (5-minute timeout). Please request again."
+            return False, "Action expired (90-second timeout). Please request again."
 
         self._pending_actions.pop(action_id, None)
         await self._delete_persisted_pending_action(action_id)
@@ -1970,6 +1986,6 @@ class ChatAgent:
 
         messages = [{"role": role, "content": content} for role, content in selected_rows]
         from telegram_bot.chat_compaction import ChatMicroCompactor
-        compactor = ChatMicroCompactor(max_history_tokens=12000)
+        compactor = ChatMicroCompactor(max_history_tokens=MAX_HISTORY_CHARS // 4)
         messages = compactor.compact_history(messages)
         return messages

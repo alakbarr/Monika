@@ -2,7 +2,7 @@ import React from 'react';
 import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
-import { BrassMagnifierIcon } from '../ui/VintageIcons';
+import { MagnifierDeskIcon } from '../ui/RetroIcons';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 
@@ -12,7 +12,7 @@ export const AnalysisGrid: React.FC = () => {
   return (
     <WindowFrame
       title="LATEST MARKET INTELLIGENCE DISPATCHES"
-      icon={<BrassMagnifierIcon size={18} color="var(--color-titlebar-text)" />}
+      icon={<MagnifierDeskIcon size={18} color="var(--color-titlebar-text)" />}
       variant="salmon"
       padding="14px"
     >
