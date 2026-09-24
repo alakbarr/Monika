@@ -22,16 +22,53 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
   nodeWidth,
   nodeHeight,
 }) => {
-  const startX = srcPos.x + nodeWidth;
-  const startY = srcPos.y + nodeHeight / 2;
-  const endX = dstPos.x;
-  const endY = dstPos.y + nodeHeight / 2;
+  // Determine connection orientation (vertical downward vs horizontal forward)
+  const isVerticalDown = Math.abs(srcPos.x - dstPos.x) < 80 && dstPos.y > srcPos.y;
+  const isHorizontalForward = dstPos.x >= srcPos.x + nodeWidth * 0.7;
 
-  const dx = endX - startX;
-  const c1x = startX + dx * 0.45;
-  const c1y = startY;
-  const c2x = startX + dx * 0.55;
-  const c2y = endY;
+  let startX: number;
+  let startY: number;
+  let endX: number;
+  let endY: number;
+  let c1x: number;
+  let c1y: number;
+  let c2x: number;
+  let c2y: number;
+
+  if (isVerticalDown) {
+    // Flow straight downward from bottom-center of source to top-center of target
+    startX = srcPos.x + nodeWidth / 2;
+    startY = srcPos.y + nodeHeight;
+    endX = dstPos.x + nodeWidth / 2;
+    endY = dstPos.y;
+    const dy = endY - startY;
+    c1x = startX;
+    c1y = startY + dy * 0.45;
+    c2x = endX;
+    c2y = startY + dy * 0.55;
+  } else if (isHorizontalForward) {
+    // Standard left-to-right flow from right-center of source to left-center of target
+    startX = srcPos.x + nodeWidth;
+    startY = srcPos.y + nodeHeight / 2;
+    endX = dstPos.x;
+    endY = dstPos.y + nodeHeight / 2;
+    const dx = endX - startX;
+    c1x = startX + Math.max(dx * 0.45, 25);
+    c1y = startY;
+    c2x = startX + Math.max(dx * 0.55, 35);
+    c2y = endY;
+  } else {
+    // Diagonal or wrap-around connection
+    startX = srcPos.x + nodeWidth / 2;
+    startY = srcPos.y + nodeHeight;
+    endX = dstPos.x + nodeWidth / 2;
+    endY = dstPos.y;
+    const midY = (startY + endY) / 2;
+    c1x = startX;
+    c1y = midY;
+    c2x = endX;
+    c2y = midY;
+  }
 
   const pathData = `M ${startX} ${startY} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${endX} ${endY}`;
 

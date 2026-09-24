@@ -45,7 +45,17 @@ export const getStatusColor = (status: GraphNodeStatus) => {
   }
 };
 
-export const CANONICAL_POSITIONS: Record<string, { x: number; y: number }> = {
+export const COMPACT_POSITIONS: Record<string, { x: number; y: number }> = {
+  fundamental_brief: { x: 40, y: 50 },
+  prefetch_data: { x: 40, y: 250 },
+  bull_advocate: { x: 340, y: 50 },
+  bear_dissent: { x: 340, y: 250 },
+  debate_judge: { x: 630, y: 150 },
+  risk_gate: { x: 930, y: 50 },
+  execution: { x: 930, y: 250 },
+};
+
+export const WIDE_POSITIONS: Record<string, { x: number; y: number }> = {
   fundamental_brief: { x: 50, y: 260 },
   prefetch_data: { x: 330, y: 260 },
   bull_advocate: { x: 650, y: 130 },
@@ -55,16 +65,20 @@ export const CANONICAL_POSITIONS: Record<string, { x: number; y: number }> = {
   execution: { x: 1510, y: 260 },
 };
 
+export const CANONICAL_POSITIONS = COMPACT_POSITIONS;
+
 export const computeGraphLayout = (
   nodes: { id: string }[],
-  edges: { from: string; to: string }[]
+  edges: { from: string; to: string }[],
+  mode: 'compact' | 'wide' = 'compact'
 ): Record<string, { x: number; y: number }> => {
+  const basePositions = mode === 'compact' ? COMPACT_POSITIONS : WIDE_POSITIONS;
   const positions: Record<string, { x: number; y: number }> = {};
   const unpositioned: { id: string }[] = [];
 
   for (const node of nodes) {
-    if (CANONICAL_POSITIONS[node.id]) {
-      positions[node.id] = { ...CANONICAL_POSITIONS[node.id] };
+    if (basePositions[node.id]) {
+      positions[node.id] = { ...basePositions[node.id] };
     } else {
       unpositioned.push(node);
     }
