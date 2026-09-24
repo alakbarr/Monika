@@ -13,7 +13,7 @@ import { GraphControls } from './graph/GraphControls';
 import { GraphEdge } from './graph/GraphEdge';
 import { GraphNodeComponent } from './graph/GraphNode';
 import { GraphInspector } from './graph/GraphInspector';
-import { computeGraphLayout, CANONICAL_POSITIONS } from './graph/graphUtils';
+import { computeGraphLayout, COMPACT_POSITIONS, WIDE_POSITIONS } from './graph/graphUtils';
 
 // Visual canvas dimensions & node geometry
 const NODE_WIDTH = 220;
@@ -23,11 +23,13 @@ export const GraphVisualizerPanel: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCycle, setSelectedCycle] = useState<string>('');
+  const [layoutMode, setLayoutMode] = useState<'compact' | 'wide'>('compact');
+  const [autoFit, setAutoFit] = useState<boolean>(true);
 
   const nodePositions = React.useMemo(() => {
-    if (!graphData) return CANONICAL_POSITIONS;
-    return computeGraphLayout(graphData.nodes, graphData.edges);
-  }, [graphData]);
+    if (!graphData) return layoutMode === 'compact' ? COMPACT_POSITIONS : WIDE_POSITIONS;
+    return computeGraphLayout(graphData.nodes, graphData.edges, layoutMode);
+  }, [graphData, layoutMode]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [triggering, setTriggering] = useState<boolean>(false);
@@ -46,9 +48,9 @@ export const GraphVisualizerPanel: React.FC = () => {
 
   // Viewport transform state: scale and translation
   const [transform, setTransform] = useState<{ x: number; y: number; k: number }>({
-    x: 30,
+    x: 40,
     y: 30,
-    k: 0.60,
+    k: 0.85,
   });
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const panStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
@@ -59,6 +61,49 @@ export const GraphVisualizerPanel: React.FC = () => {
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const lastFetchedCycleRef = useRef<string | null>(null);
+
+  // Dynamic Auto-Fit calculation
+  const fitGraphToContainer = useCallback((mode: 'compact' | 'wide' = layoutMode) => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = containerRef.current.clientHeight;
+    if (!containerWidth || !containerHeight) return;
+
+    const positions = Object.values(
+      graphData
+        ? computeGraphLayout(graphData.nodes, graphData.edges, mode)
+        : (mode === 'compact' ? COMPACT_POSITIONS : WIDE_POSITIONS)
+    );
+    if (positions.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    positions.forEach(p => {
+      if (p.x < minX) minX = p.x;
+      if (p.x + NODE_WIDTH > maxX) maxX = p.x + NODE_WIDTH;
+      if (p.y < minY) minY = p.y;
+      if (p.y + NODE_HEIGHT > maxY) maxY = p.y + NODE_HEIGHT;
+    });
+
+    const padding = 32;
+    const graphWidth = (maxX - minX) + padding * 2;
+    const graphHeight = (maxY - minY) + padding * 2;
+
+    const scaleX = containerWidth / graphWidth;
+    const scaleY = containerHeight / graphHeight;
+    const optimalScale = Math.min(scaleX, scaleY, 1.15);
+    const clampedScale = Math.max(optimalScale, 0.35);
+
+    const scaledGraphWidth = (maxX - minX) * clampedScale;
+    const scaledGraphHeight = (maxY - minY) * clampedScale;
+    const offsetX = (containerWidth - scaledGraphWidth) / 2 - minX * clampedScale;
+    const offsetY = (containerHeight - scaledGraphHeight) / 2 - minY * clampedScale;
+
+    setTransform({
+      x: Math.round(offsetX),
+      y: Math.round(offsetY),
+      k: Number(clampedScale.toFixed(3)),
+    });
+  }, [graphData, layoutMode]);
 
   // Load graph state from backend
   const loadGraphState = useCallback(async (cycleId?: string, isBackground: boolean = false) => {
@@ -96,27 +141,55 @@ export const GraphVisualizerPanel: React.FC = () => {
     return () => clearInterval(interval);
   }, [selectedCycle, loadGraphState]);
 
+  // Auto-fit on resize (window resize, sidebar toggle, or inspector open/close)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (autoFit) {
+        fitGraphToContainer();
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [autoFit, fitGraphToContainer]);
+
+  // Auto-fit when graphData arrives
+  useEffect(() => {
+    if (autoFit && graphData) {
+      const timer = setTimeout(() => {
+        fitGraphToContainer();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [graphData, autoFit, fitGraphToContainer]);
+
   // Viewport zoom & pan handlers
   const handleZoom = (factor: number) => {
+    setAutoFit(false);
     setTransform(curr => ({
       ...curr,
-      k: Math.min(Math.max(curr.k * factor, 0.4), 2.2),
+      k: Math.min(Math.max(curr.k * factor, 0.35), 2.2),
     }));
   };
 
   const handleReset = () => {
-    setTransform({ x: 40, y: 20, k: 0.78 });
+    setAutoFit(false);
+    setTransform({ x: 40, y: 20, k: 0.85 });
   };
 
-  const handleFitScreen = () => {
-    if (!containerRef.current) return;
-    const { clientWidth } = containerRef.current;
-    const scale = Math.min(Math.max(clientWidth / 1850, 0.45), 1.1);
-    setTransform({
-      x: 20,
-      y: 40,
-      k: scale,
-    });
+  const handleToggleAutoFit = () => {
+    const next = !autoFit;
+    setAutoFit(next);
+    if (next) {
+      fitGraphToContainer();
+    }
+  };
+
+  const handleLayoutModeChange = (mode: 'compact' | 'wide') => {
+    setLayoutMode(mode);
+    if (autoFit) {
+      fitGraphToContainer(mode);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -134,6 +207,9 @@ export const GraphVisualizerPanel: React.FC = () => {
     if (!isPanning) return;
     const dx = e.clientX - panStartRef.current.startX;
     const dy = e.clientY - panStartRef.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      setAutoFit(false);
+    }
     setTransform(curr => ({
       ...curr,
       x: panStartRef.current.initX + dx,
@@ -377,10 +453,13 @@ export const GraphVisualizerPanel: React.FC = () => {
           </button>
           <GraphControls
             onZoom={handleZoom}
-            onFitScreen={handleFitScreen}
             onReset={handleReset}
             onTriggerCycle={handleTriggerCycle}
             triggering={triggering}
+            layoutMode={layoutMode}
+            onChangeLayoutMode={handleLayoutModeChange}
+            autoFit={autoFit}
+            onToggleAutoFit={handleToggleAutoFit}
           />
         </div>
       </div>
@@ -488,12 +567,12 @@ export const GraphVisualizerPanel: React.FC = () => {
 
             {/* Root SVG Transform Group */}
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
-              {/* Subgraph container box: Per-Asset Subgraph */}
+              {/* Subgraph container box: Dialectic Arbitration */}
               <rect
-                x="600"
-                y="60"
-                width="590"
-                height="510"
+                x={layoutMode === 'compact' ? '305' : '600'}
+                y={layoutMode === 'compact' ? '15' : '60'}
+                width={layoutMode === 'compact' ? '575' : '590'}
+                height={layoutMode === 'compact' ? '385' : '510'}
                 rx="4"
                 fill="var(--color-subgraph-bg)"
                 stroke="var(--color-brass)"
@@ -501,15 +580,17 @@ export const GraphVisualizerPanel: React.FC = () => {
                 strokeDasharray="6 4"
               />
               <text
-                x="620"
-                y="92"
+                x={layoutMode === 'compact' ? '320' : '620'}
+                y={layoutMode === 'compact' ? '38' : '92'}
                 fill="var(--color-brass)"
-                fontSize="12"
+                fontSize={layoutMode === 'compact' ? '11' : '12'}
                 fontWeight="800"
                 letterSpacing="0.08em"
                 fontFamily="var(--font-precision)"
               >
-                [ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]
+                {layoutMode === 'compact'
+                  ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
+                  : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
               </text>
 
               {/* Edge Bezier Connectors */}

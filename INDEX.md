@@ -2982,7 +2982,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `GraphInspector.tsx`
 **File:** `GraphNode.tsx`
 **File:** `graphUtils.ts`
-  - **Variables**: `CANONICAL_POSITIONS`
+  - **Variables**: `CANONICAL_POSITIONS`, `COMPACT_POSITIONS`, `WIDE_POSITIONS`
   - **Functions**: `getNodeIcon()`, `getStatusColor()`, `computeGraphLayout()`
 
 ######### Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`
