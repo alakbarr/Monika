@@ -10,6 +10,7 @@ Pure Python braille sparklines and bar gauges with zero third-party dependencies
 Renders PnL trends, VIX curves, equity trajectories, and context window gauges.
 """
 
+import math
 from typing import List, Tuple, Sequence
 
 BRAILLE_BASE = 0x2800
@@ -42,14 +43,25 @@ def braille_sparkline(values: Sequence[float], width: int = 20) -> str:
     if not values:
         return chr(BRAILLE_BASE) * width
 
-    vals = [float(v) for v in values]
-    mn, mx = min(vals), max(vals)
+    clean_vals: List[float] = []
+    for v in values:
+        try:
+            fv = float(v)
+            if math.isfinite(fv):
+                clean_vals.append(fv)
+        except (ValueError, TypeError):
+            continue
+
+    if not clean_vals:
+        return chr(BRAILLE_BASE) * width
+
+    mn, mx = min(clean_vals), max(clean_vals)
     rng = mx - mn
     if rng <= 0.0:
         rng = 1.0
 
     target = width * 2
-    norm = [int((v - mn) / rng * 3.99) for v in vals]
+    norm = [int((v - mn) / rng * 3.99) for v in clean_vals]
 
     if len(norm) > target:
         norm = norm[-target:]
@@ -76,7 +88,8 @@ def bar_gauge(
     max_val: float,
     width: int = 20,
     thresholds: Tuple[float, float] = (0.5, 0.8),
-    colors: Tuple[str, str, str] = ("#2D5A27", "#C49A45", "#8B261E"),
+    colors: Optional[Tuple[str, str, str]] = None,
+    theme: Optional[Any] = None,
 ) -> Tuple[str, str]:
     """
     Render a horizontal text bar gauge with threshold-based coloring.
@@ -86,15 +99,31 @@ def bar_gauge(
         max_val: Maximum expected value.
         width: Total character width of the gauge.
         thresholds: (warn_threshold, critical_threshold) as ratios 0.0 - 1.0.
-        colors: (ok_color, warn_color, critical_color) hex codes.
+        colors: Optional (ok_color, warn_color, critical_color) hex codes.
+        theme: Optional ThemePack instance to derive semantic colors.
 
     Returns:
         (bar_string, color_hex) tuple.
     """
+    if colors is None:
+        if theme is not None and hasattr(theme, "green") and hasattr(theme, "yellow") and hasattr(theme, "red"):
+            colors = (theme.green, theme.yellow, theme.red)
+        else:
+            colors = ("#2D5A27", "#C49A45", "#8B261E")
+
     if width <= 0:
         return "", colors[0]
 
-    ratio = min(max(value / max_val, 0.0), 1.0) if max_val > 0 else 0.0
+    try:
+        fval = float(value)
+        fmax = float(max_val)
+        if not math.isfinite(fval) or not math.isfinite(fmax) or fmax <= 0:
+            ratio = 0.0
+        else:
+            ratio = min(max(fval / fmax, 0.0), 1.0)
+    except (ValueError, TypeError):
+        ratio = 0.0
+
     filled = int(round(ratio * width))
     filled = max(0, min(width, filled))
     bar = "█" * filled + "░" * (width - filled)

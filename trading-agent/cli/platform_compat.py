@@ -119,6 +119,13 @@ def enable_windows_vt_mode() -> bool:
         import ctypes
 
         kernel32 = ctypes.windll.kernel32
+        kernel32.GetStdHandle.argtypes = [ctypes.c_long]
+        kernel32.GetStdHandle.restype = ctypes.c_void_p
+        kernel32.GetConsoleMode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+        kernel32.GetConsoleMode.restype = ctypes.c_bool
+        kernel32.SetConsoleMode.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        kernel32.SetConsoleMode.restype = ctypes.c_bool
+
         for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
             handle = kernel32.GetStdHandle(handle_id)
             if handle:

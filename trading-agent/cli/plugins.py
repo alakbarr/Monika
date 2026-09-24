@@ -19,9 +19,19 @@ from rich.panel import Panel
 from harness.contract import PluginCategory, PluginOrigin
 from harness.engine import PluginEngine
 from config.settings import load_all_config
+from cli.theme import (
+    get_console,
+    PHOSPHOR_AMBER,
+    BRASS,
+    PAPER,
+    LEDGER_BOX,
+    stamp_ok,
+    stamp_err,
+    stamp_warn,
+)
 
 logger = logging.getLogger("TradingAgent.CLI.Plugins")
-console = Console()
+console = get_console()
 
 
 def handle_plugin_command(args) -> int:
@@ -68,13 +78,17 @@ def cmd_plugin_list(args) -> int:
     settings = load_all_config()
     engine = _create_engine(settings)
 
-    table = Table(title="Monika Installed & Builtin Plugins", header_style="bold cyan")
-    table.add_column("Plugin ID", style="bold green")
-    table.add_column("Name", style="white")
-    table.add_column("Category", style="yellow")
-    table.add_column("Version", style="magenta")
-    table.add_column("Origin", style="blue")
-    table.add_column("Status", style="bold")
+    table = Table(
+        title=f"[{PHOSPHOR_AMBER}]Monika Installed & Builtin Plugins[/]",
+        box=LEDGER_BOX,
+        header_style=f"bold {PHOSPHOR_AMBER}",
+    )
+    table.add_column("Plugin ID", style=f"bold {BRASS}")
+    table.add_column("Name", style=PAPER)
+    table.add_column("Category", style=f"bold {PHOSPHOR_AMBER}")
+    table.add_column("Version", style=PAPER)
+    table.add_column("Origin", style=PAPER)
+    table.add_column("Status", justify="center")
     table.add_column("Description", style="dim")
 
     for pid, plugin in sorted(engine.plugins.items()):
@@ -82,11 +96,11 @@ def cmd_plugin_list(args) -> int:
         engine.check_required_packages(plugin)
 
         if not plugin.is_enabled:
-            status_str = "[dim red]DISABLED[/dim red]"
+            status_str = stamp_err("DISABLED")
         elif plugin.status == "DEGRADED_MISSING_DEPENDENCIES":
-            status_str = "[yellow]DEGRADED[/yellow]"
+            status_str = stamp_warn("DEGRADED")
         else:
-            status_str = "[green]ACTIVE[/green]"
+            status_str = stamp_ok("ACTIVE")
 
         cat_str = meta.category.value if hasattr(meta.category, "value") else str(meta.category)
         origin_str = meta.origin.value if hasattr(meta.origin, "value") else str(meta.origin)

@@ -8,11 +8,12 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select, or_, desc
 
 from database.db import AsyncSessionLocal
 from database.models import DecisionReflection, CandidateLesson, PlaybookRuleAttribution
+from logging_observability.dashboard.rbac import require_role, Role
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Memory")
 
@@ -91,8 +92,8 @@ async def get_reflections(
                 })
             return out
     except Exception as e:
-        logger.warning(f"Error fetching decision reflections: {e}")
-        return []
+        logger.error(f"Error fetching decision reflections: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch decision reflections.")
 
 
 @memory_router.get("/lessons")
@@ -132,8 +133,8 @@ async def get_lessons(
                 })
             return out
     except Exception as e:
-        logger.warning(f"Error fetching candidate lessons: {e}")
-        return []
+        logger.error(f"Error fetching candidate lessons: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch candidate lessons.")
 
 
 @memory_router.get("/playbooks")
@@ -240,14 +241,8 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
             "lessons": lessons_out,
         }
     except Exception as e:
-        logger.warning(f"Error during memory search: {e}")
-        return {
-            "query": payload.query,
-            "total_matches": 0,
-            "reflections": [],
-            "lessons": [],
-            "error": str(e),
-        }
+        logger.error(f"Error during memory search: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Memory search failed.")
 
 
 class PlaybookRollbackRequest(BaseModel):
@@ -264,12 +259,13 @@ async def get_playbook_history(name: str) -> List[Dict[str, Any]]:
 
 
 @memory_router.post("/playbooks/{name}/rollback")
-async def rollback_playbook(name: str, payload: Optional[PlaybookRollbackRequest] = None) -> Dict[str, Any]:
+@require_role(Role.ADMIN)
+async def rollback_playbook(name: str, request: Request, payload: Optional[PlaybookRollbackRequest] = None) -> Dict[str, Any]:
     """Roll back a playbook rule to an immediate prior or specified SHA-256 target blob."""
     from analysis.memory.playbook_ledger import PlaybookLedger
     ledger = PlaybookLedger()
     target_hash = payload.target_hash if payload else None
     success = ledger.rollback(playbook_name=name, target_hash=target_hash)
     if not success:
-        return {"status": "error", "message": f"Rollback failed for '{name}'. Verify history exists."}
+        raise HTTPException(status_code=400, detail=f"Rollback failed for '{name}'. Verify history exists.")
     return {"status": "success", "message": f"Playbook '{name}' rolled back successfully.", "target_hash": target_hash}

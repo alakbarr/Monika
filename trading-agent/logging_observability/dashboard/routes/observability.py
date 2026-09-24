@@ -57,24 +57,30 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
             seen.add(cid)
             discovered_cycles.append(cid)
 
-    target_cycle = cycle_id if cycle_id else (discovered_cycles[0] if discovered_cycles else "cycle-live-847")
+    target_cycle = cycle_id if cycle_id else (discovered_cycles[0] if discovered_cycles else None)
+
+    if not target_cycle:
+        return {
+            "cycle_id": None,
+            "status": "idle",
+            "started_at": None,
+            "completed_at": None,
+            "total_duration_ms": 0.0,
+            "total_tokens": {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0},
+            "available_cycles": [],
+            "nodes": [],
+            "edges": [],
+        }
 
     cycle_spans = [
         s for s in global_trace_store._spans
         if s.attributes.get("cycle_id") == target_cycle or s.trace_id == target_cycle or (s.kind == "cycle" and target_cycle in s.name)
     ]
 
-    is_synthetic = (target_cycle in ("cycle-live-847", "cycle-hist-846")) and not cycle_spans
-
     available_cycles = [
         {"cycle_id": cid, "label": f"Cycle #{cid.split('-')[-1] if '-' in cid else cid[:12]}", "status": "completed"}
         for cid in discovered_cycles
     ]
-    if not available_cycles:
-        available_cycles = [
-            {"cycle_id": "cycle-live-847", "label": "Cycle #847 (Live)", "status": "completed"},
-            {"cycle_id": "cycle-hist-846", "label": "Cycle #846 (Archived)", "status": "completed"},
-        ]
 
     def find_span(aliases: List[str]):
         for s in cycle_spans:
@@ -88,10 +94,8 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
                 return s
         return None
 
-    def get_node_tokens(node_span_obj, default_in=0, default_out=0, default_cost=0.0):
+    def get_node_tokens(node_span_obj):
         if not node_span_obj:
-            if is_synthetic:
-                return {"input": default_in, "output": default_out, "total": default_in + default_out, "cost_usd": default_cost}
             return {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0}
         in_tok = node_span_obj.attributes.get("input_tokens", 0)
         out_tok = node_span_obj.attributes.get("output_tokens", 0)
@@ -114,28 +118,7 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
         name: str,
         stage: str,
         span_obj,
-        mock_duration: float,
-        mock_in: int,
-        mock_out: int,
-        mock_cost: float,
-        mock_summary: str,
-        mock_payload: Any
     ):
-        if is_synthetic:
-            return {
-                "id": node_id,
-                "name": name,
-                "stage": stage,
-                "status": "done",
-                "duration_ms": mock_duration,
-                "tokens": {"input": mock_in, "output": mock_out, "total": mock_in + mock_out, "cost_usd": mock_cost},
-                "input_summary": mock_summary,
-                "output_payload": mock_payload,
-                "started_at": "2026-09-14T02:00:00Z",
-                "completed_at": "2026-09-14T02:00:05Z",
-                "error": None,
-            }
-
         if not span_obj:
             return {
                 "id": node_id,
@@ -144,7 +127,7 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
                 "status": "pending",
                 "duration_ms": 0.0,
                 "tokens": {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0},
-                "input_summary": "Pending execution in pipeline",
+                "input_summary": f"Pending {name} execution",
                 "output_payload": None,
                 "started_at": None,
                 "completed_at": None,
@@ -188,93 +171,13 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
     s_exec = find_span(["node:execution", "execution"])
 
     nodes = [
-        resolve_node(
-            "fundamental_brief", "Fundamental Brief", "stage1", s_fund,
-            3420.0, 12500, 2100, 0.0146,
-            "Macro calendar, yield curves, DXY momentum, and COT positioning feeds",
-            {
-                "macro_bias": "BULLISH_EUR",
-                "dxy_trend": "bearish",
-                "vix": 14.2,
-                "regime": "Risk-On Expansion",
-                "confidence": 0.82
-            }
-        ),
-        resolve_node(
-            "prefetch_data", "Prefetch Data", "prefetch", s_prefetch,
-            1180.0, 0, 0, 0.0,
-            "Watchlist: EURUSD, GBPUSD, USDJPY, XAUUSD, BTCUSD (OHLCV M15/H1)",
-            {
-                "symbols_fetched": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"],
-                "candles_count": 2400,
-                "freshness_ms": 250,
-                "cache_hit": True
-            }
-        ),
-        resolve_node(
-            "bull_advocate", "Bull Advocate", "debate", s_bull,
-            2850.0, 9800, 1850, 0.0116,
-            "Technical EMA-50 breakout, liquidity sweep absorption, positive DXY beta",
-            {
-                "thesis": "Bullish momentum established above 1.0850 support with institutional orderbook absorption.",
-                "conviction_score": 84.0,
-                "target_price": 1.092,
-                "upside_catalysts": ["Orderbook buy imbalance +18%", "DXY downward break"]
-            }
-        ),
-        resolve_node(
-            "bear_dissent", "Bear Dissent", "debate", s_bear,
-            2720.0, 9600, 1720, 0.0113,
-            "H4 RSI bearish divergence, overhead supply pool at 1.0890, Fed speaker risk",
-            {
-                "counter_thesis": "Potential bull trap near major sell-side liquidity pool with hidden RSI divergence.",
-                "conviction_score": 48.0,
-                "invalidation_level": 1.0815,
-                "downside_risks": ["Hawkish Fed commentary", "Overbought M15 oscillator"]
-            }
-        ),
-        resolve_node(
-            "debate_judge", "Debate Judge", "debate", s_judge,
-            3150.0, 13300, 2750, 0.016,
-            "Synthesis of Bull Advocate vs Bear Dissent arguments with playbook matching",
-            {
-                "verdict": "BUY",
-                "confidence": 78.5,
-                "edge_score": 2.4,
-                "reasoning": "Macro risk-on regime and DXY weakness dominate technical divergence. Asymmetric upside.",
-                "stop_loss": 1.082,
-                "take_profit": 1.091,
-                "risk_reward_ratio": 2.35
-            }
-        ),
-        resolve_node(
-            "risk_gate", "Risk Gate", "risk", s_risk,
-            420.0, 0, 0, 0.0,
-            "Portfolio VAR check, daily drawdown limit, correlation matrix, max lot limits",
-            {
-                "passed": True,
-                "daily_drawdown_current": 0.85,
-                "max_allowed_daily_dd": 3.0,
-                "adjusted_lot": 0.02,
-                "correlation_check": "passed",
-                "status_message": "Cleared risk gate: Trade size sized to 1.0% equity risk"
-            }
-        ),
-        resolve_node(
-            "execution", "Execution", "execution", s_exec,
-            820.0, 0, 0, 0.0,
-            "Order dispatch: BUY EURUSD 0.02 lots via MT5 execution service / Paper broker",
-            {
-                "ticket": 4829103,
-                "symbol": "EURUSD",
-                "action": "BUY",
-                "lot": 0.02,
-                "price": 1.08472,
-                "status": "FILLED",
-                "mode": "paper",
-                "latency_ms": 138.5
-            }
-        ),
+        resolve_node("fundamental_brief", "Fundamental Brief", "stage1", s_fund),
+        resolve_node("prefetch_data", "Prefetch Data", "prefetch", s_prefetch),
+        resolve_node("bull_advocate", "Bull Advocate", "debate", s_bull),
+        resolve_node("bear_dissent", "Bear Dissent", "debate", s_bear),
+        resolve_node("debate_judge", "Debate Judge", "debate", s_judge),
+        resolve_node("risk_gate", "Risk Gate", "risk", s_risk),
+        resolve_node("execution", "Execution", "execution", s_exec),
     ]
 
     edges = [
@@ -310,7 +213,7 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
     started_at = started_nodes[0] if started_nodes else None
     completed_at = completed_nodes[-1] if (overall_status in ("completed", "failed") and completed_nodes) else None
 
-    if target_cycle and not is_synthetic and not any(c["cycle_id"] == target_cycle for c in available_cycles):
+    if target_cycle and not any(c["cycle_id"] == target_cycle for c in available_cycles):
         available_cycles.insert(0, {
             "cycle_id": target_cycle,
             "label": f"Cycle #{target_cycle.split('-')[-1] if '-' in target_cycle else target_cycle[:12]}",

@@ -151,7 +151,7 @@ class SystemDoctor:
     async def check_database_migrations(self) -> None:
         """Verify database connectivity and schema tables."""
         try:
-            from database.db import init_db, get_session
+            from database.db import init_db, get_session, close_db
             await init_db()
             async with get_session() as session:
                 from sqlalchemy import text
@@ -167,6 +167,12 @@ class SystemDoctor:
                     subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, check=False)
                 except Exception:
                     pass
+        finally:
+            try:
+                from database.db import close_db
+                await close_db()
+            except Exception:
+                pass
 
     async def check_startup_checker_suite(self, settings: dict) -> None:
         """Execute unified 11-step StartupChecker from agent/startup_checks.py."""
@@ -246,6 +252,8 @@ class SystemDoctor:
                 has_fail = True
 
             table.add_row(item.category, item.name, st, item.message)
+            if self.verbose and item.details:
+                table.add_row("", "", "", f"[dim]{item.details}[/]")
 
         console.print()
         console.print(table)

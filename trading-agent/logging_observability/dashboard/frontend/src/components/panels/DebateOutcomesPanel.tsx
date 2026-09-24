@@ -334,6 +334,10 @@ export const DebateOutcomesPanel: React.FC = () => {
                 {/* Collapsible Card Header */}
                 <div
                   onClick={() => toggleExpand(item.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(item.id); } }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -362,7 +366,7 @@ export const DebateOutcomesPanel: React.FC = () => {
                         ) : (
                           <TrendingDown size={11} style={{ marginRight: 2 }} />
                         )}
-                        {item.decision.toUpperCase()}
+                        {item.decision?.toUpperCase() ?? 'N/A'}
                       </Badge>
                     </div>
 
@@ -497,7 +501,7 @@ export const DebateOutcomesPanel: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Award size={14} color="var(--color-brass)" />
                           <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-brass)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Debate Verdict: {item.debate_verdict || item.decision.toUpperCase()}
+                            Debate Verdict: {item.debate_verdict || item.decision?.toUpperCase() || 'N/A'}
                           </span>
                         </div>
                         {item.debate_reason && (

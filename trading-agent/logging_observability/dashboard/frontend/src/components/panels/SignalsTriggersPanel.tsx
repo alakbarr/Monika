@@ -295,7 +295,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                       <td style={{ color: 'var(--color-ink-muted)' }}>#{o.id}</td>
                       <td>
                         <Badge variant={o.action === 'place' ? 'active' : o.action === 'close' ? 'warn' : 'neutral'}>
-                          {o.action.toUpperCase()}
+                          {o.action?.toUpperCase() ?? 'N/A'}
                         </Badge>
                       </td>
                       <td style={{ fontWeight: 700 }}>{o.symbol}</td>
@@ -649,7 +649,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                           <span style={{ fontWeight: 700, color: 'var(--color-ink)' }}>{s.symbol}</span>
                           <Badge variant={isBuy ? 'buy' : 'sell'} size="sm">
                             {isBuy ? <ArrowUpRight size={10} style={{ marginRight: 2 }} /> : <ArrowDownRight size={10} style={{ marginRight: 2 }} />}
-                            {s.action.toUpperCase()}
+                            {s.action?.toUpperCase() ?? 'N/A'}
                           </Badge>
                         </div>
                       </td>

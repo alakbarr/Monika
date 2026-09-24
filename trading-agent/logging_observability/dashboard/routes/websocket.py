@@ -6,7 +6,9 @@
 import asyncio
 import json
 import logging
+import os
 import re
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -15,6 +17,7 @@ from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from logging_observability.dashboard.rbac import Role, resolve_role, require_role, ROLE_HIERARCHY
 from logging_observability.dashboard.routes.common import (
     _active_websockets,
+    _client_queues,
     get_dashboard_dependency,
     get_current_stream_seq,
     get_buffered_events_since,
@@ -27,15 +30,35 @@ router = APIRouter()
 websocket_router = router
 
 
+def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
+    origin = websocket.headers.get("origin")
+    if not origin or is_localhost:
+        return True
+    allowed_raw = os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
+    allowed = [o.strip() for o in allowed_raw.split(",") if o.strip()] or [
+        "http://localhost:5173", "http://localhost:4173", "http://localhost:3000",
+        "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000",
+    ]
+    if "*" in allowed:
+        return True
+    return origin in allowed
+
+
 @router.websocket("/ws/live-feed")
 async def websocket_live_feed(websocket: WebSocket):
     """Real-time WebSocket stream untuk push updates tick, posisi, dan activity logs with auth verification."""
+    client_host = websocket.client.host if websocket.client else "127.0.0.1"
+    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    if not _is_origin_allowed(websocket, is_localhost):
+        logger.warning(f"[Dashboard WS] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        return
+
     token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
     auth_header = websocket.headers.get("authorization", "")
     bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
     client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
-    client_host = websocket.client.host if websocket.client else "127.0.0.1"
-    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
 
     role = None
     authenticated = False
@@ -71,10 +94,29 @@ async def websocket_live_feed(websocket: WebSocket):
             await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
             return
 
+    queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
     _active_websockets.add(websocket)
+    _client_queues[websocket] = queue
+
+    async def _send_worker():
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                if isinstance(item, str):
+                    await websocket.send_text(item)
+                else:
+                    await websocket.send_json(item)
+                queue.task_done()
+        except Exception:
+            pass
+
+    sender_task = asyncio.create_task(_send_worker())
+
     try:
         current_seq = get_current_stream_seq()
-        await websocket.send_json({
+        await queue.put({
             "type": "connection_established",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "connected",
@@ -89,7 +131,7 @@ async def websocket_live_feed(websocket: WebSocket):
                 since_seq = int(since_raw)
                 missed_events = get_buffered_events_since(since_seq)
                 for ev in missed_events:
-                    await websocket.send_json(ev)
+                    await queue.put(ev)
             except (ValueError, TypeError):
                 pass
 
@@ -97,7 +139,7 @@ async def websocket_live_feed(websocket: WebSocket):
             from risk.approval_hub import ApprovalHub
             open_reqs = ApprovalHub.get_instance().get_open_requests()
             if open_reqs:
-                await websocket.send_json({
+                await queue.put({
                     "type": "open_approvals",
                     "requests": open_reqs,
                     "seq": get_current_stream_seq(),
@@ -109,42 +151,51 @@ async def websocket_live_feed(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             if data == "ping":
-                await websocket.send_text("pong")
+                await queue.put("pong")
             elif data:
                 try:
                     msg = json.loads(data)
                     if msg.get("type") == "authenticate":
-                        await websocket.send_json({"type": "authenticated", "role": role.value if role else "viewer"})
+                        await queue.put({"type": "authenticated", "role": role.value if role else "viewer"})
                     elif msg.get("type") in ("replay", "catch_up", "sync"):
                         since_seq = msg.get("since_seq") or msg.get("last_seq") or 0
                         missed = get_buffered_events_since(int(since_seq))
-                        await websocket.send_json({
+                        await queue.put({
                             "type": "replay_batch",
                             "events": missed,
                             "count": len(missed),
                             "as_of_seq": get_current_stream_seq(),
                         })
                     elif msg.get("type") == "steer":
+                        if not role or ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
+                            await queue.put({"type": "error", "message": "Forbidden: Requires OPERATOR role or above"})
+                            continue
                         text = msg.get("message") or (msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None)
                         symbol = msg.get("symbol") or "ALL"
                         if text:
                             from risk.approval_hub import ApprovalHub
                             operator_tag = f"ws:{role.value if role else 'client'}"
                             steer_res = await ApprovalHub.get_instance().steer(symbol, str(text), operator=operator_tag)
-                            await websocket.send_json({"type": "steer_acknowledged", **steer_res})
+                            await queue.put({"type": "steer_acknowledged", **steer_res})
                     elif msg.get("type") in ("approve", "approval_approve"):
+                        if not role or ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
+                            await queue.put({"type": "error", "message": "Forbidden: Requires OPERATOR role or above"})
+                            continue
                         req_id = msg.get("request_id") or msg.get("action_id")
                         operator_tag = f"ws:{role.value if role else 'client'}"
                         from risk.approval_hub import ApprovalHub
                         ok, res_str = await ApprovalHub.get_instance().approve(str(req_id), operator=operator_tag)
-                        await websocket.send_json({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
+                        await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
                     elif msg.get("type") in ("reject", "approval_reject"):
+                        if not role or ROLE_HIERARCHY.get(role, -1) < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
+                            await queue.put({"type": "error", "message": "Forbidden: Requires OPERATOR role or above"})
+                            continue
                         req_id = msg.get("request_id") or msg.get("action_id")
                         reason = msg.get("reason", "")
                         operator_tag = f"ws:{role.value if role else 'client'}"
                         from risk.approval_hub import ApprovalHub
                         ok, res_str = await ApprovalHub.get_instance().reject(str(req_id), operator=operator_tag, reason=reason)
-                        await websocket.send_json({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
+                        await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
                 except Exception:
                     pass
     except WebSocketDisconnect:
@@ -153,6 +204,16 @@ async def websocket_live_feed(websocket: WebSocket):
         pass
     finally:
         _active_websockets.discard(websocket)
+        _client_queues.pop(websocket, None)
+        try:
+            queue.put_nowait(None)
+        except Exception:
+            pass
+        sender_task.cancel()
+        try:
+            await sender_task
+        except asyncio.CancelledError:
+            pass
 class TokenCoalescingBuffer:
     """
     High-performance 30 FPS (~33ms flush interval) token coalescing stream buffer.
@@ -229,12 +290,18 @@ class TokenCoalescingBuffer:
 @router.websocket("/ws/agent-chat")
 async def websocket_agent_chat(websocket: WebSocket):
     """Bidirectional streaming chat with Trading Agent for dashboard."""
+    client_host = websocket.client.host if websocket.client else "127.0.0.1"
+    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    if not _is_origin_allowed(websocket, is_localhost):
+        logger.warning(f"[AgentChat WS] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        return
+
     token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
     auth_header = websocket.headers.get("authorization", "")
     bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
     client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
-    client_host = websocket.client.host if websocket.client else "127.0.0.1"
-    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
 
     role = None
     authenticated = False
@@ -270,7 +337,7 @@ async def websocket_agent_chat(websocket: WebSocket):
             await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
             return
 
-    session_id = websocket.query_params.get("session_id") or f"dash:{role.value if role else 'unknown'}"
+    session_id = websocket.query_params.get("session_id") or f"dash:{role.value if role else 'unknown'}:{uuid.uuid4().hex[:8]}"
     await websocket.send_json({
         "type": "connection_established",
         "role": role.value if role else "viewer",
@@ -486,10 +553,11 @@ async def websocket_agent_chat(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info(f"[AgentChat WS] Disconnected {session_id}")
-        if turn_task and not turn_task.done():
-            turn_task.cancel()
     except Exception as e:
         logger.debug(f"[AgentChat WS] Session error: {e}")
+    finally:
+        if turn_task and not turn_task.done():
+            turn_task.cancel()
 
 
 @router.get("/api/sessions", tags=["Sessions"])

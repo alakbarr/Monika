@@ -20,6 +20,8 @@ from textual.widget import Widget
 
 from cli.sparklines import braille_sparkline
 from cli.theme import (
+    ThemePack,
+    get_theme,
     PHOSPHOR_AMBER,
     BRASS,
     BULL_PROFIT,
@@ -86,9 +88,24 @@ class AnalysisCycleTree(Widget):
         "risk": "risk_gate",
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, theme: Optional[ThemePack] = None, **kwargs):
         super().__init__(**kwargs)
         self._start_time: Optional[float] = None
+        self.theme: ThemePack = theme or get_theme("retro_vintage")
+
+    def set_theme(self, theme: ThemePack) -> None:
+        """Update active theme pack for analysis tree rendering."""
+        self.theme = theme
+        self.refresh()
+
+    def get_icons(self) -> Dict[str, str]:
+        t = self.theme
+        return {
+            "running": f"[{t.step_running}]⟳[/]",
+            "completed": f"[{t.step_completed}]✓[/]",
+            "failed": f"[{t.step_failed}]✗[/]",
+            "waiting": f"[{t.step_waiting}]○[/]",
+        }
 
     def start_cycle(self, cycle_id: str, symbol: str) -> None:
         """Initialize and display a new analysis cycle."""
@@ -170,6 +187,8 @@ class AnalysisCycleTree(Widget):
     def render(self) -> str:
         """Render active cycle tree followed by collapsed historical cycles."""
         lines: List[str] = []
+        t = self.theme
+        icons = self.get_icons()
 
         # 1. Active cycle rendering
         if self.cycle_data and self.cycle_data.get("id"):
@@ -179,7 +198,7 @@ class AnalysisCycleTree(Widget):
             start = cycle.get("start_time")
             elapsed_str = f"{time.time() - start:.1f}s" if start else "0.0s"
 
-            lines.append(f"[{PHOSPHOR_AMBER}]◉ Analysis Cycle #{cid}[/] — [bold {PAPER}]{sym}[/] [dim {MUTED}]({elapsed_str})[/]")
+            lines.append(f"[{t.primary}]◉ Analysis Cycle #{cid}[/] — [bold {t.text}]{sym}[/] [dim {t.muted}]({elapsed_str})[/]")
 
             steps = cycle.get("steps", {})
             for i, step_name in enumerate(self.PIPELINE_STEPS):
@@ -187,54 +206,55 @@ class AnalysisCycleTree(Widget):
                 rail = self.RAILS["last"] if is_last else self.RAILS["mid"]
                 step = steps.get(step_name, {})
                 status = step.get("status", "waiting")
-                icon = self.ICONS.get(status, self.ICONS["waiting"])
+                icon = icons.get(status, icons["waiting"])
                 label = self.STEP_LABELS.get(step_name, step_name)
 
-                parts = [f"  {rail} {icon} [bold {PAPER}]{label}[/]"]
+                parts = [f"  {rail} {icon} [bold {t.text}]{label}[/]"]
 
-                dur = step.get("duration_s")
-                if dur:
+                raw_dur = step.get("duration_s")
+                dur = float(raw_dur) if raw_dur is not None else 0.0
+                if dur > 0.0:
                     dots_count = max(2, 24 - len(label))
-                    parts.append(f" [dim {MUTED}]{'.' * dots_count}[/] [{BRASS}]{dur:.1f}s[/]")
+                    parts.append(f" [dim {t.muted}]{'.' * dots_count}[/] [{t.accent}]{dur:.1f}s[/]")
                 else:
                     dots_count = max(2, 24 - len(label))
-                    parts.append(f" [dim {MUTED}]{'.' * dots_count}[/]")
+                    parts.append(f" [dim {t.muted}]{'.' * dots_count}[/]")
 
-                inp = step.get("input_tokens", 0)
-                out = step.get("output_tokens", 0)
+                inp = int(step.get("input_tokens", 0) or 0)
+                out = int(step.get("output_tokens", 0) or 0)
                 if inp or out:
-                    parts.append(f"  [dim {MUTED}]↑{inp / 1000:.1f}k ↓{out / 1000:.1f}k[/]")
+                    parts.append(f"  [dim {t.muted}]↑{inp / 1000:.1f}k ↓{out / 1000:.1f}k[/]")
 
                 history = step.get("token_history")
                 if history:
-                    parts.append(f"  [{PHOSPHOR_AMBER}]{braille_sparkline(history, width=6)}[/]")
+                    parts.append(f"  [{t.primary}]{braille_sparkline(history, width=6)}[/]")
 
                 lines.append("".join(parts))
         else:
-            lines.append(f"[dim {MUTED}]○ No active analysis cycle. Standing by for market trigger or scheduled dispatch...[/]")
+            lines.append(f"[dim {t.muted}]○ No active analysis cycle. Standing by for market trigger or scheduled dispatch...[/]")
 
         # 2. Historical completed cycles (Last 3 collapsed)
         if self.history_cycles:
             lines.append("")
-            lines.append(f"[dim {BRASS}]── Historical Execution Cycles (Last 3) ──[/]")
+            lines.append(f"[dim {t.accent}]── Historical Execution Cycles (Last 3) ──[/]")
             for h in self.history_cycles:
                 hcid = h.get("id", "?")
                 hsym = h.get("symbol", "N/A")
-                helapsed = f"{h.get('elapsed_s', 0):.1f}s"
+                helapsed = f"{float(h.get('elapsed_s') or 0.0):.1f}s"
                 dec = h.get("decision", "DONE")
-                dec_color = BULL_PROFIT if "BUY" in dec or "SELL" in dec else (BEAR_LOSS if "REJECT" in dec else BRASS)
+                dec_color = t.profit if "BUY" in dec or "SELL" in dec else (t.loss if "REJECT" in dec else t.accent)
 
                 # Total tokens in historical cycle
-                tot_inp = sum(s.get("input_tokens", 0) for s in h.get("steps", {}).values())
-                tot_out = sum(s.get("output_tokens", 0) for s in h.get("steps", {}).values())
+                tot_inp = sum(int(s.get("input_tokens", 0) or 0) for s in h.get("steps", {}).values())
+                tot_out = sum(int(s.get("output_tokens", 0) or 0) for s in h.get("steps", {}).values())
                 tok_summary = f"↑{tot_inp/1000:.1f}k ↓{tot_out/1000:.1f}k" if (tot_inp or tot_out) else ""
 
                 is_expanded = self.expanded_cycle_id == str(hcid)
                 glyph = "▲" if is_expanded else "▽"
 
                 lines.append(
-                    f"  [{BRASS}]{glyph}[/] [bold {PAPER}]#{hcid}[/] {hsym} ({helapsed}) "
-                    f"[{dec_color}][ {dec} ][/] [dim {MUTED}]{tok_summary}[/]"
+                    f"  [{t.accent}]{glyph}[/] [bold {t.text}]#{hcid}[/] {hsym} ({helapsed}) "
+                    f"[{dec_color}][ {dec} ][/] [dim {t.muted}]{tok_summary}[/]"
                 )
 
                 if is_expanded:
@@ -244,8 +264,8 @@ class AnalysisCycleTree(Widget):
                         rl = self.RAILS["last"] if is_l else self.RAILS["mid"]
                         st = hsteps.get(sname, {})
                         st_status = st.get("status", "completed")
-                        st_icon = self.ICONS.get(st_status, "✓")
-                        st_dur = st.get("duration_s", 0)
+                        st_icon = icons.get(st_status, "✓")
+                        st_dur = float(st.get("duration_s") or 0.0)
                         lines.append(f"      {rl} {st_icon} {sname} ({st_dur:.1f}s)")
 
         return "\n".join(lines)

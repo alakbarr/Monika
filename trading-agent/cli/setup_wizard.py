@@ -98,6 +98,7 @@ class SetupWizard:
         console.print(f"{stamp_info('PROBE')} Testing database connectivity...")
         try:
             import asyncio
+            import concurrent.futures
             from sqlalchemy.ext.asyncio import create_async_engine
             from sqlalchemy import text
 
@@ -108,7 +109,18 @@ class SetupWizard:
                     res.scalar()
                 await engine.dispose()
 
-            asyncio.run(_ping())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(lambda: asyncio.run(_ping()))
+                    future.result(timeout=10.0)
+            else:
+                asyncio.run(_ping())
+
             console.print(f"{stamp_ok('DATABASE')} Database connection successful (SELECT 1 OK).\n")
             return True
         except Exception as e:

@@ -112,10 +112,10 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=True),
-        Binding("1", "select_preset_1", "Preset 1", show=False),
-        Binding("2", "select_preset_2", "Preset 2", show=False),
-        Binding("3", "select_preset_3", "Preset 3", show=False),
-        Binding("4", "select_preset_4", "Preset 4", show=False),
+        Binding("alt+1", "select_preset_1", "Preset 1", show=False),
+        Binding("alt+2", "select_preset_2", "Preset 2", show=False),
+        Binding("alt+3", "select_preset_3", "Preset 3", show=False),
+        Binding("alt+4", "select_preset_4", "Preset 4", show=False),
     ]
 
     def __init__(self, *args, **kwargs) -> None:
@@ -132,10 +132,10 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
             )
 
             with Vertical(id="preset_container"):
-                yield Static("CURATED CATALOG PRESETS (Press number to auto-fill):", classes="preset_header")
+                yield Static("CURATED CATALOG PRESETS (Press [Alt+1] - [Alt+4] to auto-fill):", classes="preset_header")
                 for i, item in enumerate(self.catalog, start=1):
                     yield Static(
-                        f" [{i}] {item['name']} ({item['package']}) — {item['category']}",
+                        f" [Alt+{i}] {item['name']} ({item['package']}) — {item['category']}",
                         classes="preset_item",
                     )
 
@@ -152,7 +152,7 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
 
     def on_mount(self) -> None:
         log = self.query_one("#install_log", RichLog)
-        log.write("[dim]Ready. Enter package specification above or press [1]-[4] to select a preset.[/dim]")
+        log.write("[dim]Ready. Enter package specification above or press [Alt+1]-[Alt+4] to select a preset.[/dim]")
         self.query_one("#pkg_input", Input).focus()
 
     def action_select_preset_1(self) -> None:

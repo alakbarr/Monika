@@ -149,11 +149,13 @@ async def get_health_diagnostics():
 
             res = await conn.execute(text("SELECT MAX(date) FROM vix_data"))
             v_ts = res.scalar_one_or_none()
-            data_freshness["vix_days_old"] = (datetime.now(timezone.utc).date() - v_ts.date()).days if v_ts else None
+            v_date = v_ts.date() if hasattr(v_ts, "date") and callable(getattr(v_ts, "date")) else v_ts
+            data_freshness["vix_days_old"] = (datetime.now(timezone.utc).date() - v_date).days if v_date else None
 
             res = await conn.execute(text("SELECT MAX(report_date) FROM cot_report"))
             cot_ts = res.scalar_one_or_none()
-            data_freshness["cot_days_old"] = (datetime.now(timezone.utc).date() - cot_ts.date()).days if cot_ts else None
+            cot_date = cot_ts.date() if hasattr(cot_ts, "date") and callable(getattr(cot_ts, "date")) else cot_ts
+            data_freshness["cot_days_old"] = (datetime.now(timezone.utc).date() - cot_date).days if cot_date else None
     except Exception as e:
         logger.warning(f"Data freshness check failed: {e}")
 
@@ -228,7 +230,7 @@ async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
 
         return [
             {
-                "date": r.date.date().isoformat() if r.date else None,
+                "date": (r.date.date() if hasattr(r.date, "date") and callable(getattr(r.date, "date")) else r.date).isoformat() if r.date else None,
                 "close": round(r.close, 2) if r.close else None,
             }
             for r in reversed(rows)

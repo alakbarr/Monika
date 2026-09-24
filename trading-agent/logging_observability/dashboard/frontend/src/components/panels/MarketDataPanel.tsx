@@ -134,12 +134,12 @@ export const MarketDataPanel: React.FC = () => {
 
   const watchlist = DEFAULT_WATCHLIST.map((row) => {
     const live = marketQuotes?.[row.symbol];
-    if (!live || !live.price) return row;
+    if (!live || !live.price) return { ...row, isFallback: true };
     const bid = live.price;
     const spreadDiff = row.ask - row.bid;
     const ask = bid + (spreadDiff > 0 ? spreadDiff : 0.0001);
     const chgPct = live.changePct != null ? live.changePct : row.chgPct;
-    return { ...row, bid, ask, chgPct };
+    return { ...row, bid, ask, chgPct, isFallback: false };
   });
 
   const macroEvents = liveCalendar.length > 0
@@ -208,6 +208,10 @@ export const MarketDataPanel: React.FC = () => {
                       key={row.symbol}
                       className="greenbar-row"
                       onClick={() => handleSelectSymbol(row.symbol)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectSymbol(row.symbol); } }}
+                      tabIndex={0}
+                      role="button"
+                      aria-pressed={isSelected}
                       style={{
                         borderBottom: '1px solid var(--color-rule)',
                         cursor: 'pointer',
@@ -216,7 +220,14 @@ export const MarketDataPanel: React.FC = () => {
                       title="Click to view Technical Indicators & SMC Structure"
                     >
                       <td style={{ padding: '8px 10px' }}>
-                        <div style={{ fontWeight: 800, color: 'var(--color-ink)' }}>{row.symbol}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 800, color: 'var(--color-ink)' }}>{row.symbol}</span>
+                          {row.isFallback && (
+                            <Badge variant="warn" size="sm">
+                              [DEMO]
+                            </Badge>
+                          )}
+                        </div>
                         <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{row.name}</div>
                       </td>
                       <td className="tabular-nums" style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 700, color: 'var(--color-ink)' }}>

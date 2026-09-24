@@ -13,6 +13,24 @@ import { Lock, Unlock, CheckCircle2, AlertTriangle, GraduationCap } from 'lucide
 export const PerformancePanel: React.FC = () => {
   const { paperStats, factorAnalysis, decisionDist, loading } = useDashboardStore();
 
+  const equityPoints = React.useMemo(() => {
+    if (!paperStats?.recent_20 || paperStats.recent_20.length === 0) return [];
+    let eq = 10000;
+    const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
+      { index: 0, equity: eq, symbol: 'START' },
+    ];
+    paperStats.recent_20.forEach((t, i) => {
+      eq = eq * (1 + (t.pnl_pct || 0) / 100);
+      points.push({
+        index: i + 1,
+        equity: Number(eq.toFixed(2)),
+        symbol: t.symbol,
+        exit_reason: t.exit_reason,
+      });
+    });
+    return points;
+  }, [paperStats]);
+
   if (loading) return (
     <div style={{ display: 'grid', gap: '16px' }}>
       {[1, 2, 3].map(i => (
@@ -36,24 +54,6 @@ export const PerformancePanel: React.FC = () => {
   const winRatePassed = winRate >= targetWinRate;
   const edgePassed = hasEdge;
   const isGraduated = tradesPassed && winRatePassed && edgePassed;
-
-  const equityPoints = React.useMemo(() => {
-    if (!paperStats?.recent_20 || paperStats.recent_20.length === 0) return [];
-    let eq = 10000;
-    const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
-      { index: 0, equity: eq, symbol: 'START' },
-    ];
-    paperStats.recent_20.forEach((t, i) => {
-      eq = eq * (1 + (t.pnl_pct || 0) / 100);
-      points.push({
-        index: i + 1,
-        equity: Number(eq.toFixed(2)),
-        symbol: t.symbol,
-        exit_reason: t.exit_reason,
-      });
-    });
-    return points;
-  }, [paperStats]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

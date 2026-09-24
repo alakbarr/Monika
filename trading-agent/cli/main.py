@@ -619,9 +619,7 @@ async def _cmd_config_unset(args):
         del cur[parts[-1]]
         try:
             validate_config(settings)
-            import yaml
-            with open(settings_path, "w", encoding="utf-8") as f:
-                yaml.dump(settings, f, default_flow_style=False)
+            AtomicConfigWriter.write(settings_path, settings, create_backup=True)
             console.print(f"{stamp_ok('CONFIG')} Successfully unset '{key_path}'.")
         except Exception as e:
             console.print(f"{stamp_err('CONFIG')} Failed to unset '{key_path}': {e}")

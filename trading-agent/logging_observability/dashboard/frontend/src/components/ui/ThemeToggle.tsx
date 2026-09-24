@@ -1,25 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useDashboardStore } from '../../store/dashboardStore';
 
 interface ThemeToggleProps {
   className?: string;
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const current = document.documentElement.getAttribute('data-theme');
-    if (current === 'light' || current === 'dark') return current;
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('monika_theme') : null;
-    if (saved === 'light' || saved === 'dark') return saved;
-    return 'light';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('monika_theme', theme);
-  }, [theme]);
+  const theme = useDashboardStore((s) => s.theme);
+  const setTheme = useDashboardStore((s) => s.setTheme);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const isLight = theme === 'light';

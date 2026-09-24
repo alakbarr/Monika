@@ -241,7 +241,7 @@ Tab.-active {{
     text-style: bold;
 }}
 
-#tab_overview, #tab_analysis, #tab_performance, #tab_chat {{
+#tab_overview, #tab_analysis, #tab_signals, #tab_risk, #tab_performance, #tab_market, #tab_plugins, #tab_chat {{
     height: 1fr;
     padding: 0;
 }}
@@ -293,7 +293,7 @@ DataTable > .datatable--header {{
 }}
 
 DataTable > .datatable--cursor {{
-    background: #252219;
+    background: {t.border};
     color: {t.primary};
     text-style: bold;
 }}
@@ -327,10 +327,39 @@ Toast.-error {{
     color: {t.text};
 }}
 
-#analysis_horizontal, #perf_horizontal {{
+#analysis_horizontal, #perf_horizontal, #market_horizontal {{
     height: 1fr;
     margin: 0;
     padding: 0;
+}}
+
+#signals_container, #risk_container, #plugins_container {{
+    width: 100%;
+    height: 100%;
+    border: double {t.accent};
+    background: {t.surface};
+    padding: 0;
+}}
+
+#market_macro_container {{
+    width: 55%;
+    height: 100%;
+    border: double {t.accent};
+    background: {t.surface};
+    padding: 0;
+}}
+
+#market_rates_container {{
+    width: 45%;
+    height: 100%;
+    border: double {t.border};
+    background: {t.surface};
+    padding: 0;
+}}
+
+#signals_table, #risk_table, #market_table, #market_rates_table, #plugins_table, #perf_table {{
+    height: 1fr;
+    background: {t.background};
 }}
 
 #analysis_container {{

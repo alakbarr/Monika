@@ -99,14 +99,19 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         api.activity(30),
         api.health(),
       ]);
-      set({
-        overview: overview.status === 'fulfilled' ? overview.value : get().overview,
-        positions: positions.status === 'fulfilled' ? positions.value : get().positions,
-        activity: activity.status === 'fulfilled' ? activity.value : get().activity,
-        health: health.status === 'fulfilled' ? health.value : get().health,
-        lastRefresh: new Date(),
-        error: null,
-      });
+      const rejectedCount = [overview, positions, activity, health].filter(r => r.status === 'rejected').length;
+      if (rejectedCount === 4) {
+        set({ error: 'Connection lost. Backend unreachable.' });
+      } else {
+        set({
+          overview: overview.status === 'fulfilled' ? overview.value : get().overview,
+          positions: positions.status === 'fulfilled' ? positions.value : get().positions,
+          activity: activity.status === 'fulfilled' ? activity.value : get().activity,
+          health: health.status === 'fulfilled' ? health.value : get().health,
+          lastRefresh: new Date(),
+          error: null,
+        });
+      }
     } catch {
       set({ error: 'Connection lost. Retrying...' });
     }
@@ -137,6 +142,20 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         api.health(),
       ]);
 
+      const criticalFailures = [overview, positions, health].filter(r => r.status === 'rejected');
+      const allFailures = [
+        overview, positions, activity, analyses,
+        paperStats, factorAnalysis, edgeMetrics,
+        vixHistory, briefRes, riskState,
+        geminiQuota, decisionDist, analysisQuality, health,
+      ].filter(r => r.status === 'rejected');
+
+      const errorMessage = criticalFailures.length >= 2
+        ? 'Failed to connect to backend API. Please verify the service is running.'
+        : allFailures.length > 5
+        ? `Warning: ${allFailures.length} dashboard feed(s) failed to load.`
+        : null;
+
       set({
         overview: overview.status === 'fulfilled' ? overview.value : null,
         positions: positions.status === 'fulfilled' ? positions.value : [],
@@ -154,7 +173,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         health: health.status === 'fulfilled' ? health.value : null,
         loading: false,
         lastRefresh: new Date(),
-        error: null,
+        error: errorMessage,
       });
     } catch {
       set({ loading: false, error: 'Failed to load dashboard data.' });
