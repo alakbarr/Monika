@@ -1277,6 +1277,7 @@ class TradingAgent:
                 plugin_cfg = self.settings.get("plugins", {})
                 await self.plugin_engine.initialize(plugin_cfg)
                 await self.plugin_engine.start()
+                await self.plugin_engine.emit_hook("on_startup", agent=self)
             except Exception as e:
                 logger.error(f"[PluginEngine] Launch error: {e}", exc_info=True)
 
@@ -1724,6 +1725,7 @@ class TradingAgent:
         # Stop PluginEngine
         if hasattr(self, "plugin_engine") and self.plugin_engine:
             try:
+                await self.plugin_engine.emit_hook("on_shutdown", agent=self)
                 await self.plugin_engine.stop()
                 logger.info("  [OK] PluginEngine stopped")
             except Exception as e:

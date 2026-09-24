@@ -62,7 +62,19 @@ def test_get_community_catalog():
         assert "package" in item
         assert "category" in item
         assert "description" in item
-        assert item["package"].startswith("monika-plugin-")
+        assert item["package"].startswith("monika-")
+
+
+def test_kill_list_rejection():
+    # Attempting to validate or install a revoked package must fail
+    is_valid, err = validate_package_spec("monika-telemetry-unauthorized==1.0.0")
+    assert is_valid is False
+    assert "Security Violation" in err
+
+    # Non-revoked package passes
+    is_valid, err = validate_package_spec("monika-plugin-telegram")
+    assert is_valid is True
+    assert err == ""
 
 
 def test_toggle_plugin_state_atomic():

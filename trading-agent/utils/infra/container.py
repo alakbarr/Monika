@@ -56,7 +56,7 @@ class ServiceContainer:
         return False
 
     def extend(self) -> 'ServiceContainer':
-        """Returns a child scope inheriting this container (DeepSeek Cordis Context.extend)."""
+        """Returns a child scope inheriting this container with scoped isolation."""
         return ServiceContainer(parent=self)
 
     def isolate(self, name: str) -> 'ServiceContainer':
@@ -100,7 +100,7 @@ class ServiceContainer:
         return self.get("plugin_manager")
 
 
-# Cordis Context alias for ServiceContainer
+# Backward compatibility alias for ServiceContainer
 Context = ServiceContainer
 
 

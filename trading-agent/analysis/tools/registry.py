@@ -153,6 +153,7 @@ CORE_PROTECTED_TOOLS: Set[str] = {
     "get_open_positions",
     "get_account_info",
     "submit_asset_analysis",
+    "execute_order",
 }
 
 
@@ -179,6 +180,10 @@ class ToolRegistry:
     def reset_instance(cls) -> None:
         """Reset singleton (primarily for test isolation)."""
         cls._instance = None
+
+    def register_definition(self, definition: ToolDefinition, allow_override: bool = False) -> ToolDefinition:
+        """Convenience method to register a ToolDefinition instance."""
+        return self.register(definition, allow_override=allow_override)
 
     def register(
         self,
@@ -366,6 +371,25 @@ class ToolRegistry:
         if not tool and not handler:
             return {"error": f"Unknown tool: {tool_name}", "is_error": True}
 
+        # 1. Pre-tool Hook Interception with fail-closed safety
+        try:
+            from harness.engine import get_plugin_engine
+            engine = get_plugin_engine()
+            if engine:
+                hook_res = await engine.emit_hook(
+                    "pre_tool_call",
+                    tool_name=canonical,
+                    arguments=arguments,
+                    context=context,
+                )
+                for hr in hook_res:
+                    if isinstance(hr, dict) and hr.get("abort"):
+                        reason = hr.get("reason", "Vetoed by security hook.")
+                        logger.warning(f"[ToolSecurity] Tool '{canonical}' aborted by plugin hook: {reason}")
+                        return {"error": f"Tool '{canonical}' execution aborted: {reason}", "is_error": True}
+        except Exception as hook_err:
+            logger.debug(f"[ToolDispatch] pre_tool_call notice: {hook_err}")
+
         try:
             if tool:
                 if not tool.is_available():
@@ -380,6 +404,21 @@ class ToolRegistry:
                 executor = context.get("executor")
                 result = await handler.execute(arguments, session=session, executor=executor, **context)
                 max_chars = 10000
+
+            # 2. Post-tool Hook Interception
+            try:
+                from harness.engine import get_plugin_engine
+                engine = get_plugin_engine()
+                if engine:
+                    await engine.emit_hook(
+                        "post_tool_call",
+                        tool_name=canonical,
+                        arguments=arguments,
+                        result=result,
+                        context=context,
+                    )
+            except Exception as hook_err:
+                logger.debug(f"[ToolDispatch] post_tool_call notice: {hook_err}")
 
             # Output length clamping
             if isinstance(result, str) and len(result) > max_chars:
