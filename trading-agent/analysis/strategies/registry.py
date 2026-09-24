@@ -2,8 +2,9 @@ import json
 import logging
 import time
 import inspect
+from pathlib import Path
 from typing import Type, Optional, Dict, Any
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from database.models import SystemConfig
 from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 
@@ -162,6 +163,38 @@ class StrategyRegistry:
                         if loaded_cls:
                             cls.register(loaded_cls, overwrite=True)
                             loaded_synths_count += 1
+                        else:
+                            # Self-healing fallback: Check if a valid version exists on disk
+                            disk_path = Path(__file__).resolve().parent / "synthesized" / f"{s_id}.py"
+                            healed = False
+                            if disk_path.exists():
+                                try:
+                                    disk_code = disk_path.read_text(encoding="utf-8")
+                                    disk_cls = synth_sched.compile_strategy_class(disk_code, cls_name)
+                                    if disk_cls:
+                                        cls.register(disk_cls, overwrite=True)
+                                        loaded_synths_count += 1
+                                        healed = True
+                                        logger.info(f"[StrategyRegistry] Self-healed strategy '{s_id}' from disk version.")
+                                        if hasattr(session, "execute"):
+                                            s_data["python_code"] = disk_code
+                                            upd_stmt = (
+                                                update(SystemConfig)
+                                                .where(SystemConfig.key == f"synthesized_strategy_{s_id}")
+                                                .values(value=json.dumps(s_data))
+                                            )
+                                            res_upd = session.execute(upd_stmt)
+                                            if inspect.isawaitable(res_upd):
+                                                await res_upd
+                                            if hasattr(session, "commit"):
+                                                res_c = session.commit()
+                                                if inspect.isawaitable(res_c):
+                                                    await res_c
+                                except Exception as heal_err:
+                                    logger.debug(f"[StrategyRegistry] Disk self-healing attempt failed for {s_id}: {heal_err}")
+                            if not healed:
+                                cls._blacklisted_ids.add(s_id)
+                                logger.warning(f"[StrategyRegistry] Quarantined corrupted synthesized strategy '{s_id}': compilation failed.")
                 except Exception as synth_err:
                     logger.debug(f"[StrategyRegistry] Failed restoring synthesized strategy: {synth_err}")
 

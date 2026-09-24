@@ -266,6 +266,7 @@ Monika/
     │   │   ├── xau_trend_engine.py
     │   │   ├── xti_pairs_readiness.py
     │   │   └── synthesized
+    │   │       ├── alpha_btcusd_467904.py
     │   │       ├── alpha_eurusd_6d622a.py
     │   │       ├── alpha_gbpusd_e73efc.py
     │   │       ├── alpha_usdjpy_13a603.py
