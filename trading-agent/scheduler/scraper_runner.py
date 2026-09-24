@@ -242,11 +242,12 @@ class ScraperRunner:
                 self._unregister_scraper(scraper)
                 scraper.close()
 
-        # 1. Coba Investing.com (Provider Utama, timeout 75s)
+        # 1. Coba Investing.com (Provider Utama, timeout 90s)
         try:
-            events = await asyncio.wait_for(self._run_in_executor(_fetch_investing), timeout=75.0)
+            events = await asyncio.wait_for(self._run_in_executor(_fetch_investing), timeout=90.0)
         except (asyncio.TimeoutError, Exception) as inv_err:
-            logger.warning(f"InvestingCalendarScraper failed or timed out: {inv_err}")
+            inv_err_msg = type(inv_err).__name__ if not str(inv_err) else f"{type(inv_err).__name__}: {inv_err}"
+            logger.warning(f"InvestingCalendarScraper failed or timed out: {inv_err_msg}")
             events = []
 
         # 2. Coba ForexFactory (Fallback Utama, timeout 45s)
@@ -267,7 +268,8 @@ class ScraperRunner:
                     logger.info(f"ForexFactory fallback: got {len(events)} events")
                     source = "forexfactory"
             except (asyncio.TimeoutError, Exception) as ff_err:
-                logger.error(f"ForexFactory fallback failed or timed out: {ff_err}")
+                ff_err_msg = type(ff_err).__name__ if not str(ff_err) else f"{type(ff_err).__name__}: {ff_err}"
+                logger.error(f"ForexFactory fallback failed or timed out: {ff_err_msg}")
                 events = []
 
         # 3. Coba Finnhub (Fallback Sekunder API, timeout 15s)

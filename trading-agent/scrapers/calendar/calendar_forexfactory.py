@@ -1,10 +1,13 @@
-# ==============================================================================
-# File: scrapers/calendar/calendar_forexfactory.py
-# ==============================================================================
 import logging
+import json
+import time
+import urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from dateutil import parser as dateutil_parser
 from bs4 import BeautifulSoup
-from typing import List, Any
+from typing import List, Any, Optional
 
 from scrapers.base_scraper import BaseScraper
 from scrapers.models import CalendarEvent
@@ -13,19 +16,142 @@ logger = logging.getLogger("TradingAgent.ForexFactoryScraper")
 
 class ForexFactoryCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="ff_calendar"):
-        super().__init__(headless, profile_name)
+        super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
+        self.feed_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
         self.urls = [
             "https://www.forexfactory.com/calendar?week=this",
             "https://www.forexfactory.com/calendar?week=next"
         ]
 
-    def fetch_events(self) -> List[CalendarEvent]:
+    def _get_cache_path(self) -> Path:
+        import os
+        base_dir = Path(os.getcwd())
+        cache_dir = base_dir / "data" / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir / "ff_calendar_thisweek.json"
+
+    def _load_from_cache(self, max_age_seconds: int = 3600) -> Optional[List[dict]]:
+        cache_path = self._get_cache_path()
+        if not cache_path.exists():
+            return None
+        try:
+            mtime = cache_path.stat().st_mtime
+            age = time.time() - mtime
+            if age > max_age_seconds:
+                logger.debug(f"ForexFactory cache is stale ({age:.0f}s > {max_age_seconds}s)")
+                return None
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and data:
+                    logger.info(f"Loaded {len(data)} events from ForexFactory local cache (age: {age/60:.1f}m)")
+                    return data
+        except Exception as e:
+            logger.debug(f"Failed to read ForexFactory cache: {e}")
+        return None
+
+    def _save_to_cache(self, raw_items: List[dict]) -> None:
+        if not raw_items:
+            return
+        try:
+            cache_path = self._get_cache_path()
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(raw_items, f)
+        except Exception as e:
+            logger.debug(f"Failed to write ForexFactory cache: {e}")
+
+    def fetch_feed_events(self) -> List[CalendarEvent]:
+        """
+        Mengambil peristiwa kalender ekonomi langsung dari feed resmi FairEconomy / ForexFactory JSON.
+        Sangat cepat (<0.5s) dan tahan terhadap pemblokiran Cloudflare pada halaman web HTML.
+        Dilengkapi caching lokal (TTL 1 jam) untuk mencegah 429 Too Many Requests.
+        """
+        raw_items = self._load_from_cache(max_age_seconds=3600)
+        
+        # 1. Coba via direct HTTP request jika cache tidak ada / kedaluwarsa
+        if not raw_items:
+            try:
+                req = urllib.request.Request(
+                    self.feed_url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                        "Accept": "application/json, text/plain, */*",
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=6) as resp:
+                    if resp.status == 200:
+                        raw_items = json.loads(resp.read().decode("utf-8"))
+                        self._save_to_cache(raw_items)
+            except Exception as http_err:
+                logger.debug(f"Direct HTTP fetch for FairEconomy feed failed: {http_err}")
+
+        # 2. Coba via browser page jika HTTP gagal (misal 429 atau IP block)
+        if not raw_items and hasattr(self, "page") and self.page and not getattr(self, "is_closed", False):
+            try:
+                page_obj: Any = self.page
+                page_obj.get(self.feed_url, timeout=10)
+                raw_text = page_obj.run_js("return document.body.innerText")
+                if raw_text and raw_text.strip().startswith("["):
+                    raw_items = json.loads(raw_text.strip())
+                    self._save_to_cache(raw_items)
+            except Exception as browser_err:
+                logger.debug(f"Browser fetch for FairEconomy feed failed: {browser_err}")
+
+        # 3. Graceful fallback ke cache lama jika ada rate limit (429)
+        if not raw_items:
+            raw_items = self._load_from_cache(max_age_seconds=86400)
+            if raw_items:
+                logger.warning(f"ForexFactory feed unavailable — served {len(raw_items)} events from stale cache fallback.")
+
+        if not raw_items:
+            return []
+
+        eastern_tz = ZoneInfo("America/New_York")
+        events = []
+        for item in raw_items:
+            raw_date = item.get("date", "")
+            try:
+                parsed_dt = dateutil_parser.isoparse(raw_date) if hasattr(dateutil_parser, "isoparse") else dateutil_parser.parse(raw_date)
+                if parsed_dt.tzinfo is None:
+                    parsed_dt = parsed_dt.replace(tzinfo=eastern_tz)
+                iso_time = parsed_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except Exception:
+                iso_time = raw_date
+
+            raw_impact = item.get("impact", "Low").strip().capitalize()
+            impact = raw_impact if raw_impact in ["High", "Medium", "Low"] else "Low"
+
+            currency = item.get("country", "").strip().upper()
+            title = item.get("title", "").strip()
+            forecast = item.get("forecast") or None
+            previous = item.get("previous") or None
+
+            events.append(CalendarEvent(
+                time=iso_time,
+                currency=currency,
+                impact=impact,
+                event_name=title,
+                actual=None,
+                forecast=forecast if forecast else None,
+                previous=previous if previous else None,
+                country=currency[:2] if currency else None
+            ))
+
+        logger.info(f"ForexFactory (FairEconomy feed): Fetched {len(events)} events.")
+        return events
+
+    def fetch_events(self, prefer_feed: bool = True) -> List[CalendarEvent]:
+        # 1. Coba ambil dari feed resmi FairEconomy JSON jika diaktifkan (sangat cepat & anti-block)
+        if prefer_feed:
+            feed_events = self.fetch_feed_events()
+            if feed_events:
+                return feed_events
+
         all_events = []
         for url in self.urls:
             if getattr(self, 'is_closed', False):
                 break
             logger.info(f"Navigating to ForexFactory: {url}")
-            success = self.navigate_with_fallback(url, 'css:table.calendar__table', timeout=20)
+            success = self.navigate_with_fallback(url, 'css:table.calendar__table', timeout=10)
             if not success or getattr(self, 'is_closed', False):
                 if not success:
                     logger.warning(f"Failed to load ForexFactory {url} (anti-bot challenge or slow CDN)")

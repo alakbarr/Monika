@@ -108,30 +108,30 @@ This document provides an exhaustive structural index of all directories, files,
     - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3258
     - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3573
       - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3605
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3641
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3653
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3779
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3806
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3824
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 3843
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 3886
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 3891
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3937
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4400
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4430
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4463
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4469
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4484
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4511
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4520
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4599
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4628
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4638
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4667
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4677
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4686
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4699
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4724
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3645
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3657
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3783
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3810
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3828
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 3847
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 3890
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 3895
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3941
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4404
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4434
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4467
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4473
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4488
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4515
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4524
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4603
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4632
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4642
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4671
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4681
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4690
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4703
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4728
 
 ## Root Directory: `/trading-agent`
 
@@ -3580,7 +3580,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**:
     - `BaseScraper`
       - *Methods*:
-        - `__init__(self)`
+        - `__init__(self, headless=True, profile_name=None, load_mode="normal", no_imgs=False)`
         - `__del__(self)`
         - `__enter__(self)`
         - `__exit__(self, *args)`
@@ -3620,23 +3620,27 @@ This document provides an exhaustive structural index of all directories, files,
         - `afetch_events(self)`
 
 **File:** `calendar_forexfactory.py`
-  - **Global Variables**: logger
+  - **Global Variables**: logger, FAIR_ECONOMY_FEED_URL, CACHE_DIR, CACHE_FILE, CACHE_TTL_SECONDS, _FEED_IMPACT_MAP
   - **Classes**:
     - `ForexFactoryCalendarScraper`
       - *Methods*:
-        - `__init__(self)`
-        - `fetch_events(self)`
+        - `__init__(self, headless=True, profile_name="forexfactory_calendar")`
+        - `_load_from_cache(self) -> Optional[List[dict]]`
+        - `_save_to_cache(self, data: List[dict]) -> None`
+        - `fetch_feed_events(self) -> List[ScrapedCalendarEvent]`
+        - `fetch_events(self, prefer_feed: bool = True) -> List[ScrapedCalendarEvent]`
 
 **File:** `calendar_investing.py`
   - **Global Variables**: logger
   - **Classes**:
     - `InvestingCalendarScraper`
       - *Methods*:
-        - `__init__(self)`
+        - `__init__(self, headless=True, profile_name="investing_calendar")`
         - `_find_calendar_table(self)`
-        - `_apply_time_filter_human_like(self)`
+        - `_apply_time_filter_human_like(self, time_filter: str)`
         - `_load_all_calendar_rows(self)`
-        - `fetch_events(self)`
+        - `fetch_events(self, fast_mode: bool = False, time_filter: Optional[str] = None)`
+        - `_parse_table_html(self, soup: BeautifulSoup, all_events_dict: dict)`
 
 ##### Folder: `trading-agent/scrapers/macro`
 

@@ -16,7 +16,7 @@ logger = logging.getLogger("TradingAgent.InvestingScraper")
 
 class InvestingCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="investing_calendar"):
-        super().__init__(headless, profile_name)
+        super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
         self.target_url = "https://www.investing.com/economic-calendar/"
 
     def _apply_time_filter_human_like(self, time_filter: str) -> bool:
@@ -43,28 +43,28 @@ class InvestingCalendarScraper(BaseScraper):
         # Coba klik tab button langsung (Today, This Week, Next Week, Yesterday, Tomorrow)
         tab_map = {
             "today": [
-                "tag:button@@text():Today",
                 "xpath://button[normalize-space(.)='Today' or contains(normalize-space(), 'Today')]",
+                "tag:button@@text():Today",
                 "#timeFrame_today",
             ],
             "this week": [
-                "tag:button@@text():This Week",
                 "xpath://button[normalize-space(.)='This Week' or contains(normalize-space(), 'This Week')]",
+                "tag:button@@text():This Week",
                 "#timeFrame_thisWeek",
             ],
             "next week": [
-                "tag:button@@text():Next Week",
                 "xpath://button[normalize-space(.)='Next Week' or contains(normalize-space(), 'Next Week')]",
+                "tag:button@@text():Next Week",
                 "#timeFrame_nextWeek",
             ],
             "yesterday": [
-                "tag:button@@text():Yesterday",
                 "xpath://button[normalize-space(.)='Yesterday' or contains(normalize-space(), 'Yesterday')]",
+                "tag:button@@text():Yesterday",
                 "#timeFrame_yesterday",
             ],
             "tomorrow": [
-                "tag:button@@text():Tomorrow",
                 "xpath://button[normalize-space(.)='Tomorrow' or contains(normalize-space(), 'Tomorrow')]",
+                "tag:button@@text():Tomorrow",
                 "#timeFrame_tomorrow",
             ],
         }
@@ -154,13 +154,12 @@ class InvestingCalendarScraper(BaseScraper):
             return None
         page_obj: Any = self.page
         modern_selectors = [
-            "css:#economicCalendarData",
+            'xpath://table[contains(@class, "datatable") or @id="economicCalendarData" or contains(@class, "genTbl")]',
             "css:[data-test='calendar-table']",
             "css:.economic-calendar",
-            "css:table.genTbl"
         ]
         for sel in modern_selectors:
-            ele = page_obj.ele(sel, timeout=1)
+            ele = page_obj.ele(sel, timeout=0.5)
             if ele:
                 return ele
 
@@ -173,7 +172,7 @@ class InvestingCalendarScraper(BaseScraper):
                     return t
             except Exception:
                 pass
-        return page_obj.ele("css:table", timeout=2)
+        return page_obj.ele("css:table", timeout=1)
 
     def _load_all_calendar_rows(self) -> None:
         if not self.page:
@@ -181,7 +180,7 @@ class InvestingCalendarScraper(BaseScraper):
         page_obj: Any = self.page
         consecutive_stall_count = 0
         previous_row_count = 0
-        MAX_SCROLL_ITERATIONS = 3
+        MAX_SCROLL_ITERATIONS = 2
 
         for _ in range(MAX_SCROLL_ITERATIONS):
             if getattr(self, 'is_closed', False):
@@ -190,11 +189,11 @@ class InvestingCalendarScraper(BaseScraper):
                 table = self._find_calendar_table()
                 if not table:
                     page_obj.scroll.to_bottom()
-                    page_obj.wait(0.5)
+                    page_obj.wait(0.3)
                     continue
 
                 page_obj.scroll.to_bottom()
-                page_obj.wait(0.3)
+                page_obj.wait(0.2)
             except Exception:
                 pass
 
@@ -202,17 +201,22 @@ class InvestingCalendarScraper(BaseScraper):
                 load_more_button = page_obj.ele(
                     'xpath://button[contains(., "Load more") or contains(., "Load More") '
                     'or contains(., "Show more")]',
-                    timeout=0.5,
+                    timeout=0.3,
                 )
                 if load_more_button and load_more_button.states.is_displayed:
                     load_more_button.click(by_js=True)
-                    page_obj.wait(0.8)
+                    page_obj.wait(0.5)
             except Exception:
                 pass
 
             try:
                 table = self._find_calendar_table()
-                refreshed_count = len(table.eles("tag:tr")) if table else 0
+                if table:
+                    refreshed_count = page_obj.run_js(
+                        'return arguments[0] ? arguments[0].querySelectorAll("tr").length : 0', table
+                    ) or 0
+                else:
+                    refreshed_count = 0
                 if abs(refreshed_count - previous_row_count) <= 2:
                     consecutive_stall_count += 1
                     if consecutive_stall_count >= 1:

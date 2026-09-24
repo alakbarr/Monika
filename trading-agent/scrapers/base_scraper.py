@@ -4,6 +4,10 @@ except ImportError:
     ChromiumPage = None  # type: ignore[assignment, misc]
     ChromiumOptions = None  # type: ignore[assignment, misc]
 
+import os
+import signal
+import platform
+import subprocess
 import logging
 import time
 import uuid
@@ -48,16 +52,12 @@ def kill_process_tree(pid: Optional[int]) -> bool:
 
     # 2. Fallback for Windows or if psutil was not installed / failed
     if not killed:
-        import platform
-        import subprocess
         try:
             if platform.system().lower() == "windows":
                 cmd = ["taskkill", "/F", "/T", "/PID", str(pid)]
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
                 killed = True
             else:
-                import os
-                import signal
                 sig = getattr(signal, "SIGKILL", getattr(signal, "SIGTERM", 9))
                 os.kill(pid, sig)
                 killed = True
@@ -68,9 +68,11 @@ def kill_process_tree(pid: Optional[int]) -> bool:
 
 
 class BaseScraper:
-    def __init__(self, headless=True, profile_name=None):
+    def __init__(self, headless=True, profile_name=None, load_mode="normal", no_imgs=False):
         self.headless = headless
         self.profile_name = profile_name
+        self.load_mode = load_mode
+        self.no_imgs = no_imgs
         self._temp_profile_dir = None
         self.is_closed = False
         self.browser_pid: Optional[int] = None
@@ -153,6 +155,12 @@ class BaseScraper:
         options.set_pref("dns_over_https.templates", "https://cloudflare-dns.com/dns-query")
         
         options.set_timeouts(base=20, page_load=25, script=15)
+        
+        load_mode = getattr(self, "load_mode", "normal")
+        if load_mode:
+            options.set_load_mode(load_mode)
+        if getattr(self, "no_imgs", False):
+            options.no_imgs(True)
         
         options.headless(headless)
         
