@@ -486,6 +486,25 @@ class BrokenSymbolStrategy(EdgeStrategy):
     assert scheduler.validate_code_safety(code_with_undefined) is False
 
 
+def test_validate_code_safety_accepts_utf8_characters(scheduler):
+    """Verifies that validate_code_safety and ruff linting safely process code with non-ASCII UTF-8 characters."""
+    code_with_utf8 = """
+from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, Any
+
+class Utf8Strategy(EdgeStrategy):
+    \"\"\"Docstring with unicode quotes “smart”, dashes — and symbols • € 📈\"\"\"
+    strategy_id = "utf8_strategy_1"
+    applicable_symbols = {"EURUSD"}
+
+    # Comment with unicode quotes “test” and math ≥ 0.5
+    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+        return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction="buy", valid=True, confidence=0.8)
+    """.strip()
+    assert scheduler.validate_code_safety(code_with_utf8) is True
+
+
 def test_validate_code_safety_rejects_missing_returns(scheduler):
     """Verifies that EdgeStrategy evaluate() without return statement is rejected."""
     code_no_return = """
