@@ -8,8 +8,11 @@ from analysis.providers.openai_provider import OpenAIProvider
 async def test_groq_provider_model_alias_resolution():
     """Model alias harus di-resolve ke Groq model ID aktual."""
     with patch.dict('os.environ', {'GROQ_API_KEYS': 'test-key'}):
-        provider = GroqProvider(model="groq-compound")
-        assert provider.model == "groq/compound"
+        provider = GroqProvider(model="groq-qwen3.8-27b")
+        assert provider.model == "qwen/qwen3.8-27b"
+        # Decommissioned models must gracefully redirect to active qwen3.8-27b
+        provider_legacy = GroqProvider(model="groq-compound")
+        assert provider_legacy.model == "qwen/qwen3.8-27b"
 
 @pytest.mark.asyncio
 async def test_groq_provider_reads_multi_keys():
@@ -96,12 +99,14 @@ def test_all_groq_aliases_defined():
     """Semua model Groq harus terdefinisi di GROQ_MODEL_ALIASES."""
     expected = {
         "groq-compound", "groq-compound-mini",
+        "groq/compound", "groq/compound-mini",
         "groq-gpt-oss-120b", "groq-gpt-oss-20b",
         "groq-qwen3.6-27b", "groq-qwen3.8-27b",
-        "qwen3.6-27b", "qwen3.8-27b"
+        "qwen3.6-27b", "qwen3.8-27b",
+        "qwen/qwen3.6-27b",
     }
     assert expected == set(GROQ_MODEL_ALIASES.keys())
-    assert GROQ_MODEL_ALIASES["groq-qwen3.6-27b"] == "qwen/qwen3.6-27b"
+    assert GROQ_MODEL_ALIASES["groq-qwen3.6-27b"] == "qwen/qwen3.8-27b"
     assert GROQ_MODEL_ALIASES["groq-qwen3.8-27b"] == "qwen/qwen3.8-27b"
 
 
@@ -209,10 +214,10 @@ async def test_groq_run_agent_success():
             mock_super_run.assert_awaited_once()
 
 
-def test_groq_compound_token_clamping():
-    """groq/compound harus di-clamp ke ceiling 8192 jika caller meminta > 8192."""
-    provider = GroqProvider(model="groq-compound", max_tokens=32000, api_key="test-key")
-    assert provider.max_tokens == 8192
+def test_groq_token_clamping():
+    """Model Groq harus di-clamp ke ceiling capabilities jika caller meminta > ceiling."""
+    provider = GroqProvider(model="groq-qwen3.8-27b", max_tokens=65000, api_key="test-key")
+    assert provider.max_tokens == 32768
 
 
 def test_groq_respects_small_max_tokens():

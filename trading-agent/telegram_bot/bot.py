@@ -2667,7 +2667,7 @@ class TelegramBot:
             quotas = rep.get("quotas", {})
             if quotas:
                 lines.append("*🔹 Sisa Kuota Harian Free Tier (Hari Ini):*")
-                key_models = ["gemini-3.7-flash", "gemini-3.5-flash-lite", "groq-compound", "qwen3.8-27b"]
+                key_models = ["gemini-3.7-flash", "gemini-3.5-flash-lite", "groq-qwen3.8-27b", "qwen3.8-27b"]
                 for km in key_models:
                     if km in quotas:
                         q = quotas[km]

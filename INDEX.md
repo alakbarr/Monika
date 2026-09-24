@@ -4477,7 +4477,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `GroqRateLimiter`
     - *Methods*: `try_acquire()`, `check_quota()`, `get_usage()`, `mark_cooldown()`, `reset()`, `_save_state()`, `_ensure_loaded()`
   - **Functions**: `get_api_keys`
-  - **Variables**: `GROQ_QUOTA`, `DEFAULT_QUOTA`
+  - **Variables**: `GROQ_QUOTA_PER_KEY`, `DEFAULT_QUOTA_PER_KEY`, `GROQ_QUOTA`, `DEFAULT_QUOTA`
 **File:** `http_retry.py`
   - **Classes**: `RateLimitError`
   - **Functions**: `fetch_with_retry`, `_jittered_delay`, `_jitter_retry_after`

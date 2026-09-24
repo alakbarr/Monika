@@ -59,7 +59,7 @@ def test_groq_aliases_include_qwen():
     from analysis.providers.groq_provider import GROQ_MODEL_ALIASES
     assert "qwen3.8-27b" in GROQ_MODEL_ALIASES
     assert "qwen3.6-27b" in GROQ_MODEL_ALIASES
-    assert GROQ_MODEL_ALIASES["qwen3.6-27b"] == "qwen/qwen3.6-27b"
+    assert GROQ_MODEL_ALIASES["qwen3.6-27b"] == "qwen/qwen3.8-27b"
 
 
 @pytest.mark.asyncio

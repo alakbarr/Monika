@@ -247,7 +247,9 @@ class CreditBalanceTracker:
             "groq-gpt-oss-120b": {"rpd_limit": 1000, "tpd_limit": 200000, "label": "Groq GPT-OSS 120B"},
             "groq-gpt-oss-20b": {"rpd_limit": 1000, "tpd_limit": 200000, "label": "Groq GPT-OSS 20B"},
             "qwen3.6-27b": {"rpd_limit": 1000, "tpd_limit": 2000000, "label": "Groq Qwen 3.6 27B"},
+            "groq-qwen3.6-27b": {"rpd_limit": 1000, "tpd_limit": 2000000, "label": "Groq Qwen 3.6 27B"},
             "qwen3.8-27b": {"rpd_limit": 1000, "tpd_limit": 2000000, "label": "Groq Qwen 3.8 27B"},
+            "groq-qwen3.8-27b": {"rpd_limit": 1000, "tpd_limit": 2000000, "label": "Groq Qwen 3.8 27B"},
         }
 
         quota_data = {}

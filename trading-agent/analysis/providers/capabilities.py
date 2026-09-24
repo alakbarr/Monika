@@ -162,7 +162,19 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=32768,
         supports_structured_output=True,
     ),
+    "groq-qwen3.8-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "qwen/qwen3.8-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
     "qwen3.6-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "groq-qwen3.6-27b": ModelCapabilities(
         max_output_tokens=32768,
         supports_structured_output=True,
     ),
