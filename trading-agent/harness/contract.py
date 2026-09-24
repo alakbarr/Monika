@@ -126,6 +126,7 @@ class TradingPlugin(ABC):
         elif "config" in kwargs:
             config = kwargs["config"]
         self.config: Dict[str, Any] = config or {}
+        self.context: Optional[Any] = kwargs.get("context", None)
         self.is_enabled: bool = True
         self.status: str = PluginState.INITIALIZED.value
         self.state: PluginState = PluginState.INITIALIZED
@@ -135,6 +136,11 @@ class TradingPlugin(ABC):
     def add_disposer(self, disposer: Callable[[], Any]) -> None:
         """Register a cleanup callable to be executed when the plugin stops (LIFO order)."""
         self._disposers.append(disposer)
+
+    # 0. Context Initialization Hook
+    def on_context_ready(self, ctx: Any) -> None:
+        """Invoked when Universal PluginContext is bound to this plugin."""
+        self.context = ctx
 
     # 1. Dependency Registration
     async def on_register(self, container: ServiceContainerProtocol, event_bus: EventBusProtocol) -> None:

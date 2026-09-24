@@ -579,6 +579,32 @@ class FallbackClientWrapper(BaseLLMClient):
                         elif safe_args and isinstance(safe_args[0], list):
                             safe_args[0] = preserve_fn(safe_args[0], target_prov)
 
+                    # ── Hook Interception: pre_llm_call & prompt section injection ──
+                    try:
+                        from harness.engine import get_plugin_engine
+                        engine = get_plugin_engine()
+                        if engine:
+                            await engine.emit_hook(
+                                "pre_llm_call",
+                                task_role=self.task_role,
+                                model=model,
+                                method=method_name,
+                                kwargs=safe_kwargs,
+                            )
+                    except Exception as h_err:
+                        logger.debug(f"[LLMDispatch] pre_llm_call notice: {h_err}")
+
+                    try:
+                        from analysis.prompt_sections import get_prompt_section_registry
+                        psr = get_prompt_section_registry()
+                        ctx_info = {"task_role": self.task_role, "model": model}
+                        if "system" in safe_kwargs and isinstance(safe_kwargs["system"], str):
+                            safe_kwargs["system"] = psr.format_full_prompt(safe_kwargs["system"], ctx_info)
+                        elif "system_prompt" in safe_kwargs and isinstance(safe_kwargs["system_prompt"], str):
+                            safe_kwargs["system_prompt"] = psr.format_full_prompt(safe_kwargs["system_prompt"], ctx_info)
+                    except Exception as ps_err:
+                        logger.debug(f"[LLMDispatch] prompt sections notice: {ps_err}")
+
                     call_coro: Any = method(*safe_args, **safe_kwargs)
                     result = await asyncio.wait_for(
                         call_coro,
@@ -629,6 +655,22 @@ class FallbackClientWrapper(BaseLLMClient):
                             asyncio.create_task(_record_fallback_log(msg))
                         except Exception:
                             pass
+
+                    # ── Hook Interception: post_llm_call ──
+                    try:
+                        from harness.engine import get_plugin_engine
+                        engine = get_plugin_engine()
+                        if engine:
+                            await engine.emit_hook(
+                                "post_llm_call",
+                                task_role=self.task_role,
+                                model=model,
+                                method=method_name,
+                                response=result,
+                            )
+                    except Exception as h_err:
+                        logger.debug(f"[LLMDispatch] post_llm_call notice: {h_err}")
+
                     return result
                 except (asyncio.TimeoutError, StreamTimeoutError, StreamSafetyTimeoutError) as timeout_err:
                     # Attempt 1x dual-protocol non-streaming fallback if stream failed

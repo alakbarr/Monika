@@ -257,6 +257,44 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             "analysis_id": proposal.metadata.get("analysis_id"),
             "pair_group_id": proposal.metadata.get("pair_group_id"),
         }
+
+        # Pre-order waterfall hook
+        try:
+            from harness.engine import get_plugin_engine
+            engine = get_plugin_engine()
+            if engine:
+                allowed, plan_or_reason = await engine.emit_waterfall(
+                    "pre_order",
+                    order_plan,
+                    proposal=proposal,
+                    symbol=proposal.symbol,
+                )
+                if not allowed:
+                    elapsed = (clock.now() - start).total_seconds() * 1000
+                    logger.warning(f"[{proposal.symbol}] Pre-order vetoed by plugin hook: {plan_or_reason}")
+                    return ExecutionResult(
+                        symbol=proposal.symbol,
+                        analysis_id=proposal.metadata.get("analysis_id"),
+                        decision=proposal.direction.lower(),
+                        sizing=None,
+                        risk_approved=False,
+                        risk_checks_passed=[],
+                        risk_checks_failed=["plugin_hook_veto"],
+                        risk_rejection_reasons=[str(plan_or_reason)],
+                        executed=False,
+                        mt5_ticket=None,
+                        executed_price=None,
+                        executed_lots=None,
+                        mt5_error=f"Plugin hook veto: {plan_or_reason}",
+                        position_id=None,
+                        timestamp=start,
+                        elapsed_ms=elapsed,
+                    )
+                if isinstance(plan_or_reason, dict):
+                    order_plan = plan_or_reason
+        except Exception as hook_err:
+            logger.debug(f"[OrderExecutor] pre_order hook notice: {hook_err}")
+
         res = await self.execute_preplanned_order(
             session=session,
             symbol=proposal.symbol,
@@ -264,6 +302,15 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             analysis_id=proposal.metadata.get("analysis_id"),
             account_equity=account_equity or proposal.account_equity,
         )
+
+        # Post-order hook
+        try:
+            from harness.engine import get_plugin_engine
+            engine = get_plugin_engine()
+            if engine:
+                await engine.emit_hook("post_order", result=res, order_plan=order_plan, proposal=proposal)
+        except Exception as hook_err:
+            logger.debug(f"[OrderExecutor] post_order hook notice: {hook_err}")
 
         if res.executed and res.mt5_ticket:
             await guard.mark_completed(idem_key, ticket=res.mt5_ticket)

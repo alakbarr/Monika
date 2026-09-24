@@ -17,7 +17,7 @@ import logging
 import importlib
 import importlib.util
 from collections import defaultdict, deque
-from typing import Dict, List, Tuple, Optional, Any, Callable, Type
+from typing import Dict, List, Tuple, Optional, Any, Callable, Type, Set
 
 from harness.contract import (
     TradingPlugin,
@@ -26,6 +26,9 @@ from harness.contract import (
     PluginOrigin,
     PluginState,
 )
+from harness.context import PluginContext
+from utils.plugins.manager import PluginManager, get_plugin_manager
+from analysis.prompt_sections import get_prompt_section_registry
 from utils.infra.container import ServiceContainer, get_container
 from utils.protocol.event_bus import (
     EventBus,
@@ -43,6 +46,58 @@ except ImportError:
     TaskRegistry = None  # type: ignore
 
 logger = logging.getLogger("TradingAgent.Harness.Engine")
+
+
+class FunctionalPluginAdapter(TradingPlugin):
+    """
+    Wraps a functional plugin exposing `register(ctx)` script entry point
+    into Monika's TradingPlugin lifecycle contract.
+    """
+    def __init__(
+        self,
+        metadata: Optional[PluginMetadata] = None,
+        register_fn: Optional[Callable[[Any], Any]] = None,
+        config: Optional[dict] = None,
+        *,
+        plugin_id: Optional[str] = None,
+        name: Optional[str] = None,
+        version: str = "1.0.0",
+        category: PluginCategory = PluginCategory.MIDDLEWARE,
+        author: Optional[str] = None,
+        description: str = "",
+    ):
+        if metadata is None:
+            pid = plugin_id or "functional_plugin"
+            metadata = PluginMetadata(
+                id=pid,
+                name=name or pid,
+                version=version,
+                category=category,
+                author=author,
+                description=description,
+                origin=PluginOrigin.LOCAL_DIRECTORY,
+            )
+        super().__init__(config=config)
+        self.metadata = metadata
+        self.register_fn = register_fn
+        self.is_functional = True
+
+    def on_context_ready(self, ctx: Any) -> None:
+        self.context = ctx
+        if callable(self.register_fn):
+            res = self.register_fn(ctx)
+            if inspect.isawaitable(res):
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(res)
+                except RuntimeError:
+                    pass
+
+    async def on_register(self, container: Any, event_bus: Any) -> None:
+        if not self.context and callable(self.register_fn):
+            res = self.register_fn(container)
+            if inspect.isawaitable(res):
+                await res
 
 # Standard lifecycle timeouts (in seconds)
 LIFECYCLE_TIMEOUT_REGISTER = 10.0
@@ -132,8 +187,13 @@ class PluginEngine:
         self.event_bus = event_bus or get_event_bus()
         self.task_registry = task_registry
         self.plugins: Dict[str, TradingPlugin] = {}
+        self.contexts: Dict[str, PluginContext] = {}
+        self.hook_manager: PluginManager = get_plugin_manager()
+        self.prompt_registry = get_prompt_section_registry()
         self.ordered_plugins: List[TradingPlugin] = []
         self._disposers: Dict[str, List[Callable[[], Any]]] = defaultdict(list)
+        self._system_commands: Dict[str, Tuple[Callable, str, str]] = {}
+        self._cli_commands: Dict[str, Dict[str, Any]] = {}
         self._is_started = False
         _GLOBAL_ENGINE = self
 
@@ -142,10 +202,152 @@ class PluginEngine:
         """Alias for self.plugins for backward compatibility."""
         return self.plugins
 
+    @property
+    def manager(self) -> PluginManager:
+        """Alias for self.hook_manager for unified access."""
+        return self.hook_manager
+
     @classmethod
     def get_instance(cls) -> Optional["PluginEngine"]:
         """Retrieve singleton PluginEngine."""
         return _GLOBAL_ENGINE
+
+    def get_context(self, plugin_id: str) -> Optional[PluginContext]:
+        """Retrieve PluginContext for a plugin."""
+        return self.contexts.get(plugin_id)
+
+    # --- Unified Hook Emitter and Registration ---
+
+    def register_hook(self, hook_name: str, callback: Callable, priority: int = 0, plugin_id: str = "") -> Callable[[], None]:
+        """Register a lifecycle hook with the unified PluginManager."""
+        return self.hook_manager.register_hook(hook_name, callback)
+
+    def unregister_hook(self, hook_name: str, callback: Callable) -> bool:
+        """Unregister a lifecycle hook."""
+        return self.hook_manager.unregister_hook(hook_name, callback)
+
+    async def emit_hook(self, hook_name: str, timeout_seconds: float = 5.0, **kwargs: Any) -> List[Any]:
+        """Emit a lifecycle event across all registered plugin hooks with timeout boundary."""
+        return await self.hook_manager.emit(hook_name, timeout_seconds=timeout_seconds, **kwargs)
+
+    async def emit_waterfall(self, hook_name: str, payload: Any, timeout_seconds: float = 5.0, **kwargs: Any) -> Tuple[bool, Any]:
+        """Execute sequential waterfall interceptor hooks (e.g. pre_order, pre_risk_gate)."""
+        return await self.hook_manager.emit_waterfall(hook_name, payload, timeout_seconds=timeout_seconds, **kwargs)
+
+    # --- Tool Registration & Override Protection ---
+
+    def register_tool_from_plugin(
+        self,
+        plugin_id: str,
+        name: str,
+        handler: Callable,
+        schema: Optional[Dict[str, Any]] = None,
+        override: bool = False,
+        description: str = "",
+        toolset: str = "custom_plugins",
+    ) -> bool:
+        """Register tool into ToolRegistry with core override protection."""
+        try:
+            from analysis.tools.registry import ToolRegistry, ToolDefinition, CORE_PROTECTED_TOOLS
+            reg = ToolRegistry.get_instance()
+
+            # Check core protected tools
+            if name in CORE_PROTECTED_TOOLS:
+                plugin = self.plugins.get(plugin_id)
+                has_override_grant = False
+                if plugin:
+                    caps = getattr(plugin.metadata, "capabilities", [])
+                    if "tools.override" in caps or getattr(plugin, "config", {}).get("allow_tool_override", False):
+                        has_override_grant = True
+
+                if not override or not has_override_grant:
+                    logger.warning(
+                        f"[PluginEngine] Plugin '{plugin_id}' attempted to override core tool '{name}' "
+                        f"without operator consent (allow_tool_override: true). Rejected."
+                    )
+                    raise PermissionError(
+                        f"Plugin '{plugin_id}' attempted to override protected core tool '{name}' "
+                        f"without operator consent."
+                    )
+
+            params = {}
+            if schema and isinstance(schema, dict):
+                params = schema.get("parameters", schema)
+
+            tool_def = ToolDefinition(
+                name=name,
+                description=description or f"Plugin tool '{name}' registered by {plugin_id}",
+                parameters=params,
+                handler=handler,
+                toolset=toolset,
+            )
+            reg.register_definition(tool_def, allow_override=override)
+            reg.register_handler(name, handler)
+            if name not in self.manager._registered_tools:
+                self.manager._registered_tools.append(name)
+            logger.info(f"[PluginEngine] Registered tool '{name}' from plugin '{plugin_id}'")
+            return True
+        except PermissionError:
+            raise
+        except Exception as e:
+            logger.error(f"[PluginEngine] Failed registering tool '{name}' from '{plugin_id}': {e}", exc_info=True)
+            return False
+
+    def unregister_tool_from_plugin(self, name: str) -> None:
+        """Unregister a plugin-provided tool from ToolRegistry."""
+        try:
+            from analysis.tools.registry import ToolRegistry
+            ToolRegistry.get_instance().unregister(name)
+            logger.debug(f"[PluginEngine] Unregistered tool '{name}'")
+        except Exception as e:
+            logger.debug(f"[PluginEngine] Error unregistering tool '{name}': {e}")
+
+    # --- System Prompt Section Registration ---
+
+    def register_prompt_section(
+        self,
+        plugin_id: str,
+        section_id: str,
+        content: Any,
+        position: str = "after_memory",
+        max_chars: int = 2048,
+    ) -> bool:
+        """Register a modular system prompt section."""
+        return self.prompt_registry.register(
+            section_id=section_id,
+            content=content,
+            position=position,
+            max_chars=max_chars,
+            plugin_id=plugin_id,
+        )
+
+    def unregister_prompt_section(self, section_id: str) -> bool:
+        """Unregister a prompt section."""
+        return self.prompt_registry.unregister(section_id)
+
+    # --- Slash & CLI Commands ---
+
+    def register_command(self, name: str, handler: Callable, description: str = "", plugin_id: str = "") -> bool:
+        """Register in-session slash command."""
+        self._system_commands[name] = (handler, description, plugin_id)
+        logger.debug(f"[PluginEngine] Registered slash command '/{name}' from '{plugin_id}'")
+        return True
+
+    def unregister_command(self, name: str) -> bool:
+        """Unregister slash command."""
+        return self._system_commands.pop(name, None) is not None
+
+    def register_cli_command(self, name: str, help: str, setup_fn: Callable, handler_fn: Optional[Callable] = None, description: str = "", plugin_id: str = "") -> bool:
+        """Register CLI subcommand."""
+        self._cli_commands[name] = {
+            "name": name, "help": help, "setup_fn": setup_fn, "handler_fn": handler_fn, "description": description, "plugin_id": plugin_id
+        }
+        return True
+
+    def emit_plugin_event(self, plugin_id: str, event: str, payload: dict) -> int:
+        """Publish plugin-scoped event into EventBus or logs."""
+        logger.debug(f"[PluginEvent] {plugin_id}:{event} -> {payload}")
+        return 1
 
     def set_plugin_enabled(self, plugin_id: str, enabled: bool) -> bool:
         """Dynamically toggle plugin state and update status in-memory."""
@@ -160,14 +362,58 @@ class PluginEngine:
             return True
         return False
 
-    @property
-    def registry(self) -> Dict[str, TradingPlugin]:
-        return self.plugins
-
     def register_plugin_instance(self, plugin: TradingPlugin) -> None:
-        """Register a pre-instantiated plugin (e.g. builtins)."""
+        """Register a pre-instantiated plugin (e.g. builtins) and bind PluginContext."""
         pid = plugin.metadata.id
         self.plugins[pid] = plugin
+        
+        # Bind or create PluginContext
+        def _invoke_context_ready(p: TradingPlugin, context_obj: PluginContext):
+            try:
+                res = p.on_context_ready(context_obj)
+                if inspect.isawaitable(res):
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(res)
+                    except RuntimeError:
+                        asyncio.run(res)
+            except Exception as ex:
+                logger.error(f"[PluginEngine] Error in on_context_ready for {p.metadata.id}: {ex}", exc_info=True)
+
+        if pid not in self.contexts:
+            ctx = PluginContext(plugin_id=pid, engine=self, manifest=plugin.metadata, config=plugin.config)
+            self.contexts[pid] = ctx
+            _invoke_context_ready(plugin, ctx)
+        elif not getattr(plugin, "context", None):
+            _invoke_context_ready(plugin, self.contexts[pid])
+
+        # Auto-wire declared hooks and tools from manifest if present
+        manifest_data = getattr(plugin, "manifest", None) or {}
+        if isinstance(manifest_data, dict):
+            hooks = manifest_data.get("hooks", {})
+            if isinstance(hooks, dict):
+                for hook_name, method_name in hooks.items():
+                    handler = getattr(plugin, method_name, None)
+                    if callable(handler):
+                        self.register_hook(hook_name, handler, plugin_id=pid)
+            elif isinstance(hooks, list):
+                for hook_name in hooks:
+                    handler = getattr(plugin, hook_name, None) or getattr(plugin, f"on_{hook_name}", None)
+                    if callable(handler):
+                        self.register_hook(hook_name, handler, plugin_id=pid)
+
+            tools = manifest_data.get("tools", {})
+            if isinstance(tools, dict):
+                for tool_name, method_or_desc in tools.items():
+                    if isinstance(method_or_desc, str) and hasattr(plugin, method_or_desc):
+                        handler = getattr(plugin, method_or_desc)
+                    elif callable(method_or_desc):
+                        handler = method_or_desc
+                    else:
+                        handler = getattr(plugin, tool_name, None)
+                    if callable(handler):
+                        self.register_tool_from_plugin(pid, tool_name, handler)
+
         logger.debug(f"[PluginEngine] Registered plugin instance: {pid} v{plugin.metadata.version}")
         self._dispatch_domain_registration(plugin)
 
@@ -312,6 +558,9 @@ class PluginEngine:
                     )
 
                     entrypoint = raw.get("entrypoint")
+                    mod = None
+                    target = None
+
                     if entrypoint and ":" in entrypoint:
                         mod_part, cls_part = entrypoint.split(":")
                         mod_file = os.path.join(root, *mod_part.split(".")) + ".py"
@@ -325,12 +574,81 @@ class PluginEngine:
                                 sys.modules[f"plugin_{pid}"] = mod
                                 spec.loader.exec_module(mod)
                                 target = getattr(mod, cls_part, None)
-                                if target and isinstance(target, type) and issubclass(target, TradingPlugin):
-                                    inst = target(config=raw.get("config", {}))
-                                    inst.metadata = meta
-                                    self.register_plugin_instance(inst)
-                                    discovered.append(inst)
-                                    logger.info(f"[PluginEngine] Discovered directory plugin: {pid} v{version}")
+                    else:
+                        init_file = os.path.join(root, "__init__.py")
+                        named_file = os.path.join(root, f"{pid}.py")
+                        mod_file = init_file if os.path.isfile(init_file) else (named_file if os.path.isfile(named_file) else None)
+                        if mod_file:
+                            spec = importlib.util.spec_from_file_location(f"plugin_{pid}", mod_file)
+                            if spec and spec.loader:
+                                mod = importlib.util.module_from_spec(spec)
+                                sys.modules[f"plugin_{pid}"] = mod
+                                spec.loader.exec_module(mod)
+                                if hasattr(mod, "register") and callable(getattr(mod, "register")):
+                                    target = getattr(mod, "register")
+                                else:
+                                    for attr_name in dir(mod):
+                                        attr = getattr(mod, attr_name)
+                                        if isinstance(attr, type) and issubclass(attr, TradingPlugin) and attr is not TradingPlugin and attr is not FunctionalPluginAdapter:
+                                            target = attr
+                                            break
+
+                    inst = None
+                    if target:
+                        if isinstance(target, type) and issubclass(target, TradingPlugin):
+                            inst = target(config=raw.get("config", {}))
+                        elif callable(target):
+                            inst = FunctionalPluginAdapter(meta, target, config=raw.get("config", {}))
+
+                    if inst:
+                        inst.metadata = meta
+                        self.register_plugin_instance(inst)
+                        discovered.append(inst)
+                        logger.info(f"[PluginEngine] Discovered directory plugin: {pid} v{version}")
+
+                    # Auto-wire declared manifest hooks
+                    raw_hooks = raw.get("hooks", {})
+                    if mod and raw_hooks:
+                        if isinstance(raw_hooks, dict):
+                            for h_name, h_target in raw_hooks.items():
+                                try:
+                                    if ":" in h_target:
+                                        m_name, f_name = h_target.split(":")
+                                        fn = getattr(mod, f_name, None)
+                                        if fn and callable(fn):
+                                            self.register_hook(h_name, fn, plugin_id=pid)
+                                except Exception as h_err:
+                                    logger.warning(f"[PluginEngine] Error binding hook '{h_name}' for {pid}: {h_err}")
+                        elif isinstance(raw_hooks, list):
+                            for h_name in raw_hooks:
+                                fn = getattr(mod, h_name, None) or getattr(mod, f"on_{h_name}", None) or getattr(mod, f"_{h_name}", None) or getattr(mod, f"_on_{h_name}", None)
+                                if fn and callable(fn):
+                                    self.register_hook(h_name, fn, plugin_id=pid)
+
+                    # Auto-wire declared manifest tools
+                    raw_tools = raw.get("tools", [])
+                    if mod and isinstance(raw_tools, list):
+                        for t_info in raw_tools:
+                            if isinstance(t_info, dict) and "name" in t_info:
+                                t_name = t_info["name"]
+                                h_name = t_info.get("handler", t_name)
+                                fn_name = h_name.split(":")[-1] if ":" in h_name else h_name
+                                fn = getattr(mod, fn_name, None)
+                                if fn and callable(fn):
+                                    self.register_tool_from_plugin(
+                                        plugin_id=pid,
+                                        name=t_name,
+                                        handler=fn,
+                                        schema=t_info.get("parameters", {}),
+                                        description=t_info.get("description", ""),
+                                    )
+
+                    # Legacy initialize(manager, config) invocation
+                    if mod and hasattr(mod, "initialize") and callable(getattr(mod, "initialize")):
+                        try:
+                            mod.initialize(self.hook_manager, raw.get("config", {}))
+                        except Exception as init_err:
+                            logger.debug(f"[PluginEngine] Legacy initialize notice for {pid}: {init_err}")
                 except Exception as ex:
                     logger.warning(f"[PluginEngine] Error loading plugin from {root}: {ex}")
         return discovered
@@ -637,6 +955,14 @@ class PluginEngine:
                         await res
                 except Exception as d_err:
                     logger.debug(f"[PluginEngine] Disposer note for {pid}: {d_err}")
+
+        # Tear down all active PluginContext instances
+        for pid, ctx in list(self.contexts.items()):
+            try:
+                await ctx.teardown()
+            except Exception as ctx_err:
+                logger.debug(f"[PluginEngine] Context teardown note for {pid}: {ctx_err}")
+        self.contexts.clear()
 
         self._disposers.clear()
         logger.info("[PluginEngine] All plugins stopped and resources disposed cleanly.")

@@ -1,6 +1,6 @@
 # ==============================================================================
 # File: plugin_kernel/__init__.py
-# Description: Monika Plugin Kernel (Inspired by Cordis / DeepSeek Harness)
+# Description: Monika Plugin Kernel — Universal Plugin Architecture
 # ==============================================================================
 
 """

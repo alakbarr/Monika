@@ -118,6 +118,7 @@ Monika/
     │   ├── migrations.py
     │   ├── plugins
     │   │   └── discord_alert.yaml
+    │   ├── plugin_catalog.yaml
     │   ├── schemas.py
     │   ├── security.py
     │   ├── settings.py
@@ -126,6 +127,7 @@ Monika/
     │   ├── event_broadcaster.py
     │   ├── macro_pipeline_plugin.py
     │   ├── pipeline_plugin.py
+    │   ├── prompt_sections.py
     │   ├── scenario_tree.py
     │   ├── subagent_blackboard.py
     │   ├── subagent_spawner.py
@@ -508,6 +510,10 @@ Monika/
     │       └── state_pruner.py
     ├── harness
     │   ├── __init__.py
+    │   ├── adapters
+    │   │   ├── __init__.py
+    │   │   └── functional_adapter.py
+    │   ├── context.py
     │   ├── contract.py
     │   ├── engine.py
     │   └── installer.py
@@ -1089,13 +1095,15 @@ Monika/
         │   └── test_workflow_authoritative_checkpointer.py
         ├── harness
         │   ├── test_domain_plugins_integration.py
+        │   ├── test_functional_compatibility.py
         │   ├── test_installer_service.py
         │   ├── test_message_repair.py
         │   ├── test_plugin_engine.py
         │   ├── test_plugin_kernel_namespace.py
         │   ├── test_repetition_and_candidate.py
         │   ├── test_threat_scanner.py
-        │   └── test_trading_agent_harness_integration.py
+        │   ├── test_trading_agent_harness_integration.py
+        │   └── test_unified_plugin_engine.py
         ├── logging_observability
         │   ├── test_activity_logger.py
         │   ├── test_cost_tracking_dashboard.py

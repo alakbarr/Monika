@@ -23,8 +23,9 @@ from harness.engine import PluginEngine, get_plugin_engine
 
 logger = logging.getLogger("TradingAgent.Harness.Installer")
 
-# Base settings file location
+# Base settings and catalog file locations
 SETTINGS_PATH = Path(__file__).resolve().parent.parent / "config" / "settings.yaml"
+CATALOG_PATH = Path(__file__).resolve().parent.parent / "config" / "plugin_catalog.yaml"
 
 # Regex patterns for safe package specification
 _SAFE_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_\-\.]*([=><~^!]=?[a-zA-Z0-9_\-\.]+)?$")
@@ -33,10 +34,42 @@ _SAFE_WHEEL_PATH_RE = re.compile(r"^([a-zA-Z]:[/\\])?[a-zA-Z0-9_\-\./\\]+\.whl$"
 _DISALLOWED_TOKENS = set(";&|`$()\n\r\"'\\{}[]~!#%^?*")
 
 
+def get_kill_list(catalog_file: Optional[Path] = None) -> List[Dict[str, str]]:
+    """
+    Returns list of revoked/blacklisted packages from plugin_catalog.yaml.
+    """
+    cat_path = catalog_file or CATALOG_PATH
+    if not cat_path.exists():
+        return []
+    try:
+        with open(cat_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+            return data.get("kill_list", [])
+    except Exception as ex:
+        logger.warning(f"[Harness.Installer] Failed to read kill_list: {ex}")
+        return []
+
+
+def is_package_revoked(package_or_id: str, catalog_file: Optional[Path] = None) -> Tuple[bool, str]:
+    """
+    Checks if a package name or plugin ID is on the security kill list.
+    """
+    if not package_or_id:
+        return False, ""
+    clean = package_or_id.strip().lower()
+    for item in get_kill_list(catalog_file):
+        item_id = str(item.get("id", "")).lower()
+        item_pkg = str(item.get("package", "")).lower()
+        reason = item.get("reason", "Package revoked by security policy.")
+        if clean == item_id or clean == item_pkg or clean.startswith(item_pkg):
+            return True, f"Security Violation: '{package_or_id}' is revoked ({reason})"
+    return False, ""
+
+
 def validate_package_spec(spec: str) -> Tuple[bool, str]:
     """
     Validate that a package specification string is safe for execution via pip.
-    Guards against command injection and arbitrary shell tokens.
+    Guards against command injection, arbitrary shell tokens, and kill_list packages.
     """
     if not spec or not isinstance(spec, str):
         return False, "Package specification cannot be empty."
@@ -49,6 +82,12 @@ def validate_package_spec(spec: str) -> Tuple[bool, str]:
     for ch in spec_clean:
         if ch in _DISALLOWED_TOKENS:
             return False, f"Package specification contains forbidden character: '{ch}'"
+
+    # Extract base package name for kill_list check
+    base_pkg = re.split(r"[=><~^!]", spec_clean)[0].strip()
+    revoked, revoke_reason = is_package_revoked(base_pkg)
+    if revoked:
+        return False, revoke_reason
 
     # Match against allowed patterns
     if _SAFE_PACKAGE_RE.match(spec_clean):
@@ -150,11 +189,22 @@ def run_pip_uninstall(package_name: str, timeout_sec: int = 60) -> Tuple[bool, s
         return False, str(ex)
 
 
-def get_community_catalog() -> List[Dict[str, Any]]:
+def get_community_catalog(catalog_file: Optional[Path] = None) -> List[Dict[str, Any]]:
     """
     Returns the curated catalog of official and verified community plugins
-    available for 1-click installation.
+    available for 1-click installation from plugin_catalog.yaml.
     """
+    cat_path = catalog_file or CATALOG_PATH
+    if cat_path.exists():
+        try:
+            with open(cat_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+                plugins = data.get("plugins", [])
+                if isinstance(plugins, list) and plugins:
+                    return plugins
+        except Exception as ex:
+            logger.warning(f"[Harness.Installer] Failed to read plugin catalog from {cat_path}: {ex}")
+
     return [
         {
             "id": "telegram_extended",
@@ -228,6 +278,12 @@ def toggle_plugin_state(
     """
     Atomically toggle a plugin's active state in settings.yaml and notify PluginEngine.
     """
+    if enabled:
+        revoked, revoke_reason = is_package_revoked(plugin_id)
+        if revoked:
+            logger.warning(f"[Harness.Installer] Refusing to enable revoked plugin '{plugin_id}': {revoke_reason}")
+            return False, f"Aktivasi plugin ditolak karena kebijakan keamanan: {revoke_reason}"
+
     path = settings_file or SETTINGS_PATH
     if not path.exists():
         return False, f"Settings configuration file not found at: {path}"
