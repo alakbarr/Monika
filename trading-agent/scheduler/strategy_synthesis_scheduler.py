@@ -313,11 +313,20 @@ class StrategySynthesisScheduler:
                     input=code_str,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=5.0
                 )
-                if res.returncode != 0:
-                    first_err = res.stdout.strip().splitlines()[0] if res.stdout.strip() else res.stderr.strip()
+                if res.returncode == 1:
+                    first_err = (
+                        res.stdout.strip().splitlines()[0]
+                        if res.stdout.strip()
+                        else (res.stderr.strip().splitlines()[0] if res.stderr.strip() else "syntax or name resolution error")
+                    )
                     return False, f"ruff check failed: {first_err}"
+                elif res.returncode != 0:
+                    tool_err = res.stderr.strip().splitlines()[0] if res.stderr.strip() else f"exit code {res.returncode}"
+                    logger.debug(f"[StrategySynthesis] Subprocess ruff check non-fatal (tool warning): {tool_err}")
             except Exception as ruff_err:
                 logger.debug(f"[StrategySynthesis] Subprocess ruff check non-fatal: {ruff_err}")
 
