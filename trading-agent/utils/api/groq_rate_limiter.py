@@ -22,10 +22,15 @@ _num_keys = max(1, len(get_api_keys()))
 GROQ_QUOTA_PER_KEY = {
     "groq/compound":       {"rpm": 30, "rpd": 250,  "tpm": 70000},
     "groq/compound-mini":  {"rpm": 30, "rpd": 250,  "tpm": 70000},
+    "groq-compound":       {"rpm": 30, "rpd": 250,  "tpm": 70000},
     "openai/gpt-oss-120b": {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
     "openai/gpt-oss-20b":  {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "groq-gpt-oss-120b":   {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
+    "groq-gpt-oss-20b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
     "qwen/qwen3.6-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
     "qwen/qwen3.8-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
+    "groq-qwen3.8-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 2000000},
+    "groq-qwen3.6-27b":    {"rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000},
 }
 DEFAULT_QUOTA_PER_KEY = {"rpm": 30, "rpd": 250, "tpm": 70000}
 

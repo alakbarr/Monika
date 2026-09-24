@@ -465,7 +465,7 @@ class StartupChecker:
                 preferred_ping_models = {
                     "openrouter": "openrouter/free",
                     "gemini": "gemini-3.5-flash-lite",
-                    "groq": "groq-compound",
+                    "groq": "groq-qwen3.8-27b",
                     "typesafe": "jev-latest",
                     "ollama": "llama3.2",
                 }
