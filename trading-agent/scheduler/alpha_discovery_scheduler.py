@@ -47,12 +47,18 @@ STRATEGY_PARAM_SPACES: Dict[str, List[ParameterSpec]] = {
         ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
     ],
     "trend_trailing": [
-        ParameterSpec("sl_atr_multiplier", "float", low=1.0, high=3.0, step=0.2),
-        ParameterSpec("tp_sl_multiplier", "float", low=1.2, high=3.0, step=0.2),
+        ParameterSpec("lookback_short", "int", low=20, high=80, step=5),
+        ParameterSpec("lookback_med", "int", low=90, high=160, step=10),
+        ParameterSpec("min_agreement", "float", low=0.5, high=1.0, step=0.1),
+        ParameterSpec("sl_atr_multiplier", "float", low=1.2, high=2.5, step=0.2),
+        ParameterSpec("tp_sl_multiplier", "float", low=1.5, high=3.0, step=0.2),
     ],
     "tsm_momentum": [
-        ParameterSpec("sl_atr_multiplier", "float", low=1.0, high=3.0, step=0.2),
-        ParameterSpec("tp_sl_multiplier", "float", low=1.2, high=3.0, step=0.2),
+        ParameterSpec("lookback_short", "int", low=20, high=80, step=5),
+        ParameterSpec("lookback_med", "int", low=90, high=160, step=10),
+        ParameterSpec("min_agreement", "float", low=0.5, high=1.0, step=0.1),
+        ParameterSpec("sl_atr_multiplier", "float", low=1.2, high=2.5, step=0.2),
+        ParameterSpec("tp_sl_multiplier", "float", low=1.5, high=3.0, step=0.2),
     ],
     "liquidity_sweep": [
         ParameterSpec("asian_session_start_utc", "int", low=0, high=4, step=1),
@@ -485,25 +491,35 @@ class AlphaDiscoveryScheduler:
                     else:
                         session.add(SystemConfig(key=global_param_key, value=param_val))
 
-                    # Hot-reload into StrategyRegistry with symbol context
-                    try:
-                        from analysis.strategies.registry import StrategyRegistry
-                        StrategyRegistry.hot_reload(
-                            proposal.hypothesis.strategy_type,
-                            proposal.hypothesis.parameters,
-                            symbol=proposal.hypothesis.symbol,
-                        )
-                    except Exception as reg_err:
-                        logger.debug(f"[AlphaDiscovery] StrategyRegistry hot_reload non-fatal: {reg_err}")
+                    # Hot-reload into StrategyRegistry and EdgeStrategyRunner with symbol context & alias sync
+                    alias_map = {
+                        "trend_trailing": "tsm_momentum",
+                        "tsm_momentum": "trend_trailing",
+                        "donchian_breakout": "btc_donchian_breakout",
+                        "btc_donchian_breakout": "donchian_breakout",
+                    }
+                    target_types = [proposal.hypothesis.strategy_type]
+                    if proposal.hypothesis.strategy_type in alias_map:
+                        target_types.append(alias_map[proposal.hypothesis.strategy_type])
 
-                    # Hot-reload into active EdgeStrategyRunner
-                    if self.edge_strategy_runner and hasattr(self.edge_strategy_runner, "hot_reload_strategy"):
+                    for stype in target_types:
                         try:
-                            self.edge_strategy_runner.hot_reload_strategy(
-                                proposal.hypothesis.strategy_type, proposal.hypothesis.parameters
+                            from analysis.strategies.registry import StrategyRegistry
+                            StrategyRegistry.hot_reload(
+                                stype,
+                                proposal.hypothesis.parameters,
+                                symbol=proposal.hypothesis.symbol,
                             )
-                        except Exception as run_err:
-                            logger.debug(f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal: {run_err}")
+                        except Exception as reg_err:
+                            logger.debug(f"[AlphaDiscovery] StrategyRegistry hot_reload non-fatal for {stype}: {reg_err}")
+
+                        if self.edge_strategy_runner and hasattr(self.edge_strategy_runner, "hot_reload_strategy"):
+                            try:
+                                self.edge_strategy_runner.hot_reload_strategy(
+                                    stype, proposal.hypothesis.parameters
+                                )
+                            except Exception as run_err:
+                                logger.debug(f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal for {stype}: {run_err}")
 
                     # Register into StrategyDecayMonitor as incubating (min 4 paper trades required)
                     try:

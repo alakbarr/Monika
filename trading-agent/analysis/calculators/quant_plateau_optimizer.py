@@ -86,6 +86,12 @@ class PlateauOptimizationResult:
     is_plateau_stable: bool
     trials_history: List[Dict[str, Any]] = field(default_factory=list)
 
+    @property
+    def best_parameters(self) -> Dict[str, Any]:
+        """Backward-compatible alias for best_params."""
+        return self.best_params
+
+
 
 class QuantPlateauOptimizer:
     """

@@ -550,6 +550,36 @@ class ContextBuilderMixin:
         except Exception as e:
             logger.debug(f'[{symbol}] Verified market snapshot injection failed (non-fatal): {e}')
 
+        # H5: Quant Active Strategy Signals (System Edge Intelligence)
+        try:
+            from analysis.strategies.registry import StrategyRegistry
+            regime_val = active_regime if 'active_regime' in locals() else None
+            edge_signals = await StrategyRegistry.evaluate_all(
+                session=session,
+                symbol=symbol,
+                settings=self.settings,
+                current_regime=regime_val,
+            )
+            valid_edge_signals = [s for s in edge_signals if getattr(s, "valid", False) and getattr(s, "direction", None)]
+            if valid_edge_signals:
+                edge_lines = [f"Deterministic Quant Alpha Signals for {symbol}:"]
+                for s in valid_edge_signals:
+                    direction = str(s.direction).upper()
+                    conf = getattr(s, "confidence", 0.0) or 0.0
+                    sl_str = f" SL={s.stop_loss:.5f}" if s.stop_loss else ""
+                    tp_str = f" TP={s.take_profit:.5f}" if s.take_profit else ""
+                    rat = getattr(s, "rationale", "")
+                    rat_str = f" — {rat}" if rat else ""
+                    edge_lines.append(f"- [{s.strategy_id}] {direction} (Confidence: {conf:.1%}){sl_str}{tp_str}{rat_str}")
+                edge_lines.append(
+                    "CONFLUENCE GUIDANCE: Align your decision with verified quant edges. "
+                    "Opposing a high-confidence quant edge requires extraordinary fundamental justification."
+                )
+                context_blocks.append(('QUANT ALPHA SIGNALS (EDGE STRATEGIES)', "\n".join(edge_lines)))
+        except Exception as e:
+            logger.debug(f'[{symbol}] Quant edge signals context injection failed (non-fatal): {e}')
+
+
         if extra_context:
             context_blocks.append(('ADDITIONAL CONTEXT', extra_context))
 
