@@ -24,25 +24,34 @@ class TimeSeriesMomentum(EdgeStrategy):
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
+        lookbacks = (
+            int(self.cfg.get('lookback_short', LOOKBACKS[0])),
+            int(self.cfg.get('lookback_med', LOOKBACKS[1])),
+            int(self.cfg.get('lookback_long', LOOKBACKS[2])),
+        )
+        max_lb = max(lookbacks)
+        min_lb = min(lookbacks)
+
         rows = (await session.execute(select(PriceOHLCV.close).where(
             PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'D1',
             PriceOHLCV.timestamp <= now
-        ).order_by(PriceOHLCV.timestamp.desc()).limit(max(LOOKBACKS) + 5))).scalars().all()
-        if len(rows) < LOOKBACKS[0] + 1:
+        ).order_by(PriceOHLCV.timestamp.desc()).limit(max_lb + 5))).scalars().all()
+        if len(rows) < min_lb + 1:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient D1 history")
 
         closes = list(reversed(rows))
         latest = closes[-1]
         votes = [1 if (latest - closes[-1-lb]) > 0 else -1
-                 for lb in LOOKBACKS if len(closes) > lb and closes[-1-lb]]
+                 for lb in lookbacks if len(closes) > lb and closes[-1-lb]]
         if not votes:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no valid lookback windows")
 
         net, agreement = sum(votes), abs(sum(votes)) / len(votes)
-        min_agreement = 1.0 if symbol in PURE_TSM else 0.67
+        default_min_agreement = 1.0 if symbol in PURE_TSM else 0.67
+        min_agreement = float(self.cfg.get('min_agreement', default_min_agreement))
         if agreement < min_agreement or net == 0:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0,
-                               rationale=f"agreement={agreement:.2f} < {min_agreement}")
+                                rationale=f"agreement={agreement:.2f} < {min_agreement}")
 
         direction = 'buy' if net > 0 else 'sell'
 
@@ -91,3 +100,9 @@ class TimeSeriesMomentum(EdgeStrategy):
                            tags=["tsm", "trend_continuation", "trend"],
                            exit_style='trend_trailing',
                            meta=meta_data)
+
+
+@StrategyRegistry.register
+class TrendTrailingMomentum(TimeSeriesMomentum):
+    strategy_id = "trend_trailing"
+

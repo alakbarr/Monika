@@ -477,6 +477,11 @@ class IsolatedStrategyBacktestHarness:
                 sl = float(sig.stop_loss)
                 tp = float(sig.take_profit)
             else:
+                if self.fail_fast_on_error:
+                    logger.debug(
+                        f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}"
+                    )
+                    return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 exit_style = getattr(sig, "exit_style", "intraday_adr")
                 if exit_style == "trend_trailing":
                     sl_dist = atr * 1.5
@@ -687,12 +692,10 @@ class IsolatedStrategyBacktestHarness:
         avg_oos_sharpe = float(np.mean(oos_sharpes)) if oos_sharpes else 0.0
 
         # Institutional Annualized WFE (Robert Pardo): OOS Sharpe / IS Sharpe
-        if avg_is_sharpe > 0:
-            wfe = round(avg_oos_sharpe / max(0.1, avg_is_sharpe), 2)
-        elif avg_is_sharpe == 0.0:
-            wfe = 1.0 if avg_oos_sharpe >= 0 else 0.0
+        if avg_is_sharpe > 0.1:
+            wfe = round(max(0.0, avg_oos_sharpe) / avg_is_sharpe, 2)
         else:
-            wfe = 0.0 if avg_oos_sharpe <= avg_is_sharpe else round(abs(avg_oos_sharpe - avg_is_sharpe) / abs(avg_is_sharpe), 2)
+            wfe = 0.0
 
         # Deflated Sharpe Ratio (DSR) using actual number of observed OOS trades (no fake clamping)
         oos_returns = [t.pnl_pct / 100.0 for t in all_oos_trades]
@@ -783,8 +786,25 @@ class IsolatedStrategyBacktestHarness:
             entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost if sig.direction == "buy" else base_price - (self.spread_cost / 2.0) - self.slippage_cost
             atr = self._calculate_atr(h1_slice, period=14)
 
-            sl = float(sig.stop_loss) if sig.stop_loss else (entry_price - atr * 1.5 if sig.direction == "buy" else entry_price + atr * 1.5)
-            tp = float(sig.take_profit) if sig.take_profit else (entry_price + atr * 3.0 if sig.direction == "buy" else entry_price - atr * 3.0)
+            if sig.stop_loss is not None and sig.take_profit is not None:
+                sl = float(sig.stop_loss)
+                tp = float(sig.take_profit)
+            else:
+                if self.fail_fast_on_error:
+                    return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                exit_style = getattr(sig, "exit_style", "intraday_adr")
+                if exit_style == "trend_trailing":
+                    sl_dist = atr * 1.5
+                    tp_dist = atr * 3.5
+                else:
+                    sl_dist = atr * 1.2
+                    tp_dist = atr * 2.4
+                if sig.direction == "buy":
+                    sl = entry_price - sl_dist
+                    tp = entry_price + tp_dist
+                else:
+                    sl = entry_price + sl_dist
+                    tp = entry_price - tp_dist
 
             exit_price = entry_price
             exit_reason = "time_exit"

@@ -713,6 +713,9 @@ class StrategySynthesisScheduler:
                             rationale="Evaluation completed without returning a signal",
                             tags=["empty_signal"],
                         )
+                    # Enforce signal integrity: valid=True requires direction in ('buy', 'sell')
+                    if getattr(res, "valid", False) and getattr(res, "direction", None) not in ('buy', 'sell'):
+                        res.valid = False
                     return res
                 except Exception as eval_err:
                     sid = getattr(self, "strategy_id", class_name)
@@ -857,8 +860,11 @@ class StrategySynthesisScheduler:
         is_sharpe = is_metrics["sharpe"]
         oos_sharpe = oos_metrics["sharpe"]
 
-        # WFE ratio: OOS / max(IS, 0.1)
-        wfe = round(float(oos_sharpe / max(is_sharpe, 0.1)), 2)
+        # Institutional Pardo Walk-Forward Efficiency (WFE): Requires positive In-Sample Sharpe > 0.1
+        if is_sharpe <= 0.1:
+            wfe = 0.0
+        else:
+            wfe = round(float(max(0.0, oos_sharpe) / is_sharpe), 2)
         passed = (oos_sharpe >= self.min_walk_forward_sharpe) and (wfe >= self.min_walk_forward_efficiency)
 
         return {
@@ -878,7 +884,24 @@ class StrategySynthesisScheduler:
         raw_id = f"alpha_{symbol.lower()}_{uuid.uuid4().hex[:6]}"
         class_name = f"SynthesizedStrategy_{raw_id.replace('-', '_')}"
 
-        # 1. Attempt LLM generation via task role
+        # 1. Query latest market context (regime, approximate ATR/price level, friction profile)
+        market_context_str = ""
+        try:
+            from analysis.calculators.regime_classifier import classify_market_regime
+            from backtest.alpha_validation import ASSET_FRICTION_PROFILE
+            fprofile = ASSET_FRICTION_PROFILE.get(symbol, {"spread_pips": 2.0, "pip_value": 1.0})
+            async with get_session() as mkt_session:
+                reg_info = await classify_market_regime(mkt_session, symbol, self.settings)
+                market_context_str = (
+                    f"Asset Real-World Context:\n"
+                    f"- Current Market Regime: {reg_info.get('regime', 'UNKNOWN')} "
+                    f"(ADX: {reg_info.get('adx', 0):.1f}, Volatility: {reg_info.get('volatility_regime', 'NORMAL')})\n"
+                    f"- Friction Profile: Typical Spread={fprofile.get('spread_pips', 2.0)} pips.\n"
+                )
+        except Exception as mkt_err:
+            logger.debug(f"[StrategySynthesis] Market context lookup non-fatal: {mkt_err}")
+
+        # 2. Attempt LLM generation via task role
         code = None
         try:
             from analysis.providers.llm_factory import get_client_for_task
@@ -888,7 +911,8 @@ class StrategySynthesisScheduler:
                 f"Class Name: {class_name}\n"
                 f"strategy_id: \"{raw_id}\"\n"
                 f"applicable_symbols: {{\"{symbol}\"}}\n"
-                f"Trading Concept: {concept}\n\n"
+                f"Trading Concept: {concept}\n"
+                f"{market_context_str}\n"
                 f"STRICT SKELETON (Class attributes and constructor must strictly match):\n"
                 f"```python\n"
                 f"from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal\n"
@@ -1042,6 +1066,11 @@ class StrategySynthesisScheduler:
                 if "error" in getattr(canary_sig, "tags", []) or "evaluation_error" in getattr(canary_sig, "tags", []):
                     logger.warning(
                         f"[StrategySynthesis] Canary evaluation produced error signal for {class_name}: {canary_sig.rationale}"
+                    )
+                    return None
+                if getattr(canary_sig, "valid", False) and getattr(canary_sig, "direction", None) not in ('buy', 'sell'):
+                    logger.warning(
+                        f"[StrategySynthesis] Canary evaluation valid=True without directional bias ('buy'/'sell') for {class_name}"
                     )
                     return None
         except Exception as canary_err:

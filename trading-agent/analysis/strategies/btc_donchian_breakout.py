@@ -8,9 +8,15 @@ import utils.clock as clock
 @StrategyRegistry.register
 class BTCDonchianBreakout(EdgeStrategy):
     strategy_id = "btc_donchian_breakout"
-    applicable_symbols = {'BTCUSD'}
+    applicable_symbols = {'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'ETHUSD'}
     compatible_regimes = {'TREND', 'STRONG_TREND', 'EXPANDING_FAST'}
     factor_family = 'breakout'
+
+
+@StrategyRegistry.register
+class DonchianBreakoutStrategy(BTCDonchianBreakout):
+    strategy_id = "donchian_breakout"
+    applicable_symbols = {'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'ETHUSD'}
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
