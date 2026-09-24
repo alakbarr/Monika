@@ -229,6 +229,7 @@ Monika/
     │   │   ├── gemini_provider.py
     │   │   ├── groq_provider.py
     │   │   ├── llm_factory.py
+    │   │   ├── nine_router_provider.py
     │   │   ├── ollama_provider.py
     │   │   ├── openai_provider.py
     │   │   ├── openrouter_provider.py
@@ -1012,6 +1013,7 @@ Monika/
         │   │   ├── test_credential_pool_routing.py
         │   │   ├── test_failover_expanded.py
         │   │   ├── test_fallback_wrapper_cooldown.py
+        │   │   ├── test_nine_router_provider.py
         │   │   ├── test_prompt_caching_enhancements.py
         │   │   ├── test_provider_registry.py
         │   │   ├── test_structured_fallback.py

@@ -37,12 +37,27 @@ if defined MT5_PATH (
     echo [WARN] MT5_PATH tidak ada di .env -- lewati pembukaan MT5.
 )
 
-:: ── 2. Jalankan Dashboard Frontend di window terpisah ────────────────────────
-echo [2/4] Menjalankan Dashboard Frontend (localhost:5173)...
+:: ── 2. Jalankan 9Router AI Gateway di window terpisah ────────────────────────
+echo [2/5] Memeriksa dan Menjalankan 9Router AI Gateway (localhost:20128)...
+netstat -ano | findstr :20128 >nul
+if %ERRORLEVEL% neq 0 (
+    echo [*] Membuka 9Router AI Gateway...
+    where 9router >nul 2>nul
+    if %ERRORLEVEL% equ 0 (
+        start "9Router AI Gateway" cmd /k "9router --no-browser --skip-update"
+    ) else (
+        start "9Router AI Gateway" cmd /k "npx -y 9router --no-browser --skip-update"
+    )
+) else (
+    echo [OK] 9Router AI Gateway sudah aktif di localhost:20128.
+)
+
+:: ── 3. Jalankan Dashboard Frontend di window terpisah ────────────────────────
+echo [3/5] Menjalankan Dashboard Frontend (localhost:5173)...
 start "Monika Dashboard Frontend" cmd /k "cd /d %~dp0logging_observability\dashboard\frontend && npm run dev"
 
-:: ── 3. Run database migrations ───────────────────────────────────────────────
-echo [3/4] Checking and running database migrations...
+:: ── 4. Run database migrations ───────────────────────────────────────────────
+echo [4/5] Checking and running database migrations...
 python -m alembic upgrade head
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Alembic migration failed! Please check database connection.
@@ -50,8 +65,8 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-:: ── 4. Restart-loop: jalankan agent via CLI ──────────────────────────────────
-echo [4/4] Menjalankan Monika via CLI (mode: %TRADE_MODE%)...
+:: ── 5. Restart-loop: jalankan agent via CLI ──────────────────────────────────
+echo [5/5] Menjalankan Monika via CLI (mode: %TRADE_MODE%)...
 
 :loop
 echo Starting Monika (MT5 Trading Agent) in %TRADE_MODE% mode...
