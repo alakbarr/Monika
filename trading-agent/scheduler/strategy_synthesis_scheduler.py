@@ -827,7 +827,15 @@ class StrategySynthesisScheduler:
                     slice_session = cast(AsyncSession, HistoricalSliceSession(candles[: i + 1]))
                     sig = None
                     try:
-                        sig = await strat_instance.evaluate(slice_session, symbol, self.settings)
+                        sig = await asyncio.wait_for(
+                            strat_instance.evaluate(slice_session, symbol, self.settings),
+                            timeout=5.0,
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            f"[StrategySynthesis] Candidate '{strat_id}' timed out on bar {i} (> 5.0s). Disqualifying candidate."
+                        )
+                        return []
                     except Exception as eval_err:
                         logger.debug(f"[StrategySynthesis] Strategy evaluation error at bar {i}: {eval_err}")
                         eval_errors_count += 1
@@ -932,11 +940,11 @@ class StrategySynthesisScheduler:
 
         if len(returns) < 4:
             return {
-                "passed": True,
-                "is_sharpe": 2.0,
-                "oos_sharpe": 2.0,
-                "wfe": 1.0,
-                "reason": "Sample too small for walk-forward, passed by default",
+                "passed": False,
+                "is_sharpe": 0.0,
+                "oos_sharpe": 0.0,
+                "wfe": 0.0,
+                "reason": f"Sample size too small ({len(returns)} < 4 trades) for walk-forward validation",
             }
 
         split_idx = max(2, int(len(returns) * split_ratio))
@@ -1112,7 +1120,16 @@ class StrategySynthesisScheduler:
                 for j in range(120, 0, -1)
             ]
             canary_session = cast(AsyncSession, HistoricalSliceSession(mock_candles))
-            canary_sig = await test_instance.evaluate(canary_session, symbol, self.settings)
+            try:
+                canary_sig = await asyncio.wait_for(
+                    test_instance.evaluate(canary_session, symbol, self.settings),
+                    timeout=5.0,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"[StrategySynthesis] Canary evaluation timed out (> 5.0s) for {class_name}"
+                )
+                return None
             if canary_sig is not None:
                 if not isinstance(canary_sig, EdgeSignal):
                     logger.warning(
@@ -1268,10 +1285,13 @@ class StrategySynthesisScheduler:
         logger.info("[StrategySynthesis] Starting autonomous strategy synthesis cycle...")
         new_promoted = []
 
-        concepts = [
+        cfg_concepts = self.settings.get("strategy_synthesis", {}).get("concepts")
+        concepts = cfg_concepts if isinstance(cfg_concepts, list) and cfg_concepts else [
             "Mean reversion on ATR exhaustion",
             "Multi-timeframe liquidity sweep displacement",
             "Volume-weighted dynamic Donchian expansion",
+            "Momentum pullback with volatility band compression",
+            "Order flow imbalance structural break",
         ]
 
         for sym in self.target_symbols:

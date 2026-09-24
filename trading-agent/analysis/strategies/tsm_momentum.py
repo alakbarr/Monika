@@ -18,6 +18,8 @@ STRICT_REGIME = {'AUDUSD', 'GBPUSD'}
 class TimeSeriesMomentum(EdgeStrategy):
     strategy_id = "tsm_momentum"
     applicable_symbols = {'USDJPY', 'EURUSD', 'AUDUSD', 'GBPUSD', 'XAUUSD'}
+    compatible_regimes = {'TREND', 'STRONG_TREND'}
+    factor_family = 'trend'
     min_sample_size = 30
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:

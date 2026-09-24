@@ -151,12 +151,47 @@ class EdgeStrategyRunner:
                 logger.debug(f"EdgeStrategyRunner: skipping stale symbols {stale_symbols}, evaluating valid {valid_symbols}")
 
             for symbol in valid_symbols:
+                # 1. Pre-check: Jangan evaluasi jika posisi live atau paper trade untuk simbol ini sudah aktif
+                open_pos_id = (await session.execute(
+                    select(Position.id).where(Position.symbol == symbol, Position.status == 'open').limit(1)
+                )).scalar_one_or_none()
+
+                open_paper_id = (await session.execute(
+                    select(PaperTradeRecord.id).where(
+                        PaperTradeRecord.symbol == symbol,
+                        PaperTradeRecord.status.in_(['open', 'pending'])
+                    ).limit(1)
+                )).scalar_one_or_none()
+
+                if open_pos_id or open_paper_id:
+                    logger.debug(
+                        f"Active position exists for {symbol} "
+                        f"(pos_id={open_pos_id}, paper_id={open_paper_id}), skipping edge signal."
+                    )
+                    continue
+
+                # 2. Ambil Regime Info terkini untuk filter kompatibilitas rezim di StrategyRegistry
+                regime_dict = None
+                current_regime = None
                 try:
-                    signals = await StrategyRegistry.evaluate_all(session, symbol, self.settings)
+                    from analysis.calculators.regime_classifier import classify_market_regime
+                    regime_dict = await classify_market_regime(session, symbol, self.settings)
+                    current_regime = regime_dict.get('regime') if regime_dict else None
+                except Exception as reg_err:
+                    logger.debug(f"classify_market_regime failed for {symbol}: {reg_err}")
+
+                try:
+                    signals = await StrategyRegistry.evaluate_all(
+                        session, symbol, self.settings, current_regime=current_regime
+                    )
                 except Exception as e:
                     logger.error(f'evaluate_all failed for {symbol}: {e}')
                     await session.rollback()
                     continue
+
+                # 3. Kumpulkan kandidat sinyal yang lolos gate dasar dan cooldown
+                now_ts = time.time()
+                candidates = []
                 for sig in signals:
                     try:
                         if not sig.direction:
@@ -172,27 +207,7 @@ class EdgeStrategyRunner:
                             )
                             continue
 
-                        # 1. Pre-check: Jangan evaluasi/materialisasi jika posisi live atau paper trade untuk simbol ini sudah aktif
-                        open_pos_id = (await session.execute(
-                            select(Position.id).where(Position.symbol == symbol, Position.status == 'open').limit(1)
-                        )).scalar_one_or_none()
-
-                        open_paper_id = (await session.execute(
-                            select(PaperTradeRecord.id).where(
-                                PaperTradeRecord.symbol == symbol,
-                                PaperTradeRecord.status.in_(['open', 'pending'])
-                            ).limit(1)
-                        )).scalar_one_or_none()
-
-                        if open_pos_id or open_paper_id:
-                            logger.debug(
-                                f"[{sig.strategy_id}] Active position exists for {symbol} "
-                                f"(pos_id={open_pos_id}, paper_id={open_paper_id}), skipping edge signal."
-                            )
-                            continue
-
-                        # 2. Cooldown check: Cegah materialisasi sinyal berulang dalam interval cooldown
-                        now_ts = time.time()
+                        # Cooldown check: Cegah materialisasi sinyal berulang dalam interval cooldown
                         if await self._is_in_cooldown(session, sig.strategy_id, symbol, now_ts):
                             logger.debug(
                                 f"[{sig.strategy_id}] Signal for {symbol} in cooldown, skipping."
@@ -213,12 +228,58 @@ class EdgeStrategyRunner:
                                     logger.debug(f'[{sig.strategy_id}/{symbol}] pretrade gate: {reason}')
                                 continue
 
-                        # Record cooldown timestamp right before routing
-                        self._signal_cooldowns[(sig.strategy_id, symbol)] = now_ts
-                        await self._materialize_and_route(session, sig)
+                        candidates.append(sig)
                     except Exception as e:
-                        logger.error(f'[{sig.strategy_id}] routing failed for {symbol}: {e}')
-                        await session.rollback()
+                        logger.error(f'[{sig.strategy_id}] candidate filtering failed for {symbol}: {e}')
+
+                if not candidates:
+                    continue
+
+                # 4. Per-Symbol Signal De-duplicator & Ensemble Arbiter
+                directions = {c.direction.lower() for c in candidates}
+                if 'buy' in directions and 'sell' in directions:
+                    conflict_ids = [c.strategy_id for c in candidates]
+                    logger.warning(
+                        f"[Ensemble] Conflicting buy & sell signals on {symbol} across strategies {conflict_ids}. "
+                        f"Suppressing all to prevent market churn/whip."
+                    )
+                    continue
+
+                if len(candidates) == 1:
+                    chosen_signal = candidates[0]
+                else:
+                    # Multi-signal concordance: Rank by (confidence, sharpe) descending
+                    ranked = sorted(
+                        candidates,
+                        key=lambda s: (
+                            float(getattr(s, 'confidence', 0.0) or 0.0),
+                            float(getattr(s, 'sharpe', 0.0) or s.meta.get('sharpe', 0.0) or 0.0)
+                        ),
+                        reverse=True
+                    )
+                    chosen_signal = ranked[0]
+                    # Multi-strategy ensemble confirmation boost
+                    base_conf = float(chosen_signal.confidence or 0.5)
+                    boosted_conf = min(base_conf + 0.05, 0.95)
+                    chosen_signal.confidence = boosted_conf
+                    all_ids = [c.strategy_id for c in candidates]
+                    chosen_signal.meta['ensemble_confirmed'] = True
+                    chosen_signal.meta['ensemble_strategies'] = all_ids
+                    logger.info(
+                        f"[Ensemble] Multi-strategy concordance on {symbol} ({all_ids}). "
+                        f"Selected {chosen_signal.strategy_id} with boosted confidence {boosted_conf:.2f}."
+                    )
+
+                # Record cooldown for all agreeing strategies on this symbol
+                for c in candidates:
+                    self._signal_cooldowns[(c.strategy_id, symbol)] = now_ts
+
+                # 5. Route chosen signal
+                try:
+                    await self._materialize_and_route(session, chosen_signal, regime_dict=regime_dict)
+                except Exception as e:
+                    logger.error(f'[{chosen_signal.strategy_id}] routing failed for {symbol}: {e}')
+                    await session.rollback()
 
     async def _is_disabled(self, session, strategy_id: str, symbol: str) -> bool:
         cfg = (await session.execute(
@@ -236,7 +297,7 @@ class EdgeStrategyRunner:
         )).scalar_one_or_none()
         return float(last_bar.close) if last_bar else None
 
-    async def _materialize_and_route(self, session, sig) -> None:
+    async def _materialize_and_route(self, session, sig, regime_dict: Optional[dict] = None) -> None:
         if sig.entry_price is None:
             sig.entry_price = await self._resolve_reference_price(session, sig)
             if sig.entry_price is None:
@@ -361,13 +422,14 @@ class EdgeStrategyRunner:
         except Exception:
             pass
 
-        # 2. Ambil Regime Info terkini
-        regime_dict = {}
-        try:
-            from analysis.calculators.regime_classifier import classify_market_regime
-            regime_dict = await classify_market_regime(session, sig.symbol, self.settings)
-        except Exception:
-            pass
+        # 2. Ambil Regime Info terkini jika belum tersedia
+        if regime_dict is None:
+            regime_dict = {}
+            try:
+                from analysis.calculators.regime_classifier import classify_market_regime
+                regime_dict = await classify_market_regime(session, sig.symbol, self.settings)
+            except Exception:
+                pass
 
         # 3. Query sinyal LLM terkini
         recent_llm = None
@@ -468,6 +530,20 @@ class EdgeStrategyRunner:
                     status='pending',
                 ))
                 await session.commit()
+
+            ttl_mins = getattr(leg, 'ttl_minutes', None)
+            if ttl_mins is not None and ttl_mins > 0:
+                expire_at = (clock.now() + timedelta(minutes=float(ttl_mins))).isoformat()
+                session.add(TradeTrigger(
+                    asset_analysis_id=analysis.id, trigger_type='cancel_pending',
+                    condition_json=json.dumps({
+                        'fire_at': expire_at, 'symbol': leg.symbol,
+                        'reason': f"{leg.strategy_id} ttl_minutes={ttl_mins} reached (order validity expired)",
+                    }),
+                    status='pending',
+                ))
+                await session.commit()
+
             return analysis
 
         primary_analysis = await _materialize_leg(sig)
@@ -503,6 +579,7 @@ class EdgeStrategyRunner:
                     "pair_group_id": pair_group_id,
                 }) for a in analyses_to_execute
             ]
+            regime_name = (regime_dict.get("regime", "normal") if regime_dict else "normal").lower()
             reactive_state = {
                 "symbols": [a.symbol for a in analyses_to_execute],
                 "actionable_trades": actionable_legs,
@@ -513,8 +590,9 @@ class EdgeStrategyRunner:
                     "analyses": analyses_to_execute,
                     "pair_group_id": pair_group_id,
                     "session": session,
+                    "regime_dict": regime_dict,
                 },
-                "market_regime": "normal",
+                "market_regime": regime_name,
                 "summary": {},
                 "errors": [],
                 "should_pause": False,

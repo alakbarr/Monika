@@ -26,6 +26,8 @@ class EdgeSignal:
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
     max_hold_minutes: Optional[int] = None
+    ttl_minutes: Optional[int] = None          # Alpha Time-to-Live / half-life before signal expires
+    factor_family: str = 'trend'               # 'trend' | 'mean_reversion' | 'stat_arb' | 'breakout'
     force_session_close: bool = False
     exit_style: str = 'intraday_adr'  # 'intraday_adr' or 'trend_trailing'
     rationale: str = ""
@@ -36,6 +38,8 @@ class EdgeSignal:
 class EdgeStrategy(ABC):
     strategy_id: str = ""
     applicable_symbols: set[str] = set()
+    compatible_regimes: set[str] = {"ALL"}     # Set of supported market regimes, e.g. {"TREND", "STRONG_TREND"}
+    factor_family: str = "trend"               # Factor family for portfolio risk parity
     min_sample_size: int = 30
 
     def __init__(self, settings: Optional[dict] = None, *args, **kwargs):
@@ -48,6 +52,13 @@ class EdgeStrategy(ABC):
             return False
         return not self.applicable_symbols or symbol in self.applicable_symbols
 
+    def is_regime_compatible(self, regime: str) -> bool:
+        """Evaluates whether this strategy is designed to operate under the given market regime."""
+        if not self.compatible_regimes or "ALL" in self.compatible_regimes:
+            return True
+        norm_regime = str(regime or "").upper().replace(" ", "_")
+        return norm_regime in self.compatible_regimes
+
     async def get_historical_candles(
         self,
         session: AsyncSession,
@@ -59,6 +70,16 @@ class EdgeStrategy(ABC):
         from database.models import PriceOHLCV
         from sqlalchemy import select
         norm_tf = timeframe.upper()
+        cache_key = (symbol, norm_tf)
+
+        # Check session-level in-memory cache to eliminate N+1 DB query storms
+        if hasattr(session, "info") and isinstance(session.info, dict):
+            candle_cache = session.info.setdefault("candle_cache", {})
+            if cache_key in candle_cache:
+                cached = candle_cache[cache_key]
+                if len(cached) >= limit:
+                    return cached[-limit:]
+
         stmt = (
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == norm_tf)
@@ -67,7 +88,7 @@ class EdgeStrategy(ABC):
         )
         rows = (await session.execute(stmt)).scalars().all()
         rows = list(reversed(rows))
-        return [
+        candles = [
             CandleDict({
                 "timestamp": r.timestamp.isoformat() if r.timestamp else None,
                 "open": float(r.open),
@@ -78,6 +99,9 @@ class EdgeStrategy(ABC):
             })
             for r in rows
         ]
+        if hasattr(session, "info") and isinstance(session.info, dict):
+            session.info.setdefault("candle_cache", {})[cache_key] = candles
+        return candles
 
     @abstractmethod
     async def evaluate(self, session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal: ...

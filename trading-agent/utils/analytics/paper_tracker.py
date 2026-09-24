@@ -438,6 +438,10 @@ class PaperTracker:
                                 await self._record_factor_outcomes(session, trade)
                             except Exception as e:
                                 logger.debug(f'Factor outcome recording failed (non-fatal): {e}')
+                            try:
+                                await self._record_decay_outcome(session, trade)
+                            except Exception as e:
+                                logger.debug(f'Decay outcome recording failed (non-fatal): {e}')
                             continue
                     
                     # Step 1: Handle pending limit orders - check if price reached entry level
@@ -487,12 +491,16 @@ class PaperTracker:
                         except Exception as e:
                             logger.debug(f'Factor outcome recording failed (non-fatal): {e}')
                             
-                        # Task 1.1: Improved Post-Trade Closed-Loop Analysis
                         try:
                             from utils.analytics.trade_autopsy import run_trade_autopsy
                             await run_trade_autopsy(session, trade)
                         except Exception as e:
                             logger.debug(f'Trade autopsy failed (non-fatal): {e}')
+
+                        try:
+                            await self._record_decay_outcome(session, trade)
+                        except Exception as e:
+                            logger.debug(f'Decay outcome recording failed (non-fatal): {e}')
                             
                         if trade.analysis_id:
                             try:
@@ -568,6 +576,41 @@ class PaperTracker:
             # Commit handled by caller
         except Exception as e:
             logger.debug(f'_record_factor_outcomes inner error: {e}')
+
+    async def _record_decay_outcome(self, session: AsyncSession, trade: PaperTradeRecord) -> None:
+        """Record paper trade outcome into StrategyDecayMonitor for edge alpha degradation tracking."""
+        if not trade.analysis_id:
+            return
+        try:
+            from database.models import AssetAnalysis
+            analysis = None
+            if hasattr(session, "get"):
+                res = session.get(AssetAnalysis, trade.analysis_id)
+                if hasattr(res, "__await__"):
+                    analysis = await res
+                else:
+                    analysis = res
+            if analysis is None and hasattr(session, "execute"):
+                res = session.execute(
+                    select(AssetAnalysis).where(AssetAnalysis.id == trade.analysis_id)
+                )
+                if hasattr(res, "__await__"):
+                    res = await res
+                if hasattr(res, "scalar_one_or_none"):
+                    analysis = res.scalar_one_or_none()
+
+            if analysis and getattr(analysis, "source_strategy_id", None):
+                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                get_strategy_decay_monitor().record_trade_outcome(
+                    strategy_id=analysis.source_strategy_id,
+                    win=(trade.pnl_pct or 0.0) > 0,
+                )
+                logger.debug(
+                    f"[PAPER] Recorded decay outcome for strategy '{analysis.source_strategy_id}', "
+                    f"win={(trade.pnl_pct or 0.0) > 0}"
+                )
+        except Exception as d_err:
+            logger.debug(f"[PAPER] StrategyDecayMonitor record error: {d_err}")
 
     async def _try_fill_pending_order(self, session: AsyncSession, trade: PaperTradeRecord) -> bool:
         """Check if a pending limit order has been filled. Returns True if filled."""

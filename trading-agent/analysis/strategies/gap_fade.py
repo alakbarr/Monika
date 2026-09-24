@@ -19,6 +19,8 @@ PIP_SIZE = {
 class DailyReopenGapFade(EdgeStrategy):
     strategy_id = "gap_fade"
     applicable_symbols = set(SESSION_OPEN_HOUR_UTC.keys())
+    compatible_regimes = {'RANGE', 'WEAK_TREND', 'VOLATILE_CHOP'}
+    factor_family = 'mean_reversion'
     min_sample_size = 30
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
@@ -96,6 +98,7 @@ class DailyReopenGapFade(EdgeStrategy):
             confidence=min(1.0, net_edge / (threshold * 2)),
             entry_price=entry, stop_loss=sl, take_profit=tp,
             max_hold_minutes=self.cfg.get('max_hold_minutes', 60), force_session_close=True,
+            ttl_minutes=self.cfg.get('ttl_minutes', 60), factor_family='mean_reversion',
             rationale=f"Reopen gap {gap_pips:.1f}p (net {net_edge:.1f}p after costs), fading to prior close.",
             tags=["gap_fade", "mean_reversion"],
             meta={"gap_pips": gap_pips, "prev_close": prev_close},
