@@ -67,6 +67,9 @@
   --color-error: var(--color-ledger-red);
   --color-info: var(--color-win-blue);
   --color-info-dim: rgba(59, 164, 196, 0.18);
+  --color-dag-grid: rgba(28, 25, 23, 0.12);
+  --color-subgraph-bg: rgba(245, 189, 56, 0.06);
+  --color-telegraph-line: rgba(28, 25, 23, 0.05);
 
   /* Hard Vintage Drop Shadows (zero blur) */
   --shadow-card: 3px 3px 0 var(--color-rule);
@@ -138,6 +141,9 @@
   --color-error: var(--color-ledger-red);
   --color-info: var(--color-win-blue);
   --color-info-dim: rgba(42, 121, 145, 0.2);
+  --color-dag-grid: rgba(246, 241, 234, 0.08);
+  --color-subgraph-bg: rgba(184, 133, 27, 0.08);
+  --color-telegraph-line: rgba(246, 241, 234, 0.04);
 
   /* Hard Vintage Drop Shadows */
   --shadow-card: 3px 3px 0 var(--color-rule);
@@ -711,6 +717,27 @@ input::placeholder {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+
+/* ==============================================================================
+   DAG ARCHITECTURAL DRAFTING CANVAS & TELEGRAPH VIEWPORT
+   ============================================================================== */
+.dag-drafting-canvas {
+  background-color: var(--color-paper);
+  background-image: radial-gradient(circle, var(--color-dag-grid) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+.telegraph-viewport {
+  background-color: var(--color-paper);
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 23px,
+    var(--color-telegraph-line) 23px,
+    var(--color-telegraph-line) 24px
+  );
+  background-size: 100% 24px;
 }
 
 
