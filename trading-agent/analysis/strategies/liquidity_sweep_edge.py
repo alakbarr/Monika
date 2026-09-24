@@ -6,6 +6,8 @@ from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
 class LiquiditySweepStructuralShift(EdgeStrategy):
     strategy_id = "liquidity_sweep"
     applicable_symbols = {'XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD'}
+    compatible_regimes = {'RANGE', 'VOLATILE_CHOP', 'WEAK_TREND', 'TREND'}
+    factor_family = 'breakout'
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         r = await detect_liquidity_sweep(session, symbol, settings)
@@ -32,4 +34,5 @@ class LiquiditySweepStructuralShift(EdgeStrategy):
 
         return EdgeSignal(self.strategy_id, symbol, direction, True, confidence=conf,
                            stop_loss=stop_loss,
-                           rationale='; '.join(r['reasons']), tags=["liquidity_sweep", "reversal", "mean_reversion"], meta=r)
+                           ttl_minutes=45, factor_family='breakout',
+                           rationale='; '.join(r['reasons']), tags=["liquidity_sweep", "reversal", "breakout"], meta=r)

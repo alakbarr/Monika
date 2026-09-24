@@ -82,3 +82,83 @@ def test_decay_monitor_recovery():
 
     assert monitor.get_health(strat).state == DecayState.ACTIVE
     assert monitor.is_tradeable(strat) is True
+
+
+@pytest.mark.asyncio
+async def test_decay_monitor_suppresses_registry_evaluation():
+    from unittest.mock import AsyncMock
+    from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+    from analysis.strategies.registry import StrategyRegistry
+
+    class MockDecayingStrategy(EdgeStrategy):
+        strategy_id = "test_decay_strat"
+        applicable_symbols = {"EURUSD"}
+
+        async def evaluate(self, session, symbol, settings):
+            return EdgeSignal(
+                strategy_id=self.strategy_id,
+                symbol=symbol,
+                direction="buy",
+                valid=True,
+                confidence=0.88,
+            )
+
+    orig_registry = dict(StrategyRegistry._registry)
+    StrategyRegistry._registry = {"test_decay_strat": MockDecayingStrategy}
+    monitor = get_strategy_decay_monitor()
+    strat_id = "test_decay_strat"
+    monitor._health_map.pop(strat_id, None)
+
+    mock_session = AsyncMock()
+    mock_session.execute.return_value.scalars.return_value.all.return_value = []
+
+    try:
+        # 1. Healthy: evaluate_all yields signal
+        signals = await StrategyRegistry.evaluate_all(mock_session, "EURUSD", {})
+        assert len(signals) == 1
+        assert signals[0].strategy_id == strat_id
+
+        # 2. Push strategy to DECAYED state via consecutive losses (3 warnings to MONITORING + 2 to DECAYED)
+        for _ in range(8):
+            monitor.record_trade_outcome(strat_id, win=False)
+
+        assert monitor.get_health(strat_id).state == DecayState.DECAYED
+        assert monitor.is_tradeable(strat_id) is False
+
+        # 3. Decayed: evaluate_all suppresses signal
+        signals_suppressed = await StrategyRegistry.evaluate_all(mock_session, "EURUSD", {})
+        assert len(signals_suppressed) == 0
+    finally:
+        StrategyRegistry._registry = orig_registry
+        monitor._health_map.pop(strat_id, None)
+
+
+@pytest.mark.asyncio
+async def test_paper_tracker_records_decay_outcome():
+    from unittest.mock import AsyncMock, MagicMock
+    from utils.analytics.paper_tracker import PaperTracker
+
+    monitor = get_strategy_decay_monitor()
+    strat_id = "test_paper_alpha"
+    monitor._health_map.pop(strat_id, None)
+
+    tracker = PaperTracker(settings={})
+    mock_session = AsyncMock()
+
+    mock_analysis = MagicMock()
+    mock_analysis.source_strategy_id = strat_id
+
+    mock_trade = MagicMock()
+    mock_trade.analysis_id = 999
+    mock_trade.pnl_pct = -1.5
+
+    mock_session.get = AsyncMock(return_value=mock_analysis)
+    mock_session.execute.return_value.scalar_one_or_none.return_value = mock_analysis
+
+    try:
+        await tracker._record_decay_outcome(mock_session, mock_trade)
+        health = monitor.get_health(strat_id)
+        assert health.consecutive_losses == 1
+    finally:
+        monitor._health_map.pop(strat_id, None)
+

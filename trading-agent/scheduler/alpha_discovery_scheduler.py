@@ -263,7 +263,7 @@ class AlphaDiscoveryScheduler:
         if not meets_criteria:
             return None
 
-        # Build proposal with auto-promotion to PAPER_ACTIVE if WFE >= min_wfe (0.60) and auto_deploy_paper
+        # Build proposal with auto-promotion to PAPER_ACTIVE if WFE >= min_wfe (0.60) and auto_deploy_paper is True
         proposal_id = f"alpha_{uuid.uuid4().hex[:8]}"
         md_report = engine.generate_markdown_report(result)
         initial_status = "PAPER_ACTIVE" if (wfe >= self.min_wfe and self.auto_deploy_paper) else "PROPOSED"
@@ -311,25 +311,45 @@ class AlphaDiscoveryScheduler:
 
                 # Auto-deployment: If status is PAPER_ACTIVE, persist dynamic parameters and hot-reload
                 if proposal.status == "PAPER_ACTIVE":
-                    param_key = f"strategy_params_{proposal.hypothesis.strategy_type}"
+                    # 1. Persist isolated per-symbol parameter key to prevent cross-asset overwrites
+                    sym_param_key = f"strategy_params_{proposal.hypothesis.strategy_type}_{proposal.hypothesis.symbol}"
                     param_val = json.dumps(proposal.hypothesis.parameters)
-                    existing_param = (await session.execute(
-                        select(SystemConfig).where(SystemConfig.key == param_key)
+                    existing_sym = (await session.execute(
+                        select(SystemConfig).where(SystemConfig.key == sym_param_key)
                     )).scalar_one_or_none()
 
-                    if existing_param:
+                    if existing_sym:
                         await session.execute(
                             update(SystemConfig)
-                            .where(SystemConfig.key == param_key)
+                            .where(SystemConfig.key == sym_param_key)
                             .values(value=param_val)
                         )
                     else:
-                        session.add(SystemConfig(key=param_key, value=param_val))
+                        session.add(SystemConfig(key=sym_param_key, value=param_val))
 
-                    # Hot-reload into StrategyRegistry
+                    # 2. Maintain global key for backward compatibility
+                    global_param_key = f"strategy_params_{proposal.hypothesis.strategy_type}"
+                    existing_global = (await session.execute(
+                        select(SystemConfig).where(SystemConfig.key == global_param_key)
+                    )).scalar_one_or_none()
+
+                    if existing_global:
+                        await session.execute(
+                            update(SystemConfig)
+                            .where(SystemConfig.key == global_param_key)
+                            .values(value=param_val)
+                        )
+                    else:
+                        session.add(SystemConfig(key=global_param_key, value=param_val))
+
+                    # Hot-reload into StrategyRegistry with symbol context
                     try:
                         from analysis.strategies.registry import StrategyRegistry
-                        StrategyRegistry.hot_reload(proposal.hypothesis.strategy_type, proposal.hypothesis.parameters)
+                        StrategyRegistry.hot_reload(
+                            proposal.hypothesis.strategy_type,
+                            proposal.hypothesis.parameters,
+                            symbol=proposal.hypothesis.symbol,
+                        )
                     except Exception as reg_err:
                         logger.debug(f"[AlphaDiscovery] StrategyRegistry hot_reload non-fatal: {reg_err}")
 

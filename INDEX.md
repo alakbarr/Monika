@@ -103,35 +103,35 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3103
     - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3110
     - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3125
-      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3233
-    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3252
-    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3262
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3577
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3609
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3649
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3661
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3787
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3814
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3832
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 3851
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 3894
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 3899
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3945
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4408
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4438
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4471
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4477
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4492
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4519
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4528
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4607
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4636
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4646
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4675
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4685
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4694
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4707
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4732
+      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3234
+    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3253
+    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3263
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3579
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3611
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3651
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3663
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3789
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3816
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3834
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 3853
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 3896
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 3901
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3947
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4410
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4440
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4473
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4479
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4494
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4521
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4530
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4609
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4638
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4648
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4677
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4687
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4696
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4709
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4734
 
 ## Root Directory: `/trading-agent`
 
@@ -811,7 +811,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `macro_priced_in_calculator.py`
   - **Functions**: `calculate_macro_priced_in_baseline`
 **File:** `regime_classifier.py`
-  - **Functions**: `classify_market_regime`, `compute_bollinger_donchian_chop`
+  - **Functions**: `classify_market_regime` (Menghitung komposit rezim ADX/ATR/VIX dan continuous distribution `regime_probabilities` across trend, range, volatile_chop), `compute_bollinger_donchian_chop`
 **File:** `volume_profile.py`
   - **Functions**: `compute_volume_profile`, `compute_anchored_vwap`
 **File:** `stage1_priced_in.py`
@@ -997,11 +997,11 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `trading-agent/analysis/strategies`
 **File:** `base_strategy.py`
-  - **Classes**: `CandleDict` (Dual item/attribute access dict wrapper for OHLCV candles), `EdgeSignal` (Added `exit_style: str = 'intraday_adr'` and `paired_leg: Optional['EdgeSignal']`), `EdgeStrategy` (Methods: `is_enabled()`, `get_historical_candles()`, `evaluate()`)
+  - **Classes**: `CandleDict` (Dual item/attribute access dict wrapper for OHLCV candles), `EdgeSignal` (Attributes: `ttl_minutes: Optional[int] = None`, `factor_family: str = 'trend'`, `exit_style: str = 'intraday_adr'`, `paired_leg: Optional['EdgeSignal']`), `EdgeStrategy` (Attributes: `compatible_regimes: set[str] = {"ALL"}`, `factor_family: str = "trend"`; Methods: `is_regime_compatible(regime)`, `is_enabled()`, `get_historical_candles()`, `evaluate()`)
 **File:** `registry.py`
   - **Classes**: `StrategyRegistry`
-    - *Methods*: `register(strategy)`, `get_strategy(strategy_id)`, `list_strategies()`, `evaluate_all(symbol, tf, market_data)`, `hot_reload(strategy_id, parameters)`, `load_dynamic_parameters(session)`, `get_strategy_counts()`, `log_summary()`
-    - *Variables*: `_registry`, `_dynamic_params`, `_blacklisted_ids`, `_last_load_time`, `_load_interval`
+    - *Methods*: `register(strategy)`, `get_strategy(strategy_id)`, `list_strategies()`, `evaluate_all(session, symbol, settings, force_reload=False, current_regime=None)`: Evaluasi seluruh strategi aktif dengan filter kompatibilitas rezim pasar (`current_regime`) dan auto-propagasi `factor_family`, `hot_reload(strategy_id, parameters, symbol=None)`, `load_dynamic_parameters(session)`, `get_strategy_counts()`, `log_summary()`
+    - *Variables*: `_registry`, `_dynamic_params`, `_dynamic_symbol_params`, `MAX_SYNTHESIZED_PER_SYMBOL`, `_blacklisted_ids`, `_last_load_time`, `_load_interval`
 **File:** `strategy_plugin.py`
   - **Docstring**: Strategy Plugin Interface wrapping EdgeStrategy instances as TradingPlugin harness components.
   - **Classes**:
@@ -1010,19 +1010,19 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `wrap_strategy_as_plugin(strategy)`
 
 **File:** `gap_fade.py`
-  - **Classes**: `DailyReopenGapFade`
+  - **Classes**: `DailyReopenGapFade` (Regimes: RANGE, WEAK_TREND, VOLATILE_CHOP; Factor: mean_reversion; TTL: 60m)
 **File:** `btc_donchian_breakout.py`
-  - **Classes**: `BTCDonchianBreakout`
+  - **Classes**: `BTCDonchianBreakout` (Regimes: TREND, STRONG_TREND, EXPANDING_FAST; Factor: breakout; TTL: 120m)
 **File:** `tsm_momentum.py`
-  - **Classes**: `TimeSeriesMomentum`
+  - **Classes**: `TimeSeriesMomentum` (Regimes: TREND, STRONG_TREND; Factor: trend)
 **File:** `xau_trend_engine.py`
-  - **Classes**: `XAUTrendEngine`
+  - **Classes**: `XAUTrendEngine` (Regimes: TREND, STRONG_TREND, WEAK_TREND; Factor: trend)
 **File:** `xti_pairs_readiness.py`
-  - **Classes**: `XTIPairsReadiness` (Generates dual-leg Stat-Arb signals with dynamic SL/TP using DB Brent data)
+  - **Classes**: `XTIPairsReadiness` (Regimes: RANGE, TREND, WEAK_TREND, VOLATILE_CHOP; Factor: stat_arb; Generates dual-leg Stat-Arb signals with dynamic SL/TP using DB Brent data)
 **File:** `liquidity_sweep_edge.py`
-  - **Classes**: `LiquiditySweepStructuralShift` (Calculates invalidation Stop Loss from sweep_price extreme wick)
+  - **Classes**: `LiquiditySweepStructuralShift` (Regimes: RANGE, VOLATILE_CHOP, WEAK_TREND, TREND; Factor: breakout; TTL: 45m; Calculates invalidation Stop Loss from sweep_price extreme wick)
 **File:** `pretrade_gate.py`
-  - **Functions**: `evaluate_pretrade_gate(session, symbol: str, settings: dict, strategy_type: str) -> tuple[bool, str]`
+  - **Functions**: `evaluate_pretrade_gate(session, symbol: str, settings: dict, strategy_type: str) -> tuple[bool, str]` (Includes Session Rollover Deadzone Guard 21:55-22:15 UTC)
 **File:** `decay_monitor.py`
   - **Docstring**: Automated strategy degradation detection & state machine (ACTIVE -> MONITORING -> DECAYED -> DISABLED).
   - **Classes**: `DecayState`, `StrategyHealth`, `StrategyDecayMonitor`
@@ -3209,6 +3209,7 @@ This document provides an exhaustive structural index of all directories, files,
         - `evaluate(self, session, symbol, direction, sizing, account_equity, analysis, as_of, simulated_positions, simulated_equity, simulated_daily_pnl, is_backtest, pair_group_id, is_paper)`
         - `evaluate_proposal(self, session, proposal, account_equity=None, as_of=None, is_backtest=False, is_paper=None)` (alias: `check_proposal`)
         - `check_correlation_exposure(self, session, symbol, direction, simulated_positions, as_of, open_positions)`
+        - `_check_strategy_factor_exposure(self, session, analysis, simulated_positions=None)`: Batasi konsentrasi eksposur portofolio per factor family (trend, mean_reversion, stat_arb, breakout).
         - `assess_weekend_gap_risk(self, session, symbol: str)` (alias: `_check_weekend_gap_risk`)
         - `get_current_scorecard(self, session, symbol="EURUSD", account_equity=None)`: Evaluates deterministic 22-point safety checklist without requiring an active trade proposal.
 
@@ -3329,9 +3330,9 @@ This document provides an exhaustive structural index of all directories, files,
         - `hot_reload_strategy(self, strategy_id, parameters)`
         - `reload_strategies_from_db(self, session)`
         - `_is_in_cooldown(self, session, strategy_id, symbol, now_ts)`
-        - `run_once(self)`
+        - `run_once(self)`: Satu siklus evaluasi strategi edge dengan pre-regime check, per-symbol signal de-duplication, ensemble arbiter (concordance boost +0.05, opposing direction suppression).
         - `_is_disabled(self, session, strategy_id, symbol)`
-        - `_materialize_and_route(self, session, sig)`: Materialisasi order, evaluasi level intraday, dan pre-filter rasio R:R >= min_rr sebelum routing ke Reactive Graph.
+        - `_materialize_and_route(self, session, sig, regime_dict=None)`: Materialisasi order, evaluasi level intraday, trigger pendaftaran TTL (`cancel_pending`), pre-filter rasio R:R >= min_rr, dan dynamic `market_regime` routing ke Reactive Graph.
 
 **File:** `graph_cycle_scheduler.py`
   - **Global Variables**: `logger`
@@ -3552,6 +3553,7 @@ This document provides an exhaustive structural index of all directories, files,
         - `start(self)`
         - `stop(self)`
         - `_handle_force_close(self)`
+        - `_handle_cancel_pending_order(self, trigger)`: Batalkan pending live order atau pending paper trade saat order TTL kedaluwarsa (`cancel_pending`).
         - `_expire_stale_triggers(self)`
         - `_get_pending_triggers(self)`
         - `_fire_trigger(self)`
@@ -4457,7 +4459,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `news_classification_tracker.py`
 **File:** `paper_tracker.py`
   - **Classes**: `PaperTracker`
-    - *Methods*: `update_paper_trade_sl()`, `open_paper_trade()`, `check_and_close_trades()`, `get_statistics()`, `check_and_alert_winrate()`, `simulate_equity_curve()`, `get_suspended_symbols()`, `check_and_suspend_poor_performers()`, `unsuspend_symbol()`, `unsuspend_all()`, `get_streak_status()`, `should_regenerate_performance_notes()`
+    - *Methods*: `update_paper_trade_sl()`, `open_paper_trade()`, `check_and_close_trades()`, `_record_decay_outcome()`, `get_statistics()`, `check_and_alert_winrate()`, `simulate_equity_curve()`, `get_suspended_symbols()`, `check_and_suspend_poor_performers()`, `unsuspend_symbol()`, `unsuspend_all()`, `get_streak_status()`, `should_regenerate_performance_notes()`
   - **Functions**: `_group_by_symbol(history)`, `_group_by_symbol_direction(history)`
 **File:** `specialist_tracker.py`
 **File:** `token_auditor.py`

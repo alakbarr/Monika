@@ -15,6 +15,8 @@ BRENT_MT5_SYMBOL = 'XBRUSD'
 class XTIPairsReadiness(EdgeStrategy):
     strategy_id = "xti_pairs_readiness"
     applicable_symbols = {'XTIUSD'}
+    compatible_regimes = {'RANGE', 'TREND', 'WEAK_TREND', 'VOLATILE_CHOP'}
+    factor_family = 'stat_arb'
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         cfg = settings.get('trading', {}).get('edge_strategy', {}).get('xti_pairs_readiness', {})
