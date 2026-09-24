@@ -17,6 +17,7 @@ Default steer delivery mode is 'one-at-a-time' for trading safety.
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
+import threading
 from typing import Deque, List, Optional
 
 
@@ -42,6 +43,7 @@ class BusyInputBuffer:
     followup_queue: Deque[str] = field(default_factory=deque)
     default_mode: InputDelivery = InputDelivery.STEER
     delivery_mode: str = "one-at-a-time"  # 'one-at-a-time' (recommended for trading) or 'all'
+    _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def submit(self, text: str, mode: Optional[InputDelivery] = None) -> None:
         """Submit text message into corresponding queue."""
@@ -49,51 +51,59 @@ class BusyInputBuffer:
         if not clean:
             return
 
-        target_mode = mode or self.default_mode
-        if target_mode == InputDelivery.STEER:
-            self.steer_queue.append(clean)
-        elif target_mode == InputDelivery.FOLLOW_UP:
-            self.followup_queue.append(clean)
-        elif target_mode == InputDelivery.INTERRUPT:
-            # Immediate interruption signal
-            self.steer_queue.appendleft(f"[INTERRUPT] {clean}")
+        with self._lock:
+            target_mode = mode or self.default_mode
+            if target_mode == InputDelivery.STEER:
+                self.steer_queue.append(clean)
+            elif target_mode == InputDelivery.FOLLOW_UP:
+                self.followup_queue.append(clean)
+            elif target_mode == InputDelivery.INTERRUPT:
+                # Immediate interruption signal
+                self.steer_queue.appendleft(f"[INTERRUPT] {clean}")
 
     def pop_steer(self) -> Optional[str]:
         """Pop next steer message for mid-stream delivery at tool/stage boundary."""
-        return self.steer_queue.popleft() if self.steer_queue else None
+        with self._lock:
+            return self.steer_queue.popleft() if self.steer_queue else None
 
     def pop_all_steer(self) -> List[str]:
         """Pop all steer messages if batch delivery requested."""
-        items = list(self.steer_queue)
-        self.steer_queue.clear()
-        return items
+        with self._lock:
+            items = list(self.steer_queue)
+            self.steer_queue.clear()
+            return items
 
     def pop_followup(self) -> Optional[str]:
         """Pop next follow-up message for post-completion delivery."""
-        return self.followup_queue.popleft() if self.followup_queue else None
+        with self._lock:
+            return self.followup_queue.popleft() if self.followup_queue else None
 
     def pop_all_followup(self) -> List[str]:
         """Pop all follow-up messages."""
-        items = list(self.followup_queue)
-        self.followup_queue.clear()
-        return items
+        with self._lock:
+            items = list(self.followup_queue)
+            self.followup_queue.clear()
+            return items
 
     def dequeue_all(self) -> List[str]:
         """Restore all queued messages (steer + followup) in insertion order."""
-        msgs = list(self.steer_queue) + list(self.followup_queue)
-        self.steer_queue.clear()
-        self.followup_queue.clear()
-        return msgs
+        with self._lock:
+            msgs = list(self.steer_queue) + list(self.followup_queue)
+            self.steer_queue.clear()
+            self.followup_queue.clear()
+            return msgs
 
     def clear(self) -> None:
         """Clear both queues."""
-        self.steer_queue.clear()
-        self.followup_queue.clear()
+        with self._lock:
+            self.steer_queue.clear()
+            self.followup_queue.clear()
 
     @property
     def pending_count(self) -> int:
         """Total number of queued messages."""
-        return len(self.steer_queue) + len(self.followup_queue)
+        with self._lock:
+            return len(self.steer_queue) + len(self.followup_queue)
 
     @property
     def has_pending(self) -> bool:
@@ -103,9 +113,10 @@ class BusyInputBuffer:
     @property
     def status_text(self) -> str:
         """Render human-readable queue status for status bar."""
-        parts = []
-        if self.steer_queue:
-            parts.append(f"⟳{len(self.steer_queue)} steer")
-        if self.followup_queue:
-            parts.append(f"▷{len(self.followup_queue)} queued")
-        return " │ ".join(parts) if parts else ""
+        with self._lock:
+            parts = []
+            if self.steer_queue:
+                parts.append(f"⟳{len(self.steer_queue)} steer")
+            if self.followup_queue:
+                parts.append(f"▷{len(self.followup_queue)} queued")
+            return " │ ".join(parts) if parts else ""

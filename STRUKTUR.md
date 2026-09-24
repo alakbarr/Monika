@@ -644,7 +644,6 @@ Monika/
     │               │       ├── ThemeToggle.tsx
     │               │       ├── TickerTape.tsx
     │               │       ├── TypewriterButton.tsx
-    │               │       ├── VintageIcons.tsx
     │               │       ├── WeekendGapBanner.tsx
     │               │       └── WindowFrame.tsx
     │               ├── hooks
@@ -657,6 +656,8 @@ Monika/
     │               │   └── soundEffects.ts
     │               ├── store
     │               │   └── dashboardStore.ts
+    │               ├── theme
+    │               │   └── tokens.ts
     │               └── types
     │                   └── api.ts
     ├── plugins
@@ -982,6 +983,7 @@ Monika/
         ├── test_audit_round4_remediation.py
         ├── test_audit_remediation_consolidated.py
         ├── test_fase0_critical_fixes.py
+        ├── test_phase1_critical_fixes.py
         ├── agent
         │   ├── test_agent_loop.py
         │   ├── test_pgvector_startup_check.py

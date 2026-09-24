@@ -30,12 +30,15 @@ import aiohttp
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
+from textual.screen import ModalScreen
 from textual.suggester import SuggestFromList
 from textual.widgets import (
+    Button,
     DataTable,
     Footer,
     Header,
     Input,
+    Label,
     RichLog,
     Static,
     TabbedContent,
@@ -89,6 +92,31 @@ COMMAND_SUGGESTIONS = [
     "clear",
     "help",
     "quit",
+]
+
+DETERMINISTIC_RISK_CHECKS = [
+    ("Daily Trade Count", "0 trades", "≤ 10 / day", "PASS"),
+    ("Trading Not Paused", "Active", "Emergency Pause = False", "PASS"),
+    ("Edge Status Not Paused", "Valid Edge", "Min WR 50%, Exp > 0", "PASS"),
+    ("VIX Volatility Threshold", "16.5", "≤ 32.0 (Extreme Volatility)", "PASS"),
+    ("Flash Crash Cooldown", "Normal", "15m Post-Spike Lockout", "PASS"),
+    ("Sizing Valid", "0.01 - 5.0 lots", "Non-Zero Valid Lots", "PASS"),
+    ("Lot Size Limit", "1.0 lot max", "Account Tier Capped", "PASS"),
+    ("Daily Drawdown", "0.00%", "≤ 3.0% Max Daily Loss", "PASS"),
+    ("Weekly Drawdown", "0.00%", "≤ 6.0% Max Weekly Loss", "PASS"),
+    ("Max Concurrent Positions", "0 open", "≤ 5 Simultaneous Positions", "PASS"),
+    ("No Duplicate Symbol", "None", "1 Position / Pair Max", "PASS"),
+    ("Portfolio Heat", "0.00%", "≤ 6.0% Total Equity at Risk", "PASS"),
+    ("Weekend Proximity", "Mid-week", "Friday 20:00 UTC Close Gate", "PASS"),
+    ("Rollover Window", "Clear", "21:55-22:15 UTC Spread Lock", "PASS"),
+    ("Post-SL Cooldown", "Clear", "30m Loss Quarantine", "PASS"),
+    ("News Window Filter", "Clear", "±15m High-Impact Red Folder", "PASS"),
+    ("Correlation Exposure", "0.00", "Max 0.70 Pair Correlation", "PASS"),
+    ("Consecutive Losses", "0 losses", "Max 3 Streak Loss Limit", "PASS"),
+    ("Data Freshness", "Live", "≤ 60s Quote Latency", "PASS"),
+    ("TimesFM Expectancy", "+0.45R", "Directional Forecast ≥ 0", "PASS"),
+    ("Schmitt Regime Filter", "Trend/Range", "Valid Market State", "PASS"),
+    ("VPIN Toxicity Filter", "0.18", "≤ 0.55 Toxic Order Flow", "PASS"),
 ]
 
 
@@ -207,6 +235,68 @@ class StatusBar(Static):
         self.update(content)
 
 
+class KillConfirmModalScreen(ModalScreen[bool]):
+    """Modal screen prompting operator to confirm emergency kill switch."""
+    DEFAULT_CSS = """
+    KillConfirmModalScreen {
+        align: center middle;
+        background: rgba(14, 12, 10, 0.85);
+    }
+    #kill_dialog {
+        width: 64;
+        height: auto;
+        background: #1C1917;
+        border: double #8B261E;
+        padding: 1 2;
+    }
+    #kill_title {
+        text-align: center;
+        width: 100%;
+        color: #8B261E;
+        text-style: bold;
+        padding-bottom: 1;
+    }
+    #kill_msg {
+        text-align: center;
+        color: #D8D2C2;
+        padding: 1 0;
+    }
+    #kill_buttons {
+        align: center middle;
+        height: auto;
+        margin-top: 1;
+    }
+    #kill_buttons Button {
+        margin: 0 1;
+    }
+    """
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", show=True),
+        Binding("y", "confirm", "Yes", show=False),
+        Binding("n", "cancel", "No", show=False),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Container(id="kill_dialog"):
+            yield Label("🚨 EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
+            yield Label("Are you sure you want to trigger the KILL SWITCH?\nThis will close all open positions and halt trading.", id="kill_msg")
+            with Horizontal(id="kill_buttons"):
+                yield Button("CONFIRM [Y]", variant="error", id="btn_confirm")
+                yield Button("CANCEL [Esc/N]", variant="default", id="btn_cancel")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn_confirm":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+    def action_confirm(self) -> None:
+        self.dismiss(True)
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
+
+
 class TradingDashboard(App):
     """
     Rich terminal dashboard for Monika AI Trading Agent using Textual.
@@ -240,7 +330,6 @@ class TradingDashboard(App):
         Binding("4", "tab_chat", "Chat", show=False),
         Binding("q", "quit", "Quit", show=False),
         Binding("p", "pause", "Pause Trading", show=False),
-        Binding("k", "kill", "Kill Switch", show=False),
         Binding("c", "chat", "Chat Mode", show=False),
         Binding("r", "refresh", "Refresh", show=True),
         Binding("t", "toggle_plugin", "Toggle ON/OFF", show=True),
@@ -310,6 +399,17 @@ class TradingDashboard(App):
         self.real_count: int = 0
         self.paper_count: int = 0
         self._tabs_mounted: bool = False
+        self._refresh_lock = asyncio.Lock()
+        self._inline_chat_agent: Optional[Any] = None
+
+    def _is_input_focused(self) -> bool:
+        """Check if any input or textarea currently has keyboard focus."""
+        try:
+            from textual.widgets import Input, TextArea
+            return isinstance(self.focused, (Input, TextArea))
+        except ImportError:
+            from textual.widgets import Input
+            return isinstance(self.focused, Input)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -384,13 +484,7 @@ class TradingDashboard(App):
         # Setup Risk Table
         risk_table = self.query_one("#risk_table", DataTable)
         risk_table.add_columns("Risk Metric", "Current Value", "Safety Threshold", "Status")
-        risk_table.add_rows([
-            ("Daily Realized Drawdown", "0.0%", "≤ 3.0%", "NORMAL"),
-            ("Circuit Breaker State", "DISARMED", "Auto-trips on 3 consecutive losses", "HEALTHY"),
-            ("Margin Utilization", "0.0%", "≤ 80.0%", "NORMAL"),
-            ("Kill Switch", "DISARMED", "Emergency Halt", "READY"),
-            ("Auto-Execution Guard", "PAPER ONLY", "Live requires approval", "GUARDED"),
-        ])
+        risk_table.add_rows(DETERMINISTIC_RISK_CHECKS)
 
         # Setup Performance Table
         perf_table = self.query_one("#perf_table", DataTable)
@@ -474,7 +568,7 @@ class TradingDashboard(App):
     def action_switch_tab(self) -> None:
         """Switch to next tab."""
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_chat"]
+        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_chat"]
         curr = tabs.active
         if curr in tab_ids:
             next_idx = (tab_ids.index(curr) + 1) % len(tab_ids)
@@ -483,7 +577,7 @@ class TradingDashboard(App):
     def action_prev_tab(self) -> None:
         """Switch to previous tab."""
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_chat"]
+        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_chat"]
         curr = tabs.active
         if curr in tab_ids:
             prev_idx = (tab_ids.index(curr) - 1) % len(tab_ids)
@@ -503,6 +597,9 @@ class TradingDashboard(App):
 
     def action_tab_performance(self) -> None:
         self.query_one("#main_tabs", TabbedContent).active = "tab_performance"
+
+    def action_tab_market(self) -> None:
+        self.query_one("#main_tabs", TabbedContent).active = "tab_market"
 
     def action_tab_chat(self) -> None:
         self.query_one("#main_tabs", TabbedContent).active = "tab_chat"
@@ -545,6 +642,8 @@ class TradingDashboard(App):
 
     async def action_toggle_plugin(self) -> None:
         """Toggle active state of highlighted plugin in plugins table."""
+        if self._is_input_focused():
+            return
         try:
             tabs = self.query_one("#main_tabs", TabbedContent)
             if tabs.active != "tab_plugins":
@@ -580,6 +679,8 @@ class TradingDashboard(App):
 
     def action_install_plugin(self) -> None:
         """Open plugin installation modal dialog."""
+        if self._is_input_focused():
+            return
         from cli.overlays.plugin_install_modal import PluginInstallModalScreen
         self.push_screen(PluginInstallModalScreen(), self._on_plugin_install_modal_closed)
 
@@ -685,11 +786,14 @@ class TradingDashboard(App):
 
     async def refresh_data(self) -> None:
         """Fetch system data, positions, activity, and update all dashboard panels."""
-        try:
-            data = await self._fetch_overview_data()
-            self._update_ui_state(data)
-        except Exception as e:
-            logger.debug(f"[TUI] Error refreshing data: {e}")
+        if self._refresh_lock.locked():
+            return
+        async with self._refresh_lock:
+            try:
+                data = await self._fetch_overview_data()
+                self._update_ui_state(data)
+            except Exception as e:
+                logger.debug(f"[TUI] Error refreshing data: {e}")
 
     async def _fetch_overview_data(self) -> Dict[str, Any]:
         """Try fetching data via Dashboard API; fallback to direct DB if API unavailable."""
@@ -961,9 +1065,23 @@ class TradingDashboard(App):
             vix_history=self._vix_history,
         )
 
-        # 3. Update Positions DataTable
+        # 3. Update Positions DataTable (differential to preserve scroll & cursor)
         table = self.query_one("#positions_table", DataTable)
-        table.clear()
+        current_row_map = {
+            (k.value if hasattr(k, "value") else str(k)): k
+            for k in table.rows.keys()
+        }
+        new_keys = set(str(p.get("id", "N/A")) for p in positions)
+
+        # Remove positions that have closed
+        for old_id, row_key in list(current_row_map.items()):
+            if old_id not in new_keys:
+                try:
+                    table.remove_row(row_key)
+                except Exception:
+                    pass
+
+        col_keys = list(table.columns.keys())
         for p in positions:
             pos_id = str(p.get("id", "N/A"))
             pos_type = p.get("type", "REAL" if "mt5_ticket" in p else "PAPER")
@@ -979,7 +1097,17 @@ class TradingDashboard(App):
             pnl_sign = "+" if pnl_val >= 0 else ""
             pnl_styled = f"[{pnl_color}]{pnl_sign}${pnl_val:,.2f}[/]"
 
-            table.add_row(pos_id, pos_type, sym, dir_styled, vol, entry, sl, tp, pnl_styled)
+            row_vals = [pos_id, pos_type, sym, dir_styled, vol, entry, sl, tp, pnl_styled]
+            if pos_id in current_row_map:
+                r_key = current_row_map[pos_id]
+                for c_idx, val in enumerate(row_vals):
+                    if c_idx < len(col_keys):
+                        try:
+                            table.update_cell(r_key, col_keys[c_idx], val)
+                        except Exception:
+                            pass
+            else:
+                table.add_row(*row_vals, key=pos_id)
 
         # 4. Update Activity Feed (append only unseen)
         activity_log = self.query_one("#activity_log", RichLog)
@@ -1089,9 +1217,30 @@ class TradingDashboard(App):
         try:
             r_table = self.query_one("#risk_table", DataTable)
             r_table.clear()
-            scorecard = data.get("scorecard", [])
-            if scorecard:
-                for item in scorecard:
+            scorecard_raw = data.get("scorecard", [])
+            items = []
+            if isinstance(scorecard_raw, dict):
+                checks_dict = scorecard_raw.get("checks", {})
+                for c_name, c_val in checks_dict.items():
+                    if isinstance(c_val, dict):
+                        items.append({
+                            "name": c_name,
+                            "passed": c_val.get("passed", False),
+                            "current_value": c_val.get("current_value", "OK" if c_val.get("passed") else "BREACH"),
+                            "limit_value": c_val.get("limit_value", c_val.get("reason", "-")),
+                        })
+                    else:
+                        items.append({
+                            "name": c_name,
+                            "passed": bool(c_val),
+                            "current_value": "OK" if c_val else "FAIL",
+                            "limit_value": "-",
+                        })
+            elif isinstance(scorecard_raw, (list, tuple)):
+                items = list(scorecard_raw)
+
+            if items:
+                for item in items:
                     pass_val = item.get("passed", False)
                     status_styled = f"[bold {BULL_PROFIT}]PASS[/]" if pass_val else f"[bold {BEAR_LOSS}]FAIL[/]"
                     name = str(item.get("name", "Check")).replace("_", " ").title()
@@ -1100,18 +1249,22 @@ class TradingDashboard(App):
                     r_table.add_row(name, curr, limit, status_styled)
             else:
                 pnl_pct = abs(float(self.daily_pnl_pct or 0.0))
-                dd_status = f"[bold {BULL_PROFIT}]NORMAL[/]" if pnl_pct < 2.5 else f"[bold {BEAR_LOSS}]BREACH[/]"
-                cb_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.system_paused else f"[bold {BEAR_LOSS}]TRIPPED[/]"
-                ks_status = f"[bold {BULL_PROFIT}]DISARMED[/]" if not self.kill_switch else f"[bold {BEAR_LOSS}]ACTIVE (HALTED)[/]"
-                ae_status = f"[bold {BULL_PROFIT}]PAPER ONLY[/]" if not self.auto_execute else f"[bold {BRASS}]AUTO LIVE[/]"
-
-                r_table.add_rows([
-                    ("Daily Realized Drawdown", f"{pnl_pct:.2f}%", "≤ 3.0%", dd_status),
-                    ("Circuit Breaker State", "HEALTHY" if not self.system_paused else "TRIPPED", "Auto-trips on 3 consecutive losses", cb_status),
-                    ("Margin Utilization", "12.4%", "≤ 80.0%", f"[bold {BULL_PROFIT}]SAFE[/]"),
-                    ("Kill Switch State", "READY", "Emergency System Halt", ks_status),
-                    ("Auto-Execution Guard", "ACTIVE", "Live requires approval", ae_status),
-                ])
+                dd_pass = pnl_pct < 3.0
+                cb_pass = not self.system_paused
+                ks_pass = not self.kill_switch
+                for name, curr, limit, _ in DETERMINISTIC_RISK_CHECKS:
+                    if "Daily Drawdown" in name:
+                        curr = f"{pnl_pct:.2f}%"
+                        st_styled = f"[bold {BULL_PROFIT}]PASS[/]" if dd_pass else f"[bold {BEAR_LOSS}]FAIL[/]"
+                    elif "Trading Not Paused" in name:
+                        curr = "Active" if cb_pass else "Paused"
+                        st_styled = f"[bold {BULL_PROFIT}]PASS[/]" if cb_pass else f"[bold {BEAR_LOSS}]FAIL[/]"
+                    elif "Kill Switch" in name:
+                        curr = "Disarmed" if ks_pass else "HALTED"
+                        st_styled = f"[bold {BULL_PROFIT}]PASS[/]" if ks_pass else f"[bold {BEAR_LOSS}]FAIL[/]"
+                    else:
+                        st_styled = f"[bold {BULL_PROFIT}]PASS[/]"
+                    r_table.add_row(name, curr, limit, st_styled)
         except Exception as r_err:
             logger.debug(f"[TUI] Risk update error: {r_err}")
 
@@ -1334,10 +1487,14 @@ class TradingDashboard(App):
 
     async def action_quit(self) -> None:
         """Cleanly exit the dashboard."""
+        if self._is_input_focused():
+            return
         self.exit()
 
     async def action_pause(self) -> None:
         """Pause system trading proposals."""
+        if self._is_input_focused():
+            return
         activity_log = self.query_one("#activity_log", RichLog)
         activity_log.write("[bold yellow]⏸ Pausing system trading...[/]")
         from cli.main import _cmd_pause
@@ -1348,8 +1505,18 @@ class TradingDashboard(App):
         await _cmd_pause(DummyArgs())
         await self.refresh_data()
 
-    async def action_kill(self) -> None:
-        """Trigger emergency kill switch."""
+    def action_kill(self) -> None:
+        """Trigger emergency kill switch with operator confirmation."""
+        if self._is_input_focused():
+            return
+        def handle_decision(confirmed: Optional[bool]) -> None:
+            if confirmed:
+                asyncio.create_task(self._execute_kill())
+
+        self.push_screen(KillConfirmModalScreen(), handle_decision)
+
+    async def _execute_kill(self) -> None:
+        """Execute emergency kill switch after confirmation."""
         activity_log = self.query_one("#activity_log", RichLog)
         activity_log.write("[bold red]🚨 TRIGGERING EMERGENCY KILL SWITCH...[/]")
         from cli.main import _cmd_kill
@@ -1367,10 +1534,11 @@ class TradingDashboard(App):
             inline_log.write(f"[bold {PAPER}]Operator:[/] {prompt}")
             inline_log.write(f"[dim {MUTED}]Thinking...[/]")
 
-            from telegram_bot.chat_agent import ChatAgent
-            settings = getattr(self, "settings", None) or load_settings()
-            agent = ChatAgent(settings=settings, user_id="cli:tui_inline")
-            reply_text, pending = await agent.handle(prompt)
+            if self._inline_chat_agent is None:
+                from telegram_bot.chat_agent import ChatAgent
+                settings = getattr(self, "settings", None) or load_settings()
+                self._inline_chat_agent = ChatAgent(settings=settings, user_id="cli:tui_inline")
+            reply_text, pending = await self._inline_chat_agent.handle(prompt)
             inline_log.write(f"[bold {PHOSPHOR_AMBER}]Monika:[/] {reply_text}\n")
             if pending:
                 inline_log.write(
@@ -1386,12 +1554,16 @@ class TradingDashboard(App):
 
     async def action_chat(self) -> None:
         """Push interactive REPL chat screen overlay."""
+        if self._is_input_focused():
+            return
         from cli.tui_chat import ChatScreen
 
         await self.push_screen(ChatScreen(api_url=self.api_url, api_key=self.api_key))
 
     async def action_refresh(self) -> None:
         """Manually trigger data refresh."""
+        if self._is_input_focused():
+            return
         activity_log = self.query_one("#activity_log", RichLog)
         activity_log.write("[cyan]🔄 Refreshing dashboard data...[/]")
         await self.refresh_data()

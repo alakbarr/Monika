@@ -53,10 +53,15 @@
   --color-border-focus: var(--color-win-blue);
   --color-profit: var(--color-ledger-green);
   --color-profit-dim: rgba(46, 125, 50, 0.18);
+  --color-profit-bg: rgba(46, 125, 50, 0.12);
   --color-loss: var(--color-ledger-red);
   --color-loss-dim: rgba(211, 47, 47, 0.18);
+  --color-loss-bg: rgba(211, 47, 47, 0.12);
   --color-warn: var(--color-win-yellow);
+  --color-warning: var(--color-win-yellow);
   --color-warn-dim: rgba(245, 189, 56, 0.25);
+  --color-paper-dark: #E4DDD0;
+  --color-win-dim: rgba(59, 164, 196, 0.15);
   --color-active: var(--color-ledger-green);
   --color-paused: var(--color-win-yellow);
   --color-error: var(--color-ledger-red);
@@ -119,10 +124,15 @@
   --color-border-focus: var(--color-win-blue);
   --color-profit: var(--color-ledger-green);
   --color-profit-dim: rgba(76, 175, 80, 0.2);
+  --color-profit-bg: rgba(76, 175, 80, 0.12);
   --color-loss: var(--color-ledger-red);
   --color-loss-dim: rgba(239, 83, 80, 0.2);
+  --color-loss-bg: rgba(239, 83, 80, 0.12);
   --color-warn: var(--color-win-yellow);
+  --color-warning: var(--color-win-yellow);
   --color-warn-dim: rgba(184, 133, 27, 0.25);
+  --color-paper-dark: #1E1A17;
+  --color-win-dim: rgba(42, 121, 145, 0.2);
   --color-active: var(--color-ledger-green);
   --color-paused: var(--color-win-yellow);
   --color-error: var(--color-ledger-red);
@@ -161,6 +171,7 @@
   --text-title-lg: 19px;
   --text-title-md: 17px;
   --text-title-sm: 15px;
+  --text-title-xs: 13.5px;
   --text-body-lg: 14px;
   --text-body-md: 13px;
   --text-body-sm: 12px;
@@ -500,6 +511,11 @@ body {
 @keyframes priceFlashRed {
   0% { background-color: var(--color-ledger-red); color: #FFF; }
   100% { background-color: transparent; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .animate-crt-boot {

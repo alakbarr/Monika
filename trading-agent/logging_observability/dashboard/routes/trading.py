@@ -402,7 +402,7 @@ async def get_risk():
             daily_pnl_pct = 0.0
 
         return {
-            "date": risk.date.date().isoformat() if risk.date else None,
+            "date": (risk.date.date() if hasattr(risk.date, "date") and callable(getattr(risk.date, "date")) else risk.date).isoformat() if risk.date else None,
             "daily_pnl": round(risk.daily_pnl, 2),
             "daily_pnl_pct": round(daily_pnl_pct, 2),
             "current_drawdown": round(risk.current_drawdown, 2),
@@ -1057,7 +1057,7 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
 
 @trading_router.post("/api/actions/emergency-kill", tags=["Actions"])
 @trading_router.post("/api/kill", tags=["Actions"])
-@require_role(Role.OPERATOR)
+@require_role(Role.ADMIN)
 async def action_emergency_kill(request: Request):
     """Trigger emergency kill switch and position liquidation safely via daemon."""
     from database.db import AsyncSessionLocal
@@ -1075,22 +1075,22 @@ async def action_emergency_kill(request: Request):
         session.add(ActivityLog(
             category="system",
             description="Emergency kill switch activated via Dashboard / CLI",
-            actor="operator",
+            actor="admin",
         ))
         await session.commit()
 
     exec_svc = get_dashboard_dependency("execution_service")
     guardian = get_dashboard_dependency("position_guardian")
     if exec_svc and hasattr(exec_svc, "kill_switch"):
-        asyncio.create_task(exec_svc.kill_switch("Dashboard emergency kill switch"))
+        await exec_svc.kill_switch("Dashboard emergency kill switch")
     elif guardian and hasattr(guardian, "execution_service") and hasattr(guardian.execution_service, "kill_switch"):
-        asyncio.create_task(guardian.execution_service.kill_switch("Dashboard emergency kill switch"))
+        await guardian.execution_service.kill_switch("Dashboard emergency kill switch")
 
     await broadcast_live_event("kill_switch_activated", {
         "activated_at": datetime.now(timezone.utc).isoformat(),
         "reason": "Emergency kill switch triggered",
     })
-    return {"status": "success", "message": "Emergency kill switch activated. Position closures initiated."}
+    return {"status": "success", "message": "Emergency kill switch activated. Position closures completed."}
 
 
 @trading_router.api_route("/api/actions/approve-trade/{trade_id}", methods=["POST", "PUT"], tags=["Actions"])
@@ -1136,46 +1136,53 @@ async def action_approve_trade(trade_id: int, request: Request):
             select(AssetAnalysis).where(AssetAnalysis.id == trade_id)
         )).scalar_one_or_none()
 
-        if analysis:
-            if analysis.decision not in ("buy", "sell"):
-                return JSONResponse(
-                    status_code=400,
-                    content={"status": "rejected", "message": f"AssetAnalysis #{trade_id} has non-tradeable decision '{analysis.decision}'."}
-                )
+    if not analysis:
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": f"No pending trade or trigger found with ID {trade_id}."}
+        )
 
-            if exec_svc:
-                exec_result = await exec_svc.execute_analysis(session, analysis)
-                await session.commit()
-                res_dict = {
-                    "executed": exec_result.executed,
-                    "ticket": exec_result.mt5_ticket,
-                    "price": exec_result.executed_price,
-                    "lots": exec_result.executed_lots,
-                    "error": exec_result.mt5_error,
-                }
-            else:
-                analysis.execution_status = "approved_manual"
-                await session.commit()
-                res_dict = {"executed": False, "note": "Marked approved_manual (standalone mode)"}
+    if analysis.decision not in ("buy", "sell"):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "rejected", "message": f"AssetAnalysis #{trade_id} has non-tradeable decision '{analysis.decision}'."}
+        )
 
-            await broadcast_live_event("trade_approved", {
-                "trade_id": trade_id,
-                "type": "AssetAnalysis",
-                "result": res_dict,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+    async with AsyncSessionLocal() as session:
+        analysis_db = (await session.execute(
+            select(AssetAnalysis).where(AssetAnalysis.id == trade_id)
+        )).scalar_one_or_none()
 
-            return {
-                "status": "success",
-                "type": "AssetAnalysis",
-                "id": trade_id,
-                "execution": res_dict,
+        if exec_svc and analysis_db:
+            exec_result = await exec_svc.execute_analysis(session, analysis_db)
+            await session.commit()
+            res_dict = {
+                "executed": exec_result.executed,
+                "ticket": exec_result.mt5_ticket,
+                "price": exec_result.executed_price,
+                "lots": exec_result.executed_lots,
+                "error": exec_result.mt5_error,
             }
+        elif analysis_db:
+            analysis_db.execution_status = "approved_manual"
+            await session.commit()
+            res_dict = {"executed": False, "note": "Marked approved_manual (standalone mode)"}
+        else:
+            return JSONResponse(status_code=404, content={"status": "error", "message": f"AssetAnalysis #{trade_id} missing."})
 
-    return JSONResponse(
-        status_code=404,
-        content={"status": "error", "message": f"No pending trade or trigger found with ID {trade_id}."}
-    )
+    await broadcast_live_event("trade_approved", {
+        "trade_id": trade_id,
+        "type": "AssetAnalysis",
+        "result": res_dict,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {
+        "status": "success",
+        "type": "AssetAnalysis",
+        "id": trade_id,
+        "execution": res_dict,
+    }
 
 
 @trading_router.post("/api/positions/{ticket}/modify", tags=["Actions"])
@@ -1313,7 +1320,7 @@ async def get_market_structure_levels(
             select(OrderBlock)
             .where(OrderBlock.symbol == sym)
             .where(OrderBlock.timeframe == timeframe.upper())
-            .where(OrderBlock.mitigated_at == None)
+            .where(OrderBlock.mitigated_at.is_(None))
             .order_by(OrderBlock.formed_at.desc())
             .limit(10)
         )).scalars().all()
@@ -1330,7 +1337,7 @@ async def get_market_structure_levels(
             select(FVGZone)
             .where(FVGZone.symbol == sym)
             .where(FVGZone.timeframe == timeframe.upper())
-            .where(FVGZone.filled_at == None)
+            .where(FVGZone.filled_at.is_(None))
             .order_by(FVGZone.formed_at.desc())
             .limit(10)
         )).scalars().all()

@@ -13,7 +13,7 @@ tokens_router = router
 
 
 @router.get("/api/v1/tokens/summary", tags=["Token Audit"])
-async def get_tokens_summary(hours: int = Query(24, description="Time window in hours")):
+async def get_tokens_summary(hours: int = Query(24, ge=1, le=720, description="Time window in hours")):
     """Get global summary of token consumption, prompt cache savings, and estimated USD cost."""
     from utils.analytics.token_auditor import TokenAuditor
     from utils.llm.context_tracker import get_context_tracker
@@ -31,7 +31,7 @@ async def get_context_tracker_metrics():
 
 
 @router.get("/api/v1/tokens/roles", tags=["Token Audit"])
-async def get_tokens_by_role(hours: int = Query(24, description="Time window in hours")):
+async def get_tokens_by_role(hours: int = Query(24, ge=1, le=720, description="Time window in hours")):
     """Get breakdown of token consumption by 32 AI task roles."""
     from utils.analytics.token_auditor import TokenAuditor
     roles = await TokenAuditor.get_role_breakdown(hours=hours)
@@ -39,7 +39,7 @@ async def get_tokens_by_role(hours: int = Query(24, description="Time window in 
 
 
 @router.get("/api/v1/tokens/subsystems", tags=["Token Audit"])
-async def get_tokens_by_subsystem(hours: int = Query(24, description="Time window in hours")):
+async def get_tokens_by_subsystem(hours: int = Query(24, ge=1, le=720, description="Time window in hours")):
     """Get breakdown of token consumption by subsystem (stage1, stage2, debate, news, etc.)."""
     from utils.analytics.token_auditor import TokenAuditor
     subsystems = await TokenAuditor.get_subsystem_breakdown(hours=hours)
@@ -47,7 +47,7 @@ async def get_tokens_by_subsystem(hours: int = Query(24, description="Time windo
 
 
 @router.get("/api/v1/tokens/symbols", tags=["Token Audit"])
-async def get_tokens_by_symbol(hours: int = Query(24, description="Time window in hours")):
+async def get_tokens_by_symbol(hours: int = Query(24, ge=1, le=720, description="Time window in hours")):
     """Get breakdown of token consumption per currency symbol."""
     from utils.analytics.token_auditor import TokenAuditor
     symbols = await TokenAuditor.get_symbol_breakdown(hours=hours)
@@ -65,7 +65,7 @@ async def get_tokens_recent(limit: int = Query(default=50, ge=1, le=200, descrip
 @router.get("/api/v1/tokens/cycles", tags=["Token Audit"])
 async def get_tokens_by_cycle(
     cycle_id: str = Query(None, description="Filter by specific cycle_id"),
-    hours: int = Query(24, description="Time window in hours"),
+    hours: int = Query(24, ge=1, le=720, description="Time window in hours"),
 ):
     """Get per-turn cost tracking and cost accumulator per cycle per model per role (PR-21)."""
     from utils.analytics.token_auditor import TokenAuditor
@@ -73,7 +73,7 @@ async def get_tokens_by_cycle(
 
 
 @router.get("/api/v1/tokens/per-turn-cost", tags=["Token Audit"])
-async def get_per_turn_cost_metrics(hours: int = Query(24, description="Time window in hours")):
+async def get_per_turn_cost_metrics(hours: int = Query(24, ge=1, le=720, description="Time window in hours")):
     """Get average and aggregated turn cost metrics across AI models and roles (PR-21)."""
     from utils.analytics.token_auditor import TokenAuditor
     data = await TokenAuditor.get_cycle_cost_breakdown(hours=hours)

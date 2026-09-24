@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { TypewriterButton } from '../ui/TypewriterButton';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { api } from '../../lib/api';
 import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult, PlaybookRuleItem, PlaybookHistoryEntry } from '../../types/api';
 import { fmt } from '../../lib/formatters';
@@ -36,6 +37,7 @@ export const MemoryBrowserPanel: React.FC = () => {
   const [playbookHistoryEntries, setPlaybookHistoryEntries] = useState<PlaybookHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
   const [rollbackStatus, setRollbackStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [pendingRollback, setPendingRollback] = useState<{ symbol: string; hash?: string } | null>(null);
 
   const openPlaybookHistory = async (symbol: string) => {
     if (selectedPlaybookForHistory === symbol) {
@@ -605,7 +607,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                                   <TypewriterButton
                                     size="sm"
                                     variant="danger"
-                                    onClick={() => handleRollback(rule.symbol, h.sha256_hash)}
+                                    onClick={() => setPendingRollback({ symbol: rule.symbol, hash: h.sha256_hash })}
                                     title="Roll back playbook rule to this historical snapshot"
                                   >
                                     <RotateCcw size={10} /> [ ROLLBACK TO THIS ]
@@ -736,6 +738,23 @@ export const MemoryBrowserPanel: React.FC = () => {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={pendingRollback !== null}
+        title="CONFIRM PLAYBOOK ROLLBACK"
+        actionSummary={`Rollback ${pendingRollback?.symbol || ''} playbook to revision ${pendingRollback?.hash ? pendingRollback.hash.slice(0, 10) : ''}?`}
+        details="This will overwrite the active playbook execution guidelines with the selected historical version."
+        confirmLabel="ROLLBACK RULE"
+        cancelLabel="CANCEL"
+        danger={true}
+        onConfirm={async () => {
+          if (pendingRollback) {
+            await handleRollback(pendingRollback.symbol, pendingRollback.hash);
+            setPendingRollback(null);
+          }
+        }}
+        onCancel={() => setPendingRollback(null)}
+      />
     </div>
   );
 };

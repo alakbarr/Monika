@@ -307,10 +307,11 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           </div>
 
           <div
+            className="console-scanline"
             style={{
-              background: '#0d1117',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-console-bg)',
+              border: '1.5px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
               padding: '12px',
               maxHeight: '220px',
               overflowY: 'auto',
@@ -319,9 +320,9 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             <pre
               style={{
                 margin: 0,
-                fontSize: '12px',
-                fontFamily: 'var(--font-mono)',
-                color: '#c9d1d9',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                color: 'var(--color-console-phosphor)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-all',
               }}

@@ -24,10 +24,25 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -56,6 +71,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       >
         {/* Retro Dialog Title Bar */}
         <div
+          id="confirm-modal-title"
           className="win-titlebar"
           style={{
             background: danger ? 'var(--color-win-coral)' : 'var(--color-win-blue)',
