@@ -133,3 +133,38 @@ class TestInvestingCalendarScraper:
         assert res is True
         mock_apply_btn.click.assert_called_once_with(by_js=True)
 
+    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    def test_investing_scraper_initializes_with_eager_and_no_imgs(self, mock_init):
+        scraper = InvestingCalendarScraper()
+        assert scraper.load_mode == "eager"
+        assert scraper.no_imgs is True
+
+    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    def test_find_calendar_table_priority(self, mock_init):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+        mock_table = MagicMock()
+        mock_page.ele.return_value = mock_table
+
+        scraper = InvestingCalendarScraper()
+        tbl = scraper._find_calendar_table()
+        assert tbl == mock_table
+        # Verify first call checked modern xpath selector with short timeout
+        first_call = mock_page.ele.call_args_list[0]
+        assert "datatable" in first_call[0][0]
+        assert first_call[1]["timeout"] == 0.5
+
+    @patch("scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    def test_load_all_calendar_rows_uses_fast_js_count(self, mock_init):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+        mock_table = MagicMock()
+        mock_page.ele.return_value = mock_table
+        mock_page.run_js.return_value = 50
+
+        scraper = InvestingCalendarScraper()
+        scraper._load_all_calendar_rows()
+        # Verify run_js was used to query tr count efficiently
+        assert mock_page.run_js.called
+
+
