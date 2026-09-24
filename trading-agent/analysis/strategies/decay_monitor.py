@@ -41,6 +41,9 @@ class StrategyHealth:
     rolling_win_rate: float = 0.55
     last_evaluated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reason: str = ""
+    paper_trades_count: int = 0
+    paper_wins_count: int = 0
+    is_incubation_passed: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -51,6 +54,9 @@ class StrategyHealth:
             "rolling_win_rate": self.rolling_win_rate,
             "last_evaluated": self.last_evaluated.isoformat() if self.last_evaluated else None,
             "reason": self.reason,
+            "paper_trades_count": self.paper_trades_count,
+            "paper_wins_count": self.paper_wins_count,
+            "is_incubation_passed": self.is_incubation_passed,
         }
 
     @classmethod
@@ -78,14 +84,19 @@ class StrategyHealth:
             rolling_win_rate=float(data.get("rolling_win_rate", 0.55)),
             last_evaluated=dt,
             reason=str(data.get("reason", "")),
+            paper_trades_count=int(data.get("paper_trades_count", 0)),
+            paper_wins_count=int(data.get("paper_wins_count", 0)),
+            is_incubation_passed=bool(data.get("is_incubation_passed", True)),
         )
 
 
 class StrategyDecayMonitor:
     """
-    In-memory and stateful monitor for tracking per-strategy degradation.
+    In-memory and stateful monitor for tracking per-strategy degradation and incubation.
     Throttles or disables strategies showing statistical breakdown in live/paper trading.
+    Enforces minimum 4 paper trades incubation gate for new alpha strategies.
     """
+    MIN_INCUBATION_TRADES: int = 4
 
     def __init__(self):
         self._health_map: Dict[str, StrategyHealth] = {}
@@ -95,6 +106,15 @@ class StrategyDecayMonitor:
             self._health_map[strategy_id] = StrategyHealth(strategy_id=strategy_id)
         return self._health_map[strategy_id]
 
+    def register_incubating_strategy(self, strategy_id: str) -> StrategyHealth:
+        """Register a new alpha/synthesized strategy for paper trading incubation."""
+        health = self.get_health(strategy_id)
+        health.is_incubation_passed = False
+        health.paper_trades_count = 0
+        health.paper_wins_count = 0
+        health.reason = f"Incubating in paper trading (min {self.MIN_INCUBATION_TRADES} trades required)"
+        return health
+
     def is_tradeable(self, strategy_id: str) -> bool:
         """
         ACTIVE and MONITORING states are allowed to emit signals.
@@ -103,9 +123,32 @@ class StrategyDecayMonitor:
         health = self.get_health(strategy_id)
         return health.state in (DecayState.ACTIVE, DecayState.MONITORING)
 
-    def record_trade_outcome(self, strategy_id: str, win: bool) -> StrategyHealth:
-        """Update state upon individual trade completion."""
+    def is_live_ready(self, strategy_id: str) -> bool:
+        """Check if strategy is healthy and has passed the paper incubation gate."""
         health = self.get_health(strategy_id)
+        return self.is_tradeable(strategy_id) and health.is_incubation_passed
+
+    def record_trade_outcome(self, strategy_id: str, win: bool, is_paper: bool = False) -> StrategyHealth:
+        """Update state upon individual trade completion (paper or live)."""
+        health = self.get_health(strategy_id)
+        if is_paper:
+            health.paper_trades_count += 1
+            if win:
+                health.paper_wins_count += 1
+            if not health.is_incubation_passed and health.paper_trades_count >= self.MIN_INCUBATION_TRADES:
+                paper_wr = health.paper_wins_count / max(1, health.paper_trades_count)
+                if paper_wr >= 0.50:
+                    health.is_incubation_passed = True
+                    health.reason = f"Passed paper incubation ({health.paper_wins_count}/{health.paper_trades_count} wins, WR {paper_wr:.1%})"
+                    logger.info(
+                        f"[StrategyDecay] Strategy {strategy_id} PASSED paper incubation "
+                        f"({health.paper_trades_count} trades, WR {paper_wr:.1%})! Promoted to live."
+                    )
+                else:
+                    health.reason = (
+                        f"Incubation criteria pending ({health.paper_wins_count}/{health.paper_trades_count} wins, WR {paper_wr:.1%} < 50%)"
+                    )
+
         if not win:
             health.consecutive_losses += 1
             if health.consecutive_losses >= 4:

@@ -207,12 +207,48 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                 except Exception:
                     pass
 
+                from analysis.strategies.registry import StrategyRegistry
+                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+                decay_mon = get_strategy_decay_monitor()
+
                 for sym, r in actionable:
                     try:
                         regime_dict = await classify_market_regime(session, sym, scheduler.settings)
                     except Exception:
                         regime_dict = {}
-                        
+
+                    # Evaluate quant alphas from StrategyRegistry for this symbol & market regime
+                    active_quant_signal = None
+                    try:
+                        regime_str = regime_dict.get("regime") if isinstance(regime_dict, dict) else str(regime_dict or "")
+                        quant_signals = await StrategyRegistry.evaluate_all(
+                            session=session,
+                            symbol=sym,
+                            settings=scheduler.settings,
+                            current_regime=regime_str,
+                        )
+                        if quant_signals:
+                            valid_sigs = [
+                                s for s in quant_signals
+                                if getattr(s, "valid", False) and getattr(s, "direction", None) in ("buy", "sell")
+                            ]
+                            if valid_sigs:
+                                def _sig_prio(s):
+                                    strat_id = getattr(s, "strategy_id", "")
+                                    is_ready = decay_mon.is_live_ready(strat_id)
+                                    conf = float(getattr(s, "confidence", 0.0) or 0.0)
+                                    return (1 if is_ready else 0, conf)
+
+                                valid_sigs.sort(key=_sig_prio, reverse=True)
+                                active_quant_signal = valid_sigs[0]
+                                strat_id = getattr(active_quant_signal, "strategy_id", "")
+                                if not decay_mon.is_live_ready(strat_id):
+                                    active_quant_signal.meta = dict(getattr(active_quant_signal, "meta", {}))
+                                    active_quant_signal.meta["is_incubating"] = True
+                    except Exception as q_err:
+                        logger.debug(f"[RiskGateNode] Quant signal evaluation for {sym} non-fatal: {q_err}")
+
                     llm_dec = {
                         "decision": r.get("decision", "avoid"),
                         "confidence": float(r.get("confidence", 0.7) or 0.7),
@@ -223,21 +259,38 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                         "rationale": r.get("rationale", ""),
                         "decision_source": "llm_debate"
                     }
-                    
+
                     arb_res = await arbitrator.arbitrate(
                         session=session,
                         symbol=sym,
-                        quant_signal=None,
+                        quant_signal=active_quant_signal,
                         llm_decision=llm_dec,
                         vix_level=vix_val,
                         regime_info=regime_dict
                     )
-                    
+
                     if arb_res.decision in ("avoid", "wait"):
                         logger.info(f"[RiskGateNode] {sym} suppressed by SignalArbitrator: {arb_res.arbitration_reason}")
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"signal_arbitrator: {arb_res.arbitration_reason}"]})
                     else:
                         r["risk_multiplier"] = arb_res.risk_multiplier
+                        if arb_res.selected_source == "concordant":
+                            r["confidence"] = arb_res.confidence
+                            r["was_concordant"] = True
+                            if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
+                                r["source_strategy_id"] = active_quant_signal.strategy_id
+                        elif arb_res.selected_source == "quant":
+                            r["decision"] = arb_res.decision
+                            r["confidence"] = arb_res.confidence
+                            if arb_res.entry_price:
+                                r["entry_price"] = arb_res.entry_price
+                            if arb_res.stop_loss:
+                                r["stop_loss"] = arb_res.stop_loss
+                            if arb_res.take_profit:
+                                r["take_profit"] = arb_res.take_profit
+                            r["decision_source"] = f"quant_{arb_res.meta.get('strategy_id', 'alpha')}"
+                            if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
+                                r["source_strategy_id"] = active_quant_signal.strategy_id
                         filtered_actionable.append((sym, r))
                         
             actionable = filtered_actionable

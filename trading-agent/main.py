@@ -897,6 +897,15 @@ class TradingAgent:
                         logger.info("[Recovery] Initial market data warmup complete.")
                     except Exception as e:
                         logger.warning(f"[Recovery] Initial market data sync failed (non-fatal): {e}")
+
+                # 1d. Restore Strategy Decay Monitor state from DB
+                try:
+                    from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                    async with get_session() as rec_session:
+                        await get_strategy_decay_monitor().load_from_db(rec_session)
+                    logger.info("[Recovery] StrategyDecayMonitor health state restored from DB")
+                except Exception as decay_err:
+                    logger.debug(f"[Recovery] Failed to restore StrategyDecayMonitor state: {decay_err}")
             
             # Signal to cycle scheduler & fast runners that recovery is complete
             self._recovery_complete.set()

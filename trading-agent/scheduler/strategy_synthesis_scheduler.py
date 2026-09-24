@@ -1180,10 +1180,23 @@ class StrategySynthesisScheduler:
                 else:
                     session.add(SystemConfig(key=config_key, value=config_val))
 
+                # Register into StrategyDecayMonitor as incubating (min 4 paper trades required)
+                try:
+                    from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                    decay_mon = get_strategy_decay_monitor()
+                    decay_mon.register_incubating_strategy(candidate.strategy_id)
+                    await decay_mon.save_to_db(session)
+                    logger.info(
+                        f"[StrategySynthesis] Registered '{candidate.strategy_id}' as incubating "
+                        f"(requires {decay_mon.MIN_INCUBATION_TRADES} paper trades before live execution)."
+                    )
+                except Exception as d_err:
+                    logger.debug(f"[StrategySynthesis] Failed to register incubating strategy in decay monitor: {d_err}")
+
                 session.add(ActivityLog(
                     category="strategy",
                     description=(
-                        f"Autonomous Strategy Synthesized & Deployed: {candidate.strategy_id} "
+                        f"Autonomous Strategy Synthesized & Deployed [INCUBATING]: {candidate.strategy_id} "
                         f"Sharpe={candidate.sharpe_ratio:.2f}, MaxDD={candidate.max_drawdown_pct:.1f}%, "
                         f"WR={candidate.win_rate_pct:.1f}%"
                     ),
@@ -1198,11 +1211,12 @@ class StrategySynthesisScheduler:
                 await self.notifier.send_info(
                     f"💡 <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
                     f"<b>ID:</b> <code>{candidate.strategy_id}</code>\n"
+                    f"<b>Status:</b> 🧪 <b>INCUBATING (PAPER TRADING)</b>\n"
                     f"<b>Symbol:</b> {candidate.symbol}\n"
                     f"<b>Sharpe:</b> <code>{candidate.sharpe_ratio:.2f}</code> (Target &gt;= {self.min_sharpe})\n"
                     f"<b>Max Drawdown:</b> <code>{candidate.max_drawdown_pct:.1f}%</code> (Limit &lt;= {self.max_drawdown_pct}%)\n"
                     f"<b>Win Rate:</b> <code>{candidate.win_rate_pct:.1f}%</code> ({candidate.total_trades} trades)\n"
-                    f"Registered into StrategyRegistry for live execution."
+                    f"Registered into StrategyRegistry for paper incubation (min 4 paper trades before live execution)."
                 )
         except Exception as e:
             logger.warning(f"[StrategySynthesis] Failed persisting candidate {candidate.strategy_id}: {e}")

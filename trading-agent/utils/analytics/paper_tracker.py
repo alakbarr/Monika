@@ -605,6 +605,7 @@ class PaperTracker:
                 mon.record_trade_outcome(
                     strategy_id=analysis.source_strategy_id,
                     win=(trade.pnl_pct or 0.0) > 0,
+                    is_paper=True,
                 )
                 await mon.save_to_db(session)
                 logger.debug(

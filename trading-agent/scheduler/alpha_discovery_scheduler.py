@@ -20,10 +20,46 @@ from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
 from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 from analysis.strategies.registry import StrategyRegistry
 import analysis.strategies
+from analysis.calculators.quant_plateau_optimizer import (
+    QuantPlateauOptimizer,
+    ParameterSpec,
+    PlateauOptimizationResult,
+)
 from database.db import get_session
 from database.models import SystemConfig, ActivityLog
 
 logger = logging.getLogger("TradingAgent.AlphaDiscoveryScheduler")
+
+STRATEGY_PARAM_SPACES: Dict[str, List[ParameterSpec]] = {
+    "donchian_breakout": [
+        ParameterSpec("donchian_period", "int", low=10, high=40, step=2),
+        ParameterSpec("volume_zscore_min", "float", low=1.0, high=2.5, step=0.1),
+        ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
+    ],
+    "btc_donchian_breakout": [
+        ParameterSpec("donchian_period", "int", low=10, high=40, step=2),
+        ParameterSpec("volume_zscore_min", "float", low=1.0, high=2.5, step=0.1),
+        ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
+    ],
+    "xau_trend_engine": [
+        ParameterSpec("donchian_period", "int", low=12, high=36, step=2),
+        ParameterSpec("volume_zscore_min", "float", low=1.0, high=2.5, step=0.1),
+        ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
+    ],
+    "trend_trailing": [
+        ParameterSpec("sl_atr_multiplier", "float", low=1.0, high=3.0, step=0.2),
+        ParameterSpec("tp_sl_multiplier", "float", low=1.2, high=3.0, step=0.2),
+    ],
+    "tsm_momentum": [
+        ParameterSpec("sl_atr_multiplier", "float", low=1.0, high=3.0, step=0.2),
+        ParameterSpec("tp_sl_multiplier", "float", low=1.2, high=3.0, step=0.2),
+    ],
+    "liquidity_sweep": [
+        ParameterSpec("asian_session_start_utc", "int", low=0, high=4, step=1),
+        ParameterSpec("asian_session_end_utc", "int", low=6, high=9, step=1),
+        ParameterSpec("sweep_pip_threshold", "float", low=2.0, high=10.0, step=1.0),
+    ],
+}
 
 
 @dataclass
@@ -230,6 +266,46 @@ class AlphaDiscoveryScheduler:
             strategy_params=hypothesis.parameters,
         )
 
+        # Plateau Pre-Optimization: Find parameter flat stability plateau on IS data before WFO
+        param_specs = STRATEGY_PARAM_SPACES.get(hypothesis.strategy_type)
+        if param_specs and hasattr(harness, "fetch_historical_candles") and hasattr(harness, "_run_simulation_on_candles"):
+            try:
+                async with get_session() as opt_session:
+                    all_candles = await harness.fetch_historical_candles(
+                        session=opt_session, timeframe="H1", limit=1200
+                    )
+                if all_candles and len(all_candles) >= 120:
+                    is_size = int(len(all_candles) * 0.65)
+                    is_candles = all_candles[:is_size]
+
+                    async def _eval_plateau(params: Dict[str, Any]) -> Dict[str, Any]:
+                        harness.strategy_params = params
+                        m = await harness._run_simulation_on_candles(is_candles)
+                        return {
+                            "sharpe": m.sharpe_ratio,
+                            "trades": m.total_trades,
+                            "trade_returns": [t.pnl_pct / 100.0 for t in m.trades],
+                            "pnl_pct": m.total_pnl_pct,
+                        }
+
+                    optimizer = QuantPlateauOptimizer(
+                        param_space=param_specs,
+                        n_trials=12,
+                        n_neighbors_per_candidate=2,
+                        min_trade_count=10,
+                    )
+                    opt_res = await optimizer.optimize(_eval_plateau)
+                    if opt_res and opt_res.best_parameters:
+                        hypothesis.parameters.update(opt_res.best_parameters)
+                        harness.strategy_params = hypothesis.parameters
+                        logger.info(
+                            f"[AlphaDiscovery] Plateau optimizer found robust parameter plateau for '{hypothesis.name}': "
+                            f"{opt_res.best_parameters} (Plateau Score: {opt_res.best_plateau_score:.2f}, "
+                            f"Neighbor Sharpe: {opt_res.neighbor_mean_sharpe:.2f})"
+                        )
+            except Exception as opt_err:
+                logger.debug(f"[AlphaDiscovery] Plateau pre-optimization non-fatal: {opt_err}")
+
         try:
             async with get_session() as session:
                 result = await harness.run_walk_forward(
@@ -297,12 +373,13 @@ class AlphaDiscoveryScheduler:
             float(getattr(result, "oos_win_rate_pct", 0.0)) if not isinstance(result, dict) else 0.0
         )
 
+        min_oos_trades_threshold = int(self.settings.get("alpha_discovery", {}).get("min_oos_trades", 20))
         meets_criteria = (
             (passed or (wfe >= self.min_wfe and oos_sharpe >= self.min_oos_sharpe and not is_overfit))
             and wfe >= self.min_wfe
             and oos_sharpe >= self.min_oos_sharpe
             and not is_overfit
-            and total_oos_trades >= 3
+            and total_oos_trades >= min_oos_trades_threshold
             and max_dd_pct <= self.max_drawdown_limit
             and alpha_passed
         )
@@ -427,6 +504,19 @@ class AlphaDiscoveryScheduler:
                             )
                         except Exception as run_err:
                             logger.debug(f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal: {run_err}")
+
+                    # Register into StrategyDecayMonitor as incubating (min 4 paper trades required)
+                    try:
+                        from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                        decay_mon = get_strategy_decay_monitor()
+                        decay_mon.register_incubating_strategy(proposal.hypothesis.strategy_type)
+                        await decay_mon.save_to_db(session)
+                        logger.info(
+                            f"[AlphaDiscovery] Registered '{proposal.hypothesis.strategy_type}' as incubating "
+                            f"(requires {decay_mon.MIN_INCUBATION_TRADES} paper trades before live execution)."
+                        )
+                    except Exception as d_err:
+                        logger.debug(f"[AlphaDiscovery] Failed to register incubating strategy in decay monitor: {d_err}")
 
                 session.add(ActivityLog(
                     category="strategy",
