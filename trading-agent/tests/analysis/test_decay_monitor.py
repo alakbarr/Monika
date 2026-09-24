@@ -162,3 +162,69 @@ async def test_paper_tracker_records_decay_outcome():
     finally:
         monitor._health_map.pop(strat_id, None)
 
+
+def test_decay_monitor_serialization():
+    from analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
+
+    mon = StrategyDecayMonitor()
+    strat = "alpha_serialized"
+    # Push to DECAYED
+    for _ in range(8):
+        mon.record_trade_outcome(strat, win=False)
+    
+    assert mon.get_health(strat).state == DecayState.DECAYED
+    data = mon.to_dict()
+    assert strat in data
+    assert data[strat]["state"] == "decayed"
+
+    # Restore in new monitor
+    mon2 = StrategyDecayMonitor()
+    mon2.from_dict(data)
+    h2 = mon2.get_health(strat)
+    assert h2.state == DecayState.DECAYED
+    assert h2.consecutive_losses == 8
+    assert mon2.is_tradeable(strat) is False
+
+
+@pytest.mark.asyncio
+async def test_decay_monitor_db_persistence():
+    import json
+    from unittest.mock import AsyncMock, MagicMock
+    from analysis.strategies.decay_monitor import StrategyDecayMonitor, DecayState
+
+    mon = StrategyDecayMonitor()
+    strat = "db_alpha"
+    for _ in range(8):
+        mon.record_trade_outcome(strat, win=False)
+
+    saved_payload = None
+
+    mock_session = AsyncMock()
+    mock_cfg = MagicMock()
+    
+    # Mock upsert capture
+    async def mock_upsert(session, key, value, description=None):
+        nonlocal saved_payload
+        saved_payload = value
+        mock_cfg.value = value
+        return mock_cfg
+
+    from unittest.mock import patch
+    with patch("database.models.SystemConfig.upsert", side_effect=mock_upsert):
+        await mon.save_to_db(mock_session)
+
+    assert saved_payload is not None
+    data = json.loads(saved_payload)
+    assert strat in data
+    assert data[strat]["state"] == "decayed"
+
+    # Test load_from_db
+    mon_restored = StrategyDecayMonitor()
+    mock_row = MagicMock()
+    mock_row.value = saved_payload
+    mock_session.execute.return_value.scalar_one_or_none.return_value = mock_row
+
+    await mon_restored.load_from_db(mock_session)
+    assert mon_restored.get_health(strat).state == DecayState.DECAYED
+    assert mon_restored.is_tradeable(strat) is False
+

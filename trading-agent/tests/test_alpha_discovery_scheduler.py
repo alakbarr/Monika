@@ -64,29 +64,35 @@ async def test_evaluate_hypothesis_qualified(mock_settings):
         description="Test breakout",
     )
 
-    # Mock WalkForwardResult meeting institutional criteria
-    mock_wfo_result = WalkForwardResult(
-        folds=[],
-        aggregate_is_sharpe=1.8,
-        aggregate_oos_sharpe=1.2,
-        overall_wfe=0.72,  # > 0.60
-        is_overfit=False,
-        total_oos_trades=15,
-        oos_win_rate_pct=60.0,
-    )
+    mock_harness_result = {
+        "passed": True,
+        "overall_wfe": 0.72,
+        "aggregate_is_sharpe": 1.8,
+        "aggregate_oos_sharpe": 1.2,
+        "dsr": 0.75,
+        "total_oos_trades": 15,
+        "oos_win_rate_pct": 60.0,
+        "alpha_validation": MagicMock(passed=True, details="No directional bias, passed cost stress"),
+        "all_oos_trades": [
+            MagicMock(pnl_pct=1.5),
+            MagicMock(pnl_pct=-0.5),
+            MagicMock(pnl_pct=2.0),
+        ],
+    }
 
-    with patch("scheduler.alpha_discovery_scheduler.WalkForwardEngine") as mock_engine_cls, \
+    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
          patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock) as mock_persist:
         
         mock_instance = MagicMock()
-        mock_instance.run = AsyncMock(return_value=mock_wfo_result)
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Mock WFO Report")
-        mock_engine_cls.return_value = mock_instance
+        mock_harness_cls.return_value = mock_instance
 
         proposal = await scheduler.evaluate_hypothesis(hypothesis)
 
         assert proposal is not None
-        assert mock_engine_cls.call_args.kwargs.get("mode") == "full"
+        assert mock_harness_cls.call_args.kwargs.get("strategy_params") == {"donchian_period": 20}
+        assert mock_harness_cls.call_args.kwargs.get("symbol") == "BTCUSD"
         assert proposal.overall_wfe == 0.72
         assert proposal.aggregate_oos_sharpe == 1.2
         assert proposal.is_overfit is False
@@ -113,20 +119,26 @@ async def test_evaluate_hypothesis_rejected_low_wfe(mock_settings):
         description="Fails out of sample",
     )
 
-    mock_wfo_result = WalkForwardResult(
-        folds=[],
-        aggregate_is_sharpe=2.1,
-        aggregate_oos_sharpe=0.3,
-        overall_wfe=0.41,  # < 0.60 FAIL
-        is_overfit=True,
-        total_oos_trades=10,
-        oos_win_rate_pct=40.0,
-    )
+    mock_harness_result = {
+        "passed": False,
+        "overall_wfe": 0.41,  # < 0.60 FAIL
+        "aggregate_is_sharpe": 2.1,
+        "aggregate_oos_sharpe": 0.3,
+        "dsr": 0.35,
+        "total_oos_trades": 10,
+        "oos_win_rate_pct": 40.0,
+        "alpha_validation": MagicMock(passed=False, details="Fails WFE and Sharpe threshold"),
+        "all_oos_trades": [
+            MagicMock(pnl_pct=-1.5),
+            MagicMock(pnl_pct=-0.5),
+            MagicMock(pnl_pct=0.2),
+        ],
+    }
 
-    with patch("scheduler.alpha_discovery_scheduler.WalkForwardEngine") as mock_engine_cls:
+    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls:
         mock_instance = MagicMock()
-        mock_instance.run = AsyncMock(return_value=mock_wfo_result)
-        mock_engine_cls.return_value = mock_instance
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
+        mock_harness_cls.return_value = mock_instance
 
         proposal = await scheduler.evaluate_hypothesis(hypothesis)
 
@@ -139,23 +151,29 @@ async def test_run_discovery_cycle(mock_settings):
     """Verify run_discovery_cycle processes a batch of hypotheses without duplication."""
     scheduler = AlphaDiscoveryScheduler(settings=mock_settings)
 
-    mock_wfo_result = WalkForwardResult(
-        folds=[],
-        aggregate_is_sharpe=1.5,
-        aggregate_oos_sharpe=0.9,
-        overall_wfe=0.68,
-        is_overfit=False,
-        total_oos_trades=8,
-        oos_win_rate_pct=58.0,
-    )
+    mock_harness_result = {
+        "passed": True,
+        "overall_wfe": 0.68,
+        "aggregate_is_sharpe": 1.5,
+        "aggregate_oos_sharpe": 0.9,
+        "dsr": 0.65,
+        "total_oos_trades": 8,
+        "oos_win_rate_pct": 58.0,
+        "alpha_validation": MagicMock(passed=True, details="Passed"),
+        "all_oos_trades": [
+            MagicMock(pnl_pct=1.0),
+            MagicMock(pnl_pct=0.5),
+            MagicMock(pnl_pct=-0.2),
+        ],
+    }
 
-    with patch("scheduler.alpha_discovery_scheduler.WalkForwardEngine") as mock_engine_cls, \
+    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
          patch.object(scheduler, "_persist_proposal", new_callable=AsyncMock):
         
         mock_instance = MagicMock()
-        mock_instance.run = AsyncMock(return_value=mock_wfo_result)
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Report")
-        mock_engine_cls.return_value = mock_instance
+        mock_harness_cls.return_value = mock_instance
 
         found = await scheduler.run_discovery_cycle(max_evaluations=3)
 
@@ -220,29 +238,27 @@ async def test_evaluate_hypothesis_rejected_high_drawdown(mock_settings):
         description="High Sharpe but deep drawdown",
     )
 
-    # Mock WalkForwardResult with high WFE/Sharpe but 28.5% max drawdown fold
-    mock_fold = WalkForwardFold(
-        fold_index=0,
-        is_start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        is_end=datetime(2026, 3, 1, tzinfo=timezone.utc),
-        oos_start=datetime(2026, 3, 2, tzinfo=timezone.utc),
-        oos_end=datetime(2026, 3, 22, tzinfo=timezone.utc),
-        oos_metrics={"max_drawdown_pct": 28.5, "sharpe_ratio": 1.5},
-    )
-    mock_wfo_result = WalkForwardResult(
-        folds=[mock_fold],
-        aggregate_is_sharpe=2.0,
-        aggregate_oos_sharpe=1.5,
-        overall_wfe=0.75,  # > 0.60 PASS
-        is_overfit=False,
-        total_oos_trades=10,
-        oos_win_rate_pct=60.0,
-    )
+    # Stitched trades that result in a 28.5% drawdown
+    mock_harness_result = {
+        "passed": True,
+        "overall_wfe": 0.75,
+        "aggregate_is_sharpe": 2.0,
+        "aggregate_oos_sharpe": 1.5,
+        "dsr": 0.70,
+        "total_oos_trades": 10,
+        "oos_win_rate_pct": 60.0,
+        "alpha_validation": MagicMock(passed=True, details="Passed"),
+        "all_oos_trades": [
+            MagicMock(pnl_pct=10.0),
+            MagicMock(pnl_pct=-28.5),
+            MagicMock(pnl_pct=5.0),
+        ],
+    }
 
-    with patch("scheduler.alpha_discovery_scheduler.WalkForwardEngine") as mock_engine_cls:
+    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls:
         mock_instance = MagicMock()
-        mock_instance.run = AsyncMock(return_value=mock_wfo_result)
-        mock_engine_cls.return_value = mock_instance
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
+        mock_harness_cls.return_value = mock_instance
 
         proposal = await scheduler.evaluate_hypothesis(hypothesis)
 

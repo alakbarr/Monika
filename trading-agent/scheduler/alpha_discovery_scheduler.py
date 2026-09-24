@@ -17,6 +17,9 @@ from typing import Dict, Any, List, Optional
 
 from sqlalchemy import select, update
 from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
+from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+from analysis.strategies.registry import StrategyRegistry
+import analysis.strategies
 from database.db import get_session
 from database.models import SystemConfig, ActivityLog
 
@@ -174,7 +177,7 @@ class AlphaDiscoveryScheduler:
 
     async def evaluate_hypothesis(self, hypothesis: AlphaHypothesis) -> Optional[CandidateAlphaProposal]:
         """
-        Evaluates a single alpha hypothesis using WalkForwardEngine over historical window.
+        Evaluates a single alpha hypothesis using IsolatedStrategyBacktestHarness over historical window.
         Returns CandidateAlphaProposal if WFE > min_wfe (0.60) and OOS Sharpe > min_oos_sharpe (0.50).
         """
         logger.debug(
@@ -199,19 +202,44 @@ class AlphaDiscoveryScheduler:
         trading_cfg["edge_strategy"] = edge_cfg
         test_settings["trading"] = trading_cfg
 
-        # Run Walk-Forward Engine
-        engine = WalkForwardEngine(
-            start_date=start_date,
-            end_date=end_date,
-            is_window_days=self.is_window_days,
-            oos_window_days=self.oos_window_days,
-            step_days=self.step_days,
+        # Resolve strategy class from StrategyRegistry or aliases
+        strat_cls = StrategyRegistry.get_strategy(hypothesis.strategy_type)
+        if strat_cls is None:
+            alias_map = {
+                "trend_trailing": "tsm_momentum",
+                "donchian_breakout": "btc_donchian_breakout",
+                "btc_donchian_breakout": "btc_donchian_breakout",
+                "xau_trend_engine": "xau_trend_engine",
+                "liquidity_sweep": "liquidity_sweep",
+            }
+            target_id = alias_map.get(hypothesis.strategy_type, hypothesis.strategy_type)
+            strat_cls = StrategyRegistry.get_strategy(target_id)
+
+        if strat_cls is None:
+            logger.warning(
+                f"[AlphaDiscovery] Strategy class for '{hypothesis.strategy_type}' "
+                f"not found in StrategyRegistry. Skipping evaluation."
+            )
+            return None
+
+        # Execute Isolated Zero-Lookahead Walk-Forward Harness
+        harness = IsolatedStrategyBacktestHarness(
+            strategy_cls=strat_cls,
+            symbol=hypothesis.symbol,
             settings=test_settings,
-            mode="full",
+            strategy_params=hypothesis.parameters,
         )
 
         try:
-            result: WalkForwardResult = await engine.run()
+            async with get_session() as session:
+                result = await harness.run_walk_forward(
+                    session=session,
+                    n_folds=4,
+                    is_ratio=0.65,
+                    total_candles=1500,
+                    min_candles=60,
+                    trial_counter=max(1, len(self._evaluated_hypothesis_ids)),
+                )
         except Exception as e:
             logger.warning(
                 f"[AlphaDiscovery] Walk-Forward evaluation failed for '{hypothesis.name}': {e}",
@@ -219,44 +247,71 @@ class AlphaDiscoveryScheduler:
             )
             return None
 
-        # Institutional Alpha Qualification Check
-        wfe = result.overall_wfe
-        oos_sharpe = result.aggregate_oos_sharpe
-        is_sharpe = result.aggregate_is_sharpe
-        is_overfit = result.is_overfit
+        # Parse metrics (supports both dictionary result from harness and mock result objects)
+        if isinstance(result, dict):
+            wfe = float(result.get("overall_wfe", 0.0) or 0.0)
+            oos_sharpe = float(result.get("aggregate_oos_sharpe", 0.0) or 0.0)
+            is_sharpe = float(result.get("aggregate_is_sharpe", 0.0) or 0.0)
+            dsr_score = float(result.get("dsr", 0.0) or 0.0)
+            oos_trades = result.get("all_oos_trades", [])
+            total_oos_trades = int(result.get("total_oos_trades", len(oos_trades)))
+            alpha_val = result.get("alpha_validation")
+            alpha_passed = getattr(alpha_val, "passed", True) if alpha_val else True
+            is_overfit = bool(oos_sharpe < 0.20 or (is_sharpe > 1.5 and oos_sharpe < 0.40) or wfe < 0.40)
+            passed = bool(result.get("passed", False))
+        else:
+            wfe = float(getattr(result, "overall_wfe", 0.0) or 0.0)
+            oos_sharpe = float(getattr(result, "aggregate_oos_sharpe", 0.0) or 0.0)
+            is_sharpe = float(getattr(result, "aggregate_is_sharpe", 0.0) or 0.0)
+            dsr_score = float(getattr(result, "deflated_sharpe", 0.0) or 0.0)
+            oos_trades = getattr(result, "stitched_oos_trades", [])
+            total_oos_trades = int(getattr(result, "total_oos_trades", len(oos_trades)))
+            alpha_val = getattr(result, "alpha_validation", None)
+            alpha_passed = getattr(alpha_val, "passed", True) if alpha_val else True
+            is_overfit = bool(getattr(result, "is_overfit", False))
+            passed = bool(wfe >= self.min_wfe and oos_sharpe >= self.min_oos_sharpe and not is_overfit)
 
-        # Compute maximum drawdown across OOS folds and stitched trades
+        # Compute maximum drawdown across stitched OOS trades
         max_dd_pct = 0.0
-        if result.folds:
-            max_dd_pct = max(
-                (float(f.oos_metrics.get("max_drawdown_pct", 0.0) or 0.0) for f in result.folds),
-                default=0.0
-            )
-        if result.stitched_oos_trades:
+        wins = 0
+        if oos_trades:
             equity = 1.0
             peak = 1.0
-            for trade in result.stitched_oos_trades:
+            for trade in oos_trades:
                 pnl_pct = float(getattr(trade, "pnl_pct", 0.0) or 0.0)
+                if pnl_pct > 0:
+                    wins += 1
                 equity *= (1.0 + pnl_pct / 100.0)
                 if equity > peak:
                     peak = equity
                 dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
                 if dd > max_dd_pct:
                     max_dd_pct = dd
+        if not isinstance(result, dict) and getattr(result, "folds", None):
+            for f in result.folds:
+                fold_dd = float(f.oos_metrics.get("max_drawdown_pct", 0.0) or 0.0)
+                if fold_dd > max_dd_pct:
+                    max_dd_pct = fold_dd
+
+        oos_win_rate = round((wins / total_oos_trades) * 100.0, 1) if total_oos_trades > 0 else (
+            float(getattr(result, "oos_win_rate_pct", 0.0)) if not isinstance(result, dict) else 0.0
+        )
 
         meets_criteria = (
-            wfe >= self.min_wfe
+            (passed or (wfe >= self.min_wfe and oos_sharpe >= self.min_oos_sharpe and not is_overfit))
+            and wfe >= self.min_wfe
             and oos_sharpe >= self.min_oos_sharpe
             and not is_overfit
-            and result.total_oos_trades >= 3
+            and total_oos_trades >= 3
             and max_dd_pct <= self.max_drawdown_limit
+            and alpha_passed
         )
 
         logger.debug(
             f"[AlphaDiscovery] Hypothesis '{hypothesis.name}' Result: "
             f"WFE={wfe:.2f} (min {self.min_wfe}), OOS Sharpe={oos_sharpe:.2f} "
             f"(min {self.min_oos_sharpe}), MaxDD={max_dd_pct:.1f}% (max {self.max_drawdown_limit}%), "
-            f"Trades={result.total_oos_trades}, Overfit={is_overfit} -> "
+            f"Trades={total_oos_trades}, Overfit={is_overfit}, AlphaValid={alpha_passed} -> "
             f"{'QUALIFIED' if meets_criteria else 'REJECTED'}"
         )
 
@@ -265,7 +320,18 @@ class AlphaDiscoveryScheduler:
 
         # Build proposal with auto-promotion to PAPER_ACTIVE if WFE >= min_wfe (0.60) and auto_deploy_paper is True
         proposal_id = f"alpha_{uuid.uuid4().hex[:8]}"
-        md_report = engine.generate_markdown_report(result)
+        if hasattr(harness, "generate_markdown_report"):
+            md_report = harness.generate_markdown_report(result if isinstance(result, dict) else {
+                "overall_wfe": wfe,
+                "aggregate_is_sharpe": is_sharpe,
+                "aggregate_oos_sharpe": oos_sharpe,
+                "dsr": dsr_score,
+                "all_oos_trades": oos_trades,
+                "alpha_validation": alpha_val,
+            })
+        else:
+            md_report = f"# Alpha Evaluation: {hypothesis.name}\nWFE: {wfe:.2f}"
+
         initial_status = "PAPER_ACTIVE" if (wfe >= self.min_wfe and self.auto_deploy_paper) else "PROPOSED"
 
         proposal = CandidateAlphaProposal(
@@ -274,8 +340,8 @@ class AlphaDiscoveryScheduler:
             overall_wfe=wfe,
             aggregate_is_sharpe=is_sharpe,
             aggregate_oos_sharpe=oos_sharpe,
-            total_oos_trades=result.total_oos_trades,
-            oos_win_rate_pct=result.oos_win_rate_pct,
+            total_oos_trades=total_oos_trades,
+            oos_win_rate_pct=oos_win_rate,
             is_overfit=is_overfit,
             status=initial_status,
             markdown_report=md_report,

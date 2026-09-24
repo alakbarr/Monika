@@ -232,6 +232,13 @@ class StrategyRegistry:
                 except Exception as synth_err:
                     logger.debug(f"[StrategyRegistry] Failed restoring synthesized strategy: {synth_err}")
 
+            # 4. Load persisted strategy decay monitor state
+            try:
+                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                await get_strategy_decay_monitor().load_from_db(session)
+            except Exception as decay_err:
+                logger.debug(f"[StrategyRegistry] Failed loading decay state: {decay_err}")
+
             if loaded_synths_count > 0:
                 cls.log_summary()
 

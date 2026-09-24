@@ -113,23 +113,29 @@ async def test_alpha_auto_deploy_promotes_to_paper_active_and_hot_reloads():
         description="Auto discovery test",
     )
 
-    mock_wfo_result = WalkForwardResult(
-        folds=[],
-        aggregate_is_sharpe=2.0,
-        aggregate_oos_sharpe=1.6,
-        overall_wfe=0.75,  # > 0.60
-        is_overfit=False,
-        total_oos_trades=20,
-        oos_win_rate_pct=65.0,
-    )
+    mock_harness_result = {
+        "passed": True,
+        "overall_wfe": 0.75,
+        "aggregate_is_sharpe": 2.0,
+        "aggregate_oos_sharpe": 1.6,
+        "dsr": 0.70,
+        "total_oos_trades": 20,
+        "oos_win_rate_pct": 65.0,
+        "alpha_validation": MagicMock(passed=True, details="Passed"),
+        "all_oos_trades": [
+            MagicMock(pnl_pct=1.0),
+            MagicMock(pnl_pct=2.0),
+            MagicMock(pnl_pct=-0.5),
+        ],
+    }
 
-    with patch("scheduler.alpha_discovery_scheduler.WalkForwardEngine") as mock_engine_cls, \
+    with patch("scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness") as mock_harness_cls, \
          patch("scheduler.alpha_discovery_scheduler.get_session") as mock_get_session:
 
         mock_instance = MagicMock()
-        mock_instance.run = AsyncMock(return_value=mock_wfo_result)
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
         mock_instance.generate_markdown_report = MagicMock(return_value="# Report")
-        mock_engine_cls.return_value = mock_instance
+        mock_harness_cls.return_value = mock_instance
 
         mock_db_session = AsyncMock()
         mock_db_session.add = MagicMock()

@@ -266,7 +266,8 @@ Monika/
     │   │   ├── xau_trend_engine.py
     │   │   ├── xti_pairs_readiness.py
     │   │   └── synthesized
-    │   │       ├── alpha_btcusd_467904.py
+    │   │       ├── quarantine
+    │   │       │   └── alpha_btcusd_467904.py
     │   │       ├── alpha_eurusd_6d622a.py
     │   │       ├── alpha_gbpusd_e73efc.py
     │   │       ├── alpha_usdjpy_13a603.py
@@ -351,6 +352,7 @@ Monika/
     │   ├── alpha_validation.py
     │   ├── benchmark_tracker.py
     │   ├── decision_memory.py
+    │   ├── isolated_strategy_harness.py
     │   ├── monte_carlo_engine.py
     │   ├── offline_signal_engine.py
     │   ├── outcome_evaluator.py
@@ -812,6 +814,7 @@ Monika/
     ├── scripts
     │   ├── audit_token_usage.py
     │   ├── check_openrouter_keys.py
+    │   ├── curate_synthesized_strategies.py
     │   ├── remediate_budget_history.py
     │   └── sanitize_news_language.py
     ├── utils
