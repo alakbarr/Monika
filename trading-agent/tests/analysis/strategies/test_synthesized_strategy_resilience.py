@@ -616,6 +616,101 @@ async def test_strategy_registry_evaluate_all_throttling():
         assert mock_load.call_count == 1
 
 
+@pytest.mark.asyncio
+async def test_strategy_registry_quarantines_uncompilable_strategy():
+    """Verify that a synthesized strategy failing compilation without disk file is quarantined into _blacklisted_ids."""
+    import json
+    from unittest.mock import MagicMock
+    from database.models import SystemConfig
+
+    StrategyRegistry._blacklisted_ids.clear()
+    s_id = "alpha_uncompilable_broken_xyz"
+
+    broken_payload = json.dumps({
+        "strategy_id": s_id,
+        "class_name": f"SynthesizedStrategy_{s_id}",
+        "python_code": "def evaluate(self): if current_price > donchian_mid: return None",  # invalid syntax & undefined symbol
+    })
+    mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=broken_payload)
+
+    mock_session = AsyncMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = [mock_config]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    await StrategyRegistry.load_dynamic_parameters(mock_session)
+
+    # Strategy must be quarantined into _blacklisted_ids
+    assert s_id in StrategyRegistry._blacklisted_ids
+    assert s_id not in StrategyRegistry._registry
+
+
+@pytest.mark.asyncio
+async def test_strategy_registry_self_heals_from_disk(tmp_path):
+    """Verify that a synthesized strategy with corrupt DB code self-heals if disk has valid code."""
+    import json
+    from pathlib import Path
+    from unittest.mock import MagicMock
+    from database.models import SystemConfig
+    from sqlalchemy.sql.dml import Update
+
+    StrategyRegistry._blacklisted_ids.clear()
+    s_id = "alpha_self_heal_test_123"
+    cls_name = f"SynthesizedStrategy_{s_id}"
+
+    corrupt_db_code = "broken syntax !@#"
+    valid_disk_code = f"""
+from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, Dict, Any
+
+class {cls_name}(EdgeStrategy):
+    strategy_id: str = "{s_id}"
+    applicable_symbols: set = {{"EURUSD"}}
+
+    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+        return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0)
+""".strip()
+
+    db_payload = json.dumps({
+        "strategy_id": s_id,
+        "class_name": cls_name,
+        "python_code": corrupt_db_code,
+    })
+    mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=db_payload)
+
+    mock_session = AsyncMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = [mock_config]
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    # Mock Path to return disk file
+    synth_dir = Path(__file__).resolve().parent.parent.parent.parent / "analysis" / "strategies" / "synthesized"
+    test_disk_file = synth_dir / f"{s_id}.py"
+    try:
+        test_disk_file.write_text(valid_disk_code, encoding="utf-8")
+
+        await StrategyRegistry.load_dynamic_parameters(mock_session)
+
+        # Verified: registered into _registry, not in _blacklisted_ids
+        assert s_id in StrategyRegistry._registry
+        assert s_id not in StrategyRegistry._blacklisted_ids
+
+        # Verified: DB was updated with the disk code
+        update_calls = [c for c in mock_session.execute.call_args_list if len(c.args) > 0 and isinstance(c.args[0], Update)]
+        assert len(update_calls) >= 1
+    finally:
+        if test_disk_file.exists():
+            test_disk_file.unlink()
+        StrategyRegistry._registry.pop(s_id, None)
+        StrategyRegistry._blacklisted_ids.discard(s_id)
+
+
+
 
 
 
