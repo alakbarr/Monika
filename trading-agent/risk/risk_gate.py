@@ -330,7 +330,10 @@ class RiskGate:
             except Exception as e:
                 logger.debug(f"Event store emit risk.verdict failed: {e}")
 
-        log_fn = logger.info if approved else logger.warning
+        if is_backtest:
+            log_fn = logger.debug
+        else:
+            log_fn = logger.info if approved else logger.warning
         log_fn(verdict.summary())
         return verdict
 

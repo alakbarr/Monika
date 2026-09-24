@@ -13,7 +13,14 @@ MAX_TOTAL_ADJUSTMENT = 1  # hard cap, cegah threshold jadi tidak achievable
 
 from typing import Optional
 
-async def compute_unified_confluence_threshold(session: AsyncSession, symbol: str, settings: dict, stage1_confidence: float | None = None, as_of: Optional[datetime] = None) -> tuple[int, str]:
+async def compute_unified_confluence_threshold(
+    session: AsyncSession,
+    symbol: str,
+    settings: dict,
+    stage1_confidence: float | None = None,
+    as_of: Optional[datetime] = None,
+    is_backtest: bool = False,
+) -> tuple[int, str]:
     """
     Satu-satunya sumber kebenaran untuk effective confluence threshold.
     Mengumpulkan SEMUA sinyal adjustment dan mengembalikan SATU angka final.
@@ -114,5 +121,8 @@ async def compute_unified_confluence_threshold(session: AsyncSession, symbol: st
         f'Base=6, adjustments=[{", ".join(reasons)}], '
         f'FINAL THRESHOLD={final_threshold}/14'
     )
-    logger.info(f'[{symbol}] Unified threshold: {reasoning}')
+    if is_backtest or as_of is not None:
+        logger.debug(f'[{symbol}] Unified threshold: {reasoning}')
+    else:
+        logger.info(f'[{symbol}] Unified threshold: {reasoning}')
     return (final_threshold, reasoning)

@@ -130,7 +130,7 @@ class WalkForwardEngine:
         Evaluates In-Sample and Out-of-Sample metrics, computes WFE, and stitches OOS trades.
         """
         raw_folds = self.generate_folds()
-        logger.info(f"Starting Walk-Forward Optimization across {len(raw_folds)} folds...")
+        logger.debug(f"Starting Walk-Forward Optimization across {len(raw_folds)} folds...")
 
         results_folds: List[WalkForwardFold] = []
         all_oos_trades: List[BacktestTrade] = []
@@ -141,7 +141,7 @@ class WalkForwardEngine:
         oos_returns = []
 
         for idx, (is_start, is_end, oos_start, oos_end) in enumerate(raw_folds, 1):
-            logger.info(f"--- Running Fold {idx}/{len(raw_folds)}: IS [{is_start.strftime('%Y-%m-%d')} - {is_end.strftime('%Y-%m-%d')}] | OOS [{oos_start.strftime('%Y-%m-%d')} - {oos_end.strftime('%Y-%m-%d')}] ---")
+            logger.debug(f"--- Running Fold {idx}/{len(raw_folds)}: IS [{is_start.strftime('%Y-%m-%d')} - {is_end.strftime('%Y-%m-%d')}] | OOS [{oos_start.strftime('%Y-%m-%d')} - {oos_end.strftime('%Y-%m-%d')}] ---")
 
             from database.models import BacktestRun
 
@@ -294,7 +294,7 @@ class WalkForwardEngine:
             alpha_validation=alpha_val,
         )
 
-        logger.info(f"Walk-Forward Optimization Complete: WFE={overall_wfe:.2f}, DSR={dsr_score:.2f}, AlphaValid={alpha_val.passed} (IS Sharpe={avg_is_sharpe}, OOS Sharpe={avg_oos_sharpe}, Overfit={is_overfit})")
+        logger.debug(f"Walk-Forward Optimization Complete: WFE={overall_wfe:.2f}, DSR={dsr_score:.2f}, AlphaValid={alpha_val.passed} (IS Sharpe={avg_is_sharpe}, OOS Sharpe={avg_oos_sharpe}, Overfit={is_overfit})")
         return result
 
     def generate_markdown_report(self, result: WalkForwardResult) -> str:

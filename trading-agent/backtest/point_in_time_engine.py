@@ -278,7 +278,7 @@ class PointInTimeBacktestEngine:
         Step-by-step point-in-time simulation adhering strictly to clock abstraction
         and database temporal limits (WHERE timestamp <= as_of_time).
         """
-        logger.info(f"Running Full Mode (Point-in-Time Pipeline) from {self.start_date} to {self.end_date}")
+        logger.debug(f"Running Full Mode (Point-in-Time Pipeline) from {self.start_date} to {self.end_date}")
         symbols = self.settings.get(
             'trading', {}
         ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
@@ -345,7 +345,7 @@ class PointInTimeBacktestEngine:
 
                         # 2. Unified threshold requirement as of current_time
                         try:
-                            req_threshold, _ = await compute_unified_confluence_threshold(session, symbol, self.settings, as_of=current_time)
+                            req_threshold, _ = await compute_unified_confluence_threshold(session, symbol, self.settings, as_of=current_time, is_backtest=True)
                         except Exception:
                             req_threshold = 7
 
@@ -386,7 +386,8 @@ class PointInTimeBacktestEngine:
                                 take_profit=take_profit,
                                 account_equity=self.equity,
                                 is_paper=True,
-                                as_of=current_time
+                                as_of=current_time,
+                                is_backtest=True
                             )
 
                             if not sizing.is_valid or sizing.recommended_lots <= 0:
@@ -442,7 +443,7 @@ class PointInTimeBacktestEngine:
 
                 current_time += timedelta(hours=self.step_hours)
 
-        logger.info(f"Full Mode generated {len(self.trades)} point-in-time trades across {len(symbols)} symbols.")
+        logger.debug(f"Full Mode generated {len(self.trades)} point-in-time trades across {len(symbols)} symbols.")
 
     async def get_point_in_time_data(
         self,
@@ -477,7 +478,7 @@ class PointInTimeBacktestEngine:
         Replay Mode: Evaluate historical AssetAnalysis decisions recorded in the database.
         Uses strict half-open window [start_date, end_date) to prevent boundary lookahead (M7).
         """
-        logger.info(f"Running Replay Mode from {self.start_date} to {self.end_date} [strict half-open)")
+        logger.debug(f"Running Replay Mode from {self.start_date} to {self.end_date} [strict half-open)")
         async with get_session() as session:
             stmt = (
                 select(AssetAnalysis)
@@ -495,7 +496,7 @@ class PointInTimeBacktestEngine:
                     if not (entry_p and analysis.stop_loss and analysis.take_profit):
                         continue
                     await self.execute_trade_parity(session, analysis)
-                logger.info(f"Replay Parity Mode collected {len(self.trades)} recorded trade analyses.")
+                logger.debug(f"Replay Parity Mode collected {len(self.trades)} recorded trade analyses.")
                 return
 
             for analysis in analyses:
@@ -514,7 +515,8 @@ class PointInTimeBacktestEngine:
                         take_profit=analysis.take_profit,
                         account_equity=self.equity,
                         is_paper=True,
-                        as_of=analysis.generated_at
+                        as_of=analysis.generated_at,
+                        is_backtest=True
                     )
 
                     if not sizing.is_valid:
@@ -560,14 +562,14 @@ class PointInTimeBacktestEngine:
                         self.trades.append(trade)
                 else:
                     self.trades.append(trade)
-        logger.info(f"Replay Mode collected {len(self.trades)} recorded trade analyses.")
+        logger.debug(f"Replay Mode collected {len(self.trades)} recorded trade analyses.")
 
     async def _run_langgraph_parity_mode(self):
         """
         LangGraph Parity Mode: Replays the actual production LangGraph StateGraph step-by-step
         through historical timeline with as_of temporal context, achieving 100% production code parity.
         """
-        logger.info(f"Running LangGraph Parity Mode from {self.start_date} to {self.end_date}")
+        logger.debug(f"Running LangGraph Parity Mode from {self.start_date} to {self.end_date}")
         from graph.workflow import build_trading_graph
         graph = build_trading_graph()
 

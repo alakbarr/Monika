@@ -78,3 +78,49 @@ async def test_unified_threshold_elevated_vix_over_30():
     
     assert 'elevated_vix(32.0)' in reasoning
     assert '+1' in reasoning
+
+
+@pytest.mark.asyncio
+async def test_unified_threshold_logging_live_vs_backtest(caplog):
+    import logging
+    from datetime import datetime, timezone
+
+    session = AsyncMock()
+    mock_trade_stats = TradeStats(total_trades=0, winning_trades=0)
+
+    def mock_execute(query):
+        res = MagicMock()
+        res.scalar_one_or_none.return_value = None
+        res.scalars.return_value.all.return_value = []
+        res.first.return_value = mock_trade_stats
+        return res
+
+    session.execute.side_effect = mock_execute
+    settings = {}
+
+    with caplog.at_level(logging.DEBUG, logger='TradingAgent.UnifiedThreshold'):
+        caplog.clear()
+
+        # 1. Live call (default: is_backtest=False, as_of=None) -> should log INFO
+        await compute_unified_confluence_threshold(session, 'EURUSD', settings)
+        info_records = [r for r in caplog.records if r.levelname == 'INFO' and '[EURUSD] Unified threshold:' in r.message]
+        assert len(info_records) == 1
+
+        caplog.clear()
+
+        # 2. Backtest explicit call (is_backtest=True) -> should log DEBUG, NOT INFO
+        await compute_unified_confluence_threshold(session, 'EURUSD', settings, is_backtest=True)
+        debug_records = [r for r in caplog.records if r.levelname == 'DEBUG' and '[EURUSD] Unified threshold:' in r.message]
+        info_records = [r for r in caplog.records if r.levelname == 'INFO' and '[EURUSD] Unified threshold:' in r.message]
+        assert len(debug_records) == 1
+        assert len(info_records) == 0
+
+        caplog.clear()
+
+        # 3. Point-in-time backtest call (as_of is set) -> should log DEBUG, NOT INFO
+        await compute_unified_confluence_threshold(session, 'EURUSD', settings, as_of=datetime(2026, 8, 1, tzinfo=timezone.utc))
+        debug_records = [r for r in caplog.records if r.levelname == 'DEBUG' and '[EURUSD] Unified threshold:' in r.message]
+        info_records = [r for r in caplog.records if r.levelname == 'INFO' and '[EURUSD] Unified threshold:' in r.message]
+        assert len(debug_records) == 1
+        assert len(info_records) == 0
+

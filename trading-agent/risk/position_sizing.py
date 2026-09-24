@@ -525,7 +525,8 @@ class PositionSizer:
             instrument_spec_source=getattr(spec, '_source', 'default'),
         )
 
-        log_level = logging.INFO if is_valid else logging.WARNING
+        is_backtest_run = bool(kwargs.get('is_backtest', False)) or (as_of is not None)
+        log_level = logging.DEBUG if is_backtest_run else (logging.INFO if is_valid else logging.WARNING)
         logger.log(log_level, f"PositionSizing: {result.summary()}")
         return result
 
@@ -539,6 +540,8 @@ class PositionSizer:
         account_equity: float,
         risk_percent_override: Optional[float] = None,
         vix_level: Optional[float] = None,
+        is_backtest: bool = False,
+        **kwargs,
     ) -> SizingResult:
         """
         Menghitung lot untuk trade yang diusulkan (synchronous fallback).
@@ -768,7 +771,8 @@ class PositionSizer:
             instrument_spec_source=getattr(spec, '_source', 'default'),
         )
 
-        log_level = logging.INFO if is_valid else logging.WARNING
+        is_backtest_run = is_backtest or bool(kwargs.get('is_backtest', False))
+        log_level = logging.DEBUG if is_backtest_run else (logging.INFO if is_valid else logging.WARNING)
         logger.log(log_level, f"PositionSizing: {result.summary()}")
         return result
 
