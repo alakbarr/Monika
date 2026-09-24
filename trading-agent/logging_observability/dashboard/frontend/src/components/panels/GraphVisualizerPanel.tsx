@@ -219,12 +219,6 @@ export const GraphVisualizerPanel: React.FC = () => {
 
   const handleMouseUp = () => setIsPanning(false);
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.08 : 0.92;
-    handleZoom(factor);
-  };
-
   const handleTriggerCycle = async () => {
     try {
       setTriggering(true);
@@ -501,7 +495,6 @@ export const GraphVisualizerPanel: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={() => setIsPanning(false)}
-          onWheel={handleWheel}
           className="win-window dag-drafting-canvas"
           style={{
             position: 'relative',
@@ -510,7 +503,7 @@ export const GraphVisualizerPanel: React.FC = () => {
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-card)',
             overflow: 'hidden',
-            cursor: isPanning ? 'grabbing' : 'grab',
+            cursor: isPanning ? 'grabbing' : (autoFit ? 'default' : 'grab'),
             userSelect: 'none',
           }}
         >
