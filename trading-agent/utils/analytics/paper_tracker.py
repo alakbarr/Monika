@@ -601,10 +601,12 @@ class PaperTracker:
 
             if analysis and getattr(analysis, "source_strategy_id", None):
                 from analysis.strategies.decay_monitor import get_strategy_decay_monitor
-                get_strategy_decay_monitor().record_trade_outcome(
+                mon = get_strategy_decay_monitor()
+                mon.record_trade_outcome(
                     strategy_id=analysis.source_strategy_id,
                     win=(trade.pnl_pct or 0.0) > 0,
                 )
+                await mon.save_to_db(session)
                 logger.debug(
                     f"[PAPER] Recorded decay outcome for strategy '{analysis.source_strategy_id}', "
                     f"win={(trade.pnl_pct or 0.0) > 0}"
