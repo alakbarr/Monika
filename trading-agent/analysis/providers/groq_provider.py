@@ -15,14 +15,19 @@ logger = logging.getLogger(__name__)
 # Validated at startup via run_startup_checks() in main.py.
 # If Groq changes model IDs, update here and re-verify.
 GROQ_MODEL_ALIASES = {
-    "groq-compound":       "groq/compound",
-    "groq-compound-mini":  "groq/compound-mini",
+    # Active production models on Groq
     "groq-gpt-oss-120b":   "openai/gpt-oss-120b",
     "groq-gpt-oss-20b":    "openai/gpt-oss-20b",
-    "groq-qwen3.6-27b":    "qwen/qwen3.6-27b",
     "groq-qwen3.8-27b":    "qwen/qwen3.8-27b",
-    "qwen3.6-27b":         "qwen/qwen3.6-27b",
     "qwen3.8-27b":         "qwen/qwen3.8-27b",
+    # Backward compatibility / decommissioned model redirects (prevent 404s)
+    "groq-compound":       "qwen/qwen3.8-27b",
+    "groq-compound-mini":  "qwen/qwen3.8-27b",
+    "groq/compound":       "qwen/qwen3.8-27b",
+    "groq/compound-mini":  "qwen/qwen3.8-27b",
+    "groq-qwen3.6-27b":    "qwen/qwen3.8-27b",
+    "qwen3.6-27b":         "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b":    "qwen/qwen3.8-27b",
 }
 
 _groq_limiter = GroqRateLimiter()
