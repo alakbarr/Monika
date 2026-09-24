@@ -438,6 +438,9 @@ class StartupChecker:
             "openrouter": ["OPENROUTER_PAID_API_KEY", "OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"],
             "typesafe": ["TYPESAFE_API_KEYS", "TYPESAFE_API_KEY"],
             "ollama": [],
+            "ninerouter": [],
+            "9router": [],
+            "nine_router": [],
         }
 
         providers_cfg = self.settings.get("llm", {}).get("providers", {})
@@ -468,14 +471,25 @@ class StartupChecker:
                     "groq": "groq-qwen3.8-27b",
                     "typesafe": "jev-latest",
                     "ollama": "llama3.2",
+                    "ninerouter": "kr/claude-sonnet-4.5",
+                    "9router": "kr/claude-sonnet-4.5",
+                    "nine_router": "kr/claude-sonnet-4.5",
                 }
+
+                def _prov_match(p1: str, p2: str) -> bool:
+                    p1_clean, p2_clean = str(p1).lower().strip(), str(p2).lower().strip()
+                    if p1_clean == p2_clean:
+                        return True
+                    if p1_clean in ("9router", "ninerouter", "nine_router") and p2_clean in ("9router", "ninerouter", "nine_router"):
+                        return True
+                    return False
 
                 test_model = None
                 if provider_name in preferred_ping_models and preferred_ping_models[provider_name] in model_catalog:
                     test_model = preferred_ping_models[provider_name]
                 else:
                     for m_name, m_info in model_catalog.items():
-                        if m_info.get("provider") == provider_name:
+                        if _prov_match(m_info.get("provider", ""), provider_name):
                             test_model = m_name
                             break
 
@@ -484,6 +498,13 @@ class StartupChecker:
                     continue
 
                 try:
+                    if provider_name in ("ninerouter", "9router", "nine_router"):
+                        try:
+                            from analysis.providers.nine_router_provider import NineRouterProvider
+                            NineRouterProvider.ensure_running()
+                        except Exception:
+                            pass
+
                     client = factory._create_client_instance(test_model, {"max_tokens": 10})
                     if client:
                         logger.info(f"  [TEST] Pinging {provider_name} (model: {test_model})...")
