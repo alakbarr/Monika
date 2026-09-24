@@ -169,21 +169,10 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
     except Exception as e:
         logger.warning(f"Failed to create config backup: {e}")
 
-    temp_name = None
     try:
-        target_dir = os.path.dirname(os.path.abspath(settings_path))
-        with tempfile.NamedTemporaryFile("w", dir=target_dir, delete=False, encoding="utf-8") as tf:
-            temp_name = tf.name
-            yaml.dump(merged_settings, tf, default_flow_style=False, sort_keys=False, allow_unicode=True)
-            tf.flush()
-            os.fsync(tf.fileno())
-        os.replace(temp_name, settings_path)
+        from config.atomic_writer import AtomicConfigWriter
+        AtomicConfigWriter.write(settings_path, merged_settings, create_backup=False)
     except Exception as e:
-        if temp_name and os.path.exists(temp_name):
-            try:
-                os.remove(temp_name)
-            except OSError:
-                pass
         return JSONResponse(
             status_code=500,
             content={"status": "write_error", "message": f"Failed writing settings file: {str(e)}"},
