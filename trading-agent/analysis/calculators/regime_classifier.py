@@ -134,12 +134,32 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
 
     volatility_chop = await compute_bollinger_donchian_chop(session, symbol, 'H4', settings or {}, as_of=as_of)
 
+    # Continuous probabilistic distribution across market regimes
+    p_trend = 0.5
+    if adx_val is not None:
+        p_trend = min(1.0, max(0.05, (adx_val - 12.0) / 28.0))
+    p_chop = 0.2
+    if vol_ratio is not None:
+        if vol_ratio > 1.2:
+            p_chop = min(0.9, max(0.1, (vol_ratio - 1.0) * 1.5))
+        elif vol_ratio < 0.7:
+            p_chop = min(0.8, max(0.1, (0.85 - vol_ratio) * 2.0))
+    p_range = max(0.05, 1.0 - (p_trend * 0.7 + p_chop * 0.3))
+
+    total_p = p_trend + p_chop + p_range
+    regime_probs = {
+        "trend": round(p_trend / total_p, 3),
+        "range": round(p_range / total_p, 3),
+        "volatile_chop": round(p_chop / total_p, 3),
+    }
+
     return {
         'regime': final_regime, 'composite_quality': composite_quality,
         'adx': adx_val, 'vol_ratio': vol_ratio, 'vix': vix_close,
         'threshold_modifier': threshold_modifier, 'size_multiplier': size_multiplier,
         'computed_at': (as_of or clock.now()).isoformat(),
-        'volatility_chop': volatility_chop
+        'volatility_chop': volatility_chop,
+        'regime_probabilities': regime_probs,
     }
 
 async def compute_bollinger_donchian_chop(session, symbol: str, timeframe: str, settings: dict, as_of: Optional[datetime] = None) -> dict:

@@ -145,6 +145,8 @@ class TriggerChecker:
                     # FIX: If trigger_type is 'force_close', execute the position close directly
                     if trigger.trigger_type == "force_close" and self._execution_service:
                         await self._handle_force_close(trigger)
+                    elif trigger.trigger_type in ("cancel_pending", "order_ttl", "cancel_pending_order"):
+                        await self._handle_cancel_pending_order(trigger)
 
                     # SUB-SECOND DETERMINISTIC EXECUTION (Zero-LLM latency path)
                     trigger_cond = trigger.condition_json if isinstance(trigger.condition_json, dict) else {}
@@ -519,6 +521,38 @@ class TriggerChecker:
         except Exception as e:
             logger.error(f'[TriggerChecker] force_close failed for ticket {pos.mt5_ticket}: {e}')
 
+    async def _handle_cancel_pending_order(self, trigger: TradeTrigger) -> None:
+        """Batalkan pending live order atau pending paper trade yang telah melewati TTL."""
+        from database.models import Position, PaperTradeRecord
+        async with get_session() as session:
+            # 1. Batalkan pending live order
+            pending_pos = (await session.execute(
+                select(Position).where(Position.analysis_id == trigger.asset_analysis_id)
+                .where(Position.status == 'pending')
+            )).scalars().all()
+            for p in pending_pos:
+                p.status = 'cancelled'
+                p.exit_notes = 'Cancelled: TTL expired'
+                if p.mt5_ticket and self._execution_service:
+                    try:
+                        adapter = getattr(self._execution_service, '_broker', None) or getattr(self._execution_service, 'broker', None)
+                        if adapter and hasattr(adapter, 'cancel_order'):
+                            await adapter.cancel_order(p.mt5_ticket)
+                    except Exception as e:
+                        logger.error(f"[TriggerChecker] Failed to cancel broker order {p.mt5_ticket}: {e}")
+
+            # 2. Batalkan pending paper trade
+            pending_paper = (await session.execute(
+                select(PaperTradeRecord).where(PaperTradeRecord.analysis_id == trigger.asset_analysis_id)
+                .where(PaperTradeRecord.status == 'pending')
+            )).scalars().all()
+            for pt in pending_paper:
+                pt.status = 'cancelled'
+                pt.notes = (pt.notes or '') + ' [Cancelled: TTL expired]'
+
+            await safe_commit(session, label="cancel_pending_ttl")
+            logger.info(f"[TriggerChecker] Cancelled pending orders for analysis_id={trigger.asset_analysis_id} (TTL expired)")
+
     def _spawn_background_reanalysis(self, symbol: str) -> None:
         """Spawn background reanalysis task with reference retention and deduplication."""
         if symbol in self._reanalyzing_symbols:
@@ -632,7 +666,7 @@ class TriggerChecker:
             return await self._check_price_level(trigger, condition)
         elif trigger_type == "indicator":
             return await self._check_indicator(trigger, condition)
-        elif trigger_type == "time" or trigger_type == "force_close":
+        elif trigger_type in ("time", "force_close", "cancel_pending", "order_ttl", "cancel_pending_order"):
             return self._check_time(trigger, condition)
         elif trigger_type == "news":
             # News triggers are processed via NewsWatcher or expired by TTL

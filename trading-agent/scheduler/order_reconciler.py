@@ -646,6 +646,16 @@ class OrderReconciler:
                             decision_source=getattr(related_analysis, "decision_source", None),
                         )
                         session.add(outcome)
+
+                        if related_analysis and getattr(related_analysis, "source_strategy_id", None):
+                            try:
+                                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                                get_strategy_decay_monitor().record_trade_outcome(
+                                    strategy_id=related_analysis.source_strategy_id,
+                                    win=(db_pos.pnl or 0.0) > 0,
+                                )
+                            except Exception as decay_err:
+                                logger.debug(f"[OrderReconciler] StrategyDecayMonitor record error: {decay_err}")
                 except Exception as out_err:
                     logger.debug(f"[OrderReconciler] TradeOutcome creation error: {out_err}")
 

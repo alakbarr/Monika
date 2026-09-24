@@ -103,6 +103,15 @@ class OutcomeLinker:
                                 won=won,
                                 pnl=total_pnl,
                             )
+                        if analysis and getattr(analysis, "source_strategy_id", None):
+                            try:
+                                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                                get_strategy_decay_monitor().record_trade_outcome(
+                                    strategy_id=analysis.source_strategy_id,
+                                    win=won,
+                                )
+                            except Exception as d_err:
+                                logger.debug(f"Failed to record decay outcome for {analysis.source_strategy_id}: {d_err}")
                     except Exception as life_err:
                         logger.warning(f"Failed to record lifecycle outcome for {reflection.symbol}: {life_err}")
 

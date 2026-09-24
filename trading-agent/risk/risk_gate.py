@@ -275,6 +275,7 @@ class RiskGate:
         
         if analysis is not None:
             checks.append(("analysis_quality_scores", self._check_analysis_quality_scores(analysis)))
+            checks.append(("strategy_factor_exposure", self._check_strategy_factor_exposure(session, analysis, simulated_positions=simulated_positions)))
             
         for name, coro in checks:
             await run_check(name, coro)
@@ -550,6 +551,72 @@ class RiskGate:
                 f'(auto_execute_min_confluence threshold).')
         
         return (True, f'quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score})')
+
+    async def _check_strategy_factor_exposure(
+        self,
+        session: AsyncSession,
+        analysis: 'AssetAnalysis',
+        simulated_positions: Optional[list] = None,
+    ) -> tuple[bool, str]:
+        """Limits portfolio concentration across strategy factor families (trend, mean_reversion, stat_arb, breakout)."""
+        strat_id = getattr(analysis, "source_strategy_id", None)
+        factor_family = getattr(analysis, "strategy_factor_family", None)
+        if isinstance(analysis, dict):
+            strat_id = strat_id or analysis.get("source_strategy_id") or analysis.get("strategy_id")
+            factor_family = factor_family or analysis.get("strategy_factor_family") or analysis.get("factor_family")
+
+        if not strat_id and not factor_family:
+            return True, "factor_exposure_na"
+
+        from analysis.strategies.registry import StrategyRegistry
+        if not factor_family:
+            strat_cls = StrategyRegistry.get_strategy(strat_id)
+            factor_family = getattr(strat_cls, "factor_family", "trend") if strat_cls else "trend"
+
+        risk_cfg = self.settings.get("trading", {}).get("risk", {})
+        limit_val = risk_cfg.get("max_positions_per_factor_family", 3)
+        if isinstance(limit_val, dict):
+            max_family_limit = int(limit_val.get(factor_family, limit_val.get("default", 3)))
+        else:
+            max_family_limit = int(limit_val)
+
+        current_count = 0
+        if simulated_positions is not None:
+            for p in simulated_positions:
+                p_fam = None
+                p_strat = getattr(p, "source_strategy_id", None)
+                if p_strat:
+                    p_cls = StrategyRegistry.get_strategy(p_strat)
+                    p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
+                elif getattr(p, "analysis_id", None):
+                    p_ana = await session.get(AssetAnalysis, p.analysis_id)
+                    if p_ana and getattr(p_ana, "source_strategy_id", None):
+                        p_cls = StrategyRegistry.get_strategy(p_ana.source_strategy_id)
+                        p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
+                if p_fam == factor_family:
+                    current_count += 1
+        else:
+            open_positions = (await session.execute(
+                select(Position).where(Position.status == "open")
+            )).scalars().all()
+            for pos in open_positions:
+                pos_fam = None
+                pos_strat = getattr(pos, "source_strategy_id", None)
+                if pos_strat:
+                    pos_cls = StrategyRegistry.get_strategy(pos_strat)
+                    pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
+                elif getattr(pos, "analysis_id", None):
+                    pos_ana = await session.get(AssetAnalysis, pos.analysis_id)
+                    if pos_ana and getattr(pos_ana, "source_strategy_id", None):
+                        pos_cls = StrategyRegistry.get_strategy(pos_ana.source_strategy_id)
+                        pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
+                if pos_fam == factor_family:
+                    current_count += 1
+
+        if current_count >= max_family_limit:
+            return False, f"strategy_factor_exposure_limit: {factor_family} capacity reached ({current_count}/{max_family_limit})"
+
+        return True, f"factor_exposure_ok ({factor_family}: {current_count}/{max_family_limit})"
 
     async def _check_consecutive_losses(self, session: AsyncSession, symbol: str, is_backtest: bool = False) -> tuple[bool, str]:
         """Check apakah symbol ini sedang dalam losing streak yang berbahaya."""

@@ -9,6 +9,8 @@ import utils.clock as clock
 class BTCDonchianBreakout(EdgeStrategy):
     strategy_id = "btc_donchian_breakout"
     applicable_symbols = {'BTCUSD'}
+    compatible_regimes = {'TREND', 'STRONG_TREND', 'EXPANDING_FAST'}
+    factor_family = 'breakout'
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
@@ -33,12 +35,12 @@ class BTCDonchianBreakout(EdgeStrategy):
 
         if latest.close > ch_high:
             return EdgeSignal(self.strategy_id, symbol, 'buy', True, confidence=min(1.0, z / (min_z * 2)),
-                               rationale=f"Donchian({n}) breakout, vol z={z:.2f}", tags=["btc_donchian", "trend"],
-                               exit_style='trend_trailing',
+                               rationale=f"Donchian({n}) breakout, vol z={z:.2f}", tags=["btc_donchian", "trend", "breakout"],
+                               exit_style='trend_trailing', ttl_minutes=120, factor_family='breakout',
                                meta={"size_multiplier": self.cfg.get('size_multiplier', 0.6)})
         if latest.close < ch_low:
             return EdgeSignal(self.strategy_id, symbol, 'sell', True, confidence=min(1.0, z / (min_z * 2)),
-                               rationale=f"Donchian({n}) breakdown, vol z={z:.2f}", tags=["btc_donchian", "trend"],
-                               exit_style='trend_trailing',
+                               rationale=f"Donchian({n}) breakdown, vol z={z:.2f}", tags=["btc_donchian", "trend", "breakout"],
+                               exit_style='trend_trailing', ttl_minutes=120, factor_family='breakout',
                                meta={"size_multiplier": self.cfg.get('size_multiplier', 0.6)})
         return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no breakout")

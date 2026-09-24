@@ -10,6 +10,8 @@ import utils.clock as clock
 class XAUTrendEngine(EdgeStrategy):
     strategy_id = "xau_trend_engine"
     applicable_symbols = {'XAUUSD'}
+    compatible_regimes = {'TREND', 'STRONG_TREND', 'WEAK_TREND'}
+    factor_family = 'trend'
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
