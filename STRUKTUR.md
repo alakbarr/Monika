@@ -143,6 +143,7 @@ Monika/
     │   │   ├── liquidity_sweep_detector.py
     │   │   ├── macro_bias_filter.py
     │   │   ├── macro_priced_in_calculator.py
+    │   │   ├── quant_plateau_optimizer.py
     │   │   ├── regime_classifier.py
     │   │   ├── stage1_priced_in.py
     │   │   ├── timesfm_alpha.py

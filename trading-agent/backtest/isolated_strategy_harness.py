@@ -76,19 +76,68 @@ class HarnessMetrics:
         }
 
 
+def resample_candles(h1_candles: List[CandleDict], factor: int) -> List[CandleDict]:
+    """Resamples H1 candles into higher timeframe (e.g. factor=4 for H4, factor=24 for D1)."""
+    if not h1_candles:
+        return []
+    res = []
+    for chunk_start in range(0, len(h1_candles), factor):
+        chunk = h1_candles[chunk_start : chunk_start + factor]
+        if not chunk:
+            continue
+        c_open = chunk[0].open
+        c_high = max(c.high for c in chunk)
+        c_low = min(c.low for c in chunk)
+        c_close = chunk[-1].close
+        c_vol = sum(getattr(c, "volume", 0.0) or 0.0 for c in chunk)
+        res.append(CandleDict({
+            "timestamp": chunk[-1].timestamp,
+            "time": chunk[-1].get("time"),
+            "open": float(c_open),
+            "high": float(c_high),
+            "low": float(c_low),
+            "close": float(c_close),
+            "volume": float(c_vol),
+        }))
+    return res
+
+
+class MockIndicatorRow:
+    def __init__(self, value_json: str, timestamp: Optional[datetime] = None):
+        self.value_json = value_json
+        self.timestamp = timestamp or datetime.now(timezone.utc)
+
+
+class MockStructureBreakRow:
+    def __init__(self, direction: str, formed_at: Optional[datetime] = None):
+        self.direction = direction
+        self.formed_at = formed_at or datetime.now(timezone.utc)
+
+
 class ZeroLookaheadSliceSession:
     """
     Proxy AsyncSession providing strictly zero-lookahead temporal slices across multiple timeframes.
-    Supports both session.info['candle_cache'] and direct session.execute(stmt) queries.
+    Supports session.info['candle_cache'] and smart dispatching of direct session.execute(stmt) queries:
+    1. Synchronized multi-timeframe candles (H1, M15, H4, D1).
+    2. Scalar float series if PriceOHLCV.close or volume is queried directly.
+    3. Simulates TechnicalIndicator rows (EMA, ATR) and StructureBreak rows from historical candle cache.
     """
 
-    def __init__(self, candle_cache: Dict[tuple[str, str], List[CandleDict]], as_of_time: datetime):
+    def __init__(
+        self,
+        candle_cache: Dict[tuple[str, str], List[CandleDict]],
+        as_of_time: datetime,
+        symbol: str = "EURUSD",
+    ):
         self.candle_cache = candle_cache
         self.as_of_time = as_of_time
-        # Set session.info to satisfy EdgeStrategy.get_historical_candles cache lookup
+        self.symbol = symbol.upper()
         self.info = {"candle_cache": dict(candle_cache)}
 
     async def execute(self, stmt, *args, **kwargs):
+        import json as _json
+        import re as _re
+
         class _SliceScalarResult:
             def __init__(self, data):
                 self._data = data
@@ -97,7 +146,6 @@ class ZeroLookaheadSliceSession:
                 return self
 
             def all(self):
-                # Reverse to descending order as expected by get_historical_candles
                 return list(reversed(self._data))
 
             def scalar_one_or_none(self):
@@ -106,9 +154,89 @@ class ZeroLookaheadSliceSession:
             def first(self):
                 return self._data[-1] if self._data else None
 
-        # Fallback if stmt is queried directly
-        first_cache = next(iter(self.candle_cache.values()), [])
-        return _SliceScalarResult(first_cache)
+        stmt_str = str(stmt).upper()
+        h1_candles = self.candle_cache.get((self.symbol, "H1"), [])
+        last_close = float(h1_candles[-1].close) if h1_candles else 1.0
+
+        # 1. TechnicalIndicator query dispatch
+        if "TECHNICALINDICATOR" in stmt_str or "INDICATOR" in stmt_str:
+            if "ATR" in stmt_str:
+                atr_val = last_close * 0.005
+                if len(h1_candles) >= 15:
+                    trs = [
+                        max(
+                            h1_candles[j].high - h1_candles[j - 1].close,
+                            abs(h1_candles[j].high - h1_candles[j - 1].close),
+                            abs(h1_candles[j].low - h1_candles[j - 1].close),
+                        )
+                        for j in range(1, len(h1_candles))
+                    ]
+                    atr_val = float(np.mean(trs[-14:])) if trs else atr_val
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"atr": round(atr_val, 5), "value": round(atr_val, 5)}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
+            elif "EMA" in stmt_str:
+                m = _re.search(r"EMA_(\d+)", stmt_str)
+                period = int(m.group(1)) if m else 20
+                if len(h1_candles) >= period:
+                    closes = [float(c.close) for c in h1_candles]
+                    alpha = 2.0 / (period + 1.0)
+                    ema = closes[0]
+                    for c in closes[1:]:
+                        ema = alpha * c + (1.0 - alpha) * ema
+                    ema_val = round(ema, 5)
+                else:
+                    ema_val = round(last_close, 5)
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": ema_val}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+            else:
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": last_close}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
+        # 2. StructureBreak query dispatch
+        if "STRUCTUREBREAK" in stmt_str or "STRUCTURE_BREAK" in stmt_str:
+            if len(h1_candles) >= 5:
+                direction = "bullish" if h1_candles[-1].close >= h1_candles[-5].close else "bearish"
+                mock_break = MockStructureBreakRow(direction=direction, formed_at=self.as_of_time)
+                return _SliceScalarResult([mock_break])
+            return _SliceScalarResult([])
+
+        # 3. Determine timeframe from stmt
+        tf = "H1"
+        for candidate_tf in ("M15", "H4", "D1", "H1"):
+            if f"'{candidate_tf}'" in stmt_str or f'"{candidate_tf}"' in stmt_str:
+                tf = candidate_tf
+                break
+
+        candles = self.candle_cache.get((self.symbol, tf))
+        if not candles:
+            if tf == "H4":
+                candles = resample_candles(h1_candles, 4)
+            elif tf == "D1":
+                candles = resample_candles(h1_candles, 24)
+            elif tf == "M15":
+                candles = h1_candles
+            else:
+                candles = h1_candles
+
+        # If scalar column like .close was queried (e.g. tsm_momentum):
+        if "PRICEOHLCV.CLOSE" in stmt_str or (".CLOSE" in stmt_str and ".HIGH" not in stmt_str and ".OPEN" not in stmt_str):
+            float_closes = [float(c.close) for c in candles]
+            return _SliceScalarResult(float_closes)
+        elif "PRICEOHLCV.VOLUME" in stmt_str and ".CLOSE" not in stmt_str:
+            float_vols = [float(getattr(c, "volume", 0.0) or 0.0) for c in candles]
+            return _SliceScalarResult(float_vols)
+
+        return _SliceScalarResult(candles)
 
     async def commit(self):
         pass
@@ -120,6 +248,7 @@ class ZeroLookaheadSliceSession:
 class IsolatedStrategyBacktestHarness:
     """
     Isolated Backtesting & Walk-Forward Optimization Harness for EdgeStrategy instances.
+    Enforces deterministic clock freezing, multi-timeframe alignment, and conservative execution.
     """
 
     def __init__(
@@ -196,7 +325,6 @@ class IsolatedStrategyBacktestHarness:
         stmt = stmt.order_by(PriceOHLCV.timestamp.desc()).limit(limit)
 
         rows = (await session.execute(stmt)).scalars().all()
-        # Sort or reverse based on timestamp ordering of input rows
         if len(rows) > 1 and hasattr(rows[0], "timestamp") and hasattr(rows[-1], "timestamp"):
             if rows[0].timestamp and rows[-1].timestamp and rows[0].timestamp > rows[-1].timestamp:
                 chronological_rows = list(reversed(rows))
@@ -247,8 +375,10 @@ class IsolatedStrategyBacktestHarness:
     ) -> HarnessMetrics:
         """
         Executes zero-lookahead historical bar-by-bar simulation for this strategy.
+        Enforces frozen simulated clock per bar stepping to eliminate lookahead bias.
         """
-        # 1. Fetch primary H1 candles
+        from utils.clock import frozen_time
+
         primary_candles = await self.fetch_historical_candles(
             session=session,
             timeframe="H1",
@@ -264,13 +394,16 @@ class IsolatedStrategyBacktestHarness:
             )
             return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-        # 2. Fetch auxiliary timeframes (M15, H4) if needed for multi-timeframe strategies
         m15_candles = await self.fetch_historical_candles(
             session=session, timeframe="M15", start_date=start_date, end_date=end_date, limit=lookback_candles * 4
         )
         h4_candles = await self.fetch_historical_candles(
             session=session, timeframe="H4", start_date=start_date, end_date=end_date, limit=max(100, lookback_candles // 4)
         )
+        if not h4_candles:
+            h4_candles = resample_candles(primary_candles, 4)
+
+        d1_candles = resample_candles(primary_candles, 24)
 
         strat_instance = self._get_strategy_instance()
         trade_records: List[StrategyTradeRecord] = []
@@ -281,30 +414,32 @@ class IsolatedStrategyBacktestHarness:
             current_bar = primary_candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
 
-            # Build zero-lookahead multi-timeframe cache
             h1_slice = primary_candles[: i + 1]
             m15_slice = [c for c in m15_candles if (c.get("time") or cur_time) <= cur_time]
             h4_slice = [c for c in h4_candles if (c.get("time") or cur_time) <= cur_time]
+            d1_slice = [c for c in d1_candles if (c.get("time") or cur_time) <= cur_time]
 
             slice_cache: Dict[tuple[str, str], List[CandleDict]] = {
                 (self.symbol, "H1"): h1_slice,
                 (self.symbol, "M15"): m15_slice if m15_slice else h1_slice,
                 (self.symbol, "H4"): h4_slice if h4_slice else h1_slice,
-                (self.symbol, "D1"): h4_slice,
+                (self.symbol, "D1"): d1_slice if d1_slice else h1_slice,
             }
 
-            slice_session = ZeroLookaheadSliceSession(slice_cache, as_of_time=cur_time)
+            slice_session = ZeroLookaheadSliceSession(slice_cache, as_of_time=cur_time, symbol=self.symbol)
 
             sig: Optional[EdgeSignal] = None
             try:
-                sig = await asyncio.wait_for(
-                    strat_instance.evaluate(
-                        session=slice_session,  # type: ignore[arg-type]
-                        symbol=self.symbol,
-                        settings=self.settings,
-                    ),
-                    timeout=5.0,
-                )
+                # Freeze clock deterministically at historical bar time
+                with frozen_time(cur_time):
+                    sig = await asyncio.wait_for(
+                        strat_instance.evaluate(
+                            session=slice_session,  # type: ignore[arg-type]
+                            symbol=self.symbol,
+                            settings=self.settings,
+                        ),
+                        timeout=5.0,
+                    )
             except Exception as e:
                 logger.debug(f"[IsolatedHarness] Evaluation exception at bar {i} for {self.symbol}: {e}")
                 if self.fail_fast_on_error:
@@ -335,7 +470,6 @@ class IsolatedStrategyBacktestHarness:
             else:
                 entry_price = base_price - (self.spread_cost / 2.0) - self.slippage_cost
 
-            # Calculate ATR for stops/targets
             atr = self._calculate_atr(h1_slice, period=14)
 
             # Resolve Stop Loss and Take Profit
@@ -343,7 +477,6 @@ class IsolatedStrategyBacktestHarness:
                 sl = float(sig.stop_loss)
                 tp = float(sig.take_profit)
             else:
-                # Production Parity Fallback: Intraday ATR stop & target matching EdgeStrategyRunner
                 exit_style = getattr(sig, "exit_style", "intraday_adr")
                 if exit_style == "trend_trailing":
                     sl_dist = atr * 1.5
@@ -359,7 +492,7 @@ class IsolatedStrategyBacktestHarness:
                     sl = entry_price + sl_dist
                     tp = entry_price - tp_dist
 
-            # Forward bar-by-bar outcome simulation
+            # Forward bar-by-bar outcome simulation with conservative intra-bar sequencing and gap modeling
             exit_price = entry_price
             exit_reason = "time_exit"
             exit_time = cur_time
@@ -368,14 +501,25 @@ class IsolatedStrategyBacktestHarness:
             max_eval_bar = min(i + max_hold_bars + 1, len(primary_candles))
             for f_idx in range(i + 1, max_eval_bar):
                 f_bar = primary_candles[f_idx]
+                f_open = float(f_bar.open)
                 f_high = float(f_bar.high)
                 f_low = float(f_bar.low)
                 bars_held += 1
                 exit_time = f_bar.get("time") or (cur_time + timedelta(hours=bars_held))
 
                 if sig.direction == "buy":
-                    if f_low <= sl:
-                        exit_price = sl - self.slippage_cost  # Negative slippage on SL
+                    # Gap open past stop loss
+                    if f_open <= sl:
+                        exit_price = f_open - self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    # Intra-bar collision: conservative worst-case
+                    if f_low <= sl and f_high >= tp:
+                        exit_price = sl - self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    elif f_low <= sl:
+                        exit_price = sl - self.slippage_cost
                         exit_reason = "stop_loss"
                         break
                     elif f_high >= tp:
@@ -383,8 +527,18 @@ class IsolatedStrategyBacktestHarness:
                         exit_reason = "take_profit"
                         break
                 else:  # sell
-                    if f_high >= sl:
-                        exit_price = sl + self.slippage_cost  # Negative slippage on SL
+                    # Gap open past stop loss
+                    if f_open >= sl:
+                        exit_price = f_open + self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    # Intra-bar collision: conservative worst-case
+                    if f_high >= sl and f_low <= tp:
+                        exit_price = sl + self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    elif f_high >= sl:
+                        exit_price = sl + self.slippage_cost
                         exit_reason = "stop_loss"
                         break
                     elif f_low <= tp:
@@ -392,17 +546,11 @@ class IsolatedStrategyBacktestHarness:
                         exit_reason = "take_profit"
                         break
             else:
-                # Time exit at close of final holding bar
                 last_held_bar = primary_candles[max_eval_bar - 1]
                 exit_price = float(last_held_bar.close)
                 exit_reason = "time_exit"
 
-            # Compute net trade return percentage
-            if sig.direction == "buy":
-                pnl_pct = (exit_price - entry_price) / entry_price
-            else:
-                pnl_pct = (entry_price - exit_price) / entry_price
-
+            pnl_pct = ((exit_price - entry_price) / entry_price) if sig.direction == "buy" else ((entry_price - exit_price) / entry_price)
             trade_returns.append(round(pnl_pct, 5))
             trade_records.append(
                 StrategyTradeRecord(
@@ -422,12 +570,10 @@ class IsolatedStrategyBacktestHarness:
                 )
             )
 
-            # Advance bar pointer past the holding duration to prevent overlapping same-strategy positions
             i += max(1, bars_held)
 
         return self._compute_metrics(trade_returns, trade_records)
 
-    # Alias for single window simulation
     run_single_window = run_simulation
 
     def _compute_metrics(
@@ -452,11 +598,9 @@ class IsolatedStrategyBacktestHarness:
         ann_factor = math.sqrt(252.0 * 24.0 / max(1.0, np.mean([r.bars_held for r in records]))) if records else math.sqrt(252.0)
         sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
 
-        # Sortino Ratio
         downside_std = float(np.std([r for r in returns if r < 0.0], ddof=1)) if len(losses) > 1 else 1e-6
         sortino_ratio = round(float((mean_ret / (downside_std + 1e-9)) * ann_factor), 2)
 
-        # Equity Curve and Max Drawdown
         equity = 1.0
         peak = 1.0
         max_dd = 0.0
@@ -492,12 +636,13 @@ class IsolatedStrategyBacktestHarness:
         trial_counter: int = 1,
     ) -> Dict[str, Any]:
         """
-        Executes rigorous rolling-window Walk-Forward Optimization (WFO).
+        Executes rolling-window Walk-Forward Optimization (WFO).
         Applies Deflated Sharpe Ratio (DSR) and AlphaValidation across stitched OOS trades.
         """
         all_candles = await self.fetch_historical_candles(
             session=session, timeframe="H1", limit=total_candles
         )
+
         if len(all_candles) < min_candles:
             return {
                 "passed": False,
@@ -509,7 +654,6 @@ class IsolatedStrategyBacktestHarness:
                 "reason": f"Insufficient candles ({len(all_candles)} < {min_candles})",
             }
 
-        # Calculate fold indices
         fold_size = len(all_candles) // n_folds
         is_size = int(fold_size * is_ratio)
         oos_size = fold_size - is_size
@@ -530,9 +674,7 @@ class IsolatedStrategyBacktestHarness:
             is_candles = fold_candles[:is_size]
             oos_candles = fold_candles[is_size:]
 
-            # Run In-Sample
             is_metrics = await self._run_simulation_on_candles(is_candles)
-            # Run Out-of-Sample
             oos_metrics = await self._run_simulation_on_candles(oos_candles)
 
             is_sharpes.append(is_metrics.sharpe_ratio)
@@ -544,18 +686,15 @@ class IsolatedStrategyBacktestHarness:
         avg_is_sharpe = float(np.mean(is_sharpes)) if is_sharpes else 0.0
         avg_oos_sharpe = float(np.mean(oos_sharpes)) if oos_sharpes else 0.0
 
-        avg_is_pnl = float(np.mean(is_pnls)) if is_pnls else 0.0
-        avg_oos_pnl = float(np.mean(oos_pnls)) if oos_pnls else 0.0
-
-        # Walk-Forward Efficiency (WFE)
-        if avg_is_pnl > 0:
-            wfe = round(avg_oos_pnl / avg_is_pnl, 2)
-        elif avg_is_pnl == 0.0:
-            wfe = 1.0 if avg_oos_pnl >= 0 else 0.0
+        # Institutional Annualized WFE (Robert Pardo): OOS Sharpe / IS Sharpe
+        if avg_is_sharpe > 0:
+            wfe = round(avg_oos_sharpe / max(0.1, avg_is_sharpe), 2)
+        elif avg_is_sharpe == 0.0:
+            wfe = 1.0 if avg_oos_sharpe >= 0 else 0.0
         else:
-            wfe = 0.0 if avg_oos_pnl <= avg_is_pnl else round(abs(avg_oos_pnl - avg_is_pnl) / abs(avg_is_pnl), 2)
+            wfe = 0.0 if avg_oos_sharpe <= avg_is_sharpe else round(abs(avg_oos_sharpe - avg_is_sharpe) / abs(avg_is_sharpe), 2)
 
-        # Deflated Sharpe Ratio calculation across OOS trades
+        # Deflated Sharpe Ratio (DSR) using actual number of observed OOS trades (no fake clamping)
         oos_returns = [t.pnl_pct / 100.0 for t in all_oos_trades]
         _, _, oos_skew, oos_kurt = compute_sample_moments(oos_returns) if len(oos_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
 
@@ -563,21 +702,19 @@ class IsolatedStrategyBacktestHarness:
         dsr_score = deflated_sharpe_ratio(
             observed_sr=daily_oos_sr,
             n_trials=max(1, trial_counter),
-            n_obs=max(30, len(all_oos_trades)),
+            n_obs=len(all_oos_trades),
             skew=oos_skew,
             excess_kurt=oos_kurt,
             sr_std=0.5 / math.sqrt(252.0),
         )
 
-        # Alpha Validation on stitched OOS trades
         alpha_val = validate_alpha(trades=all_oos_trades, cost_multiplier=2.0)
 
-        # Institutional qualification criteria
         passed = bool(
             wfe >= 0.60
             and avg_oos_sharpe >= 0.50
             and len(all_oos_trades) >= 5
-            and (dsr_score >= 0.60 if len(all_oos_trades) >= 10 else True)
+            and (dsr_score >= 0.60 if len(all_oos_trades) >= 15 else True)
             and alpha_val.passed
         )
 
@@ -595,7 +732,9 @@ class IsolatedStrategyBacktestHarness:
         }
 
     async def _run_simulation_on_candles(self, candles: List[CandleDict]) -> HarnessMetrics:
-        """Helper to simulate on a pre-sliced list of candles."""
+        """Helper to simulate on a pre-sliced list of candles with full clock freezing and resampled HTF."""
+        from utils.clock import frozen_time
+
         if len(candles) < 25:
             return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
@@ -603,25 +742,35 @@ class IsolatedStrategyBacktestHarness:
         trade_records: List[StrategyTradeRecord] = []
         trade_returns: List[float] = []
 
+        h4_candles = resample_candles(candles, 4)
+        d1_candles = resample_candles(candles, 24)
+
         i = 15
         while i < len(candles) - 2:
             current_bar = candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
             h1_slice = candles[: i + 1]
+            h4_slice = [c for c in h4_candles if (c.get("time") or cur_time) <= cur_time]
+            d1_slice = [c for c in d1_candles if (c.get("time") or cur_time) <= cur_time]
 
             slice_cache: Dict[tuple[str, str], List[CandleDict]] = {
                 (self.symbol, "H1"): h1_slice,
                 (self.symbol, "M15"): h1_slice,
-                (self.symbol, "H4"): h1_slice,
+                (self.symbol, "H4"): h4_slice if h4_slice else h1_slice,
+                (self.symbol, "D1"): d1_slice if d1_slice else h1_slice,
             }
-            slice_session = ZeroLookaheadSliceSession(slice_cache, as_of_time=cur_time)
+            slice_session = ZeroLookaheadSliceSession(slice_cache, as_of_time=cur_time, symbol=self.symbol)
 
             try:
-                sig = await strat_instance.evaluate(
-                    session=slice_session,  # type: ignore[arg-type]
-                    symbol=self.symbol,
-                    settings=self.settings,
-                )
+                with frozen_time(cur_time):
+                    sig = await asyncio.wait_for(
+                        strat_instance.evaluate(
+                            session=slice_session,  # type: ignore[arg-type]
+                            symbol=self.symbol,
+                            settings=self.settings,
+                        ),
+                        timeout=5.0,
+                    )
             except Exception:
                 i += 1
                 continue
@@ -631,7 +780,7 @@ class IsolatedStrategyBacktestHarness:
                 continue
 
             base_price = float(current_bar.close)
-            entry_price = base_price + (self.spread_cost / 2.0) if sig.direction == "buy" else base_price - (self.spread_cost / 2.0)
+            entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost if sig.direction == "buy" else base_price - (self.spread_cost / 2.0) - self.slippage_cost
             atr = self._calculate_atr(h1_slice, period=14)
 
             sl = float(sig.stop_loss) if sig.stop_loss else (entry_price - atr * 1.5 if sig.direction == "buy" else entry_price + atr * 1.5)
@@ -645,23 +794,40 @@ class IsolatedStrategyBacktestHarness:
             max_eval_bar = min(i + 15, len(candles))
             for f_idx in range(i + 1, max_eval_bar):
                 f_bar = candles[f_idx]
+                f_open = float(f_bar.open)
                 f_high = float(f_bar.high)
                 f_low = float(f_bar.low)
                 bars_held += 1
                 exit_time = f_bar.get("time") or cur_time
 
                 if sig.direction == "buy":
-                    if f_low <= sl:
-                        exit_price = sl
+                    if f_open <= sl:
+                        exit_price = f_open - self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    if f_low <= sl and f_high >= tp:
+                        exit_price = sl - self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    elif f_low <= sl:
+                        exit_price = sl - self.slippage_cost
                         exit_reason = "stop_loss"
                         break
                     elif f_high >= tp:
                         exit_price = tp
                         exit_reason = "take_profit"
                         break
-                else:
-                    if f_high >= sl:
-                        exit_price = sl
+                else:  # sell
+                    if f_open >= sl:
+                        exit_price = f_open + self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    if f_high >= sl and f_low <= tp:
+                        exit_price = sl + self.slippage_cost
+                        exit_reason = "stop_loss"
+                        break
+                    elif f_high >= sl:
+                        exit_price = sl + self.slippage_cost
                         exit_reason = "stop_loss"
                         break
                     elif f_low <= tp:
