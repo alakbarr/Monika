@@ -667,6 +667,12 @@ class StrategySynthesisScheduler:
             if not getattr(strat_cls, "applicable_symbols", None):
                 strat_cls.applicable_symbols = set()
 
+            # Auto-inject default compatible_regimes and factor_family if omitted
+            if not getattr(strat_cls, "compatible_regimes", None):
+                strat_cls.compatible_regimes = {"TREND", "STRONG_TREND", "RANGE", "WEAK_TREND", "VOLATILE_CHOP"}
+            if not getattr(strat_cls, "factor_family", None):
+                strat_cls.factor_family = "trend"
+
             # Polymorphic safe_init wrapper: guarantees compatibility whether called with positional settings, kwargs, or no args
             orig_init = strat_cls.__init__
 
@@ -777,145 +783,37 @@ class StrategySynthesisScheduler:
         self,
         strategy_cls: Type[EdgeStrategy],
         symbol: str,
-        lookback_candles: int = 300,
+        lookback_candles: int = 1500,
         min_candles: int = 60,
     ) -> List[float]:
         """
-        Simulates candidate EdgeStrategy bar-by-bar across real historical PriceOHLCV candles.
+        Simulates candidate EdgeStrategy bar-by-bar across real historical PriceOHLCV candles
+        using IsolatedStrategyBacktestHarness.
         Enforces zero lookahead: strategy only accesses past candles at each step.
-        Applies asset-specific spread and slippage friction.
+        Applies asset-specific spread and slippage friction, dynamic ATR stops/targets,
+        and multi-timeframe zero-lookahead caching.
         Returns list of real trade returns (pnl_pct as decimals).
         """
-        from database.models import PriceOHLCV
-        from backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+        from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 
-        trade_returns: List[float] = []
+        harness = IsolatedStrategyBacktestHarness(
+            strategy=strategy_cls,
+            symbol=symbol,
+            settings=self.settings,
+            fail_fast_on_error=True,
+        )
+
         try:
             async with get_session() as session:
-                stmt = (
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H1")
-                    .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(lookback_candles)
+                metrics = await harness.run_single_window(
+                    session=session,
+                    lookback_candles=lookback_candles,
+                    min_candles=min_candles,
                 )
-                rows = (await session.execute(stmt)).scalars().all()
-                if len(rows) < min_candles:
-                    logger.info(
-                        f"[StrategySynthesis] Insufficient historical H1 candles for {symbol} "
-                        f"({len(rows)} < {min_candles}). Rejecting candidate."
-                    )
-                    return []
-
-                candles = list(reversed(rows))
-                strat_instance = strategy_cls(self.settings)
-
-                # Friction profile for this symbol
-                friction = ASSET_FRICTION_PROFILE.get(symbol, {"spread_pips": 1.5, "slippage_pips": 0.5})
-                pip_size = 0.01 if "JPY" in symbol or "XAU" in symbol or "XTI" in symbol or "XBR" in symbol else 0.0001
-                if "BTC" in symbol or "ETH" in symbol:
-                    pip_size = 1.0
-
-                spread_cost = friction.get("spread_pips", 1.5) * pip_size
-                slippage_cost = friction.get("slippage_pips", 0.5) * pip_size
-
-                # Bar-by-bar evaluation loop (stride of 1 bar, skipping during active trade)
-                burn_in = 30
-                i = burn_in
-                eval_errors_count = 0
-                strat_id = getattr(strategy_cls, "strategy_id", "unknown")
-                while i < len(candles) - 5:
-                    slice_session = cast(AsyncSession, HistoricalSliceSession(candles[: i + 1]))
-                    sig = None
-                    try:
-                        sig = await asyncio.wait_for(
-                            strat_instance.evaluate(slice_session, symbol, self.settings),
-                            timeout=5.0,
-                        )
-                    except asyncio.TimeoutError:
-                        logger.warning(
-                            f"[StrategySynthesis] Candidate '{strat_id}' timed out on bar {i} (> 5.0s). Disqualifying candidate."
-                        )
-                        return []
-                    except Exception as eval_err:
-                        logger.debug(f"[StrategySynthesis] Strategy evaluation error at bar {i}: {eval_err}")
-                        eval_errors_count += 1
-                        logger.info(
-                            f"[StrategySynthesis] Candidate '{strat_id}' raised unhandled exception on bar {i} ({eval_err}). Disqualifying candidate."
-                        )
-                        return []
-
-                    if sig is not None and not isinstance(sig, EdgeSignal):
-                        eval_errors_count += 1
-                        logger.info(
-                            f"[StrategySynthesis] Candidate '{strat_id}' returned invalid type {type(sig)} on bar {i}. Disqualifying candidate."
-                        )
-                        return []
-
-                    if sig is not None and ("error" in getattr(sig, "tags", []) or "evaluation_error" in getattr(sig, "tags", [])):
-                        eval_errors_count += 1
-                        logger.info(
-                            f"[StrategySynthesis] Candidate '{strat_id}' produced error signal on bar {i} ({sig.rationale}). Disqualifying candidate."
-                        )
-                        return []
-
-                    if not sig or not sig.valid or sig.direction not in ("buy", "sell"):
-                        i += 1
-                        continue
-
-                    entry_bar = candles[i]
-                    base_entry = float(entry_bar.close)
-
-                    # Apply entry friction (spread + slippage)
-                    if sig.direction == "buy":
-                        entry_price = base_entry + (spread_cost / 2.0) + slippage_cost
-                        sl = float(sig.stop_loss) if sig.stop_loss is not None else (entry_price * 0.985)
-                        tp = float(sig.take_profit) if sig.take_profit is not None else (entry_price * 1.030)
-                    else:
-                        entry_price = base_entry - (spread_cost / 2.0) - slippage_cost
-                        sl = float(sig.stop_loss) if sig.stop_loss is not None else (entry_price * 1.015)
-                        tp = float(sig.take_profit) if sig.take_profit is not None else (entry_price * 0.970)
-
-                    # Forward simulation across future bars (max hold 24 bars / 24h)
-                    exit_price = entry_price
-                    bars_held = 0
-                    for f_idx in range(i + 1, min(i + 25, len(candles))):
-                        f_bar = candles[f_idx]
-                        f_high = float(f_bar.high)
-                        f_low = float(f_bar.low)
-                        bars_held += 1
-
-                        if sig.direction == "buy":
-                            if f_low <= sl:
-                                exit_price = sl - slippage_cost  # negative slippage on SL
-                                break
-                            elif f_high >= tp:
-                                exit_price = tp
-                                break
-                        else:  # sell
-                            if f_high >= sl:
-                                exit_price = sl + slippage_cost  # negative slippage on SL
-                                break
-                            elif f_low <= tp:
-                                exit_price = tp
-                                break
-                    else:
-                        # Time-based exit at close of last bar
-                        exit_price = float(candles[min(i + 24, len(candles) - 1)].close)
-
-                    # Calculate net trade return
-                    if sig.direction == "buy":
-                        ret = (exit_price - entry_price) / entry_price
-                    else:
-                        ret = (entry_price - exit_price) / entry_price
-
-                    trade_returns.append(round(ret, 5))
-                    # Skip forward past the holding duration to avoid duplicate positions
-                    i += max(1, bars_held)
-
+                return [round(t.pnl_pct / 100.0, 5) for t in metrics.trades]
         except Exception as e:
-            logger.warning(f"[StrategySynthesis] Historical sandbox simulation error for {symbol}: {e}")
-
-        return trade_returns
+            logger.warning(f"[StrategySynthesis] Historical harness simulation error for {symbol}: {e}")
+            return []
 
     def run_walk_forward_validation(
         self,
@@ -999,26 +897,31 @@ class StrategySynthesisScheduler:
                 f"import math, numpy as np, pandas as pd, datetime, logging, decimal\n\n"
                 f"class {class_name}(EdgeStrategy):\n"
                 f"    strategy_id: str = \"{raw_id}\"\n"
-                f"    applicable_symbols: set = {{\"{symbol}\"}}\n\n"
+                f"    applicable_symbols: set = {{\"{symbol}\"}}\n"
+                f"    compatible_regimes: set = {{\"TREND\", \"STRONG_TREND\", \"RANGE\", \"WEAK_TREND\", \"VOLATILE_CHOP\"}}\n"
+                f"    factor_family: str = \"trend\"  # choose from 'trend', 'momentum', 'reversal', 'breakout', 'volatility'\n\n"
                 f"    def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:\n"
                 f"        super().__init__(settings or {{}}, *args, **kwargs)\n"
                 f"        # Define hyperparameters here\n\n"
                 f"    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:\n"
                 f"        try:\n"
-                f"            # To fetch candle history if needed: candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe='H1', limit=100) (candles support c.high/c.close and c['high'])\n"
-                f"            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction='buy'|'sell'|None, valid=bool, confidence=float, rationale=str, tags=list)\n"
+                f"            candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe='H1', limit=100)\n"
+                f"            # Compute indicators and calculate ATR/structural levels\n"
+                f"            # Return EdgeSignal with directional entry, valid=True, confidence, stop_loss, and take_profit\n"
+                f"            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction='buy'|'sell'|None, valid=bool, confidence=float, stop_loss=float, take_profit=float, factor_family=self.factor_family, rationale=str, tags=list)\n"
                 f"        except Exception as e:\n"
                 f"            return EdgeSignal(strategy_id=self.strategy_id, symbol=symbol, direction=None, valid=False, confidence=0.0, rationale=f\"Calculation error: {{e}}\", tags=[\"error\"])\n"
                 f"```\n\n"
-                f"STRICT SECURITY RULES (Violations trigger AST security rejections):\n"
+                f"STRICT SECURITY & QUANT RULES:\n"
                 f"- ONLY use the allowed imports shown in the skeleton above.\n"
                 f"- DO NOT import any other modules (do NOT import app, core, os, sys, subprocess, requests, edge_engine, trading_system).\n"
                 f"- DO NOT use dynamic getattr(), setattr(), delattr(), eval(), or exec(). Access attributes directly with dot notation (e.g. candle.close) or dict .get().\n"
                 f"- PANDAS COMPATIBILITY: NEVER use .fillna(method='ffill') or .fillna(method='bfill') as the 'method' parameter is removed in pandas 2.1+. Always use .ffill() and .bfill() directly.\n"
                 f"- NUMERICAL STABILITY: Always sanitize NaNs/Infs (e.g. using .ffill(), .bfill(), .fillna(0.0), .replace([np.inf, -np.inf], ...), or min_periods=1 in rolling) before casting to integer (.astype(int)). Never call .astype(int) on Series containing NaNs or Infs.\n"
-                f"- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside class {class_name}. Do not rename the method or define it outside the class.\n"
+                f"- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside class {class_name}.\n"
+                f"- RISK CONTROL: When emitting a trade signal, calculate dynamic ATR-based or structural stop_loss and take_profit (e.g. 1.2-1.5x ATR for SL, 2.4-3.5x ATR for TP). Never leave them unspecified.\n"
                 f"- ERROR RESILIENCE: Wrap indicator calculations inside evaluate() in try-except blocks and return EdgeSignal(..., valid=False, rationale=f'Calculation error: {{e}}', tags=['error']) if an unexpected exception occurs.\n"
-                f"- VARIABLE COMPLETENESS: Every indicator or price variable used in conditions (e.g., donchian_mid, rsi, macd, atr, upper_band) MUST be explicitly defined and assigned locally from 'latest' (e.g. donchian_mid = latest['donchian_mid']) or df before being referenced in if/elif blocks. Never reference undefined variables.\n"
+                f"- VARIABLE COMPLETENESS: Every indicator or price variable used in conditions MUST be explicitly defined and assigned locally before being referenced.\n"
                 f"- TOKEN COMPLETION: Ensure the full class definition and evaluate() method are completely closed and return an EdgeSignal. Never truncate the response.\n"
                 f"- Return pure python code inside ```python ``` blocks only, no extra commentary."
             )
@@ -1175,17 +1078,41 @@ class StrategySynthesisScheduler:
 
         # Walk-Forward Gating before activation
         if self.walk_forward_enabled:
-            wf_res = self.run_walk_forward_validation(strat_cls, symbol, returns=returns)
+            if simulated_returns is not None:
+                wf_res = self.run_walk_forward_validation(strat_cls, symbol, returns=returns)
+            else:
+                from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+                harness = IsolatedStrategyBacktestHarness(
+                    strategy=strat_cls,
+                    symbol=symbol,
+                    settings=self.settings,
+                    fail_fast_on_error=True,
+                )
+                try:
+                    async with get_session() as session:
+                        wf_res = await harness.run_walk_forward(
+                            session=session,
+                            n_folds=4,
+                            is_ratio=0.65,
+                            total_candles=1500,
+                            min_candles=60,
+                            trial_counter=10,
+                        )
+                except Exception as wf_err:
+                    logger.warning(f"[StrategySynthesis] Walk-Forward validation failed for {strategy_id}: {wf_err}")
+                    wf_res = {"passed": False, "reason": str(wf_err)}
+
             if not wf_res.get("passed", False):
                 logger.info(
                     f"[StrategySynthesis] Candidate '{strategy_id}' rejected by Walk-Forward Gating: "
-                    f"OOS Sharpe={wf_res.get('oos_sharpe', 0.0):.2f} (min {self.min_walk_forward_sharpe}), "
-                    f"WFE={wf_res.get('wfe', 0.0):.2f} (min {self.min_walk_forward_efficiency})"
+                    f"OOS Sharpe={wf_res.get('oos_sharpe', wf_res.get('aggregate_oos_sharpe', 0.0)):.2f}, "
+                    f"WFE={wf_res.get('wfe', wf_res.get('overall_wfe', 0.0)):.2f}"
                 )
                 return None
             logger.info(
                 f"[StrategySynthesis] Candidate '{strategy_id}' passed Walk-Forward Gating: "
-                f"OOS Sharpe={wf_res.get('oos_sharpe', 0.0):.2f}, WFE={wf_res.get('wfe', 0.0):.2f}"
+                f"OOS Sharpe={wf_res.get('oos_sharpe', wf_res.get('aggregate_oos_sharpe', 0.0)):.2f}, "
+                f"WFE={wf_res.get('wfe', wf_res.get('overall_wfe', 0.0)):.2f}"
             )
 
         # Persist to disk and verify integrity
