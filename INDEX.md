@@ -1539,7 +1539,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `atomic_writer.py`
   - **Docstring**: Thread-safe atomic YAML configuration writer with ruamel.yaml comment preservation, tempfile sync, and automatic backup rotation.
   - **Classes**: `AtomicConfigWriter`
-    - *Methods*: `_rotate_backups()`, `write()`, `update_in_place()`
+    - *Methods*: `_sanitize_scalars()`, `_sync_dict_to_ruamel()`, `backup()`, `write()`, `update_in_place()`
 
 **File:** `config_manager.py`
   - **Docstring**: Dynamic configuration manager with pub/sub event bus for zero-downtime hot-reloads of risk and execution parameters.
