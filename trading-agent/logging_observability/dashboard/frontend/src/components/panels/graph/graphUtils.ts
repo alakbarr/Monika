@@ -34,14 +34,14 @@ export const getNodeIcon = (id: string) => {
 export const getStatusColor = (status: GraphNodeStatus) => {
   switch (status) {
     case 'done':
-      return '#2D5A27';
+      return 'var(--color-ledger-green)';
     case 'running':
-      return '#C49A45';
+      return 'var(--color-brass)';
     case 'failed':
-      return '#8B261E';
+      return 'var(--color-ledger-red)';
     case 'pending':
     default:
-      return '#6C6558';
+      return 'var(--color-ink-soft)';
   }
 };
 

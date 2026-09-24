@@ -40,7 +40,11 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     srcNode?.status === 'running' ||
     (srcNode?.status === 'done' && dstNode?.status === 'running');
 
-  const strokeColor = isDone ? '#2D5A27' : isRunning ? '#C49A45' : '#6C6558';
+  const strokeColor = isDone
+    ? 'var(--color-ledger-green)'
+    : isRunning
+    ? 'var(--color-brass)'
+    : 'var(--color-ink-soft)';
   const markerId = isDone
     ? 'url(#arrow-done)'
     : isRunning
@@ -49,12 +53,21 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
 
   return (
     <g key={`${fromId}-${toId}`}>
+      {/* Tactile depth underlay */}
+      <path
+        d={pathData}
+        fill="none"
+        stroke="var(--color-rule)"
+        strokeWidth={isRunning ? 4 : 2.5}
+        strokeOpacity={0.2}
+        transform="translate(1, 1)"
+      />
       <path
         d={pathData}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isRunning ? 3 : 1.5}
-        strokeOpacity={isDone ? 0.9 : isRunning ? 1 : 0.5}
+        strokeWidth={isRunning ? 3 : 2}
+        strokeOpacity={isDone ? 1 : isRunning ? 1 : 0.6}
         strokeDasharray={isRunning ? '6 4' : undefined}
         markerEnd={markerId}
       />
