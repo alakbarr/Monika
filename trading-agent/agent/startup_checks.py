@@ -392,6 +392,38 @@ class StartupChecker:
                                 delete(SystemConfig).where(SystemConfig.key.in_(stub_keys))
                             )
                             logger.info(f"  [OK] Cleaned up {len(stub_keys)} legacy blacklisted stub synthesized strategies from SystemConfig")
+
+                        # Pre-boot integrity verification of synthesized strategies
+                        import json
+                        from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+                        synth_rows = (await startup_session.execute(
+                            select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
+                        )).scalars().all()
+                        healed_boot_count = 0
+                        synth_dir = pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
+                        for sr in synth_rows:
+                            if not sr or not sr.value:
+                                continue
+                            try:
+                                sdata = json.loads(sr.value)
+                                scode = sdata.get("python_code", "")
+                                s_id = sdata.get("strategy_id", "")
+                                sanitized = StrategySynthesisScheduler.sanitize_strategy_code(scode)
+                                lint_ok, _ = StrategySynthesisScheduler._lint_check_code(sanitized)
+                                if not lint_ok and s_id:
+                                    dfile = synth_dir / f"{s_id}.py"
+                                    if dfile.exists():
+                                        dcode = dfile.read_text(encoding="utf-8")
+                                        d_sanitized = StrategySynthesisScheduler.sanitize_strategy_code(dcode)
+                                        if StrategySynthesisScheduler._lint_check_code(d_sanitized)[0]:
+                                            sdata["python_code"] = dcode
+                                            sr.value = json.dumps(sdata)
+                                            healed_boot_count += 1
+                            except Exception:
+                                pass
+                        if healed_boot_count > 0:
+                            logger.info(f"  [OK] Pre-boot reconciled {healed_boot_count} synthesized strategies in SystemConfig from disk")
+
                         await startup_session.commit()
                     logger.info("  [OK] Cleaned up temporary specialist biases from previous runs")
                 except Exception as e:
