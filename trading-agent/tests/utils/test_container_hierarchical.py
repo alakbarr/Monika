@@ -38,7 +38,7 @@ def test_service_container_isolate_and_intercept():
     assert root.get("mock_mode") is None
 
 
-def test_cordis_context_alias():
+def test_service_container_context_alias():
     ctx = Context()
     ctx.provide("service_a", {"status": "ok"})
     assert ctx.get("service_a") == {"status": "ok"}
