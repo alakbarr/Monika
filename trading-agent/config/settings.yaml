@@ -728,7 +728,230 @@ llm:
       features:
         tool_calling: false
         json_mode: true
+    ninerouter:
+      enabled: true
+      api_style: openai_compatible
+      base_url: http://localhost:20128/v1
+      timeout_seconds: 180
+      streaming:
+        enabled: true
+        idle_timeout_seconds: 45
+        first_chunk_timeout_seconds: 120
+        safety_timeout_seconds: 600
+      features:
+        tool_calling: true
+        reasoning: true
+        json_schema: true
+        prompt_caching: true
   model_catalog:
+    # ── 9Router Free & Upstream Models ──
+    kr/claude-sonnet-4.5:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+    kr/claude-sonnet-4.5-thinking:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+      default_thinking: high
+    kr/claude-opus-5:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+    kr/claude-opus-5-thinking:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+      default_thinking: high
+    kr/claude-haiku-4.5:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+    kr/glm-5:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    kr/minimax-m2.5:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    kr/deepseek-3.2:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    kr/qwen3-coder-next:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    oc/union-alpha:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    oc/muse-spark-1.2-contributor-free:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    oc/jev-1.13-free:
+      provider: 9router
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+    ocz/deepseek-v4-flash-free:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    ocz/mimo-v2.6-flash-free:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    ocz/ling-3.0-flash-fin-free:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    ocz/nemotron-3-ultra-free:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    if/kimi-k2:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    if/qwen3-coder-plus:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    if/deepseek-v3.2:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    if/deepseek-r1:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      default_thinking: high
+    if/glm-4.7:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    mmf/mimo-auto:
+      provider: 9router
+      context_window: 32768
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    gc/gemini-2.5-flash:
+      provider: 9router
+      context_window: 1048576
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+    gc/gemini-3-flash-preview:
+      provider: 9router
+      context_window: 1048576
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+    af/gpt-oss-120b:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    af/kimi-k2.7-code:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    ag/gemini-3.8-flash-high:
+      provider: 9router
+      context_window: 1048576
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    ag/claude-sonnet-4-6:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    cx/gpt-5.6-sol:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    cx/gpt-5.4-mini:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: low
+    cc/claude-opus-5:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: high
+    gh/claude-sonnet-4.6:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    combo/free-fallback:
+      provider: 9router
+      context_window: 128000
+      supports_tool_calling: true
+      supports_caching: false
+      cost_tier: free
+    combo/smart-code:
+      provider: 9router
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
     jev-latest:
       provider: typesafe
       context_window: 64000
