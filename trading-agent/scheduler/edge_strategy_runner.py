@@ -235,15 +235,53 @@ class EdgeStrategyRunner:
                 if not candidates:
                     continue
 
-                # 4. Per-Symbol Signal De-duplicator & Ensemble Arbiter
+                # 4. Per-Symbol Signal De-duplicator & Quantitative Weighted Conviction Arbiter
                 directions = {c.direction.lower() for c in candidates}
                 if 'buy' in directions and 'sell' in directions:
-                    conflict_ids = [c.strategy_id for c in candidates]
-                    logger.warning(
-                        f"[Ensemble] Conflicting buy & sell signals on {symbol} across strategies {conflict_ids}. "
-                        f"Suppressing all to prevent market churn/whip."
-                    )
-                    continue
+                    # Separate candidate directions
+                    buy_candidates = [c for c in candidates if c.direction.lower() == 'buy']
+                    sell_candidates = [c for c in candidates if c.direction.lower() == 'sell']
+
+                    decay_mon = get_strategy_decay_monitor()
+                    def _get_strat_weight(s: EdgeSignal) -> float:
+                        health = decay_mon.get_health(s.strategy_id)
+                        state_val = getattr(health.state, "value", "healthy").lower()
+                        multiplier = 1.0
+                        if state_val == "incubating":
+                            multiplier = 0.8
+                        elif state_val == "degraded":
+                            multiplier = 0.5
+                        return float(s.confidence or 0.5) * multiplier
+
+                    w_buy = sum(_get_strat_weight(c) for c in buy_candidates)
+                    w_sell = sum(_get_strat_weight(c) for c in sell_candidates)
+                    total_w = w_buy + w_sell
+
+                    # Supermajority conviction threshold (>= 70% dominance and significant net difference)
+                    buy_ratio = w_buy / total_w if total_w > 0 else 0.5
+                    sell_ratio = w_sell / total_w if total_w > 0 else 0.5
+
+                    if buy_ratio >= 0.70 and (w_buy - w_sell) >= 0.35:
+                        candidates = buy_candidates
+                        logger.info(
+                            f"[Ensemble] BUY conviction supermajority ({buy_ratio:.1%}, weight={w_buy:.2f} vs {w_sell:.2f}) "
+                            f"overrode dissenting sell signal(s) on {symbol}."
+                        )
+                    elif sell_ratio >= 0.70 and (w_sell - w_buy) >= 0.35:
+                        candidates = sell_candidates
+                        logger.info(
+                            f"[Ensemble] SELL conviction supermajority ({sell_ratio:.1%}, weight={w_sell:.2f} vs {w_buy:.2f}) "
+                            f"overrode dissenting buy signal(s) on {symbol}."
+                        )
+                    else:
+                        conflict_ids = [c.strategy_id for c in candidates]
+                        logger.warning(
+                            f"[Ensemble] Conflicting buy & sell signals on {symbol} across strategies {conflict_ids} "
+                            f"without supermajority (BUY={buy_ratio:.1%}, SELL={sell_ratio:.1%}). "
+                            f"Suppressing all to prevent market churn/whip."
+                        )
+                        continue
+
 
                 if len(candidates) == 1:
                     chosen_signal = candidates[0]

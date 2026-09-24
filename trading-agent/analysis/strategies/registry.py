@@ -138,29 +138,60 @@ class StrategyRegistry:
                 except Exception as prop_err:
                     logger.debug(f"[StrategyRegistry] Failed loading candidate alpha proposal: {prop_err}")
 
-            # 3. Load registered synthesized strategies with per-instrument quota limit
+            # 3. Load StrategyDecayMonitor state first to evaluate live operational health
+            decay_mon = None
+            try:
+                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                decay_mon = get_strategy_decay_monitor()
+                await decay_mon.load_from_db(session)
+            except Exception as decay_err:
+                logger.debug(f"[StrategyRegistry] Early decay monitor load non-fatal: {decay_err}")
+
+            # 4. Load registered synthesized strategies with per-instrument dynamic health quota limit
             stmt_synths = select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
             rows_synths = await _safe_scalars(stmt_synths)
             loaded_synths_count = 0
             symbol_active_synths: dict[str, int] = {}
 
-            # Sort candidate rows by Sharpe ratio descending so the highest quality alphas take quota priority
+            # Sort candidate rows by dynamic health status and Sharpe ratio descending
             parsed_synths = []
             for r in rows_synths:
                 if not r or not getattr(r, "value", None):
                     continue
                 try:
                     s_data = json.loads(r.value)
-                    parsed_synths.append((float(s_data.get("sharpe_ratio", 0.0) or 0.0), s_data))
+                    s_id = s_data.get("strategy_id", "")
+                    health_status = "HEALTHY"
+                    if decay_mon and s_id:
+                        h = decay_mon.get_health(s_id)
+                        health_status = getattr(h.state, "value", "healthy").upper()
+
+                    # Penalize degraded and ignore disabled from quota priority
+                    health_score = 100.0
+                    if health_status in ("DISABLED", "HALTED", "REJECTED"):
+                        health_score = -1000.0
+                    elif health_status == "DEGRADED":
+                        health_score = -50.0
+                    elif health_status == "INCUBATING":
+                        health_score = 50.0
+
+                    base_sharpe = float(s_data.get("sharpe_ratio", 0.0) or 0.0)
+                    total_rank = health_score + base_sharpe
+                    parsed_synths.append((total_rank, health_status, s_data))
                 except Exception:
                     continue
             parsed_synths.sort(key=lambda x: x[0], reverse=True)
 
-            for _, s_data in parsed_synths:
+            for _, h_stat, s_data in parsed_synths:
                 try:
                     s_id = s_data.get("strategy_id")
                     sym = str(s_data.get("symbol", "")).upper()
                     if not s_id or s_id in cls._registry or s_id in cls._blacklisted_ids:
+                        continue
+
+                    # Skip strategies permanently disabled by decay monitor
+                    if h_stat in ("DISABLED", "HALTED", "REJECTED"):
+                        logger.debug(f"[StrategyRegistry] Skipping {s_id}: decay status is {h_stat}")
                         continue
 
                     if sym and symbol_active_synths.get(sym, 0) >= cls.MAX_SYNTHESIZED_PER_SYMBOL:

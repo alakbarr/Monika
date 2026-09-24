@@ -137,14 +137,25 @@ def validate_alpha(
             base_pnl = t.get("pnl_pct", t.get("pnl", 0.0))
         base_pnl = float(base_pnl or 0.0)
 
-        # Estimate cost or commission
+        # Estimate cost or commission realistically based on asset profile
         comm = getattr(t, "commission", None)
         if comm is None and isinstance(t, dict):
             comm = t.get("commission", 0.0)
         if comm is None:
-            # Fallback estimation for BacktestTrade without commission column
+            comm = getattr(t, "friction_usd", None)
+        if comm is None:
+            sym = getattr(t, "symbol", None) or (t.get("symbol") if isinstance(t, dict) else None)
             lots = float(getattr(t, "executed_lots", getattr(t, "lots", 0.1)) or 0.1)
-            comm = getattr(t, "friction_usd", None) or (5.0 * lots)
+            if sym:
+                from backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+                profile = ASSET_FRICTION_PROFILE.get(str(sym).upper(), {"spread_pips": 1.5, "slippage_pips": 0.5})
+                # Cost per lot in USD: forex pip ~$10, crypto ~$1, metals ~$10-100
+                sym_u = str(sym).upper()
+                pip_val = 1.0 if any(c in sym_u for c in ("BTC", "ETH", "SOL")) else 10.0
+                total_pips = float(profile.get("spread_pips", 1.5)) + float(profile.get("slippage_pips", 0.5))
+                comm = total_pips * pip_val * lots
+            else:
+                comm = 5.0 * lots
         comm = abs(float(comm or 0.0))
 
         # Extra cost penalty under multiplier

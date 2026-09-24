@@ -1148,6 +1148,7 @@ Monika/
         │   └── test_credential_vault.py
         ├── scheduler
         │   ├── test_alpha_discovery_closed_loop.py
+        │   ├── test_alpha_discovery_overhaul.py
         │   ├── test_news_watcher_turn_lease.py
         │   ├── test_scraper_runner.py
         │   ├── test_strategy_synthesis_historical_sandbox.py
