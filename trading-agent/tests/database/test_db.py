@@ -80,3 +80,31 @@ class TestDB:
         await close_db()
         
         mock_engine.dispose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_async_session_local_proxy_callable(self):
+        from database.db import AsyncSessionLocal
+        assert callable(AsyncSessionLocal)
+        assert bool(AsyncSessionLocal) is True
+
+    @pytest.mark.asyncio
+    async def test_async_session_local_remains_callable_after_close_db(self):
+        from database.db import AsyncSessionLocal, close_db
+        with patch('database.db.engine') as mock_engine:
+            mock_engine.dispose = AsyncMock()
+            await close_db()
+            assert callable(AsyncSessionLocal)
+            assert AsyncSessionLocal is not None
+
+    @pytest.mark.asyncio
+    async def test_async_session_local_proxy_forwards_to_mock(self):
+        from database.db import AsyncSessionLocal
+        with patch('database.db.AsyncSessionLocal') as mock_sessionmaker:
+            mock_session = AsyncMock()
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_session
+            mock_sessionmaker.return_value = mock_ctx
+
+            async with AsyncSessionLocal() as session:
+                assert session is mock_session
+
