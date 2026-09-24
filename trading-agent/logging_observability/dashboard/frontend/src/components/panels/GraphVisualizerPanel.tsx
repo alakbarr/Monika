@@ -423,10 +423,10 @@ export const GraphVisualizerPanel: React.FC = () => {
           onMouseUp={handleMouseUp}
           onMouseLeave={() => setIsPanning(false)}
           onWheel={handleWheel}
-          className="win-window console-scanline"
+          className="win-window dag-drafting-canvas"
           style={{
             position: 'relative',
-            background: 'var(--color-console-bg)',
+            background: 'var(--color-paper)',
             border: '2px solid var(--color-rule)',
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-card)',
@@ -435,13 +435,11 @@ export const GraphVisualizerPanel: React.FC = () => {
             userSelect: 'none',
           }}
         >
-          {/* Subtle grid background pattern */}
+          {/* Architectural drafting grid background pattern */}
           <div style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: `
-              radial-gradient(circle, rgba(232, 185, 74, 0.08) 1px, transparent 1px)
-            `,
+            backgroundImage: 'radial-gradient(circle, var(--color-dag-grid) 1.2px, transparent 1.2px)',
             backgroundSize: '24px 24px',
             pointerEvents: 'none',
           }} />
@@ -462,7 +460,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 10 5 L 0 9 z" fill="#2D5A27" />
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ledger-green)" />
               </marker>
               <marker
                 id="arrow-running"
@@ -473,7 +471,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 10 5 L 0 9 z" fill="#C49A45" />
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-brass)" />
               </marker>
               <marker
                 id="arrow-pending"
@@ -484,7 +482,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 10 5 L 0 9 z" fill="#6C6558" />
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-soft)" opacity="0.6" />
               </marker>
             </defs>
 
@@ -496,18 +494,18 @@ export const GraphVisualizerPanel: React.FC = () => {
                 y="60"
                 width="590"
                 height="510"
-                rx="2"
-                fill="var(--color-surface)"
+                rx="4"
+                fill="var(--color-subgraph-bg)"
                 stroke="var(--color-brass)"
-                strokeWidth="1"
-                strokeDasharray="4 4"
+                strokeWidth="1.5"
+                strokeDasharray="6 4"
               />
               <text
                 x="620"
                 y="92"
                 fill="var(--color-brass)"
                 fontSize="12"
-                fontWeight="700"
+                fontWeight="800"
                 letterSpacing="0.08em"
                 fontFamily="var(--font-precision)"
               >
@@ -655,7 +653,7 @@ export const GraphVisualizerPanel: React.FC = () => {
               background: 'var(--color-paper-raised)',
               border: '2px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              boxShadow: '6px 6px 0 var(--color-rule)',
               width: '520px',
               maxWidth: '90vw',
               padding: '20px',

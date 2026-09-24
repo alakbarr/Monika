@@ -32,16 +32,26 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
+      {/* Retro 3D Hard Shadow Rect */}
+      <rect
+        x="3"
+        y="3"
+        width={nodeWidth}
+        height={nodeHeight}
+        rx="3"
+        fill="var(--color-rule)"
+      />
+
       {/* Node Card Background Rect */}
       <rect
         x="0"
         y="0"
         width={nodeWidth}
         height={nodeHeight}
-        rx="2"
-        fill="var(--color-surface-card)"
-        stroke={isSelected ? 'var(--color-brass)' : statusColor}
-        strokeWidth={isSelected ? 2 : 1}
+        rx="3"
+        fill="var(--color-paper-raised)"
+        stroke={isSelected ? 'var(--color-brass)' : 'var(--color-rule)'}
+        strokeWidth={isSelected ? 2.5 : 1.5}
       />
 
       {/* Top Accent Strip */}
@@ -49,79 +59,85 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
         x="0"
         y="0"
         width={nodeWidth}
-        height="3"
-        rx="1"
+        height="4"
+        rx="2"
         fill={statusColor}
       />
 
       {/* Node Header: Icon + Title */}
-      <foreignObject x="12" y="14" width={nodeWidth - 24} height={nodeHeight - 28}>
+      <foreignObject x="10" y="12" width={nodeWidth - 20} height={nodeHeight - 20}>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             height: '100%',
-            color: 'var(--color-text-white)',
+            color: 'var(--color-ink)',
+            fontFamily: 'var(--font-precision)',
           }}
         >
           {/* Title Row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
               <div
                 style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: '6px',
-                  background: 'rgba(255,255,255,0.06)',
+                  width: 24,
+                  height: 24,
+                  borderRadius: '3px',
+                  background: 'var(--color-paper)',
+                  border: '1.5px solid var(--color-rule)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: statusColor,
+                  flexShrink: 0,
                 }}
               >
-                <Icon size={15} />
+                <Icon size={14} />
               </div>
               <span
                 style={{
-                  fontSize: '13px',
-                  fontWeight: 700,
+                  fontSize: '12px',
+                  fontWeight: 800,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  maxWidth: '110px',
+                  color: 'var(--color-ink)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.02em',
                 }}
+                title={node.name}
               >
                 {node.name}
               </span>
             </div>
 
-            {/* Status pill with animated dot */}
+            {/* Status pill with retro pixel LED */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '2px 6px',
-                borderRadius: '10px',
-                background: 'rgba(0,0,0,0.4)',
-                border: `1px solid ${statusColor}44`,
+                padding: '1px 6px',
+                borderRadius: '3px',
+                background: 'var(--color-paper)',
+                border: `1.5px solid ${statusColor}`,
+                flexShrink: 0,
               }}
             >
               <span
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
+                  width: 5,
+                  height: 5,
+                  borderRadius: 1,
                   backgroundColor: statusColor,
                   display: 'inline-block',
-                  boxShadow: node.status === 'running' ? `0 0 6px ${statusColor}` : undefined,
                 }}
               />
               <span
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
+                  fontSize: '9px',
+                  fontWeight: 800,
                   textTransform: 'uppercase',
                   color: statusColor,
                 }}
@@ -132,12 +148,21 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
           </div>
 
           {/* Node Body Chips */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '6px',
+              paddingTop: '6px',
+              borderTop: '1px dashed var(--color-rule)',
+            }}
+          >
             <span
               style={{
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--color-text-secondary)',
+                fontSize: '10.5px',
+                fontFamily: 'var(--font-precision)',
+                color: 'var(--color-ink-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3px',
@@ -149,9 +174,10 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
 
             <span
               style={{
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                color: node.tokens.total > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                fontSize: '10.5px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 700,
+                color: node.tokens.total > 0 ? 'var(--color-win-blue)' : 'var(--color-ink-soft)',
               }}
             >
               {node.tokens.total > 0 ? `${(node.tokens.total / 1000).toFixed(1)}k tok` : '0 tok'}
