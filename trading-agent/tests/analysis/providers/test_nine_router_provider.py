@@ -261,3 +261,34 @@ def test_nine_router_is_alive_and_ensure_running():
         mock_popen.assert_called_once()
 
 
+def test_llm_factory_create_client_instance_ninerouter_alias(mock_settings):
+    """Test LLMFactory._create_client_instance properly links ninerouter provider config with 9router model."""
+    factory = LLMFactory(mock_settings)
+    client = factory._create_client_instance("kr/claude-sonnet-4.5", {"max_tokens": 1024})
+    assert client is not None
+    assert client.provider_name == "9router"
+    assert client.base_url == "http://localhost:20128/v1"
+
+
+@pytest.mark.asyncio
+async def test_startup_checker_ninerouter_ping_finds_model(mock_settings):
+    """Test that StartupChecker._check_api_keys finds model for 'ninerouter' provider without warning."""
+    from agent.startup_checks import StartupChecker
+    checker = StartupChecker(mock_settings)
+
+    mock_client = mock.MagicMock()
+    mock_client.generate = mock.AsyncMock(return_value="pong")
+    mock_client.last_served_model = "kr/claude-sonnet-4.5"
+
+    with mock.patch("analysis.providers.nine_router_provider.NineRouterProvider.ensure_running", return_value=True), \
+         mock.patch("analysis.providers.llm_factory.LLMFactory._create_client_instance", return_value=mock_client), \
+         mock.patch("agent.startup_checks.logger.warning") as mock_warn:
+        ok, warns = await checker._check_api_keys()
+        assert ok is True
+        # Verify no "No model found in catalog for provider 'ninerouter'" warning
+        for call_args in mock_warn.call_args_list:
+            msg = call_args[0][0]
+            assert "No model found in catalog for provider 'ninerouter'" not in msg
+
+
+

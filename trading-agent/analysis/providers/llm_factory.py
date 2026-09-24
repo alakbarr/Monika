@@ -290,7 +290,13 @@ class LLMFactory:
 
     def _create_client_instance(self, model_name: str, role_config: dict, slot_name: Optional[str] = None, task_role: Optional[str] = None) -> Optional[BaseLLMClient]:
         provider_name = self._resolve_provider(model_name)
-        provider_config = self._providers.get(provider_name, {})
+        provider_config = self._providers.get(provider_name)
+        if provider_config is None and provider_name in ("9router", "ninerouter", "nine_router"):
+            for alt in ("ninerouter", "9router", "nine_router"):
+                if alt in self._providers:
+                    provider_config = self._providers[alt]
+                    break
+        provider_config = provider_config or {}
         
         # In a real scenario, we might want to fail gracefully, but for now we assume enabled
         if provider_config and not provider_config.get("enabled", True):

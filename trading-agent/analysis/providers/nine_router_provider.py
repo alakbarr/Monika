@@ -209,7 +209,13 @@ class NineRouterProvider(OpenAIProvider):
         self.raw_model_name = model
 
         # Resolusi Base URL
-        provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get("ninerouter", {})
+        providers_all = (settings or {}).get("llm", {}).get("providers", {})
+        provider_cfg = (
+            providers_all.get("ninerouter")
+            or providers_all.get("9router")
+            or providers_all.get("nine_router")
+            or {}
+        )
         resolved_base_url = (
             base_url
             or os.getenv("NINEROUTER_BASE_URL")
@@ -266,7 +272,13 @@ class NineRouterProvider(OpenAIProvider):
         if cache_key not in self.__class__._client_pool:
             try:
                 from openai import AsyncOpenAI
-                provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("ninerouter", {})
+                providers_all = (self.settings or {}).get("llm", {}).get("providers", {})
+                provider_cfg = (
+                    providers_all.get("ninerouter")
+                    or providers_all.get("9router")
+                    or providers_all.get("nine_router")
+                    or {}
+                )
                 timeout_sec = float(provider_cfg.get("timeout_seconds", 180.0))
                 max_retries = int(provider_cfg.get("max_retries", 3))
 
