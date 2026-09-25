@@ -346,11 +346,11 @@ data_quality:
     M15: 1.0
     H1: 3.0
     H4: 8.0
-    D1: 32.0
+    D1: 48.0
   max_indicator_age_hours:
     H1: 3.0
     H4: 8.0
-    D1: 32.0
+    D1: 48.0
   block_analysis_if_calendar_stale_hours: 14.0
   max_macro_age_days:
     vix: 4.5

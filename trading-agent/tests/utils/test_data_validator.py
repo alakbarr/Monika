@@ -125,16 +125,42 @@ class TestDataValidator:
             assert len(res["issues"]) == 0
 
     @pytest.mark.asyncio
-    async def test_check_data_coherence_d1_stale_over_32h(self):
+    async def test_check_data_coherence_d1_fresh_at_35_9h(self):
+        """Verify D1 data is valid at 35.9h (e.g. Friday 18:52 WIB / 11:52 UTC from Thursday open)."""
         mock_session = AsyncMock()
-        now = datetime(2026, 8, 25, 18, 30, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 9, 25, 11, 52, 18, tzinfo=timezone.utc)  # Friday
         
-        # H4 fresh (2h), D1 stale (35h > 32h)
+        # H4 fresh (2h), D1 fresh under 48h (35.9h)
         timestamps = [
             now - timedelta(hours=2.0),   # H4 OHLCV
             now - timedelta(hours=2.0),   # H4 Ind
-            now - timedelta(hours=35.0),  # D1 OHLCV (stale!)
-            now - timedelta(hours=35.0),  # D1 Ind
+            now - timedelta(hours=35.9),  # D1 OHLCV (35.9h -> valid under 48h!)
+            now - timedelta(hours=35.9),  # D1 Ind
+        ]
+        
+        def side_effect(*args, **kwargs):
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = timestamps.pop(0) if timestamps else None
+            return mock_result
+            
+        mock_session.execute.side_effect = side_effect
+        
+        with patch("utils.clock.now", return_value=now):
+            res = await check_data_coherence(mock_session, "XAUUSD")
+            assert res["coherent"] is True
+            assert len(res["issues"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_check_data_coherence_d1_stale_over_48h(self):
+        mock_session = AsyncMock()
+        now = datetime(2026, 8, 25, 18, 30, 0, tzinfo=timezone.utc)  # Tuesday evening
+        
+        # H4 fresh (2h), D1 stale (52h > 48h)
+        timestamps = [
+            now - timedelta(hours=2.0),   # H4 OHLCV
+            now - timedelta(hours=2.0),   # H4 Ind
+            now - timedelta(hours=52.0),  # D1 OHLCV (stale!)
+            now - timedelta(hours=52.0),  # D1 Ind
         ]
         
         def side_effect(*args, **kwargs):
@@ -147,17 +173,17 @@ class TestDataValidator:
         with patch("utils.clock.now", return_value=now):
             res = await check_data_coherence(mock_session, "XBRUSD")
             assert res["coherent"] is False
-            assert any("D1: OHLCV is 35.0h old" in i for i in res["issues"])
+            assert any("D1: OHLCV is 52.0h old" in i for i in res["issues"])
 
     @pytest.mark.asyncio
     async def test_check_data_coherence_indicator_desync(self):
         mock_session = AsyncMock()
         now = datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
         
-        # H4 OHLCV (1h old), H4 Ind (4h old -> 3h diff > 1h desync)
+        # H4 OHLCV (1h old), H4 Ind (6h old -> 5h diff > 4.5h allowed desync)
         timestamps = [
             now - timedelta(hours=1.0),   # H4 OHLCV
-            now - timedelta(hours=4.0),   # H4 Ind (desync!)
+            now - timedelta(hours=6.0),   # H4 Ind (desync!)
             now - timedelta(hours=12.0),  # D1 OHLCV
             now - timedelta(hours=12.0),  # D1 Ind
         ]

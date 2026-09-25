@@ -256,29 +256,36 @@ class TechnicalIndicatorCalculator:
             "M30": "30min",
             "H1": "1h",
             "H4": "4h",
-            "D1": "1D",
+            "D1": "24h",
         }
         freq = tf_freq_map.get(timeframe.upper())
         if freq and len(df) > 1:
             try:
-                df = df[~df.index.duplicated(keep='first')]
-                resampled = df.resample(freq).asfreq()
-                # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)
-                is_crypto = any(c in symbol.upper() for c in ("BTC", "ETH", "SOL"))
-                if not is_crypto:
-                    idx: Any = pd.DatetimeIndex(resampled.index)
-                    is_weekend = (
-                        (idx.dayofweek == 5) |
-                        ((idx.dayofweek == 6) & (idx.hour < 21)) |
-                        ((idx.dayofweek == 4) & (idx.hour >= 22))
-                    )
-                    resampled = resampled[~is_weekend]
-                resampled['close'] = resampled['close'].ffill()
-                resampled['open'] = resampled['open'].fillna(resampled['close'])
-                resampled['high'] = resampled['high'].fillna(resampled['close'])
-                resampled['low'] = resampled['low'].fillna(resampled['close'])
-                resampled['volume'] = resampled['volume'].fillna(0.0)
-                df = resampled
+                deduped = df[~df.index.duplicated(keep='first')]
+                resampled = deduped.resample(freq, origin='start').asfreq()
+                # If resampling produced NaNs across the series, fallback to raw deduped data
+                if not resampled['close'].isna().all():
+                    # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)
+                    is_crypto = any(c in symbol.upper() for c in ("BTC", "ETH", "SOL"))
+                    if not is_crypto:
+                        idx: Any = pd.DatetimeIndex(resampled.index)
+                        is_weekend = (
+                            (idx.dayofweek == 5) |
+                            ((idx.dayofweek == 6) & (idx.hour < 21)) |
+                            ((idx.dayofweek == 4) & (idx.hour >= 22))
+                        )
+                        resampled = resampled[~is_weekend]
+                    resampled['close'] = resampled['close'].ffill()
+                    resampled['open'] = resampled['open'].fillna(resampled['close'])
+                    resampled['high'] = resampled['high'].fillna(resampled['close'])
+                    resampled['low'] = resampled['low'].fillna(resampled['close'])
+                    resampled['volume'] = resampled['volume'].fillna(0.0)
+                    if not resampled.empty and not resampled['close'].isna().all():
+                        df = resampled
+                    else:
+                        df = deduped
+                else:
+                    df = deduped
             except Exception as e:
                 logger.debug(f"Resampling error for {symbol}/{timeframe} (fallback to raw): {e}")
                 
