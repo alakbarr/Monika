@@ -9,7 +9,7 @@ from typing import Optional, Literal, ClassVar, Any
 
 from dotenv import load_dotenv
 
-from utils.api.http_retry import fetch_with_retry, RateLimitError
+from utils.api.http_retry import fetch_with_retry, RateLimitError, APIStatusError, format_api_error_summary
 from utils.api.streaming import streaming_request, StreamConfig, StreamResult, StreamTimeoutError, StreamSafetyTimeoutError
 from analysis.tools.tool_executor import ToolExecutor
 from database.db import get_session
@@ -98,6 +98,7 @@ GEMINI_MODEL_ALIASES = {
     "gemini-3.5-flash": "gemini-3.5-flash",
     "gemini-3.6-flash": "gemini-3.6-flash",
     "gemini-3.7-flash": "gemini-3.7-flash",
+    "gemini-3.8-flash": "gemini-3.8-flash",
     "gemini-3-pro": "gemini-2.5-pro",
 }
 
@@ -198,15 +199,33 @@ class GeminiProvider(BaseLLMClient):
         return None
 
     @classmethod
+    def _is_transient_error(cls, error: Any) -> bool:
+        """Menentukan apakah error merupakan error sementara (overload / rate limit / 5xx / 429) yang layak di-cooldown & retry/failover."""
+        if isinstance(error, RateLimitError):
+            return True
+        status = getattr(error, "status", None) or getattr(error, "status_code", None)
+        if status in (429, 500, 502, 503, 504, 529):
+            return True
+        err_str = str(getattr(error, "body", "") or error).lower()
+        return any(k in err_str for k in [
+            "429", "503", "502", "504", "529", "rate limit", "resource_exhausted",
+            "unavailable", "high demand", "spikes in demand", "overloaded",
+            "capacity", "temporarily unavailable", "try again later", "service unavailable"
+        ])
+
+    @classmethod
     def _handle_rate_limit_error(cls, api_key: str, error: Exception, method_name: str = "generate") -> None:
         """
-        Klasifikasi rate limit Google Gemini API:
+        Klasifikasi presisi rate limit & transient overload Google Gemini API:
         - RPD (24h): Hanya jika respon eksplisit memuat indikator limit/kuota harian.
+        - Server Overload / High Demand (HTTP 503 / 502 / 504 / 529 / UNAVAILABLE): Cooldown 30s + rotate key.
         - Retry-After header / body delay hint: Cooldown dinamis + 2.0s buffer.
         - RPM / TPM / Burst / Capacity Overload (65s): Default untuk seluruh HTTP 429 / RESOURCE_EXHAUSTED.
         """
         body = getattr(error, "body", "") or str(error)
         body_lower = body.lower()
+        status = getattr(error, "status", None) or getattr(error, "status_code", None)
+
         is_rpd = any(k in body_lower for k in [
             "requests per day", "per day", "rpd", "daily quota", "daily limit",
             "generatecontent requests per day", "exceeded your daily"
@@ -215,6 +234,11 @@ class GeminiProvider(BaseLLMClient):
             cls._key_cooldowns[api_key] = time.time() + 86400
             logger.error(f"Gemini key hit RPD quota in {method_name} ({api_key[:8]}...). Cooldown 24h.")
             return
+
+        is_overload = status in (500, 502, 503, 504, 529) or any(k in body_lower for k in [
+            "503", "502", "504", "529", "unavailable", "high demand", "spikes in demand",
+            "overloaded", "service unavailable", "temporarily unavailable", "capacity"
+        ])
 
         retry_after = getattr(error, "retry_after", None)
         if retry_after is not None and retry_after > 0:
@@ -225,12 +249,25 @@ class GeminiProvider(BaseLLMClient):
                 try:
                     cooldown_sec = float(m.group(1)) + 2.0
                 except (ValueError, TypeError):
-                    cooldown_sec = 65.0
+                    cooldown_sec = 30.0 if is_overload else 65.0
+            elif is_overload:
+                cooldown_sec = 30.0
             else:
                 cooldown_sec = 65.0
 
         cls._key_cooldowns[api_key] = time.time() + cooldown_sec
-        logger.warning(f"Gemini key hit RPM/TPM limit or transient overload in {method_name} ({api_key[:8]}...). Cooldown {cooldown_sec:.1f}s.")
+
+        clean_detail = format_api_error_summary(status or (503 if is_overload else 429), body)
+        if is_overload:
+            logger.warning(
+                f"Gemini key ({api_key[:8]}...) hit transient overload/high demand in {method_name} "
+                f"({clean_detail}). Cooldown {cooldown_sec:.1f}s, attempting next key/failover."
+            )
+        else:
+            logger.warning(
+                f"Gemini key ({api_key[:8]}...) hit RPM/TPM limit in {method_name} "
+                f"({clean_detail}). Cooldown {cooldown_sec:.1f}s."
+            )
 
     def _build_stream_config(self) -> StreamConfig:
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {})
@@ -459,7 +496,11 @@ class GeminiProvider(BaseLLMClient):
                 logger.warning(f"Gemini generate streaming timeout on {self.model}: {e}")
                 raise
             except Exception as e:
-                logger.warning(f"Gemini generate attempt {attempt+1} failed with key ({api_key[:8]}...): {e}")
+                if self._is_transient_error(e):
+                    self._handle_rate_limit_error(api_key, e, "generate")
+                    continue
+                clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
+                logger.warning(f"Gemini generate attempt {attempt+1} failed with key ({api_key[:8]}...): {clean_msg}")
         
         return None
 
@@ -716,7 +757,11 @@ class GeminiProvider(BaseLLMClient):
                 raise
             except Exception as e:
                 last_req_err = e
-                logger.warning(f"Gemini run_tool_agent attempt {attempt+1} failed with key ({api_key[:8]}...): {e}")
+                if self._is_transient_error(e):
+                    self._handle_rate_limit_error(api_key, e, "run_tool_agent")
+                    continue
+                clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
+                logger.warning(f"Gemini run_tool_agent attempt {attempt+1} failed with key ({api_key[:8]}...): {clean_msg}")
         
         if use_streaming:
             if stream_res is None:
@@ -820,7 +865,8 @@ class GeminiProvider(BaseLLMClient):
             try:
                 response = await self.run_tool_agent(messages, tools, system_prompt)
             except Exception as e:
-                return {"reply": f"API error: {e}", "success": False, "error": str(e)}
+                clean_err = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
+                return {"reply": f"API error: {clean_err}", "success": False, "error": clean_err}
 
             if getattr(response, "is_paid", False):
                 any_turn_paid = True

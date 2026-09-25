@@ -316,7 +316,7 @@ async def streaming_request(
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 429:
-                from utils.api.http_retry import RateLimitError
+                from utils.api.http_retry import RateLimitError, format_api_error_summary
                 body = await response.text()
                 retry_after = None
                 raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")
@@ -325,15 +325,29 @@ async def streaming_request(
                         retry_after = float(raw_ra)
                     except (ValueError, TypeError):
                         pass
+                clean_msg = format_api_error_summary(429, body, clean_url)
                 raise RateLimitError(
-                    f"HTTP 429 on {clean_url}", body=body,
+                    clean_msg, body=body,
                     retry_after=retry_after, status=429
                 )
 
             if response.status != 200:
+                from utils.api.http_retry import APIStatusError, format_api_error_summary
                 body = await response.text()
-                raise Exception(
-                    f"HTTP {response.status} for {clean_url}. Body: {body[:500]}"
+                retry_after = None
+                raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")
+                if raw_ra:
+                    try:
+                        retry_after = float(raw_ra)
+                    except (ValueError, TypeError):
+                        pass
+                clean_msg = format_api_error_summary(response.status, body, clean_url)
+                raise APIStatusError(
+                    status=response.status,
+                    message=clean_msg,
+                    body=body,
+                    retry_after=retry_after,
+                    url=clean_url
                 )
 
             return await consume_sse_stream(
