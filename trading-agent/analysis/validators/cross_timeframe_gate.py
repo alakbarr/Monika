@@ -76,9 +76,11 @@ class CrossTimeframeConfirmationGate:
         2. get_structure_breaks_{tf} (BOS, CHoCH)
         3. get_price_history_{tf} (close vs EMA or multi-bar momentum)
         """
-        # 1. Technical Indicators
+        # 1. Technical Indicators (Fix 6.6: Do not fallback to H4 for H1)
         tech_key = f"get_technical_indicators_{tf}"
-        tech = data_bundle.get(tech_key) or data_bundle.get("get_technical_indicators")
+        tech = data_bundle.get(tech_key)
+        if tech is None and tf == "H4":
+            tech = data_bundle.get("get_technical_indicators")
         if isinstance(tech, dict):
             # Check explicit trend field
             trend = str(tech.get("trend") or "").lower()
@@ -116,7 +118,9 @@ class CrossTimeframeConfirmationGate:
 
         # 2. Structure Breaks (SMC BOS / CHoCH)
         struct_key = f"get_structure_breaks_{tf}"
-        struct = data_bundle.get(struct_key) or data_bundle.get("get_structure_breaks")
+        struct = data_bundle.get(struct_key)
+        if struct is None and tf == "H4":
+            struct = data_bundle.get("get_structure_breaks")
         if isinstance(struct, dict):
             breaks = struct.get("breaks") or struct.get("structure_breaks") or []
             if isinstance(breaks, list) and breaks:

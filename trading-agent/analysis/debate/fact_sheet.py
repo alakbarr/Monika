@@ -58,7 +58,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Check FVG proximity
     nearest_fvg = "NONE"
     fvg_distance = float('inf')
-    if entry_price and atr > 0:
+    if entry_price:
         fvgs = (await session.execute(
             select(FVGZone)
             .where(FVGZone.symbol == analysis.symbol)
@@ -78,7 +78,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Check OB proximity
     nearest_ob = "NONE"
     ob_distance = float('inf')
-    if entry_price and atr > 0:
+    if entry_price:
         obs = (await session.execute(
             select(OrderBlock)
             .where(OrderBlock.symbol == analysis.symbol)
@@ -140,6 +140,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             paper_trades = (await session.execute(
                 select(PaperTradeRecord)
                 .where(PaperTradeRecord.symbol == analysis.symbol)
+                .where(PaperTradeRecord.status == 'closed')
             )).scalars().all()
             total_trades = len(paper_trades)
             if total_trades > 0:

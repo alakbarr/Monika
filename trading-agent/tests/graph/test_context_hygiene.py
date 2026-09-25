@@ -32,7 +32,7 @@ def test_prune_after_fundamental_cleans_raw_conversations():
     assert fund["macro_bias"] == "bullish"
     assert fund["conviction"] == 0.85
 
-    # Pruned verbose fields
+    # Pruned verbose fields (tombstoned for merge_dicts reducer or popped)
     for verbose_key in [
         "raw_conversation",
         "raw_tool_observations",
@@ -42,7 +42,7 @@ def test_prune_after_fundamental_cleans_raw_conversations():
         "raw_llm_response",
         "unfiltered_headlines",
     ]:
-        assert verbose_key not in fund
+        assert verbose_key not in fund or fund[verbose_key] == "_DELETED_"
 
 
 def test_prune_after_debate_cleans_transcripts_and_heavy_payloads():
@@ -94,17 +94,17 @@ def test_prune_after_debate_cleans_transcripts_and_heavy_payloads():
     assert aa["confidence"] == 0.8
     assert rds["approved_lot"] == 0.5
 
-    # Dialogue turns pruned
+    # Dialogue turns pruned (tombstoned for merge_dicts reducer or popped)
     for key in ["raw_bull_text", "raw_bear_text", "raw_judge_text", "intermediate_dialogue", "transcript", "dialogue_history"]:
-        assert key not in ds
+        assert key not in ds or ds[key] == "_DELETED_"
 
     # Heavy asset analysis payloads pruned
     for heavy in ["raw_candles", "raw_order_flow", "chart_svg", "raw_screener_output", "raw_tool_history", "intermediate_reasoning"]:
-        assert heavy not in aa
+        assert heavy not in aa or aa[heavy] == "_DELETED_"
 
     # Risk dialogue turns pruned
     for key in ["raw_conservative_text", "raw_aggressive_text", "raw_neutral_text", "intermediate_dialogue"]:
-        assert key not in rds
+        assert key not in rds or rds[key] == "_DELETED_"
 
 
 def test_prune_before_execution_strips_heavy_data_from_trades():

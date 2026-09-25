@@ -508,8 +508,10 @@ async def calculate_confluence(
                 c_bias = b_data.get("currency_bias", {})
                 
                 # Extrapolate for symbol
-                base = symbol[:3]
-                quote = symbol[3:6]
+                import re as _re
+                clean_sym = _re.sub(r'[^A-Z]', '', symbol.upper())
+                base = clean_sym[:3]
+                quote = clean_sym[3:6]
                 base_bias = str(c_bias.get(base, '')).lower()
                 if not base_bias and base in ('XTI', 'XBR'):
                     base_bias = str(c_bias.get('OIL', '')).lower()

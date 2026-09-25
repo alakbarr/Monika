@@ -63,11 +63,11 @@ def _classify_volatility_regime(adr_short: float, adr_baseline):
 
 def _band_scale_factor(vol_regime: str) -> dict:
     table = {
-        'expanding_fast':   {'tp_min': 1.00, 'tp_max': 1.05, 'sl_max': 1.20},
-        'expanding':        {'tp_min': 1.00, 'tp_max': 1.03, 'sl_max': 1.10},
-        'normal':           {'tp_min': 1.00, 'tp_max': 1.00, 'sl_max': 1.00},
-        'contracting':      {'tp_min': 0.92, 'tp_max': 0.92, 'sl_max': 0.88},
-        'contracting_fast': {'tp_min': 0.85, 'tp_max': 0.85, 'sl_max': 0.75},
+        'expanding_fast':   {'tp_min': 1.00, 'tp_max': 1.05, 'sl_min': 1.15, 'sl_max': 1.20},
+        'expanding':        {'tp_min': 1.00, 'tp_max': 1.03, 'sl_min': 1.05, 'sl_max': 1.10},
+        'normal':           {'tp_min': 1.00, 'tp_max': 1.00, 'sl_min': 1.00, 'sl_max': 1.00},
+        'contracting':      {'tp_min': 0.92, 'tp_max': 0.92, 'sl_min': 0.90, 'sl_max': 0.88},
+        'contracting_fast': {'tp_min': 0.85, 'tp_max': 0.85, 'sl_min': 0.80, 'sl_max': 0.75},
     }
     return table.get(vol_regime, table['normal'])
 
@@ -121,6 +121,7 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
 
     tp_min_pct = float(risk_cfg.get('intraday_tp_min_adr_pct', 0.5)) * scale['tp_min']
     tp_max_pct = float(risk_cfg.get('intraday_tp_max_adr_pct', 0.8)) * scale['tp_max']
+    sl_min_pct = float(risk_cfg.get('intraday_min_sl_adr_pct', 0.10)) * scale.get('sl_min', 1.0)
     sl_max_pct = float(risk_cfg.get('intraday_max_sl_adr_pct', 0.35)) * scale['sl_max']
     tolerance = float(risk_cfg.get('intraday_adr_band_tolerance_pct', 0.1))
 
@@ -159,6 +160,7 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
 
     target_tp_min = effective_range * tp_min_pct
     target_tp_max = max(target_tp_min * 1.05, effective_range * tp_max_pct)
+    target_sl_min = effective_range * sl_min_pct
     target_sl_max = effective_range * sl_max_pct
 
     if room_remaining_pct < 0.15:
@@ -178,7 +180,8 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
         'room_remaining_pct': round(room_remaining_pct, 4),
         'move_from_open_up': round(move_from_open_up, 6), 'move_from_open_down': round(move_from_open_down, 6),
         'target_tp_min_distance': round(target_tp_min, 6), 'target_tp_max_distance': round(target_tp_max, 6),
-        'target_sl_max_distance': round(target_sl_max, 6), 'band_tolerance_pct': tolerance,
+        'target_sl_min_distance': round(target_sl_min, 6), 'target_sl_max_distance': round(target_sl_max, 6),
+        'band_tolerance_pct': tolerance,
         'session_recommendation': session_recommendation, 'entry_allowed': entry_allowed,
         'timesfm_range': round(tfm_range, 6) if tfm_range is not None else None,
         'timesfm_vol_ratio': round(tfm_ratio, 3) if tfm_ratio is not None else None,

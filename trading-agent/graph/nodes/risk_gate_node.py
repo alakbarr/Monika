@@ -96,11 +96,13 @@ Consider:
 1. Correlation between assets
 2. Overall portfolio risk
 3. Macro conditions and Operator directives (e.g. avoid_trade, favor_buy/sell)
+4. Prefer reducing position size via "size_adjustments" (multiplier 0.1-1.0, e.g. 0.5) over completely dropping a trade when setups are valid but moderately correlated.
 
 Respond in JSON:
 {{
   "recommendation": "execute_all" or "reduce",
   "keep": ["SYMBOL1", "SYMBOL2"],
+  "size_adjustments": {{"SYMBOL1": 0.5}},
   "reasoning": "brief explanation"
 }}
 """
@@ -182,6 +184,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
             decay_mon = get_strategy_decay_monitor()
 
             for sym, (r, is_actionable_originally) in candidate_map.items():
+                # Fix 4.11: Skip duplicate arbitration if already arbitrated by EdgeStrategyRunner
+                if r.get("arbitrated_by"):
+                    logger.info(f"[RiskGateNode] {sym} already arbitrated by {r.get('arbitrated_by')}, skipping duplicate arbitration.")
+                    if r.get("decision") in ("buy", "sell"):
+                        filtered_actionable.append((sym, r))
+                    else:
+                        if is_actionable_originally:
+                            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"previously_arbitrated: {r.get('decision')}"]})
+                    continue
+
                 try:
                     regime_dict = await classify_market_regime(session, sym, scheduler.settings)
                 except Exception:
@@ -215,6 +227,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             if not decay_mon.is_live_ready(strat_id):
                                 active_quant_signal.meta = dict(getattr(active_quant_signal, "meta", {}))
                                 active_quant_signal.meta["is_incubating"] = True
+                                if not is_actionable_originally:
+                                    active_quant_signal = None
                 except Exception as q_err:
                     logger.debug(f"[RiskGateNode] Quant signal evaluation for {sym} non-fatal: {q_err}")
 
@@ -340,73 +354,162 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     except Exception as e:
         logger.debug(f'Correlation filter failed (non-fatal): {e}')
 
-        # Determine if we should synthesize or just keep them
-        if len(actionable) >= 3:
-            try:
-                from database.db import get_session
-                async with get_session() as session:
-                    portfolio_summary = await _ai_portfolio_synthesis(
-                        actionable, session, scheduler.settings,
-                        market_regime=state.get('market_regime', 'normal'),
-                        user_market_intel=state.get('user_market_intel'),
-                    )
-                if portfolio_summary.get('recommendation') == 'reduce':
-                    size_adj = portfolio_summary.get('size_adjustments', {})
-                    keep_symbols = portfolio_summary.get('keep', [sym for sym, _ in actionable])
+    # Step 7a.1: AI Portfolio Synthesis (if >= 3 trades proposed)
+    if len(actionable) >= 3:
+        try:
+            from database.db import get_session
+            async with get_session() as session:
+                portfolio_summary = await _ai_portfolio_synthesis(
+                    actionable, session, scheduler.settings,
+                    market_regime=state.get('market_regime', 'normal'),
+                    user_market_intel=state.get('user_market_intel'),
+                )
+            if portfolio_summary.get('recommendation') == 'reduce':
+                size_adj = portfolio_summary.get('size_adjustments', {})
+                keep_symbols = portfolio_summary.get('keep', [sym for sym, _ in actionable])
 
-                    if size_adj:
-                        from database.db import get_session as _gs_adj
-                        from database.models import AssetAnalysis as _AA
-                        async with _gs_adj() as adj_session:
-                            for sym, r in actionable:
-                                if sym in size_adj and sym in keep_symbols:
-                                    try:
-                                        mult = max(0.1, min(1.0, float(size_adj[sym])))  # clamp defensively
-                                    except (TypeError, ValueError):
-                                        continue
-                                    ana = await adj_session.get(_AA, r['analysis_id'])
-                                    if ana:
-                                        new_mult = round((ana.risk_multiplier or 1.0) * mult, 3)
-                                        ana.risk_multiplier = new_mult
-                                        r['risk_multiplier'] = new_mult
-                                        logger.info(f'[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (persisted)')
-                            await adj_session.commit()
-                    
-                    # Log removed trades as paper what-ifs
-                    removed_trades = [(sym, r) for sym, r in actionable if sym not in keep_symbols]
-                    if removed_trades:
-                        for sym, r in removed_trades:
-                            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": ["portfolio_synthesis: heat reduced"]})
+                if size_adj:
+                    from database.db import get_session as _gs_adj
+                    from database.models import AssetAnalysis as _AA
+                    async with _gs_adj() as adj_session:
+                        for sym, r in actionable:
+                            if sym in size_adj and sym in keep_symbols:
+                                try:
+                                    mult = max(0.1, min(1.0, float(size_adj[sym])))  # clamp defensively
+                                except (TypeError, ValueError):
+                                    continue
+                                ana = await adj_session.get(_AA, r['analysis_id'])
+                                if ana:
+                                    new_mult = round((ana.risk_multiplier or 1.0) * mult, 3)
+                                    ana.risk_multiplier = new_mult
+                                    r['risk_multiplier'] = new_mult
+                                    logger.info(f'[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (persisted)')
+                        await adj_session.commit()
+                
+                # Log removed trades as paper what-ifs
+                removed_trades = [(sym, r) for sym, r in actionable if sym not in keep_symbols]
+                if removed_trades:
+                    for sym, r in removed_trades:
+                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": ["portfolio_synthesis: heat reduced"]})
+                    try:
+                        from analysis.memory.decision_log import DecisionLogger
+                        from database.models import AssetAnalysis
+                        async with get_session() as session:
+                            for sym, r in removed_trades:
+                                ana = await session.get(AssetAnalysis, r["analysis_id"])
+                                ctx_id = ana.context_snapshot_id if ana else None
+                                cds = ana.ssvp_cds_score_at_analysis if ana else None
+                                
+                                await DecisionLogger.log_paper_whatif(
+                                    session,
+                                    analysis_id=r["analysis_id"],
+                                    symbol=sym,
+                                    decision=r.get("decision", "wait"),
+                                    confidence=r.get("confidence", 0),
+                                    confluence_score=None,
+                                    rationale="Portfolio synthesis reduced trade.",
+                                    reason="portfolio_synthesis_rejected",
+                                    context_snapshot_id=ctx_id,
+                                    ssvp_cds_score=cds
+                                )
+                    except Exception as e:
+                        logger.error(f"Failed to log whatif for removed trades: {e}")
+
+                actionable = [(sym, r) for sym, r in actionable if sym in keep_symbols]
+                logger.info(f'AI portfolio synthesis reduced trades to: {[s for s,_ in actionable]}')
+        except Exception as e:
+            logger.debug(f'AI portfolio synthesis failed (non-fatal): {e}')
+
+    # Step 7a.2: Institutional Risk Gate Evaluation (22 Institutional Checks)
+    if actionable:
+        try:
+            from risk.risk_gate import RiskGate
+            from risk.trade_proposal import TradeProposal
+            from database.models import AssetAnalysis
+            from database.db import get_session as _gs_rg
+
+            risk_gate = getattr(scheduler, "risk_gate", None) or RiskGate(
+                scheduler.settings, mt5_client=getattr(scheduler, "mt5", None)
+            )
+            gate_approved = []
+
+            equity = None
+            if hasattr(scheduler, "mt5") and scheduler.mt5:
+                try:
+                    acc = await scheduler.mt5.get_account_info()
+                    if isinstance(acc, dict):
+                        equity = float(acc.get("equity", 10000.0))
+                except Exception:
+                    equity = 10000.0
+
+            async with _gs_rg() as rg_session:
+                for sym, r in actionable:
+                    analysis_id = r.get("analysis_id")
+                    ana = await rg_session.get(AssetAnalysis, analysis_id) if analysis_id else None
+
+                    entry_price = float(r.get("entry_price") or (getattr(ana, "entry_price", 0.0) if ana else 0.0) or 0.0)
+                    if entry_price == 0.0 and ana and ana.entry_zone:
                         try:
-                            from analysis.memory.decision_log import DecisionLogger
-                            from database.models import AssetAnalysis
-                            async with get_session() as session:
-                                for sym, r in removed_trades:
-                                    ana = await session.get(AssetAnalysis, r["analysis_id"])
-                                    ctx_id = ana.context_snapshot_id if ana else None
-                                    cds = ana.ssvp_cds_score_at_analysis if ana else None
-                                    
-                                    await DecisionLogger.log_paper_whatif(
-                                        session,
-                                        analysis_id=r["analysis_id"],
-                                        symbol=sym,
-                                        decision=r.get("decision", "wait"),
-                                        confidence=r.get("confidence", 0),
-                                        confluence_score=None,
-                                        rationale="Portfolio synthesis reduced trade.",
-                                        reason="portfolio_synthesis_rejected",
-                                        context_snapshot_id=ctx_id,
-                                        ssvp_cds_score=cds
-                                    )
-                        except Exception as e:
-                            logger.error(f"Failed to log whatif for removed trades: {e}")
+                            ez = json.loads(ana.entry_zone) if isinstance(ana.entry_zone, str) else ana.entry_zone
+                            entry_price = float(ez.get("price", 0.0))
+                        except Exception:
+                            pass
 
-                    actionable = [(sym, r) for sym, r in actionable if sym in keep_symbols]
-                    logger.info(f'AI portfolio synthesis reduced trades to: {[s for s,_ in actionable]}')
-            except Exception as e:
-                logger.debug(f'AI portfolio synthesis failed (non-fatal): {e}')
+                    sl = float(r.get("stop_loss") or (ana.stop_loss if ana else 0.0) or 0.0)
+                    tp = float(r.get("take_profit") or (ana.take_profit if ana else 0.0) or 0.0)
+                    conf = float(r.get("confidence") or (ana.confidence if ana else 50.0) or 50.0)
+                    dec = str(r.get("decision") or (ana.decision if ana else "WAIT")).upper()
 
-        # Deterministic Trade Pre-Commit Gate
+                    try:
+                        proposal = TradeProposal.from_analysis(
+                            symbol=sym,
+                            decision=dec,
+                            entry_price=entry_price,
+                            stop_loss=sl,
+                            take_profit=tp,
+                            lot_size=float(r.get("lot_size", 0.01) or 0.01),
+                            confluence_score=conf,
+                            reasoning_text=ana.rationale if ana else "",
+                            provenance_verified=True,
+                            account_equity=equity,
+                        )
+                        if ana is not None:
+                            setattr(proposal, "analysis", ana)
+                        verdict = await risk_gate.evaluate_proposal(rg_session, proposal, account_equity=equity)
+                        if verdict.approved:
+                            gate_approved.append((sym, r))
+                        else:
+                            reasons = verdict.rejection_reasons or verdict.checks_failed or ["risk_gate_rejected"]
+                            logger.warning(f"[RiskGate] Suppressed {sym}: {reasons}")
+                            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"risk_gate: {x}" for x in reasons]})
+                            try:
+                                from analysis.memory.decision_log import DecisionLogger
+                                ctx_id = ana.context_snapshot_id if ana else None
+                                cds = ana.ssvp_cds_score_at_analysis if ana else None
+                                await DecisionLogger.log_paper_whatif(
+                                    rg_session,
+                                    analysis_id=r["analysis_id"],
+                                    symbol=sym,
+                                    decision=r.get("decision", "wait"),
+                                    confidence=r.get("confidence", 0),
+                                    confluence_score=None,
+                                    rationale=f"RiskGate blocked: {'; '.join(reasons)}",
+                                    reason="risk_gate_rejected",
+                                    context_snapshot_id=ctx_id,
+                                    ssvp_cds_score=cds
+                                )
+                            except Exception as whatif_err:
+                                logger.debug(f"RiskGate whatif log error: {whatif_err}")
+                    except Exception as prop_err:
+                        logger.warning(f"[RiskGate] Proposal error for {sym}: {prop_err}")
+                        gate_approved.append((sym, r))
+
+            actionable = gate_approved
+        except Exception as e:
+            logger.debug(f"RiskGate evaluation non-fatal error: {e}")
+
+    # Step 7a.3: Deterministic Trade Pre-Commit Gate
+    if actionable:
         try:
             from analysis.validators.precommit_gate import TradePreCommitGate
             precommit_gate = TradePreCommitGate(scheduler.settings)
@@ -445,9 +548,10 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
             actionable = precommit_approved
         except Exception as e:
             logger.debug(f"TradePreCommitGate check non-fatal error: {e}")
-                
-        summary["portfolio_synthesis_approved"] = [sym for sym, r in actionable]
-        
+            
+    summary["portfolio_synthesis_approved"] = [sym for sym, r in actionable]
+
+    if actionable:
         try:
             from utils.infra.notifier import AgentNotifier
             notifier = AgentNotifier()
@@ -483,12 +587,13 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
         logger.info("[Step 7b] No actionable buy/sell decisions this cycle.")
         summary["execution"] = {"status": "no_actionable_decisions"}
 
-    # Phase 3: Check for negotiable rejections for bidirectional re-planning
+    # Phase 3: Check for negotiable rejections for bidirectional re-planning (Fix 4.9)
     is_negotiable = False
     rejection_feedback = None
+    negotiable_items = []
     current_refinement = state.get("refinement_count", 0)
 
-    if not actionable and rejected_candidates and current_refinement < 2:
+    if rejected_candidates and current_refinement < 2:
         from graph.nodes.plan_refinement_node import _is_reason_negotiable
         negotiable_items = [
             item for item in rejected_candidates
@@ -499,14 +604,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
             rejection_feedback = {"rejected_items": negotiable_items}
             logger.info(
                 f"[RiskGateNode] Detected {len(negotiable_items)} negotiable rejections. "
-                f"Routing to plan_refinement_node (iteration {current_refinement + 1}/2)."
+                f"Iteration {current_refinement + 1}/2."
             )
-            summary["execution"] = {"status": "routing_to_plan_refinement", "rejected_count": len(negotiable_items)}
+            if not actionable:
+                summary["execution"] = {"status": "routing_to_plan_refinement", "rejected_count": len(negotiable_items)}
 
     return {
         "summary": summary,
         "actionable_trades": actionable,
         "approved_trades": actionable,
-        "is_negotiable_rejection": is_negotiable,
+        "is_negotiable_rejection": is_negotiable and not actionable,
+        "negotiable_rejections": negotiable_items,
         "rejection_feedback": rejection_feedback,
     }

@@ -37,7 +37,7 @@ USD_DIRECTION_IMPLICATIONS: dict[str, dict[str, str]] = {
 SYMBOL_CURRENCY_MAP = {
     'EURUSD': {'base': 'EUR', 'quote': 'USD', 'inverted': False},
     'GBPUSD': {'base': 'GBP', 'quote': 'USD', 'inverted': False},
-    'USDJPY': {'base': 'USD', 'quote': 'JPY', 'inverted': True},
+    'USDJPY': {'base': 'USD', 'quote': 'JPY', 'inverted': False},
     'AUDUSD': {'base': 'AUD', 'quote': 'USD', 'inverted': False},
     'XAUUSD': {'base': 'XAU', 'quote': 'USD', 'inverted': False},
     'XTIUSD': {'base': 'XTI', 'quote': 'USD', 'inverted': False},

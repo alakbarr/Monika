@@ -132,6 +132,7 @@ class RiskGate:
         self.max_concurrent:          int   = risk_cfg.get("max_concurrent_positions", 5)
         self.correlation_limit:       int   = risk_cfg.get("correlation_limit", 3)
         self.news_window_minutes:     int   = risk_cfg.get("news_window_minutes", 15)
+        self.max_risk_pct:            float = float(risk_cfg.get("max_risk_per_trade_percent") or risk_cfg.get("risk_per_trade_pct") or 1.0)
         self._mt5 = mt5_client
         self.flash_crash_detector = flash_crash_detector
         from risk.correlation_matrix import DynamicCorrelationMatrix
@@ -257,7 +258,7 @@ class RiskGate:
             ("sizing_valid", self._check_sizing_valid(sizing)),
             ("lot_size", self._check_lot_size(sizing)),
             ("daily_drawdown", self._check_daily_drawdown(session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest)),
-            ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest)),
+            ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=is_paper)),
             ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions)),
             ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group)),
             ("portfolio_heat", self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions)),
@@ -274,7 +275,7 @@ class RiskGate:
         ]
         
         if analysis is not None:
-            checks.append(("analysis_quality_scores", self._check_analysis_quality_scores(analysis)))
+            checks.append(("analysis_quality_scores", self._check_analysis_quality_scores(analysis, session=session)))
             checks.append(("strategy_factor_exposure", self._check_strategy_factor_exposure(session, analysis, simulated_positions=simulated_positions)))
             
         for name, coro in checks:
@@ -436,6 +437,7 @@ class RiskGate:
             direction=proposal.direction.lower(),
             sizing=sizing,
             account_equity=account_equity or proposal.account_equity,
+            analysis=getattr(proposal, "analysis", None),
             as_of=as_of,
             is_backtest=is_backtest,
             is_paper=is_paper,
@@ -519,7 +521,7 @@ class RiskGate:
             return False, f"Symbol {symbol} is in cooldown after Flash Crash circuit breaker trigger."
         return True, "flash_crash_not_active"
 
-    async def _check_analysis_quality_scores(self, analysis: 'AssetAnalysis') -> tuple[bool, str]:
+    async def _check_analysis_quality_scores(self, analysis: 'AssetAnalysis', session: Optional[AsyncSession] = None) -> tuple[bool, str]:
         """Validate that analysis has required quality scores before execution."""
         if analysis is None:
             return (False, 'No analysis object provided')
@@ -545,12 +547,22 @@ class RiskGate:
                 f'Event fully priced in — high sell-the-news reversal risk.')
         
         min_confluence = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
+        if session and getattr(analysis, 'symbol', None):
+            try:
+                from analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+                policy = AdaptiveRiskPolicy(self.settings)
+                eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
+                min_confluence = eff_thresh
+                logger.debug(f"[{analysis.symbol}] RiskGate adaptive threshold: {eff_thresh} ({reason})")
+            except Exception as e:
+                logger.debug(f"AdaptiveRiskPolicy lookup in RiskGate non-fatal: {e}")
+
         if analysis.confluence_score < min_confluence:
             return (False,
                 f'confluence_score={analysis.confluence_score} < {min_confluence} '
-                f'(auto_execute_min_confluence threshold).')
+                f'(adaptive policy threshold).')
         
-        return (True, f'quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score})')
+        return (True, f'quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score}, threshold={min_confluence})')
 
     async def _check_strategy_factor_exposure(
         self,
@@ -773,7 +785,9 @@ class RiskGate:
         
         return True, f"lot_size={sizing.recommended_lots} (valid)"
 
-    async def _check_weekly_drawdown(self, session: AsyncSession, equity: Optional[float] = None, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_weekly_drawdown(
+        self, session: AsyncSession, equity: Optional[float] = None, is_backtest: bool = False, is_paper: Optional[bool] = None
+    ) -> tuple[bool, str]:
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
         from database.models import PaperTradeRecord, TradeOutcome
@@ -800,8 +814,14 @@ class RiskGate:
             total_live_profit = sum(o.pnl_usd or 0.0 for o in live_outcomes)
             live_weekly_pnl = (total_live_profit / eff_equity) * 100.0
 
-        # Conservative: take the worst PnL between live and paper
-        weekly_pnl = min(paper_weekly_pnl, live_weekly_pnl) if live_outcomes else paper_weekly_pnl
+        # Decouple: Live trading is governed by live PnL; paper trading by paper PnL.
+        is_paper_mode = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        if not is_paper_mode and live_outcomes:
+            weekly_pnl = live_weekly_pnl
+        elif live_outcomes and not is_paper_mode:
+            weekly_pnl = live_weekly_pnl
+        else:
+            weekly_pnl = paper_weekly_pnl
         max_weekly = self.settings.get('trading', {}).get('risk', {}).get('max_weekly_drawdown_percent', 6.0)
         if weekly_pnl <= -max_weekly:
             return False, f"Weekly loss {weekly_pnl:.2f}% >= limit {max_weekly}%"

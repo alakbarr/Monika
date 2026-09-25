@@ -15,7 +15,7 @@ class InvariantViolationError(RuntimeError):
 
 
 def assert_risk_gate_invariants(
-    proposal: Dict[str, Any],
+    proposal: Any,
     current_drawdown_pct: float,
     max_drawdown_limit: float = 3.0,
     min_rr_ratio: float = 1.0,
@@ -31,13 +31,23 @@ def assert_risk_gate_invariants(
             f"exceeds hard limit ({max_drawdown_limit:.2f}%). Execution forbidden."
         )
 
-    action = str(proposal.get("action", "")).lower()
+    # Support both TradeProposal object and dict
+    if hasattr(proposal, "to_dict"):
+        p_dict = proposal.to_dict()
+    elif hasattr(proposal, "__dict__") and not isinstance(proposal, dict):
+        p_dict = vars(proposal)
+    elif isinstance(proposal, dict):
+        p_dict = proposal
+    else:
+        p_dict = {}
+
+    action = str(p_dict.get("action") or getattr(proposal, "direction", "") or p_dict.get("direction", "")).lower()
     if action not in ("buy", "sell"):
         return  # Wait or hold proposals do not have order geometry
 
-    entry = proposal.get("entry_price") or proposal.get("entry")
-    sl = proposal.get("stop_loss") or proposal.get("sl")
-    tp = proposal.get("take_profit") or proposal.get("tp")
+    entry = p_dict.get("entry_price") or p_dict.get("entry") or getattr(proposal, "entry_price", None) or getattr(proposal, "entry", None)
+    sl = p_dict.get("stop_loss") or p_dict.get("sl") or getattr(proposal, "stop_loss", None) or getattr(proposal, "sl", None)
+    tp = p_dict.get("take_profit") or p_dict.get("tp") or getattr(proposal, "take_profit", None) or getattr(proposal, "tp", None)
 
     if entry is not None and sl is not None and tp is not None:
         try:

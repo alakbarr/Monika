@@ -54,37 +54,52 @@ async def _get_correlated_exposure_summary(session, symbol: str) -> List[str]:
     return summary
 
 
+def _extract_numbers_recursive(val: Any) -> List[float]:
+    res: List[float] = []
+    if isinstance(val, (int, float)):
+        res.append(float(val))
+    elif isinstance(val, str):
+        for match in re.findall(r'\b\d+(?:\.\d+)?\b', val):
+            try:
+                res.append(float(match))
+            except ValueError:
+                pass
+    elif isinstance(val, dict):
+        for k, v in val.items():
+            if str(k).lower() not in ("id", "turn", "timestamp", "rebuttal_strength", "dissent_strength", "status", "round", "code", "ungrounded_penalty"):
+                res.extend(_extract_numbers_recursive(v))
+    elif isinstance(val, (list, tuple, set)):
+        for item in val:
+            res.extend(_extract_numbers_recursive(item))
+    return res
+
+
 def _is_grounded(claim_dict: dict, current_price: float, reference: Optional[Dict[str, Any]] = None) -> bool:
-    if not claim_dict:
+    if not claim_dict or not isinstance(claim_dict, dict):
         return False
-    text = str(claim_dict)
-    raw_nums = re.findall(r'\b\d+(?:\.\d+)?\b', text)
-    if not raw_nums:
+
+    meta_keys = {"turn", "rebuttal_strength", "dissent_strength", "id", "timestamp", "confidence", "status", "round", "code", "ungrounded_penalty"}
+    claim_nums: List[float] = []
+    for k, v in claim_dict.items():
+        if k not in meta_keys:
+            claim_nums.extend(_extract_numbers_recursive(v))
+
+    if not claim_nums:
         return False
-    nums = [float(x) for x in raw_nums]
 
     # Verify against reference (e.g. fact_sheet) if available
     if reference and isinstance(reference, dict):
-        ref_nums: List[float] = []
-        for v in reference.values():
-            if isinstance(v, (int, float)) and v > 0:
-                ref_nums.append(float(v))
-            elif isinstance(v, str):
-                for match in re.findall(r'\b\d+(?:\.\d+)?\b', v):
-                    try:
-                        ref_nums.append(float(match))
-                    except ValueError:
-                        pass
-        for n in nums:
+        ref_nums = _extract_numbers_recursive(reference)
+        for n in claim_nums:
             for rn in ref_nums:
                 if rn > 0 and (abs(n - rn) / rn <= 0.05 or abs(n - rn) <= 0.001):
                     return True
 
     if current_price > 0:
-        has_plausible_price = any(abs(n - current_price) / current_price <= 0.20 for n in nums)
+        has_plausible_price = any(abs(n - current_price) / current_price <= 0.20 for n in claim_nums)
         return has_plausible_price
 
-    return len(raw_nums) >= 2
+    return len(claim_nums) >= 2
 
 
 
@@ -98,8 +113,13 @@ def _apply_deterministic_risk_clamp(pm_decision: dict, risk_stances: dict, actua
         approval = False
         reasons.append(f'deterministic_veto_consensus({veto_count}/3)')
     elif veto_count >= 2:
-        multiplier = min(multiplier, 0.50)
-        reasons.append(f'persona_veto_dampened({veto_count}/3, 0.50 cap)')
+        if actual_risk_state and (actual_risk_state.get('daily_pnl_pct', 0.0) or 0.0) < -3.0:
+            multiplier = 0.0
+            approval = False
+            reasons.append(f'deterministic_veto_severe_drawdown({veto_count}/3, daily_pnl < -3%)')
+        else:
+            multiplier = min(multiplier, 0.50)
+            reasons.append(f'persona_veto_dampened({veto_count}/3, 0.50 cap)')
     elif veto_count >= 1:
         multiplier = min(multiplier, 0.75)
         reasons.append(f'persona_veto_dampened({veto_count}/3, 0.75 cap)')

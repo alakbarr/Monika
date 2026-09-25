@@ -7,6 +7,15 @@ from database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.FundamentalNode")
 
+def normalize_bias(raw: str) -> str:
+    """Normalize raw bias strings to canonical bullish, bearish, or neutral."""
+    s = (raw or "neutral").strip().lower()
+    if any(k in s for k in ("bull", "hawkish", "positive", "strong")):
+        return "bullish"
+    elif any(k in s for k in ("bear", "dovish", "negative", "weak")):
+        return "bearish"
+    return "neutral"
+
 async def fundamental_analysis_node(state: TradingState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
     """
     Node untuk menjalankan analisis fundamental (Stage 1).
@@ -35,7 +44,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
     
     fund_result = None
     last_error = None
-    max_attempts = 1
+    max_attempts = 3
     
     if is_weekend_restricted:
         logger.info("[Step 6/7] Weekend mode: running abbreviated Stage 1 (crypto-focused)...")
@@ -262,17 +271,20 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             summary['ssvp_warning'] = f"CDS high post-fresh-brief: {ssvp_msg}"
         
         # Store reconciliation context untuk Stage 2
-        ssvp_context = ''
+        ssvp_context = ssvp_msg if ssvp_msg else ''
         summary['ssvp_reconciliation_context'] = ssvp_context
         
+        is_blocked = (not should_proceed) and state.get('ssvp_retry_count', 0) < 2
+        new_retry_count = state.get('ssvp_retry_count', 0) + (1 if not should_proceed else 0)
+
         return {
             'summary': summary,
             'market_regime': str(market_regime),
             'vix_level': vix_level,
             'brief_confidence': brief_confidence,
             'ssvp_per_symbol_contexts': per_symbol_contexts,
-            'ssvp_blocked': (not should_proceed) and state.get('ssvp_retry_count', 0) < 1,
-            'ssvp_retry_count': state.get('ssvp_retry_count', 0) + 1,
+            'ssvp_blocked': is_blocked,
+            'ssvp_retry_count': new_retry_count,
             'ssvp_cds_score': cds_score,
             'ssvp_reconciliation_context': ssvp_context,
             'should_pause': False,

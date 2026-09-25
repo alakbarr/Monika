@@ -168,10 +168,14 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         session: AsyncSession,
         analysis: AssetAnalysis,
         account_equity: Optional[float] = None,
+        is_post_release: bool = False,
+        **kwargs
     ) -> ExecutionResult:
         """Memproses satu AssetAnalysis melalui pipeline eksekusi lengkap."""
         # F-1: Execution lock dipisah menjadi Fase 2 (Validation berjalan paralel)
-        return await self._execute_analysis_internal(session, analysis, account_equity)
+        return await self._execute_analysis_internal(
+            session, analysis, account_equity, is_post_release=is_post_release, **kwargs
+        )
 
     async def execute_proposal(
         self,
@@ -878,7 +882,6 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 return {"success": False, "reason": "Concurrent execution locked by another process/worker."}
 
             # Parse and validate primary entry zone price
-            import json
             try:
                 if isinstance(primary.entry_zone, dict):
                     p_ez = primary.entry_zone
@@ -1546,6 +1549,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         session: AsyncSession,
         analysis: AssetAnalysis,
         account_equity: Optional[float] = None,
+        is_post_release: bool = False,
+        **kwargs
     ) -> ExecutionResult:
         start = clock.now()
         symbol = analysis.symbol
@@ -1572,6 +1577,10 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 'min_paper_trades_before_live',
                 self.settings.get('execution', {}).get('min_paper_trades_before_live', 50)
             )
+            # FIX 4.10: allow explicit force_live_override
+            if self.settings.get('trading', {}).get('force_live_override', False) or \
+               self.settings.get('execution', {}).get('force_live_override', False):
+                min_paper_trades = 0
             from database.models import PaperTradeRecord
             try:
                 # Use the existing session passed to the function
@@ -1778,6 +1787,16 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     timestamp=start, elapsed_ms=elapsed,
                 )
 
+        # Check if post-release exemption applies
+        if not is_post_release and analysis:
+            txt = (
+                str(getattr(analysis, "execution_notes", "") or "") + " " +
+                str(getattr(analysis, "catalyst", "") or "") + " " +
+                str(getattr(analysis, "reasoning", "") or "")
+            ).lower()
+            if "post-release" in txt or "post_release" in txt:
+                is_post_release = True
+
         # News Blackout Check
         from database.models import EconomicCalendar
         from datetime import timedelta
@@ -1794,7 +1813,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             .where(EconomicCalendar.currency.in_(list(sym_currencies)))
         )).scalars().all()
         
-        if upcoming:
+        if upcoming and not is_post_release:
             logger.warning(
                 f"Execution REJECTED for {symbol}: News blackout circuit breaker "
                 f"triggered by {upcoming[0].event_name}"
@@ -1809,15 +1828,23 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 executed_lots=None, mt5_error=None, position_id=None,
                 timestamp=start, elapsed_ms=elapsed,
             )
+        elif upcoming and is_post_release:
+            logger.info(
+                f"Execution ALLOWED for {symbol}: Post-release analysis exempt from news blackout ({upcoming[0].event_name})."
+            )
         # Priced-in score gating is centralized upstream in risk_gate.py
 
         # Parsing kondisi entry
         entry_cond = {}
         if analysis.entry_zone:
-            try:
-                entry_cond = json.loads(analysis.entry_zone)
-            except Exception:
-                pass
+            if isinstance(analysis.entry_zone, dict):
+                entry_cond = analysis.entry_zone
+            else:
+                try:
+                    entry_cond = json.loads(analysis.entry_zone)
+                except Exception as e:
+                    logger.debug(f"Failed to parse entry_zone JSON: {e}")
+                    entry_cond = {}
 
         max_price_staleness = self.settings.get("execution", {}).get("max_price_staleness_seconds", 120)
         entry_price_raw, is_stale, age_seconds = await self._get_current_price(symbol, decision)
@@ -2099,10 +2126,21 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 except Exception as e:
                     logger.warning(f'Confluence verification error (non-fatal, proceeding): {e}')
 
-        # Task 2.1: Adversarial Validation Pass (Pre-Execution)
+        # Task 2.1: Adversarial Validation Pass (Pre-Execution) - Reuse cached check if already run
         if verdict.approved and analysis.decision in ('buy', 'sell') and not is_edge_signal and self.settings.get('adversarial_check', {}).get('enabled', True):
-            from analysis.validators.adversarial_check import run_adversarial_check
-            adv = await run_adversarial_check(session, analysis, self.settings)
+            from database.models import SystemConfig
+            cached_adv = (await session.execute(
+                select(SystemConfig).where(SystemConfig.key == f'adversarial_outcome_{analysis.id}')
+            )).scalar_one_or_none()
+            adv = None
+            if cached_adv and cached_adv.value:
+                try:
+                    adv = json.loads(cached_adv.value)
+                except Exception:
+                    pass
+            if not adv:
+                from analysis.validators.adversarial_check import run_adversarial_check
+                adv = await run_adversarial_check(session, analysis, self.settings)
             if adv.get('hard_block'):
                 logger.warning(f"[{symbol}] HARD BLOCKED by adversarial check: {adv.get('hard_block_reason')}")
                 elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000

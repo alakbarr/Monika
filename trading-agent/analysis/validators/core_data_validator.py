@@ -85,8 +85,9 @@ class CoreDataValidator:
             return (False, {}, "No fundamental brief in database")
         
         max_age = self.settings.get('data_quality', {}).get('max_brief_age_analysis_hours', 12.0)
+        now = datetime.now(timezone.utc)
         age_hours = (
-            datetime.now(timezone.utc) - (
+            now - (
                 brief.generated_at.replace(tzinfo=timezone.utc)
                 if brief.generated_at.tzinfo is None
                 else brief.generated_at
@@ -114,7 +115,9 @@ class CoreDataValidator:
         required_currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU']
         missing = [c for c in required_currencies if c not in currency_bias]
         
-        if len(missing) > 3:  # Allow up to 3 missing (e.g., weekend BTC-only mode)
+        is_weekend = now.weekday() >= 5
+        allowed_missing = 5 if is_weekend else 3
+        if len(missing) > allowed_missing:  # Allow up to 3 missing (5 on weekend BTC-only mode)
             return (False, {}, f"Brief missing currency biases: {missing}")
         
         return (True, {
@@ -180,9 +183,15 @@ class CoreDataValidator:
         if latest.close <= 80 or latest.close >= 130:
             return (False, {}, f"DXY value {latest.close} is implausible")
         
-        trend = 'unknown'
+        trend = 'neutral'
         if len(rows) >= 3:
-            trend = 'strengthening' if rows[0].close > rows[-1].close else 'weakening'
+            pct_change = (rows[0].close - rows[-1].close) / rows[-1].close if rows[-1].close > 0 else 0
+            if pct_change > 0.0005:  # > +0.05%
+                trend = 'strengthening'
+            elif pct_change < -0.0005:  # < -0.05%
+                trend = 'weakening'
+            else:
+                trend = 'neutral'
         
         return (True, {
             'latest_close': latest.close,
@@ -204,7 +213,7 @@ class CoreDataValidator:
         currency_bias = brief_data.get('currency_bias', {})
         usd_bias = normalize_bias(currency_bias.get('USD', 'neutral'))
         
-        if dxy_trend == 'unknown' or usd_bias == 'neutral':
+        if dxy_trend in ('unknown', 'neutral') or usd_bias == 'neutral':
             return (True, "")  # Cannot cross-validate, skip
         
         contradicts = (

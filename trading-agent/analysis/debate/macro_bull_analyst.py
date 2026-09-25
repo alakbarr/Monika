@@ -47,8 +47,8 @@ async def run_bull_analyst(context: str, settings: dict) -> dict:
     system_prompt = (
         f"{anchor}\n\n---\n\n"
         "You are the Macro Risk-On / Dollar-Bear Analyst.\n"
-        "Your role is to build the strongest evidence-based macro thesis advocating RISK-ON market conditions and a WEAKER US DOLLAR (bearish DXY).\n"
-        "Core thesis pillars: Easing financial conditions, dovish central bank expectations, resilient global growth, disinflation, and expanding liquidity favoring risk-assets (equities, crypto, pro-cyclical currencies, commodities).\n\n"
+        "Your role is to build the strongest evidence-based macro thesis advocating for either broad RISK-ON conditions (weak USD, global growth) OR US Exceptionalism (resilient US productivity & earnings supporting equities alongside firm USD).\n"
+        "Core thesis pillars: Easing financial conditions, dovish expectations, disinflation, or technological/economic productivity favoring risk-assets (equities, crypto, pro-cyclical currencies, commodities).\n\n"
         "MANDATORY CENTRAL BANK DIVERGENCE & 2Y YIELD ANALYSIS:\n"
         "- Evaluate relative policy divergence: Are foreign central banks (ECB, BoE, RBA) tightening or holding rates while Fed eases? Narrowing US-DE, US-UK, US-AU 2Y short-end spreads directly support the Dollar-Bear thesis.\n"
         "- Check BoJ normalization: Does Japanese rate hike momentum threaten carry trade funding, supporting pro-cyclical or Yen strength?\n\n"

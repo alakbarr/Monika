@@ -87,6 +87,9 @@ async def compute_optimal_levels(
         return {'error': adr_ctx['error']}
 
     atr = await _get_atr(session, symbol)
+    if not atr or atr <= 0:
+        # Fallback to 0.5% of entry price for indices, crypto, commodities, and FX
+        atr = 0.005 * entry_price
     zones = await _collect_zones(session, symbol)
     try:
         from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep

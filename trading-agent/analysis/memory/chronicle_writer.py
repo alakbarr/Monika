@@ -140,17 +140,27 @@ class ChronicleWriter:
 
         now = clock.now()
 
-        # 1. Auto-resolve ongoing events older than 14 days HANYA untuk kategori non-struktural (data_shock, policy_change)
+        # 1. Auto-resolve ongoing events (Fix 5.12: data_shock 14d, policy_change 90d)
         # Kategori 'geopolitical', 'institutional', dan 'regime_shift' TETAP ONGOING sampai ada resolusi eksplisit
         try:
             from sqlalchemy import update
-            stale_cutoff = now - timedelta(days=14)
+            data_shock_cutoff = now - timedelta(days=14)
+            policy_cutoff = now - timedelta(days=90)
             await session.execute(
                 update(MarketChronicle)
                 .where(
                     MarketChronicle.is_ongoing == True,
-                    MarketChronicle.event_date < stale_cutoff,
-                    MarketChronicle.category.in_(['data_shock', 'policy_change'])
+                    MarketChronicle.event_date < data_shock_cutoff,
+                    MarketChronicle.category == 'data_shock'
+                )
+                .values(is_ongoing=False)
+            )
+            await session.execute(
+                update(MarketChronicle)
+                .where(
+                    MarketChronicle.is_ongoing == True,
+                    MarketChronicle.event_date < policy_cutoff,
+                    MarketChronicle.category == 'policy_change'
                 )
                 .values(is_ongoing=False)
             )
@@ -390,7 +400,7 @@ class ChronicleWriter:
         tanpa batasan hari, ditambah milestone penting terbaru dalam 'days_back'.
         """
         from sqlalchemy import or_
-        since = datetime.now(timezone.utc) - timedelta(days=days_back)
+        since = clock.now() - timedelta(days=days_back)
         query = (
             select(MarketChronicle)
             .where(

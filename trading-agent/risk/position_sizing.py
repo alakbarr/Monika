@@ -89,24 +89,24 @@ DEFAULT_INSTRUMENTS: dict[str, InstrumentSpec] = {
     "XTIUSD": InstrumentSpec(
         symbol="XTIUSD",
         pip_size=0.01,
-        pip_value_usd=1.0,  # Varies — $1 per 0.01 per lot typically
-        contract_size=100,
+        pip_value_usd=10.0, # Verified live MT5: 1000 bbl/contract * $0.01 = $10.0/pip
+        contract_size=1000,
         digits=2,
     ),
     "BTCUSD": InstrumentSpec(
         symbol="BTCUSD",
         pip_size=1.0,        # 1 USD = 1 pip
-        pip_value_usd=1.0,   # WAS: 0.1 → FIX: $1 per pip per lot (1 BTC × $1)
+        pip_value_usd=1.0,   # 1 BTC × $1 = $1/pip
         contract_size=1,
         min_lot=0.01,
-        max_lot=10.0,        # cap at 10 BTC (reasonable for retail)
+        max_lot=10.0,        # cap at 10 BTC
         lot_step=0.01,
         digits=2,
     ),
     "XBRUSD": InstrumentSpec(
         symbol="XBRUSD",
         pip_size=0.01,
-        pip_value_usd=1.0,   # $1 per 0.01 per lot (100 bbl/contracts)
+        pip_value_usd=10.0,  # Verified live MT5: 1000 bbl/contract * $0.01 = $10.0/pip
         contract_size=1000,
         digits=2,
     ),
@@ -127,8 +127,8 @@ DEFAULT_INSTRUMENTS: dict[str, InstrumentSpec] = {
     "ETHUSD": InstrumentSpec(
         symbol="ETHUSD",
         pip_size=0.1,
-        pip_value_usd=1.0,
-        contract_size=1,
+        pip_value_usd=1.0,   # Verified live MT5: 10 ETH/contract * $0.10 = $1.0/pip
+        contract_size=10,    # Verified live MT5: 1 lot = 10 ETH
         min_lot=0.01,
         max_lot=50.0,
         lot_step=0.01,
@@ -691,16 +691,27 @@ class PositionSizer:
             d_raw_lots = d_risk_amount_usd / d_denom
             raw_lots = float(d_raw_lots)
 
-        # 5. Round to lot step and clamp
+        # 5. Round to lot step and clamp (Fix 4.14)
         recommended_lots = self._round_lots(raw_lots, spec.lot_step)
-        if recommended_lots < spec.min_lot:
-            rejections.append(f"Calculated lot size ({recommended_lots}) is below broker minimum ({spec.min_lot})")
-            
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
+        if recommended_lots < spec.min_lot:
+            min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
+            if min_lot_risk_usd <= max_risk_cap:
+                recommended_lots = spec.min_lot
+                logger.info(
+                    f"[{symbol}] Lot size clamped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
+                    f"(risk ${min_lot_risk_usd:.2f} <= cap ${max_risk_cap:.2f})"
+                )
+            else:
+                rejections.append(
+                    f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit "
+                    f"(${max_risk_cap:.2f}): risk would be ${min_lot_risk_usd:.2f}"
+                )
+        recommended_lots = max(spec.min_lot, recommended_lots)
+
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
             rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")
-        recommended_lots = max(spec.min_lot, recommended_lots)
         
         # TAMBAHKAN: cap to configured max lot and spec max lot
         max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")

@@ -42,7 +42,11 @@ def mock_settings():
     }
 
 
-def test_nine_router_initialization_defaults(mock_settings):
+def test_nine_router_initialization_defaults(mock_settings, monkeypatch):
+    monkeypatch.delenv("NINEROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("NINEROUTER_KEY", raising=False)
+    monkeypatch.delenv("NINEROUTER_BASE_URL", raising=False)
+    monkeypatch.delenv("NINEROUTER_URL", raising=False)
     provider = NineRouterProvider(
         model="kr/claude-sonnet-4.5",
         settings=mock_settings

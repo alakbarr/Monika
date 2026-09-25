@@ -145,8 +145,15 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
         if vol_ratio > 1.2:
             p_chop = min(0.9, max(0.1, (vol_ratio - 1.0) * 1.5))
         elif vol_ratio < 0.7:
-            p_chop = min(0.8, max(0.1, (0.85 - vol_ratio) * 2.0))
-    p_range = max(0.05, 1.0 - (p_trend * 0.7 + p_chop * 0.3))
+            # Low vol is squeeze / calm consolidation, NOT volatile chop!
+            p_chop = max(0.05, 0.15 - (0.7 - vol_ratio) * 0.2)
+        else:
+            p_chop = 0.15
+
+    if vol_ratio is not None and vol_ratio < 0.85:
+        p_range = max(0.2, min(0.85, (0.95 - vol_ratio) * 1.5))
+    else:
+        p_range = max(0.05, 1.0 - (p_trend * 0.7 + p_chop * 0.3))
 
     total_p = p_trend + p_chop + p_range
     regime_probs = {

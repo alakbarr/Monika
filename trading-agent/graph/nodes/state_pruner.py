@@ -35,7 +35,7 @@ def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, A
     pruned_count = 0
     for k in pruned_keys:
         if k in fund:
-            del fund[k]
+            fund[k] = "_DELETED_"
             pruned_count += 1
 
     summary["fundamental"] = fund
@@ -56,7 +56,8 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                 "transcript",
                 "dialogue_history",
             ]:
-                ds.pop(key, None)
+                if key in ds:
+                    ds[key] = "_DELETED_"
 
     # Prune heavy data payloads from asset_analyses
     asset_analyses = dict(state.get("asset_analyses", {}) or {})
@@ -70,14 +71,16 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                 "raw_tool_history",
                 "intermediate_reasoning",
             ]:
-                aa.pop(heavy, None)
+                if heavy in aa:
+                    aa[heavy] = "_DELETED_"
 
     # Prune risk debate turns
     risk_debate_states = dict(state.get("risk_debate_states", {}) or {})
     for sym, rds in risk_debate_states.items():
         if isinstance(rds, dict):
             for key in ["raw_conservative_text", "raw_aggressive_text", "raw_neutral_text", "intermediate_dialogue"]:
-                rds.pop(key, None)
+                if key in rds:
+                    rds[key] = "_DELETED_"
 
     logger.debug("[StatePruner] Pruned intermediate dialogue turns & heavy payloads after dialectic debate")
     return {
