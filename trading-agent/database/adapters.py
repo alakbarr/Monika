@@ -278,8 +278,8 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
                 .limit(1)
             )).scalar_one_or_none()
             if same_day_corrupt is not None:
-                # Preserve existing valid event_time; only set if existing is None to prevent cross-scraper timestamp shifting
-                if same_day_corrupt.event_time is None:
+                # Preserve existing valid event_time unless it was None or incoming has actual release data (self-healing)
+                if same_day_corrupt.event_time is None or (same_day_corrupt.actual is None and model.actual is not None):
                     same_day_corrupt.event_time = model.event_time
                 existing = same_day_corrupt
 

@@ -210,7 +210,8 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
     with patch('analysis.calculators.intraday_level_optimizer._get_atr', AsyncMock(return_value=0.0020)), \
          patch('analysis.calculators.daily_range_calculator.compute_daily_range_context', AsyncMock(return_value={'adr': 0.0080})), \
          patch('analysis.calculators.macro_bias_filter.evaluate_macro_alignment', AsyncMock(return_value={'aligned': True, 'score': 1.0, 'reason': 'ok'})), \
-         patch('analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate', AsyncMock(return_value=mock_arb)):
+         patch('analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate', AsyncMock(return_value=mock_arb)), \
+         patch('graph.reactive_graph.get_reactive_graph'):
         
         await runner._materialize_and_route(mock_session, sig)
         

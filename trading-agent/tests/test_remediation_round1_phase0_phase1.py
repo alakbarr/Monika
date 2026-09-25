@@ -117,16 +117,12 @@ async def test_technical_resample_forex_weekend_filtered():
 
 @pytest.mark.asyncio
 async def test_active_calendar_poller_scraper_close():
-    """Verify ForexFactoryCalendarScraper is closed in finally block when fallback runs."""
+    """Verify InvestingCalendarScraper is closed in finally block when poller runs."""
     from scheduler.active_calendar_poller import ActiveCalendarPoller
     
     poller = ActiveCalendarPoller(settings={})
     poller.running = True
     poller.poll_interval = 0.01
-    
-    mock_scraper = MagicMock()
-    mock_scraper.fetch_events = MagicMock(side_effect=Exception("Network error"))
-    mock_scraper.close = MagicMock()
 
     mock_investing = MagicMock()
     mock_investing.fetch_events.side_effect = Exception("Inv fail")
@@ -140,8 +136,7 @@ async def test_active_calendar_poller_scraper_close():
     mock_session.execute.return_value = mock_res
 
     with patch("scheduler.active_calendar_poller.get_session") as mock_get_sess, \
-         patch("scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing), \
-         patch("scrapers.calendar.calendar_forexfactory.ForexFactoryCalendarScraper", return_value=mock_scraper):
+         patch("scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing):
         
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         
@@ -152,7 +147,7 @@ async def test_active_calendar_poller_scraper_close():
         await task
         
         # Verify close() was called on the scraper instance
-        assert mock_scraper.close.called
+        assert mock_investing.close.called
 
 
 # ==============================================================================
@@ -247,7 +242,7 @@ def test_forexfactory_date_parse_fallback():
     scraper.page = mock_page
     
     with patch("dateutil.parser.parse", side_effect=Exception("Unparseable")):
-        events = scraper.fetch_events()
+        events = scraper.fetch_events(prefer_feed=False)
         assert len(events) > 0
         assert "2026-01-15T00:00:00Z" in events[0].time
 

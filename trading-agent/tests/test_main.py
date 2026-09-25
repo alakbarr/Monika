@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
+from datetime import datetime, timezone
 from main import run_startup_checks, TradingAgent, _run_with_restart
 import sys
 
@@ -234,6 +235,28 @@ class TestMain:
             assert agent.shutdown_event.is_set()
             assert agent._tg_task.done()
 
+    @staticmethod
+    def _make_recovery_mock_ctx(last_cycle=None, brief=None):
+        mock_session = AsyncMock()
+        fresh_digest = MagicMock()
+        fresh_digest.generated_at = datetime.now(timezone.utc)
+        async def _exec(stmt, *args, **kwargs):
+            s = str(stmt).lower()
+            res = MagicMock()
+            if "cycleperformance" in s or "cycle_performance" in s:
+                res.scalar_one_or_none.return_value = last_cycle
+            elif "fundamentalbrief" in s or "fundamental_brief" in s:
+                res.scalar_one_or_none.return_value = brief
+            elif "newsdigest" in s or "news_digest" in s:
+                res.scalar_one_or_none.return_value = fresh_digest
+            else:
+                res.scalar_one_or_none.return_value = None
+            return res
+        mock_session.execute = AsyncMock(side_effect=_exec)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        return mock_ctx
+
     @pytest.mark.asyncio
     async def test_post_restart_recovery_at_0300_no_false_cycle(self):
         from database.models import CyclePerformance, FundamentalBrief
@@ -268,13 +291,7 @@ class TestMain:
             valid_until=datetime(2026, 9, 4, 1, 2, 0, tzinfo=timezone.utc)
         )
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=brief)),
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):
@@ -320,13 +337,7 @@ class TestMain:
             valid_until=datetime(2026, 9, 3, 20, 2, 0, tzinfo=timezone.utc)
         )
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=brief)),
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):
@@ -372,13 +383,7 @@ class TestMain:
             valid_until=datetime(2026, 9, 4, 1, 2, 0, tzinfo=timezone.utc)
         )
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=brief)),
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):
@@ -424,13 +429,7 @@ class TestMain:
             valid_until=datetime(2026, 9, 4, 1, 2, 0, tzinfo=timezone.utc)
         )
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=brief)),
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):
@@ -473,13 +472,7 @@ class TestMain:
         # Cycle ran at 20:02 yesterday, but brief is missing from database
         last_cycle = CyclePerformance(cycle_at=datetime(2026, 9, 3, 13, 2, 0, tzinfo=timezone.utc))
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=None)),  # brief is None
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=None)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):
@@ -521,13 +514,7 @@ class TestMain:
         last_cycle = CyclePerformance(cycle_at=datetime(2026, 9, 3, 13, 2, 0, tzinfo=timezone.utc))
         brief_null_gen = FundamentalBrief(generated_at=None, valid_until=None)
 
-        mock_session = AsyncMock()
-        mock_session.execute.side_effect = [
-            MagicMock(scalar_one_or_none=MagicMock(return_value=last_cycle)),
-            MagicMock(scalar_one_or_none=MagicMock(return_value=brief_null_gen)),
-        ]
-        mock_ctx = AsyncMock()
-        mock_ctx.__aenter__.return_value = mock_session
+        mock_ctx = self._make_recovery_mock_ctx(last_cycle=last_cycle, brief=brief_null_gen)
 
         with patch("main.datetime") as mock_dt, \
              patch("database.db.get_session", return_value=mock_ctx):

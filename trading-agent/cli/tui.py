@@ -635,6 +635,7 @@ class TradingDashboard(App):
             if self.standalone:
                 from benchmark.db_models import BenchmarkRun, BenchmarkResult
                 from database.db import get_session
+                from sqlalchemy import select, desc
                 async with get_session() as session:
                     latest = (await session.execute(
                         select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1)

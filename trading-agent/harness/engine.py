@@ -43,7 +43,8 @@ from utils.protocol.event_bus import (
 try:
     from agent.task_registry import TaskRegistry
 except ImportError:
-    TaskRegistry = None  # type: ignore
+    class TaskRegistry:  # type: ignore
+        pass
 
 logger = logging.getLogger("TradingAgent.Harness.Engine")
 

@@ -63,6 +63,7 @@ __all__ = [
     "memory_router",
     "intelligence_router",
     "plugins_router",
+    "benchmark_router",
     "websocket_router",
     "trace_search_router",
     "backtest_router",

@@ -68,7 +68,7 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                     fact_sheet = await build_fact_sheet(session, analysis_id)
                     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
                     market_regime = (
-                        ana.market_regime_at_analysis
+                        getattr(ana, "market_regime_at_analysis", None)
                         or state.get("market_regime")
                         or (state.get("macro_analysis") or {}).get("risk_sentiment")
                         or (state.get("fundamental_brief") or {}).get("risk_sentiment")

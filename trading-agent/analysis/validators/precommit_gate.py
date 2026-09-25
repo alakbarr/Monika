@@ -153,7 +153,7 @@ class TradePreCommitGate:
                     "entry_price": entry,
                     "stop_loss": sl,
                     "take_profit": tp,
-                    "order_type": r.get("order_type", "MARKET") if isinstance(r, dict) else "MARKET",
+                    "order_type": order_type,
                 }
                 snap_valid, snap_issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(plan, snap)
                 if not snap_valid:
