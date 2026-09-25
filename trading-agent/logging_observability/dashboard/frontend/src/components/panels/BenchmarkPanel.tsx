@@ -7,7 +7,6 @@ import { EmptyState } from '../ui/EmptyState';
 
 export const BenchmarkPanel: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
-  const [modelConfig, setModelConfig] = useState<any>(null);
   const [runs, setRuns] = useState<any[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
   const [runDetail, setRunDetail] = useState<any>(null);
@@ -31,12 +30,8 @@ export const BenchmarkPanel: React.FC = () => {
 
   const loadMetadata = async () => {
     try {
-      const [tRes, mRes] = await Promise.all([
-        api.benchmarkTasks(),
-        api.benchmarkModels(),
-      ]);
+      const tRes = await api.benchmarkTasks();
       setTasks(tRes.tasks || []);
-      setModelConfig(mRes || null);
     } catch (err: any) {
       console.error('Failed to load benchmark metadata', err);
     }
@@ -270,7 +265,7 @@ export const BenchmarkPanel: React.FC = () => {
             </div>
 
             {leaderboard.length === 0 ? (
-              <EmptyState title="No Evaluation Data" description="Jalankan benchmark pertama untuk melihat peringkat model." />
+              <EmptyState title="No Evaluation Data" message="Jalankan benchmark pertama untuk melihat peringkat model." />
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-body-sm)', textAlign: 'left' }}>
@@ -317,7 +312,12 @@ export const BenchmarkPanel: React.FC = () => {
           </div>
 
           {/* Markdown Report / Individual Results */}
-          {runDetail && runDetail.report_markdown && (
+          {loading && (
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-ink-soft)', fontSize: 'var(--text-body-sm)' }}>
+              Loading benchmark report details...
+            </div>
+          )}
+          {!loading && runDetail && runDetail.report_markdown && (
             <div
               className="win-window ledger-card"
               style={{
@@ -395,7 +395,7 @@ export const BenchmarkPanel: React.FC = () => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 'var(--text-body-sm)' }}>
                     <span>Run #{r.id}</span>
-                    <StatusIndicator status={r.is_running ? 'running' : 'completed'} />
+                    <StatusIndicator status={r.is_running ? 'connecting' : 'connected'} label={r.is_running ? 'RUNNING' : 'COMPLETED'} />
                   </div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
                     {r.tasks_count} tasks · {r.models_count} models
