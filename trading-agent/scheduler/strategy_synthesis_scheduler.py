@@ -102,7 +102,7 @@ class StrategySynthesisScheduler:
         interval_hours: float = 48.0,
         min_sharpe: float = 1.5,
         max_drawdown_pct: float = 10.0,
-        min_trades: int = 5,
+        min_trades: int = 25,
         target_symbols: Optional[List[str]] = None,
         recovery_event: Optional[asyncio.Event] = None,
         notifier: Optional[Any] = None,
@@ -121,7 +121,7 @@ class StrategySynthesisScheduler:
         )
         self.walk_forward_enabled = bool(cfg.get("walk_forward_enabled", True))
         self.min_walk_forward_sharpe = float(cfg.get("min_walk_forward_sharpe", 1.0))
-        self.min_walk_forward_efficiency = float(cfg.get("min_walk_forward_efficiency", 0.40))
+        self.min_walk_forward_efficiency = float(cfg.get("min_walk_forward_efficiency", 0.55))
         self.recovery_event = recovery_event
         self.notifier = notifier
         self.edge_strategy_runner = edge_strategy_runner
@@ -949,22 +949,26 @@ class StrategySynthesisScheduler:
                 f"- TOKEN COMPLETION: Ensure the full class definition and evaluate() method are completely closed and return an EdgeSignal. Never truncate the response.\n"
                 f"- Return pure python code inside ```python ``` blocks only, no extra commentary."
             )
-            response = None
-            create_msg = getattr(client, "create_message", None)
-            if hasattr(client, "generate") and callable(getattr(client, "generate")):
-                response = await client.generate(prompt)
-            elif hasattr(client, "generate_content") and callable(getattr(client, "generate_content")):
-                response = await client.generate_content(
-                    system_prompt="You are an elite quantitative trading strategy engineer.",
-                    user_message=prompt
-                )
-            elif callable(create_msg):
-                msg_call = cast(Callable[..., Any], create_msg)
-                res = msg_call(messages=[{"role": "user", "content": prompt}])
-                response = await res if inspect.isawaitable(res) else res
-            if response:
+            current_prompt = prompt
+            for attempt in range(2):
+                response = None
+                create_msg = getattr(client, "create_message", None)
+                if hasattr(client, "generate") and callable(getattr(client, "generate")):
+                    response = await client.generate(current_prompt)
+                elif hasattr(client, "generate_content") and callable(getattr(client, "generate_content")):
+                    response = await client.generate_content(
+                        system_prompt="You are an elite quantitative trading strategy engineer.",
+                        user_message=current_prompt
+                    )
+                elif callable(create_msg):
+                    msg_call = cast(Callable[..., Any], create_msg)
+                    res = msg_call(messages=[{"role": "user", "content": current_prompt}])
+                    response = await res if inspect.isawaitable(res) else res
+
+                if not response:
+                    break
+
                 content = getattr(response, "content", str(response))
-                # Robust markdown extraction
                 m = re.search(r"```(?:python)?\s*(.*?)(?:```|$)", content, re.DOTALL)
                 if m and m.group(1).strip():
                     raw_extracted = m.group(1).strip()
@@ -974,27 +978,36 @@ class StrategySynthesisScheduler:
                     raw_extracted = content.strip()
 
                 sanitized = self.sanitize_strategy_code(raw_extracted)
-                strat_cls = None
-                if self.validate_code_safety(sanitized):
-                    strat_cls = self.compile_strategy_class(sanitized, class_name)
-
-                if strat_cls is not None:
-                    try:
-                        test_inst = strat_cls(self.settings)
-                        if test_inst is not None:
-                            code = sanitized
-                    except Exception as canary_err:
-                        logger.info(
-                            f"[StrategySynthesis] LLM candidate canary test failed for {symbol} ({canary_err}); "
-                            f"falling back to deterministic template."
-                        )
-                        code = None
-                else:
-                    logger.info(
-                        f"[StrategySynthesis] LLM synthesized code for {symbol} failed compilation; "
-                        f"falling back to deterministic template."
+                if not self.validate_code_safety(sanitized):
+                    logger.info(f"[StrategySynthesis] Code safety check failed on attempt {attempt+1} for {symbol}. Prompting repair.")
+                    current_prompt = (
+                        f"Your previous code violated safety policies or module allowlists.\n"
+                        f"STRICT INSTRUCTION: Only use math, numpy, pandas, datetime, sqlalchemy, logging.\n"
+                        f"Please rewrite the strategy class {class_name} completely:\n```python\n{sanitized}\n```"
                     )
-                    code = None
+                    continue
+
+                strat_cls = self.compile_strategy_class(sanitized, class_name)
+                if strat_cls is None:
+                    logger.info(f"[StrategySynthesis] Compilation failed on attempt {attempt+1} for {symbol}. Prompting repair.")
+                    current_prompt = (
+                        f"Your previous code failed compilation or AST parsing.\n"
+                        f"Please fix syntax, indentation, and undefined variables in {class_name}:\n```python\n{sanitized}\n```"
+                    )
+                    continue
+
+                try:
+                    test_inst = strat_cls(self.settings)
+                    if test_inst is not None:
+                        code = sanitized
+                        logger.info(f"[StrategySynthesis] Successfully synthesized viable strategy '{class_name}' on attempt {attempt+1}.")
+                        break
+                except Exception as canary_err:
+                    logger.info(f"[StrategySynthesis] Canary error on attempt {attempt+1} for {symbol}: {canary_err}")
+                    current_prompt = (
+                        f"Your strategy instantiated with error: {canary_err}.\n"
+                        f"Please fix the initialization and attribute assignments in {class_name}:\n```python\n{sanitized}\n```"
+                    )
         except Exception as e:
             logger.debug(f"[StrategySynthesis] LLM synthesis non-fatal fallback: {e}")
 
@@ -1209,7 +1222,7 @@ class StrategySynthesisScheduler:
                 else:
                     session.add(SystemConfig(key=config_key, value=config_val))
 
-                # Register into StrategyDecayMonitor as incubating (min 4 paper trades required)
+                # Register into StrategyDecayMonitor as incubating
                 try:
                     from analysis.strategies.decay_monitor import get_strategy_decay_monitor
                     decay_mon = get_strategy_decay_monitor()
@@ -1237,6 +1250,8 @@ class StrategySynthesisScheduler:
 
             # Notify operator if notifier is available
             if self.notifier and hasattr(self.notifier, "send_info"):
+                from analysis.strategies.decay_monitor import StrategyDecayMonitor
+                incubation_trades = getattr(StrategyDecayMonitor, "MIN_INCUBATION_TRADES", 15)
                 await self.notifier.send_info(
                     f"💡 <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
                     f"<b>ID:</b> <code>{candidate.strategy_id}</code>\n"
@@ -1245,7 +1260,7 @@ class StrategySynthesisScheduler:
                     f"<b>Sharpe:</b> <code>{candidate.sharpe_ratio:.2f}</code> (Target &gt;= {self.min_sharpe})\n"
                     f"<b>Max Drawdown:</b> <code>{candidate.max_drawdown_pct:.1f}%</code> (Limit &lt;= {self.max_drawdown_pct}%)\n"
                     f"<b>Win Rate:</b> <code>{candidate.win_rate_pct:.1f}%</code> ({candidate.total_trades} trades)\n"
-                    f"Registered into StrategyRegistry for paper incubation (min 4 paper trades before live execution)."
+                    f"Registered into StrategyRegistry for paper incubation (min {incubation_trades} paper trades before live execution)."
                 )
         except Exception as e:
             logger.warning(f"[StrategySynthesis] Failed persisting candidate {candidate.strategy_id}: {e}")

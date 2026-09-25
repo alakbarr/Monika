@@ -429,10 +429,18 @@ class PositionSizer:
 
         # 5. Round to lot step and clamp
         recommended_lots = self._round_lots(raw_lots, spec.lot_step)
-        if recommended_lots < spec.min_lot:
-            rejections.append(f"Calculated lot size ({recommended_lots}) is below broker minimum ({spec.min_lot})")
-        
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
+        if recommended_lots < spec.min_lot:
+            min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
+            if min_lot_risk_usd <= max_risk_cap:
+                recommended_lots = spec.min_lot
+                logger.debug(
+                    f"Lot size bumped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
+                    f"(risk ${min_lot_risk_usd:.2f} <= cap ${max_risk_cap:.2f})"
+                )
+            else:
+                rejections.append(f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit (${max_risk_cap:.2f})")
+        
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
             rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")

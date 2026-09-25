@@ -89,12 +89,18 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             if adj_entry is not None:
                                 entry_zone_data['price'] = float(adj_entry)
                                 ana.entry_zone = json.dumps(entry_zone_data)
+                                if isinstance(r, dict):
+                                    r['entry_price'] = float(adj_entry)
                             adj_sl = verdict.get('adjusted_sl')
                             if adj_sl is not None:
                                 ana.stop_loss = float(adj_sl)
+                                if isinstance(r, dict):
+                                    r['stop_loss'] = float(adj_sl)
                             adj_tp = verdict.get('adjusted_tp')
                             if adj_tp is not None:
                                 ana.take_profit = float(adj_tp)
+                                if isinstance(r, dict):
+                                    r['take_profit'] = float(adj_tp)
 
                         adj_rm = verdict.get('risk_multiplier')
                         if adj_rm is not None:
@@ -102,6 +108,8 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             if abs(new_rm - (ana.risk_multiplier or 1.0)) > 1e-4:
                                 ana.was_debate_modified = True
                             ana.risk_multiplier = new_rm
+                            if isinstance(r, dict):
+                                r['risk_multiplier'] = new_rm
 
                         try:
                             from database.event_store import TradingEventStore

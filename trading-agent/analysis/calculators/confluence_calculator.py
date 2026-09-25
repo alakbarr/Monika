@@ -431,7 +431,7 @@ async def calculate_confluence(
                 score += 2
                 
             if not near_fvg and not near_ob:
-                issues.append(f'Entry {test_entry} not near any H4 FVG or Order Block.')
+                logger.debug(f'Entry {test_entry} not near any H4 FVG or Order Block (optional confluence).')
                 
         # S/R Zone Bonus
         if test_entry and atr_val > 0:

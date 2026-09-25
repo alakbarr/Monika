@@ -152,7 +152,7 @@ async def test_alpha_auto_deploy_promotes_to_paper_active_and_hot_reloads():
 
         # Verify runner was hot-reloaded
         mock_runner.hot_reload_strategy.assert_called_once_with(
-            "test_mock_alpha", {"donchian_period": 42}
+            "test_mock_alpha", {"donchian_period": 42}, symbol="EURUSD"
         )
 
         # Verify StrategyRegistry dynamic params were updated
@@ -199,5 +199,5 @@ async def test_manual_promote_to_paper_active():
         assert ok is True
         assert prop.status == "PAPER_ACTIVE"
         mock_runner.hot_reload_strategy.assert_called_once_with(
-            "test_mock_alpha", {"donchian_period": 99}
+            "test_mock_alpha", {"donchian_period": 99}, symbol="EURUSD"
         )

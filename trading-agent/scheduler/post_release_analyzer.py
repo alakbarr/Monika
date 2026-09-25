@@ -222,15 +222,15 @@ class PostReleaseAnalyzer:
                 line += f" | Previous = {e.previous}"
             # Calculate surprise direction
             try:
-                actual_str = str(e.actual).replace('%', '').replace(',', '').strip()
-                forecast_str = str(e.forecast).replace('%', '').replace(',', '').strip()
-                act_val = float(actual_str)
-                fc_val = float(forecast_str)
-                diff = act_val - fc_val
-                direction = "ABOVE" if diff > 0 else "BELOW"
-                magnitude = abs(diff)
-                line += f" → [{direction} forecast by {magnitude:.2f}]"
-            except (ValueError, TypeError, AttributeError):
+                from analysis.calculators.economic_surprise import _parse_numeric
+                act_val = _parse_numeric(e.actual)
+                fc_val = _parse_numeric(e.forecast)
+                if act_val is not None and fc_val is not None:
+                    diff = act_val - fc_val
+                    direction = "ABOVE" if diff > 0 else "BELOW"
+                    magnitude = abs(diff)
+                    line += f" → [{direction} forecast by {magnitude:.2f}]"
+            except Exception:
                 pass
             lines.append(line)
 
@@ -263,7 +263,7 @@ class PostReleaseAnalyzer:
                 "consumer price", "cpi", "hicp", "core pce"
             )
             is_tier1 = any(
-                any(p in (getattr(e, "name", "") or getattr(e, "event", "") or "").lower() for p in tier1_patterns)
+                any(p in (getattr(e, "event_name", "") or getattr(e, "name", "") or getattr(e, "event", "") or "").lower() for p in tier1_patterns)
                 for e in (events or [])
             )
             if is_tier1 and self._fundamental:

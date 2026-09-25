@@ -389,9 +389,6 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                         'rationale': f'Cooldown: last analysis {elapsed_minutes:.0f}min ago.',
                         'elapsed_seconds': 0, 'skipped_by_cooldown': True
                     }
-        
-        self._last_analysis_time[symbol] = start_time
-
         # Pre-flight Turn Gate (Zero-token rejection on unviable market conditions)
         if self.settings.get("analysis", {}).get("enable_preflight_gate", True) and not getattr(self, "_skip_preflight", False):
             preflight_ok, preflight_reason = await PreFlightTurnGate.evaluate_preconditions(
@@ -629,6 +626,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 "elapsed_seconds": (_get_clock().now() - start_time).total_seconds(),
                 "skipped_by_prescreen": True,
             }
+
+        # Mark analysis start time now that prescreen has passed
+        self._last_analysis_time[symbol] = start_time
 
         # === ASSEMBLE FINAL MESSAGE ===
         message_parts = [core_instructions]

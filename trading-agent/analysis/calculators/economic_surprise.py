@@ -63,9 +63,9 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         
         # Normalisasi: persentase deviasi dari forecast
         if abs(forecast) > 0.001:
-            surprise = (actual - forecast) / abs(forecast) * 100
+            surprise = round(((actual - forecast) / abs(forecast)) * 100.0, 4)
         else:
-            surprise = actual - forecast
+            surprise = round(actual - forecast, 4)
 
         # Inversi arah untuk metrik pengangguran/klaim
         # (kenaikan pengangguran adalah sinyal dovish/pelemah mata uang)
