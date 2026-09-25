@@ -412,8 +412,8 @@ class SignalArbitrator:
                     meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew}
                 )
 
-            # 5. Direct conflict in ranging / mixed market -> Mutual Suppression unless TimesFM breaks tie
-            if abs(tfm_skew) >= 0.35:
+            # 5. Direct conflict in ranging / mixed market -> Resolve via Conviction Delta or TimesFM
+            if abs(tfm_skew) >= 0.20:
                 tfm_favors = "buy" if tfm_skew > 0 else "sell"
                 favored_source = "quant" if q_dir == tfm_favors else ("llm" if l_dir == tfm_favors else None)
                 if favored_source:
@@ -433,13 +433,41 @@ class SignalArbitrator:
                         meta={"conflict_resolved": True, "timesfm_skew": tfm_skew}
                     )
 
+            # Conviction delta resolution: higher conviction source takes precedence with damped risk
+            if l_conf >= (q_conf + 0.10) and l_dir in ("buy", "sell"):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision=l_dir,
+                    confidence=l_conf,
+                    risk_multiplier=0.75,
+                    selected_source="llm_conviction_precedence",
+                    arbitration_reason=f"LLM higher conviction ({l_conf:.2f}) took precedence over conflicting Quant ({q_conf:.2f}) with risk damping 0.75x.",
+                    entry_price=llm_decision.get("entry_price"),
+                    stop_loss=llm_decision.get("stop_loss"),
+                    take_profit=llm_decision.get("take_profit"),
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True}
+                )
+            elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell"):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision=q_dir,
+                    confidence=q_conf,
+                    risk_multiplier=round(quant_priority_risk_mult * 0.80, 2),
+                    selected_source="quant_conviction_precedence",
+                    arbitration_reason=f"Quant strategy ({quant_strat_id}) conviction ({q_conf:.2f}) took precedence over conflicting LLM ({l_conf:.2f}) with risk damping.",
+                    entry_price=_get_q("entry_price"),
+                    stop_loss=_get_q("stop_loss"),
+                    take_profit=_get_q("take_profit"),
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True}
+                )
+
             return ArbitrationResult(
                 symbol=symbol,
                 decision="avoid",
                 confidence=0.0,
                 risk_multiplier=0.0,
                 selected_source="conflict_suppression",
-                arbitration_reason=f"Direct direction conflict ({q_dir.upper()} vs {l_dir.upper()}) in {market_regime} market. Trade avoided to preserve capital.",
+                arbitration_reason=f"Direct direction conflict ({q_dir.upper()} vs {l_dir.upper()}) with identical conviction in {market_regime} market. Trade avoided to preserve capital.",
                 meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime, "timesfm_skew": tfm_skew}
             )
 

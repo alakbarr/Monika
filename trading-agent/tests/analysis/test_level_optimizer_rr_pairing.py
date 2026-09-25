@@ -88,8 +88,8 @@ async def test_compute_optimal_levels_synthetic_tp():
         # Top TP candidate should be synthetic min_rr target
         top_tp = res["top_tp_candidates"][0]
         assert top_tp["basis"] == "synthetic_min_rr_adr_target"
-        # Synthetic TP: 2000 + 20 * 1.5 = 2030.0
-        assert top_tp["price"] == 2030.0
+        # Synthetic TP: 2000 + 26.5 * 1.5 = 2039.75
+        assert top_tp["price"] == 2039.75
 
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_insufficient_adr_room():

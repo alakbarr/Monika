@@ -152,7 +152,7 @@ class ActiveCalendarPoller:
                         try:
                             from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
                             ff_scraper = ForexFactoryCalendarScraper(headless=True)
-                            fresh_ff = await asyncio.to_thread(ff_scraper.fetch_events, prefer_feed=False)
+                            fresh_ff = await asyncio.to_thread(ff_scraper.fetch_events, prefer_feed=True)
                             if fresh_ff:
                                 for event_id, name in list(event_targets):
                                     if name in target_names:

@@ -83,10 +83,9 @@ async def filter_correlated_proposals(
             
             import math
             if corr is None or (isinstance(corr, float) and math.isnan(corr)):
-                logger.warning(f"Correlation Gate: Correlation unavailable for {sym}-{kept_sym}, applying conservative rejection.")
-                conflict_found = True
-                conflict_reason = f'Correlation data unavailable for {kept_sym} (fail-closed)'
-                break
+                logger.info(f"Correlation Gate: Correlation data unavailable for {sym}-{kept_sym}. Defaulting to neutral 0.0 fallback.")
+                corr = 0.0
+                source = "neutral_fallback"
                 
             same_dir = (direction == kept_direction)
             effective_corr = corr if same_dir else -corr

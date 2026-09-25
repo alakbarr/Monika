@@ -104,7 +104,9 @@ def validate_macro_judge_output(
             hallucination_reasons.append("Inversion: Winner is RISK_OFF_USD_BULL but risk_asset_bias is BULLISH")
             
     # 3. Check Tight Score / Uncertainty Escalation
-    if abs(bull_score - bear_score) <= 1 or canonical_winner == "TIE":
+    # Only force escalation on true exact tie (bull_score == bear_score) or explicit canonical TIE,
+    # so a decisive 1-point edge (e.g. 7 vs 6) is respected without forcing tie escalation.
+    if canonical_winner == "TIE" or (bull_score == bear_score):
         escalation_required = True
         
     if hallucination_detected:

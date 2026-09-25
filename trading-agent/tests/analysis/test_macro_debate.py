@@ -104,19 +104,32 @@ def test_validator_detects_score_mismatch():
 
 
 def test_validator_tight_score_triggers_escalation():
-    # Tight score (7 vs 6) should trigger escalation even if winner is chosen
-    raw_judge = {
+    # Decisive 1-point edge (7 vs 6) should be respected without forcing escalation
+    raw_judge_edge = {
         "bull_arguments_score": 7,
         "bear_arguments_score": 6,
         "winner": "RISK_ON_USD_BEAR",
         "dxy_bias": "BEARISH",
         "risk_asset_bias": "BULLISH",
-        "rationale": "Close contest",
+        "rationale": "Bull has valid edge",
         "escalation_required": False
     }
-    validated = validate_macro_judge_output(raw_judge)
-    assert validated["internal_hallucination_detected"] is False
-    assert validated["escalation_required"] is True
+    validated_edge = validate_macro_judge_output(raw_judge_edge)
+    assert validated_edge["internal_hallucination_detected"] is False
+    assert validated_edge["escalation_required"] is False
+
+    # Exact tie (7 vs 7 or canonical winner TIE) must trigger escalation
+    raw_judge_tie = {
+        "bull_arguments_score": 7,
+        "bear_arguments_score": 7,
+        "winner": "TIE",
+        "dxy_bias": "NEUTRAL",
+        "risk_asset_bias": "NEUTRAL",
+        "rationale": "True tie",
+        "escalation_required": False
+    }
+    validated_tie = validate_macro_judge_output(raw_judge_tie)
+    assert validated_tie["escalation_required"] is True
 
 
 # =============================================================================

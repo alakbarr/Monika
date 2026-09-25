@@ -34,6 +34,7 @@ logger = logging.getLogger("TradingAgent.MT5")
 # Priority constants for asyncio PriorityQueue worker pattern
 PRIORITY_CRITICAL = 0    # Emergency, kill-switch, order execution (place, modify, close)
 PRIORITY_STANDARD = 5    # Ticks, account info, open positions, spread
+PRIORITY_NORMAL = PRIORITY_STANDARD # Alias for standard priority tasks
 PRIORITY_BACKGROUND = 10 # Bulk historical rates (get_rates, copy_rates_range)
 
 # MT5 timeframe string → MT5 constant mapping
@@ -107,6 +108,7 @@ class MT5Client:
         self._poller_interval: float = float(
             self.settings.get("trading", {}).get("schedule", {}).get("tick_poller_interval_seconds", 0.25)
         )
+        self._broker_utc_offset_seconds: Optional[int] = None
         # Note: do NOT store event loop in __init__ — get it lazily in _run()
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
@@ -194,6 +196,7 @@ class MT5Client:
             pass
         finally:
             self._connected = False
+            self._broker_utc_offset_seconds = None
             queue = self._priority_queue
             self._priority_queue = None
             if self._worker_task and not self._worker_task.done():
@@ -352,6 +355,41 @@ class MT5Client:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _get_last_tick, symbol)
 
+    async def get_broker_utc_offset_seconds(self) -> int:
+        """
+        Hitung selisih detik antara broker server time MT5 dan UTC.
+        Contoh: broker di UTC+3 -> return +10800 detik.
+        """
+        if self._broker_utc_offset_seconds is not None:
+            return self._broker_utc_offset_seconds
+
+        def _calc_offset():
+            try:
+                import MetaTrader5 as mt5_mod
+                t = mt5_mod.symbol_info_tick("EURUSD")
+                if not t:
+                    for s in ("GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"):
+                        t = mt5_mod.symbol_info_tick(s)
+                        if t:
+                            break
+                if t and getattr(t, "time", 0) > 0:
+                    now_utc = datetime.now(timezone.utc).timestamp()
+                    diff_s = t.time - now_utc
+                    offset_hours = round(diff_s / 3600.0)
+                    return int(offset_hours * 3600)
+            except Exception as e:
+                logger.debug(f"Failed to calculate broker UTC offset: {e}")
+            return 0
+
+        offset = await self._run(_calc_offset, priority=PRIORITY_NORMAL)
+        if isinstance(offset, (int, float)):
+            self._broker_utc_offset_seconds = int(offset)
+        else:
+            self._broker_utc_offset_seconds = 0
+        if self._broker_utc_offset_seconds != 0:
+            logger.info(f"[MT5Client] Broker UTC offset: {self._broker_utc_offset_seconds / 3600:+.1f}h ({self._broker_utc_offset_seconds}s)")
+        return self._broker_utc_offset_seconds
+
     # ------------------------------------------------------------------
     # OHLCV price data
     # ------------------------------------------------------------------
@@ -406,8 +444,11 @@ class MT5Client:
                 return None
             df = pd.concat(collected_dfs, ignore_index=True).drop_duplicates(subset=["time"]).sort_values("time")
 
-        # MT5 'time' is Unix timestamp (UTC) — convert to datetime
-        df["time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+        # MT5 'time' is Unix timestamp in broker server time — convert to true UTC
+        broker_offset = await self.get_broker_utc_offset_seconds()
+        if not isinstance(broker_offset, (int, float)):
+            broker_offset = 0
+        df["time"] = pd.to_datetime(df["time"] - broker_offset, unit="s", utc=True)
         df = df.rename(columns={"tick_volume": "volume"})
         df = df[["time", "open", "high", "low", "close", "volume"]].copy()
         logger.debug(f"Fetched {len(df)} bars for {symbol}/{timeframe}")
@@ -432,13 +473,20 @@ class MT5Client:
             logger.error(f"Unknown timeframe: {timeframe}")
             return None
 
+        broker_offset = await self.get_broker_utc_offset_seconds()
+        if not isinstance(broker_offset, (int, float)):
+            broker_offset = 0
+        # Convert date_from / date_to from UTC to broker server time for MT5 API query
+        dt_from_broker = date_from + timedelta(seconds=broker_offset) if isinstance(date_from, datetime) else date_from
+        dt_to_broker = date_to + timedelta(seconds=broker_offset) if isinstance(date_to, datetime) else date_to
+
         # Check if date range can be chunked
-        is_datetime_range = isinstance(date_from, datetime) and isinstance(date_to, datetime)
-        if is_datetime_range and (date_to - date_from) > timedelta(days=chunk_days):
+        is_datetime_range = isinstance(dt_from_broker, datetime) and isinstance(dt_to_broker, datetime)
+        if is_datetime_range and (dt_to_broker - dt_from_broker) > timedelta(days=chunk_days):
             collected_dfs = []
-            curr_start = date_from
-            while curr_start < date_to:
-                curr_end = min(curr_start + timedelta(days=chunk_days), date_to)
+            curr_start = dt_from_broker
+            while curr_start < dt_to_broker:
+                curr_end = min(curr_start + timedelta(days=chunk_days), dt_to_broker)
                 rates = await self._run(
                     _copy_rates_range, symbol, tf_const, curr_start, curr_end,
                     priority=PRIORITY_BACKGROUND
@@ -453,13 +501,13 @@ class MT5Client:
                 return None
             df = pd.concat(collected_dfs, ignore_index=True).drop_duplicates(subset=["time"]).sort_values("time")
         else:
-            rates = await self._run(_copy_rates_range, symbol, tf_const, date_from, date_to, priority=PRIORITY_BACKGROUND)
+            rates = await self._run(_copy_rates_range, symbol, tf_const, dt_from_broker, dt_to_broker, priority=PRIORITY_BACKGROUND)
             if rates is None or len(rates) == 0:
                 logger.warning(f"No OHLCV range data returned for {symbol}/{timeframe}")
                 return None
             df = pd.DataFrame(rates)
 
-        df["time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+        df["time"] = pd.to_datetime(df["time"] - broker_offset, unit="s", utc=True)
         df = df.rename(columns={"tick_volume": "volume"})
         df = df[["time", "open", "high", "low", "close", "volume"]].copy()
         return cast(pd.DataFrame, df)

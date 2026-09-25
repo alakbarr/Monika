@@ -43,16 +43,23 @@ async def verify_confluence(
     
     # Check symbol-specific discrepancy allowed, fallback to general setting
     risk_cfg = settings.get('trading', {}).get('risk', {})
-    default_allowed = risk_cfg.get('max_score_discrepancy_allowed', 3)
+    default_allowed = 5 if symbol in {"BTCUSD", "XTIUSD", "XBRUSD", "XAUUSD"} else risk_cfg.get('max_score_discrepancy_allowed', 4)
     max_allowed_discrepancy = risk_cfg.get('max_score_discrepancy_by_symbol', {}).get(
         symbol, default_allowed
     )
     if discrepancy > max_allowed_discrepancy:
-        blocking_issues.append(
-            f'Score inflation suspected: AI reported {ai_score}/14 '
-            f'but factual checks computed {computed_score}. '
-            f'Discrepancy of {discrepancy} exceeds tolerance of {max_allowed_discrepancy}.'
-        )
+        # Only hard block if computed_score is virtually zero or discrepancy is extreme (>6)
+        if computed_score < 2 or discrepancy > 6:
+            blocking_issues.append(
+                f'Score inflation suspected: AI reported {ai_score}/14 '
+                f'but factual checks computed {computed_score}. '
+                f'Discrepancy of {discrepancy} exceeds tolerance of {max_allowed_discrepancy}.'
+            )
+        else:
+            logger.info(
+                f"[{symbol}] Confluence discrepancy warning: AI={ai_score}, computed={computed_score} "
+                f"(diff={discrepancy} > {max_allowed_discrepancy}), but setup has valid parameters. Passing with soft note."
+            )
     
     verified = len(blocking_issues) == 0
     

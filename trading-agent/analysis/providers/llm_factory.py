@@ -613,10 +613,21 @@ class FallbackClientWrapper(BaseLLMClient):
                         from analysis.prompt_sections import get_prompt_section_registry
                         psr = get_prompt_section_registry()
                         ctx_info = {"task_role": self.task_role, "model": model}
-                        if "system" in safe_kwargs and isinstance(safe_kwargs["system"], str):
-                            safe_kwargs["system"] = psr.format_full_prompt(safe_kwargs["system"], ctx_info)
-                        elif "system_prompt" in safe_kwargs and isinstance(safe_kwargs["system_prompt"], str):
-                            safe_kwargs["system_prompt"] = psr.format_full_prompt(safe_kwargs["system_prompt"], ctx_info)
+
+                        def _format_system_prompt(sys_val):
+                            if isinstance(sys_val, str):
+                                return psr.format_full_prompt(sys_val, ctx_info)
+                            elif isinstance(sys_val, (list, tuple)):
+                                return type(sys_val)(
+                                    psr.format_full_prompt(s, ctx_info) if isinstance(s, str) else s
+                                    for s in sys_val
+                                )
+                            return sys_val
+
+                        if "system" in safe_kwargs:
+                            safe_kwargs["system"] = _format_system_prompt(safe_kwargs["system"])
+                        elif "system_prompt" in safe_kwargs:
+                            safe_kwargs["system_prompt"] = _format_system_prompt(safe_kwargs["system_prompt"])
                     except Exception as ps_err:
                         logger.debug(f"[LLMDispatch] prompt sections notice: {ps_err}")
 

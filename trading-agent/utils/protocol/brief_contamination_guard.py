@@ -117,21 +117,23 @@ class BriefContaminationGuard:
             
             if len(dxy_rows) >= 3:
                 dxy_trend = 'strengthening' if dxy_rows[0].close > dxy_rows[-1].close else 'weakening'
+                # Check if brief contains explicit forward-looking catalyst or macro narrative justifying reversal
+                narrative_l = (brief_data.get('macro_narrative') or '').lower()
+                has_reversal_catalyst = any(w in narrative_l for w in ('reversal', 'catalyst', 'pivot', 'fed cut', 'hike', 'cpi miss', 'cpi beat', 'nfp', 'yield drop', 'yield spike')) or bool(brief_data.get('macro_catalysts'))
                 
+                penalty = 0.15 if has_reversal_catalyst else 0.25
                 if dxy_trend == 'strengthening' and usd_bias == 'bearish':
                     issues.append(
                         f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
-                        f"DXY is price-based (more reliable). "
-                        f"USD bias in brief may be hallucinated from stale/wrong data."
+                        f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
                     )
-                    risk_score += 0.35
+                    risk_score += penalty
                 elif dxy_trend == 'weakening' and usd_bias == 'bullish':
                     issues.append(
                         f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
-                        f"DXY is price-based (more reliable). "
-                        f"USD bias in brief may be hallucinated."
+                        f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
                     )
-                    risk_score += 0.35
+                    risk_score += penalty
         except Exception as e:
             logger.debug(f"BriefContaminationGuard: DXY check failed (non-fatal): {e}")
             try:

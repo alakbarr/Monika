@@ -639,7 +639,18 @@ class FundamentalStage:
                 msg = f"Stage 1 FAILED after {elapsed:.1f}s: {result.get('error')}"
                 logger.error(msg)
                 await self._log(session, msg, category="error")
-                return result
+                if self.settings.get('analysis', {}).get('enable_fallback_brief', False):
+                    brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+                    if brief:
+                        result["success"] = True
+                        result["is_deterministic_fallback"] = True
+                        result["brief_id"] = brief.id
+                        result["tool_calls_made"] = result.get("tool_calls_made", 0)
+                        result["turns"] = result.get("turns", 0)
+                    else:
+                        return result
+                else:
+                    return result
 
         # Verifikasi brief berhasil disubmit ke DB
         brief = (await session.execute(
@@ -994,13 +1005,27 @@ INSTRUCTIONS:
 
         brief_id = brief.id if brief else None
         if brief_id is None:
-            logger.error(
-                "Stage 1 completed but no brief was found in DB. "
-                "LLM may not have called submit_fundamental_brief."
-            )
-            result["success"] = False
-            result["error"] = "Brief submission missing — LLM did not call submit tool"
-            return result
+            if self.settings.get('analysis', {}).get('enable_fallback_brief', False):
+                logger.warning(
+                    "Stage 1 completed but no brief was found in DB. "
+                    "Generating deterministic fallback brief to prevent pipeline stall."
+                )
+                brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+                brief_id = brief.id if brief else None
+                if brief_id is None:
+                    result["success"] = False
+                    result["error"] = "Brief submission missing — LLM did not call submit tool and fallback generation failed"
+                    return result
+                result["success"] = True
+                result["is_deterministic_fallback"] = True
+            else:
+                logger.error(
+                    "Stage 1 completed but no brief was found in DB. "
+                    "LLM may not have called submit_fundamental_brief."
+                )
+                result["success"] = False
+                result["error"] = "Brief submission missing — LLM did not call submit tool"
+                return result
 
         if brief and (escalated or not _debate_outcome or not _debate_outcome.get('ran')):
             _debate_outcome = await self._run_macro_debate(session, brief)
@@ -1070,3 +1095,92 @@ INSTRUCTIONS:
             await session.commit()
         except Exception as e:
             logger.debug(f"Activity log write failed (non-fatal): {e}")
+
+    async def _generate_deterministic_fallback_brief(
+        self,
+        session: AsyncSession,
+        prefetched_data: Any,
+        weekend_btc_only_mode: bool = False
+    ) -> Optional[FundamentalBrief]:
+        """
+        Generate deterministic baseline brief when LLM fails or fails to call submit tool.
+        Derives baseline regime and sentiment from prefetched indicators (VIX, FedWatch, etc.)
+        """
+        try:
+            data_dict = {}
+            if isinstance(prefetched_data, dict):
+                data_dict = prefetched_data
+            elif isinstance(prefetched_data, str):
+                try:
+                    data_dict = json.loads(prefetched_data)
+                except Exception:
+                    data_dict = {}
+
+            vix_val = None
+            if "vix" in data_dict and isinstance(data_dict["vix"], dict):
+                vix_val = data_dict["vix"].get("current") or data_dict["vix"].get("close")
+            elif "vix" in data_dict and isinstance(data_dict["vix"], (int, float)):
+                vix_val = float(data_dict["vix"])
+
+            regime = "mixed"
+            sentiment = "mixed"
+            if vix_val is not None:
+                if vix_val < 18.0:
+                    sentiment = "risk-on"
+                    regime = "risk_on"
+                elif vix_val > 25.0:
+                    sentiment = "risk-off"
+                    regime = "risk_off"
+
+            currencies = ["BTC"] if weekend_btc_only_mode else ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"]
+            currency_bias = {c: "neutral" for c in currencies}
+            currency_confidence = {c: 0.50 for c in currencies}
+
+            structured = {
+                "macro_bias": "neutral",
+                "macro_narrative": (
+                    "[DETERMINISTIC FALLBACK BRIEF]: AI fundamental stage encountered an upstream error or "
+                    "did not submit a structured brief. A rule-based baseline was synthesized from available indicators. "
+                    f"Market regime: {regime}, Sentiment: {sentiment} (VIX: {vix_val if vix_val is not None else 'N/A'}). "
+                    "Downstream Stage 2 specialists should proceed with moderate confidence (0.50)."
+                ),
+                "key_drivers": [f"VIX: {vix_val if vix_val is not None else 'baseline'}", "Deterministic baseline fallback"],
+                "risk_events": [],
+                "narrative_shift": False,
+                "macro_regime": regime,
+                "risk_sentiment": sentiment,
+                "currency_bias": currency_bias,
+                "currency_confidence": currency_confidence,
+                "invalidation_conditions": {c: f"{c} bias invalidation baseline" for c in currencies},
+                "confidence": 0.50,
+                "priced_in_assessment": {
+                    "dominant_driver": "Deterministic baseline fallback",
+                    "priced_in_score": 5,
+                    "sell_the_news_risk": "low"
+                },
+                "strongest_counter_thesis": "Deterministic baseline holds neutral bias; directional momentum may develop from technical or order-flow drivers.",
+                "is_fallback": True,
+                "_data_quality_degraded": True,
+            }
+
+            now_utc = clock.now()
+            brief = FundamentalBrief(
+                generated_at=now_utc,
+                valid_until=now_utc + timedelta(hours=12),
+                content_markdown=structured["macro_narrative"],
+                structured_json=json.dumps(structured),
+                confidence=0.50,
+                risk_sentiment=sentiment,
+                debate_bull_thesis="Deterministic neutral baseline",
+                debate_bear_thesis="Deterministic neutral baseline",
+                debate_winner="TIE",
+                debate_escalation_required=False,
+            )
+            session.add(brief)
+            await session.commit()
+            await session.refresh(brief)
+            logger.info(f"Generated deterministic fallback FundamentalBrief (id={brief.id}) successfully.")
+            return brief
+        except Exception as e:
+            logger.error(f"Failed to generate deterministic fallback brief: {e}", exc_info=True)
+            return None

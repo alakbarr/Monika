@@ -33,7 +33,7 @@ async def test_verify_all_ok(mock_session):
 
 @pytest.mark.asyncio
 async def test_verify_discrepancy(mock_session):
-    analysis = AssetAnalysis(symbol="BTCUSD", decision="buy", confluence_score=5)
+    analysis = AssetAnalysis(symbol="BTCUSD", decision="buy", confluence_score=7)
     factors = [
         {"category": "F1_D1_TREND_ALIGNED", "score": 1},
         {"category": "F2_H4_MOMENTUM_ALIGNED", "score": 1},

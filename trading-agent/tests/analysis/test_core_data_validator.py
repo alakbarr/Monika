@@ -91,11 +91,19 @@ async def test_validate_core_data_brief_age_custom_limit():
     assert is_valid is True
     assert len(issues) == 0
 
-    # Reset side effect for failure case (> 6.5h)
+    # Reset side effect for aging case (> 6.5h but <= 24h: graceful degradation)
     mock_brief.generated_at = now - datetime.timedelta(hours=6.8)
+    session.execute.side_effect = [mock_result_1, mock_result_2, mock_result_3]
+    validator_aging = CoreDataValidator(session, {'data_quality': {'max_brief_age_analysis_hours': 6.5}})
+    is_valid_aging, core_data_aging, _ = await validator_aging.validate_and_fetch_core_data()
+    assert is_valid_aging is True
+    assert core_data_aging['fundamental_brief']['confidence'] <= 0.55
+
+    # Hard failure case (> 24.0h)
+    mock_brief.generated_at = now - datetime.timedelta(hours=25.0)
     session.execute.side_effect = [mock_result_1, mock_result_2, mock_result_3]
     validator_fail = CoreDataValidator(session, {'data_quality': {'max_brief_age_analysis_hours': 6.5}})
     is_valid_fail, _, issues_fail = await validator_fail.validate_and_fetch_core_data()
     assert is_valid_fail is False
-    assert any("limit: 6.5h" in i for i in issues_fail)
+    assert any("24.0h hard limit" in i for i in issues_fail)
 
