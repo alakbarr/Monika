@@ -18,19 +18,74 @@ try:
 except Exception:
     _DEFAULT_SSL_CONTEXT = ssl.create_default_context()
 
-logger = logging.getLogger("TradingAgent.HTTPRetry")
-
-class RateLimitError(Exception):
-    def __init__(self, message: str, body: str = "", retry_after: Optional[float] = None, status: int = 429):
-        super().__init__(message)
-        self.body = body
-        self.retry_after = retry_after
-        self.status = status
-
 import time
 import re
+import json
 import random
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+
+logger = logging.getLogger("TradingAgent.HTTPRetry")
+
+def format_api_error_summary(status: int, body: str = "", url: str = "") -> str:
+    """
+    Extracts a clean, single-line error summary from API error response body.
+    Eliminates messy multiline raw JSON dumps in logs and telemetry.
+    """
+    if not body:
+        return f"HTTP {status}"
+    
+    # Try parsing JSON error from Gemini, OpenAI, Anthropic, OpenRouter, etc.
+    try:
+        data = json.loads(body) if isinstance(body, str) else body
+        if isinstance(data, dict):
+            err = data.get("error")
+            if isinstance(err, dict):
+                msg = err.get("message") or err.get("detail") or ""
+                err_status = err.get("status") or err.get("type") or ""
+                if err_status and msg:
+                    return f"HTTP {status} ({err_status}): {msg.strip()}"
+                elif msg:
+                    return f"HTTP {status}: {msg.strip()}"
+            elif isinstance(err, str):
+                return f"HTTP {status}: {err.strip()}"
+            
+            if "detail" in data:
+                return f"HTTP {status}: {str(data['detail']).strip()}"
+            if "message" in data:
+                return f"HTTP {status}: {str(data['message']).strip()}"
+    except Exception:
+        pass
+    
+    # Clean HTML or raw text to single line
+    clean_body = re.sub(r"<[^>]+>", " ", str(body))
+    clean_body = " ".join(clean_body.split())
+    if len(clean_body) > 200:
+        clean_body = clean_body[:200] + "..."
+    return f"HTTP {status}: {clean_body}" if clean_body else f"HTTP {status}"
+
+
+class APIStatusError(Exception):
+    """Clean structured API status exception with formatted summary."""
+    def __init__(self, status: int, message: str = "", body: str = "", retry_after: Optional[float] = None, url: str = "", status_name: str = ""):
+        self.status = status
+        self.status_code = status
+        self.error_message = message
+        self.body = body
+        self.retry_after = retry_after
+        self.url = url
+        self.status_name = status_name
+        
+        summary = message or format_api_error_summary(status, body, url)
+        super().__init__(summary)
+
+
+class RateLimitError(APIStatusError):
+    """Raised on rate limits (HTTP 429 / RESOURCE_EXHAUSTED)."""
+    def __init__(self, message: str, body: str = "", retry_after: Optional[float] = None, status: int = 429):
+        clean_msg = message
+        if body and ("HTTP 429" in message or not message):
+            clean_msg = format_api_error_summary(status, body)
+        super().__init__(status=status, message=clean_msg, body=body, retry_after=retry_after)
 
 _CIRCUIT_BREAKER: dict[str, float] = {}
 
@@ -133,7 +188,8 @@ async def fetch_with_retry(
                     
                     if resp.status != 200:
                         body = await resp.text()
-                        logger.error(f"HTTP {resp.status} for {safe_url}. Body: {body[:500]}")
+                        err_summary = format_api_error_summary(resp.status, body, safe_url)
+                        logger.error(f"{err_summary} [url: {safe_url}]")
                         if return_error_info:
                             return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
                         return None
