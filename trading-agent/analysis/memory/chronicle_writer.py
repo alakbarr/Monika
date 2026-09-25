@@ -310,6 +310,60 @@ class ChronicleWriter:
 
         return synced_count
 
+    async def seed_historical_macro_milestones(self, session: AsyncSession) -> int:
+        """Seed comprehensive 2022-2026 macro milestones on cold start."""
+        from pathlib import Path
+        milestones_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "config" / "historical_macro_milestones.json"
+        )
+        if not milestones_path.exists():
+            return 0
+
+        try:
+            with open(milestones_path, "r", encoding="utf-8") as f:
+                milestones = json.load(f)
+
+            inserted = 0
+            for item in milestones:
+                dt_str = item["event_date"]
+                if dt_str.endswith("Z"):
+                    dt_str = dt_str[:-1] + "+00:00"
+                dt = datetime.fromisoformat(dt_str)
+
+                exists_stmt = select(MarketChronicle).where(
+                    MarketChronicle.event_date == dt,
+                    MarketChronicle.headline == item["headline"]
+                ).limit(1)
+                res = await session.execute(exists_stmt)
+                existing = res.scalar_one_or_none()
+                if asyncio.iscoroutine(existing):
+                    existing = await existing
+
+                if not existing:
+                    entry = MarketChronicle(
+                        event_date=dt,
+                        category=item["category"],
+                        headline=item["headline"],
+                        narrative=item["narrative"],
+                        currencies_affected=item.get("currencies_affected", "MACRO"),
+                        severity=item.get("severity", "high"),
+                        is_ongoing=item.get("is_ongoing", False),
+                        created_at=clock.now(),
+                    )
+                    session.add(entry)
+                    inserted += 1
+
+            if inserted > 0:
+                commit_res = session.commit()
+                if asyncio.iscoroutine(commit_res):
+                    await commit_res
+                logger.info(f"[ChronicleWriter] Seeded {inserted} historical macro milestones (2022-2026).")
+            return inserted
+        except Exception as e:
+            logger.warning(f"[ChronicleWriter] Failed to seed historical milestones: {e}")
+            return 0
+
     async def seed_bootstrap_chronicles_if_empty(self, session: AsyncSession) -> int:
         """Seed initial structural macro anchors if the MarketChronicle table is empty."""
         try:
@@ -318,11 +372,11 @@ class ChronicleWriter:
             count = count_res.scalar_one()
             if asyncio.iscoroutine(count):
                 count = await count
-            if count > 0:
-                # Still ensure verified 2026 macro reality regimes are reconciled
-                return await self.sync_macro_reality_from_file(session)
 
-            return await self.sync_macro_reality_from_file(session)
+            # Always ensure macro reality and historical milestones are seeded
+            sync_res = await self.sync_macro_reality_from_file(session)
+            milestones_res = await self.seed_historical_macro_milestones(session)
+            return (sync_res or 0) + (milestones_res or 0)
         except Exception as e:
             logger.warning(f"[ChronicleWriter] Failed to seed bootstrap chronicles (non-fatal): {e}")
             return 0

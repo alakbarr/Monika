@@ -27,6 +27,7 @@ from analysis.tools.handlers import (
     db_tools,
     ptc_handler,
     skills_tools,
+    pattern_similarity_tools,
 )
 from analysis.tools.domain import spill_reader_tool
 
@@ -52,4 +53,5 @@ __all__ = [
     "smc_tools",
     "db_tools",
     "skills_tools",
+    "pattern_similarity_tools",
 ]

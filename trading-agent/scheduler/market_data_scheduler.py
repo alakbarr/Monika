@@ -161,10 +161,95 @@ class MarketDataScheduler:
                 summary["error"] = str(e)
                 return summary
 
+    async def ensure_deep_history(self, session: Optional[AsyncSession] = None) -> dict:
+        """
+        Cold-start auto-bootstrap: ensures sufficient historical data for pattern similarity screening.
+        Runs once on startup.
+        1. Bulk-loads multi-year OHLCV bars from MT5.
+        2. Backfills 5 years of daily VIX and DXY from Yahoo Finance if DB is sparse.
+        3. Seeds 2022-2026 historical macroeconomic milestones into MarketChronicle.
+        """
+        DEEP_REQ = {
+            "D1": 1400,   # ~4 years
+            "H4": 4500,   # ~3 years
+            "H1": 9000,   # ~1.5 years
+        }
+
+        async def _run_bootstrap(sess: AsyncSession) -> dict:
+            from sqlalchemy import select, func
+            from database.models import PriceOHLCV, VIXData, DXYData
+            from analysis.memory.chronicle_writer import ChronicleWriter
+            report = {"ohlcv_bulk": {}, "vix": 0, "dxy": 0, "milestones": 0}
+
+            # 1. Check & Bulk-Load OHLCV from MT5
+            if self._mt5 and await self._mt5.ensure_connected():
+                for sym in self.asset_universe:
+                    for tf, needed_count in DEEP_REQ.items():
+                        cnt_stmt = select(func.count(PriceOHLCV.id)).where(
+                            PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == tf
+                        )
+                        cnt = (await sess.execute(cnt_stmt)).scalar_one()
+                        if cnt < int(needed_count * 0.75):
+                            logger.info(f"[DeepHistory] Bulk-loading {sym} {tf} from MT5: have {cnt}, requesting {needed_count}...")
+                            try:
+                                res = await self._mt5.fetch_and_save_all(
+                                    sess, symbols=[sym], timeframes=[tf], count=needed_count
+                                )
+                                report["ohlcv_bulk"][f"{sym}_{tf}"] = res.get(f"{sym}/{tf}", res.get(f"{sym}_{tf}", 0))
+                            except Exception as e:
+                                logger.warning(f"[DeepHistory] Failed bulk loading {sym} {tf}: {e}")
+
+            # 2. Check & Backfill 5-Year VIX from Yahoo Finance
+            try:
+                vix_cnt = (await sess.execute(select(func.count(VIXData.id)))).scalar_one()
+                if vix_cnt < 365:
+                    logger.info(f"[DeepHistory] VIX rows={vix_cnt} (<365). Downloading 5y VIX history...")
+                    from data_sources.vix_yfinance import VIXFetcher
+                    vix_fetcher = VIXFetcher(sess)
+                    report["vix"] = await vix_fetcher.fetch(period="5y")
+            except Exception as e:
+                logger.warning(f"[DeepHistory] VIX 5y backfill skipped: {e}")
+
+            # 3. Check & Backfill 5-Year DXY from Yahoo Finance
+            try:
+                dxy_cnt = (await sess.execute(select(func.count(DXYData.id)))).scalar_one()
+                if dxy_cnt < 365:
+                    logger.info(f"[DeepHistory] DXY rows={dxy_cnt} (<365). Downloading 5y DXY history...")
+                    from data_sources.dxy_yfinance import DXYFetcher
+                    dxy_fetcher = DXYFetcher(sess)
+                    report["dxy"] = await dxy_fetcher.fetch(period="5y")
+            except Exception as e:
+                logger.warning(f"[DeepHistory] DXY 5y backfill skipped: {e}")
+
+            # 4. Seed Historical Macro Milestones
+            try:
+                c_writer = ChronicleWriter(self.settings)
+                report["milestones"] = await c_writer.seed_historical_macro_milestones(sess)
+            except Exception as e:
+                logger.warning(f"[DeepHistory] Macro milestones seed skipped: {e}")
+
+            return report
+
+        try:
+            if session is not None:
+                return await _run_bootstrap(session)
+            else:
+                async with get_session() as sess:
+                    return await _run_bootstrap(sess)
+        except Exception as e:
+            logger.error(f"[DeepHistory] Bootstrap failed: {e}")
+            return {"error": str(e)}
+
     async def start(self) -> None:
         """Loop latar belakang untuk sinkronisasi berkala data pasar."""
         self._running = True
         logger.info(f"MarketDataScheduler dimulai (interval: {self.interval_seconds} detik).")
+
+        # Run cold-start deep history bootstrap once upon starting
+        try:
+            await self.ensure_deep_history()
+        except Exception as e:
+            logger.warning(f"Initial deep history check encountered an error: {e}")
 
         while self._running:
             try:

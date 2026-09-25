@@ -2401,6 +2401,52 @@ llm:
         openai_compatible: none
       max_tokens: 4096
       temperature: 0.2
+    pattern_context_verifier:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
+      fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 1024
+      temperature: 0.0
+
+pattern_similarity:
+  enabled: true
+  inject_to_prefetch: true
+  top_k: 20
+  min_similarity: 0.75
+  min_matches_for_signal: 5
+  significance_level: 0.10
+  cross_symbol_enabled: true
+  cross_symbol_weight: 0.5
+  cross_symbol_max_symbols: 3
+  llm_context_verify: true
+  web_search_fallback: true
+  window_sizes:
+    D1: 40
+    H4: 30
+    H1: 24
+  lookback_years:
+    D1: 4.0
+    H4: 3.0
+    H1: 1.5
+  auto_bootstrap:
+    seed_macro_milestones: true
+    yfinance_backfill_years: 5
+    ohlcv_fallback_enabled: true
+
 scenario_tree:
   enabled: true
   ev_threshold: 0.40

@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from database.models import (
     StructureBreak, FVGZone, OrderBlock, VIXData, TechnicalIndicator,
-    FundamentalBrief, DXYData, COTReport, SRZone, FedWatchProbability, PriceOHLCV, SwingPoint
+    FundamentalBrief, DXYData, COTReport, SRZone, FedWatchProbability, PriceOHLCV, SwingPoint,
+    PatternScreeningCache
 )
 
 logger = logging.getLogger('TradingAgent.ConfluenceCalculator')
@@ -338,6 +339,19 @@ async def calculate_confluence(
     except Exception as q_err:
         logger.debug(f"Confluence quant signals check skipped: {q_err}")
 
+    # Historical Pattern Similarity Cache
+    pattern_row = None
+    try:
+        pat_stmt = select(PatternScreeningCache).where(
+            PatternScreeningCache.symbol == symbol,
+        )
+        if as_of:
+            pat_stmt = pat_stmt.where(PatternScreeningCache.screened_at <= as_of)
+        pat_stmt = pat_stmt.order_by(PatternScreeningCache.screened_at.desc()).limit(1)
+        pattern_row = (await session.execute(pat_stmt)).scalar_one_or_none()
+    except Exception as pat_err:
+        logger.debug(f"Confluence pattern similarity cache check skipped: {pat_err}")
+
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
@@ -549,7 +563,14 @@ async def calculate_confluence(
                 bias = str(of_data.get("bias", "")).lower()
                 if (test_direction == "buy" and "bull" in bias) or (test_direction == "sell" and "bear" in bias):
                     score += 1
-                
+
+        # Historical Chart Pattern Similarity Alignment (+1 point)
+        if pattern_row and getattr(pattern_row, "confidence", "") in ("high", "medium"):
+            p_bias = getattr(pattern_row, "overall_bias", "neutral")
+            if (test_direction == "buy" and p_bias == "bullish") or \
+               (test_direction == "sell" and p_bias == "bearish"):
+                score += 1
+
         return score, issues
 
     if direction:

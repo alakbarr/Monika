@@ -38,7 +38,7 @@ class SpecialistPipelineMixin:
                       'get_swing_points_H4', 'get_structure_breaks_H4', 'get_smc_zones_H4',
                       'get_fibonacci_levels_H4', 'get_liquidity_sweep_context', 'get_volume_profile_context',
                       'get_volatility_regime_H4', 'market_regime', 'structure_breaks_D1', 'smc_zones_D1',
-                      'timesfm_forecast', 'market_chronicle', 'recent_lessons'],
+                      'timesfm_forecast', 'market_chronicle', 'recent_lessons', 'pattern_similarity'],
         'sentiment': ['cot_report', 'retail_sentiment', 'fxssi_sentiment', 'fear_greed_index', 'funding_rate', 'recent_news',
                       'market_chronicle', 'recent_lessons', 'market_regime', 'user_market_intel'],
         'macro': ['get_fundamental_brief', 'get_dxy', 'get_economic_calendar', 'get_market_session',

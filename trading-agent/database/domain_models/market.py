@@ -17,6 +17,7 @@ from database.models import (
     COTReport,
     InterestRate,
     CentralBankRateExpectation,
+    PatternScreeningCache,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "COTReport",
     "InterestRate",
     "CentralBankRateExpectation",
+    "PatternScreeningCache",
 ]
