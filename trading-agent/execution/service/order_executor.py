@@ -11,7 +11,7 @@ import time
 import sys
 import inspect
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from unittest.mock import MagicMock
 
@@ -1799,7 +1799,6 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         # News Blackout Check
         from database.models import EconomicCalendar
-        from datetime import timedelta
         from utils.market.currency_utils import get_symbol_currencies
         news_window_minutes = self.settings.get('trading', {}).get('risk', {}).get('news_window_minutes', 30)
         blackout_window = timedelta(minutes=news_window_minutes)

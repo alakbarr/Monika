@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
 

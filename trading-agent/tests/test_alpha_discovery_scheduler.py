@@ -26,7 +26,10 @@ def mock_settings():
                 "xau_trend_engine": {"ema_fast": 20, "ema_slow": 50},
                 "trend_trailing": {"sl_atr_multiplier": 1.5, "tp_sl_multiplier": 2.0},
             },
-        }
+        },
+        "alpha_discovery": {
+            "min_oos_trades": 3,
+        },
     }
 
 

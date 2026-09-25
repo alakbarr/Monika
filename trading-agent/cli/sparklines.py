@@ -11,7 +11,7 @@ Renders PnL trends, VIX curves, equity trajectories, and context window gauges.
 """
 
 import math
-from typing import List, Tuple, Sequence
+from typing import List, Tuple, Sequence, Optional, Any
 
 BRAILLE_BASE = 0x2800
 # (left_dot, right_dot) for rows from top (row 3) down to bottom (row 0)

@@ -232,7 +232,7 @@ class NewsWatcher:
             force_classify = any(shock_checks)
             
             has_unclassified = any(getattr(n, "impact", None) is None for n in new_items)
-            if force_classify or has_unclassified or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1):
+            if force_classify or (has_unclassified or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1)):
                 # Quick batch classification via AI / LLM classifier
                 processor = NewsDigestProcessor(self.settings)
                 async with get_session() as session:

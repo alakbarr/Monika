@@ -123,6 +123,7 @@ class AlphaDiscoveryScheduler:
         notifier: Optional[Any] = None,
         edge_strategy_runner: Optional[Any] = None,
         auto_deploy_paper: bool = False,
+        min_oos_trades: int = 20,
     ):
         self.settings = settings
         cfg = settings.get("alpha_discovery", {}) if isinstance(settings, dict) else {}
@@ -134,6 +135,7 @@ class AlphaDiscoveryScheduler:
         self.step_days = int(cfg.get("step_days", step_days))
         self.min_wfe = float(cfg.get("min_wfe", min_wfe))
         self.min_oos_sharpe = float(cfg.get("min_oos_sharpe", min_oos_sharpe))
+        self.min_oos_trades = int(cfg.get("min_oos_trades", min_oos_trades))
         self.max_drawdown_limit = float(cfg.get("max_drawdown_limit", 20.0))
         self.auto_deploy_paper = bool(cfg.get("auto_deploy_paper", auto_deploy_paper))
         self.recovery_event = recovery_event
@@ -380,7 +382,7 @@ class AlphaDiscoveryScheduler:
             float(getattr(result, "oos_win_rate_pct", 0.0)) if not isinstance(result, dict) else 0.0
         )
 
-        min_oos_trades_threshold = int(self.settings.get("alpha_discovery", {}).get("min_oos_trades", 20))
+        min_oos_trades_threshold = getattr(self, "min_oos_trades", 20)
         meets_criteria = (
             (passed or (wfe >= self.min_wfe and oos_sharpe >= self.min_oos_sharpe and not is_overfit))
             and wfe >= self.min_wfe
