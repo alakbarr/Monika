@@ -83,12 +83,15 @@ class ABEvalRunner:
         grounding_errors = []
         try:
             from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
-            # Construct a synthetic data bundle from fixture for grounding
+            from evals.simulation_clock import get_pip_unit
+            pip_u = get_pip_unit(symbol)
+            curr_p = fixture.get("current_price", 1.0)
+            spread_p = fixture.get("spread_pips", 1.0)
             bundle = {
                 "get_quote": {
-                    "bid": fixture.get("current_price", 1.0),
-                    "ask": fixture.get("current_price", 1.0) + (fixture.get("spread_pips", 1.0) * 0.0001),
-                    "spread_pips": fixture.get("spread_pips", 1.0),
+                    "bid": curr_p,
+                    "ask": curr_p + (spread_p * pip_u),
+                    "spread_pips": spread_p,
                 },
                 "account_equity": fixture.get("account_state", {}).get("equity", 10000.0),
                 "free_margin": fixture.get("account_state", {}).get("equity", 10000.0) * 0.95,

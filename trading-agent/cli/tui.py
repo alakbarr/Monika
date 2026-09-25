@@ -459,6 +459,10 @@ class TradingDashboard(App):
                 with Vertical(id="plugins_container"):
                     yield Static("PLUG-IN HARNESS & MARKETPLACE LEDGER (Press [t] to toggle ON/OFF, [i] to install via pip)", classes="panel_title")
                     yield DataTable(id="plugins_table", zebra_stripes=True)
+            with TabPane("Benchmark", id="tab_benchmark"):
+                with Vertical(id="benchmark_container"):
+                    yield Static("LLM MODEL LAB & BENCHMARK LEADERBOARD (Press [b] to switch, [r] to refresh)", classes="panel_title")
+                    yield DataTable(id="benchmark_table", zebra_stripes=True)
             with TabPane("Chat", id="tab_chat"):
                 with Vertical(id="chat_tab_container"):
                     yield Static("INTERACTIVE DESK CONSOLE (Press 'c' for full screen)", classes="panel_title")
@@ -537,6 +541,12 @@ class TradingDashboard(App):
         plugins_table.add_columns("ID", "Name", "Category", "Ver", "Origin", "Status", "Description")
         asyncio.create_task(self.refresh_plugins_table())
 
+        # Setup Benchmark Table
+        bench_table = self.query_one("#benchmark_table", DataTable)
+        bench_table.cursor_type = "row"
+        bench_table.add_columns("Rank", "Model", "Avg Score", "Pass Rate", "Avg Latency", "Avg Cost", "Tasks")
+        asyncio.create_task(self.refresh_benchmark_table())
+
         # Initial refresh
         await self.refresh_data()
 
@@ -568,7 +578,7 @@ class TradingDashboard(App):
     def action_switch_tab(self) -> None:
         """Switch to next tab."""
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_chat"]
+        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
         curr = tabs.active
         if curr in tab_ids:
             next_idx = (tab_ids.index(curr) + 1) % len(tab_ids)
@@ -577,7 +587,7 @@ class TradingDashboard(App):
     def action_prev_tab(self) -> None:
         """Switch to previous tab."""
         tabs = self.query_one("#main_tabs", TabbedContent)
-        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_chat"]
+        tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
         curr = tabs.active
         if curr in tab_ids:
             prev_idx = (tab_ids.index(curr) - 1) % len(tab_ids)
@@ -610,6 +620,80 @@ class TradingDashboard(App):
             asyncio.create_task(self.refresh_plugins_table())
         except Exception:
             pass
+
+    def action_tab_benchmark(self) -> None:
+        try:
+            self.query_one("#main_tabs", TabbedContent).active = "tab_benchmark"
+            asyncio.create_task(self.refresh_benchmark_table())
+        except Exception:
+            pass
+
+    async def refresh_benchmark_table(self) -> None:
+        """Fetch and populate benchmark leaderboard DataTable."""
+        try:
+            bench_table = self.query_one("#benchmark_table", DataTable)
+            if self.standalone:
+                from benchmark.db_models import BenchmarkRun, BenchmarkResult
+                from database.db import get_session
+                async with get_session() as session:
+                    latest = (await session.execute(
+                        select(BenchmarkRun).order_by(desc(BenchmarkRun.started_at)).limit(1)
+                    )).scalar_one_or_none()
+                    if not latest:
+                        return
+                    rows = (await session.execute(
+                        select(BenchmarkResult).where(BenchmarkResult.run_id == latest.id)
+                    )).scalars().all()
+
+                    stats = {}
+                    for r in rows:
+                        m = r.model_name
+                        if m not in stats:
+                            stats[m] = {"tasks": 0, "passed": 0, "score": 0.0, "cost": 0.0, "lat": 0.0}
+                        st = stats[m]
+                        st["tasks"] += 1
+                        st["cost"] += (r.cost_usd or 0.0)
+                        st["lat"] += (r.latency_s or 0.0)
+                        if not r.error and r.overall_score:
+                            st["score"] += r.overall_score
+                            if r.overall_score >= 0.70:
+                                st["passed"] += 1
+
+                    bench_table.clear()
+                    sorted_stats = sorted(stats.items(), key=lambda x: (x[1]["score"] / max(x[1]["tasks"], 1)), reverse=True)
+                    for idx, (m, st) in enumerate(sorted_stats, 1):
+                        cnt = max(st["tasks"], 1)
+                        avg_sc = st["score"] / cnt
+                        pass_rt = (st["passed"] / cnt) * 100.0
+                        avg_lat = st["lat"] / cnt
+                        avg_cst = st["cost"] / cnt
+                        bench_table.add_row(
+                            f"#{idx}",
+                            m,
+                            f"{avg_sc*100:.1f}%",
+                            f"{pass_rt:.1f}%",
+                            f"{avg_lat:.2f}s",
+                            f"${avg_cst:.4f}",
+                            str(st["tasks"])
+                        )
+            else:
+                async with self._client_session.get(f"{self.api_url}/api/benchmark/leaderboard") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        leaders = data.get("leaderboard", [])
+                        bench_table.clear()
+                        for idx, l in enumerate(leaders, 1):
+                            bench_table.add_row(
+                                f"#{idx}",
+                                l.get("model_name", "N/A"),
+                                f"{(l.get('avg_score', 0) * 100):.1f}%",
+                                f"{l.get('pass_rate_pct', 0):.1f}%",
+                                f"{l.get('avg_latency_s', 0):.2f}s",
+                                f"${l.get('avg_cost_usd', 0):.4f}",
+                                str(l.get("total_tasks", 0))
+                            )
+        except Exception as ex:
+            logger.debug(f"Error refreshing benchmark table in TUI: {ex}")
 
     async def refresh_plugins_table(self) -> None:
         """Fetch unified plugin statuses and refresh DataTable."""

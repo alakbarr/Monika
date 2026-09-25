@@ -2469,3 +2469,79 @@ plugins:
     console:
       enabled: true
 
+benchmark:
+  max_drift_pct: 15.0
+  default_judge_model: "anthropic:claude-3-5-sonnet-20241022"
+  default_reference_model: "anthropic:claude-3-5-sonnet-20241022"
+  default_symbol: "EURUSD"
+  use_fixtures: false
+  tiers:
+    system_one:
+      name: "System One Fast Deciders (<100ms)"
+      description: "Sub-100ms deterministic classification for realtime market shocks and stop guards"
+      target_tasks:
+        - "jev_news_realtime"
+        - "jev_trigger_validator"
+        - "jev_position_guard"
+        - "jev_exit_prescreen"
+        - "stage2_prescreen"
+        - "stage1_shadow_check"
+      models:
+        - "typesafe:jev-latest"
+        - "gemini:gemini-3.5-flash-lite"
+        - "openrouter:google/gemma-4-26b-a4b-it:free"
+    cheap_efficient:
+      name: "Cheap & Token-Efficient (<$0.001/call)"
+      description: "Low-cost high-speed models for routine verification and feature extraction"
+      target_tasks:
+        - "news_classification"
+        - "fundamental_verifier"
+        - "stage2_adjudicator"
+        - "risk_gate_neutral"
+      models:
+        - "gemini:gemini-3.5-flash-lite"
+        - "openrouter:google/gemma-4-31b-it:free"
+        - "groq:groq-qwen3.8-27b"
+        - "openrouter:minimax/minimax-m3:free"
+    cheap_smart:
+      name: "Smart Balanced ($0.001 - $0.01/call)"
+      description: "High quality reasoning for technical analysis, debate, and risk review"
+      target_tasks:
+        - "stage2_per_asset_primary"
+        - "debate_bull"
+        - "debate_bear"
+        - "adversarial_check"
+        - "specialist_technical"
+      models:
+        - "gemini:gemini-3.8-flash"
+        - "gemini:gemini-3.7-flash"
+        - "openrouter:qwen3.8-max"
+        - "openrouter:deepseek/deepseek-chat"
+    high_intelligence:
+      name: "Frontier High-Intelligence"
+      description: "Deep research, escalation, and strategic portfolio synthesis"
+      target_tasks:
+        - "stage1_fundamental"
+        - "stage1_escalation"
+        - "deep_research"
+        - "portfolio_synthesis"
+        - "debate_judge"
+      models:
+        - "anthropic:claude-3-5-sonnet-20241022"
+        - "gemini:gemini-3.1-pro-preview"
+        - "openrouter:anthropic/claude-3.5-sonnet"
+        - "openrouter:gpt-5.6-sol"
+  router_matrix:
+    "claude-3.5-sonnet":
+      - "anthropic:claude-3-5-sonnet-20241022"
+      - "openrouter:anthropic/claude-3.5-sonnet"
+      - "9router:anthropic/claude-3.5-sonnet"
+    "gemini-flash":
+      - "gemini:gemini-3.5-flash-lite"
+      - "openrouter:google/gemini-2.5-flash"
+      - "9router:google/gemini-2.5-flash"
+    "qwen-27b":
+      - "groq:groq-qwen3.8-27b"
+      - "openrouter:qwen/qwen-2.5-72b-instruct"
+      - "9router:qwen/qwen-2.5-72b-instruct"
+

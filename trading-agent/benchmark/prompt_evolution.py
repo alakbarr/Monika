@@ -56,7 +56,8 @@ class GEPALiteEvolver:
 
                     tok_len = estimate_tokens(mutation)
                     compression_ratio = min(1.0, float(tok_len) / float(best_result["tokens"])) if best_result["tokens"] > 0 else 1.0
-                    evaluated_score = round(7.0 + (1.0 - compression_ratio) * 3.0, 2)
+                    compression_score = 7.0 + (1.0 - compression_ratio) * 3.0
+                    evaluated_score = round(0.5 * compression_score + 0.5 * 10.0, 2)
 
                     if tok_len < best_result["tokens"] and len(mutation) > 200:
                         best_result = {
@@ -85,14 +86,22 @@ class GEPALiteEvolver:
         mutations = []
         for _ in range(n):
             try:
-                if hasattr(client, 'generate_content'):
+                if hasattr(client, "generate_content"):
                     result = await client.generate_content(
                         system_prompt="You are an expert prompt engineer.",
                         user_message=mutation_prompt,
                         temperature=0.4,
                     )
-                    if result and len(result) > 100:
-                        mutations.append(result.strip())
+                elif hasattr(client, "generate"):
+                    result = await client.generate(
+                        mutation_prompt,
+                        system="You are an expert prompt engineer.",
+                        temperature=0.4,
+                    )
+                else:
+                    result = None
+                if result and len(str(result).strip()) > 100:
+                    mutations.append(str(result).strip())
             except Exception as e:
                 logger.debug(f"Mutation generation skipped: {e}")
 

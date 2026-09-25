@@ -159,14 +159,25 @@ async def latest_user_message(session: AsyncSession) -> str | None:
     return row.message if row else None
 
 
+def _safe_json_loads(val: Any, default: Any) -> Any:
+    if not val:
+        return default
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except Exception:
+        return default
+
+
 def entry_context(analysis: AssetAnalysis) -> dict:
-    ez = json.loads(analysis.entry_zone) if analysis.entry_zone else {}
+    ez = _safe_json_loads(analysis.entry_zone, {})
     return {
         "decision": (analysis.decision or "wait").upper(),
         "rationale": analysis.rationale,
         "confluence_score": analysis.confluence_score,
-        "confluence_factors": json.loads(analysis.confluence_factors_json) if analysis.confluence_factors_json else [],
-        "entry_price": ez.get("price") or analysis.price_at_analysis,
+        "confluence_factors": _safe_json_loads(analysis.confluence_factors_json, []),
+        "entry_price": (ez.get("price") if isinstance(ez, dict) else None) or analysis.price_at_analysis,
         "stop_loss": analysis.stop_loss,
         "take_profit": analysis.take_profit,
         "invalidation": analysis.invalidation,

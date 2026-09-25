@@ -1,0 +1,22 @@
+{
+  "fixture_id": "macro_fomc_blackout_2026_09",
+  "regime": "hawkish_pre_fomc_consolidation",
+  "macro_indicators": {
+    "us_fed_funds_rate": "3.75-4.00%",
+    "ecb_deposit_rate": "2.50%",
+    "us_10y_yield": 4.52,
+    "de_10y_yield": 2.45,
+    "yield_spread_us_de_bps": 207,
+    "dxy_index": 101.25,
+    "us_core_cpi_yoy": 3.4,
+    "vix": 15.68
+  },
+  "expected_currency_bias": {
+    "USD": "BULLISH",
+    "EUR": "BEARISH",
+    "GBP": "NEUTRAL",
+    "JPY": "BULLISH_INTERVENTION_WATCH",
+    "XAU": "NEUTRAL_TO_BULLISH"
+  },
+  "expected_risk_sentiment": "selective_risk_off"
+}
