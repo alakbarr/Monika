@@ -27,7 +27,7 @@ def test_all_task_role_models_exist_in_catalog():
     task_roles = settings.get("llm", {}).get("task_roles", {})
 
     for role_name, role_cfg in task_roles.items():
-        for slot in ["primary", "fallback_1", "fallback_2", "fallback_3", "fallback_4", "fallback_5", "fallback_6"]:
+        for slot in ["primary", "fallback_1", "fallback_2", "fallback_3", "fallback_4", "fallback_5", "fallback_6", "fallback_7", "fallback_8"]:
             model = role_cfg.get(slot)
             if model:
                 assert model in catalog, f"Role '{role_name}' slot '{slot}' model '{model}' not found in model_catalog"
