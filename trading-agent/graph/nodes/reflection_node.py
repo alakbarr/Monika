@@ -108,13 +108,13 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         if vix_row and vix_row.close is not None:
             vix_value = vix_row.close
         else:
-            # VIX data tidak ada di DB — gunakan defensive default (25.1)
-            vix_value = 25.1
-            logger.warning('[Reflection] VIX data not found in DB. Applying defensive default VIX=25.1')
+            # VIX data tidak ada di DB — gunakan defensive default (25.0)
+            vix_value = 25.0
+            logger.warning('[Reflection] VIX data not found in DB. Applying defensive default VIX=25.0')
     except Exception as e:
-        # Query gagal — gunakan defensive default (25.1)
-        vix_value = 25.1
-        logger.warning(f'[Reflection] VIX query failed ({e}). Applying defensive default VIX=25.1')
+        # Query gagal — gunakan defensive default (25.0)
+        vix_value = 25.0
+        logger.warning(f'[Reflection] VIX query failed ({e}). Applying defensive default VIX=25.0')
     
     if vix_value > 38:
         # Extreme VIX: only keep highest confidence trade

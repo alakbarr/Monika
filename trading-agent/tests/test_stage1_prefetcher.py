@@ -35,13 +35,17 @@ async def test_stage1_data_bundler():
         assert "get_dxy" in satisfied_tools
         assert "get_vix" in satisfied_tools
         assert "get_funding_rate" in satisfied_tools
-        assert len(satisfied_tools) == 13
+        assert "get_bond_yield_spreads" in satisfied_tools
+        assert "get_central_bank_expectations" in satisfied_tools
+        assert len(satisfied_tools) == 15
         
         # Verify executor was called for multiple tools
-        assert mock_executor_instance.execute.call_count == 13
+        assert mock_executor_instance.execute.call_count == 15
         mock_executor_instance.execute.assert_any_call("get_dxy", {})
         mock_executor_instance.execute.assert_any_call("get_vix", {})
         mock_executor_instance.execute.assert_any_call("get_funding_rate", {})
+        mock_executor_instance.execute.assert_any_call("get_bond_yield_spreads", {})
+        mock_executor_instance.execute.assert_any_call("get_central_bank_expectations", {})
         
         # Verify compressor was called
         mock_compress.assert_called_once()

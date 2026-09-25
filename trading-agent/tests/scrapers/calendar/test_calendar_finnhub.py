@@ -8,9 +8,14 @@ from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 
 @pytest.fixture(autouse=True)
 def reset_endpoint_flag():
+    from utils.api.http_retry import _CIRCUIT_BREAKER
     FinnhubCalendarScraper._endpoint_403_detected = False
+    FinnhubCalendarScraper._endpoint_403_until = 0.0
+    _CIRCUIT_BREAKER.pop("finnhub.io", None)
     yield
     FinnhubCalendarScraper._endpoint_403_detected = False
+    FinnhubCalendarScraper._endpoint_403_until = 0.0
+    _CIRCUIT_BREAKER.pop("finnhub.io", None)
 
 
 @pytest.mark.asyncio

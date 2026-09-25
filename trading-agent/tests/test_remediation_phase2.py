@@ -154,12 +154,12 @@ async def test_signal_arbitrator_conflict_regime_and_vix():
     assert res_trend.selected_source == "quant"
     assert res_trend.risk_multiplier <= 0.75  # Scaled down caution sizing
 
-    # Case 3: Ranging market conflict -> Mutual Suppression
+    # Case 3: Ranging market conflict -> Mutual Suppression (equal conviction)
     res_ranging = await arbitrator.arbitrate(
         session=mock_session,
         symbol="XAUUSD",
         quant_signal=quant_sig,
-        llm_decision=llm_dec,
+        llm_decision={**llm_dec, "confidence": 0.85},
         vix_level=18.0,
         regime_info={"regime": "ranging"}
     )

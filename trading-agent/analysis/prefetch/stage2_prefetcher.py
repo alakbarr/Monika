@@ -149,7 +149,7 @@ class Stage2DataBundler:
         warnings = []
         is_forex_closed = False
         try:
-            from utils.market.session_hours import is_forex_market_closed
+            from utils.validation.data_validator import is_forex_market_closed
             is_forex_closed = is_forex_market_closed(now)
         except Exception:
             pass
