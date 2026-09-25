@@ -35,7 +35,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
     
     fund_result = None
     last_error = None
-    max_attempts = 2
+    max_attempts = 1
     
     if is_weekend_restricted:
         logger.info("[Step 6/7] Weekend mode: running abbreviated Stage 1 (crypto-focused)...")
@@ -150,11 +150,16 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
                     new_bias = json.loads(new_brief.structured_json).get('currency_bias', {})
                     prev_bias = json.loads(prev_brief.structured_json).get('currency_bias', {})
                     
-                    from utils.market.bias_utils import normalize_bias
                     reversals = {}
                     for currency in ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU', 'XTI', 'XBR', 'BTC']:
-                        new_b = normalize_bias(new_bias.get(currency, 'neutral'))
-                        prev_b = normalize_bias(prev_bias.get(currency, 'neutral'))
+                        raw_new = new_bias.get(currency)
+                        if raw_new is None and currency in ('XTI', 'XBR'):
+                            raw_new = new_bias.get('OIL')
+                        raw_prev = prev_bias.get(currency)
+                        if raw_prev is None and currency in ('XTI', 'XBR'):
+                            raw_prev = prev_bias.get('OIL')
+                        new_b = normalize_bias(raw_new or 'neutral')
+                        prev_b = normalize_bias(raw_prev or 'neutral')
                         if (new_b == 'bullish' and prev_b == 'bearish') or (new_b == 'bearish' and prev_b == 'bullish'):
                             reversals[currency] = {'from': prev_b, 'to': new_b}
                     

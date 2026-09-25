@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
 import utils.clock as clock
-from sqlalchemy import select
+from sqlalchemy import select, func
 from database.db import get_session
 from database.models import EconomicCalendar, NewsItem
 from scrapers.calendar.calendar_investing import InvestingCalendarScraper
@@ -51,7 +51,7 @@ class ActiveCalendarPoller:
         async with get_session() as session:
             pending_events = (await session.execute(
                 select(EconomicCalendar)
-                .where(EconomicCalendar.impact == 'high')
+                .where(func.lower(EconomicCalendar.impact) == 'high')
                 .where(EconomicCalendar.event_time <= target_time)
                 .where(EconomicCalendar.event_time >= max_time)
                 .where(EconomicCalendar.actual == None)
@@ -147,12 +147,10 @@ class ActiveCalendarPoller:
                             
                     except Exception as e:
                         logger.error(f"Active Polling iteration error: {e}")
-                        # Fallback attempt via ForexFactory if investing scraper failed
-                        ff_scraper = None
+                        # Fallback attempt via ForexFactory direct feed if investing scraper failed
                         try:
-                            from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
-                            ff_scraper = ForexFactoryCalendarScraper(headless=True)
-                            fresh_ff = await asyncio.to_thread(ff_scraper.fetch_events, prefer_feed=True)
+                            from scrapers.calendar.calendar_forexfactory import fetch_forexfactory_feed_direct
+                            fresh_ff = await asyncio.to_thread(fetch_forexfactory_feed_direct, max_cache_age=15, ignore_cache=True)
                             if fresh_ff:
                                 for event_id, name in list(event_targets):
                                     if name in target_names:
@@ -178,13 +176,7 @@ class ActiveCalendarPoller:
                                                 target_names.remove(name)
                                                 break
                         except Exception as ff_err:
-                            logger.debug(f"ForexFactory fallback error: {ff_err}")
-                        finally:
-                            if ff_scraper is not None:
-                                try:
-                                    ff_scraper.close()
-                                except Exception:
-                                    pass
+                            logger.debug(f"ForexFactory direct fallback error: {ff_err}")
                         
                     await asyncio.sleep(self.poll_interval)
             finally:

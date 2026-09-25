@@ -118,22 +118,22 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 3931
       - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 3936
     - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 3982
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4445
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4463
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4493
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4526
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4532
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4548
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4575
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4584
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4663
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4692
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4702
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4731
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4741
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4750
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4763
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4788
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4451
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4469
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4499
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4532
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4538
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4554
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4581
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4590
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4669
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4698
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4708
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4737
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4747
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4756
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4769
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4794
 
 ## Root Directory: `/trading-agent`
 
@@ -2541,7 +2541,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**:
     - `_get_recent_sl_streak(session, symbol: str) -> int`
     - `_get_correlated_exposure_summary(session, symbol: str) -> List[str]`
-    - `_is_grounded(claim_dict: dict, current_price: float) -> bool`
+    - `_is_grounded(claim_dict: dict, current_price: float, reference: Optional[Dict[str, Any]] = None) -> bool`
     - `_apply_deterministic_risk_clamp(pm_decision: dict, risk_stances: dict, actual_risk_state: dict | None) -> dict`
     - `compute_actual_risk_state(session, settings: dict, mt5_client=None) -> Dict[str, Any]`
     - `inject_coherence_and_intel(session, sym: str, bull_thesis: str, user_market_intel: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]]]`
@@ -4196,6 +4196,12 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `tests/analysis/test_session_search.py`
   - **Functions**:
     - `test_session_search_postgresql_engine()`
+
+**File:** `tests/analysis/test_phase5_adjudication_and_risk.py`
+  - **Functions**:
+    - `test_consecutive_losses_lookback_cutoff()`
+    - `test_adaptive_threshold_48h_time_decay()`
+    - `test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists()`
 
 **File:** `tests/execution/test_phase1_remediation.py`
   - **Functions**:

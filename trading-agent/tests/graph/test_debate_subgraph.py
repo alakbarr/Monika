@@ -180,3 +180,45 @@ def test_grounding_check():
     assert _is_grounded({"price": 1.0850, "note": "target 1.0950"}, 1.0850) is True
     assert _is_grounded({"text": "no numbers here at all"}, 1.0850) is False
     assert _is_grounded({}, 1.0850) is False
+    # Numbers far from price (e.g. 9999 and 8888 vs 1.0850) are rejected if no reference
+    assert _is_grounded({"unrelated": 9999, "other": 8888}, 1.0850) is False
+    # If reference contains that number, it is grounded
+    assert _is_grounded({"unrelated": 9999}, 1.0850, reference={"key_level": 9999}) is True
+
+
+@pytest.mark.asyncio
+async def test_bear_dissent_round_2_evaluates_rebuttal():
+    """Verify Bear Dissent node in round 2 incorporates rebuttal and stops infinite loop."""
+    config = {
+        "configurable": {
+            "scheduler": MagicMock(
+                settings={"agent_architecture": {"enable_debate": True, "debate_rounds": 2}}
+            )
+        }
+    }
+    state = {
+        "actionable_trades": [("EURUSD", {"analysis_id": 101, "decision": "buy"})],
+        "debate_states": {
+            "EURUSD": {
+                "verified_bull_claim": {"strength_score": 9},
+                "original_context": {"decision": "buy", "entry_price": 1.0850},
+                "bull_rebuttal": {"rebuttal": "OB absorption at 1.0850", "rebuttal_strength": 8},
+                "turn": 2,
+                "curr_p": 1.0850,
+                "fact_sheet": {"symbol": "EURUSD"}
+            }
+        }
+    }
+    captured_context = {}
+    async def mock_bear(client, sym, ctx, claim, fs):
+        nonlocal captured_context
+        captured_context = ctx
+        return {"risk_severity": 4, "dissent": "conceding minor risk at 1.0850"}
+
+    with patch("graph.nodes.debate.bear_dissent_node.generate_bear_dissent", side_effect=mock_bear):
+        res = await bear_dissent_node(state, config)
+        assert "bull_rebuttal" in captured_context
+        deb = res["debate_states"]["EURUSD"]
+        # In round 2, needs_rebuttal must be False to terminate cyclic loop
+        assert deb["needs_rebuttal"] is False
+

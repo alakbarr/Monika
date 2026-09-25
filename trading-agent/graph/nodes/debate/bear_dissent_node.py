@@ -48,13 +48,22 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
         if not verified_bull_claim or not original_context:
             return sym, None
 
+        turn = deb.get("turn", 1)
+        rebuttal_claim = deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
+        context_to_use = dict(original_context)
+        claim_to_use = dict(verified_bull_claim)
+        if rebuttal_claim:
+            context_to_use["bull_rebuttal"] = rebuttal_claim
+            context_to_use["rebuttal"] = rebuttal_claim
+            claim_to_use["rebuttal"] = rebuttal_claim
+
         async with semaphore:
             try:
                 bear_dissent = await generate_bear_dissent(
-                    bear_client, sym, original_context, verified_bull_claim, fact_sheet
+                    bear_client, sym, context_to_use, claim_to_use, fact_sheet
                 )
 
-                if not _is_grounded(bear_dissent, curr_p):
+                if not _is_grounded(bear_dissent, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None):
                     bear_dissent['risk_severity'] = max(1, bear_dissent.get('risk_severity', 5) - 2)
                     bear_dissent['ungrounded_penalty'] = True
 
@@ -62,8 +71,8 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
                 bear_severity = bear_dissent.get('risk_severity', 5)
                 disagreement = abs(bull_strength - (10 - bear_severity))
                 divergence = round(disagreement / 10.0, 2)
-                turn = deb.get("turn", 1)
-                needs_rebuttal = divergence > 0.40 and turn < 3 and debate_cfg.get('debate_rounds', 2) >= 2
+                max_rounds = debate_cfg.get('debate_rounds', 2)
+                needs_rebuttal = divergence > 0.40 and turn < 2 and max_rounds >= 2
 
                 if needs_rebuttal:
                     logger.info(f'[{sym}] High debate divergence ({divergence:.2f}) at turn {turn} — cyclic dialectic rebuttal required')

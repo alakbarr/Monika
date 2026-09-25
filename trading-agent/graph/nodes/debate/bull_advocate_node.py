@@ -67,6 +67,18 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
 
                     fact_sheet = await build_fact_sheet(session, analysis_id)
                     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
+                    market_regime = (
+                        ana.market_regime_at_analysis
+                        or state.get("market_regime")
+                        or (state.get("macro_analysis") or {}).get("risk_sentiment")
+                        or (state.get("fundamental_brief") or {}).get("risk_sentiment")
+                        or "unknown"
+                    )
+                    vix_val = (
+                        fact_sheet.get("vix")
+                        or state.get("vix")
+                        or 0.0
+                    )
                     original_context = {
                         'decision': decision,
                         'rationale': bull_thesis,
@@ -77,12 +89,15 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                         'take_profit': ana.take_profit,
                         'invalidation': ana.invalidation,
                         'user_market_intel': rel_intel,
+                        'market_regime': market_regime,
+                        'regime': market_regime,
+                        'vix': vix_val,
                     }
 
                     verified_bull_claim = await generate_bull_advocacy(bull_client, sym, original_context, fact_sheet)
 
                     curr_p = float(ana.price_at_analysis or 0.0)
-                    if not _is_grounded(verified_bull_claim, curr_p):
+                    if not _is_grounded(verified_bull_claim, curr_p, reference=fact_sheet):
                         verified_bull_claim['strength_score'] = max(1, verified_bull_claim.get('strength_score', 5) - 2)
                         verified_bull_claim['ungrounded_penalty'] = True
 

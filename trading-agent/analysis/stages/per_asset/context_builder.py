@@ -67,8 +67,8 @@ OPTIONAL TOOLS (call only if deeper context required):
 
 CONFLUENCE SCORING:
 + Fundamental bias aligns: +2 | DXY confirms: +1 | D1 aligns H4 entry: +2
-+ RSI not overbought/oversold: +1 | Entry near FVG/liquidity: +2 | Entry at unmitigated OB: +2
-+ Entry in OTE (0.618-0.786): +1 | Entry at S/R zone: +1 | COT aligned: +1 | VIX < 20: +1
++ Quant Alpha Strategy confirms: +2 | RSI not overbought/oversold: +1 | Entry near FVG/liquidity: +2
++ Entry at unmitigated OB: +2 | Entry in OTE (0.618-0.786): +1 | Entry at S/R zone: +1 | COT aligned: +1 | VIX < 20: +1
 Minimum Confluence Score for entry: see CURRENT ANALYSIS TARGET threshold.
 
 RULES & ADR BOUNDS:
@@ -541,7 +541,7 @@ class ContextBuilderMixin:
         # H4: Deterministic Ground-Truth Snapshot
         try:
             from analysis.validators.market_snapshot import VerifiedMarketSnapshot
-            snapshot = await VerifiedMarketSnapshot().compute(symbol, session, as_of=_get_clock().now())
+            snapshot = await VerifiedMarketSnapshot().compute(symbol, session, as_of=_get_clock().now(), timeframe="H4")
             if snapshot.get("latest_close") is not None:
                 context_blocks.append((
                     'VERIFIED MARKET SNAPSHOT (GROUND TRUTH)',

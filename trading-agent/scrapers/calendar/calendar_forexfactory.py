@@ -59,13 +59,13 @@ class ForexFactoryCalendarScraper(BaseScraper):
         except Exception as e:
             logger.debug(f"Failed to write ForexFactory cache: {e}")
 
-    def fetch_feed_events(self) -> List[CalendarEvent]:
+    def fetch_feed_events(self, max_cache_age: int = 3600, ignore_cache: bool = False) -> List[CalendarEvent]:
         """
         Mengambil peristiwa kalender ekonomi langsung dari feed resmi FairEconomy / ForexFactory JSON.
         Sangat cepat (<0.5s) dan tahan terhadap pemblokiran Cloudflare pada halaman web HTML.
-        Dilengkapi caching lokal (TTL 1 jam) untuk mencegah 429 Too Many Requests.
+        Dilengkapi caching lokal (TTL default 1 jam, bypassable) untuk mencegah 429 Too Many Requests.
         """
-        raw_items = self._load_from_cache(max_age_seconds=3600)
+        raw_items = None if ignore_cache else self._load_from_cache(max_age_seconds=max_cache_age)
         
         # 1. Coba via direct HTTP request jika cache tidak ada / kedaluwarsa
         if not raw_items:
@@ -122,6 +122,8 @@ class ForexFactoryCalendarScraper(BaseScraper):
 
             currency = item.get("country", "").strip().upper()
             title = item.get("title", "").strip()
+            raw_actual = item.get("actual")
+            actual = str(raw_actual).strip() if raw_actual is not None and str(raw_actual).strip() != "" else None
             forecast = item.get("forecast") or None
             previous = item.get("previous") or None
 
@@ -130,19 +132,19 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 currency=currency,
                 impact=impact,
                 event_name=title,
-                actual=None,
+                actual=actual,
                 forecast=forecast if forecast else None,
                 previous=previous if previous else None,
                 country=currency[:2] if currency else None
             ))
 
-        logger.info(f"ForexFactory (FairEconomy feed): Fetched {len(events)} events.")
+        logger.info(f"ForexFactory (FairEconomy feed): Fetched {len(events)} events (events with actual: {sum(1 for e in events if e.actual)}).")
         return events
 
-    def fetch_events(self, prefer_feed: bool = True) -> List[CalendarEvent]:
+    def fetch_events(self, prefer_feed: bool = True, max_cache_age: int = 3600, ignore_cache: bool = False) -> List[CalendarEvent]:
         # 1. Coba ambil dari feed resmi FairEconomy JSON jika diaktifkan (sangat cepat & anti-block)
         if prefer_feed:
-            feed_events = self.fetch_feed_events()
+            feed_events = self.fetch_feed_events(max_cache_age=max_cache_age, ignore_cache=ignore_cache)
             if feed_events:
                 return feed_events
 
@@ -272,3 +274,86 @@ class ForexFactoryCalendarScraper(BaseScraper):
         
         logger.info(f"ForexFactory: Fetched {len(all_events)} events total.")
         return all_events
+
+
+def fetch_forexfactory_feed_direct(max_cache_age: int = 3600, ignore_cache: bool = False) -> List[CalendarEvent]:
+    """
+    Lightweight zero-browser helper to fetch and parse FairEconomy JSON calendar feed.
+    Safe for sub-minute background loops without Chromium overhead or port allocation.
+    """
+    feed_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    cache_path = Path(os.getcwd()) / "data" / "cache" / "ff_calendar_thisweek.json"
+    raw_items = None
+
+    if not ignore_cache and cache_path.exists():
+        try:
+            mtime = cache_path.stat().st_mtime
+            age = time.time() - mtime
+            if age <= max_cache_age:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    raw_items = json.load(f)
+        except Exception:
+            raw_items = None
+
+    if not raw_items:
+        try:
+            req = urllib.request.Request(
+                feed_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                }
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    raw_items = json.loads(resp.read().decode("utf-8"))
+                    cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        json.dump(raw_items, f)
+        except Exception as e:
+            logger.debug(f"Direct FairEconomy HTTP fetch failed: {e}")
+
+    if not raw_items and cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                raw_items = json.load(f)
+        except Exception:
+            raw_items = None
+
+    if not raw_items:
+        return []
+
+    eastern_tz = ZoneInfo("America/New_York")
+    events = []
+    for item in raw_items:
+        raw_date = item.get("date", "")
+        try:
+            parsed_dt = dateutil_parser.isoparse(raw_date) if hasattr(dateutil_parser, "isoparse") else dateutil_parser.parse(raw_date)
+            if parsed_dt.tzinfo is None:
+                parsed_dt = parsed_dt.replace(tzinfo=eastern_tz)
+            iso_time = parsed_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            iso_time = raw_date
+
+        raw_impact = item.get("impact", "Low").strip().capitalize()
+        impact = raw_impact if raw_impact in ["High", "Medium", "Low"] else "Low"
+
+        currency = item.get("country", "").strip().upper()
+        title = item.get("title", "").strip()
+        raw_actual = item.get("actual")
+        actual = str(raw_actual).strip() if raw_actual is not None and str(raw_actual).strip() != "" else None
+        forecast = item.get("forecast") or None
+        previous = item.get("previous") or None
+
+        events.append(CalendarEvent(
+            time=iso_time,
+            currency=currency,
+            impact=impact,
+            event_name=title,
+            actual=actual,
+            forecast=forecast if forecast else None,
+            previous=previous if previous else None,
+            country=currency[:2] if currency else None
+        ))
+
+    return events

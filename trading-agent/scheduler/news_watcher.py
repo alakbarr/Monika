@@ -438,12 +438,12 @@ class NewsWatcher:
         """Cek apakah berita ini berdekatan (+/-2h) dengan event kalender high-impact."""
         try:
             from database.models import EconomicCalendar
-            from sqlalchemy import select
+            from sqlalchemy import select, func
             check_time = news.fetched_at or datetime.now(timezone.utc)
             async with get_session() as session:
                 row = (await session.execute(
                     select(EconomicCalendar)
-                    .where(EconomicCalendar.impact == 'high')
+                    .where(func.lower(EconomicCalendar.impact) == 'high')
                     .where(EconomicCalendar.event_time >= check_time - timedelta(hours=2))
                     .where(EconomicCalendar.event_time <= check_time + timedelta(hours=2))
                     .limit(1)
@@ -647,6 +647,14 @@ class NewsWatcher:
             logger.warning('Fallback mode aktif — full-cycle rerun DITOLAK meski affected_symbols besar. Downgrade ke targeted rerun per-simbol saja.')
 
         POST_EVENT_DELAY_MINUTES = 15
+        now = datetime.now(timezone.utc)
+        pub_time = None
+        if high_items and getattr(high_items[0], 'published_at', None):
+            pub_time = high_items[0].published_at
+            if pub_time.tzinfo is None:
+                pub_time = pub_time.replace(tzinfo=timezone.utc)
+        target_settle = (pub_time or now) + timedelta(minutes=POST_EVENT_DELAY_MINUTES)
+        remaining_wait = max(0.0, (target_settle - now).total_seconds())
         
         if want_full_cycle and self._forced_reruns_today < self._max_forced_reruns:
             # Full cycle re-run (within budget)
@@ -654,13 +662,14 @@ class NewsWatcher:
             logger.info(
                 f"Breaking news: triggering full analysis cycle "
                 f"({self._forced_reruns_today}/{self._max_forced_reruns} today). "
-                f"Waiting {POST_EVENT_DELAY_MINUTES}min for market to settle..."
+                f"Settling window target: {target_settle.strftime('%H:%M:%S UTC')} (remaining: {remaining_wait/60:.1f}min)..."
             )
             if self._position_guardian:
                 logger.info('Breaking news: running emergency position check...')
                 await self._position_guardian.check_and_protect(emergency=True)
             await self._tighten_sl_on_breaking_news(affected_symbols)
-            await asyncio.sleep(POST_EVENT_DELAY_MINUTES * 60)
+            if remaining_wait > 0:
+                await asyncio.sleep(remaining_wait)
             
             if self._cycle_scheduler:
                 asyncio.create_task(self._cycle_scheduler.run_once(forced=True))
@@ -718,7 +727,8 @@ class NewsWatcher:
             logger.info('Breaking news: running emergency position check...')
             await self._position_guardian.check_and_protect(emergency=True)
         await self._tighten_sl_on_breaking_news(symbols_to_reanalyze)
-        await asyncio.sleep(POST_EVENT_DELAY_MINUTES * 60)
+        if remaining_wait > 0:
+            await asyncio.sleep(remaining_wait)
         
         post_event_context = (
             f'\n\nPOST-EVENT CONTEXT: This analysis is triggered {POST_EVENT_DELAY_MINUTES} minutes '

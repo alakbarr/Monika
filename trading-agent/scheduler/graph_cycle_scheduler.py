@@ -206,6 +206,30 @@ class GraphCycleScheduler(CycleScheduler):
             from database.models import PaperTradeRecord, SystemConfig
             from sqlalchemy import select
             import json
+
+            now_utc = datetime.now(timezone.utc)
+            # 48-hour time-decay reset on existing adaptive thresholds
+            existing_threshold_rows = (await session.execute(
+                select(SystemConfig).where(SystemConfig.key.like('adaptive_threshold_%'))
+            )).scalars().all()
+
+            for row in existing_threshold_rows:
+                try:
+                    data = json.loads(row.value)
+                    set_at_str = data.get("set_at")
+                    if set_at_str:
+                        set_at = datetime.fromisoformat(set_at_str)
+                        if set_at.tzinfo is None:
+                            set_at = set_at.replace(tzinfo=timezone.utc)
+                        if (now_utc - set_at).total_seconds() > 48 * 3600:
+                            if data.get("adjustment", 0) > 0:
+                                data["adjustment"] = 0
+                                data["decayed_at"] = now_utc.isoformat()
+                                data["reason"] = "48h_time_decay_reset"
+                                row.value = json.dumps(data)
+                                logger.info(f"[RealTimeThreshold] {row.key}: 48h decay expired, reset adjustment to 0")
+                except Exception as decay_err:
+                    logger.debug(f"Error checking threshold decay for {row.key}: {decay_err}")
             
             # Get last 30 closed trades
             recent_records = (await session.execute(

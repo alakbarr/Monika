@@ -1035,6 +1035,7 @@ Monika/
         │   ├── test_jev_news_classifier.py
         │   ├── test_jev_verifiers_and_builders.py
         │   ├── test_level_optimizer_rr_pairing.py
+        │   ├── test_phase5_adjudication_and_risk.py
         │   ├── test_pipeline_plugins.py
         │   ├── test_regime_and_factor_parity.py
         │   └── test_skill_crystallizer_curation.py

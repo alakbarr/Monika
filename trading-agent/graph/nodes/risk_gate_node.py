@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
@@ -138,7 +139,9 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     summary = state.get("summary", {})
-    actionable = state.get("actionable_trades", [])
+    summary = state.get("summary", {})
+    actionable = list(state.get("actionable_trades", []) or [])
+    asset_analyses = dict(state.get("asset_analyses", {}) or {})
 
     if scheduler is None:
         logger.error("Scheduler not found in config")
@@ -146,156 +149,196 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     
     rejected_candidates: List[Dict[str, Any]] = []
 
-    if actionable:
-        logger.info(f"[Step 7a] Stage 3 Portfolio Synthesis for {len(actionable)} trades...")
+    # Apply SignalArbitrator defense, quant alpha opportunity evaluation, and regime scaling
+    try:
+        from analysis.arbitration.signal_arbitrator import SignalArbitrator
+        from database.models import VIXData, AssetAnalysis
+        from analysis.calculators.regime_classifier import classify_market_regime
+        from database.db import get_session
+        from sqlalchemy import select
         
-        # Apply deterministic correlation filter first
-        try:
-            from risk.portfolio_correlation_gate import filter_correlated_proposals
-            from database.db import get_session
-            from analysis.memory.decision_log import DecisionLogger
-            from database.models import AssetAnalysis
-            
-            async with get_session() as session:
-                kept_actionable, rejected_actionable = await filter_correlated_proposals(session, actionable)
-            
-            if rejected_actionable:
-                for sym, r, reason in rejected_actionable:
-                    rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"correlation_gate: {reason}"]})
-                async with get_session() as session:
-                    for sym, r, reason in rejected_actionable:
-                        try:
-                            ana = await session.get(AssetAnalysis, r["analysis_id"])
-                            ctx_id = ana.context_snapshot_id if ana else None
-                            cds = ana.ssvp_cds_score_at_analysis if ana else None
-                            
-                            await DecisionLogger.log_paper_whatif(
-                                session,
-                                analysis_id=r["analysis_id"],
-                                symbol=sym,
-                                decision=r.get("decision", "wait"),
-                                confidence=r.get("confidence", 0),
-                                confluence_score=None,
-                                rationale=reason,
-                                reason="correlation_gate_rejected",
-                                context_snapshot_id=ctx_id,
-                                ssvp_cds_score=cds
-                            )
-                        except Exception as e:
-                            logger.error(f"Failed to log whatif for {sym}: {e}")
-            actionable = kept_actionable
-        except Exception as e:
-            logger.debug(f'Correlation filter failed (non-fatal): {e}')
+        arbitrator = SignalArbitrator(scheduler.settings)
+        filtered_actionable = []
 
-        # Apply SignalArbitrator defense & regime scaling to LLM trades
-        try:
-            from analysis.arbitration.signal_arbitrator import SignalArbitrator
-            from database.models import VIXData
-            from analysis.calculators.regime_classifier import classify_market_regime
-            from database.db import get_session
-            from sqlalchemy import select
-            
-            arbitrator = SignalArbitrator(scheduler.settings)
-            filtered_actionable = []
-            
-            async with get_session() as session:
-                vix_val = 15.0
+        candidate_map: Dict[str, Tuple[Dict[str, Any], bool]] = {}
+        for sym, r in actionable:
+            candidate_map[sym] = (dict(r) if isinstance(r, dict) else r, True)
+        for sym, r in asset_analyses.items():
+            if sym not in candidate_map and isinstance(r, dict):
+                candidate_map[sym] = (dict(r), False)
+        
+        async with get_session() as session:
+            vix_val = 15.0
+            try:
+                vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+                if vix_row and vix_row.close:
+                    vix_val = float(vix_row.close)
+            except Exception:
+                pass
+
+            from analysis.strategies.registry import StrategyRegistry
+            from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+            decay_mon = get_strategy_decay_monitor()
+
+            for sym, (r, is_actionable_originally) in candidate_map.items():
                 try:
-                    vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
-                    if vix_row and vix_row.close:
-                        vix_val = float(vix_row.close)
+                    regime_dict = await classify_market_regime(session, sym, scheduler.settings)
                 except Exception:
-                    pass
+                    regime_dict = {}
 
-                from analysis.strategies.registry import StrategyRegistry
-                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
-
-                decay_mon = get_strategy_decay_monitor()
-
-                for sym, r in actionable:
-                    try:
-                        regime_dict = await classify_market_regime(session, sym, scheduler.settings)
-                    except Exception:
-                        regime_dict = {}
-
-                    # Evaluate quant alphas from StrategyRegistry for this symbol & market regime
-                    active_quant_signal = None
-                    try:
-                        regime_str = regime_dict.get("regime") if isinstance(regime_dict, dict) else str(regime_dict or "")
-                        quant_signals = await StrategyRegistry.evaluate_all(
-                            session=session,
-                            symbol=sym,
-                            settings=scheduler.settings,
-                            current_regime=regime_str,
-                        )
-                        if quant_signals:
-                            valid_sigs = [
-                                s for s in quant_signals
-                                if getattr(s, "valid", False) and getattr(s, "direction", None) in ("buy", "sell")
-                            ]
-                            if valid_sigs:
-                                def _sig_prio(s):
-                                    strat_id = getattr(s, "strategy_id", "")
-                                    is_ready = decay_mon.is_live_ready(strat_id)
-                                    conf = float(getattr(s, "confidence", 0.0) or 0.0)
-                                    return (1 if is_ready else 0, conf)
-
-                                valid_sigs.sort(key=_sig_prio, reverse=True)
-                                active_quant_signal = valid_sigs[0]
-                                strat_id = getattr(active_quant_signal, "strategy_id", "")
-                                if not decay_mon.is_live_ready(strat_id):
-                                    active_quant_signal.meta = dict(getattr(active_quant_signal, "meta", {}))
-                                    active_quant_signal.meta["is_incubating"] = True
-                    except Exception as q_err:
-                        logger.debug(f"[RiskGateNode] Quant signal evaluation for {sym} non-fatal: {q_err}")
-
-                    llm_dec = {
-                        "decision": r.get("decision", "avoid"),
-                        "confidence": float(r.get("confidence", 0.7) or 0.7),
-                        "risk_multiplier": float(r.get("risk_multiplier", 1.0) or 1.0),
-                        "entry_price": r.get("entry_price"),
-                        "stop_loss": r.get("stop_loss"),
-                        "take_profit": r.get("take_profit"),
-                        "rationale": r.get("rationale", ""),
-                        "decision_source": "llm_debate"
-                    }
-
-                    arb_res = await arbitrator.arbitrate(
+                # Evaluate quant alphas from StrategyRegistry for this symbol & market regime
+                active_quant_signal = None
+                try:
+                    regime_str = regime_dict.get("regime") if isinstance(regime_dict, dict) else str(regime_dict or "")
+                    quant_signals = await StrategyRegistry.evaluate_all(
                         session=session,
                         symbol=sym,
-                        quant_signal=active_quant_signal,
-                        llm_decision=llm_dec,
-                        vix_level=vix_val,
-                        regime_info=regime_dict
+                        settings=scheduler.settings,
+                        current_regime=regime_str,
                     )
+                    if quant_signals:
+                        valid_sigs = [
+                            s for s in quant_signals
+                            if getattr(s, "valid", False) and getattr(s, "direction", None) in ("buy", "sell")
+                        ]
+                        if valid_sigs:
+                            def _sig_prio(s):
+                                strat_id = getattr(s, "strategy_id", "")
+                                is_ready = decay_mon.is_live_ready(strat_id)
+                                conf = float(getattr(s, "confidence", 0.0) or 0.0)
+                                return (1 if is_ready else 0, conf)
 
-                    if arb_res.decision in ("avoid", "wait"):
+                            valid_sigs.sort(key=_sig_prio, reverse=True)
+                            active_quant_signal = valid_sigs[0]
+                            strat_id = getattr(active_quant_signal, "strategy_id", "")
+                            if not decay_mon.is_live_ready(strat_id):
+                                active_quant_signal.meta = dict(getattr(active_quant_signal, "meta", {}))
+                                active_quant_signal.meta["is_incubating"] = True
+                except Exception as q_err:
+                    logger.debug(f"[RiskGateNode] Quant signal evaluation for {sym} non-fatal: {q_err}")
+
+                llm_dec = {
+                    "decision": r.get("decision", "wait"),
+                    "confidence": float(r.get("confidence", 0.5) or 0.5),
+                    "risk_multiplier": float(r.get("risk_multiplier", 1.0) or 1.0),
+                    "entry_price": r.get("entry_price"),
+                    "stop_loss": r.get("stop_loss"),
+                    "take_profit": r.get("take_profit"),
+                    "rationale": r.get("rationale", ""),
+                    "decision_source": r.get("decision_source", "llm_debate" if is_actionable_originally else "stage2_per_asset")
+                }
+
+                arb_res = await arbitrator.arbitrate(
+                    session=session,
+                    symbol=sym,
+                    quant_signal=active_quant_signal,
+                    llm_decision=llm_dec,
+                    vix_level=vix_val,
+                    regime_info=regime_dict
+                )
+
+                if arb_res.decision in ("avoid", "wait"):
+                    if is_actionable_originally:
                         logger.info(f"[RiskGateNode] {sym} suppressed by SignalArbitrator: {arb_res.arbitration_reason}")
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"signal_arbitrator: {arb_res.arbitration_reason}"]})
-                    else:
-                        r["risk_multiplier"] = arb_res.risk_multiplier
-                        if arb_res.selected_source == "concordant":
-                            r["confidence"] = arb_res.confidence
-                            r["was_concordant"] = True
-                            if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
-                                r["source_strategy_id"] = active_quant_signal.strategy_id
-                        elif arb_res.selected_source == "quant":
-                            r["decision"] = arb_res.decision
-                            r["confidence"] = arb_res.confidence
-                            if arb_res.entry_price:
-                                r["entry_price"] = arb_res.entry_price
-                            if arb_res.stop_loss:
-                                r["stop_loss"] = arb_res.stop_loss
-                            if arb_res.take_profit:
-                                r["take_profit"] = arb_res.take_profit
-                            r["decision_source"] = f"quant_{arb_res.meta.get('strategy_id', 'alpha')}"
-                            if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
-                                r["source_strategy_id"] = active_quant_signal.strategy_id
-                        filtered_actionable.append((sym, r))
+                else:
+                    r["risk_multiplier"] = arb_res.risk_multiplier
+                    if arb_res.selected_source == "concordant":
+                        r["confidence"] = arb_res.confidence
+                        r["was_concordant"] = True
+                        r["decision_source"] = "concordant"
+                        if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
+                            r["source_strategy_id"] = active_quant_signal.strategy_id
+                    elif arb_res.selected_source == "quant":
+                        r["decision"] = arb_res.decision
+                        r["confidence"] = arb_res.confidence
+                        if arb_res.entry_price:
+                            r["entry_price"] = arb_res.entry_price
+                        if arb_res.stop_loss:
+                            r["stop_loss"] = arb_res.stop_loss
+                        if arb_res.take_profit:
+                            r["take_profit"] = arb_res.take_profit
+                        r["decision_source"] = f"quant_{arb_res.meta.get('strategy_id', 'alpha')}"
+                        if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
+                            r["source_strategy_id"] = active_quant_signal.strategy_id
+                        if not is_actionable_originally:
+                            logger.info(f"[RiskGateNode] Quant strategy {r.get('source_strategy_id')} promoted {sym} from WAIT to {arb_res.decision.upper()} via SignalArbitrator")
+
+                    # Persist arbitrated decision and levels to DB AssetAnalysis
+                    analysis_id = r.get("analysis_id")
+                    if analysis_id:
+                        ana = await session.get(AssetAnalysis, analysis_id)
+                        if ana:
+                            ana.decision = r["decision"]
+                            ana.confidence = r["confidence"]
+                            ana.risk_multiplier = r["risk_multiplier"]
+                            if r.get("entry_price") is not None:
+                                try:
+                                    ez = json.loads(ana.entry_zone) if ana.entry_zone else {}
+                                except Exception:
+                                    ez = {}
+                                ez["price"] = r["entry_price"]
+                                ana.entry_zone = json.dumps(ez)
+                            if r.get("stop_loss") is not None:
+                                ana.stop_loss = r["stop_loss"]
+                            if r.get("take_profit") is not None:
+                                ana.take_profit = r["take_profit"]
+                            if r.get("decision_source"):
+                                ana.decision_source = r["decision_source"]
+                            if r.get("source_strategy_id"):
+                                ana.source_strategy_id = r["source_strategy_id"]
+                            await session.commit()
+                            logger.info(f"[RiskGateNode] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}")
+
+                    filtered_actionable.append((sym, r))
+                    
+        actionable = filtered_actionable
+    except Exception as e:
+        logger.debug(f"SignalArbitrator check in RiskGateNode non-fatal error: {e}")
+
+    if not actionable:
+        return {"summary": summary, "actionable_trades": [], "approved_trades": []}
+
+    logger.info(f"[Step 7a] Stage 3 Portfolio Synthesis for {len(actionable)} trades...")
+    
+    # Apply deterministic correlation filter
+    try:
+        from risk.portfolio_correlation_gate import filter_correlated_proposals
+        from database.db import get_session
+        from analysis.memory.decision_log import DecisionLogger
+        from database.models import AssetAnalysis
+        
+        async with get_session() as session:
+            kept_actionable, rejected_actionable = await filter_correlated_proposals(session, actionable)
+        
+        if rejected_actionable:
+            for sym, r, reason in rejected_actionable:
+                rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"correlation_gate: {reason}"]})
+            async with get_session() as session:
+                for sym, r, reason in rejected_actionable:
+                    try:
+                        ana = await session.get(AssetAnalysis, r["analysis_id"])
+                        ctx_id = ana.context_snapshot_id if ana else None
+                        cds = ana.ssvp_cds_score_at_analysis if ana else None
                         
-            actionable = filtered_actionable
-        except Exception as e:
-            logger.debug(f"SignalArbitrator check in RiskGateNode non-fatal error: {e}")
+                        await DecisionLogger.log_paper_whatif(
+                            session,
+                            analysis_id=r["analysis_id"],
+                            symbol=sym,
+                            decision=r.get("decision", "wait"),
+                            confidence=r.get("confidence", 0),
+                            confluence_score=None,
+                            rationale=reason,
+                            reason="correlation_gate_rejected",
+                            context_snapshot_id=ctx_id,
+                            ssvp_cds_score=cds
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log whatif for {sym}: {e}")
+        actionable = kept_actionable
+    except Exception as e:
+        logger.debug(f'Correlation filter failed (non-fatal): {e}')
 
         # Determine if we should synthesize or just keep them
         if len(actionable) >= 3:

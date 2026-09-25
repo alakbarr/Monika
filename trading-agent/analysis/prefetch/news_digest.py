@@ -2279,7 +2279,7 @@ Guidance: {depth_guidance} Write in professional trading analyst style."""
         if ungrounded:
             logger.warning(f'[NewsDigest] Possible ungrounded numeric claims in macro_overview: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...')
             for u_token in ungrounded:
-                macro_overview = re.sub(rf"(?<!\w){re.escape(str(u_token))}(?!\w)", "[UNVERIFIED_NUM]", macro_overview)
+                macro_overview = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", macro_overview)
         
         async def fetch_currency_digest(currency: str, items: list, macro_ctx: str) -> str:
             if not items:
@@ -2354,7 +2354,7 @@ MACRO NARRATIVE:
                 if ungrounded:
                     logger.warning(f"[NewsDigest] Ungrounded numbers in {currency} section: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...")
                     for u_token in ungrounded:
-                        result = re.sub(rf"(?<!\w){re.escape(str(u_token))}(?!\w)", "[UNVERIFIED_NUM]", result)
+                        result = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", result)
                     
                 return f'### {currency} Nuances\n{result}'
             except Exception as e:

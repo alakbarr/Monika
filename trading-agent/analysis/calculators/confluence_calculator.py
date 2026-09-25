@@ -330,12 +330,29 @@ async def calculate_confluence(
         except Exception:
             of_data = {}
 
+    # Quant Strategy Edge Signals
+    quant_signals = []
+    try:
+        from analysis.strategies.registry import StrategyRegistry
+        quant_signals = await StrategyRegistry.evaluate_all(session=session, symbol=symbol, settings=settings)
+    except Exception as q_err:
+        logger.debug(f"Confluence quant signals check skipped: {q_err}")
+
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
         if sweep_result.get('structure_confirmed') and sweep_result.get('valid_for_direction') == test_direction:
             score += 2
         
+        # Quant Alpha Strategy Edge Bonus
+        if quant_signals:
+            has_quant_concordance = any(
+                getattr(s, "valid", False) and str(getattr(s, "direction", "")).lower() == test_direction
+                for s in quant_signals
+            )
+            if has_quant_concordance:
+                score += 2
+
         # === MECHANICAL VERIFICATION: RSI ===
         if rsi_val is not None:
             if 40 <= rsi_val <= 60:
@@ -476,12 +493,19 @@ async def calculate_confluence(
                 b_data = json.loads(brief.structured_json)
                 c_bias = b_data.get("currency_bias", {})
                 
-                # Simple check for bias
                 # Extrapolate for symbol
                 base = symbol[:3]
                 quote = symbol[3:6]
                 base_bias = str(c_bias.get(base, '')).lower()
+                if not base_bias and base in ('XTI', 'XBR'):
+                    base_bias = str(c_bias.get('OIL', '')).lower()
+                elif not base_bias and base == 'XAU':
+                    base_bias = str(c_bias.get('GOLD', '')).lower()
+
                 quote_bias = str(c_bias.get(quote, '')).lower()
+                if not quote_bias and quote == 'USD':
+                    quote_bias = str(c_bias.get('USD', '')).lower()
+
                 if test_direction == 'buy':
                     if 'bullish' in base_bias or 'bearish' in quote_bias:
                         score += 2
