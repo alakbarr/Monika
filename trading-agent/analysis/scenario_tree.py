@@ -66,7 +66,7 @@ class ScenarioTreeEngine:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         st_cfg = self.settings.get("scenario_tree", {})
-        self.ev_threshold: float = float(st_cfg.get("ev_threshold", 1.3) or 1.3)
+        self.ev_threshold: float = float(st_cfg.get("ev_threshold", 0.40) or 0.40)
         self.min_dominant_prob: float = float(st_cfg.get("min_dominant_prob", 0.45) or 0.45)
 
     @staticmethod

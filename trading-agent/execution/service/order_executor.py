@@ -1668,9 +1668,11 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         from utils.market.currency_utils import get_symbol_currencies
                         sym_currencies = get_symbol_currencies(symbol)
                         brief_created = brief.generated_at.replace(tzinfo=timezone.utc) if brief.generated_at.tzinfo is None else brief.generated_at
+                        # Only block if the high-impact event occurred very recently (within 30 mins) post-brief
+                        recent_threshold = max(brief_created, start - timedelta(minutes=30))
                         post_brief_events = (await brief_session.execute(
                             _sel(EconomicCalendar)
-                            .where(EconomicCalendar.event_time > brief_created)
+                            .where(EconomicCalendar.event_time > recent_threshold)
                             .where(EconomicCalendar.event_time <= start)
                             .where(EconomicCalendar.impact.in_(['high', 'High', 'HIGH']))
                             .where(EconomicCalendar.currency.in_(list(sym_currencies)))
@@ -1679,8 +1681,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         
                         if post_brief_events:
                             logger.warning(
-                                f'Execution BLOCKED for {symbol}: High-impact event "{post_brief_events.event_name}" '
-                                f'occurred AFTER brief was generated at {brief_created}. Brief may be stale for current conditions.'
+                                f'Execution BLOCKED for {symbol}: Recent high-impact event "{post_brief_events.event_name}" '
+                                f'occurred at {post_brief_events.event_time} (within 30m of execution). Brief may be stale for current conditions.'
                             )
                             return ExecutionResult(
                                 symbol=symbol, analysis_id=analysis.id, decision=decision,

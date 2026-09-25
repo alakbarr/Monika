@@ -12,15 +12,9 @@ class BTCDonchianBreakout(EdgeStrategy):
     compatible_regimes = {'TREND', 'STRONG_TREND', 'EXPANDING_FAST'}
     factor_family = 'breakout'
 
-
-@StrategyRegistry.register
-class DonchianBreakoutStrategy(BTCDonchianBreakout):
-    strategy_id = "donchian_breakout"
-    applicable_symbols = {'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'ETHUSD'}
-
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
-        n = self.cfg.get('donchian_period', 20)
+        n = int(self.cfg.get('donchian_period', 20))
         bars = (await session.execute(select(PriceOHLCV).where(
             PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H4',
             PriceOHLCV.timestamp <= now
@@ -35,18 +29,25 @@ class DonchianBreakoutStrategy(BTCDonchianBreakout):
 
         mean_v, std_v = statistics.mean(vol_hist), statistics.pstdev(vol_hist) or 1e-9
         z = ((latest.volume or 0) - mean_v) / std_v
-        min_z = self.cfg.get('volume_zscore_min', 1.5)
+        min_z = float(self.cfg.get('volume_zscore_min', 1.5))
         if z < min_z:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"volume z={z:.2f} < {min_z}")
 
+        size_mult = float(self.cfg.get('size_multiplier', 0.6))
         if latest.close > ch_high:
             return EdgeSignal(self.strategy_id, symbol, 'buy', True, confidence=min(1.0, z / (min_z * 2)),
                                rationale=f"Donchian({n}) breakout, vol z={z:.2f}", tags=["btc_donchian", "trend", "breakout"],
                                exit_style='trend_trailing', ttl_minutes=120, factor_family='breakout',
-                               meta={"size_multiplier": self.cfg.get('size_multiplier', 0.6)})
+                               meta={"size_multiplier": size_mult})
         if latest.close < ch_low:
             return EdgeSignal(self.strategy_id, symbol, 'sell', True, confidence=min(1.0, z / (min_z * 2)),
                                rationale=f"Donchian({n}) breakdown, vol z={z:.2f}", tags=["btc_donchian", "trend", "breakout"],
                                exit_style='trend_trailing', ttl_minutes=120, factor_family='breakout',
-                               meta={"size_multiplier": self.cfg.get('size_multiplier', 0.6)})
+                               meta={"size_multiplier": size_mult})
         return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no breakout")
+
+
+@StrategyRegistry.register
+class DonchianBreakoutStrategy(BTCDonchianBreakout):
+    strategy_id = "donchian_breakout"
+    applicable_symbols = {'BTCUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'ETHUSD'}

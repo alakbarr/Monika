@@ -121,9 +121,18 @@ MARKET REGIME CALIBRATION CONTEXT:
 - Volatility Penalty: {regime_weights['volatility_penalty']:.2f}
 - Guidance: {regime_weights['description']}
 
-If the Bear Analyst demonstrates a FATAL FLAW (risk_severity >= 9) grounded by verified technical levels or macro data, and the Bull Rebuttal fails to refute it, you MUST REJECT the trade by setting final_decision = 'avoid' and risk_multiplier = 0.0.
-If bear severity is 7-8 and Bull Rebuttal presents a strong defense (strength_score >= 7), do NOT reject; proceed with a reduced risk multiplier (0.50 to 0.75).
-In volatile regimes with counter thesis weight >= 0.70, bear severity >= 8 requires severe size reduction or rejection.
+DIRECTIONAL ADJUDICATION RULES:
+If original_context decision is SELL:
+- Pro-Thesis Advocate: Bear Analyst defending the short entry and breakdown catalysts (higher score = stronger short setup).
+- Counter-Thesis Dissenter: Bull Analyst challenging the short setup with upside reversal threats (higher score = dangerous upside threat).
+- If the Bull Analyst proves a FATAL FLAW to the short (bull strength_score >= 9) and short defense fails to refute it, you MUST REJECT (final_decision = 'avoid', risk_multiplier = 0.0).
+- If Bear proves strong short conviction (score >= 8) with low bull threat (<= 3), approve short trade at full size (risk_multiplier 0.75 - 1.0).
+If original_context decision is BUY:
+- Pro-Thesis Advocate: Bull Analyst defending the long entry and upside catalysts.
+- Counter-Thesis Dissenter: Bear Analyst challenging the long setup with downside risks (higher score = dangerous downside threat).
+- If the Bear Analyst proves a FATAL FLAW to the long (bear risk_severity >= 9) and Bull Rebuttal fails to refute it, you MUST REJECT (final_decision = 'avoid', risk_multiplier = 0.0).
+- If bear threat is 7-8 and Bull presents strong defense (strength >= 7), do NOT reject; proceed with calibrated risk multiplier (0.50 to 0.75).
+In volatile regimes, high counter-thesis threat (>= 8) requires severe size reduction or rejection.
 Otherwise, calibrate risk and evaluate the viability of the Entry, SL, and TP.
 
 RISK MULTIPLIER CALIBRATION TABLE (mandatory reference — pick the closest match):
@@ -131,7 +140,7 @@ RISK MULTIPLIER CALIBRATION TABLE (mandatory reference — pick the closest matc
 - 0.75 = Counter-arguments raise a valid but non-fatal concern (e.g., minor R:R softness or near-term barrier); reduce size slightly.
 - 0.5  = Counter-arguments identify a structural weakness (e.g., SL too tight, contradicts HTF trend) that the trade defense only partially mitigates; proceed cautiously.
 - 0.25 = Counter-arguments are strong; proceed with minimal size as a probe trade.
-- 0.0  = Fatal flaw detected (risk_severity >= 9) or invalid thesis; final_decision MUST be 'avoid'.
+- 0.0  = Fatal flaw detected in trade thesis; final_decision MUST be 'avoid'.
 
 ROUND 2 REBUTTAL & BAYESIAN CALIBRATION:
 - If 'bull_rebuttal' is present, assess its rebuttal_evidence against the Bear's critiques:
@@ -216,25 +225,34 @@ Respond in valid JSON format conforming to the schema."""
 
         # Ensure risk multiplier is bounded with Bayesian rebuttal mitigation
         final_dec = str(parsed.get("final_decision", "")).lower()
-        bear_sev = int((bear_dissent or {}).get("risk_severity", 5) or 5)
+        is_sell = (decision == "SELL")
+        if is_sell:
+            # For SELL: Counter-threat is Bull's strength_score, Pro-strength is Bear's score
+            counter_threat = int((bull_claim or {}).get("strength_score", 5) or 5)
+            pro_strength = int((bear_dissent or {}).get("risk_severity", 5) or 5)
+        else:
+            # For BUY: Counter-threat is Bear's risk_severity, Pro-strength is Bull's score
+            counter_threat = int((bear_dissent or {}).get("risk_severity", 5) or 5)
+            pro_strength = int((bull_claim or {}).get("strength_score", 5) or 5)
+
         bull_reb_str = int((bull_rebuttal or {}).get("rebuttal_strength", 0) or 0) if bull_rebuttal else 0
 
-        # Effective bear severity is downgraded if bull presented a strong factual rebuttal
-        effective_bear_sev = bear_sev
+        # Effective counter threat is downgraded if strong factual defense was presented
+        effective_counter_threat = counter_threat
         if bull_rebuttal and bull_reb_str >= 7:
-            effective_bear_sev = max(1, bear_sev - 3)
+            effective_counter_threat = max(1, counter_threat - 3)
 
         raw_multiplier = float(parsed.get("risk_multiplier", 1.0) or 1.0)
 
-        # In volatile regimes, penalize raw risk multiplier or enforce avoid on high bear severity
+        # In volatile regimes, penalize raw risk multiplier or enforce avoid on high counter threat
         if detected_regime == "volatile":
-            if effective_bear_sev >= 7:
+            if effective_counter_threat >= 7 and pro_strength < 8:
                 final_dec = "avoid"
                 raw_multiplier = 0.0
             else:
                 raw_multiplier = max(0.20, raw_multiplier - regime_weights["volatility_penalty"])
 
-        if final_dec == "avoid" or (effective_bear_sev >= 9 and raw_multiplier <= 0.25):
+        if final_dec == "avoid" or (effective_counter_threat >= 9 and raw_multiplier <= 0.25):
             parsed["final_decision"] = "avoid"
             parsed["risk_multiplier"] = 0.0
         else:

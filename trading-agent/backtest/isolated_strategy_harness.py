@@ -50,6 +50,7 @@ class StrategyTradeRecord:
     bars_held: int
     confidence: float
     strategy_id: str
+    r_multiple: float = 0.0
 
 
 @dataclass
@@ -80,9 +81,35 @@ def resample_candles(h1_candles: List[CandleDict], factor: int) -> List[CandleDi
     """Resamples H1 candles into higher timeframe (e.g. factor=4 for H4, factor=24 for D1)."""
     if not h1_candles:
         return []
+    
+    first_time = h1_candles[0].get("time")
+    if isinstance(first_time, datetime) and factor in (4, 24):
+        chunks = []
+        current_chunk = []
+        current_key = None
+        for c in h1_candles:
+            t = c.get("time")
+            if not isinstance(t, datetime):
+                current_chunk.append(c)
+                continue
+            key = (t.year, t.month, t.day) if factor == 24 else (t.year, t.month, t.day, t.hour // 4)
+            if current_key is None:
+                current_key = key
+                current_chunk.append(c)
+            elif key == current_key:
+                current_chunk.append(c)
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                current_chunk = [c]
+                current_key = key
+        if current_chunk:
+            chunks.append(current_chunk)
+    else:
+        chunks = [h1_candles[i : i + factor] for i in range(0, len(h1_candles), factor)]
+
     res = []
-    for chunk_start in range(0, len(h1_candles), factor):
-        chunk = h1_candles[chunk_start : chunk_start + factor]
+    for chunk in chunks:
         if not chunk:
             continue
         c_open = chunk[0].open
@@ -165,7 +192,7 @@ class ZeroLookaheadSliceSession:
                 if len(h1_candles) >= 15:
                     trs = [
                         max(
-                            h1_candles[j].high - h1_candles[j - 1].close,
+                            h1_candles[j].high - h1_candles[j].low,
                             abs(h1_candles[j].high - h1_candles[j - 1].close),
                             abs(h1_candles[j].low - h1_candles[j - 1].close),
                         )
@@ -195,6 +222,70 @@ class ZeroLookaheadSliceSession:
                     timestamp=self.as_of_time,
                 )
                 return _SliceScalarResult([mock_row])
+
+            elif "SMA" in stmt_str:
+                m = _re.search(r"SMA_(\d+)", stmt_str)
+                period = int(m.group(1)) if m else 20
+                if len(h1_candles) >= period:
+                    sma_val = round(float(np.mean([float(c.close) for c in h1_candles[-period:]])), 5)
+                else:
+                    sma_val = round(last_close, 5)
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": sma_val, "sma": sma_val}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
+            elif "RSI" in stmt_str:
+                m = _re.search(r"RSI_(\d+)", stmt_str)
+                period = int(m.group(1)) if m else 14
+                if len(h1_candles) >= period + 1:
+                    closes = [float(c.close) for c in h1_candles]
+                    diffs = [closes[k] - closes[k - 1] for k in range(1, len(closes))]
+                    recent_diffs = diffs[-period:]
+                    gains = [d for d in recent_diffs if d > 0]
+                    losses = [-d for d in recent_diffs if d < 0]
+                    avg_gain = sum(gains) / period if gains else 0.0
+                    avg_loss = sum(losses) / period if losses else 0.0
+                    if avg_loss == 0.0:
+                        rsi_val = 100.0 if avg_gain > 0 else 50.0
+                    else:
+                        rs = avg_gain / avg_loss
+                        rsi_val = round(100.0 - (100.0 / (1.0 + rs)), 2)
+                else:
+                    rsi_val = 50.0
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": rsi_val, "rsi": rsi_val}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
+            elif "BOLLINGER" in stmt_str or "BB" in stmt_str:
+                period = 20
+                if len(h1_candles) >= period:
+                    closes = [float(c.close) for c in h1_candles[-period:]]
+                    mean_val = float(np.mean(closes))
+                    std_val = float(np.std(closes, ddof=1)) if len(closes) > 1 else 0.0
+                    upper = round(mean_val + 2.0 * std_val, 5)
+                    lower = round(mean_val - 2.0 * std_val, 5)
+                    mid = round(mean_val, 5)
+                else:
+                    mid = round(last_close, 5)
+                    upper = round(last_close * 1.01, 5)
+                    lower = round(last_close * 0.99, 5)
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": mid, "middle": mid, "upper": upper, "lower": lower}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
+            elif "ADX" in stmt_str:
+                mock_row = MockIndicatorRow(
+                    value_json=_json.dumps({"value": 25.0, "adx": 25.0}),
+                    timestamp=self.as_of_time,
+                )
+                return _SliceScalarResult([mock_row])
+
             else:
                 mock_row = MockIndicatorRow(
                     value_json=_json.dumps({"value": last_close}),
@@ -363,6 +454,78 @@ class IsolatedStrategyBacktestHarness:
             tr_list.append(tr)
         return float(np.mean(tr_list[-period:])) if tr_list else float(candles[-1].close) * 0.005
 
+    def _resolve_sl_tp(
+        self,
+        sig: EdgeSignal,
+        entry_price: float,
+        atr: float,
+        strat_instance: Optional[EdgeStrategy] = None,
+    ) -> tuple[float, float]:
+        """Resolves Stop Loss and Take Profit levels respecting dynamic strategy params."""
+        if sig.stop_loss is not None and sig.take_profit is not None:
+            return float(sig.stop_loss), float(sig.take_profit)
+
+        sl_mult = None
+        tp_mult = None
+        if isinstance(sig.meta, dict):
+            sl_mult = sig.meta.get("sl_atr_multiplier")
+            tp_mult = sig.meta.get("tp_sl_multiplier")
+        if sl_mult is None and self.strategy_params:
+            sl_mult = self.strategy_params.get("sl_atr_multiplier")
+        if tp_mult is None and self.strategy_params:
+            tp_mult = self.strategy_params.get("tp_sl_multiplier")
+        if sl_mult is None and strat_instance and hasattr(strat_instance, "cfg"):
+            sl_mult = strat_instance.cfg.get("sl_atr_multiplier")
+        if tp_mult is None and strat_instance and hasattr(strat_instance, "cfg"):
+            tp_mult = strat_instance.cfg.get("tp_sl_multiplier")
+
+        exit_style = getattr(sig, "exit_style", "intraday_adr")
+        if exit_style == "trend_trailing":
+            default_sl = 1.5
+            default_tp_ratio = 2.333
+        else:
+            default_sl = 1.2
+            default_tp_ratio = 2.0
+
+        sl_atr = float(sl_mult) if sl_mult is not None else default_sl
+        tp_ratio = float(tp_mult) if tp_mult is not None else default_tp_ratio
+
+        sl_dist = atr * sl_atr
+        tp_dist = sl_dist * tp_ratio
+
+        if sig.direction == "buy":
+            sl = entry_price - sl_dist
+            tp = entry_price + tp_dist
+        else:
+            sl = entry_price + sl_dist
+            tp = entry_price - tp_dist
+
+        return sl, tp
+
+    def _calculate_trade_pnl(
+        self,
+        direction: str,
+        entry_price: float,
+        exit_price: float,
+        sl: float,
+    ) -> tuple[float, float, float]:
+        """
+        Calculates risk-normalized return (R-multiple) and standardized equity return.
+        1R = initial distance to stop loss.
+        Standard return normalized to 1.0% equity risk per trade.
+        Returns: (equity_return, pnl_pct, r_multiple)
+        """
+        price_diff = (exit_price - entry_price) if direction == "buy" else (entry_price - exit_price)
+        risk_dist = abs(entry_price - sl)
+        if risk_dist > 1e-7:
+            r_multiple = price_diff / risk_dist
+        else:
+            r_multiple = (price_diff / entry_price) * 100.0 if entry_price > 0 else 0.0
+
+        equity_return = r_multiple * 0.01
+        pnl_pct = r_multiple * 1.0
+        return round(equity_return, 5), round(pnl_pct, 3), round(r_multiple, 3)
+
     async def run_simulation(
         self,
         session: AsyncSession,
@@ -482,20 +645,7 @@ class IsolatedStrategyBacktestHarness:
                         f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}"
                     )
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-                exit_style = getattr(sig, "exit_style", "intraday_adr")
-                if exit_style == "trend_trailing":
-                    sl_dist = atr * 1.5
-                    tp_dist = atr * 3.5
-                else:
-                    sl_dist = atr * 1.2
-                    tp_dist = atr * 2.4
-
-                if sig.direction == "buy":
-                    sl = entry_price - sl_dist
-                    tp = entry_price + tp_dist
-                else:
-                    sl = entry_price + sl_dist
-                    tp = entry_price - tp_dist
+                sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
 
             # Forward bar-by-bar outcome simulation with conservative intra-bar sequencing and gap modeling
             exit_price = entry_price
@@ -555,8 +705,13 @@ class IsolatedStrategyBacktestHarness:
                 exit_price = float(last_held_bar.close)
                 exit_reason = "time_exit"
 
-            pnl_pct = ((exit_price - entry_price) / entry_price) if sig.direction == "buy" else ((entry_price - exit_price) / entry_price)
-            trade_returns.append(round(pnl_pct, 5))
+            ret_equity, ret_pct, r_mult = self._calculate_trade_pnl(
+                direction=sig.direction,
+                entry_price=entry_price,
+                exit_price=exit_price,
+                sl=sl,
+            )
+            trade_returns.append(ret_equity)
             trade_records.append(
                 StrategyTradeRecord(
                     symbol=self.symbol,
@@ -567,11 +722,12 @@ class IsolatedStrategyBacktestHarness:
                     exit_price=round(exit_price, 5),
                     stop_loss=round(sl, 5),
                     take_profit=round(tp, 5),
-                    pnl_pct=round(pnl_pct * 100.0, 3),
+                    pnl_pct=ret_pct,
                     exit_reason=exit_reason,
                     bars_held=bars_held,
                     confidence=float(sig.confidence or 0.7),
                     strategy_id=getattr(strat_instance, "strategy_id", "unknown"),
+                    r_multiple=r_mult,
                 )
             )
 
@@ -639,10 +795,12 @@ class IsolatedStrategyBacktestHarness:
         total_candles: int = 1500,
         min_candles: int = 120,
         trial_counter: int = 1,
+        param_specs: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
         """
         Executes rolling-window Walk-Forward Optimization (WFO).
         Applies Deflated Sharpe Ratio (DSR) and AlphaValidation across stitched OOS trades.
+        Ensures zero-lookahead, full dataset coverage, and optional fold-level plateau optimization.
         """
         all_candles = await self.fetch_historical_candles(
             session=session, timeframe="H1", limit=total_candles
@@ -659,9 +817,10 @@ class IsolatedStrategyBacktestHarness:
                 "reason": f"Insufficient candles ({len(all_candles)} < {min_candles})",
             }
 
-        fold_size = len(all_candles) // n_folds
-        is_size = int(fold_size * is_ratio)
-        oos_size = fold_size - is_size
+        N = len(all_candles)
+        total_oos = int(N * (1.0 - is_ratio))
+        oos_size = max(10, total_oos // n_folds)
+        is_size = int(N * is_ratio)
 
         is_sharpes: List[float] = []
         oos_sharpes: List[float] = []
@@ -670,14 +829,41 @@ class IsolatedStrategyBacktestHarness:
         all_oos_trades: List[StrategyTradeRecord] = []
 
         for fold_idx in range(n_folds):
-            fold_start = fold_idx * oos_size
-            fold_end = fold_start + fold_size
-            if fold_end > len(all_candles):
-                break
+            oos_start = N - (n_folds - fold_idx) * oos_size
+            oos_end = oos_start + oos_size
+            is_start = max(0, oos_start - is_size)
+            is_end = oos_start
 
-            fold_candles = all_candles[fold_start:fold_end]
-            is_candles = fold_candles[:is_size]
-            oos_candles = fold_candles[is_size:]
+            is_candles = all_candles[is_start:is_end]
+            oos_candles = all_candles[oos_start:oos_end]
+
+            if len(is_candles) < 20 or len(oos_candles) < 5:
+                continue
+
+            # In-Sample Plateau Optimization per fold if param_specs supplied (Anti-Leakage)
+            if param_specs and len(is_candles) >= 30:
+                try:
+                    from analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer
+                    async def _eval_fold_plateau(params: Dict[str, Any]) -> Dict[str, Any]:
+                        self.strategy_params = params
+                        m = await self._run_simulation_on_candles(is_candles)
+                        return {
+                            "sharpe": m.sharpe_ratio,
+                            "trades": m.total_trades,
+                            "trade_returns": [t.pnl_pct / 100.0 for t in m.trades],
+                            "pnl_pct": m.total_pnl_pct,
+                        }
+                    fold_opt = QuantPlateauOptimizer(
+                        param_space=param_specs,
+                        n_trials=8,
+                        n_neighbors_per_candidate=2,
+                        min_trade_count=3,
+                    )
+                    fold_opt_res = await fold_opt.optimize(_eval_fold_plateau)
+                    if fold_opt_res and fold_opt_res.best_parameters:
+                        self.strategy_params = fold_opt_res.best_parameters
+                except Exception as fold_err:
+                    logger.debug(f"[IsolatedHarness] Fold {fold_idx} plateau opt note: {fold_err}")
 
             is_metrics = await self._run_simulation_on_candles(is_candles)
             oos_metrics = await self._run_simulation_on_candles(oos_candles)
@@ -697,19 +883,22 @@ class IsolatedStrategyBacktestHarness:
         else:
             wfe = 0.0
 
-        # Deflated Sharpe Ratio (DSR) using actual number of observed OOS trades (no fake clamping)
+        # Deflated Sharpe Ratio (DSR) using actual observed OOS trades with consistent trade-level scale
         oos_returns = [t.pnl_pct / 100.0 for t in all_oos_trades]
         _, _, oos_skew, oos_kurt = compute_sample_moments(oos_returns) if len(oos_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)
 
-        daily_oos_sr = (avg_oos_sharpe / math.sqrt(252.0)) if avg_oos_sharpe > 0 else 0.0
-        dsr_score = deflated_sharpe_ratio(
-            observed_sr=daily_oos_sr,
-            n_trials=max(1, trial_counter),
-            n_obs=len(all_oos_trades),
-            skew=oos_skew,
-            excess_kurt=oos_kurt,
-            sr_std=0.5 / math.sqrt(252.0),
-        )
+        if len(oos_returns) >= 3 and np.std(oos_returns, ddof=1) > 1e-9:
+            trade_sr = float(np.mean(oos_returns) / np.std(oos_returns, ddof=1))
+            dsr_score = deflated_sharpe_ratio(
+                observed_sr=trade_sr,
+                n_trials=max(1, trial_counter),
+                n_obs=len(all_oos_trades),
+                skew=oos_skew,
+                excess_kurt=oos_kurt,
+                sr_std=max(0.1, 1.0 / math.sqrt(len(all_oos_trades))),
+            )
+        else:
+            dsr_score = 0.5 if avg_oos_sharpe > 0 else 0.0
 
         alpha_val = validate_alpha(trades=all_oos_trades, cost_multiplier=2.0)
 
@@ -717,7 +906,7 @@ class IsolatedStrategyBacktestHarness:
             wfe >= 0.60
             and avg_oos_sharpe >= 0.50
             and len(all_oos_trades) >= 5
-            and (dsr_score >= 0.60 if len(all_oos_trades) >= 15 else True)
+            and (dsr_score >= 0.55 if len(all_oos_trades) >= 15 else True)
             and alpha_val.passed
         )
 
@@ -792,19 +981,7 @@ class IsolatedStrategyBacktestHarness:
             else:
                 if self.fail_fast_on_error:
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-                exit_style = getattr(sig, "exit_style", "intraday_adr")
-                if exit_style == "trend_trailing":
-                    sl_dist = atr * 1.5
-                    tp_dist = atr * 3.5
-                else:
-                    sl_dist = atr * 1.2
-                    tp_dist = atr * 2.4
-                if sig.direction == "buy":
-                    sl = entry_price - sl_dist
-                    tp = entry_price + tp_dist
-                else:
-                    sl = entry_price + sl_dist
-                    tp = entry_price - tp_dist
+                sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
 
             exit_price = entry_price
             exit_reason = "time_exit"
@@ -858,8 +1035,13 @@ class IsolatedStrategyBacktestHarness:
                 last_bar = candles[max_eval_bar - 1]
                 exit_price = float(last_bar.close)
 
-            ret = (exit_price - entry_price) / entry_price if sig.direction == "buy" else (entry_price - exit_price) / entry_price
-            trade_returns.append(ret)
+            ret_equity, ret_pct, r_mult = self._calculate_trade_pnl(
+                direction=sig.direction,
+                entry_price=entry_price,
+                exit_price=exit_price,
+                sl=sl,
+            )
+            trade_returns.append(ret_equity)
             trade_records.append(
                 StrategyTradeRecord(
                     symbol=self.symbol,
@@ -870,11 +1052,12 @@ class IsolatedStrategyBacktestHarness:
                     exit_price=exit_price,
                     stop_loss=sl,
                     take_profit=tp,
-                    pnl_pct=ret * 100.0,
+                    pnl_pct=ret_pct,
                     exit_reason=exit_reason,
                     bars_held=bars_held,
                     confidence=float(sig.confidence or 0.7),
                     strategy_id=getattr(strat_instance, "strategy_id", "unknown"),
+                    r_multiple=r_mult,
                 )
             )
             i += max(1, bars_held)

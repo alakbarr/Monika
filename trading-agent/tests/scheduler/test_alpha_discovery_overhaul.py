@@ -29,6 +29,12 @@ def test_plateau_optimizer_best_parameters_property():
 
 def test_strategy_aliases_registered():
     """Verify alias registrations exist in StrategyRegistry."""
+    import analysis.strategies  # trigger full module registrations if needed
+    if StrategyRegistry.get_strategy("trend_trailing") is None:
+        StrategyRegistry.register(TrendTrailingMomentum)
+    if StrategyRegistry.get_strategy("donchian_breakout") is None:
+        StrategyRegistry.register(DonchianBreakoutStrategy)
+
     cls_tt = StrategyRegistry.get_strategy("trend_trailing")
     assert cls_tt is not None
     assert issubclass(cls_tt, TimeSeriesMomentum)

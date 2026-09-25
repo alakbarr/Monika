@@ -66,9 +66,13 @@ def compute_trade_invariants(
 
     # --- BUY BOUNDS ---
     # SL must be at least 1.0x ATR below entry, max 35% of ADR or 2.5x ATR
+    # SOTA: Floor max_sl_dist at 1.2x ATR to prevent inverted SL intervals when ADR is tight
+    max_sl_dist = max(1.2 * atr_val, max_adr_sl_pct * adr_val if adr_val > 0 else 2.5 * atr_val)
+    max_sl_dist = min(2.5 * atr_val, max_sl_dist)
     buy_sl_max = round(curr_px - (1.0 * atr_val), prec)
-    max_sl_dist = min(2.5 * atr_val, max_adr_sl_pct * adr_val if adr_val > 0 else 2.5 * atr_val)
     buy_sl_min = round(curr_px - max_sl_dist, prec)
+    if buy_sl_min > buy_sl_max:
+        buy_sl_min = round(buy_sl_max - (0.2 * atr_val), prec)
 
     # TP must be within 50-80% of ADR
     buy_tp_min = round(curr_px + (tp_adr_min_pct * adr_val if adr_val > 0 else 1.5 * atr_val), prec)
@@ -89,6 +93,8 @@ def compute_trade_invariants(
     # SL must be at least 1.0x ATR above entry, max 35% of ADR or 2.5x ATR
     sell_sl_min = round(curr_px + (1.0 * atr_val), prec)
     sell_sl_max = round(curr_px + max_sl_dist, prec)
+    if sell_sl_max < sell_sl_min:
+        sell_sl_max = round(sell_sl_min + (0.2 * atr_val), prec)
 
     # TP must be within 50-80% of ADR below entry
     sell_tp_max = round(curr_px - (tp_adr_min_pct * adr_val if adr_val > 0 else 1.5 * atr_val), prec)

@@ -321,6 +321,7 @@ class AlphaDiscoveryScheduler:
                     total_candles=1500,
                     min_candles=60,
                     trial_counter=max(1, len(self._evaluated_hypothesis_ids)),
+                    param_specs=param_specs,
                 )
         except Exception as e:
             logger.warning(
@@ -516,7 +517,7 @@ class AlphaDiscoveryScheduler:
                         if self.edge_strategy_runner and hasattr(self.edge_strategy_runner, "hot_reload_strategy"):
                             try:
                                 self.edge_strategy_runner.hot_reload_strategy(
-                                    stype, proposal.hypothesis.parameters
+                                    stype, proposal.hypothesis.parameters, symbol=proposal.hypothesis.symbol
                                 )
                             except Exception as run_err:
                                 logger.debug(f"[AlphaDiscovery] EdgeStrategyRunner hot_reload non-fatal for {stype}: {run_err}")

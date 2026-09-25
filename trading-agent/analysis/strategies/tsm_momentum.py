@@ -37,7 +37,15 @@ class TimeSeriesMomentum(EdgeStrategy):
             PriceOHLCV.timestamp <= now
         ).order_by(PriceOHLCV.timestamp.desc()).limit(max_lb + 5))).scalars().all()
         if len(rows) < min_lb + 1:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient D1 history")
+            # Fallback: Try resampling from H1 candles if available
+            h1_rows = (await session.execute(select(PriceOHLCV.close).where(
+                PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H1',
+                PriceOHLCV.timestamp <= now
+            ).order_by(PriceOHLCV.timestamp.desc()).limit((max_lb + 5) * 24))).scalars().all()
+            if len(h1_rows) >= (min_lb + 1) * 24:
+                rows = [h1_rows[i] for i in range(0, len(h1_rows), 24)][:max_lb + 5]
+            else:
+                return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient D1 history")
 
         closes = list(reversed(rows))
         latest = closes[-1]
@@ -72,7 +80,11 @@ class TimeSeriesMomentum(EdgeStrategy):
                                    rationale=f"D1 structure ({htf_dir}) conflicts with TSM ({direction})")
 
         # Predictive Momentum Check via TimesFM 3.0 (Anti-exhaustion gate)
-        meta_data: dict[str, Any] = {"votes": votes}
+        meta_data: dict[str, Any] = {
+            "votes": votes,
+            "sl_atr_multiplier": float(self.cfg.get("sl_atr_multiplier", 1.5)),
+            "tp_sl_multiplier": float(self.cfg.get("tp_sl_multiplier", 2.5)),
+        }
         try:
             from indicators.timesfm_engine import TimesFMEngine
             tfm_engine = TimesFMEngine(settings)

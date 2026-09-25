@@ -38,14 +38,14 @@ class SpecialistPipelineMixin:
                       'get_swing_points_H4', 'get_structure_breaks_H4', 'get_smc_zones_H4',
                       'get_fibonacci_levels_H4', 'get_liquidity_sweep_context', 'get_volume_profile_context',
                       'get_volatility_regime_H4', 'market_regime', 'structure_breaks_D1', 'smc_zones_D1',
-                      'market_chronicle', 'recent_lessons'],
+                      'timesfm_forecast', 'market_chronicle', 'recent_lessons'],
         'sentiment': ['cot_report', 'retail_sentiment', 'fxssi_sentiment', 'fear_greed_index', 'funding_rate', 'recent_news',
                       'market_chronicle', 'recent_lessons', 'market_regime', 'user_market_intel'],
         'macro': ['get_fundamental_brief', 'get_dxy', 'get_economic_calendar', 'get_market_session',
                   'get_macro_bias_score', 'priced_in_subscores', 'recent_news', 'market_chronicle', 'recent_lessons', 'user_market_intel',
                   'interest_rates', 'get_interest_rates', 'fedwatch_probabilities', 'get_fedwatch_probabilities',
                   'central_bank_expectations', 'get_central_bank_expectations',
-                  'bond_yield_spreads', 'get_bond_yield_spreads', 'treasury_yields', 'get_treasury_yields'],
+                  'bond_yield_spreads', 'get_bond_yield_spreads', 'treasury_yields', 'get_treasury_yields', 'timesfm_forecast'],
     }
 
     async def _get_specialist_reliability_cached(self, session) -> dict:
@@ -467,8 +467,16 @@ class SpecialistPipelineMixin:
         # LSS Micro-Pruning for technical specialist: summarize large OHLCV bar lists
         if specialist == 'technical':
             for h_key in ('get_price_history_H4', 'get_price_history_H1', 'price_history_D1_recent'):
-                if h_key in slice_data and isinstance(slice_data[h_key], list) and len(slice_data[h_key]) > 10:
-                    bars = slice_data[h_key]
+                val = slice_data.get(h_key)
+                bars = None
+                is_dict_wrapper = False
+                if isinstance(val, list) and len(val) > 10:
+                    bars = val
+                elif isinstance(val, dict) and isinstance(val.get('bars'), list) and len(val['bars']) > 10:
+                    bars = val['bars']
+                    is_dict_wrapper = True
+
+                if bars:
                     try:
                         closes = [float(b.get('close', 0)) for b in bars if isinstance(b, dict)]
                         highs = [float(b.get('high', 0)) for b in bars if isinstance(b, dict)]
@@ -479,12 +487,19 @@ class SpecialistPipelineMixin:
                             "net_change": round(closes[-1] - closes[0], 5) if len(closes) >= 2 else 0,
                             "total_bars_available": len(bars)
                         }
-                        slice_data[h_key] = {
+                        compacted = {
                             "summary_extrema": extrema,
                             "recent_10_bars": bars[-10:]
                         }
+                        if is_dict_wrapper:
+                            slice_data[h_key]['bars'] = compacted
+                        else:
+                            slice_data[h_key] = compacted
                     except Exception:
-                        slice_data[h_key] = bars[-10:]
+                        if is_dict_wrapper:
+                            slice_data[h_key]['bars'] = bars[-10:]
+                        else:
+                            slice_data[h_key] = bars[-10:]
 
         return _json.dumps(slice_data, separators=(',', ':'), default=str)
 
