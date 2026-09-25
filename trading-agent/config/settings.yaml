@@ -1632,6 +1632,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: high
@@ -1646,10 +1650,14 @@ llm:
       max_cost_per_call: 0.05
       temperature: 0.0
     stage1_escalation:
-      primary: claude-opus-5
-      fallback_1: claude-sonnet-4.5
-      fallback_2: gemini-3.7-flash
-      fallback_3: openrouter/paid
+      primary: gemini-3.8-flash
+      fallback_1: gemini-3.7-flash
+      fallback_2: gemini-3.6-flash
+      fallback_3: gemini-3.5-flash
+      fallback_4: gemini-3.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
+      fallback_7: groq-qwen3.8-27b
       thinking:
         anthropic: high
         gemini: high
@@ -1667,6 +1675,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: medium
@@ -1684,6 +1696,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: medium
@@ -1701,6 +1717,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: medium
@@ -1734,6 +1754,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1750,6 +1774,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1766,6 +1794,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: medium
         gemini: medium
@@ -1783,6 +1815,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1799,6 +1835,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1831,6 +1871,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1847,6 +1891,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1863,6 +1911,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -1879,6 +1931,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: medium
         gemini: medium
@@ -1954,10 +2010,14 @@ llm:
       max_tokens: 1024
       temperature: 0.0
     news_classification_escalation:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
+      primary: gemini-3.8-flash
+      fallback_1: gemini-3.7-flash
+      fallback_2: gemini-3.6-flash
+      fallback_3: gemini-3.5-flash
+      fallback_4: gemini-3.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
+      fallback_7: groq-qwen3.8-27b
       thinking:
         anthropic: low
         gemini: minimal
@@ -1990,6 +2050,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -2006,6 +2070,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -2022,6 +2090,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: none
         gemini: minimal
@@ -2054,6 +2126,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: minimal
@@ -2070,6 +2146,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: minimal
@@ -2086,6 +2166,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: minimal
@@ -2102,6 +2186,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: minimal
@@ -2118,6 +2206,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: medium
         gemini: medium
@@ -2146,10 +2238,14 @@ llm:
       max_tokens: 6144
       temperature: 0.0
     trade_reflection:
-      primary: gemini-3.8-flash
-      fallback_1: gemini-3.5-flash-lite
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: high
@@ -2166,6 +2262,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -2183,6 +2283,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: low
         gemini: low
@@ -2200,6 +2304,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: high
@@ -2217,6 +2325,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: high
         gemini: high
@@ -2234,6 +2346,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: none
         gemini: none
@@ -2250,6 +2366,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: none
         gemini: none
@@ -2266,6 +2386,10 @@ llm:
       fallback_1: gemini-3.1-flash-lite
       fallback_2: openrouter/free
       fallback_3: groq-qwen3.8-27b
+      fallback_4: gemini-3.8-flash
+      fallback_5: gemini-3.7-flash
+      fallback_6: gemini-3.6-flash
+      fallback_7: gemini-3.5-flash
       thinking:
         anthropic: none
         gemini: none
