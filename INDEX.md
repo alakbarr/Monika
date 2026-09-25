@@ -1207,7 +1207,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `gemini_provider.py`
   - **Classes**: `GeminiProvider`
-    - *Methods*: `_is_paid_key()`, `_get_api_key()`, `_handle_rate_limit_error()`, `_build_thinking_config()`, `generate()` (tuple system prompt separation, thinking headroom, unconditional auto-recovery on MAX_TOKENS), `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
+    - *Methods*: `_is_paid_key()`, `_get_api_key()`, `_is_transient_error()`, `_handle_rate_limit_error()` (RPD, RPM/TPM, HTTP 503/UNAVAILABLE transient overload key cooldown), `_build_thinking_config()`, `generate()` (tuple system prompt separation, thinking headroom, unconditional auto-recovery on MAX_TOKENS, key rotation on 503), `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
   - **Functions**: `_sanitize_schema_for_gemini`, `_check_gemini_block`
   - **Variables**: `GEMINI_MODEL_ALIASES`, `GEMINI_THINKING_LEVEL_MAP`
 
@@ -4616,8 +4616,8 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `get_api_keys`
   - **Variables**: `GROQ_QUOTA_PER_KEY`, `DEFAULT_QUOTA_PER_KEY`, `GROQ_QUOTA`, `DEFAULT_QUOTA`
 **File:** `http_retry.py`
-  - **Classes**: `RateLimitError`
-  - **Functions**: `fetch_with_retry`, `_jittered_delay`, `_jitter_retry_after`
+  - **Classes**: `RateLimitError`, `APIStatusError`
+  - **Functions**: `fetch_with_retry`, `format_api_error_summary`, `_jittered_delay`, `_jitter_retry_after`
   - **Variables**: `_CIRCUIT_BREAKER`, `_DEFAULT_SSL_CONTEXT`
 **File:** `openrouter_rate_limiter.py`
   - **Classes**: `OpenRouterRateLimiter`

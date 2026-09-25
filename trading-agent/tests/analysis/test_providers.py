@@ -1,4 +1,5 @@
 import pytest
+import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from analysis.providers.anthropic_provider import AnthropicProvider
 from analysis.providers.gemini_provider import GeminiProvider
@@ -361,4 +362,114 @@ async def test_anthropic_run_tool_agent_anti_oscillation_hashlib(mock_anthropic)
         # Tool executor hanya dipanggil 1 kali karena turn 2 terdeteksi identik via hashlib MD5 dan disupresi
         assert mock_executor.execute.call_count == 1
         assert result["success"] is True
+
+
+def test_format_api_error_summary():
+    """Memverifikasi pembersihan format error API menjadi single-line yang rapi."""
+    from utils.api.http_retry import format_api_error_summary
+
+    # 1. Google Gemini 503 High Demand JSON
+    gemini_body = json.dumps({
+        "error": {
+            "code": 503,
+            "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+            "status": "UNAVAILABLE"
+        }
+    })
+    res_gemini = format_api_error_summary(503, gemini_body)
+    assert res_gemini == "HTTP 503 (UNAVAILABLE): This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+
+    # 2. OpenAI / Groq standard JSON
+    openai_body = json.dumps({
+        "error": {
+            "message": "Rate limit reached for requests",
+            "type": "requests",
+            "code": "rate_limit_exceeded"
+        }
+    })
+    res_openai = format_api_error_summary(429, openai_body)
+    assert res_openai == "HTTP 429 (requests): Rate limit reached for requests"
+
+    # 3. HTML / Cloudflare error body
+    html_body = "<html><body><h1>503 Service Temporarily Unavailable</h1><p>nginx/1.18.0</p></body></html>"
+    res_html = format_api_error_summary(503, html_body)
+    assert "503 Service Temporarily Unavailable" in res_html
+    assert "<html>" not in res_html
+
+
+def test_gemini_503_high_demand_transient_handling():
+    """Memverifikasi penanganan elegan HTTP 503 High Demand pada GeminiProvider."""
+    import time
+    from utils.api.http_retry import APIStatusError
+    from analysis.providers.provider_failover_classifier import classify_error, FailoverReason
+
+    GeminiProvider._key_cooldowns.clear()
+
+    # 1. Error instance dengan body 503 UNAVAILABLE
+    gemini_503_body = json.dumps({
+        "error": {
+            "code": 503,
+            "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+            "status": "UNAVAILABLE"
+        }
+    })
+    err_503 = APIStatusError(status=503, body=gemini_503_body)
+
+    # 2. Deteksi transient error
+    assert GeminiProvider._is_transient_error(err_503) is True
+
+    # 3. Cooldown handler menetapkan cooldown ~30s untuk overload
+    GeminiProvider._handle_rate_limit_error("AIzaSyTestKey123", err_503, "generate")
+    cd = GeminiProvider._key_cooldowns.get("AIzaSyTestKey123", 0) - time.time()
+    assert 25.0 <= cd <= 31.0, f"Expected ~30s cooldown for 503 overload, got {cd}"
+
+    # 4. Error classifier mengklasifikasikan sebagai MODEL_OVERLOADED
+    reason, detail = classify_error(err_503)
+    assert reason == FailoverReason.MODEL_OVERLOADED
+    assert "overloaded" in detail.lower() or "high demand" in detail.lower()
+
+    GeminiProvider._key_cooldowns.clear()
+
+
+@pytest.mark.asyncio
+async def test_gemini_generate_rotates_key_on_503():
+    """Memverifikasi bahwa saat attempt 1 gagal HTTP 503, generate otomatis mencoba key berikutnya yang sehat."""
+    from utils.api.http_retry import APIStatusError
+    gemini_503_body = json.dumps({
+        "error": {
+            "code": 503,
+            "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+            "status": "UNAVAILABLE"
+        }
+    })
+
+    with patch.dict('os.environ', {'GEMINI_API_KEYS': 'key_alpha,key_beta'}):
+        provider = GeminiProvider(model="gemini-3.8-flash", settings={"llm": {"providers": {"gemini": {"streaming": {"enabled": True}}}}})
+        provider._save_token_usage = AsyncMock()
+
+        # Attempt 1 (key_alpha) raises APIStatusError 503, Attempt 2 (key_beta) succeeds
+        mock_success_res = MagicMock()
+        mock_success_res.text = "Analysis complete from healthy key"
+        mock_success_res.finish_reason = "STOP"
+        mock_success_res.usage = {"promptTokenCount": 100, "candidatesTokenCount": 50}
+
+        calls = []
+        async def mock_stream_req(url, payload, headers, config, parser, model_name):
+            key = headers.get("x-goog-api-key")
+            calls.append(key)
+            if key == "key_alpha":
+                raise APIStatusError(status=503, body=gemini_503_body)
+            return mock_success_res
+
+        with patch('analysis.providers.gemini_provider.streaming_request', side_effect=mock_stream_req), \
+             patch('analysis.providers.gemini_provider.get_session') as mock_db_sess, \
+             patch('analysis.providers.gemini_provider.GeminiRateLimiter') as mock_rl:
+            mock_rl.return_value.try_acquire = AsyncMock(return_value=True)
+
+            result = await provider.generate("Analyze gold market")
+            assert result == "Analysis complete from healthy key"
+            assert "key_alpha" in calls
+            assert "key_beta" in calls
+            # key_alpha harus masuk cooldown
+            assert "key_alpha" in GeminiProvider._key_cooldowns
 
