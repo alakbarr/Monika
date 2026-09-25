@@ -297,16 +297,31 @@ Strictly ground all numeric claims. Max 700 words."""
             macro_overview = None
 
         if not macro_overview or macro_overview.strip() == "" or macro_overview == "(Macro overview generation unavailable)":
-            # Synthesize deterministic fallback from chronological slices
+            # Synthesize deterministic fallback from chronological slices or recent NewsDigest
             synth_parts = ["**Deterministic Macro Summary (Synthesized from Slices)**:"]
             for s in slices[-4:]:
-                if s.macro_summary and not s.macro_summary.startswith("("):
+                summary_text = getattr(s, 'macro_summary', None)
+                if not summary_text and s.currency_sections:
+                    try:
+                        c_dict = json.loads(s.currency_sections)
+                        highlights = [f"{cur}: {txt.strip()[:100]}" for cur, txt in c_dict.items() if txt and not txt.startswith("No high/medium")]
+                        if highlights:
+                            summary_text = "; ".join(highlights[:3])
+                    except Exception:
+                        pass
+                if summary_text and not summary_text.startswith("("):
                     p_time = s.period_start.strftime("%H:%M")
-                    synth_parts.append(f"- [{p_time} UTC]: {s.macro_summary.strip()[:250]}")
+                    synth_parts.append(f"- [{p_time} UTC]: {summary_text.strip()[:250]}")
             if len(synth_parts) > 1:
                 macro_overview = "\n".join(synth_parts)
             else:
-                macro_overview = "(Macro overview generation unavailable - relying on slice timeline below)"
+                recent_digest = (await session.execute(
+                    select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
+                )).scalar_one_or_none()
+                if recent_digest and recent_digest.digest_text:
+                    macro_overview = f"(Synthesized from recent NewsDigest):\n{recent_digest.digest_text[:500]}..."
+                else:
+                    macro_overview = "(Macro overview generation unavailable - relying on slice timeline below)"
 
         digest_parts.append("\n### MACRO OVERVIEW\n")
         digest_parts.append(macro_overview or "")
@@ -362,7 +377,7 @@ Strictly ground all numeric claims. Max 700 words."""
             cnt = (await session.execute(
                 select(func.count(NewsItem.id))
                 .where(NewsItem.fetched_at >= since)
-                .where(NewsItem.impact.in_(['HIGH', 'BREAKING']))
+                .where(NewsItem.impact.in_(['BREAKING', 'HIGH', 'MEDIUM']))
                 .where(NewsItem.currency_tags.contains(cur))
             )).scalar_one_or_none() or 0
             if cnt == 0:
@@ -371,6 +386,6 @@ Strictly ground all numeric claims. Max 700 words."""
         if not missing:
             return ""
         return (
-            f"WARNING: No HIGH/BREAKING news detected in DB for {', '.join(missing)} in the last 12 hours. "
+            f"WARNING: No BREAKING, HIGH, or MEDIUM news detected in DB for {', '.join(missing)} in the last 12 hours. "
             "Stage 2 analysis for these assets will rely entirely on technicals and carry-over sentiment."
         )

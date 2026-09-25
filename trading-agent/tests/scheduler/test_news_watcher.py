@@ -23,6 +23,7 @@ class TestNewsWatcher:
         news.impact = impact
         news.currency_tags = currency_tags
         news.fetched_at = datetime.now(timezone.utc)
+        news.published_at = datetime.now(timezone.utc)
         news.url = f"http://test.com/{title.replace(' ', '')}"
         return news
 

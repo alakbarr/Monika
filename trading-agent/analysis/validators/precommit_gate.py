@@ -105,9 +105,15 @@ class TradePreCommitGate:
                     failures.append(f"GEOMETRY: Sell TP ({tp}) must be strictly below entry ({entry}).")
 
         # -------------------------------------------------------------
-        # 2. Price Staleness & Slippage Assertion
+        # 2. Price Staleness & Slippage Assertion (Fix 6.5: MARKET orders only)
         # -------------------------------------------------------------
-        if entry > 0.0:
+        order_type = str(
+            decision_data.get("order_type") or
+            (entry_cond.get("type") if isinstance(entry_cond, dict) else "") or
+            "MARKET"
+        ).upper()
+
+        if entry > 0.0 and order_type in ("MARKET", ""):
             try:
                 eval_time = decision_data.get("timestamp") or decision_data.get("now")
                 query = select(PriceOHLCV).where(PriceOHLCV.symbol == sym)
@@ -142,9 +148,12 @@ class TradePreCommitGate:
             if snap and snap.get("latest_close") is not None:
                 plan = {
                     "direction": decision,
+                    "action": decision,
+                    "decision": decision,
                     "entry_price": entry,
                     "stop_loss": sl,
                     "take_profit": tp,
+                    "order_type": r.get("order_type", "MARKET") if isinstance(r, dict) else "MARKET",
                 }
                 snap_valid, snap_issues = VerifiedMarketSnapshot.validate_plan_against_snapshot(plan, snap)
                 if not snap_valid:

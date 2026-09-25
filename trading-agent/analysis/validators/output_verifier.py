@@ -222,12 +222,13 @@ class OutputVerifier:
                     snaps.append(f"Deterministic snap: capped BUY TP to TimesFM Q90 ceiling ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
-                        safe_sl_dist = round(new_tp_dist / min_rr, digits)
-                        if atr_val and safe_sl_dist >= (0.75 * atr_val):
-                            sl = round(entry - safe_sl_dist, digits)
-                            output["stop_loss"] = sl
-                            sl_dist = safe_sl_dist
-                            snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
+                        # Ensure SL does NOT breach 1.0x ATR minimum invariant (Fix 6.4)
+                        min_allowed_sl_dist = (1.0 * atr_val) if (atr_val and atr_val > 0) else sl_dist
+                        safe_sl_dist = max(round(new_tp_dist / min_rr, digits), min_allowed_sl_dist)
+                        sl = round(entry - safe_sl_dist, digits)
+                        output["stop_loss"] = sl
+                        sl_dist = safe_sl_dist
+                        snaps.append(f"Deterministic snap: harmonized SL to {sl} preserving min 1.0x ATR under TimesFM cap")
             elif "TimesFM 3.0 Q10 floor" in f:
                 import re
                 m = re.search(r"floor \(([0-9.]+)\)", f)
@@ -237,12 +238,13 @@ class OutputVerifier:
                     snaps.append(f"Deterministic snap: capped SELL TP to TimesFM Q10 floor ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
-                        safe_sl_dist = round(new_tp_dist / min_rr, digits)
-                        if atr_val and safe_sl_dist >= (0.75 * atr_val):
-                            sl = round(entry + safe_sl_dist, digits)
-                            output["stop_loss"] = sl
-                            sl_dist = safe_sl_dist
-                            snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
+                        # Ensure SL does NOT breach 1.0x ATR minimum invariant (Fix 6.4)
+                        min_allowed_sl_dist = (1.0 * atr_val) if (atr_val and atr_val > 0) else sl_dist
+                        safe_sl_dist = max(round(new_tp_dist / min_rr, digits), min_allowed_sl_dist)
+                        sl = round(entry + safe_sl_dist, digits)
+                        output["stop_loss"] = sl
+                        sl_dist = safe_sl_dist
+                        snaps.append(f"Deterministic snap: harmonized SL to {sl} preserving min 1.0x ATR under TimesFM cap")
 
         initial_sl_valid = (decision == "buy" and sl < entry) or (decision == "sell" and sl > entry)
 
@@ -445,7 +447,8 @@ class OutputVerifier:
                         except (TypeError, ValueError):
                             pass
 
-        target_prefixes = ['swing', 'sr_', 'order_block', 'fvg', 'fibonacci', 'liquidity', 'smc', 'price_history']
+        # FIX 6.4: Only snap to genuine structural levels (exclude noisy raw price_history bars)
+        target_prefixes = ['swing', 'sr_', 'order_block', 'fvg', 'fibonacci', 'liquidity', 'smc']
         for k, v in context_data.items():
             k_lower = str(k).lower()
             if any(tp in k_lower for tp in target_prefixes):

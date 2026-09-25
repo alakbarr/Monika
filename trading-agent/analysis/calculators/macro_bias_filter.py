@@ -72,6 +72,8 @@ async def compute_currency_macro_score(session: AsyncSession, currency: str, set
         risk_dir = {'USD': 1.0, 'JPY': 0.8, 'AUD': -1.0, 'GBP': -0.6, 'EUR': -0.3, 'XAU': 0.5}.get(currency, 0.0)
         if vix.close > 22:
             risk = risk_dir * min(1.0, (vix.close - 20) / 20)
+        elif vix.close < 18:
+            risk = -risk_dir * min(1.0, (18 - vix.close) / 10)  # Inverse for risk-on
 
     # Bobot diferensial: Suku bunga & ekspektasi kebijakan moneter adalah driver dominan
     if currency == 'USD':

@@ -116,6 +116,25 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                     adjustment_notes.append(f"Entry recalibrated to live price {new_entry} (offset {drift_offset:+.5f}).")
 
             if adjusted:
+                # Recalculate position sizing after risk multiplier or SL/TP adjustment (Fix 4.12)
+                try:
+                    from risk.position_sizing import PositionSizer
+                    sizer = PositionSizer(settings)
+                    equity = float(trade.get("account_equity") or 10000.0)
+                    sizing_res = sizer.calculate(
+                        symbol=sym,
+                        entry_price=float(trade.get("entry_price") or entry),
+                        stop_loss=float(trade.get("stop_loss") or sl),
+                        account_equity=equity,
+                        confidence=float(trade.get("confidence", 0.7)),
+                        risk_multiplier=float(trade.get("risk_multiplier", 1.0)),
+                    )
+                    trade["lot_size"] = sizing_res.lots
+                    trade["sizing"] = sizing_res
+                    adjustment_notes.append(f"Position size recalculated to {sizing_res.lots} lots.")
+                except Exception as sz_err:
+                    logger.debug(f"[PlanRefinementNode] Sizing recalculation notice: {sz_err}")
+
                 # Update DB AssetAnalysis record
                 if analysis_id:
                     try:

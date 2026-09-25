@@ -62,25 +62,34 @@ class TradeProposal(BaseModel):
             if val is not None and (math.isnan(val) or math.isinf(val)):
                 raise ValueError(f"Field '{f_name}' cannot be NaN or Infinite: {val}")
 
+        is_trailing = bool(self.metadata.get("is_trailing") or self.metadata.get("trailing_stop") or self.metadata.get("runner"))
         if self.direction in ("BUY", "SELL"):
             if self.entry_price <= 0.0:
                 raise ValueError(f"Active trade ({self.direction}) requires entry_price > 0, got {self.entry_price}")
             if self.stop_loss <= 0.0:
                 raise ValueError(f"Active trade ({self.direction}) requires stop_loss > 0, got {self.stop_loss}")
-            if self.take_profit <= 0.0:
+            if not is_trailing and self.take_profit <= 0.0:
                 raise ValueError(f"Active trade ({self.direction}) requires take_profit > 0, got {self.take_profit}")
 
             # Directional geometric sanity
             if self.direction == "BUY":
-                if not (self.stop_loss < self.entry_price < self.take_profit):
-                    raise ValueError(
-                        f"BUY geometry violation: SL ({self.stop_loss}) must be < Entry ({self.entry_price}) < TP ({self.take_profit})"
-                    )
+                if not is_trailing:
+                    if not (self.stop_loss < self.entry_price < self.take_profit):
+                        raise ValueError(
+                            f"BUY geometry violation: SL ({self.stop_loss}) must be < Entry ({self.entry_price}) < TP ({self.take_profit})"
+                        )
+                else:
+                    if self.stop_loss >= self.entry_price:
+                        raise ValueError(f"BUY geometry violation: SL ({self.stop_loss}) must be < Entry ({self.entry_price})")
             elif self.direction == "SELL":
-                if not (self.take_profit < self.entry_price < self.stop_loss):
-                    raise ValueError(
-                        f"SELL geometry violation: TP ({self.take_profit}) must be < Entry ({self.entry_price}) < SL ({self.stop_loss})"
-                    )
+                if not is_trailing:
+                    if not (self.take_profit < self.entry_price < self.stop_loss):
+                        raise ValueError(
+                            f"SELL geometry violation: TP ({self.take_profit}) must be < Entry ({self.entry_price}) < SL ({self.stop_loss})"
+                        )
+                else:
+                    if self.stop_loss <= self.entry_price:
+                        raise ValueError(f"SELL geometry violation: SL ({self.stop_loss}) must be > Entry ({self.entry_price})")
 
         return self
 
@@ -139,6 +148,7 @@ class FortressAdmissionValidator:
         proposal: TradeProposal,
         max_age_seconds: float = MAX_PROPOSAL_AGE_SECONDS,
         require_provenance: bool = False,
+        is_backtest: bool = False,
     ) -> tuple[bool, List[str]]:
         """
         Validates that a proposal satisfies Financial Fortress admission rules:
@@ -149,16 +159,18 @@ class FortressAdmissionValidator:
         """
         rejections: List[str] = []
 
-        # 1. Staleness check
-        now = _utcnow()
-        proposal_time = proposal.timestamp
-        if proposal_time.tzinfo is None:
-            proposal_time = proposal_time.replace(tzinfo=timezone.utc)
-        age = (now - proposal_time).total_seconds()
-        if age > max_age_seconds:
-            rejections.append(f"Proposal expired: age {age:.1f}s exceeds limit {max_age_seconds:.1f}s")
-        elif age < -30.0:
-            rejections.append(f"Proposal timestamp in future: {age:.1f}s drift")
+        # 1. Staleness check (skip in backtest)
+        is_bt = is_backtest or bool(proposal.metadata.get("is_backtest"))
+        if not is_bt:
+            now = _utcnow()
+            proposal_time = proposal.timestamp
+            if proposal_time.tzinfo is None:
+                proposal_time = proposal_time.replace(tzinfo=timezone.utc)
+            age = (now - proposal_time).total_seconds()
+            if age > max_age_seconds:
+                rejections.append(f"Proposal expired: age {age:.1f}s exceeds limit {max_age_seconds:.1f}s")
+            elif age < -30.0:
+                rejections.append(f"Proposal timestamp in future: {age:.1f}s drift")
 
         # 2. Provenance check
         if require_provenance and not proposal.provenance_verified:
@@ -171,13 +183,15 @@ class FortressAdmissionValidator:
             elif proposal.lot_size > 50.0:  # Absolute safety ceiling
                 rejections.append(f"Lot size exceeds absolute fortress ceiling (50.0 lots): {proposal.lot_size}")
 
-            # R:R ratio check
-            risk = abs(proposal.entry_price - proposal.stop_loss)
-            reward = abs(proposal.take_profit - proposal.entry_price)
-            if risk > 0:
-                rr = reward / risk
-                if rr < 0.8:
-                    rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< 0.8)")
+            # R:R ratio check (skip for trailing stop / runner strategies)
+            is_trailing = bool(proposal.metadata.get("is_trailing") or proposal.metadata.get("trailing_stop") or proposal.metadata.get("runner"))
+            if not is_trailing:
+                risk = abs(proposal.entry_price - proposal.stop_loss)
+                reward = abs(proposal.take_profit - proposal.entry_price)
+                if risk > 0:
+                    rr = reward / risk
+                    if rr < 0.8:
+                        rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< 0.8)")
 
         admitted = len(rejections) == 0
         return admitted, rejections

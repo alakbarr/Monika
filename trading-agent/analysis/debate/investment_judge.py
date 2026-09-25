@@ -110,7 +110,7 @@ async def evaluate_debate(
 ---
 
 You are the Chief Investment Officer (Judge).
-You must evaluate the proposed trade setup in 'original_context', alongside the Bull Analyst's analysis, the Bear Analyst's analysis, and any Round 2 Bull Rebuttal provided in the user prompt.
+You must evaluate the proposed trade setup in 'original_context', alongside the Bull Analyst's analysis, the Bear Analyst's analysis, and any Round 2 Rebuttal (Bull or Bear) provided in the user prompt.
 Determine if the trade should proceed at full size, needs size adjustment, level adjustment, or REJECTION.
 Your role is to critically evaluate trade viability and protect capital.
 
@@ -143,10 +143,10 @@ RISK MULTIPLIER CALIBRATION TABLE (mandatory reference — pick the closest matc
 - 0.0  = Fatal flaw detected in trade thesis; final_decision MUST be 'avoid'.
 
 ROUND 2 REBUTTAL & BAYESIAN CALIBRATION:
-- If 'bull_rebuttal' is present, assess its rebuttal_evidence against the Bear's critiques:
-  * Strong Rebuttal (rebuttal_strength >= 7 with verified numerical confluences): Mitigates bear severity. If Bear claimed severity >= 8 but Bull successfully refuted it with factual data, do NOT reject solely on bear claim; calibrate risk according to residual risk (e.g. 0.50 - 0.75).
-  * Concessions Made (conceded_points): If Bull conceded specific weaknesses (e.g. SL too close or overhead resistance), adjust entry/SL/TP or cap risk_multiplier <= 0.50.
-  * Weak/Failed Rebuttal (rebuttal_strength <= 4 or ungrounded): Bear Dissent is validated. If risk_severity >= 9, enforce final_decision = 'avoid' and risk_multiplier = 0.0.
+- If a Round 2 Rebuttal ('bull_rebuttal' or 'bear_rebuttal') is present, assess its rebuttal_evidence against the opposing critiques:
+  * Strong Rebuttal (rebuttal_strength >= 7 with verified numerical confluences): Mitigates counter-thesis severity. If the dissenter claimed severity >= 8 but the advocate successfully refuted it with factual data, do NOT reject solely on dissenter claim; calibrate risk according to residual risk (e.g. 0.50 - 0.75).
+  * Concessions Made (conceded_points): If the advocate conceded specific weaknesses (e.g. SL too close or overhead barrier), adjust entry/SL/TP or cap risk_multiplier <= 0.50.
+  * Weak/Failed Rebuttal (rebuttal_strength <= 4 or ungrounded): Opposing dissent is validated. If counter-threat >= 9, enforce final_decision = 'avoid' and risk_multiplier = 0.0.
 
 TELEMETRY & SPECIALIST TRUST GUIDELINES:
 - Inspect 'fact_sheet.specialist_reliability' if present:
@@ -190,7 +190,8 @@ Respond in valid JSON format conforming to the schema."""
         "bear_dissent": compress_debate_trajectory(bear_dissent, max_text_len=800),
     }
     if bull_rebuttal:
-        debate_payload["bull_rebuttal"] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
+        rebuttal_key = "bear_rebuttal" if decision == "SELL" else "bull_rebuttal"
+        debate_payload[rebuttal_key] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
 
     user_prompt = f"Evaluate Debate for {symbol} ({decision}):\n{json.dumps(debate_payload, separators=(',', ':'), default=str)}\n\nProceed with evaluation based strictly on the data above."
     

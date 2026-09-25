@@ -851,10 +851,21 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
         for r in result:
             if not isinstance(r, dict):
                 continue
-            idx = r.get('index', 0) - 1
-            if 0 <= idx < len(candidates):
-                _, news_item = candidates[idx]
-                corrected[news_item.id] = r
+            r_news_id = r.get("news_id")
+            matched_item = None
+            if r_news_id:
+                for _, n_item in candidates:
+                    if n_item.id == r_news_id:
+                        matched_item = n_item
+                        break
+            if not matched_item:
+                idx = r.get('index', 0)
+                if 1 <= idx <= len(candidates):
+                    matched_item = candidates[idx - 1][1]
+                elif 0 <= idx < len(candidates):
+                    matched_item = candidates[idx][1]
+            if matched_item:
+                corrected[matched_item.id] = r
         return corrected
 
     async def _escalate_low_confidence_items(self, session: AsyncSession, low_conf_items: list[tuple[dict, NewsItem]], now_utc: datetime) -> dict:
@@ -867,7 +878,7 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
         for j, (item_result, news_item) in enumerate(low_conf_items):
             age_min = round((now_utc - news_item.fetched_at).total_seconds() / 60) if news_item.fetched_at else '?'
             lines.append(
-                f"{j + 1}. ORIGINAL_VERDICT={item_result.get('impact')} (confidence={item_result.get('confidence', 0):.2f})\n"
+                f"{j + 1}. [ID #{news_item.id}] ORIGINAL_VERDICT={item_result.get('impact')} (confidence={item_result.get('confidence', 0):.2f})\n"
                 f"   TITLE: {news_item.title[:200]}\n"
                 f"   FULL SUMMARY: {(news_item.summary or '')[:600]}\n"
                 f"   TIME-IN-SYSTEM: {age_min} min"
@@ -877,7 +888,7 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
             "— the model was uncertain. Your job: RE-EVALUATE carefully using the FULL summary (untruncated). "
             "Evaluate from scratch, DO NOT bias toward the original verdict.\n\n"
             f"ITEMS:\n{chr(10).join(lines)}\n\n"
-            'Respond JSON array: [{"index":1,"reasoning":"...","impact":"HIGH","confidence":0.8,'
+            'Respond JSON array: [{"index":1,"news_id":123,"reasoning":"...","impact":"HIGH","confidence":0.8,'
             '"surprise_magnitude":"none","currencies":["USD"],"sentiments":[],"key_data_point":""}]'
         )
         try:
@@ -895,12 +906,23 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
         for r in result:
             if not isinstance(r, dict):
                 continue
-            idx = r.get('index', 0) - 1
-            if 0 <= idx < len(low_conf_items):
-                _, news_item = low_conf_items[idx]
-                corrected[news_item.id] = r
-                logger.info(f"[NewsClassification] Escalation resolved '{news_item.title[:50]}': "
-                            f"{low_conf_items[idx][0].get('impact')} -> {r.get('impact')} (conf={r.get('confidence', 0):.2f})")
+            r_news_id = r.get("news_id")
+            matched_item = None
+            if r_news_id:
+                for _, n_item in low_conf_items:
+                    if n_item.id == r_news_id:
+                        matched_item = n_item
+                        break
+            if not matched_item:
+                idx = r.get('index', 0)
+                if 1 <= idx <= len(low_conf_items):
+                    matched_item = low_conf_items[idx - 1][1]
+                elif 0 <= idx < len(low_conf_items):
+                    matched_item = low_conf_items[idx][1]
+            if matched_item:
+                corrected[matched_item.id] = r
+                logger.info(f"[NewsClassification] Escalation resolved '{matched_item.title[:50]}': "
+                            f"-> {r.get('impact')} (conf={r.get('confidence', 0):.2f})")
         return corrected
 
     async def _get_calendar_impact_priors(self, session: AsyncSession, batch: list[NewsItem], now_utc: datetime) -> dict[int, Optional[str]]:
@@ -1639,9 +1661,16 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                     impact = floor
                     item_result['impact'] = floor
             # === existing magnitude/confidence/duplicate/budget checks continue unchanged below ===
-            
-            if impact == 'BREAKING' and mag not in ('large', 'moderate'):
-                item_result['_downgraded_reason'] = f'magnitude={mag} not large/moderate'
+            title_summary = f"{news_item.title or ''} {news_item.summary or ''}".lower()
+            is_non_data_shock = any(w in title_summary for w in SHOCK_KEYWORDS) or any(
+                w in title_summary for w in (
+                    'emergency rate', 'rate cut', 'rate hike', 'war', 'invasion', 'missile',
+                    'sanction', 'ban', 'default', 'halted', 'crisis', 'tariff', 'black swan'
+                )
+            )
+
+            if impact == 'BREAKING' and mag not in ('large', 'moderate') and not is_non_data_shock:
+                item_result['_downgraded_reason'] = f'magnitude={mag} not large/moderate (non-shock)'
                 impact = 'HIGH'
                 item_result['impact'] = 'HIGH'
 
@@ -1726,8 +1755,8 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                         item_result['impact'] = 'HIGH'
                         item_result['_downgraded_reason'] = 'no_calendar_event_low_conf'
             
-            # NEW: cross-check magnitude untuk data release
-            if impact == 'BREAKING' and mag in ('large', 'moderate'):
+            # NEW: cross-check magnitude untuk data release (non-data shocks exempt)
+            if impact == 'BREAKING' and not is_non_data_shock and mag in ('large', 'moderate'):
                 kdp = item_result.get('key_data_point', '').strip()
                 if not kdp:
                     impact = 'HIGH'
@@ -1779,16 +1808,21 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         if not recent_breaking:
             return False
             
+        FINANCIAL_COMMON_WORDS = {
+            "market", "markets", "dollar", "rates", "report", "economic", "prices",
+            "price", "yield", "yields", "today", "ahead", "after", "since", "about",
+            "could", "would", "first", "month", "years", "daily", "weekly", "update"
+        }
         title_lower = (news_item.title or '').lower()
-        keywords = set(w for w in title_lower.split() if len(w) > 4)
+        keywords = set(w for w in title_lower.split() if len(w) > 4 and w not in FINANCIAL_COMMON_WORDS)
         
         for rb in recent_breaking:
             rb_title = (rb.title or '').lower()
-            rb_keywords = set(w for w in rb_title.split() if len(w) > 4)
+            rb_keywords = set(w for w in rb_title.split() if len(w) > 4 and w not in FINANCIAL_COMMON_WORDS)
             
-            # If they share 2 or more significant words, consider it a duplicate
+            # If they share 4 or more specific significant words, consider it a duplicate event
             overlap = keywords.intersection(rb_keywords)
-            if len(overlap) >= 2:
+            if len(overlap) >= 4:
                 return True
                 
         return False
@@ -2279,6 +2313,8 @@ Guidance: {depth_guidance} Write in professional trading analyst style."""
         if ungrounded:
             logger.warning(f'[NewsDigest] Possible ungrounded numeric claims in macro_overview: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...')
             for u_token in ungrounded:
+                if str(u_token).isdigit() and len(str(u_token)) < 2:
+                    continue
                 macro_overview = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", macro_overview)
         
         async def fetch_currency_digest(currency: str, items: list, macro_ctx: str) -> str:
@@ -2354,6 +2390,8 @@ MACRO NARRATIVE:
                 if ungrounded:
                     logger.warning(f"[NewsDigest] Ungrounded numbers in {currency} section: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]...")
                     for u_token in ungrounded:
+                        if str(u_token).isdigit() and len(str(u_token)) < 2:
+                            continue
                         result = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", result)
                     
                 return f'### {currency} Nuances\n{result}'

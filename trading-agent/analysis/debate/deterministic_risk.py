@@ -20,17 +20,17 @@ def analyze_risk_conservative(ctx: dict) -> dict:
 
     veto = False
     reasons = []
-    if daily_pnl_pct <= -2.5:
+    if daily_pnl_pct <= -1.5:
         veto = True
-        reasons.append(f'Rule1: daily_pnl_pct={daily_pnl_pct:.2f}% <= -2.5%')
-    if open_positions >= 4:
+        reasons.append(f'Rule1: daily_pnl_pct={daily_pnl_pct:.2f}% <= -1.5%')
+    if open_positions >= 3:
         veto = True
-        reasons.append(f'Rule2: open_positions={open_positions} >= 4')
+        reasons.append(f'Rule2: open_positions={open_positions} >= 3')
     if heat_pct > 3.0:
-        multiplier = 0.6
-        reasons.append(f'Rule3: portfolio_heat_pct={heat_pct:.2f}% > 3.0% -> cap 0.6')
+        multiplier = 0.5
+        reasons.append(f'Rule3: portfolio_heat_pct={heat_pct:.2f}% > 3.0% -> cap 0.5')
     else:
-        multiplier = 0.90 if confluence >= 8 else 0.80
+        multiplier = 0.90 if confluence >= 10 else 0.70
         reasons.append(f'Rule4: confluence={confluence} -> base_multiplier={multiplier}')
     if veto:
         multiplier = 0.0
@@ -41,13 +41,22 @@ def analyze_risk_conservative(ctx: dict) -> dict:
     }
 
 
-def analyze_risk_aggressive(ctx: dict, min_rr_ratio: float = 1.0) -> dict:
+def analyze_risk_aggressive(ctx: dict, min_rr_ratio: float = 1.5) -> dict:
     rr_ratio = ctx.get('rr_ratio')
     sl_beyond_structure = ctx.get('sl_beyond_structure', True)
     confluence = ctx.get('confluence_score') or 0
+    state = ctx.get('actual_risk_state') or {}
+    daily_pnl_pct = state.get('daily_pnl_pct', 0.0)
+    open_positions = state.get('open_positions', 0)
 
     veto = False
     reasons = []
+    if daily_pnl_pct <= -3.5:
+        veto = True
+        reasons.append(f'Rule0: daily_pnl_pct={daily_pnl_pct:.2f}% <= -3.5% aggressive hard ceiling')
+    if open_positions >= 5:
+        veto = True
+        reasons.append(f'Rule0: open_positions={open_positions} >= 5 maximum aggressive capacity')
     if rr_ratio is not None and rr_ratio < min_rr_ratio:
         veto = True
         reasons.append(f'Rule1: R:R={rr_ratio:.2f} < {min_rr_ratio}')

@@ -18,12 +18,51 @@ async def compute_anchored_vwap(session: AsyncSession, symbol: str, as_of: Optio
     now = as_of or clock.now()
     hour, name = _recent_anchor(now)
     anchor = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-    bars = (await session.execute(select(PriceOHLCV).where(
-        PriceOHLCV.symbol == symbol,
-        PriceOHLCV.timeframe == 'H1',
-        PriceOHLCV.timestamp >= anchor,
-        PriceOHLCV.timestamp <= now
-    ).order_by(PriceOHLCV.timestamp.asc()))).scalars().all()
+
+    # FIX 6.7: Try M15 bars or previous session anchor when < 60 min elapsed to prevent starvation
+    elapsed_minutes = (now - anchor).total_seconds() / 60.0
+    bars = []
+    tf_used = 'H1'
+    if elapsed_minutes < 60.0:
+        m15_bars = (await session.execute(select(PriceOHLCV).where(
+            PriceOHLCV.symbol == symbol,
+            PriceOHLCV.timeframe == 'M15',
+            PriceOHLCV.timestamp >= anchor,
+            PriceOHLCV.timestamp <= now
+        ).order_by(PriceOHLCV.timestamp.asc()))).scalars().all()
+        if m15_bars:
+            bars = m15_bars
+            tf_used = 'M15'
+
+    if not bars:
+        h1_bars = (await session.execute(select(PriceOHLCV).where(
+            PriceOHLCV.symbol == symbol,
+            PriceOHLCV.timeframe == 'H1',
+            PriceOHLCV.timestamp >= anchor,
+            PriceOHLCV.timestamp <= now
+        ).order_by(PriceOHLCV.timestamp.asc()))).scalars().all()
+        if h1_bars:
+            bars = h1_bars
+            tf_used = 'H1'
+
+    # If still empty within the first session hour, fall back to previous session anchor
+    if not bars:
+        from datetime import timedelta
+        anchors_hours = [h for h, _ in _ANCHORS_UTC]
+        idx = anchors_hours.index(hour)
+        prev_h = anchors_hours[idx - 1]
+        prev_anchor = (now if prev_h < hour else now - timedelta(days=1)).replace(hour=prev_h, minute=0, second=0, microsecond=0)
+        fallback_bars = (await session.execute(select(PriceOHLCV).where(
+            PriceOHLCV.symbol == symbol,
+            PriceOHLCV.timeframe == 'H1',
+            PriceOHLCV.timestamp >= prev_anchor,
+            PriceOHLCV.timestamp <= now
+        ).order_by(PriceOHLCV.timestamp.asc()))).scalars().all()
+        if fallback_bars:
+            bars = fallback_bars
+            tf_used = 'H1_prev_session'
+            name = f"{name}_prev_session"
+
     if not bars:
         return {'error': 'insufficient_data', 'anchor': name}
     total_vol = sum(float(safe_float(b.volume, 0.0) or 0.0) for b in bars)

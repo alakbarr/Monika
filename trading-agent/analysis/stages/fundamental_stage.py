@@ -168,8 +168,24 @@ class FundamentalStage:
             if chronicle_bullets:
                 context = f"ACTIVE MACRO CHRONICLE (Ongoing Structural Regimes):\n{chronicle_bullets}\n\n{context}"
             if prefetched_data:
-                pref_str = prefetched_data if isinstance(prefetched_data, str) else json.dumps(prefetched_data, default=str)
-                context = f"RAW PREFETCHED MACRO DATA (Ground Truth):\n{pref_str[:3000]}\n\n{context}"
+                if isinstance(prefetched_data, str):
+                    try:
+                        pref_dict = json.loads(prefetched_data)
+                    except Exception:
+                        pref_dict = None
+                else:
+                    pref_dict = prefetched_data
+
+                if isinstance(pref_dict, dict):
+                    macro_blocks = []
+                    for k in ("central_bank_rates", "dxy", "bond_yields", "vix", "cme_fedwatch", "economic_calendar", "cot_report", "news_digest"):
+                        if k in pref_dict:
+                            v_str = json.dumps(pref_dict[k], default=str)
+                            macro_blocks.append(f"[{k.upper()}]:\n{v_str[:2500]}")
+                    pref_str = "\n\n".join(macro_blocks) if macro_blocks else json.dumps(pref_dict, default=str)[:15000]
+                else:
+                    pref_str = str(prefetched_data)[:15000]
+                context = f"RAW PREFETCHED MACRO DATA (Ground Truth):\n{pref_str}\n\n{context}"
             # Run macro bull and bear analysts concurrently
             bull_res, bear_res = await asyncio.gather(
                 run_bull_analyst(context, self.settings),
@@ -655,10 +671,24 @@ class FundamentalStage:
                 else:
                     return result
 
-        # Verifikasi brief berhasil disubmit ke DB
+        # Verifikasi brief berhasil disubmit ke DB dalam cycle saat ini (anti-stale gating)
         brief = (await session.execute(
-            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+            select(FundamentalBrief)
+            .where(FundamentalBrief.generated_at >= start_time - timedelta(seconds=10))
+            .order_by(FundamentalBrief.generated_at.desc())
+            .limit(1)
         )).scalar_one_or_none()
+
+        if brief is None and not result.get("is_deterministic_fallback"):
+            logger.warning("LLM run completed but no fresh brief was saved. Generating deterministic fallback brief.")
+            if self.settings.get('analysis', {}).get('enable_fallback_brief', True):
+                brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
+                if brief:
+                    result["success"] = True
+                    result["is_deterministic_fallback"] = True
+                    result["brief_id"] = brief.id
+                    result["tool_calls_made"] = result.get("tool_calls_made", 0)
+                    result["turns"] = result.get("turns", 0)
         
         # Run macro debate before escalation so debate contradictions can trigger escalation to frontier model
         _debate_outcome = {}
@@ -697,7 +727,7 @@ class FundamentalStage:
                     escalation_trigger_reason = "Tool Executor flagged the brief as force-accepted with unresolved completeness/schema errors."
                 elif verifier_result.get('unjustified_confidence'):
                     cap = verifier_result.get('recommended_confidence_cap', 0.75)
-                    brief.confidence = min(brief.confidence or 0.7, max(cap, 0.65))
+                    brief.confidence = min(brief.confidence or 0.7, cap)
                     b_data = json.loads(brief.structured_json) if brief.structured_json else {}
                     b_data['confidence'] = brief.confidence
                     brief.structured_json = json.dumps(b_data)
@@ -1031,7 +1061,7 @@ INSTRUCTIONS:
                 return result
 
         if brief and (escalated or not _debate_outcome or not _debate_outcome.get('ran')):
-            _debate_outcome = await self._run_macro_debate(session, brief)
+            _debate_outcome = await self._run_macro_debate(session, brief, prefetched_data=prefetched_json)
             MINIMUM_USABLE_CONFIDENCE = 0.50
             if brief.confidence is not None and brief.confidence < MINIMUM_USABLE_CONFIDENCE and not _quality_flag:
                 logger.info(f"Applying confidence floor {MINIMUM_USABLE_CONFIDENCE} to prevent sub-functional level (was {brief.confidence})")
@@ -1151,6 +1181,9 @@ INSTRUCTIONS:
                 if "XAU" in currency_bias and sentiment != "risk-off":
                     currency_bias["XAU"] = "bearish"
                     currency_confidence["XAU"] = 0.58
+                if "OIL" in currency_bias and sentiment != "risk-on":
+                    currency_bias["OIL"] = "bearish"
+                    currency_confidence["OIL"] = 0.58
             elif any(t in dxy_trend for t in ["bearish", "down", "weakening", "falling"]):
                 currency_bias["USD"] = "bearish"
                 currency_confidence["USD"] = 0.60
@@ -1160,6 +1193,25 @@ INSTRUCTIONS:
                 if "XAU" in currency_bias:
                     currency_bias["XAU"] = "bullish"
                     currency_confidence["XAU"] = 0.60
+                if "OIL" in currency_bias:
+                    currency_bias["OIL"] = "bullish"
+                    currency_confidence["OIL"] = 0.58
+
+            # EIA crude inventory data integration for OIL synthesis
+            eia_data = data_dict.get("eia") or data_dict.get("crude_inventory")
+            if eia_data and isinstance(eia_data, dict):
+                crude_change = eia_data.get("crude_inventory_change_bbl") or eia_data.get("value")
+                if crude_change is not None:
+                    try:
+                        crude_float = float(crude_change)
+                        if crude_float < -2000000:  # Big inventory draw -> bullish OIL
+                            currency_bias["OIL"] = "bullish"
+                            currency_confidence["OIL"] = 0.65
+                        elif crude_float > 2000000:  # Big inventory build -> bearish OIL
+                            currency_bias["OIL"] = "bearish"
+                            currency_confidence["OIL"] = 0.65
+                    except (ValueError, TypeError):
+                        pass
 
             # Synthesize risk-asset bias from sentiment
             if sentiment == "risk-on":
@@ -1172,6 +1224,9 @@ INSTRUCTIONS:
                 if "BTC" in currency_bias:
                     currency_bias["BTC"] = "bullish"
                     currency_confidence["BTC"] = 0.60
+                if "OIL" in currency_bias:
+                    currency_bias["OIL"] = "bullish"
+                    currency_confidence["OIL"] = 0.58
             elif sentiment == "risk-off":
                 if "AUD" in currency_bias:
                     currency_bias["AUD"] = "bearish"
@@ -1185,8 +1240,26 @@ INSTRUCTIONS:
                 if "BTC" in currency_bias:
                     currency_bias["BTC"] = "bearish"
                     currency_confidence["BTC"] = 0.60
+                if "OIL" in currency_bias:
+                    currency_bias["OIL"] = "bearish"
+                    currency_confidence["OIL"] = 0.58
 
             baseline_confidence = 0.60
+
+            # FIX 5.11: Generate concrete macro-specific invalidation conditions
+            invalidation_conditions = {}
+            for c in currencies:
+                b = currency_bias.get(c, "neutral")
+                if c == "USD":
+                    invalidation_conditions[c] = "DXY daily change > +0.75% or 10Y US Treasury yield shifts by >= 15 bps contrary to bias" if b != "neutral" else "DXY breaks outside 5-day range by > 1.0%"
+                elif c in ("XAU", "GOLD"):
+                    invalidation_conditions[c] = "US 10Y real yield rises by >= 20 bps or DXY surges > 0.8%" if b == "bullish" else "VIX spikes > 25.0 or sudden safe-haven demand emerges"
+                elif c == "JPY":
+                    invalidation_conditions[c] = "BoJ surprise policy action or US-JP 10Y yield differential expands by >= 25 bps"
+                elif c == "OIL":
+                    invalidation_conditions[c] = "EIA crude inventory surprise > 5M barrels or OPEC+ emergency output change"
+                else:
+                    invalidation_conditions[c] = f"{c} central bank guidance shifts by >= 25 bps or core CPI surprise > 0.3%"
 
             structured = {
                 "macro_bias": currency_bias.get("USD", "neutral"),
@@ -1207,7 +1280,7 @@ INSTRUCTIONS:
                 "risk_sentiment": sentiment,
                 "currency_bias": currency_bias,
                 "currency_confidence": currency_confidence,
-                "invalidation_conditions": {c: f"{c} bias invalidation baseline" for c in currencies},
+                "invalidation_conditions": invalidation_conditions,
                 "confidence": baseline_confidence,
                 "priced_in_assessment": {
                     "dominant_driver": "Deterministic baseline fallback",

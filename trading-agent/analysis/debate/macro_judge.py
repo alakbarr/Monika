@@ -90,7 +90,7 @@ BULL ANALYST (Risk-On / Dollar-Bear):
 BEAR ANALYST (Risk-Off / Dollar-Bull):
 {bear_str}
 
-Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR', 'RISK_OFF_USD_BULL', or 'TIE'), set dxy_bias and risk_asset_bias according to the mapping rules, and set escalation_required to true if score difference <= 1 or arguments are closely contested."""
+Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR', 'RISK_OFF_USD_BULL', 'US_EXCEPTIONALISM', 'STAGFLATION', or 'TIE'), set dxy_bias and risk_asset_bias according to the mapping rules, and set escalation_required to true if score difference <= 1 or arguments are closely contested."""
 
     try:
         res = await client.classify_json(prompt=prompt, schema=JUDGE_SCHEMA, system_prompt=system_prompt)

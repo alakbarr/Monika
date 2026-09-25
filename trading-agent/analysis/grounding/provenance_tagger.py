@@ -152,8 +152,12 @@ class ProvenanceLedger:
             contract_size = 100000.0
             if "XAU" in sym_u or "GOLD" in sym_u:
                 contract_size = 100.0
-            elif "BTC" in sym_u or "ETH" in sym_u or "XTI" in sym_u or "XBR" in sym_u:
+            elif "BTC" in sym_u:
                 contract_size = 1.0
+            elif "ETH" in sym_u:
+                contract_size = 10.0
+            elif "XTI" in sym_u or "XBR" in sym_u:
+                contract_size = 1000.0
 
             eff_price = entry_price if (entry_price and entry_price > 0) else 1.0
             notional = lot_size * contract_size * eff_price
@@ -228,8 +232,12 @@ class ProvenanceLedger:
         contract_size = 100000.0
         if "XAU" in sym_u or "GOLD" in sym_u:
             contract_size = 100.0
-        elif "BTC" in sym_u or "ETH" in sym_u or "XTI" in sym_u or "XBR" in sym_u:
+        elif "BTC" in sym_u:
             contract_size = 1.0
+        elif "ETH" in sym_u:
+            contract_size = 10.0
+        elif "XTI" in sym_u or "XBR" in sym_u:
+            contract_size = 1000.0
 
         eff_price = entry_price if (entry_price and entry_price > 0) else 1.0
         notional = (lot_size or 0.0) * contract_size * eff_price

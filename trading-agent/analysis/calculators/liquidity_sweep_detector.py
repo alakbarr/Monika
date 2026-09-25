@@ -29,12 +29,32 @@ async def _get_asian_session_range(session: AsyncSession, symbol: str, settings:
     start_h = int(cfg.get('asian_session_start_utc', 0))
     end_h = int(cfg.get('asian_session_end_utc', 8))
     now = as_of or clock.now()
-    session_end = now.replace(hour=end_h, minute=0, second=0, microsecond=0)
-    if now < session_end:
-        session_end -= timedelta(days=1)
-    session_start = session_end.replace(hour=start_h)
+    today_start = now.replace(hour=start_h, minute=0, second=0, microsecond=0)
+    today_end = now.replace(hour=end_h, minute=0, second=0, microsecond=0)
     if start_h > end_h:
-        session_start -= timedelta(days=1)
+        # Overnight session
+        if now < today_end:
+            session_start = today_start - timedelta(days=1)
+            session_end = now
+        elif now < today_start:
+            session_end = today_end
+            session_start = today_start - timedelta(days=1)
+        else:
+            session_start = today_start
+            session_end = now
+    else:
+        if now < today_start:
+            # Before Asian session today: use yesterday's completed session
+            session_end = today_end - timedelta(days=1)
+            session_start = today_start - timedelta(days=1)
+        elif now < today_end:
+            # Inside Asian session: use today's session range formed so far
+            session_start = today_start
+            session_end = now
+        else:
+            # After Asian session today: use today's completed session
+            session_start = today_start
+            session_end = today_end
     bars_stmt = (
         select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H1')
         .where(PriceOHLCV.timestamp >= session_start, PriceOHLCV.timestamp < session_end)

@@ -361,8 +361,8 @@ class GraphCycleScheduler(CycleScheduler):
             
             brief_age = (now - brief.generated_at.replace(tzinfo=timezone.utc if brief.generated_at.tzinfo is None else brief.generated_at.tzinfo)).total_seconds() / 3600
             
-            # FIX: Increased from 5.0h to 8.0h to match 8-hour cycle schedule
-            if brief_age > 8.0:
+            # FIX 4.16: Relaxed to 9.0h to provide buffer for 8-hour cycle scheduling jitter
+            if brief_age > 9.0:
                 return False, f'brief_too_old_{brief_age:.1f}h'
         
         return True, session_name

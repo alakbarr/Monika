@@ -47,27 +47,42 @@ async def calculate_macro_priced_in_baseline(session: AsyncSession, as_of: Optio
     cot_stmt = select(COTReport).where(COTReport.market_code == '099741')
     if sim_time is not None:
         cot_stmt = cot_stmt.where(COTReport.report_date <= sim_time.date())
-    cot_row = (
+    cot_rows = (
         await session.execute(
-            cot_stmt.order_by(COTReport.report_date.desc()).limit(1)
+            cot_stmt.order_by(COTReport.report_date.desc()).limit(52)
         )
-    ).scalar_one_or_none()
+    ).scalars().all()
     percentile = None
-    if cot_row:
+    long_pct = None
+    if cot_rows:
+        cot_row = cot_rows[0]
         l_long = getattr(cot_row, 'leveraged_long', None)
         l_short = getattr(cot_row, 'leveraged_short', None)
         if isinstance(l_long, (int, float)) and isinstance(l_short, (int, float)):
             total = l_long + l_short
             if total > 0:
-                percentile = l_long / total * 100
-                extreme = cot_extreme_score('EURUSD', percentile)
+                long_pct = l_long / total * 100
+                hist_ratios = []
+                for r in cot_rows:
+                    rl = getattr(r, 'leveraged_long', None)
+                    rs = getattr(r, 'leveraged_short', None)
+                    if isinstance(rl, (int, float)) and isinstance(rs, (int, float)) and (rl + rs) > 0:
+                        hist_ratios.append(rl / (rl + rs) * 100)
+
+                if len(hist_ratios) >= 5:
+                    percentile = sum(1 for h in hist_ratios if h <= long_pct) / len(hist_ratios) * 100.0
+                else:
+                    percentile = long_pct
+
+                extreme = cot_extreme_score('EURUSD', long_pct, hist_ratios if len(hist_ratios) >= 10 else None)
                 if extreme != 0:
                     scores['cot'] = 3
-                    notes.append(f'COT EUR leveraged funds EXTREME positioning ({percentile:.1f}% long)')
+                    notes.append(f'COT EUR leveraged funds EXTREME positioning ({long_pct:.1f}% long, {percentile:.1f}th percentile)')
                 else:
                     ratio = abs(l_long - l_short) / total
                     scores['cot'] = 2 if ratio > 0.5 else 1 if ratio > 0.3 else 0
 
+    scores['cot_long_pct'] = round(long_pct, 1) if long_pct is not None else None
     scores['cot_positioning_percentile'] = round(percentile, 1) if percentile is not None else None
 
     # Method 3: USD momentum via synthetic basket

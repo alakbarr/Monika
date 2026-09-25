@@ -6,7 +6,7 @@ win_count: 2
 avg_confidence: 0.88
 total_pnl_usd: 360.00
 status: active
-last_crystallized_at: 2026-09-25T12:15:29.946462+00:00
+last_crystallized_at: 2026-09-25T16:48:51.716871+00:00
 ---
 
 # Crystallized Strategy: EURUSD (EURUSD_TREND)
@@ -20,10 +20,10 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Baseline Conviction: 88%
 
 ## Core Tactical Directives
-- **Liquidity Mapping:** Identify and monitor the Asian session low as the primary liquidity pool prior to London or New York session execution.
-- **Trigger Condition:** Execute buy orders strictly after a confirmed price sweep and rapid reclamation of the Asian low.
-- **Trend Alignment:** Filter all sweep-based long entries to ensure they strictly align with the broader upward directional bias of the `EURUSD_TREND` regime.
-- **Risk Parameters:** Place initial stop-loss orders immediately below the structural extreme of the sweep wick to invalidate failed setups efficiently.
+- Execute EURUSD long positions exclusively following a verified sweep of the Asian session low within a bullish trend regime.
+- Require a lower-timeframe market structure shift (MSS) or a decisive candle closure back above the swept level as an entry trigger.
+- Position stop-losses safely beneath the extreme low of the liquidity sweep to invalidate failed breakout setups.
+- Target resting liquidity at prior session highs or major structural expansion levels in alignment with the broader `EURUSD_TREND`.
 
 ## Execution Invariants
 - Minimum Confluence Score: 7.5 / 14.0

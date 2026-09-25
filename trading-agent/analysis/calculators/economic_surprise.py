@@ -82,6 +82,14 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         elif any(k in name_lower for k in ("unemployment rate", "jobless rate")):
             # Inverted: higher unemployment is dovish (-), 0.20% = 20.0 score
             surprise = round((-diff / 0.20) * 20.0, 4)
+        # 5. PMI / ISM / Business & Consumer Sentiment Surveys (Index scale centered around 50 or 100)
+        elif any(k in name_lower for k in ("pmi", "ism", "sentiment", "ifo", "zew", "chicago pm", "consumer confidence")):
+            # 1.5 index point difference is a major macro surprise -> normalize so 1.5 = 20.0 score
+            surprise = round((diff / 1.50) * 20.0, 4)
+        # 6. GDP / Retail Sales / Industrial Production (Growth rates)
+        elif any(k in name_lower for k in ("gdp", "retail sales", "industrial production", "factory orders")):
+            # 0.30% growth rate surprise is major -> normalize so 0.30% = 20.0 score
+            surprise = round((diff / 0.30) * 20.0, 4)
         else:
             # Normalisasi persentase deviasi dari forecast untuk metrik umum
             if abs(forecast) > 0.001:
