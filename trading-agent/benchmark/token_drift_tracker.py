@@ -100,14 +100,15 @@ class TokenDriftTracker:
         if not baseline:
             # Auto-seed baseline on first observation
             self._baselines[stage] = snapshot
+            total_tok = snapshot.system_prompt_tokens_est + snapshot.user_prompt_tokens_est
             return DriftReport(
                 stage_name=stage,
                 is_drift_detected=False,
                 is_cache_invalidated=False,
                 token_growth_pct=0.0,
                 violations=[],
-                baseline_tokens=snapshot.system_prompt_tokens_est,
-                current_tokens=snapshot.system_prompt_tokens_est,
+                baseline_tokens=total_tok,
+                current_tokens=total_tok,
             )
 
         violations = []

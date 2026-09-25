@@ -1,0 +1,34 @@
+{
+  "fixture_id": "s1_exit_prescreen_gbpusd_2026_09",
+  "mode": "system_one",
+  "latency_target_ms": 100.0,
+  "state": {
+    "symbol": "GBPUSD",
+    "direction": "BUY",
+    "entry_price": 1.3320,
+    "sl": 1.3250,
+    "tp": 1.3450,
+    "current_price": 1.3217,
+    "holding_hours": 14.2,
+    "structural_breakdown": true,
+    "adverse_move_pips": 103
+  },
+  "questions": [
+    {
+      "name": "thesis_still_valid",
+      "type": "Noul",
+      "description": "Is original trading thesis still structurally valid?"
+    },
+    {
+      "name": "exit_urgency",
+      "type": "Score",
+      "range": [1, 5],
+      "description": "1: No urgency, 3: Moderate, 5: Critical immediate market exit"
+    }
+  ],
+  "expected_answers": {
+    "thesis_still_valid": false,
+    "thesis_still_valid_confidence_min": 0.90,
+    "exit_urgency": 4
+  }
+}

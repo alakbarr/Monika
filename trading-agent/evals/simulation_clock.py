@@ -96,6 +96,38 @@ class SimulationClock:
             self._step_history = [self._current_time]
 
 
+_PIP_UNITS: Dict[str, float] = {
+    "JPY": 0.01,
+    "HUF": 0.01,
+    "KRW": 0.01,
+    "XAU": 0.10,
+    "XAG": 0.001,
+    "XPT": 0.10,
+    "BTC": 1.0,
+    "ETH": 0.01,
+    "US30": 1.0,
+    "US500": 0.01,
+    "NAS": 0.01,
+    "US100": 0.01,
+    "DAX": 0.1,
+    "FTSE": 0.1,
+    "NIK": 1.0,
+    "WTI": 0.01,
+    "BRENT": 0.01,
+    "USOIL": 0.01,
+    "UKOIL": 0.01,
+}
+
+
+def get_pip_unit(symbol: str) -> float:
+    """Returns pip scale unit for given symbol across FX, Gold, Crypto, Indices, Energy."""
+    sym = (symbol or "").upper()
+    for k, v in _PIP_UNITS.items():
+        if k in sym:
+            return v
+    return 0.0001
+
+
 @dataclass
 class MarketStep:
     """A single discrete market tick or bar in the step simulator."""
@@ -111,8 +143,8 @@ class MarketStep:
     spread_pips: float = field(init=False)
 
     def __post_init__(self):
-        # Calculate spread in pips (Jpy: 0.01 pip, FX standard: 0.0001 pip)
-        pip_unit = 0.01 if "JPY" in self.symbol.upper() else 0.0001
+        # Calculate spread in pips across FX, Commodities, Indices, Crypto
+        pip_unit = get_pip_unit(self.symbol)
         self.spread_pips = round(abs(self.ask - self.bid) / pip_unit, 2)
 
 
@@ -163,7 +195,7 @@ class MarketStepSimulator:
         if not step or step.symbol != symbol:
             raise RuntimeError(f"No active market step matching symbol '{symbol}' for order fill.")
 
-        pip_unit = 0.01 if "JPY" in symbol.upper() else 0.0001
+        pip_unit = get_pip_unit(symbol)
         order_type_clean = order_type.upper()
 
         if order_type_clean == "BUY":

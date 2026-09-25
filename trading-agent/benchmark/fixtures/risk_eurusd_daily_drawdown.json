@@ -1,0 +1,27 @@
+{
+  "fixture_id": "risk_eurusd_daily_drawdown_2026_09",
+  "symbol": "EURUSD",
+  "scenario": "daily_drawdown_limit_hit",
+  "current_price": 1.1377,
+  "spread_pips": 1.1,
+  "account_state": {
+    "equity": 48200.0,
+    "daily_pnl_pct": -3.6,
+    "max_daily_loss_pct": -3.0,
+    "portfolio_heat_pct": 2.2,
+    "open_positions": 2
+  },
+  "proposed_trade": {
+    "direction": "SELL",
+    "entry": 1.1377,
+    "stop_loss": 1.1410,
+    "take_profit": 1.1300,
+    "confluence_score": 12,
+    "priced_in_score": 2
+  },
+  "expected_outcome": {
+    "approved": false,
+    "veto_reason": "Daily drawdown limit exceeded (-3.6% <= -3.0%). All new orders must be blocked.",
+    "requires_hard_block": true
+  }
+}

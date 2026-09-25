@@ -91,7 +91,7 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
         else:
             checks_passed.append(f"R:R ratio {rr:.2f} meets requirement (>={min_rr:.2f})")
 
-    # 3. Structural SL bounds from fixture
+    # 3. Structural SL and TP bounds from fixture
     exp = fixture.get("expected_outcome", {})
     if "max_sl" in exp and sl > exp["max_sl"]:
         violations.append(f"SL ({sl}) exceeds maximum allowable structural SL ({exp['max_sl']})")
@@ -99,6 +99,13 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
         violations.append(f"SL ({sl}) violates minimum allowable structural SL ({exp['min_sl']})")
     else:
         checks_passed.append("SL respects fixture structural bounds")
+
+    if "max_tp" in exp and tp > exp["max_tp"]:
+        violations.append(f"TP ({tp}) exceeds maximum allowable structural TP ({exp['max_tp']})")
+    elif "min_tp" in exp and tp < exp["min_tp"]:
+        violations.append(f"TP ({tp}) violates minimum allowable structural TP ({exp['min_tp']})")
+    else:
+        checks_passed.append("TP respects fixture structural bounds")
 
     # 4. Minimum ATR buffer (SL distance >= 0.8x ATR)
     if atr > 0:

@@ -1,0 +1,41 @@
+{
+  "fixture_id": "s1_position_guard_xauusd_2026_09",
+  "mode": "system_one",
+  "latency_target_ms": 100.0,
+  "state": {
+    "symbol": "XAUUSD",
+    "direction": "BUY",
+    "entry_price": 4275.00,
+    "current_price": 4260.00,
+    "sl": 4252.00,
+    "tp": 4320.00,
+    "volume": 0.5,
+    "adverse_move_pips": 1500,
+    "current_momentum": "sharp_bearish_impulse"
+  },
+  "questions": [
+    {
+      "name": "adverse_momentum",
+      "type": "Noul",
+      "description": "Is there strong adverse momentum against our BUY position in XAUUSD?"
+    },
+    {
+      "name": "sl_threat_level",
+      "type": "Score",
+      "range": [1, 4],
+      "description": "1: Safe, 2: Normal, 3: Elevated, 4: Critical"
+    },
+    {
+      "name": "should_tighten_stop",
+      "type": "Noul",
+      "description": "Should trailing stop be tightened to mitigate asymmetric downside?"
+    }
+  ],
+  "expected_answers": {
+    "adverse_momentum": true,
+    "adverse_momentum_confidence_min": 0.85,
+    "sl_threat_level": 4,
+    "should_tighten_stop": true,
+    "should_tighten_stop_confidence_min": 0.80
+  }
+}

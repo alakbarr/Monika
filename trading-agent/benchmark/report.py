@@ -14,7 +14,7 @@ async def build_report(run_id: int) -> str:
     for r in rows:
         by_task.setdefault(r.task_id, []).append(r)
 
-    lines = [f"# Laporan LLM Benchmark — run #{run_id}\n"]
+    lines = [f"# Laporan LLM Benchmark - run #{run_id}\n"]
     per_model_agg: dict[str, dict] = {}
 
     for task_id, results in sorted(by_task.items()):
@@ -30,10 +30,14 @@ async def build_report(run_id: int) -> str:
             agg = per_model_agg.setdefault(r.model_name, {"scores": [], "cost": 0.0, "success": 0, "total": 0})
             agg["total"] += 1
             agg["cost"] += r.cost_usd or 0.0
-            if r.error is None:
+            if r.error is None and r.schema_valid is not False:
                 agg["success"] += 1
-            if r.overall_score is not None:
-                agg["scores"].append(r.overall_score)
+                if r.overall_score is not None:
+                    agg["scores"].append(r.overall_score)
+                else:
+                    agg["scores"].append(0.0)
+            else:
+                agg["scores"].append(0.0)
 
     lines.append("\n## Leaderboard (semua task yang diuji)\n")
     lines.append("| Model | Avg Score | Success Rate | Total Cost $ | Quality/$ |")
@@ -44,7 +48,7 @@ async def build_report(run_id: int) -> str:
         sr = agg["success"] / agg["total"] if agg["total"] else 0.0
         qpd = avg_score / agg["cost"] if agg["cost"] > 0 else float("inf")
         board.append((model, avg_score, sr, agg["cost"], qpd))
-    for model, avg_score, sr, cost, qpd in sorted(board, key=lambda x: -x[1]):
-        qpd_str = "∞ (gratis)" if qpd == float("inf") else f"{qpd:.1f}"
+    for model, avg_score, sr, cost, qpd in sorted(board, key=lambda x: (-x[1], -x[2], x[3])):
+        qpd_str = "inf (gratis)" if qpd == float("inf") else f"{qpd:.1f}"
         lines.append(f"| {model} | {avg_score:.2f} | {sr:.0%} | {cost:.4f} | {qpd_str} |")
     return "\n".join(lines)

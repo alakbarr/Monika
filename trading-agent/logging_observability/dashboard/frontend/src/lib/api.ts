@@ -437,6 +437,22 @@ export const api = {
     post<{ status: string; output: string; plugins: import('../types/api').PluginItem[] }>('/plugins/uninstall', {
       package_name: packageName,
     }),
+
+  // Benchmark & Model Lab
+  benchmarkTasks: () =>
+    get<{ total: number; tasks: any[]; categories: string[] }>('/benchmark/tasks'),
+  benchmarkModels: () =>
+    get<{ candidates: string[]; tiers: Record<string, any>; router_matrix: Record<string, string[]>; defaults: any }>('/benchmark/models'),
+  benchmarkRuns: (limit = 20, offset = 0) =>
+    get<{ total: number; runs: any[] }>(`/benchmark/runs?limit=${limit}&offset=${offset}`),
+  benchmarkRunDetail: (runId: number) =>
+    get<{ run: any; total_results: number; report_markdown: string; results: any[] }>(`/benchmark/runs/${runId}`),
+  benchmarkQuadrant: (runId: number) =>
+    get<{ run_id: number; points: any[] }>(`/benchmark/quadrant/${runId}`),
+  benchmarkLeaderboard: (runId?: number) =>
+    get<{ run_id: number; leaderboard: any[] }>(runId ? `/benchmark/leaderboard?run_id=${runId}` : '/benchmark/leaderboard'),
+  benchmarkRunTrigger: (req: any) =>
+    post<{ status: string; message: string; tasks_count: number; models_count: number }>('/benchmark/run', req),
 };
 
 

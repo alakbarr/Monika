@@ -101,7 +101,7 @@ def _score(js: dict) -> float:
             (float(js.get("accuracy_score") or 0)) +
             (float(js.get("actionability_score") or 0)) +
             (float(js.get("consistency_score") or 0))) / 4.0
-    penalty = {"none": 0, "low": 0.5, "medium": 1.5, "high": 3.5}.get(js.get("hallucination_risk", "medium"), 1.5)
+    penalty = {"none": 0.0, "low": 0.5, "medium": 1.5, "high": 3.5}.get(js.get("hallucination_risk", "low"), 0.5)
     return max(0.0, base - penalty)
 
 
@@ -122,7 +122,7 @@ async def judge_output(judge_model: str, settings: dict, category: str, context_
     except Exception as e:
         logger.warning(f"Judge call gagal ({judge_model} [{persona}]): {e}")
         js = None
-    return (js or {}, _score(js) if js else 0.0, usage["input_tokens"], usage["output_tokens"])
+    return (js or {}, _score(js) if js else 0.0, usage.get("input_tokens", 0), usage.get("output_tokens", 0))
 
 
 async def judge_output_ensemble(
@@ -146,9 +146,21 @@ async def judge_output_ensemble(
         else:
             judge_models = [settings.get("benchmark", {}).get("default_judge", "claude-sonnet-5")]
 
-    # If personas not explicitly passed, assign distinct personas across judges
-    available_personas = ["macro_economist", "technical_analyst", "risk_officer", "portfolio_risk_assessor"]
+    CATEGORY_PERSONA_MAP = {
+        "macro": ["macro_economist", "portfolio_risk_assessor", "general"],
+        "trade_decision": ["technical_analyst", "risk_officer", "portfolio_risk_assessor"],
+        "debate": ["technical_analyst", "macro_economist", "portfolio_risk_assessor"],
+        "risk": ["risk_officer", "portfolio_risk_assessor", "general"],
+        "news": ["macro_economist", "general", "portfolio_risk_assessor"],
+        "specialist": ["technical_analyst", "macro_economist", "risk_officer"],
+        "chat": ["general", "macro_economist", "technical_analyst"],
+        "reflection": ["risk_officer", "general", "portfolio_risk_assessor"],
+    }
     if not personas:
+        available_personas = CATEGORY_PERSONA_MAP.get(
+            category,
+            ["macro_economist", "technical_analyst", "risk_officer", "portfolio_risk_assessor"],
+        )
         personas = [available_personas[i % len(available_personas)] for i in range(len(judge_models))]
 
     tasks = [

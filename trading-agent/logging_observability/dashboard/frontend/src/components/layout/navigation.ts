@@ -46,6 +46,7 @@ export const WORKSPACES: WorkspaceItem[] = [
       { id: 'brief', label: 'Macroeconomic Intelligence Brief' },
       { id: 'memory', label: 'Memory Vault & Lessons' },
       { id: 'skills', label: 'Crystallized Skills' },
+      { id: 'benchmark', label: 'LLM Model Lab & Benchmark' },
     ],
   },
   {

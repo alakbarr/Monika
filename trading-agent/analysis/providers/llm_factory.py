@@ -189,6 +189,12 @@ class LLMFactory:
             
         name = model_name.lower()
 
+        # Explicit provider:model prefix
+        if ":" in name:
+            prefix = name.split(":", 1)[0]
+            if prefix in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
+                return prefix
+
         # 9Router prefix & provider resolution
         if (
             name.startswith(("9router/", "9r/", "kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "combo/"))
@@ -318,10 +324,16 @@ class LLMFactory:
             cred_pool = None
             pooled_key = None
 
+        clean_model_name = model_name
+        if ":" in model_name:
+            prefix, remainder = model_name.split(":", 1)
+            if prefix.lower() in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
+                clean_model_name = remainder
+
         from analysis.providers.provider_registry import ProviderRegistry
         client = ProviderRegistry.create_client(
             provider_name=provider_name,
-            model_name=model_name,
+            model_name=clean_model_name,
             settings=self._settings,
             role_config=role_config,
             task_role=task_role,

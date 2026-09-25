@@ -97,8 +97,8 @@ class AlphaArenaTournament:
 
         pnl_diff = round(pnl_a - pnl_b, 2)
 
-        # Scoring decision
-        if sr_a > 0 and sr_b > 0 and abs(sr_a - sr_b) > 0.05:
+        # Scoring decision: prioritize Sharpe ratio difference if either is meaningful
+        if (sr_a != 0.0 or sr_b != 0.0) and abs(sr_a - sr_b) > 0.05:
             score_a = 1.0 if sr_a > sr_b else 0.0
         elif abs(pnl_diff) > 0.1:
             score_a = 1.0 if pnl_a > pnl_b else 0.0
