@@ -1149,13 +1149,31 @@ class ToolExecutor:
             return ['MISSING_DATA_ANCHORS: key_data_points_used is required.']
         try:
             real_dxy = await self.execute('get_dxy', {})
-            real_trend = real_dxy.get('trend_5d', 'unknown')
+            real_trend = str(real_dxy.get('trend_5d', 'unknown')).lower()
             claimed_trend = str(kdp.get('dxy_trend_5d', '')).lower()
-            if real_trend != 'unknown' and real_trend not in claimed_trend:
-                errors.append(
-                    f"DATA_MISMATCH: Kamu menyatakan DXY trend='{kdp.get('dxy_trend_5d')}' tapi data tool "
-                    f"aktual menunjukkan trend_5d='{real_trend}'. Cek ulang output get_dxy() sebelum resubmit."
+            if real_trend != 'unknown':
+                BULLISH_SET = {'bullish', 'bull', 'upward', 'up', 'uptrend', 'strengthening', 'rising', 'positive'}
+                BEARISH_SET = {'bearish', 'bear', 'downward', 'down', 'downtrend', 'weakening', 'falling', 'negative'}
+                NEUTRAL_SET = {'neutral', 'flat', 'sideways', 'choppy', 'mixed', 'ranging'}
+
+                real_is_bull = any(w in real_trend for w in BULLISH_SET)
+                claimed_is_bull = any(w in claimed_trend for w in BULLISH_SET)
+                real_is_bear = any(w in real_trend for w in BEARISH_SET)
+                claimed_is_bear = any(w in claimed_trend for w in BEARISH_SET)
+                real_is_neutral = any(w in real_trend for w in NEUTRAL_SET)
+                claimed_is_neutral = any(w in claimed_trend for w in NEUTRAL_SET)
+
+                match = (
+                    (real_is_bull and claimed_is_bull) or
+                    (real_is_bear and claimed_is_bear) or
+                    (real_is_neutral and claimed_is_neutral) or
+                    (real_trend in claimed_trend)
                 )
+                if not match:
+                    errors.append(
+                        f"DATA_MISMATCH: Kamu menyatakan DXY trend='{kdp.get('dxy_trend_5d')}' tapi data tool "
+                        f"aktual menunjukkan trend_5d='{real_trend}'. Cek ulang output get_dxy() sebelum resubmit."
+                    )
         except Exception:
             pass
         try:

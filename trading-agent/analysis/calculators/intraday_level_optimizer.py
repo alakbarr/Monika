@@ -158,25 +158,27 @@ async def compute_optimal_levels(
             pass
 
     for z in zones:
-        z_near_edge = z['high'] if direction == 'buy' else z['low']
-        z_far_edge = z['low'] if direction == 'buy' else z['high']
+        # Conservative SMC target: take profit at zone boundary facing entry
+        # For BUY: zone is above entry, first touch is z['low']
+        # For SELL: zone is below entry, first touch is z['high']
+        z_target_edge = z['low'] if direction == 'buy' else z['high']
 
-        dist_to_far = (z_far_edge - entry_price) if direction == 'buy' else (entry_price - z_far_edge)
-        if tp_min * 0.85 <= dist_to_far <= tp_max * 1.05 and dist_to_far > 0:
-            score = _score_candidate(dist_to_far, tp_mid, tp_width, z['weight'])
+        dist_to_target = (z_target_edge - entry_price) if direction == 'buy' else (entry_price - z_target_edge)
+        if tp_min * 0.85 <= dist_to_target <= tp_max * 1.05 and dist_to_target > 0:
+            score = _score_candidate(dist_to_target, tp_mid, tp_width, z['weight'])
             # TimesFM Reachability multiplier: boost if within Q10-Q90 cone, penalize if beyond
             if direction == 'buy' and q90_target:
-                if z_far_edge <= q90_target:
+                if z_target_edge <= q90_target:
                     score = round(score * 1.25, 3)
                 else:
                     score = round(score * 0.50, 3)  # Overextended target penalty
             elif direction == 'sell' and q10_target:
-                if z_far_edge >= q10_target:
+                if z_target_edge >= q10_target:
                     score = round(score * 1.25, 3)
                 else:
                     score = round(score * 0.50, 3)  # Overextended target penalty
 
-            tp_candidates.append({'price': round(z_far_edge, 5), 'distance': round(dist_to_far, 5),
+            tp_candidates.append({'price': round(z_target_edge, 5), 'distance': round(dist_to_target, 5),
                                    'basis': f"{z['type']}({z.get('direction') or 'n/a'})", 'score': score})
 
         # For BUY: SL should be placed BELOW the protective support zone (below z['low'])

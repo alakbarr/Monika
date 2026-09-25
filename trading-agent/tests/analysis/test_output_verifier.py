@@ -126,3 +126,30 @@ async def test_output_verifier_sl_widening_snapping():
 
     assert snapped["stop_loss"] == 1.0980  # 1.1000 - 0.0020
     assert any("widened BUY SL" in s for s in snaps)
+
+
+@pytest.mark.asyncio
+async def test_output_verifier_snapping_precision_and_direction_invariant():
+    verifier = OutputVerifier()
+    # XAUUSD: spec digits = 2
+    payload = {
+        "decision": "buy",
+        "entry_condition": {"price": 2650.1234},
+        "stop_loss": 2645.5678,
+        "take_profit": 2652.0000, # poor RR: 1.878 / 4.5556 < 1.3
+    }
+    snapped, snaps = verifier._apply_deterministic_math_snapping(
+        output=payload,
+        failures=["R:R ratio 0.41 is below minimum 1.3"],
+        settings={"trading": {"risk": {"min_rr_ratio": 1.5}}},
+        symbol="XAUUSD",
+        context_data={"get_atr": 10.0}
+    )
+    # Digits must be 2 for XAUUSD
+    assert snapped["stop_loss"] == 2640.12  # widened to 1.0x ATR = 10.0
+    assert snapped["take_profit"] == 2665.12 # 2650.12 + 10.0 * 1.5
+    assert snapped["entry_condition"]["price"] == 2650.12
+    # Invariant: entry > stop_loss and take_profit > entry
+    assert snapped["entry_condition"]["price"] > snapped["stop_loss"]
+    assert snapped["take_profit"] > snapped["entry_condition"]["price"]
+

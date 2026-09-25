@@ -51,7 +51,7 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
         deb = debate_states.get(sym, {})
         verified_bull_claim = deb.get("verified_bull_claim")
         bear_dissent = deb.get("bear_dissent") or {}
-        bull_rebuttal = deb.get("bull_rebuttal")
+        bull_rebuttal = deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
         original_context = deb.get("original_context")
         analysis_id = r.get("analysis_id")
 

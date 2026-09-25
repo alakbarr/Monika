@@ -85,14 +85,16 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         else:
             # Normalisasi persentase deviasi dari forecast untuk metrik umum
             if abs(forecast) > 0.001:
-                surprise = round(((actual - forecast) / abs(forecast)) * 100.0, 4)
+                surprise = ((actual - forecast) / abs(forecast)) * 100.0
             else:
-                surprise = round(actual - forecast, 4)
+                surprise = actual - forecast
 
             # Inversi arah untuk metrik pengangguran/klaim lainnya
             if any(kw in name_lower for kw in _INVERTED_METRIC_KEYWORDS):
                 surprise = -surprise
         
+        # Clamp ke rentang batas wajar [-300.0, +300.0] untuk mencegah anomali angka tak terhingga
+        surprise = max(-300.0, min(300.0, surprise))
         event.surprise_score = round(surprise, 4)
         updated += 1
     

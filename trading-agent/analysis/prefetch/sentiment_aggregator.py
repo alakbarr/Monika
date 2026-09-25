@@ -13,12 +13,12 @@ class SentimentAggregator:
     def __init__(self, settings: dict):
         self.settings = settings
 
-    def aggregate_sentiment(self, cot_data: dict, retail_data: dict, risk_data: dict) -> SentimentAnalysisSchema:
+    def aggregate_sentiment(self, cot_data: dict, retail_data: dict, risk_data: dict, symbol: str = "") -> SentimentAnalysisSchema:
         """
         Weights:
         - Institutional COT: 40% weight (trend-following)
         - Retail (FXSSI/MyFxBook/Binance): 30% weight (CONTRARIAN)
-        - Risk appetite (VIX/FearGreed): 30% weight (market regime)
+        - Risk appetite (VIX/FearGreed): 30% weight (market regime, aware of Safe-Haven assets)
         """
         score = 5.0 # Neutral base
         confidence = ConfidenceLevel.LOW
@@ -27,8 +27,13 @@ class SentimentAggregator:
         # 1. COT (Institutional) - 40% weight (0 to 4 points)
         cot_score = 5.0
         if cot_data and not cot_data.get("error"):
-            signal = str(cot_data.get("signal") or cot_data.get("bias") or "").lower()
-            flag = str(cot_data.get("flag") or "").lower()
+            # Support both direct dict or symbol-keyed dict from MacroPreprocessor
+            m_code = symbol.upper() if symbol else ""
+            actual_cot = cot_data.get(m_code, cot_data) if isinstance(cot_data, dict) else cot_data
+            if not isinstance(actual_cot, dict):
+                actual_cot = cot_data
+            signal = str(actual_cot.get("signal") or actual_cot.get("bias") or "").lower()
+            flag = str(actual_cot.get("flag") or "").lower()
             
             if "extreme_long" in flag or signal in ("extreme_long", "strong_bullish"):
                 cot_score = 9.0
@@ -58,16 +63,21 @@ class SentimentAggregator:
             else:
                 narrative_parts.append("Retail positioning is balanced.")
                 
-        # 3. Risk Appetite - 30% weight (0 to 3 points)
+        # 3. Risk Appetite - 30% weight (0 to 3 points, Safe-Haven aware)
         risk_score = 5.0
+        is_safe_haven = any(s in (symbol or "").upper() for s in ["XAU", "GOLD", "CHF", "JPY"])
         if risk_data and not risk_data.get("error"):
             vix = risk_data.get("close", 20)
             if vix > 30:
-                risk_score = 2.0
-                narrative_parts.append("High VIX indicates risk-off environment.")
+                risk_score = 8.0 if is_safe_haven else 2.0
+                narrative_parts.append(
+                    f"High VIX indicates risk-off environment ({'bullish safe-haven' if is_safe_haven else 'bearish risk assets'})."
+                )
             elif vix < 15:
-                risk_score = 8.0
-                narrative_parts.append("Low VIX indicates risk-on environment.")
+                risk_score = 3.0 if is_safe_haven else 8.0
+                narrative_parts.append(
+                    f"Low VIX indicates risk-on environment ({'soft safe-haven demand' if is_safe_haven else 'bullish risk assets'})."
+                )
             else:
                 narrative_parts.append("VIX indicates moderate risk environment.")
 

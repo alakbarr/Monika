@@ -137,7 +137,7 @@ class FundamentalStage:
         except Exception as q_err:
             logger.debug(f"Quantized thinking setup non-fatal: {q_err}")
 
-    async def _run_macro_debate(self, session: AsyncSession, brief) -> dict:
+    async def _run_macro_debate(self, session: AsyncSession, brief, prefetched_data: Optional[Any] = None) -> dict:
         """Menjalankan debate Bull/Bear/Judge macro. Dijalankan SEBELUM keputusan eskalasi
         difinalisasi, supaya kontradiksi yang ditemukan debate bisa memicu eskalasi ke Opus
         (bukan cuma pasif menurunkan confidence)."""
@@ -167,6 +167,9 @@ class FundamentalStage:
             context = 'BRIEF SO FAR:\n' + (brief.structured_json or brief.content_markdown or '')
             if chronicle_bullets:
                 context = f"ACTIVE MACRO CHRONICLE (Ongoing Structural Regimes):\n{chronicle_bullets}\n\n{context}"
+            if prefetched_data:
+                pref_str = prefetched_data if isinstance(prefetched_data, str) else json.dumps(prefetched_data, default=str)
+                context = f"RAW PREFETCHED MACRO DATA (Ground Truth):\n{pref_str[:3000]}\n\n{context}"
             # Run macro bull and bear analysts concurrently
             bull_res, bear_res = await asyncio.gather(
                 run_bull_analyst(context, self.settings),
@@ -639,7 +642,7 @@ class FundamentalStage:
                 msg = f"Stage 1 FAILED after {elapsed:.1f}s: {result.get('error')}"
                 logger.error(msg)
                 await self._log(session, msg, category="error")
-                if self.settings.get('analysis', {}).get('enable_fallback_brief', False):
+                if self.settings.get('analysis', {}).get('enable_fallback_brief', True):
                     brief = await self._generate_deterministic_fallback_brief(session, prefetched_json, weekend_btc_only_mode)
                     if brief:
                         result["success"] = True
@@ -659,8 +662,8 @@ class FundamentalStage:
         
         # Run macro debate before escalation so debate contradictions can trigger escalation to frontier model
         _debate_outcome = {}
-        if brief:
-            _debate_outcome = await self._run_macro_debate(session, brief)
+        if brief and not result.get("is_deterministic_fallback"):
+            _debate_outcome = await self._run_macro_debate(session, brief, prefetched_data=prefetched_json)
 
         # Logika Eskalasi: Panggil model lebih pintar jika confidence rendah
         escalation_model = analysis_cfg.get("fundamental_model_escalation", "")
@@ -668,7 +671,7 @@ class FundamentalStage:
         
         # Eskalasi aktif jika model dikonfigurasi
         escalated = False
-        if (brief and escalation_model and escalation_model != self.client.model):
+        if (brief and escalation_model and escalation_model != self.client.model and not result.get("is_deterministic_fallback")):
             should_escalate = False
             escalation_trigger_reason = ""
 
@@ -1134,17 +1137,70 @@ INSTRUCTIONS:
 
             currencies = ["BTC"] if weekend_btc_only_mode else ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"]
             currency_bias = {c: "neutral" for c in currencies}
-            currency_confidence = {c: 0.50 for c in currencies}
+            currency_confidence = {c: 0.55 for c in currencies}
+
+            # Synthesize directional proxy from DXY trend
+            dxy_info = data_dict.get("dxy") or {}
+            dxy_trend = str(dxy_info.get("trend_5d", "")).lower() if isinstance(dxy_info, dict) else ""
+            if any(t in dxy_trend for t in ["bullish", "up", "strengthening", "rising"]):
+                currency_bias["USD"] = "bullish"
+                currency_confidence["USD"] = 0.60
+                if "EUR" in currency_bias:
+                    currency_bias["EUR"] = "bearish"
+                    currency_confidence["EUR"] = 0.60
+                if "XAU" in currency_bias and sentiment != "risk-off":
+                    currency_bias["XAU"] = "bearish"
+                    currency_confidence["XAU"] = 0.58
+            elif any(t in dxy_trend for t in ["bearish", "down", "weakening", "falling"]):
+                currency_bias["USD"] = "bearish"
+                currency_confidence["USD"] = 0.60
+                if "EUR" in currency_bias:
+                    currency_bias["EUR"] = "bullish"
+                    currency_confidence["EUR"] = 0.60
+                if "XAU" in currency_bias:
+                    currency_bias["XAU"] = "bullish"
+                    currency_confidence["XAU"] = 0.60
+
+            # Synthesize risk-asset bias from sentiment
+            if sentiment == "risk-on":
+                if "AUD" in currency_bias:
+                    currency_bias["AUD"] = "bullish"
+                    currency_confidence["AUD"] = 0.60
+                if "JPY" in currency_bias:
+                    currency_bias["JPY"] = "bearish"
+                    currency_confidence["JPY"] = 0.60
+                if "BTC" in currency_bias:
+                    currency_bias["BTC"] = "bullish"
+                    currency_confidence["BTC"] = 0.60
+            elif sentiment == "risk-off":
+                if "AUD" in currency_bias:
+                    currency_bias["AUD"] = "bearish"
+                    currency_confidence["AUD"] = 0.60
+                if "JPY" in currency_bias:
+                    currency_bias["JPY"] = "bullish"
+                    currency_confidence["JPY"] = 0.60
+                if "XAU" in currency_bias:
+                    currency_bias["XAU"] = "bullish"
+                    currency_confidence["XAU"] = 0.60
+                if "BTC" in currency_bias:
+                    currency_bias["BTC"] = "bearish"
+                    currency_confidence["BTC"] = 0.60
+
+            baseline_confidence = 0.60
 
             structured = {
-                "macro_bias": "neutral",
+                "macro_bias": currency_bias.get("USD", "neutral"),
                 "macro_narrative": (
                     "[DETERMINISTIC FALLBACK BRIEF]: AI fundamental stage encountered an upstream error or "
                     "did not submit a structured brief. A rule-based baseline was synthesized from available indicators. "
-                    f"Market regime: {regime}, Sentiment: {sentiment} (VIX: {vix_val if vix_val is not None else 'N/A'}). "
-                    "Downstream Stage 2 specialists should proceed with moderate confidence (0.50)."
+                    f"Market regime: {regime}, Sentiment: {sentiment} (VIX: {vix_val if vix_val is not None else 'N/A'}, DXY: {dxy_trend or 'neutral'}). "
+                    f"Downstream Stage 2 specialists should proceed with baseline confidence ({baseline_confidence:.2f})."
                 ),
-                "key_drivers": [f"VIX: {vix_val if vix_val is not None else 'baseline'}", "Deterministic baseline fallback"],
+                "key_drivers": [
+                    f"VIX: {vix_val if vix_val is not None else 'baseline'}",
+                    f"DXY 5d Trend: {dxy_trend or 'neutral'}",
+                    "Deterministic baseline fallback"
+                ],
                 "risk_events": [],
                 "narrative_shift": False,
                 "macro_regime": regime,
@@ -1152,14 +1208,15 @@ INSTRUCTIONS:
                 "currency_bias": currency_bias,
                 "currency_confidence": currency_confidence,
                 "invalidation_conditions": {c: f"{c} bias invalidation baseline" for c in currencies},
-                "confidence": 0.50,
+                "confidence": baseline_confidence,
                 "priced_in_assessment": {
                     "dominant_driver": "Deterministic baseline fallback",
                     "priced_in_score": 5,
                     "sell_the_news_risk": "low"
                 },
-                "strongest_counter_thesis": "Deterministic baseline holds neutral bias; directional momentum may develop from technical or order-flow drivers.",
+                "strongest_counter_thesis": "Deterministic baseline holds technical-inferred bias; directional momentum may develop from technical or order-flow drivers.",
                 "is_fallback": True,
+                "is_deterministic_fallback": True,
                 "_data_quality_degraded": True,
             }
 
@@ -1169,7 +1226,7 @@ INSTRUCTIONS:
                 valid_until=now_utc + timedelta(hours=12),
                 content_markdown=structured["macro_narrative"],
                 structured_json=json.dumps(structured),
-                confidence=0.50,
+                confidence=baseline_confidence,
                 risk_sentiment=sentiment,
                 debate_bull_thesis="Deterministic neutral baseline",
                 debate_bear_thesis="Deterministic neutral baseline",

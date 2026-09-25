@@ -376,11 +376,69 @@ class SpecialistPipelineMixin:
                     if cur_p > 0:
                         d1_t = specialist_biases.get("technical", "NEUTRAL").upper()
                         macro_b = specialist_biases.get("macro", "NEUTRAL").upper()
+
+                        cur_atr = cur_p * 0.005
+                        cur_rsi = None
+                        if isinstance(raw_bundle_data, dict):
+                            atr_candidate = raw_bundle_data.get("atr")
+                            if atr_candidate is not None:
+                                try:
+                                    cur_atr = float(atr_candidate)
+                                except (ValueError, TypeError):
+                                    pass
+                            for k in ("get_technical_indicators_H4", "get_technical_indicators_D1", "get_technical_indicators_H1", "get_technical_indicators"):
+                                t_val = raw_bundle_data.get(k)
+                                if isinstance(t_val, dict):
+                                    ind = t_val.get("indicators", t_val)
+                                    if isinstance(ind, dict):
+                                        if cur_atr == cur_p * 0.005:
+                                            raw_atr = ind.get("ATR_14") or ind.get("ATR") or ind.get("atr")
+                                            if isinstance(raw_atr, dict):
+                                                raw_atr = raw_atr.get("value") or raw_atr.get("atr")
+                                            if raw_atr is not None:
+                                                try:
+                                                    p_atr = float(raw_atr)
+                                                    if p_atr > 0:
+                                                        cur_atr = p_atr
+                                                except (ValueError, TypeError):
+                                                    pass
+                                        if cur_rsi is None:
+                                            raw_rsi = ind.get("RSI_14") or ind.get("RSI") or ind.get("rsi")
+                                            if isinstance(raw_rsi, dict):
+                                                raw_rsi = raw_rsi.get("value") or raw_rsi.get("rsi")
+                                            if raw_rsi is not None:
+                                                try:
+                                                    cur_rsi = float(raw_rsi)
+                                                except (ValueError, TypeError):
+                                                    pass
+
+                        confluence = 8
+                        if isinstance(raw_bundle_data, dict):
+                            raw_c = raw_bundle_data.get("confluence_score") or (raw_bundle_data.get("prescreen_result") or {}).get("confluence_score")
+                            if raw_c is not None:
+                                try:
+                                    confluence = int(raw_c)
+                                except (ValueError, TypeError):
+                                    pass
+
+                        drift = 1.0
+                        if isinstance(raw_bundle_data, dict):
+                            raw_d = raw_bundle_data.get("spread_drift") or raw_bundle_data.get("spread_ratio")
+                            if raw_d is not None:
+                                try:
+                                    drift = float(raw_d)
+                                except (ValueError, TypeError):
+                                    pass
+
                         tree = st_engine.create_deterministic_tree(
                             symbol=symbol,
                             current_price=cur_p,
                             d1_trend=d1_t,
-                            macro_bias=macro_b
+                            atr_14=cur_atr,
+                            macro_bias=macro_b,
+                            confluence_score=confluence,
+                            spread_drift=drift,
+                            rsi=cur_rsi
                         )
                         extra_context_str += f"\n\n## SCENARIO TREE MULTI-HYPOTHESIS BRANCHING\n"
                         extra_context_str += f"Expected Value: {tree.expected_value:.2f} | Scenario Decision: {tree.final_decision}\n"

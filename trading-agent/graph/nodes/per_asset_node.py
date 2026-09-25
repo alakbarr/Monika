@@ -50,7 +50,22 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 select(func.count(Position.id)).where(Position.status == 'open')
             )).scalar_one_or_none() or 0
         
-        if open_count == 0:
+        # Check Asian session assets (Tokyo 00:00 - 09:00 UTC) and 24/7 crypto
+        ASIA_SESSION_SYMBOLS = {"USDJPY", "AUDUSD", "NZDUSD", "AUDJPY", "BTCUSD", "ETHUSD"}
+        is_asian_session = (0 <= hour < 9)
+        asian_crypto_eligible = [
+            s for s in symbols_override 
+            if (s in ASIA_SESSION_SYMBOLS and (is_asian_session or "BTC" in s or "ETH" in s))
+        ]
+        
+        if asian_crypto_eligible:
+            open_symbols = []
+            if open_count > 0:
+                async with _gs_pos() as session:
+                    open_symbols = list(set([p.symbol for p in (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()]))
+            symbols_override = list(set(asian_crypto_eligible + open_symbols))
+            logger.info(f'[PerAsset] Active hours gate: Asian/Crypto session assets eligible ({symbols_override}). Proceeding with analysis.')
+        elif open_count == 0:
             logger.info(f'[PerAsset] Skipping full Stage 2: outside active hours ({hour}:00 UTC, window={start_hr}-{end_hr}) and no open positions. Token saved: ~7 AI calls.')
             summary['per_asset'] = {'skipped': True, 'reason': 'outside_active_hours_no_positions', 'next_active_hour': start_hr}
             return {'summary': summary, 'asset_analyses': {}, 'actionable_trades': []}

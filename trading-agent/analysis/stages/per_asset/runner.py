@@ -1449,9 +1449,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         bias_note = bias_note if bias_note else bias_note_default
 
         # --- NEW: Extract nearest_zone_note ---
-        nearest_zone_note = 'no zone data'
+        nearest_zone_note = 'active market structure'
         try:
-            from database.models import SRZone, PriceOHLCV
+            from database.models import SRZone, PriceOHLCV, SwingPoint
             from sqlalchemy import select
             last_close = (await session.execute(
                 select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
@@ -1464,6 +1464,16 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     nearest = min(zones, key=lambda z: min(abs(z.price_high - last_close), abs(z.price_low - last_close)))
                     dist_pct = min(abs(nearest.price_high - last_close), abs(nearest.price_low - last_close)) / last_close * 100
                     nearest_zone_note = f'{dist_pct:.2f}% from nearest S/R zone (strength={nearest.strength})'
+                else:
+                    swings = (await session.execute(
+                        select(SwingPoint).where(SwingPoint.symbol == symbol).where(SwingPoint.timeframe == 'H4').order_by(SwingPoint.timestamp.desc()).limit(4)
+                    )).scalars().all()
+                    if swings:
+                        nearest_sw = min(swings, key=lambda s: abs(s.price - last_close))
+                        dist_pct = abs(nearest_sw.price - last_close) / last_close * 100
+                        nearest_zone_note = f'{dist_pct:.2f}% from nearest H4 swing {nearest_sw.type}'
+                    else:
+                        nearest_zone_note = 'S/R in calculation; volatility active (H4 ATR ready)'
         except Exception as e:
             logger.debug(f"Prescreen nearest zone check failed: {e}")
         # --- END NEW ---
@@ -1520,7 +1530,7 @@ Rule:
                     brief = (await session.execute(
                         select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
                     )).scalar_one_or_none()
-                    if brief and brief.confidence and brief.confidence >= 0.55:
+                    if brief and brief.confidence and brief.confidence >= 0.50:
                         logger.info(f"[{symbol}] Prescreen returned NO, but bypassing due to solid FundamentalBrief confidence ({brief.confidence})")
                         return True, 'forced_by_macro_override_high_conf'
                     

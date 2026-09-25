@@ -294,7 +294,19 @@ Strictly ground all numeric claims. Max 700 words."""
             macro_overview = await self._macro_synth.generate(macro_synth_prompt)
         except Exception as e:
             logger.error(f"[DigestSlice] Macro overview generation failed: {e}")
-            macro_overview = "(Macro overview generation unavailable)"
+            macro_overview = None
+
+        if not macro_overview or macro_overview.strip() == "" or macro_overview == "(Macro overview generation unavailable)":
+            # Synthesize deterministic fallback from chronological slices
+            synth_parts = ["**Deterministic Macro Summary (Synthesized from Slices)**:"]
+            for s in slices[-4:]:
+                if s.macro_summary and not s.macro_summary.startswith("("):
+                    p_time = s.period_start.strftime("%H:%M")
+                    synth_parts.append(f"- [{p_time} UTC]: {s.macro_summary.strip()[:250]}")
+            if len(synth_parts) > 1:
+                macro_overview = "\n".join(synth_parts)
+            else:
+                macro_overview = "(Macro overview generation unavailable - relying on slice timeline below)"
 
         digest_parts.append("\n### MACRO OVERVIEW\n")
         digest_parts.append(macro_overview or "")

@@ -138,10 +138,19 @@ class OutputVerifier:
         if entry is None or sl is None or tp is None:
             return output, []
 
+        digits = 5
         try:
-            entry = float(entry)
-            sl = float(sl)
-            tp = float(tp)
+            from risk.position_sizing import get_instrument_spec
+            spec = get_instrument_spec(symbol)
+            if spec and spec.digits:
+                digits = int(spec.digits)
+        except Exception:
+            digits = 5
+
+        try:
+            entry = round(float(entry), digits)
+            sl = round(float(sl), digits)
+            tp = round(float(tp), digits)
         except (TypeError, ValueError):
             return output, []
 
@@ -161,7 +170,7 @@ class OutputVerifier:
                 max_snap_dist = (0.25 * atr_val) if (atr_val and atr_val > 0) else (0.003 * entry)
                 if 0 < anchor_dist <= max_snap_dist:
                     old_entry = entry
-                    entry = round(nearest_anchor, 5)
+                    entry = round(nearest_anchor, digits)
                     if isinstance(output.get("entry_condition"), dict):
                         output["entry_condition"]["price"] = entry
                     snaps.append(f"Deterministic snap: anchored Entry from {old_entry} to structural level {entry}")
@@ -172,12 +181,12 @@ class OutputVerifier:
             if sl_dist < (min_sl_dist * 0.95):  # allow 5% rounding leeway
                 old_sl = sl
                 if decision == "buy":
-                    sl = round(entry - min_sl_dist, 5)
+                    sl = round(entry - min_sl_dist, digits)
                     output["stop_loss"] = sl
                     sl_dist = abs(entry - sl)
                     snaps.append(f"Deterministic snap: widened BUY SL from {old_sl} to 1.0x ATR ({sl})")
                 elif decision == "sell":
-                    sl = round(entry + min_sl_dist, 5)
+                    sl = round(entry + min_sl_dist, digits)
                     output["stop_loss"] = sl
                     sl_dist = abs(entry - sl)
                     snaps.append(f"Deterministic snap: widened SELL SL from {old_sl} to 1.0x ATR ({sl})")
@@ -192,12 +201,14 @@ class OutputVerifier:
         # Fix R:R ratio deterministically
         has_rr_issue = any("R:R" in f and "minimum" in f for f in failures)
         if has_rr_issue or (tp_dist / sl_dist < min_rr - 0.05):
-            target_tp_dist = round(sl_dist * min_rr, 5)
+            target_tp_dist = round(sl_dist * min_rr, digits)
             if decision == "buy" and sl < entry:
-                output["take_profit"] = round(entry + target_tp_dist, 5)
+                tp = round(entry + target_tp_dist, digits)
+                output["take_profit"] = tp
                 snaps.append(f"Deterministic snap: adjusted TP to {output['take_profit']} (R:R={min_rr})")
             elif decision == "sell" and sl > entry:
-                output["take_profit"] = round(entry - target_tp_dist, 5)
+                tp = round(entry - target_tp_dist, digits)
+                output["take_profit"] = tp
                 snaps.append(f"Deterministic snap: adjusted TP to {output['take_profit']} (R:R={min_rr})")
 
         # Fix TimesFM Q90/Q10 overextension deterministically
@@ -206,13 +217,14 @@ class OutputVerifier:
                 import re
                 m = re.search(r"ceiling \(([0-9.]+)\)", f)
                 if m and decision == "buy":
-                    output["take_profit"] = round(float(m.group(1)), 5)
+                    tp = round(float(m.group(1)), digits)
+                    output["take_profit"] = tp
                     snaps.append(f"Deterministic snap: capped BUY TP to TimesFM Q90 ceiling ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
-                        safe_sl_dist = round(new_tp_dist / min_rr, 5)
+                        safe_sl_dist = round(new_tp_dist / min_rr, digits)
                         if atr_val and safe_sl_dist >= (0.75 * atr_val):
-                            sl = round(entry - safe_sl_dist, 5)
+                            sl = round(entry - safe_sl_dist, digits)
                             output["stop_loss"] = sl
                             sl_dist = safe_sl_dist
                             snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
@@ -220,16 +232,52 @@ class OutputVerifier:
                 import re
                 m = re.search(r"floor \(([0-9.]+)\)", f)
                 if m and decision == "sell":
-                    output["take_profit"] = round(float(m.group(1)), 5)
+                    tp = round(float(m.group(1)), digits)
+                    output["take_profit"] = tp
                     snaps.append(f"Deterministic snap: capped SELL TP to TimesFM Q10 floor ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
-                        safe_sl_dist = round(new_tp_dist / min_rr, 5)
+                        safe_sl_dist = round(new_tp_dist / min_rr, digits)
                         if atr_val and safe_sl_dist >= (0.75 * atr_val):
-                            sl = round(entry + safe_sl_dist, 5)
+                            sl = round(entry + safe_sl_dist, digits)
                             output["stop_loss"] = sl
                             sl_dist = safe_sl_dist
                             snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
+
+        initial_sl_valid = (decision == "buy" and sl < entry) or (decision == "sell" and sl > entry)
+
+        # Direction invariant check post-snapping (prevent snapping from inverting SL / TP)
+        if initial_sl_valid:
+            if decision == "buy":
+                if sl >= entry:
+                    fallback_dist = atr_val if (atr_val and atr_val > 0) else (entry * 0.005)
+                    sl = round(entry - fallback_dist, digits)
+                    output["stop_loss"] = sl
+                    snaps.append(f"Deterministic snap: corrected inverted BUY SL to {sl}")
+                if tp <= entry:
+                    fallback_tp_dist = abs(entry - sl) * min_rr
+                    tp = round(entry + fallback_tp_dist, digits)
+                    output["take_profit"] = tp
+                    snaps.append(f"Deterministic snap: corrected inverted BUY TP to {tp}")
+            elif decision == "sell":
+                if sl <= entry:
+                    fallback_dist = atr_val if (atr_val and atr_val > 0) else (entry * 0.005)
+                    sl = round(entry + fallback_dist, digits)
+                    output["stop_loss"] = sl
+                    snaps.append(f"Deterministic snap: corrected inverted SELL SL to {sl}")
+                if tp >= entry:
+                    fallback_tp_dist = abs(sl - entry) * min_rr
+                    tp = round(entry - fallback_tp_dist, digits)
+                    output["take_profit"] = tp
+                    snaps.append(f"Deterministic snap: corrected inverted SELL TP to {tp}")
+
+        # Recalculate final sl_dist and tp_dist and synchronize output
+        sl_dist = abs(entry - sl)
+        tp_dist = abs(entry - tp)
+        output["stop_loss"] = round(sl, digits)
+        output["take_profit"] = round(tp, digits)
+        if isinstance(output.get("entry_condition"), dict):
+            output["entry_condition"]["price"] = round(entry, digits)
 
         return output, snaps
 
@@ -384,18 +432,34 @@ class OutputVerifier:
         if not isinstance(context_data, dict):
             return levels
 
-        for key in ['swing_points', 'sr_zones', 'order_blocks', 'fvg_zones',
-                    'fibonacci_levels', 'liquidity_zones', 'smc_zones']:
-            data = context_data.get(key, [])
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict):
-                        for price_key in ['price', 'price_high', 'price_low', 'gap_high', 'gap_low', 'level']:
-                            if price_key in item:
-                                try:
-                                    levels.append(float(item[price_key]))
-                                except (TypeError, ValueError):
-                                    pass
+        price_keys = ['price', 'price_high', 'price_low', 'gap_high', 'gap_low', 'level', 'high', 'low', 'close', 'open']
+
+        def _extract_from_item(item):
+            if isinstance(item, dict):
+                for pk in price_keys:
+                    if pk in item and item[pk] is not None:
+                        try:
+                            val = float(item[pk])
+                            if val > 0:
+                                levels.append(val)
+                        except (TypeError, ValueError):
+                            pass
+
+        target_prefixes = ['swing', 'sr_', 'order_block', 'fvg', 'fibonacci', 'liquidity', 'smc', 'price_history']
+        for k, v in context_data.items():
+            k_lower = str(k).lower()
+            if any(tp in k_lower for tp in target_prefixes):
+                if isinstance(v, list):
+                    for item in v:
+                        _extract_from_item(item)
+                elif isinstance(v, dict):
+                    for sub_k in ['bars', 'zones', 'points', 'breaks', 'levels', 'items', 'swing_points', 'fvg_zones', 'order_blocks']:
+                        sub_v = v.get(sub_k)
+                        if isinstance(sub_v, list):
+                            for item in sub_v:
+                                _extract_from_item(item)
+                    _extract_from_item(v)
+
         return levels
 
     def _extract_atr(self, context_data: dict) -> Optional[float]:

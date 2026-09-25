@@ -54,18 +54,38 @@ async def _get_correlated_exposure_summary(session, symbol: str) -> List[str]:
     return summary
 
 
-def _is_grounded(claim_dict: dict, current_price: float) -> bool:
+def _is_grounded(claim_dict: dict, current_price: float, reference: Optional[Dict[str, Any]] = None) -> bool:
     if not claim_dict:
         return False
     text = str(claim_dict)
     raw_nums = re.findall(r'\b\d+(?:\.\d+)?\b', text)
     if not raw_nums:
         return False
+    nums = [float(x) for x in raw_nums]
+
+    # Verify against reference (e.g. fact_sheet) if available
+    if reference and isinstance(reference, dict):
+        ref_nums: List[float] = []
+        for v in reference.values():
+            if isinstance(v, (int, float)) and v > 0:
+                ref_nums.append(float(v))
+            elif isinstance(v, str):
+                for match in re.findall(r'\b\d+(?:\.\d+)?\b', v):
+                    try:
+                        ref_nums.append(float(match))
+                    except ValueError:
+                        pass
+        for n in nums:
+            for rn in ref_nums:
+                if rn > 0 and (abs(n - rn) / rn <= 0.05 or abs(n - rn) <= 0.001):
+                    return True
+
     if current_price > 0:
-        nums = [float(x) for x in raw_nums]
         has_plausible_price = any(abs(n - current_price) / current_price <= 0.20 for n in nums)
-        return has_plausible_price or len(nums) >= 2
+        return has_plausible_price
+
     return len(raw_nums) >= 2
+
 
 
 def _apply_deterministic_risk_clamp(pm_decision: dict, risk_stances: dict, actual_risk_state: dict | None) -> dict:

@@ -45,7 +45,7 @@ class DataFeedCircuitBreaker:
 
     DEFAULT_TTLS: Dict[str, float] = {
         "mt5_ticks": 120.0,          # 2 minutes: tick feed frozen
-        "fred": 172800.0,            # 48 hours: daily series / weekends
+        "fred": 345600.0,            # 96 hours: daily series / weekends / holiday buffers
         "finnhub": 3600.0,           # 1 hour: news feed
         "economic_calendar": 21600.0,# 6 hours: calendar releases
         "sentiment": 7200.0,         # 2 hours: crowd sentiment

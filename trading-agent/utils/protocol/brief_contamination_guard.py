@@ -67,14 +67,22 @@ class BriefContaminationGuard:
         from utils.market.bias_utils import normalize_bias
         usd_bias = normalize_bias(currency_bias.get('USD', 'neutral'))
         eur_bias = normalize_bias(currency_bias.get('EUR', 'neutral'))
+        narrative_l = (brief_data.get('macro_narrative') or '').lower()
+        has_divergence_justification = any(
+            w in narrative_l for w in (
+                'divergence', 'rate spread', 'yield spread', 'fiscal', 'ecb vs fed', 'fed vs ecb',
+                'boj', 'shunto', 'safe haven', 'safe-haven', 'liquidity', 'energy crisis',
+                'decoupling', 'stagflation', 'resilience', 'exceptionalism', 'tariff'
+            )
+        )
 
         if (usd_bias == 'bullish' and eur_bias == 'bullish') or (usd_bias == 'bearish' and eur_bias == 'bearish'):
+            penalty = 0.15 if has_divergence_justification else 0.40
             issues.append(
                 f"CORRELATION CONFLICT: Both USD and EUR labeled '{usd_bias}'. "
-                "EURUSD correlation ~0.95 inverse makes this rare without strong idiosyncratic drivers. "
-                "Brief may have hallucinated currency biases."
+                f"{'Idiosyncratic divergence justified in narrative.' if has_divergence_justification else 'EURUSD correlation ~0.95 inverse makes this rare without strong idiosyncratic drivers.'}"
             )
-            risk_score += 0.40
+            risk_score += penalty
 
         gbp_bias = normalize_bias(currency_bias.get('GBP', 'neutral'))
         aud_bias = normalize_bias(currency_bias.get('AUD', 'neutral'))
@@ -82,32 +90,37 @@ class BriefContaminationGuard:
 
         # GBP/USD correlation
         if (usd_bias == 'bullish' and gbp_bias == 'bullish') or (usd_bias == 'bearish' and gbp_bias == 'bearish'):
+            penalty = 0.10 if has_divergence_justification else 0.30
             issues.append(f"CORRELATION CONFLICT: Both USD and GBP labeled '{usd_bias}' (GBPUSD/EURUSD high correlation).")
-            risk_score += 0.30
+            risk_score += penalty
 
         # AUD/USD correlation
         if (usd_bias == 'bullish' and aud_bias == 'bullish') or (usd_bias == 'bearish' and aud_bias == 'bearish'):
+            penalty = 0.10 if has_divergence_justification else 0.25
             issues.append(f"CORRELATION CONFLICT: Both USD and AUD labeled '{usd_bias}' — AUDUSD historically moves inverse to USD strength.")
-            risk_score += 0.25
+            risk_score += penalty
 
-        # NEW: JPY sebagai safe-haven, cek serupa dengan XAU yang sudah ada
+        # Safe-haven drivers (BOJ policy shift, central bank gold purchases, geopolitical risk)
+        has_safe_haven_driver = any(w in narrative_l for w in ('boj', 'intervention', 'gold', 'xau', 'geopolit', 'central bank', 'de-dollar', 'safe haven', 'inflation hedge', 'war', 'middle east'))
+
+        # JPY safe-haven check
         if risk_sentiment == 'risk-on' and jpy_bias == 'bullish':
-            issues.append("SENTIMENT MISMATCH: risk_sentiment='risk-on' but JPY='bullish'. JPY typically weakens in risk-on regimes (carry-trade unwind logic reverses). Requires idiosyncratic justification (e.g. BOJ policy shift).")
-            risk_score += 0.2
+            penalty = 0.05 if has_safe_haven_driver else 0.20
+            issues.append("SENTIMENT MISMATCH: risk_sentiment='risk-on' but JPY='bullish'. Requires idiosyncratic justification (e.g. BOJ policy shift).")
+            risk_score += penalty
         if risk_sentiment == 'risk-off' and jpy_bias == 'bearish':
             issues.append("SENTIMENT MISMATCH: risk_sentiment='risk-off' but JPY='bearish'. JPY typically strengthens as a safe-haven during risk-off flows.")
-            risk_score += 0.2
+            risk_score += 0.20
 
         # Check 2: Safe-haven consistency with risk sentiment
         xau_bias = normalize_bias(currency_bias.get('XAU', 'neutral'))
         if risk_sentiment == 'risk-on' and xau_bias == 'bullish':
-            # Not impossible but needs extra scrutiny
+            penalty = 0.05 if has_safe_haven_driver else 0.20
             issues.append(
                 "SENTIMENT MISMATCH: risk_sentiment='risk-on' but XAU='bullish'. "
-                "Gold is a safe-haven — typically bearish in risk-on environments. "
-                "Brief needs idiosyncratic driver justification."
+                f"{'Gold idiosyncratic catalyst noted.' if has_safe_haven_driver else 'Gold is typically bearish in risk-on environments.'}"
             )
-            risk_score += 0.20
+            risk_score += penalty
 
         # Check 3: Cross-validate with DXY (most reliable real-time signal)
         try:

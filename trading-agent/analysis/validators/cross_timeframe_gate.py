@@ -88,9 +88,26 @@ class CrossTimeframeConfirmationGate:
                 return "bearish"
 
             # Check EMA crossover / price relation
+            ind_dict = tech.get("indicators") if isinstance(tech.get("indicators"), dict) else tech
             close_px = tech.get("close")
-            ema20 = tech.get("ema_20") or tech.get("ema20")
-            ema50 = tech.get("ema_50") or tech.get("ema50")
+            if close_px is None:
+                hist_b = data_bundle.get(f"get_price_history_{tf}")
+                if isinstance(hist_b, dict) and hist_b.get("bars"):
+                    close_px = hist_b["bars"][-1].get("close")
+
+            def _get_val(k_list):
+                for k in k_list:
+                    item = ind_dict.get(k)
+                    if isinstance(item, dict):
+                        v = item.get("value") or item.get("ema") or item.get("sma")
+                        if v is not None: return float(v)
+                    elif isinstance(item, (int, float)):
+                        return float(item)
+                return None
+
+            ema20 = _get_val(["EMA_20", "ema_20", "EMA20", "ema20", "SMA_20"])
+            ema50 = _get_val(["EMA_50", "ema_50", "EMA50", "ema50", "SMA_50"])
+
             if close_px and ema50:
                 if close_px > ema50 and (not ema20 or ema20 > ema50):
                     return "bullish"
@@ -103,9 +120,16 @@ class CrossTimeframeConfirmationGate:
         if isinstance(struct, dict):
             breaks = struct.get("breaks") or struct.get("structure_breaks") or []
             if isinstance(breaks, list) and breaks:
-                last_break = breaks[-1] if isinstance(breaks[-1], dict) else {}
-                b_type = str(last_break.get("type", "")).lower()
-                b_dir = str(last_break.get("direction", "")).lower()
+                # Get the latest break by checking both index 0 and -1 timestamp
+                latest_break = breaks[0] if isinstance(breaks[0], dict) else {}
+                if len(breaks) > 1 and isinstance(breaks[-1], dict):
+                    t0 = str(latest_break.get("time") or latest_break.get("formed_at") or "")
+                    t_last = str(breaks[-1].get("time") or breaks[-1].get("formed_at") or "")
+                    if t_last > t0:
+                        latest_break = breaks[-1]
+
+                b_type = str(latest_break.get("type", "")).lower()
+                b_dir = str(latest_break.get("direction", "")).lower()
                 if "bull" in b_dir or "bullish" in b_type:
                     return "bullish"
                 if "bear" in b_dir or "bearish" in b_type:
