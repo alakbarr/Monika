@@ -39,8 +39,7 @@ def should_continue_debate(state: TradingState) -> str:
         turn = deb.get("turn", 1)
         disagreement = deb.get("disagreement", 0)
         divergence = deb.get("divergence", disagreement / 10.0)
-        # CRITICAL-02: Lanjut jika divergensi tesis > 0.40 dan turn < 3
-        if (divergence > 0.40 or deb.get("needs_rebuttal", False)) and turn < 3:
+        if (divergence > 0.40 or deb.get("needs_rebuttal", False)) and turn < 2:
             return "rebuttal"
     return "debate_judge"
 

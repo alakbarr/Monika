@@ -92,10 +92,10 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
     if sweep_bar is None:
         result['reasons'].append('no_confirmed_sweep_this_session'); return result
 
-    # 6-hour TTL expiry: liquidity sweeps older than 6 hours are stale and no longer actionable
+    # 12-hour TTL expiry: liquidity sweeps remain actionable throughout the London/NY session overlap
     sweep_ts = sweep_bar.timestamp.replace(tzinfo=timezone.utc) if sweep_bar.timestamp.tzinfo is None else sweep_bar.timestamp
-    if (now_ref - sweep_ts) > timedelta(hours=6):
-        result['reasons'].append(f'sweep_detected_but_expired ({((now_ref - sweep_ts).total_seconds()/3600):.1f}h old > 6.0h TTL)')
+    if (now_ref - sweep_ts) > timedelta(hours=12):
+        result['reasons'].append(f'sweep_detected_but_expired ({((now_ref - sweep_ts).total_seconds()/3600):.1f}h old > 12.0h TTL)')
         return result
 
     sweep_price = sweep_bar.high if sweep_direction == 'sell_side' else sweep_bar.low
@@ -107,7 +107,7 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
 
     break_stmt = (
         select(StructureBreak).where(StructureBreak.symbol == symbol,
-            StructureBreak.timeframe.in_(['H1', 'H4']), StructureBreak.formed_at >= sweep_bar.timestamp,
+            StructureBreak.timeframe.in_(['M15', 'H1', 'H4']), StructureBreak.formed_at >= sweep_bar.timestamp,
             StructureBreak.direction == ob_dir)
     )
     if as_of:
@@ -118,7 +118,7 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
         ob_stmt = (
             select(OrderBlock).where(
                 OrderBlock.symbol == symbol,
-                OrderBlock.timeframe.in_(['H1', 'H4']),
+                OrderBlock.timeframe.in_(['M15', 'H1', 'H4']),
                 OrderBlock.formed_at >= sweep_bar.timestamp,
                 OrderBlock.formed_at <= as_of,
                 OrderBlock.direction == ob_dir,
@@ -129,7 +129,7 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
         ob_stmt = (
             select(OrderBlock).where(
                 OrderBlock.symbol == symbol,
-                OrderBlock.timeframe.in_(['H1', 'H4']),
+                OrderBlock.timeframe.in_(['M15', 'H1', 'H4']),
                 OrderBlock.formed_at >= sweep_bar.timestamp,
                 OrderBlock.direction == ob_dir,
                 OrderBlock.mitigated_at.is_(None)
@@ -141,7 +141,7 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
         fvg_stmt = (
             select(FVGZone).where(
                 FVGZone.symbol == symbol,
-                FVGZone.timeframe.in_(['H1', 'H4']),
+                FVGZone.timeframe.in_(['M15', 'H1', 'H4']),
                 FVGZone.formed_at >= sweep_bar.timestamp,
                 FVGZone.formed_at <= as_of,
                 FVGZone.direction == ob_dir,
@@ -152,7 +152,7 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
         fvg_stmt = (
             select(FVGZone).where(
                 FVGZone.symbol == symbol,
-                FVGZone.timeframe.in_(['H1', 'H4']),
+                FVGZone.timeframe.in_(['M15', 'H1', 'H4']),
                 FVGZone.formed_at >= sweep_bar.timestamp,
                 FVGZone.direction == ob_dir,
                 FVGZone.filled_at.is_(None)

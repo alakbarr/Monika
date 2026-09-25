@@ -629,13 +629,13 @@ class RiskGate:
         risk_cfg = self.settings.get('trading', {}).get('risk', {})
         max_consecutive = risk_cfg.get('max_consecutive_losses_per_symbol', 3)
         
-        # Check recent losses
-        from database.models import PaperTradeRecord
-        from sqlalchemy import select
+        # Check recent losses (limited to past 7 days lookback)
+        cutoff = clock.now() - timedelta(days=7)
         recent = (await session.execute(
             select(PaperTradeRecord)
             .where(PaperTradeRecord.symbol == symbol)
             .where(PaperTradeRecord.status == 'closed')
+            .where(PaperTradeRecord.closed_at >= cutoff)
             .order_by(PaperTradeRecord.closed_at.desc())
             .limit(max_consecutive + 1)
         )).scalars().all()

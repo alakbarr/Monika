@@ -10,6 +10,8 @@ WINNER_MAPPING = {
     "BEAR": "RISK_OFF_USD_BULL",
     "RISK_OFF": "RISK_OFF_USD_BULL",
     "RISK_OFF_USD_BULL": "RISK_OFF_USD_BULL",
+    "US_EXCEPTIONALISM": "US_EXCEPTIONALISM",
+    "STAGFLATION": "STAGFLATION",
     "TIE": "TIE",
     "NEUTRAL": "TIE",
 }
@@ -17,6 +19,8 @@ WINNER_MAPPING = {
 LEGACY_WINNER_MAPPING = {
     "RISK_ON_USD_BEAR": "BULL",
     "RISK_OFF_USD_BULL": "BEAR",
+    "US_EXCEPTIONALISM": "BULL",
+    "STAGFLATION": "BEAR",
     "TIE": "TIE",
 }
 
@@ -76,32 +80,57 @@ def validate_macro_judge_output(
     hallucination_reasons: List[str] = []
     
     # 1. Check Score vs Winner Consistency
-    if canonical_winner == "RISK_ON_USD_BEAR" and bear_score > bull_score:
+    if canonical_winner in ("RISK_ON_USD_BEAR", "US_EXCEPTIONALISM") and bear_score > bull_score:
         hallucination_detected = True
         hallucination_reasons.append(
-            f"Winner declared RISK_ON_USD_BEAR but Bear score ({bear_score}) > Bull score ({bull_score})"
+            f"Winner declared {canonical_winner} but Bear score ({bear_score}) > Bull score ({bull_score})"
         )
-    elif canonical_winner == "RISK_OFF_USD_BULL" and bull_score > bear_score:
+    elif canonical_winner in ("RISK_OFF_USD_BULL", "STAGFLATION") and bull_score > bear_score:
         hallucination_detected = True
         hallucination_reasons.append(
-            f"Winner declared RISK_OFF_USD_BULL but Bull score ({bull_score}) > Bear score ({bear_score})"
+            f"Winner declared {canonical_winner} but Bull score ({bull_score}) > Bear score ({bear_score})"
         )
         
     # 2. Check Winner vs Directional Biases Consistency
+    rationale_lower = str(validated.get("rationale", "")).lower()
     if canonical_winner == "RISK_ON_USD_BEAR":
-        if dxy_bias == "BULLISH":
+        if dxy_bias == "BULLISH" and risk_asset_bias == "BULLISH":
+            if any(k in rationale_lower for k in ["exceptionalism", "divergence", "yield spread", "us growth", "outperform"]):
+                validated["winner"] = "US_EXCEPTIONALISM"
+                validated["legacy_winner"] = "BULL"
+                canonical_winner = "US_EXCEPTIONALISM"
+            else:
+                hallucination_detected = True
+                hallucination_reasons.append("Inversion: Winner is RISK_ON_USD_BEAR but dxy_bias is BULLISH without divergence justification")
+        elif dxy_bias == "BULLISH":
             hallucination_detected = True
             hallucination_reasons.append("Inversion: Winner is RISK_ON_USD_BEAR but dxy_bias is BULLISH")
         if risk_asset_bias == "BEARISH":
             hallucination_detected = True
             hallucination_reasons.append("Inversion: Winner is RISK_ON_USD_BEAR but risk_asset_bias is BEARISH")
     elif canonical_winner == "RISK_OFF_USD_BULL":
-        if dxy_bias == "BEARISH":
+        if dxy_bias == "BEARISH" and risk_asset_bias == "BEARISH":
+            if any(k in rationale_lower for k in ["stagflation", "liquidity drain", "credit contraction", "recession"]):
+                validated["winner"] = "STAGFLATION"
+                validated["legacy_winner"] = "BEAR"
+                canonical_winner = "STAGFLATION"
+            else:
+                hallucination_detected = True
+                hallucination_reasons.append("Inversion: Winner is RISK_OFF_USD_BULL but dxy_bias is BEARISH without stagflation justification")
+        elif dxy_bias == "BEARISH":
             hallucination_detected = True
             hallucination_reasons.append("Inversion: Winner is RISK_OFF_USD_BULL but dxy_bias is BEARISH")
         if risk_asset_bias == "BULLISH":
             hallucination_detected = True
             hallucination_reasons.append("Inversion: Winner is RISK_OFF_USD_BULL but risk_asset_bias is BULLISH")
+    elif canonical_winner == "US_EXCEPTIONALISM":
+        if risk_asset_bias == "BEARISH" or dxy_bias == "BEARISH":
+            hallucination_detected = True
+            hallucination_reasons.append("Inversion: Winner is US_EXCEPTIONALISM but dxy_bias or risk_asset_bias is BEARISH")
+    elif canonical_winner == "STAGFLATION":
+        if risk_asset_bias == "BULLISH" or dxy_bias == "BULLISH":
+            hallucination_detected = True
+            hallucination_reasons.append("Inversion: Winner is STAGFLATION but dxy_bias or risk_asset_bias is BULLISH")
             
     # 3. Check Tight Score / Uncertainty Escalation
     # Only force escalation on true exact tie (bull_score == bear_score) or explicit canonical TIE,

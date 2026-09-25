@@ -36,14 +36,19 @@ SYMBOL_FETCH_TASKS = [
     ("get_technical_indicators", {"timeframe": "D1"}),
     ("get_technical_indicators", {"timeframe": "H4"}),
     ("get_technical_indicators", {"timeframe": "H1"}),
+    ("get_technical_indicators", {"timeframe": "M15"}),
     ("get_atr",                  {"timeframe": "H4"}),
-    ("get_price_history",        {"timeframe": "H4", "limit": 30}),
+    ("get_price_history",        {"timeframe": "H4", "limit": 25}),
     ("get_price_history",        {"timeframe": "H1", "limit": 24}),
+    ("get_price_history",        {"timeframe": "M15", "limit": 20}),
     ("get_swing_points",         {"timeframe": "D1", "limit": 4}),
     ("get_swing_points",         {"timeframe": "H4", "limit": 6}),
+    ("get_swing_points",         {"timeframe": "M15", "limit": 6}),
     ("get_structure_breaks",     {"timeframe": "D1"}),
     ("get_structure_breaks",     {"timeframe": "H4"}),
+    ("get_structure_breaks",     {"timeframe": "M15"}),
     ("get_smc_zones",            {"timeframe": "H4"}),
+    ("get_smc_zones",            {"timeframe": "M15"}),
     ("get_fibonacci_levels",     {"timeframe": "H4"}),
     ("get_liquidity_sweep_context", {}),
     ("get_macro_bias_score", {}),
@@ -149,7 +154,16 @@ class Stage2DataBundler:
         except Exception:
             pass
 
-        for check_tf, max_age_hours in [("H4", 5.0), ("D1", 36.0)]:
+        # Monday morning D1 tolerance: Friday close bar is ~72-84h old
+        d1_max_age = 84.0 if now.weekday() == 0 else 36.0
+        check_configs = [
+            ("M15", 1.5),
+            ("H1", 3.0),
+            ("H4", 6.0),
+            ("D1", d1_max_age)
+        ]
+
+        for check_tf, max_age_hours in check_configs:
             ohlcv_key = f"get_price_history_{check_tf}" if f"get_price_history_{check_tf}" in data else (
                 f"price_history_{check_tf}_recent" if f"price_history_{check_tf}_recent" in data else None
             )

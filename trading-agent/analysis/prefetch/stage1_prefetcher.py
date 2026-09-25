@@ -143,7 +143,7 @@ class Stage1DataBundler:
             if ec_data and isinstance(ec_data, dict) and "error" not in ec_data and ec_data.get("events"):
                 breaker.record_feed_heartbeat("economic_calendar")
             ty_data = bundled_data.get("treasury_yields")
-            if ty_data and isinstance(ty_data, dict) and "error" not in ty_data and ty_data.get("yields_by_tenor"):
+            if ty_data and isinstance(ty_data, dict) and "error" not in ty_data:
                 breaker.record_feed_heartbeat("fred")
             nd_data = bundled_data.get("news_digest")
             if nd_data and isinstance(nd_data, dict) and "error" not in nd_data and (nd_data.get("items") or nd_data.get("digest")):

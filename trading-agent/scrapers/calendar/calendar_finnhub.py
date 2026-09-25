@@ -60,7 +60,8 @@ class FinnhubCalendarScraper:
     """
 
     BASE_URL = "https://finnhub.io/api/v1/calendar/economic"
-    _endpoint_403_detected = False
+    _endpoint_403_detected: bool = False
+    _endpoint_403_until: float = 0.0
 
     def __init__(self, api_key: str | None = None, days_ahead: int = 2):
         if not api_key and not os.getenv("FINNHUB_API_KEY"):
@@ -82,8 +83,15 @@ class FinnhubCalendarScraper:
             logger.warning("FINNHUB_API_KEY not set — FinnhubCalendarScraper disabled")
             return []
 
-        if FinnhubCalendarScraper._endpoint_403_detected:
-            logger.debug("Finnhub economic calendar requires paid plan — skipping request.")
+        # Auto-reset 403 status when cooldown expires
+        if FinnhubCalendarScraper._endpoint_403_until > 0 and time.time() >= FinnhubCalendarScraper._endpoint_403_until:
+            FinnhubCalendarScraper._endpoint_403_detected = False
+            FinnhubCalendarScraper._endpoint_403_until = 0.0
+
+        if time.time() < FinnhubCalendarScraper._endpoint_403_until or (
+            FinnhubCalendarScraper._endpoint_403_detected and FinnhubCalendarScraper._endpoint_403_until == 0.0
+        ):
+            logger.debug("Finnhub economic calendar in 403 cooldown — skipping request.")
             return []
 
         today = date.today()
@@ -111,11 +119,9 @@ class FinnhubCalendarScraper:
                     timeout=15,
                 )
                 if resp.status_code == 403:
-                    if not FinnhubCalendarScraper._endpoint_403_detected:
-                        FinnhubCalendarScraper._endpoint_403_detected = True
-                        logger.info(f"Finnhub economic calendar endpoint returned 403 Forbidden (requires paid subscription plan) — disabling Finnhub calendar endpoint for this session")
-                    else:
-                        logger.debug("Finnhub calendar 403: Forbidden")
+                    FinnhubCalendarScraper._endpoint_403_detected = True
+                    FinnhubCalendarScraper._endpoint_403_until = time.time() + 1800.0  # 30-min cooldown
+                    logger.info("Finnhub economic calendar returned 403 Forbidden — cooling down for 30m")
                     return []
 
                 if resp.status_code == 429:
@@ -181,8 +187,15 @@ class FinnhubCalendarScraper:
             logger.warning("FINNHUB_API_KEY not set — FinnhubCalendarScraper disabled")
             return []
 
-        if FinnhubCalendarScraper._endpoint_403_detected:
-            logger.debug("Finnhub economic calendar requires paid plan — skipping request.")
+        # Auto-reset 403 status when cooldown expires
+        if FinnhubCalendarScraper._endpoint_403_until > 0 and time.time() >= FinnhubCalendarScraper._endpoint_403_until:
+            FinnhubCalendarScraper._endpoint_403_detected = False
+            FinnhubCalendarScraper._endpoint_403_until = 0.0
+
+        if time.time() < FinnhubCalendarScraper._endpoint_403_until or (
+            FinnhubCalendarScraper._endpoint_403_detected and FinnhubCalendarScraper._endpoint_403_until == 0.0
+        ):
+            logger.debug("Finnhub economic calendar in 403 cooldown — skipping request.")
             return []
 
         today = date.today()
@@ -208,13 +221,9 @@ class FinnhubCalendarScraper:
                     }
                     async with session.get(self.BASE_URL, params=params) as resp:
                         if resp.status == 403:
-                            if not FinnhubCalendarScraper._endpoint_403_detected:
-                                FinnhubCalendarScraper._endpoint_403_detected = True
-                                logger.info(
-                                    "Finnhub economic calendar endpoint returned 403 Forbidden (requires paid subscription plan) — disabling Finnhub calendar endpoint for this session"
-                                )
-                            else:
-                                logger.debug("Finnhub calendar 403: Forbidden")
+                            FinnhubCalendarScraper._endpoint_403_detected = True
+                            FinnhubCalendarScraper._endpoint_403_until = time.time() + 1800.0  # 30-min cooldown
+                            logger.info("Finnhub economic calendar returned 403 Forbidden — cooling down for 30m")
                             return []
 
                         if resp.status == 429:

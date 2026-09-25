@@ -73,7 +73,7 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                         bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
                     )
 
-                if not _is_grounded(rebuttal_res, curr_p):
+                if not _is_grounded(rebuttal_res, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None):
                     rebuttal_res['rebuttal_strength'] = max(1, rebuttal_res.get('rebuttal_strength', 5) - 2)
                     rebuttal_res['ungrounded_penalty'] = True
 
@@ -81,6 +81,8 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                 return sym, {
                     'bull_rebuttal': rebuttal_res,
                     'bear_rebuttal': rebuttal_res,
+                    'rebuttal': rebuttal_res,
+                    'pro_rebuttal': rebuttal_res,
                     'turn': new_turn,
                     'needs_rebuttal': False
                 }

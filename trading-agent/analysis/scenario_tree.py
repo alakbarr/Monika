@@ -183,6 +183,11 @@ class ScenarioTreeEngine:
         Builds a deterministic 3-branch scenario tree from market context and indicators.
         Probabilities are calculated dynamically using compute_empirical_probabilities.
         """
+        if atr_14 is None or atr_14 <= 0:
+            atr_14 = current_price * 0.005 if current_price > 0 else 0.0050
+        confluence_score = max(1, min(12, int(confluence_score if confluence_score is not None else 8)))
+        spread_drift = max(0.1, min(5.0, float(spread_drift if spread_drift is not None else 1.0)))
+
         tree = ScenarioTree(symbol=symbol)
         
         # 1. Root context node

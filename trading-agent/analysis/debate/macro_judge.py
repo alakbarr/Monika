@@ -21,18 +21,18 @@ JUDGE_SCHEMA = {
         },
         "winner": {
             "type": "string",
-            "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "TIE", "BULL", "BEAR"],
-            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' (or BULL) means risk-on/weak dollar won. 'RISK_OFF_USD_BULL' (or BEAR) means risk-off/strong dollar won. 'TIE' if balanced."
+            "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "US_EXCEPTIONALISM", "STAGFLATION", "TIE", "BULL", "BEAR"],
+            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' (or BULL) means risk-on/weak dollar won. 'RISK_OFF_USD_BULL' (or BEAR) means risk-off/strong dollar won. 'US_EXCEPTIONALISM' means both USD and US risk assets are bullish. 'STAGFLATION' means risk assets and USD are both struggling. 'TIE' if balanced."
         },
         "dxy_bias": {
             "type": "string",
             "enum": ["BULLISH", "BEARISH", "NEUTRAL"],
-            "description": "Directional bias for US Dollar Index (DXY). MANDATORY: If RISK_ON_USD_BEAR won, dxy_bias MUST be BEARISH. If RISK_OFF_USD_BULL won, dxy_bias MUST be BULLISH."
+            "description": "Directional bias for US Dollar Index (DXY). MANDATORY: If RISK_ON_USD_BEAR won, dxy_bias MUST be BEARISH. If RISK_OFF_USD_BULL or US_EXCEPTIONALISM won, dxy_bias MUST be BULLISH."
         },
         "risk_asset_bias": {
             "type": "string",
             "enum": ["BULLISH", "BEARISH", "NEUTRAL"],
-            "description": "Directional bias for Risk Assets (equities, crypto, commodities, pro-cyclical FX). MANDATORY: If RISK_ON_USD_BEAR won, risk_asset_bias MUST be BULLISH. If RISK_OFF_USD_BULL won, risk_asset_bias MUST be BEARISH."
+            "description": "Directional bias for Risk Assets (equities, crypto, commodities, pro-cyclical FX). MANDATORY: If RISK_ON_USD_BEAR or US_EXCEPTIONALISM won, risk_asset_bias MUST be BULLISH. If RISK_OFF_USD_BULL or STAGFLATION won, risk_asset_bias MUST be BEARISH."
         },
         "rationale": {
             "type": "string",
@@ -70,13 +70,13 @@ async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, cont
         "CRITICAL LOGICAL MAPPING RULES:\n"
         "- If Analyst 1 (Risk-On / Dollar-Bear) has stronger data: winner='RISK_ON_USD_BEAR', dxy_bias='BEARISH', risk_asset_bias='BULLISH'.\n"
         "- If Analyst 2 (Risk-Off / Dollar-Bull) has stronger data: winner='RISK_OFF_USD_BULL', dxy_bias='BULLISH', risk_asset_bias='BEARISH'.\n"
+        "- If economic growth/yield divergence favors strong USD alongside resilient equities (US Exceptionalism): winner='US_EXCEPTIONALISM', dxy_bias='BULLISH', risk_asset_bias='BULLISH'.\n"
         "- If both sides are equally balanced or data is contradictory: check TIE-BREAKING PROTOCOL below before declaring TIE.\n"
         "- TIE-BREAKING PROTOCOL: If scores are tied (e.g. 5 vs 5 or 6 vs 6), prioritize dominant Higher Timeframe Trend (DXY D1 trend and Real US 10Y Yield slope). Only award 'TIE' (dxy_bias='NEUTRAL', escalation_required=True) if HTF trend is also flat/indecisive.\n\n"
         "MANDATORY FACT-CHECKING CHECKLIST:\n"
         "1. Score higher ONLY the thesis that cites concrete, grounded macro data (Yield curve slope, FedWatch probabilities, COT net positioning, recent CPI/NFP figures).\n"
         "2. Rhetorical or speculative arguments unsupported by the provided DATA CONTEXT must be awarded <= 4 points.\n"
-        "3. If both analysts rely primarily on speculation and HTF data is flat, declare 'TIE' and set escalation_required=True.\n\n"
-        "DO NOT invert these relationships! An evaluation that awards victory to Risk-On / Dollar-Bear while calling DXY Bullish is logically invalid."
+        "3. If both analysts rely primarily on speculation and HTF data is flat, declare 'TIE' and set escalation_required=True.\n"
     )
 
     prompt = f"""Adjudicate the macro debate based strictly on the empirical data context and analyst arguments.
