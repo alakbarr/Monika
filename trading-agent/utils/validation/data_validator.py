@@ -384,12 +384,13 @@ async def check_data_coherence(
             price_age = (now - latest_price).total_seconds() / 3600
             ind_age = (now - latest_ind).total_seconds() / 3600
             
-            # Jika indicator lebih lama dari price > 1 jam, ada desync
+            # Check desync between indicator and price based on timeframe duration
+            max_allowed_desync = {"M15": 0.5, "H1": 1.5, "H4": 4.5, "D1": 25.0}.get(tf, 2.0)
             time_diff = abs((latest_ind - latest_price).total_seconds()) / 3600
-            if time_diff > 1.0:
+            if time_diff > max_allowed_desync:
                 issues.append(
                     f'{symbol}/{tf}: Indicator timestamp ({latest_ind}) '
-                    f'differs from OHLCV ({latest_price}) by {time_diff:.1f}h '
+                    f'differs from OHLCV ({latest_price}) by {time_diff:.1f}h (allowed: {max_allowed_desync}h) '
                     f'— indicators may not reflect latest prices'
                 )
             

@@ -61,17 +61,37 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         if actual is None or forecast is None:
             continue
         
-        # Normalisasi: persentase deviasi dari forecast
-        if abs(forecast) > 0.001:
-            surprise = round(((actual - forecast) / abs(forecast)) * 100.0, 4)
-        else:
-            surprise = round(actual - forecast, 4)
-
-        # Inversi arah untuk metrik pengangguran/klaim
-        # (kenaikan pengangguran adalah sinyal dovish/pelemah mata uang)
+        # Indicator-specific surprise calculation
         name_lower = (event.event_name or "").lower()
-        if any(kw in name_lower for kw in _INVERTED_METRIC_KEYWORDS):
-            surprise = -surprise
+        diff = actual - forecast
+        
+        # 1. Central bank interest rate decisions (Fed Funds, ECB, BOE, BOJ, RBA)
+        if any(k in name_lower for k in ("interest rate", "rate decision", "fed funds", "refinancing rate", "cash rate", "policy rate")):
+            # 15 bps (0.15%) difference is massive -> normalize so 15 bps = 20.0 surprise score
+            surprise = round((diff / 0.15) * 20.0, 4)
+        # 2. CPI / PCE inflation
+        elif any(k in name_lower for k in ("cpi", "pce", "inflation", "ppi")):
+            # 0.20% difference is a major macro surprise -> normalize so 0.20% = 20.0 score
+            surprise = round((diff / 0.20) * 20.0, 4)
+        # 3. NFP / Employment Change
+        elif any(k in name_lower for k in ("nonfarm", "payroll", "employment change", "nfp")):
+            # 30,000 difference is major -> normalize so 30K = 20.0 score
+            scale = 30_000.0 if (abs(actual) > 1000 or abs(forecast) > 1000) else 30.0
+            surprise = round((diff / scale) * 20.0, 4)
+        # 4. Unemployment Rate
+        elif any(k in name_lower for k in ("unemployment rate", "jobless rate")):
+            # Inverted: higher unemployment is dovish (-), 0.20% = 20.0 score
+            surprise = round((-diff / 0.20) * 20.0, 4)
+        else:
+            # Normalisasi persentase deviasi dari forecast untuk metrik umum
+            if abs(forecast) > 0.001:
+                surprise = round(((actual - forecast) / abs(forecast)) * 100.0, 4)
+            else:
+                surprise = round(actual - forecast, 4)
+
+            # Inversi arah untuk metrik pengangguran/klaim lainnya
+            if any(kw in name_lower for kw in _INVERTED_METRIC_KEYWORDS):
+                surprise = -surprise
         
         event.surprise_score = round(surprise, 4)
         updated += 1

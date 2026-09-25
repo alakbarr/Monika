@@ -40,7 +40,17 @@ _FINANCIAL_SHORT_TOKENS = {
 
 import string as _string
 
-_POLARITY_KEYWORDS = {"cut", "cuts", "cutting", "hike", "hikes", "hiking", "hold", "holds", "holding", "rise", "falls", "fell", "rose", "jump", "drop", "surge", "plunge"}
+_POLARITY_GROUPS = {
+    "dovish_down": {"cut", "cuts", "cutting", "falls", "fell", "drop", "drops", "dropping", "plunge", "plunges", "slump", "slumps"},
+    "hawkish_up": {"hike", "hikes", "hiking", "rise", "rises", "rising", "rose", "jump", "jumps", "jumping", "surge", "surges", "surging"},
+    "neutral_hold": {"hold", "holds", "holding", "pause", "pauses", "pausing"},
+}
+
+def _get_polarity_group(toks: set) -> Optional[str]:
+    for group, words in _POLARITY_GROUPS.items():
+        if toks & words:
+            return group
+    return None
 
 def _jaccard_title_similarity(title_a: str, title_b: str) -> float:
     def _clean_tokens(title: str) -> set:
@@ -56,10 +66,10 @@ def _jaccard_title_similarity(title_a: str, title_b: str) -> float:
     if not tokens_a or not tokens_b:
         return 0.0
 
-    # Polarity conflict guard: if titles have opposing polarity keywords, reject duplicate
-    p_a = tokens_a & _POLARITY_KEYWORDS
-    p_b = tokens_b & _POLARITY_KEYWORDS
-    if p_a and p_b and p_a != p_b:
+    # Polarity conflict guard: if titles have truly opposing semantic polarity, reject duplicate
+    grp_a = _get_polarity_group(tokens_a)
+    grp_b = _get_polarity_group(tokens_b)
+    if grp_a and grp_b and grp_a != grp_b:
         return 0.0
 
     intersection = len(tokens_a & tokens_b)
@@ -257,7 +267,7 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
 
         # Check structural whitelist ONLY for unscaled base numbers (e.g. 1..10, years, horizons)
         # Scaled financial claims like $2B, 25bps, or 5.0% must be grounded in source text!
-        has_multiplier = bool(_re.search(r'[kmbte兆億]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct|\$|usd|eur|gbp', tok_lower))
+        has_multiplier = bool(_re.search(r'(?:[0-9]+(?:\.[0-9]+)?\s*(?:[kmb兆億]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct)|(?:\$|€|£|¥)\s*[0-9]+|\b(?:usd|eur|gbp)\b)', tok_lower))
         if not has_multiplier and any(v in _STRUCTURAL_NUMBERS for v in tok_variants):
             continue
 
@@ -389,7 +399,7 @@ def _resolve_item_index(item_result: dict, batch: list, is_zero_based: bool = Fa
         return None
     try:
         clean_str = str(raw_idx).strip().rstrip(".:)")
-        idx_val = int(clean_str)
+        idx_val = int(float(clean_str))
     except (ValueError, TypeError):
         return None
 
@@ -1824,9 +1834,39 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                 return (True, 'no_surprise_data_available')  # fail-open, data belum sempat dihitung
             max_abs_surprise = max(abs(e.surprise_score or 0.0) for e in events)
             MIN_SURPRISE_FOR_BREAKING = 15.0  # tinjau ulang periodik via compute_news_classification_calibration
-            if max_abs_surprise < MIN_SURPRISE_FOR_BREAKING:
-                return (False, f'surprise_score={max_abs_surprise:.1f} below BREAKING threshold ({MIN_SURPRISE_FOR_BREAKING})')
-            return (True, f'surprise_score={max_abs_surprise:.1f} confirms BREAKING magnitude')
+
+            from analysis.calculators.economic_surprise import _parse_numeric
+            # Check relative score (>= 15.0) AND indicator-specific absolute thresholds
+            has_major_surprise = False
+            for e in events:
+                if abs(e.surprise_score or 0.0) >= MIN_SURPRISE_FOR_BREAKING:
+                    has_major_surprise = True
+                    break
+                act_v = _parse_numeric(e.actual)
+                fc_v = _parse_numeric(e.forecast)
+                if act_v is not None and fc_v is not None:
+                    name_l = (e.event_name or "").lower()
+                    diff = abs(act_v - fc_v)
+                    # Interest Rate decision: 15 bps (0.15%)
+                    if any(k in name_l for k in ("rate", "fed funds", "refinancing", "cash rate")) and diff >= 0.15:
+                        has_major_surprise = True
+                        break
+                    # CPI / PCE / Inflation: 0.20%
+                    if any(k in name_l for k in ("cpi", "pce", "inflation", "ppi")) and diff >= 0.20:
+                        has_major_surprise = True
+                        break
+                    # NFP / Payrolls: 30K
+                    if any(k in name_l for k in ("nonfarm", "payroll", "employment change")) and (diff >= 30000 or (diff >= 30.0 and act_v < 1000)):
+                        has_major_surprise = True
+                        break
+                    # Unemployment Rate: 0.20%
+                    if "unemployment" in name_l and diff >= 0.20:
+                        has_major_surprise = True
+                        break
+
+            if not has_major_surprise:
+                return (False, f'surprise_score={max_abs_surprise:.1f} and indicator values below absolute BREAKING thresholds')
+            return (True, f'surprise confirms BREAKING magnitude (score={max_abs_surprise:.1f})')
         except Exception as e:
             logger.debug(f'Surprise magnitude cross-check failed (fail-open): {e}')
             return (True, 'check_failed_fail_open')

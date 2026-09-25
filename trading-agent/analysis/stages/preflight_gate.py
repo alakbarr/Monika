@@ -21,28 +21,28 @@ import utils.clock as clock
 
 logger = logging.getLogger("TradingAgent.PreFlightGate")
 
-# Verified empirical baseline active medians (in points) from FBS MT5 terminal
+# Verified empirical baseline active medians (in points) from live MT5 terminal
 EMPIRICAL_ACTIVE_MEDIANS = {
-    "XAUUSD": 23.0,   # $0.23
-    "EURUSD": 8.0,    # 0.8 pip
-    "GBPUSD": 9.0,    # 0.9 pip
-    "USDJPY": 9.0,    # 0.9 pip
-    "AUDUSD": 9.0,    # 0.9 pip
-    "XTIUSD": 2.0,    # $0.02
-    "BTCUSD": 1965.0, # $19.65
-    "XBRUSD": 2.0,    # $0.02
+    "XAUUSD": 35.0,   # $0.35 (live active: 38.0)
+    "EURUSD": 10.0,   # 1.0 pip (live active: 10.0)
+    "GBPUSD": 11.0,   # 1.1 pip (live active: 11.0)
+    "USDJPY": 10.0,   # 1.0 pip (live active: 10.0)
+    "AUDUSD": 11.0,   # 1.1 pip (live active: 11.0)
+    "XTIUSD": 4.0,    # $0.04 (live active: 4.0)
+    "BTCUSD": 2000.0, # $20.00 (live active: 1965.0)
+    "XBRUSD": 3.5,    # $0.035 (live active: 3.0)
 }
 
 # Absolute hard ceiling limits during active hours (in points)
 ACTIVE_SPREAD_HARD_CEILINGS = {
-    "XAUUSD": 45.0,
-    "EURUSD": 16.0,
-    "GBPUSD": 18.0,
-    "USDJPY": 18.0,
-    "AUDUSD": 18.0,
-    "XTIUSD": 4.0,
-    "BTCUSD": 2500.0,
-    "XBRUSD": 4.0,
+    "XAUUSD": 70.0,   # $0.70 (up to 2.0x active median)
+    "EURUSD": 20.0,   # 2.0 pips
+    "GBPUSD": 22.0,   # 2.2 pips
+    "USDJPY": 20.0,   # 2.0 pips
+    "AUDUSD": 22.0,   # 2.2 pips
+    "XTIUSD": 10.0,   # $0.10 (up to 2.5x active median)
+    "BTCUSD": 4500.0, # $45.00 (tolerates crypto volatility & weekend widenings)
+    "XBRUSD": 10.0,   # $0.10 (up to 2.8x active median)
 }
 
 SYMBOL_CURRENCIES = {
@@ -153,8 +153,8 @@ class PreFlightTurnGate:
                     else:
                         tick_ts = now_utc.timestamp()
                     age = abs(now_utc.timestamp() - tick_ts)
-                    if age > 60 and not is_24_7:
-                        reason = f"MT5 quote stale for {sym_clean} (age={age:.0f}s > 60s)."
+                    if age > 180 and not is_24_7:
+                        reason = f"MT5 quote stale for {sym_clean} (age={age:.0f}s > 180s)."
                         logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                         return False, reason
 

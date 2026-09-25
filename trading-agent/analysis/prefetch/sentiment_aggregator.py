@@ -25,15 +25,21 @@ class SentimentAggregator:
         narrative_parts = []
         
         # 1. COT (Institutional) - 40% weight (0 to 4 points)
-        # Assuming cot_data has a 'net_long' or 'bias' field
         cot_score = 5.0
         if cot_data and not cot_data.get("error"):
-            # Mock logic based on net bias
-            bias = cot_data.get("bias", "neutral")
-            if bias == "net_long":
+            signal = str(cot_data.get("signal") or cot_data.get("bias") or "").lower()
+            flag = str(cot_data.get("flag") or "").lower()
+            
+            if "extreme_long" in flag or signal in ("extreme_long", "strong_bullish"):
+                cot_score = 9.0
+                narrative_parts.append("Institutional positioning is extreme long (strong bullish momentum).")
+            elif "extreme_short" in flag or signal in ("extreme_short", "strong_bearish"):
+                cot_score = 1.0
+                narrative_parts.append("Institutional positioning is extreme short (strong bearish momentum).")
+            elif "bull" in signal or "long" in signal:
                 cot_score = 8.0
                 narrative_parts.append("Institutional positioning is net long.")
-            elif bias == "net_short":
+            elif "bear" in signal or "short" in signal:
                 cot_score = 2.0
                 narrative_parts.append("Institutional positioning is net short.")
             else:

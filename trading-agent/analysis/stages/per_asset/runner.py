@@ -302,15 +302,21 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         if not analysis and final_text:
             try:
                 import re
+                import re
                 text_lower = final_text.lower()
                 extracted_decision = None
-                if "decision: buy" in text_lower or '"decision": "buy"' in text_lower or "**decision**: buy" in text_lower or "decision: **buy**" in text_lower:
+                
+                # Use strict pattern matching to avoid false positives on words like "wait for pullback"
+                m_dec = re.search(r'\b(?:decision|action)\s*[:=]\s*["\']?\*?\*?(buy|sell|avoid|wait)\*?\*?["\']?', text_lower)
+                if m_dec:
+                    extracted_decision = m_dec.group(1)
+                elif '"decision": "buy"' in text_lower or "'decision': 'buy'" in text_lower or "**decision**: buy" in text_lower:
                     extracted_decision = "buy"
-                elif "decision: sell" in text_lower or '"decision": "sell"' in text_lower or "**decision**: sell" in text_lower or "decision: **sell**" in text_lower:
+                elif '"decision": "sell"' in text_lower or "'decision': 'sell'" in text_lower or "**decision**: sell" in text_lower:
                     extracted_decision = "sell"
-                elif "decision: avoid" in text_lower or '"decision": "avoid"' in text_lower or "**decision**: avoid" in text_lower:
+                elif '"decision": "avoid"' in text_lower or "'decision': 'avoid'" in text_lower or "**decision**: avoid" in text_lower:
                     extracted_decision = "avoid"
-                elif "decision: wait" in text_lower or '"decision": "wait"' in text_lower or "**decision**: wait" in text_lower or "wait" in text_lower:
+                elif '"decision": "wait"' in text_lower or "'decision': 'wait'" in text_lower or "**decision**: wait" in text_lower:
                     extracted_decision = "wait"
 
                 if extracted_decision:
@@ -324,8 +330,16 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     }
                     if extracted_decision in ("buy", "sell"):
                         fallback_payload["entry_condition"] = {"type": "market", "detail": "Extracted market entry"}
-                        fallback_payload["stop_loss"] = 0.0
-                        fallback_payload["take_profit"] = 0.0
+                        # Try extracting numerical SL and TP from text if available
+                        m_sl = re.search(r'(?:stop[-_\s]*loss|sl)\s*[:=]\s*([0-9.]+)', text_lower)
+                        m_tp = re.search(r'(?:take[-_\s]*profit|tp)\s*[:=]\s*([0-9.]+)', text_lower)
+                        if m_sl and m_tp:
+                            try:
+                                fallback_payload["stop_loss"] = float(m_sl.group(1))
+                                fallback_payload["take_profit"] = float(m_tp.group(1))
+                            except ValueError:
+                                fallback_payload["stop_loss"] = None
+                                fallback_payload["take_profit"] = None
                     
                     from analysis.tools.tool_executor import ToolExecutor
                     executor = ToolExecutor(session, settings=self.settings, model_name=active_client.model, symbol=symbol)
@@ -1389,12 +1403,12 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 .where(EconomicCalendar.impact.in_(['high', 'High', 'HIGH']))
                 .where(EconomicCalendar.currency.in_(list(sym_currencies)))
                 .where(EconomicCalendar.event_time >= _get_clock().now())
-                .where(EconomicCalendar.event_time <= _get_clock().now() + _td(minutes=45))
+                .where(EconomicCalendar.event_time <= _get_clock().now() + _td(minutes=15))
                 .limit(1)
             )).scalar_one_or_none()
             if upcoming_cal:
-                # Force skip if major news < 45m
-                return (False, f"Quick local check: High-impact event '{upcoming_cal.event_name}' in < 45m. Avoiding entry.")
+                # Force skip if major news < 15m (harmonized with PreFlightTurnGate)
+                return (False, f"Quick local check: High-impact event '{upcoming_cal.event_name}' in < 15m. Avoiding entry.")
         except Exception as e:
             logger.debug(f'Prescreen calendar check failed: {e}')
 
@@ -1474,7 +1488,7 @@ Context:
 - Proximity: {nearest_zone_note}
 
 Rule:
-- Return YES if price is within 0.3% of a strong S/R zone (strength>=3) OR standard risk/vix conditions hold.
+- Return YES if price is within 1.0% of a strong S/R zone (strength>=3) OR within 1.0x ATR H4 OR standard risk/vix conditions hold.
 - Return NO if: Risk paused OR market closed OR ADX dead (<12) OR VIX extreme (>35).{bias_note}
 """
 
@@ -1506,8 +1520,8 @@ Rule:
                     brief = (await session.execute(
                         select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
                     )).scalar_one_or_none()
-                    if brief and brief.confidence and brief.confidence >= 0.70:
-                        logger.info(f"[{symbol}] Prescreen returned NO, but bypassing due to HIGH FundamentalBrief confidence ({brief.confidence})")
+                    if brief and brief.confidence and brief.confidence >= 0.55:
+                        logger.info(f"[{symbol}] Prescreen returned NO, but bypassing due to solid FundamentalBrief confidence ({brief.confidence})")
                         return True, 'forced_by_macro_override_high_conf'
                     
                     pair_info = SYMBOL_CURRENCY_MAP.get(symbol, {})

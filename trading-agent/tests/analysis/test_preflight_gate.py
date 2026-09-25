@@ -78,11 +78,11 @@ async def test_preflight_rollover_window_allows_crypto():
 
 @pytest.mark.asyncio
 async def test_preflight_stale_quote_blocks_turn():
-    # Active hour, but tick is 120s old
+    # Active hour, but tick is 240s old (exceeds 180s threshold)
     test_time = datetime(2026, 9, 4, 14, 30, tzinfo=timezone.utc)
     mock_mt5 = MagicMock()
     mock_tick = MagicMock()
-    mock_tick.time = test_time.timestamp() - 120  # 120s old
+    mock_tick.time = test_time.timestamp() - 240  # 240s old (> 180s)
     mock_tick.spread = 8.0
     mock_mt5.get_latest_tick = AsyncMock(return_value=mock_tick)
 

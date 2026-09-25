@@ -10,6 +10,7 @@ from graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
 from analysis.providers.llm_factory import get_client_for_task
 from analysis.debate.bull_analyst import generate_bull_rebuttal
+from analysis.debate.bear_analyst import generate_bear_rebuttal
 from graph.nodes.debate.helpers import _is_grounded, sync_facade_patches
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.RebuttalNode")
@@ -35,8 +36,11 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
 
     debate_states = dict(state.get("debate_states", {}))
     bull_client = get_client_for_task("debate_bull", settings)
+    bear_client = get_client_for_task("debate_bear", settings)
     if not bull_client:
-        bull_client = get_client_for_task("debate_bear", settings)
+        bull_client = bear_client
+    if not bear_client:
+        bear_client = bull_client
 
     semaphore = asyncio.Semaphore(3)
 
@@ -54,21 +58,34 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
         if not verified_bull_claim or not bear_dissent or not original_context:
             return sym, None
 
+        decision = str(original_context.get("decision", "buy")).lower()
+        is_sell = decision in ("sell", "short")
+
         async with semaphore:
             try:
-                logger.info(f"[{sym}] Executing round 2 dialectic rebuttal...")
-                bull_rebuttal = await generate_bull_rebuttal(
-                    bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
-                )
+                logger.info(f"[{sym}] Executing round 2 dialectic rebuttal (direction={decision.upper()})...")
+                if is_sell:
+                    rebuttal_res = await generate_bear_rebuttal(
+                        bear_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
+                    )
+                else:
+                    rebuttal_res = await generate_bull_rebuttal(
+                        bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
+                    )
 
-                if not _is_grounded(bull_rebuttal, curr_p):
-                    bull_rebuttal['rebuttal_strength'] = max(1, bull_rebuttal.get('rebuttal_strength', 5) - 2)
-                    bull_rebuttal['ungrounded_penalty'] = True
+                if not _is_grounded(rebuttal_res, curr_p):
+                    rebuttal_res['rebuttal_strength'] = max(1, rebuttal_res.get('rebuttal_strength', 5) - 2)
+                    rebuttal_res['ungrounded_penalty'] = True
 
                 new_turn = deb.get("turn", 1) + 1
-                return sym, {'bull_rebuttal': bull_rebuttal, 'turn': new_turn, 'needs_rebuttal': False}
+                return sym, {
+                    'bull_rebuttal': rebuttal_res,
+                    'bear_rebuttal': rebuttal_res,
+                    'turn': new_turn,
+                    'needs_rebuttal': False
+                }
             except Exception as e:
-                logger.error(f"[{sym}] Bull rebuttal failed: {e}", exc_info=True)
+                logger.error(f"[{sym}] Rebuttal failed: {e}", exc_info=True)
                 return sym, None
 
     tasks = [_process_single(sym, r) for sym, r in actionable]
