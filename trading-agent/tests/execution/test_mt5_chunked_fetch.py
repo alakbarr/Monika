@@ -32,6 +32,7 @@ def _make_dummy_rates(start_ts: int, count: int):
 @pytest.mark.asyncio
 async def test_get_ohlcv_small_count_single_call():
     client = MT5Client()
+    client._broker_utc_offset_seconds = 0
     client.is_connected = AsyncMock(return_value=True)
     dummy = _make_dummy_rates(1700000000, 100)
 
@@ -49,6 +50,7 @@ async def test_get_ohlcv_small_count_single_call():
 @pytest.mark.asyncio
 async def test_get_ohlcv_large_count_chunked():
     client = MT5Client()
+    client._broker_utc_offset_seconds = 0
     client.is_connected = AsyncMock(return_value=True)
 
     dummy1 = _make_dummy_rates(1700000000, 300)
@@ -67,6 +69,7 @@ async def test_get_ohlcv_large_count_chunked():
 @pytest.mark.asyncio
 async def test_copy_rates_range_chunked():
     client = MT5Client()
+    client._broker_utc_offset_seconds = 0
     client.is_connected = AsyncMock(return_value=True)
 
     d_from = datetime(2026, 1, 1, tzinfo=timezone.utc)

@@ -489,7 +489,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 event_type="cycle.data_gathered",
                 payload={
                     "market_regime": macro_regime,
-                    "stale_assets": list(stale_assets),
+                    "stale_assets": list(critical_stale_assets),
                     "should_pause": should_pause,
                 },
                 correlation_id=state.get("cycle_id", "cycle_unknown"),
@@ -500,7 +500,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
     return {
         "summary": summary,
-        "stale_assets": list(stale_assets),
+        "stale_assets": list(critical_stale_assets),
         "should_pause": should_pause,
         "market_regime": macro_regime,
         "user_market_intel": active_user_intel,
