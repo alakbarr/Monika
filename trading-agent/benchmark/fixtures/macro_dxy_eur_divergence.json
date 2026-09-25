@@ -1,0 +1,17 @@
+{
+  "fixture_id": "macro_dxy_eur_divergence_2026_09",
+  "regime": "us_growth_outperformance_divergence",
+  "macro_indicators": {
+    "us_gdp_growth_annualized": 2.8,
+    "eurozone_gdp_growth_annualized": 0.4,
+    "us_ism_manufacturing_pmi": 52.4,
+    "eurozone_manufacturing_pmi": 45.8,
+    "brent_crude_usd": 106.00,
+    "terms_of_trade_impact": "sharply_negative_for_europe"
+  },
+  "expected_currency_bias": {
+    "USD": "STRONG_BULLISH",
+    "EUR": "STRONG_BEARISH"
+  },
+  "expected_thesis": "Energy price shock acts as tax on European economy while US energy independence shields domestic growth, reinforcing transatlantic divergence."
+}

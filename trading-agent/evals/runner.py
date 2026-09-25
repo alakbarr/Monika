@@ -123,7 +123,7 @@ def get_default_golden_candidates() -> Dict[str, Dict[str, Any]]:
             "decision": "SELL",
             "entry_price": 2345.00,
             "stop_loss": 2353.00,      # sl_dist = 8.00 (>= 0.8 * atr 5.80 = 4.64)
-            "take_profit": 2329.00,     # tp_dist = 16.00 (R:R = 2.0 >= 1.3)
+            "take_profit": 2325.00,     # tp_dist = 20.00 (R:R = 2.5 >= 1.3, <= max_tp 2325.00)
             "reason": "Asian high sweep rejection and CHoCH structural breakdown",
         },
         "smc_choppy_trap_01": {

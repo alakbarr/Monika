@@ -62,17 +62,25 @@ def compute_brier_score(decisions: List[DecisionEvaluation]) -> float:
     """
     Computes Brier Score: (1/N) * sum((forecast - outcome)^2).
     Lower is better (0.0 = perfect calibration, 1.0 = completely wrong).
+    For active trade setups (BUY/SELL), outcome = 1.0 if valid & oracle passed.
+    For defensive setups (WAIT/AVOID), outcome = 0.0 (rewarding low confidence in non-trading postures).
     """
     if not decisions:
         return 0.0
-    
+
     total_sq_err = 0.0
     for d in decisions:
         conf = (d.confluence_score / 100.0) if d.confluence_score is not None else 0.5
         conf = max(0.0, min(1.0, conf))
-        outcome = 1.0 if d.is_valid_direction and d.oracle_passed else 0.0
+        decision_str = (getattr(d, "decision", None) or "").upper()
+        is_active_trade = decision_str in ("BUY", "SELL")
+        if is_active_trade:
+            outcome = 1.0 if d.is_valid_direction and d.oracle_passed else 0.0
+        else:
+            # Defensive/Cash posture: active execution outcome is 0.0
+            outcome = 0.0
         total_sq_err += (conf - outcome) ** 2
-        
+
     return round(total_sq_err / len(decisions), 4)
 
 

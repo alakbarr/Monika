@@ -1,0 +1,23 @@
+{
+  "fixture_id": "news_nfp_release_2026_09",
+  "news_items": [
+    {
+      "id": 1,
+      "title": "US Non-Farm Payrolls surge +265K vs +175K expected; Unemployment Rate steady at 3.9%",
+      "summary": "Average hourly earnings up +0.4% MoM (+4.1% YoY). Market recalibrates Fed policy pricing to factor in 4.25% terminal rate by Q1 2027. US 10-Year yield surges 12 bps to 4.58%.",
+      "fetched_at": "2026-09-25T12:30:00Z",
+      "expected_impact": "BREAKING",
+      "expected_currencies": ["USD", "EUR", "GBP", "XAU"],
+      "expected_sentiments": {"USD": "STRONG_BULLISH", "XAU": "BEARISH_IMMEDIATE", "EUR": "BEARISH"}
+    },
+    {
+      "id": 2,
+      "title": "Fed Chair Powell states strong labor data validates restrictive policy stance",
+      "summary": "Powell noted inflation progress has stalled around 3.3% Core PCE and committee is prepared to hike again if wage growth remains hot.",
+      "fetched_at": "2026-09-25T13:15:00Z",
+      "expected_impact": "HIGH",
+      "expected_currencies": ["USD"],
+      "expected_sentiments": {"USD": "HAWKISH_BULLISH"}
+    }
+  ]
+}

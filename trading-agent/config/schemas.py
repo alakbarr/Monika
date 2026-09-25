@@ -141,8 +141,35 @@ class EvalsConfig(SubscriptableConfig):
     simulation_clock_enabled: Optional[bool] = True
 
 
+class BenchmarkCandidateConfig(BaseModel, extra="allow"):
+    id: str
+    name: str
+    provider: str
+    model_id: str
+    input_cost_per_m: Optional[float] = 0.0
+    output_cost_per_m: Optional[float] = 0.0
+    latency_sla_ms: Optional[float] = None
+    tier: Optional[str] = "cheap_smart"
+    enabled: Optional[bool] = True
+    tags: Optional[List[str]] = Field(default_factory=list)
+
+
+class BenchmarkTierConfig(BaseModel, extra="allow"):
+    name: str
+    description: Optional[str] = ""
+    target_tasks: Optional[List[str]] = Field(default_factory=list)
+    models: Optional[List[str]] = Field(default_factory=list)
+
+
 class BenchmarkConfig(SubscriptableConfig):
     max_drift_pct: Optional[float] = Field(default=15.0, ge=0.0)
+    default_judge_model: Optional[str] = "anthropic:claude-3-5-sonnet-20241022"
+    default_reference_model: Optional[str] = "anthropic:claude-3-5-sonnet-20241022"
+    default_symbol: Optional[str] = "EURUSD"
+    use_fixtures: Optional[bool] = False
+    candidates: Optional[List[BenchmarkCandidateConfig]] = Field(default_factory=list)
+    tiers: Optional[Dict[str, BenchmarkTierConfig]] = Field(default_factory=dict)
+    router_matrix: Optional[Dict[str, List[str]]] = Field(default_factory=dict)
 
 
 class TradingAgentConfig(SubscriptableConfig):

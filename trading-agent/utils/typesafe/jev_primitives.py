@@ -96,6 +96,35 @@ def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> Dict[str, Un
     return questions
 
 
+def list_to_jev_questions(questions_list: list) -> Dict[str, Union[Choice, Score, Noul]]:
+    """Convert a list of question specifications into a dictionary of Jev Questions."""
+    q_dict: Dict[str, Union[Choice, Score, Noul]] = {}
+    if not isinstance(questions_list, list):
+        return q_dict
+
+    for q in questions_list:
+        if not isinstance(q, dict):
+            continue
+        name = q.get("name")
+        if not name:
+            continue
+        qtype = str(q.get("type", "Noul")).strip()
+        desc = q.get("instructions") or q.get("description") or f"Evaluate {name}"
+        if qtype.lower() == "score":
+            rng = q.get("range", [1, 5])
+            criteria = [f"Level {i}" for i in range(rng[0], rng[1] + 1)]
+            q_dict[name] = Score(instructions=desc, criteria=criteria)
+        elif qtype.lower() == "choice":
+            opts = q.get("options") or q.get("criteria") or {}
+            if isinstance(opts, list):
+                opts = {opt: f"Option {opt}" for opt in opts}
+            q_dict[name] = Choice(instructions=desc, criteria=opts)
+        else:
+            q_dict[name] = Noul(instructions=desc)
+
+    return q_dict
+
+
 def parse_jev_response_to_dict(
     response: SystemOneResponse,
     schema: Optional[dict] = None,

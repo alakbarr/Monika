@@ -46,6 +46,20 @@ def evaluate_trade_discipline(fixture: Dict[str, Any], decision_data: Dict[str, 
         else:
             checks_passed.append("Defensive WAIT supported by risk context")
 
+    # Numerical grounding check on proposed prices against fixture context
+    curr_price = float(fixture.get("current_price", 0.0) or 0.0)
+    if curr_price > 0:
+        for price_key in ("entry_price", "stop_loss", "take_profit"):
+            val = decision_data.get(price_key)
+            if val is not None and isinstance(val, (int, float)) and val > 0:
+                deviation = abs(val - curr_price) / curr_price
+                if deviation > 0.30:  # >30% price deviation is impossible for FX/Gold intra-day
+                    violations.append(
+                        f"Ungrounded price level in {price_key} ({val}): deviates by {deviation:.1%} from fixture price {curr_price}"
+                    )
+                else:
+                    checks_passed.append(f"Price level {price_key} numerically grounded to market context")
+
     return {
         "passed": len(violations) == 0,
         "violations": violations,

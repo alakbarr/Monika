@@ -1,0 +1,27 @@
+{
+  "fixture_id": "risk_eurusd_spread_spike_2026_09",
+  "symbol": "EURUSD",
+  "scenario": "spread_spike_illiquidity",
+  "current_price": 1.1377,
+  "spread_pips": 6.8,
+  "normal_spread_pips": 1.2,
+  "account_state": {
+    "equity": 50000.0,
+    "daily_pnl_pct": -0.2,
+    "portfolio_heat_pct": 1.0,
+    "open_positions": 1
+  },
+  "proposed_trade": {
+    "direction": "BUY",
+    "entry": 1.1377,
+    "stop_loss": 1.1350,
+    "take_profit": 1.1430,
+    "confluence_score": 11,
+    "priced_in_score": 3
+  },
+  "expected_outcome": {
+    "approved": false,
+    "veto_reason": "Spread spike (6.8 pips > max allowed 3.0 pips) compromises risk-reward execution",
+    "requires_hard_block": true
+  }
+}

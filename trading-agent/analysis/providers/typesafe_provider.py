@@ -15,6 +15,7 @@ from typing import Optional, Any, Dict, List, Union
 from analysis.providers.base_provider import BaseLLMClient
 from utils.typesafe.jev_primitives import (
     schema_to_jev_questions,
+    list_to_jev_questions,
     parse_jev_response_to_dict,
 )
 
@@ -87,7 +88,9 @@ class TypeSafeProvider(BaseLLMClient):
 
         # 1. Resolve Questions: explicit Jev primitives or schema-converted
         jev_questions = kwargs.get("jev_questions")
-        if not jev_questions:
+        if isinstance(jev_questions, list):
+            jev_questions = list_to_jev_questions(jev_questions)
+        elif not jev_questions:
             if not schema:
                 logger.warning(f"[{self.model}] Neither jev_questions nor schema provided to classify_json")
                 return None

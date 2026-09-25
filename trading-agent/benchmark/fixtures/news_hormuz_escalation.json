@@ -1,0 +1,32 @@
+{
+  "fixture_id": "news_hormuz_escalation_2026_09",
+  "news_items": [
+    {
+      "id": 1,
+      "title": "US Energy Department confirms drone strike damaged Ras Tanura offshore loading dock",
+      "summary": "Saudi crude exports temporarily slowed by 2.2m bpd. Brent crude crosses $108. Safe haven flows surge into USD and Gold.",
+      "fetched_at": "2026-09-25T07:15:00Z",
+      "expected_impact": "BREAKING",
+      "expected_currencies": ["USD", "XAU", "CAD"],
+      "expected_sentiments": {"USD": "BULLISH", "XAU": "BULLISH", "EUR": "BEARISH"}
+    },
+    {
+      "id": 2,
+      "title": "ECB Lagarde warns energy price spike may delay further euro rate cuts into 2027",
+      "summary": "Speaking in Frankfurt, Lagarde emphasized imported inflation risks from surging oil, cementing higher-for-longer rate regime in Europe.",
+      "fetched_at": "2026-09-25T08:00:00Z",
+      "expected_impact": "HIGH",
+      "expected_currencies": ["EUR"],
+      "expected_sentiments": {"EUR": "HAWKISH_BULLISH"}
+    },
+    {
+      "id": 3,
+      "title": "Japan MOF Kanda issues stern warning on Yen depreciation past 159.00",
+      "summary": "Japanese Vice Finance Minister says authorities are ready to take decisive action against speculative yen moves following BOJ hike.",
+      "fetched_at": "2026-09-25T08:30:00Z",
+      "expected_impact": "MEDIUM",
+      "expected_currencies": ["JPY"],
+      "expected_sentiments": {"JPY": "BULLISH_INTERVENTION_RISK"}
+    }
+  ]
+}

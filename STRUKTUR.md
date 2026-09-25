@@ -363,6 +363,24 @@ Monika/
     │   ├── time_machine.py
     │   └── walk_forward_engine.py
     ├── benchmark
+    │   ├── fixtures
+    │   │   ├── _market_snapshot_2026_09.json
+    │   │   ├── macro_dxy_eur_divergence.json
+    │   │   ├── macro_fomc_blackout.json
+    │   │   ├── news_hormuz_escalation.json
+    │   │   ├── news_nfp_release.json
+    │   │   ├── risk_eurusd_daily_drawdown.json
+    │   │   ├── risk_eurusd_spread_spike.json
+    │   │   ├── risk_portfolio_max_heat.json
+    │   │   ├── risk_xauusd_high_vix_defensive.json
+    │   │   ├── s1_exit_prescreen_gbpusd.json
+    │   │   ├── s1_news_breaking_iran.json
+    │   │   ├── s1_position_guard_xauusd.json
+    │   │   ├── s1_stage2_prescreen_eurusd.json
+    │   │   ├── s1_trigger_stale_eurusd.json
+    │   │   ├── smc_eurusd_h1_bull_displacement.json
+    │   │   ├── smc_gbpusd_h1_choppy_trap.json
+    │   │   └── smc_xauusd_m15_bear_sweep.json
     │   ├── results
     │   │   ├── model_all.csv
     │   │   ├── model_cheap_efficient.csv
@@ -370,9 +388,11 @@ Monika/
     │   │   ├── model_high_intelligence.csv
     │   │   └── model_quadrant_analysis.html
     │   ├── alpha_arena.py
+    │   ├── config.py
     │   ├── db_access.py
     │   ├── db_models.py
     │   ├── deterministic.py
+    │   ├── fixture_loader.py
     │   ├── invoker.py
     │   ├── judge.py
     │   ├── model_registry.py
@@ -381,6 +401,7 @@ Monika/
     │   ├── prompt_evolution.py
     │   ├── report.py
     │   ├── runner.py
+    │   ├── system_one_scorer.py
     │   ├── task_specs.py
     │   ├── token_drift_tracker.py
     │   └── trade_trajectory_logger.py
@@ -556,6 +577,7 @@ Monika/
     │       ├── routes
     │       │   ├── __init__.py
     │       │   ├── backtest.py
+    │       │   ├── benchmark.py
     │       │   ├── common.py
     │       │   ├── config.py
     │       │   ├── intelligence.py
@@ -597,7 +619,8 @@ Monika/
     │               │   │   ├── AgentChatPanel.tsx
     │               │   │   ├── AgentStatusBar.tsx
     │               │   │   ├── AnalysisGrid.tsx
-│   │   ├── BacktestPanel.tsx
+    │               │   │   ├── BacktestPanel.tsx
+    │               │   │   ├── BenchmarkPanel.tsx
     │               │   │   ├── ConfigEditorPanel.tsx
     │               │   │   ├── DebateOutcomesPanel.tsx
     │               │   │   ├── EdgeMetricsPanel.tsx
@@ -1055,7 +1078,13 @@ Monika/
         │   ├── test_time_machine.py
         │   └── test_walk_forward_purged.py
         ├── benchmark
-        │   └── test_paired_evaluator.py
+        │   ├── test_alpha_arena.py
+        │   ├── test_benchmark_engine_and_integration.py
+        │   ├── test_gepa_full.py
+        │   ├── test_judge_ensemble_integration.py
+        │   ├── test_paired_evaluator.py
+        │   ├── test_prompt_evolution.py
+        │   └── test_trade_trajectory.py
         ├── cli
         │   ├── test_analysis_tree.py
         │   ├── test_approval_modal.py
