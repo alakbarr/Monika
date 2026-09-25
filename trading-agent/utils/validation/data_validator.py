@@ -12,8 +12,8 @@ from database.models import PriceOHLCV, NewsItem, FundamentalBrief
 
 logger = logging.getLogger("TradingAgent.DataValidator")
 
-DEFAULT_OHLCV_AGE = {"M15": 1.0, "H1": 3.0, "H4": 8.0, "D1": 32.0}
-DEFAULT_IND_AGE = {"H1": 3.0, "H4": 8.0, "D1": 32.0}
+DEFAULT_OHLCV_AGE = {"M15": 1.0, "H1": 3.0, "H4": 8.0, "D1": 48.0}
+DEFAULT_IND_AGE = {"H1": 3.0, "H4": 8.0, "D1": 48.0}
 DEFAULT_MACRO_AGE_DAYS = {
     "vix": 4.5,
     "treasury_yield": 4.5,
@@ -78,7 +78,8 @@ async def validate_data_freshness(
     
     forex_closed = is_forex_market_closed(now)
     reopen_window = is_market_reopen_window(now)
-    is_weekend_or_monday = forex_closed or (now.weekday() == 0)
+    is_monday = (now.weekday() == 0)
+    is_weekend_or_monday = forex_closed or is_monday
     
     # Check OHLCV freshness
     for symbol in symbols:
@@ -104,10 +105,11 @@ async def validate_data_freshness(
                 if not is_crypto and forex_closed:
                     continue
                 
-                # Toleransi saat pembukaan pasar Senin pagi (+48 jam untuk jeda akhir pekan)
-                # Hanya berlaku jika data bar terakhir memang berada di dekat penutupan Jumat
+                # Toleransi saat pembukaan pasar Senin / jeda akhir pekan
                 is_friday_close = (latest.weekday() == 4 and latest.hour >= 20) or (latest.weekday() == 5)
-                effective_max_age = tf_max_age + (48.0 if (not is_crypto and reopen_window and is_friday_close) else 0.0)
+                weekend_d1_allowance = 72.0 if (not is_crypto and is_monday and tf == 'D1') else 0.0
+                weekend_htf_allowance = 48.0 if (not is_crypto and (reopen_window or is_monday) and is_friday_close) else 0.0
+                effective_max_age = tf_max_age + max(weekend_d1_allowance, weekend_htf_allowance)
                 
                 if age_hours > effective_max_age:
                     errors.append(f"{symbol}/{tf} OHLCV is {age_hours:.1f}h old (stale)")
@@ -138,7 +140,10 @@ async def validate_data_freshness(
                 if not is_crypto and forex_closed:
                     continue
                 
-                effective_ind_max_age = tf_ind_max_age + (48.0 if (not is_crypto and reopen_window) else 0.0)
+                is_friday_close_ind = (latest_ind.weekday() == 4 and latest_ind.hour >= 20) or (latest_ind.weekday() == 5)
+                weekend_d1_ind_allowance = 72.0 if (not is_crypto and is_monday and tf == 'D1') else 0.0
+                weekend_htf_ind_allowance = 48.0 if (not is_crypto and (reopen_window or is_monday) and is_friday_close_ind) else 0.0
+                effective_ind_max_age = tf_ind_max_age + max(weekend_d1_ind_allowance, weekend_htf_ind_allowance)
                 if ind_age_hours > effective_ind_max_age:
                     errors.append(f"{symbol}/{tf} Indicator is {ind_age_hours:.1f}h old (stale)")
 
@@ -342,20 +347,23 @@ async def check_data_coherence(
     is_crypto = is_crypto_symbol(symbol)
     forex_closed = is_forex_market_closed(now)
     reopen_window = is_market_reopen_window(now)
+    is_monday = (now.weekday() == 0)
     
     ohlcv_thresholds = max_ohlcv_age_hours or DEFAULT_OHLCV_AGE
     ind_thresholds = max_indicator_age_hours or DEFAULT_IND_AGE
     
     for tf in ['H4', 'D1']:
         if max_age_hours is not None and max_ohlcv_age_hours is None:
-            tf_ohlcv_max = max_age_hours if tf == 'H4' else DEFAULT_OHLCV_AGE.get(tf, 32.0)
-            tf_ind_max = max_age_hours if tf == 'H4' else DEFAULT_IND_AGE.get(tf, 32.0)
+            tf_ohlcv_max = max_age_hours if tf == 'H4' else DEFAULT_OHLCV_AGE.get(tf, 48.0)
+            tf_ind_max = max_age_hours if tf == 'H4' else DEFAULT_IND_AGE.get(tf, 48.0)
         else:
             tf_ohlcv_max = ohlcv_thresholds.get(tf, DEFAULT_OHLCV_AGE.get(tf, 8.0))
             tf_ind_max = ind_thresholds.get(tf, DEFAULT_IND_AGE.get(tf, 8.0))
             
-        effective_ohlcv_max = tf_ohlcv_max + (48.0 if (not is_crypto and (forex_closed or reopen_window)) else 0.0)
-        effective_ind_max = tf_ind_max + (48.0 if (not is_crypto and (forex_closed or reopen_window)) else 0.0)
+        weekend_d1_allowance = 72.0 if (not is_crypto and is_monday and tf == 'D1') else 0.0
+        weekend_htf_allowance = 48.0 if (not is_crypto and (forex_closed or reopen_window or is_monday)) else 0.0
+        effective_ohlcv_max = tf_ohlcv_max + max(weekend_d1_allowance, weekend_htf_allowance)
+        effective_ind_max = tf_ind_max + max(weekend_d1_allowance, weekend_htf_allowance)
         
         # Check OHLCV
         latest_price = (await session.execute(
