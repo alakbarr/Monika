@@ -310,10 +310,15 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
             require_macro_data=bool(data_quality_cfg.get("require_macro_data", False)),
         )
         
-    stale_assets = set()
+    critical_stale_assets = set()
+    context_stale_assets = set()
     for err in validation.get("errors", []):
         for sym in target_symbols:
-            if sym in err: stale_assets.add(sym)
+            if sym in err:
+                if "/D1 Indicator is" in err:
+                    context_stale_assets.add(sym)
+                else:
+                    critical_stale_assets.add(sym)
 
     should_pause = False
     require_macro = bool(data_quality_cfg.get("require_macro_data", False))
@@ -322,7 +327,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         for err in validation.get("errors", [])
     )
 
-    if (len(stale_assets) >= len(target_symbols) and len(target_symbols) > 0) or has_global_macro_error:
+    if (len(critical_stale_assets) >= len(target_symbols) and len(target_symbols) > 0) or has_global_macro_error:
         reason = "macro_data_stale" if has_global_macro_error else "all_data_stale"
         logger.error(f"Critical data freshness failure ({reason})! Skipping Stage 2. Errors: {validation['errors']}")
         try:
@@ -334,6 +339,11 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         except Exception: pass
         summary["per_asset"] = {"skipped": True, "reason": reason}
         should_pause = True
+    elif context_stale_assets:
+        logger.warning(
+            f"D1 context indicators aging for {len(context_stale_assets)} assets ({', '.join(sorted(context_stale_assets))}). "
+            f"Proceeding with Stage 2 in graceful degradation mode."
+        )
         
     if validation["warnings"]:
         logger.warning(f"Data freshness warnings: {validation['warnings']}")
