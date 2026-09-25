@@ -41,7 +41,10 @@ async def handle_get_news_items(args: dict, **ctx) -> dict:
     if currency:
         query = query.where(NewsItem.currency_tags.like(f"%{currency.upper()}%"))
     if min_impact:
-        query = query.where(NewsItem.impact >= min_impact)
+        _impact_ranks = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "BREAKING": 4}
+        min_rank = _impact_ranks.get(str(min_impact).upper(), 0)
+        allowed_impacts = [k for k, v in _impact_ranks.items() if v >= min_rank]
+        query = query.where(NewsItem.impact.in_(allowed_impacts))
     query = query.order_by(NewsItem.published_at.desc()).limit(limit)
 
     rows = (await session.execute(query)).scalars().all()

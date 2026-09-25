@@ -1225,9 +1225,18 @@ class ToolExecutor:
             tol_cot_pct = self.settings.get('data_quality', {}).get('key_data_tolerance', {}).get('cot_leveraged_pct')
             if tol_cot_pct is not None and kdp.get('cot_leveraged_long_pct') is not None:
                 claimed_cot = float(kdp['cot_leveraged_long_pct'])
-                latest_cot = (await self.session.execute(
-                    select(COTReport).order_by(COTReport.report_date.desc()).limit(1)
-                )).scalar_one_or_none()
+                CURRENCY_COT_MAP = {
+                    "EUR": "099741", "GBP": "096742", "JPY": "097741", 
+                    "AUD": "232741", "XAU": "088691", "OIL": "067651", "BTC": "133741", "USD": "099741"
+                }
+                target_code = kdp.get('cot_market_code')
+                if not target_code and kdp.get('cot_currency'):
+                    target_code = CURRENCY_COT_MAP.get(str(kdp['cot_currency']).upper())
+                if not target_code:
+                    target_code = "099741"
+
+                cot_query = select(COTReport).where(COTReport.market_code == target_code).order_by(COTReport.report_date.desc()).limit(1)
+                latest_cot = (await self.session.execute(cot_query)).scalar_one_or_none()
                 if latest_cot:
                     tot = (latest_cot.leveraged_long or 0) + (latest_cot.leveraged_short or 0)
                     if tot > 0:
@@ -1235,7 +1244,7 @@ class ToolExecutor:
                         if abs(claimed_cot - actual_long_pct) > tol_cot_pct:
                             errors.append(
                                 f"Key data point 'cot_leveraged_long_pct' claimed {claimed_cot:.1f}%, "
-                                f"but latest COT report shows {actual_long_pct:.1f}% (diff > tolerance {tol_cot_pct}%)."
+                                f"but latest COT report for {target_code} shows {actual_long_pct:.1f}% (diff > tolerance {tol_cot_pct}%)."
                             )
         except Exception:
             pass

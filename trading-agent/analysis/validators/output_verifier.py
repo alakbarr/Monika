@@ -237,6 +237,8 @@ class OutputVerifier:
         if entry is None or sl is None or tp is None:
             failures.append(f"Missing mandatory level: entry={entry}, sl={sl}, tp={tp}")
 
+        atr_val = self._extract_atr(context_data) if context_data else None
+
         if entry is not None and sl is not None and tp is not None:
             try:
                 entry = float(entry)
@@ -277,7 +279,9 @@ class OutputVerifier:
                         tp_min = adr.get("target_tp_min_distance", 0) * 0.85
                         tp_max = adr.get("target_tp_max_distance", float('inf')) * 1.15
                         sl_min = adr.get("target_sl_min_distance", 0) * 0.85
-                        sl_max = adr.get("target_sl_max_distance", float('inf')) * 1.15
+                        target_sl_max = adr.get("target_sl_max_distance", float('inf'))
+                        # Bound sl_max from below by 1.2x ATR to eliminate ATR vs ADR deadlock
+                        sl_max = max(target_sl_max * 1.15, (atr_val * 1.2) if (atr_val and atr_val > 0) else 0)
                         if not (tp_min <= tp_dist <= tp_max):
                             failures.append(
                                 f"TP dist {tp_dist:.5f} outside ADR band [{tp_min:.5f}, {tp_max:.5f}]"

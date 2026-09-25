@@ -95,7 +95,7 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
     elif vol_ratio > 1.15:
         vol_label, vol_quality = 'EXPANDING', 0.8 if trend_label in ('STRONG_TREND', 'TREND') else 0.75
     elif vol_ratio < 0.65:
-        vol_label, vol_quality = 'CONTRACTING_FAST', 0.55
+        vol_label, vol_quality = 'CONTRACTING_FAST', 0.80
     elif vol_ratio < 0.85:
         vol_label, vol_quality = 'CONTRACTING', 0.75
     else:
@@ -116,7 +116,9 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
 
     if trend_label in ('STRONG_TREND', 'TREND') and vol_label in ('NORMAL', 'EXPANDING', 'EXPANDING_FAST'):
         final_regime = trend_label
-    elif vol_label in ('EXPANDING_FAST', 'CONTRACTING_FAST'):
+    elif vol_label == 'CONTRACTING_FAST':
+        final_regime = 'SQUEEZE_CONSOLIDATION'
+    elif vol_label == 'EXPANDING_FAST':
         final_regime = 'VOLATILE_CHOP'
     elif trend_label in ('RANGE', 'WEAK_TREND'):
         final_regime = trend_label

@@ -231,7 +231,8 @@ class NewsWatcher:
             shock_checks = await asyncio.gather(*[self._is_shock_only_strict(n) for n in new_items])
             force_classify = any(shock_checks)
             
-            if force_classify or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1):
+            has_unclassified = any(getattr(n, "impact", None) is None for n in new_items)
+            if force_classify or has_unclassified or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1):
                 # Quick batch classification via AI / LLM classifier
                 processor = NewsDigestProcessor(self.settings)
                 async with get_session() as session:
@@ -436,7 +437,6 @@ class NewsWatcher:
     async def _matches_recent_calendar_window(self, news: NewsItem) -> bool:
         """Cek apakah berita ini berdekatan (+/-2h) dengan event kalender high-impact."""
         try:
-            from database.db import get_session
             from database.models import EconomicCalendar
             from sqlalchemy import select
             check_time = news.fetched_at or datetime.now(timezone.utc)
@@ -499,6 +499,10 @@ class NewsWatcher:
             for syms in CURRENCY_TO_SYMBOLS.values():
                 affected.update(syms)
 
+        if not affected and items:
+            # Broad global shock without specific currency tag (tariffs, geopolitical conflict, global systemic news)
+            affected.update(["EURUSD", "USDJPY", "XAUUSD"])
+
         return sorted(affected)
 
     # ------------------------------------------------------------------
@@ -509,7 +513,6 @@ class NewsWatcher:
         self, high_items: list[NewsItem], affected_symbols: list[str], fallback_mode: bool = False
     ) -> None:
         # --- NEW: Check daily trade count before triggering ---
-        from database.db import get_session
         from database.models import TradeOutcome, Position
         from sqlalchemy import select, func
         from datetime import timedelta
@@ -752,7 +755,6 @@ class NewsWatcher:
         """Run targeted per-asset reanalysis and route actionable trades to execution."""
         if self._per_asset_stage is None:
             return
-        from database.db import get_session as _gs
         from agent.turn_lease_manager import SymbolTurnLeaseManager
 
         lease_mgr = SymbolTurnLeaseManager.get_instance()
@@ -765,7 +767,7 @@ class NewsWatcher:
                     acquired_symbols.append(sym)
 
             pa_results = await self._per_asset_stage.run_all(
-                session_factory=_gs,
+                session_factory=get_session,
                 symbols=symbols,
                 is_secondary=True,
                 use_session_trigger_client=True,
@@ -813,7 +815,6 @@ class NewsWatcher:
         if not self._execution_service or not affected_symbols:
             return
         try:
-            from database.db import get_session
             from database.models import Position
             from sqlalchemy import select
             

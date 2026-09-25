@@ -179,11 +179,15 @@ async def compute_optimal_levels(
             tp_candidates.append({'price': round(z_far_edge, 5), 'distance': round(dist_to_far, 5),
                                    'basis': f"{z['type']}({z.get('direction') or 'n/a'})", 'score': score})
 
-        dist_to_near = (entry_price - z_near_edge) if direction == 'buy' else (z_near_edge - entry_price)
-        if atr > 0 and atr * min_sl_mult <= dist_to_near <= sl_max * 1.05 and dist_to_near > 0:
-            score = _score_candidate(dist_to_near, sl_max * 0.5, sl_max, z['weight'])
-            sl_candidates.append({'price': round(z_near_edge, 5), 'distance': round(dist_to_near, 5),
-                                   'basis': f"{z['type']}({z.get('direction') or 'n/a'})", 'score': score})
+        # For BUY: SL should be placed BELOW the protective support zone (below z['low'])
+        # For SELL: SL should be placed ABOVE the protective resistance zone (above z['high'])
+        sl_buffer = 0.15 * atr if atr > 0 else 0.0
+        z_sl_price = (z['low'] - sl_buffer) if direction == 'buy' else (z['high'] + sl_buffer)
+        dist_to_sl = (entry_price - z_sl_price) if direction == 'buy' else (z_sl_price - entry_price)
+        if atr > 0 and atr * min_sl_mult <= dist_to_sl <= sl_max * 1.05 and dist_to_sl > 0:
+            score = _score_candidate(dist_to_sl, sl_max * 0.5, sl_max, z['weight'])
+            sl_candidates.append({'price': round(z_sl_price, 5), 'distance': round(dist_to_sl, 5),
+                                   'basis': f"{z['type']}_beyond({z.get('direction') or 'n/a'})", 'score': score})
 
     tp_candidates.sort(key=lambda x: x['score'], reverse=True)
     sl_candidates.sort(key=lambda x: x['score'], reverse=True)

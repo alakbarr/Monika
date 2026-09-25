@@ -28,11 +28,15 @@ class XAUTrendEngine(EdgeStrategy):
         if not fast_row or not slow_row:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="EMA data unavailable")
 
-        fast, slow = safe_float(json.loads(fast_row.value_json)), safe_float(json.loads(slow_row.value_json))
+        fast_raw = json.loads(fast_row.value_json) if fast_row.value_json else None
+        slow_raw = json.loads(slow_row.value_json) if slow_row.value_json else None
+        fast_val = fast_raw.get('value', fast_raw) if isinstance(fast_raw, dict) else fast_raw
+        slow_val = slow_raw.get('value', slow_raw) if isinstance(slow_raw, dict) else slow_raw
+        fast, slow = safe_float(fast_val), safe_float(slow_val)
         if fast is None or slow is None:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="dirty EMA values")
 
-        n = self.cfg.get('donchian_period', 20)
+        n = int(self.cfg.get('donchian_period', 20))
         bars = (await session.execute(select(PriceOHLCV).where(
             PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H4',
             PriceOHLCV.timestamp <= now
@@ -45,12 +49,15 @@ class XAUTrendEngine(EdgeStrategy):
         ema_bull, ema_bear = fast > slow, fast < slow
         breakout_up, breakout_down = latest.close > ch_high, latest.close < ch_low
 
+        size_mult = float(self.cfg.get('size_multiplier', 0.8))
         if ema_bull and breakout_up:
             return EdgeSignal(self.strategy_id, symbol, 'buy', True, confidence=0.7,
-                               rationale=f"EMA{self.cfg.get('ema_fast')}>{self.cfg.get('ema_slow')} + Donchian({n}) breakout",
-                               tags=["xau_trend", "trend"], exit_style='trend_trailing')
+                               rationale=f"EMA{self.cfg.get('ema_fast', 20)}>{self.cfg.get('ema_slow', 50)} + Donchian({n}) breakout",
+                               tags=["xau_trend", "trend"], exit_style='trend_trailing',
+                               factor_family='trend', meta={"size_multiplier": size_mult})
         if ema_bear and breakout_down:
             return EdgeSignal(self.strategy_id, symbol, 'sell', True, confidence=0.7,
-                               rationale=f"EMA{self.cfg.get('ema_fast')}<{self.cfg.get('ema_slow')} + Donchian({n}) breakdown",
-                               tags=["xau_trend", "trend"], exit_style='trend_trailing')
+                               rationale=f"EMA{self.cfg.get('ema_fast', 20)}<{self.cfg.get('ema_slow', 50)} + Donchian({n}) breakdown",
+                               tags=["xau_trend", "trend"], exit_style='trend_trailing',
+                               factor_family='trend', meta={"size_multiplier": size_mult})
         return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no EMA+Donchian confluence")

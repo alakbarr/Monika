@@ -5,6 +5,15 @@ from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from analysis.strategies.registry import StrategyRegistry
 
 
+@pytest.fixture(autouse=True)
+def preserve_registry():
+    orig_registry = dict(StrategyRegistry._registry)
+    orig_blacklisted = set(StrategyRegistry._blacklisted_ids)
+    yield
+    StrategyRegistry._registry = orig_registry
+    StrategyRegistry._blacklisted_ids = orig_blacklisted
+
+
 class MockSingleSymbolStrategy(EdgeStrategy):
     strategy_id: str = "mock_xau_strategy"
     applicable_symbols: set = {"XAUUSD"}

@@ -180,17 +180,24 @@ class TradePreCommitGate:
             window_start = now - timedelta(minutes=15)
             window_end = now + timedelta(minutes=15)
 
-            events = (await session.execute(
+            from utils.market.currency_utils import get_symbol_currencies
+            sym_currencies = get_symbol_currencies(sym)
+
+            stmt = (
                 select(EconomicCalendar)
                 .where(EconomicCalendar.impact.in_(["HIGH", "high", "High"]))
                 .where(EconomicCalendar.event_time >= window_start)
                 .where(EconomicCalendar.event_time <= window_end)
-            )).scalars().all()
+            )
+            if sym_currencies:
+                stmt = stmt.where(EconomicCalendar.currency.in_(list(sym_currencies)))
+
+            events = (await session.execute(stmt)).scalars().all()
 
             if events:
                 event_names = [e.event_name for e in events[:2]]
                 failures.append(
-                    f"CALENDAR PROXIMITY: High-impact economic release scheduled within 15 minutes: {event_names}. "
+                    f"CALENDAR PROXIMITY: High-impact economic release scheduled within 15 minutes for {sym_currencies}: {event_names}. "
                     "Pre-commit blocked to avoid immediate news spread widening and slippage."
                 )
         except Exception as e:

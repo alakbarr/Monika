@@ -22,6 +22,8 @@ PREFETCH_KEY_TO_TOOL: dict[str, str] = {
     'eurusd_momentum': 'get_price_momentum',
     'market_session': 'get_market_session',
     'funding_rate': 'get_funding_rate',
+    'bond_yield_spreads': 'get_bond_yield_spreads',
+    'central_bank_expectations': 'get_central_bank_expectations',
 }
 
 class Stage1DataBundler:
@@ -52,7 +54,9 @@ class Stage1DataBundler:
             "surprise_summary": self.executor.execute("get_surprise_summary", {}),
             "eurusd_momentum": self.executor.execute("get_price_momentum", {"symbol": "EURUSD", "timeframe": "H4", "period": 20}),
             "market_session": self.executor.execute("get_market_session", {}),
-            "funding_rate": self.executor.execute("get_funding_rate", {})
+            "funding_rate": self.executor.execute("get_funding_rate", {}),
+            "bond_yield_spreads": self.executor.execute("get_bond_yield_spreads", {}),
+            "central_bank_expectations": self.executor.execute("get_central_bank_expectations", {})
         }
 
         # Execute tasks sequentially to prevent AsyncSession concurrency issues
@@ -110,11 +114,14 @@ class Stage1DataBundler:
         try:
             from data_sources.circuit_breaker import get_data_feed_circuit_breaker
             breaker = get_data_feed_circuit_breaker()
-            if "error" not in bundled_data.get("economic_calendar", {}):
+            ec_data = bundled_data.get("economic_calendar")
+            if ec_data and isinstance(ec_data, dict) and "error" not in ec_data and ec_data.get("events"):
                 breaker.record_feed_heartbeat("economic_calendar")
-            if "error" not in bundled_data.get("treasury_yields", {}):
+            ty_data = bundled_data.get("treasury_yields")
+            if ty_data and isinstance(ty_data, dict) and "error" not in ty_data and ty_data.get("yields_by_tenor"):
                 breaker.record_feed_heartbeat("fred")
-            if "error" not in bundled_data.get("news_digest", {}):
+            nd_data = bundled_data.get("news_digest")
+            if nd_data and isinstance(nd_data, dict) and "error" not in nd_data and (nd_data.get("items") or nd_data.get("digest")):
                 breaker.record_feed_heartbeat("finnhub")
 
             eval_res = breaker.evaluate_all_feeds(auto_trip=False)
@@ -124,9 +131,11 @@ class Stage1DataBundler:
         except Exception as cb_err:
             logger.debug(f"Circuit breaker prefetch check non-fatal error: {cb_err}")
 
-        # Direct in-memory computation of satisfied tools
+        # Direct in-memory computation of satisfied tools (excluding failed tools)
         satisfied_tools = set()
-        for key in bundled_data:
+        for key, val in bundled_data.items():
+            if isinstance(val, dict) and "error" in val:
+                continue
             tool_name = PREFETCH_KEY_TO_TOOL.get(key)
             if tool_name:
                 satisfied_tools.add(tool_name)

@@ -44,6 +44,8 @@ class StrategyHealth:
     paper_trades_count: int = 0
     paper_wins_count: int = 0
     is_incubation_passed: bool = True
+    paper_gross_profit: float = 0.0
+    paper_gross_loss: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -57,6 +59,8 @@ class StrategyHealth:
             "paper_trades_count": self.paper_trades_count,
             "paper_wins_count": self.paper_wins_count,
             "is_incubation_passed": self.is_incubation_passed,
+            "paper_gross_profit": self.paper_gross_profit,
+            "paper_gross_loss": self.paper_gross_loss,
         }
 
     @classmethod
@@ -87,6 +91,8 @@ class StrategyHealth:
             paper_trades_count=int(data.get("paper_trades_count", 0)),
             paper_wins_count=int(data.get("paper_wins_count", 0)),
             is_incubation_passed=bool(data.get("is_incubation_passed", True)),
+            paper_gross_profit=float(data.get("paper_gross_profit", 0.0)),
+            paper_gross_loss=float(data.get("paper_gross_loss", 0.0)),
         )
 
 
@@ -94,11 +100,14 @@ class StrategyDecayMonitor:
     """
     In-memory and stateful monitor for tracking per-strategy degradation and incubation.
     Throttles or disables strategies showing statistical breakdown in live/paper trading.
-    Enforces minimum 4 paper trades incubation gate for new alpha strategies.
+    Enforces minimum 15 paper trades incubation gate with WR >= 55% and PF >= 1.30.
     """
-    MIN_INCUBATION_TRADES: int = 4
+    MIN_INCUBATION_TRADES: int = 15
+    MIN_INCUBATION_WIN_RATE: float = 0.55
+    MIN_INCUBATION_PROFIT_FACTOR: float = 1.30
 
-    def __init__(self):
+    def __init__(self, min_incubation_trades: Optional[int] = None):
+        self.min_incubation_trades = min_incubation_trades or self.MIN_INCUBATION_TRADES
         self._health_map: Dict[str, StrategyHealth] = {}
 
     def get_health(self, strategy_id: str) -> StrategyHealth:
@@ -112,7 +121,9 @@ class StrategyDecayMonitor:
         health.is_incubation_passed = False
         health.paper_trades_count = 0
         health.paper_wins_count = 0
-        health.reason = f"Incubating in paper trading (min {self.MIN_INCUBATION_TRADES} trades required)"
+        health.paper_gross_profit = 0.0
+        health.paper_gross_loss = 0.0
+        health.reason = f"Incubating in paper trading (min {self.min_incubation_trades} trades required)"
         return health
 
     def is_tradeable(self, strategy_id: str) -> bool:
@@ -128,25 +139,38 @@ class StrategyDecayMonitor:
         health = self.get_health(strategy_id)
         return self.is_tradeable(strategy_id) and health.is_incubation_passed
 
-    def record_trade_outcome(self, strategy_id: str, win: bool, is_paper: bool = False) -> StrategyHealth:
+    def record_trade_outcome(
+        self, strategy_id: str, win: bool, is_paper: bool = False, profit: Optional[float] = None
+    ) -> StrategyHealth:
         """Update state upon individual trade completion (paper or live)."""
         health = self.get_health(strategy_id)
         if is_paper:
             health.paper_trades_count += 1
             if win:
                 health.paper_wins_count += 1
-            if not health.is_incubation_passed and health.paper_trades_count >= self.MIN_INCUBATION_TRADES:
+                gain = profit if (profit is not None and profit > 0) else 1.5
+                health.paper_gross_profit += gain
+            else:
+                loss = abs(profit) if (profit is not None and profit < 0) else 1.0
+                health.paper_gross_loss += loss
+
+            if not health.is_incubation_passed and health.paper_trades_count >= self.min_incubation_trades:
                 paper_wr = health.paper_wins_count / max(1, health.paper_trades_count)
-                if paper_wr >= 0.50:
+                pf = health.paper_gross_profit / max(1e-6, health.paper_gross_loss)
+                if paper_wr >= self.MIN_INCUBATION_WIN_RATE and pf >= self.MIN_INCUBATION_PROFIT_FACTOR:
                     health.is_incubation_passed = True
-                    health.reason = f"Passed paper incubation ({health.paper_wins_count}/{health.paper_trades_count} wins, WR {paper_wr:.1%})"
+                    health.reason = (
+                        f"Passed paper incubation ({health.paper_wins_count}/{health.paper_trades_count} wins, "
+                        f"WR {paper_wr:.1%}, PF {pf:.2f})"
+                    )
                     logger.info(
                         f"[StrategyDecay] Strategy {strategy_id} PASSED paper incubation "
-                        f"({health.paper_trades_count} trades, WR {paper_wr:.1%})! Promoted to live."
+                        f"({health.paper_trades_count} trades, WR {paper_wr:.1%}, PF {pf:.2f})! Promoted to live."
                     )
                 else:
                     health.reason = (
-                        f"Incubation criteria pending ({health.paper_wins_count}/{health.paper_trades_count} wins, WR {paper_wr:.1%} < 50%)"
+                        f"Incubation criteria pending ({health.paper_wins_count}/{health.paper_trades_count} wins, "
+                        f"WR {paper_wr:.1%} [min {self.MIN_INCUBATION_WIN_RATE:.0%}], PF {pf:.2f} [min {self.MIN_INCUBATION_PROFIT_FACTOR:.2f}])"
                     )
 
         if not win:

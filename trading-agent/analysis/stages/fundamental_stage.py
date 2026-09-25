@@ -646,6 +646,11 @@ class FundamentalStage:
             select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
         )).scalar_one_or_none()
         
+        # Run macro debate before escalation so debate contradictions can trigger escalation to frontier model
+        _debate_outcome = {}
+        if brief:
+            _debate_outcome = await self._run_macro_debate(session, brief)
+
         # Logika Eskalasi: Panggil model lebih pintar jika confidence rendah
         escalation_model = analysis_cfg.get("fundamental_model_escalation", "")
         escalation_threshold = float(analysis_cfg.get("fundamental_escalation_threshold", 0.0))
@@ -655,6 +660,13 @@ class FundamentalStage:
         if (brief and escalation_model and escalation_model != self.client.model):
             should_escalate = False
             escalation_trigger_reason = ""
+
+            if _debate_outcome.get("escalation_required"):
+                should_escalate = True
+                escalation_trigger_reason = f"Macro Debate flagged escalation required (Winner: {_debate_outcome.get('winner')})"
+            elif _debate_outcome.get("internal_hallucination"):
+                should_escalate = True
+                escalation_trigger_reason = "Macro Debate detected internal hallucination in initial brief"
 
             # [NEW] Independent Verification
             try:
@@ -990,7 +1002,7 @@ INSTRUCTIONS:
             result["error"] = "Brief submission missing — LLM did not call submit tool"
             return result
 
-        if brief:
+        if brief and (escalated or not _debate_outcome or not _debate_outcome.get('ran')):
             _debate_outcome = await self._run_macro_debate(session, brief)
             MINIMUM_USABLE_CONFIDENCE = 0.50
             if brief.confidence is not None and brief.confidence < MINIMUM_USABLE_CONFIDENCE and not _quality_flag:

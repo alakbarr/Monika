@@ -553,12 +553,19 @@ class ContextBuilderMixin:
         # H5: Quant Active Strategy Signals (System Edge Intelligence)
         try:
             from analysis.strategies.registry import StrategyRegistry
-            regime_val = active_regime if 'active_regime' in locals() else None
+            from analysis.calculators.regime_classifier import classify_market_regime
+            try:
+                regime_info = await classify_market_regime(session, symbol, self.settings)
+                quant_regime = regime_info.get("regime") if isinstance(regime_info, dict) else None
+            except Exception as rc_err:
+                logger.debug(f"[{symbol}] Regime classification fallback in context_builder: {rc_err}")
+                quant_regime = None
+
             edge_signals = await StrategyRegistry.evaluate_all(
                 session=session,
                 symbol=symbol,
                 settings=self.settings,
-                current_regime=regime_val,
+                current_regime=quant_regime,
             )
             valid_edge_signals = [s for s in edge_signals if getattr(s, "valid", False) and getattr(s, "direction", None)]
             if valid_edge_signals:

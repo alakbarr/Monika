@@ -64,18 +64,22 @@ class EdgeStrategyRunner:
     def stop(self):
         self._running = False
 
-    def hot_reload_strategy(self, strategy_id: str, parameters: dict) -> None:
+    def hot_reload_strategy(self, strategy_id: str, parameters: dict, symbol: Optional[str] = None) -> None:
         """Dynamically hot-reloads strategy parameters without restarting the runner."""
         if not isinstance(parameters, dict):
             return
         edge_cfg = self.settings.setdefault('trading', {}).setdefault('edge_strategy', {})
+        if symbol:
+            sym_key = f"{strategy_id}_{symbol.upper()}"
+            edge_cfg.setdefault(sym_key, {}).update(parameters)
         edge_cfg.setdefault(strategy_id, {}).update(parameters)
         try:
             from analysis.strategies.registry import StrategyRegistry
-            StrategyRegistry.hot_reload(strategy_id, parameters)
+            StrategyRegistry.hot_reload(strategy_id, parameters, symbol=symbol)
         except Exception as e:
             logger.debug(f"StrategyRegistry hot_reload non-fatal: {e}")
-        logger.info(f"[EdgeStrategyRunner] Hot-reloaded parameters for strategy '{strategy_id}': {parameters}")
+        target = f"'{strategy_id}' ({symbol.upper()})" if symbol else f"'{strategy_id}'"
+        logger.info(f"[EdgeStrategyRunner] Hot-reloaded parameters for strategy {target}: {parameters}")
 
     async def reload_strategies_from_db(self, session) -> dict[str, dict]:
         """Loads all dynamic strategy parameter configurations and candidate alphas from DB."""

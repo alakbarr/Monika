@@ -2,6 +2,8 @@ import math, logging
 logger = logging.getLogger('TradingAgent.IndicatorSanitizer')
 
 def safe_float(value, default: float | None = None, field_name: str = 'value') -> float | None:
+    if isinstance(value, dict):
+        value = value.get(field_name, value.get('value', value.get('val', default)))
     try:
         f = float(value)
     except (TypeError, ValueError):

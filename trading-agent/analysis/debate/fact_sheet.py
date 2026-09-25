@@ -123,7 +123,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             pass
 
     # Fetch historical win rate for this symbol
-    from database.models import Position
+    from database.models import Position, PaperTradeRecord
     historical_positions = (await session.execute(
         select(Position)
         .where(Position.symbol == analysis.symbol)
@@ -135,6 +135,18 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     if total_trades > 0:
         winning_trades = sum(1 for p in historical_positions if p.pnl and p.pnl > 0)
         win_rate = winning_trades / total_trades
+    else:
+        try:
+            paper_trades = (await session.execute(
+                select(PaperTradeRecord)
+                .where(PaperTradeRecord.symbol == analysis.symbol)
+            )).scalars().all()
+            total_trades = len(paper_trades)
+            if total_trades > 0:
+                winning_trades = sum(1 for p in paper_trades if (getattr(p, 'virtual_pnl', None) or 0) > 0 or (getattr(p, 'pnl', None) or 0) > 0)
+                win_rate = winning_trades / total_trades
+        except Exception:
+            pass
 
     core_mem_str = None
     try:
