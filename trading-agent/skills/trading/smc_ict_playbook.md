@@ -46,18 +46,19 @@ CONFLUENCE SCORECARD FOR {SYMBOL}:
 [ ] F9_COT_ALIGNED: COT not extreme against trade direction? YES(+1)/NO(0) = __
 [ ] F10_VIX_OK: VIX < 20? YES(+1)/NO(0); VIX 20-25: YES(0)/NO(0); VIX>25: FORCED_SUBTRACT(-2) = __
 [ ] F11_MICROSTRUCTURE_OK: VPIN < 0.50 or Kyle Lambda low? YES(+1)/NO(0); Toxic VPIN > 0.70: FORCED_SUBTRACT(-1) = __
+[ ] F12_PATTERN_CONSENSUS: Multi-timeframe historical pattern screening aligns direction (win rate >= 60%, p < 0.10)? YES(+1)/NO(0) = __
 
 SESSION MODIFIER: NY-London Overlap? +1. Off-peak (21:00-00:00 UTC)? -2.
 REGIME MODIFIER: ADX < 15 (ranging)? +2 to threshold. ADX > 40? -1 (ok to trade trend)
 
-TOTAL RAW SCORE: __ / 15
+TOTAL RAW SCORE: __ / 16
 SUBMIT confluence_score = TOTAL RAW SCORE + SESSION MODIFIER SAJA (jangan tambahkan REGIME MODIFIER ke angka ini - regime hanya mengubah FINAL THRESHOLD pembanding).
 AFTER MODIFIERS: __
 FINAL THRESHOLD: __ (standard 7 + adjustments)
 DECISION: __ (BUY/SELL if score >= threshold, WAIT if 4-6, AVOID if < 4)
 ```
 
-`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"session_prime"`, `"post_event_entry"`.
+`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"session_prime"`, `"post_event_entry"`, `"historical_pattern_consensus"`.
 
 ## AUTOMATED ENFORCEMENT RULES (Server-Side)
 1. ATR unavailable → BUY/SELL rejected.

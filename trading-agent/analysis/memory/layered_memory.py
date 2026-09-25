@@ -192,6 +192,20 @@ class LayeredMemoryManager:
             except Exception as e:
                 logger.debug(f"[{symbol}] Failed to generate negative constraints: {e}")
 
+            # 5. Pattern similarity consensus (if available in cache)
+            try:
+                from database.models import PatternScreeningCache
+                p_entry = (await session.execute(
+                    select(PatternScreeningCache)
+                    .where(PatternScreeningCache.symbol == symbol)
+                    .order_by(desc(PatternScreeningCache.screened_at))
+                    .limit(1)
+                )).scalar_one_or_none()
+                if p_entry and p_entry.confidence in ('high', 'medium'):
+                    parts.append(f"- Pattern Consensus: {p_entry.overall_bias.upper()} ({p_entry.confidence.upper()} confidence)")
+            except Exception:
+                pass
+
             composed = "\n".join(parts) if parts else ""
             return _wrap_market_memory(composed, 400)
         except Exception as e:

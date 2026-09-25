@@ -1643,3 +1643,28 @@ class CycleEvent(Base):
         Index("idx_cycle_event_type", "event_type"),
     )
 
+
+# =============================================================================
+# Pattern Similarity Screening Cache
+# =============================================================================
+
+class PatternScreeningCache(Base):
+    """Cache for multi-timeframe historical chart pattern similarity screening results."""
+    __tablename__ = "pattern_screening_cache"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    screened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    overall_bias: Mapped[str] = mapped_column(String(10), nullable=False)  # bullish, bearish, neutral
+    confidence: Mapped[str] = mapped_column(String(10), nullable=False)    # high, medium, low, none
+    consensus_bullish_pct: Mapped[float] = mapped_column(Float, default=0.5)
+    consensus_bearish_pct: Mapped[float] = mapped_column(Float, default=0.5)
+    has_timeframe_conflict: Mapped[bool] = mapped_column(Boolean, default=False)
+    significant_timeframes_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    per_timeframe_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    full_result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_pattern_cache_sym_at", "symbol", "screened_at"),
+    )
+

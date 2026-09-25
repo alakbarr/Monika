@@ -528,6 +528,28 @@ GET_STRUCTURE_BREAKS = _tool(
     required=["symbol", "timeframe"],
 )
 
+SCAN_PATTERN_SIMILARITY = _tool(
+    name="scan_pattern_similarity",
+    description=(
+        "Scan multi-timeframe historical price data (D1, H4, H1) to find chart patterns similar to the "
+        "current candlestick segment. Evaluates macroeconomic context (volatility, USD trend, rate cycle, regime) "
+        "and analyzes forward outcomes (win rates at 1R/2R/3R, average MFE/MAE, directional bias, and binomial significance). "
+        "Use this tool to validate your trade thesis with empirical historical precedent."
+    ),
+    properties={
+        "symbol": {
+            "type": "string",
+            "description": "Trading symbol (e.g. 'XAUUSD', 'EURUSD').",
+        },
+        "timeframes": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["D1", "H4", "H1"]},
+            "description": "Optional list of timeframes to scan. Default: ['D1', 'H4', 'H1'].",
+        },
+    },
+    required=["symbol"],
+)
+
 GET_FIBONACCI_LEVELS = _tool(
     name="get_fibonacci_levels",
     description=(
@@ -1592,6 +1614,7 @@ STAGE2_FROZEN_TOOLS: list[dict] = [
     GET_TECHNICAL_ANALYSIS,
     GET_INSTITUTIONAL_DATA,
     GET_EIA_OIL_INVENTORY,
+    SCAN_PATTERN_SIMILARITY,
 ]
 
 STAGE2_TOOLS_V2: list[dict] = STAGE2_FROZEN_TOOLS

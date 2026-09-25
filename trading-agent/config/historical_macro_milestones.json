@@ -1,0 +1,218 @@
+[
+  {
+    "event_date": "2022-02-24T00:00:00Z",
+    "category": "geopolitical",
+    "headline": "Russia Invades Ukraine; Severe Western Sanctions and Energy Crisis Triggered",
+    "narrative": "Russian military offensive in Ukraine triggers sweeping Western financial sanctions, freezing of CBR reserves, and profound energy disruption. Brent crude surges above $130/bbl, European natural gas spikes, and gold surges as global safe-haven demand accelerates.",
+    "currencies_affected": "EUR,USD,XTIUSD,XAUUSD,GBP",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2022-03-16T18:00:00Z",
+    "category": "policy_change",
+    "headline": "Federal Reserve Initiates Aggressive Rate Hike Cycle (25 bps Liftoff)",
+    "narrative": "FOMC raises target range for federal funds rate by 25 bps to 0.25%-0.50%, commencing the fastest monetary tightening campaign in four decades to combat multi-decade high inflation.",
+    "currencies_affected": "USD,XAUUSD,EUR,JPY",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-06-15T18:00:00Z",
+    "category": "data_shock",
+    "headline": "US Headline CPI Hits 40-Year High (8.6%); Fed Delivers 75 bps Jumbo Hike",
+    "narrative": "Hotter-than-expected inflation prompts the Fed's first 75 bps single-meeting rate hike since 1994, triggering aggressive dollar appreciation (DXY breaking above 105) and broad asset repricing.",
+    "currencies_affected": "USD,XAUUSD,EUR,GBP,JPY",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-07-13T12:30:00Z",
+    "category": "data_shock",
+    "headline": "US CPI Peaks at 9.1% Year-Over-Year; 100 bps Fed Hike Odds Surge",
+    "narrative": "US inflation accelerates to cycle peak of 9.1%, cementing ultra-hawkish central bank positioning across the G10 and relentless upward momentum in front-end US Treasury yields.",
+    "currencies_affected": "USD,XAUUSD,EUR,JPY",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-09-22T08:00:00Z",
+    "category": "institutional",
+    "headline": "Bank of Japan Intervenes in FX Market as Yen Breaches 145 per Dollar",
+    "narrative": "Ministry of Finance conducts first yen-buying FX intervention since 1998 following Bank of Japan's insistence on maintaining Yield Curve Control (YCC) at -0.10% amid widening yield gap with US Treasuries.",
+    "currencies_affected": "JPY,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-09-23T09:00:00Z",
+    "category": "policy_change",
+    "headline": "UK Mini-Budget Gilt Crisis: Truss Fiscal Package Triggers BoE Emergency Intervention",
+    "narrative": "UK Chancellor Kwarteng announces unfunded tax cuts, causing historic collapse in UK Gilts and GBPUSD plummeting to all-time low near 1.0350. Bank of England launches temporary emergency bond-buying to avert pension fund insolvency.",
+    "currencies_affected": "GBP,USD,EUR",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-09-28T00:00:00Z",
+    "category": "data_shock",
+    "headline": "US Dollar Index (DXY) Hits Cycle Peak of 114.78; Extreme Global FX Stress",
+    "narrative": "Broad US dollar strength reaches 20-year high driven by coordinated safe-haven flows and relentless Fed tightening expectations. EURUSD trades below parity (0.96) and XAUUSD tests cycle lows near $1615.",
+    "currencies_affected": "USD,EUR,GBP,JPY,XAUUSD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2022-12-20T03:00:00Z",
+    "category": "policy_change",
+    "headline": "Bank of Japan Shocks Markets by Widening 10Y JGB Yield Band to +/-0.50%",
+    "narrative": "Governor Kuroda announces unexpected technical adjustment to Yield Curve Control corridor, sparking immediate 4% rally in Japanese Yen and global bond selloff.",
+    "currencies_affected": "JPY,USD,EUR",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2023-03-10T15:00:00Z",
+    "category": "regime_shift",
+    "headline": "Silicon Valley Bank (SVB) Collapses; US Regional Banking Panic Erupts",
+    "narrative": "FDIC takes receivership of SVB following catastrophic deposit run driven by unrealized losses on hold-to-maturity Treasury securities. US 2Y yield plunges by record 100 bps in three days, safe-haven gold surges, and Fed establishes Bank Term Funding Program (BTFP).",
+    "currencies_affected": "USD,XAUUSD,EUR,BTCUSD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2023-03-19T18:00:00Z",
+    "category": "regime_shift",
+    "headline": "UBS Acquires Credit Suisse in Historic Swiss Government-Brokered Rescue",
+    "narrative": "Swiss authorities orchestrate emergency takeover of 167-year-old Credit Suisse with full write-down of $17B AT1 contingent convertible bonds, calming systemic European bank contagion fears.",
+    "currencies_affected": "EUR,USD,XAUUSD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2023-04-09T00:00:00Z",
+    "category": "institutional",
+    "headline": "Kazuo Ueda Formally Assumes Leadership as Governor of Bank of Japan",
+    "narrative": "Academic economist Kazuo Ueda succeeds Haruhiko Kuroda, initiating deliberate multi-year strategic roadmap toward eventual monetary normalization and exit from negative interest rates.",
+    "currencies_affected": "JPY,USD",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2023-07-26T18:00:00Z",
+    "category": "policy_change",
+    "headline": "Federal Reserve Delivers Final Rate Hike of Cycle to 5.25%-5.50% Range",
+    "narrative": "FOMC raises rates by 25 bps, establishing the terminal rate plateau that would persist for 14 months. Focus transitions from rate magnitude to duration of restriction ('higher for longer').",
+    "currencies_affected": "USD,XAUUSD,EUR",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2023-10-07T05:00:00Z",
+    "category": "geopolitical",
+    "headline": "Middle East War Erupts: Israel-Gaza Conflict Sparks Geopolitical Repricing",
+    "narrative": "Hamas attack on southern Israel precipitates major regional conflict. Crude oil and gold gap higher on fears of escalation to Iran and disruption to Gulf transit corridors.",
+    "currencies_affected": "XAUUSD,XTIUSD,USD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2023-10-19T16:00:00Z",
+    "category": "data_shock",
+    "headline": "US 10-Year Treasury Yield Breaches 5.00% for First Time Since 2007",
+    "narrative": "Relentless Treasury issuance, resilient US GDP growth, and rising term premia push benchmark 10Y yields past 5.02%, tightening global financial conditions and weighing on equities and emerging currencies.",
+    "currencies_affected": "USD,XAUUSD,EUR,JPY",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2023-12-13T19:00:00Z",
+    "category": "policy_change",
+    "headline": "Fed Pivot: Jerome Powell Signals Rate Cuts in 2024 Dot Plot",
+    "narrative": "FOMC summary of economic projections projects 75 bps of cuts in 2024. Powell's press conference takes distinctly dovish tone, triggering massive risk-on rally, dollar weakness, and gold breakout.",
+    "currencies_affected": "USD,XAUUSD,EUR,GBP,BTCUSD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-01-10T21:00:00Z",
+    "category": "institutional",
+    "headline": "US SEC Approves 11 Spot Bitcoin ETFs",
+    "narrative": "Securities and Exchange Commission approves first spot Bitcoin exchange-traded funds, institutionalizing crypto capital allocation and driving institutional volume inflow into BTCUSD.",
+    "currencies_affected": "BTCUSD,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-03-19T03:30:00Z",
+    "category": "policy_change",
+    "headline": "Bank of Japan Officially Ends Negative Interest Rate Policy and YCC",
+    "narrative": "BoJ raises short-term rate from -0.1% to 0.0%-0.1% and discontinues yield curve control, concluding an unprecedented 8-year era of negative interest rates following spring wage negotiations (Shunto).",
+    "currencies_affected": "JPY,USD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-06-06T12:15:00Z",
+    "category": "policy_change",
+    "headline": "European Central Bank Executes First 25 bps Rate Cut Ahead of the Fed",
+    "narrative": "Governing Council lowers deposit facility rate to 3.75%, initiating policy divergence with the Federal Reserve as disinflation in the Eurozone progresses faster than in the United States.",
+    "currencies_affected": "EUR,USD",
+    "severity": "high",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-07-31T03:00:00Z",
+    "category": "policy_change",
+    "headline": "Bank of Japan Hikes Rates to 0.25%; Global Yen Carry Trade Collapse Ensues",
+    "narrative": "BoJ unexpectedly raises benchmark rate to 0.25% and outlines bond purchase tapering. Hawkish guidance precipitates massive global unwind of leveraged Yen carry trades over the ensuing 72 hours.",
+    "currencies_affected": "JPY,USD,BTCUSD,XAUUSD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-08-05T00:00:00Z",
+    "category": "data_shock",
+    "headline": "'Black Monday' Volatility Spike: Nikkei Drops 12%, VIX Explodes to 65",
+    "narrative": "Carry trade liquidation compounded by weak US July payrolls triggers historic global risk rout. Nikkei 225 suffers largest single-day point drop in history, VIX reaches intraday peak of 65.73 before rapid central bank jawboning stabilization.",
+    "currencies_affected": "JPY,USD,XAUUSD,BTCUSD",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-09-18T18:00:00Z",
+    "category": "policy_change",
+    "headline": "Federal Reserve Initiates Easing Cycle with 50 bps Jumbo Rate Cut",
+    "narrative": "FOMC cuts target range by 50 bps to 4.75%-5.00%, prioritizing labor market preservation as inflation approaches the 2% target. Gold establishes fresh all-time highs above $2,600.",
+    "currencies_affected": "USD,XAUUSD,EUR,GBP",
+    "severity": "critical",
+    "is_ongoing": false
+  },
+  {
+    "event_date": "2024-11-05T23:00:00Z",
+    "category": "policy_change",
+    "headline": "Donald Trump Wins 2024 US Presidential Election; 'Trump Trade' Ignites",
+    "narrative": "Republican sweep of White House and Congress triggers massive repricing of expected universal tariffs, deregulation, corporate tax cuts, and deficit expansion. US Dollar (DXY) surges to multi-month highs and Treasury yields push higher.",
+    "currencies_affected": "USD,EUR,GBP,JPY,BTCUSD,XAUUSD",
+    "severity": "critical",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2025-01-20T17:00:00Z",
+    "category": "policy_change",
+    "headline": "Inauguration: US Universal Reciprocal Tariff Executive Orders Signed",
+    "narrative": "Administration enacts targeted and reciprocal tariff mandates across major trade corridors. Supply chain nearshoring accelerates, maintaining baseline goods price stickiness and dollar strength.",
+    "currencies_affected": "USD,EUR,GBP,AUD,CNY",
+    "severity": "high",
+    "is_ongoing": true
+  },
+  {
+    "event_date": "2026-05-22T14:00:00Z",
+    "category": "institutional",
+    "headline": "Kevin Warsh Sworn In as Federal Reserve Chair; Monetary-Fiscal Realignment",
+    "narrative": "Kevin Warsh assumes chairmanship of Federal Reserve Board, succeeding Jerome Powell. New institutional posture emphasizes balance sheet QT discipline, supply-side monetary coordination with Treasury Secretary Scott Bessent, and persistent inflation vigilance.",
+    "currencies_affected": "USD,XAUUSD,EUR,JPY",
+    "severity": "high",
+    "is_ongoing": true
+  }
+]
