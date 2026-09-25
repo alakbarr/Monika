@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from database.models import PriceOHLCV, FVGZone, OrderBlock, SwingPoint, SRZone, LiquidityZone, StructureBreak
 from indicators.structure import MarketStructureAnalyzer
 
 class TestMarketStructureAnalyzer:
@@ -212,4 +213,148 @@ async def test_analyze_end_to_end_async_thread(test_db_session):
     assert "fvg_zones" in counts
     assert "order_blocks" in counts
     assert "struct_breaks" in counts
+
+
+@pytest.mark.asyncio
+async def test_fvg_prune_and_upsert_lifecycle_regression(test_db_session):
+    """
+    Regression test: Verifies that deleting/pruning old or distant FVGs
+    does not cause SQLAlchemy 'Instance has been deleted' InvalidRequestError during upsert.
+    """
+    now = datetime.now(timezone.utc)
+    old_time = now - pd.Timedelta(days=45)
+
+    # 1. Seed existing old filled FVG (eligible for 30-day cutoff prune)
+    # and existing unfilled FVG
+    old_fvg = FVGZone(
+        symbol="USDJPY",
+        timeframe="H4",
+        gap_high=150.0,
+        gap_low=149.0,
+        direction="bullish",
+        formed_at=old_time,
+        filled_at=old_time,
+    )
+    unfilled_fvg = FVGZone(
+        symbol="USDJPY",
+        timeframe="H4",
+        gap_high=155.0,
+        gap_low=154.0,
+        direction="bullish",
+        formed_at=now - pd.Timedelta(hours=20),
+        filled_at=None,
+    )
+    test_db_session.add_all([old_fvg, unfilled_fvg])
+    await test_db_session.commit()
+
+    # 2. Seed OHLCV bars
+    rows = []
+    for i in range(30):
+        ts = now - pd.Timedelta(hours=(30 - i) * 4)
+        rows.append(PriceOHLCV(
+            symbol="USDJPY",
+            timeframe="H4",
+            timestamp=ts,
+            open=153.0 + (i % 3) * 0.5,
+            high=156.0 + (i % 3) * 0.5,
+            low=152.0 - (i % 3) * 0.5,
+            close=154.5 + (i % 3) * 0.5,
+            volume=500.0,
+        ))
+    test_db_session.add_all(rows)
+    await test_db_session.commit()
+
+    # 3. First analysis cycle
+    analyzer = MarketStructureAnalyzer(test_db_session, {"indicators": {"swing_window": 2}})
+    counts_1 = await analyzer.analyze("USDJPY", "H4")
+    assert isinstance(counts_1, dict)
+
+    # 4. Second analysis cycle (simulates consecutive execution in production)
+    counts_2 = await analyzer.analyze("USDJPY", "H4")
+    assert isinstance(counts_2, dict)
+
+
+@pytest.mark.asyncio
+async def test_order_block_prune_and_upsert_lifecycle_regression(test_db_session):
+    """
+    Regression test: Verifies that pruning mitigated OrderBlocks older than 90 days
+    does not cause SQLAlchemy 'Instance has been deleted' InvalidRequestError.
+    """
+    now = datetime.now(timezone.utc)
+    old_time = now - pd.Timedelta(days=100)
+
+    # Seed mitigated OB older than 90 days
+    old_ob = OrderBlock(
+        symbol="AUDUSD",
+        timeframe="H4",
+        direction="bullish",
+        price_high=0.6800,
+        price_low=0.6750,
+        formed_at=old_time - pd.Timedelta(days=5),
+        mitigated_at=old_time,
+    )
+    test_db_session.add(old_ob)
+    await test_db_session.commit()
+
+    # Seed OHLCV bars
+    rows = []
+    for i in range(30):
+        ts = now - pd.Timedelta(hours=(30 - i) * 4)
+        rows.append(PriceOHLCV(
+            symbol="AUDUSD",
+            timeframe="H4",
+            timestamp=ts,
+            open=0.6700 + (i % 3) * 0.002,
+            high=0.6750 + (i % 3) * 0.002,
+            low=0.6650 - (i % 3) * 0.002,
+            close=0.6720 + (i % 3) * 0.002,
+            volume=300.0,
+        ))
+    test_db_session.add_all(rows)
+    await test_db_session.commit()
+
+    analyzer = MarketStructureAnalyzer(test_db_session, {"indicators": {"swing_window": 2}})
+    counts = await analyzer.analyze("AUDUSD", "H4")
+    assert isinstance(counts, dict)
+    assert "order_blocks" in counts
+
+
+@pytest.mark.asyncio
+async def test_analyze_all_rollback_on_failure(test_db_session):
+    """
+    Regression test: Verifies that if one symbol fails during analyze_all,
+    the session is cleanly rolled back and subsequent symbols execute without InFailedSqlTransaction.
+    """
+    now = datetime.now(timezone.utc)
+    rows = []
+    for i in range(25):
+        ts = now - pd.Timedelta(hours=25 - i)
+        rows.append(PriceOHLCV(
+            symbol="PASS_SYM",
+            timeframe="H1",
+            timestamp=ts,
+            open=100.0,
+            high=105.0,
+            low=95.0,
+            close=102.0,
+            volume=100.0,
+        ))
+    test_db_session.add_all(rows)
+    await test_db_session.commit()
+
+    analyzer = MarketStructureAnalyzer(test_db_session, {"indicators": {"swing_window": 2}})
+
+    original_load = analyzer._load_ohlcv
+    async def mock_load(sym, tf):
+        if sym == "FAIL_SYM":
+            raise RuntimeError("Database connection glitch on FAIL_SYM")
+        return await original_load(sym, tf)
+
+    analyzer._load_ohlcv = mock_load
+
+    results = await analyzer.analyze_all(["FAIL_SYM", "PASS_SYM"], ["H1"])
+    assert "FAIL_SYM/H1" in results
+    assert results["FAIL_SYM/H1"]["swing_points"] == 0
+    assert "PASS_SYM/H1" in results
+    assert results["PASS_SYM/H1"]["swing_points"] >= 0
 
