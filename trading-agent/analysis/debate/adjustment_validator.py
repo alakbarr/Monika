@@ -37,6 +37,18 @@ async def validate_and_apply_judge_adjustments(
     if not new_entry or not new_sl or not new_tp:
         return False, 'Judge adjustment tidak lengkap (entry/sl/tp referensi hilang)'
 
+    direction = str(getattr(ana, 'direction', None) or getattr(ana, 'action', None) or '').upper()
+    if direction == "BUY":
+        if new_sl >= new_entry:
+            return False, f"BUY geometry violation: SL ({new_sl}) >= Entry ({new_entry})"
+        if new_tp <= new_entry:
+            return False, f"BUY geometry violation: TP ({new_tp}) <= Entry ({new_entry})"
+    elif direction == "SELL":
+        if new_sl <= new_entry:
+            return False, f"SELL geometry violation: SL ({new_sl}) <= Entry ({new_entry})"
+        if new_tp >= new_entry:
+            return False, f"SELL geometry violation: TP ({new_tp}) >= Entry ({new_entry})"
+
     sl_dist = abs(new_entry - new_sl)
     tp_dist = abs(new_entry - new_tp)
     if sl_dist <= 0:

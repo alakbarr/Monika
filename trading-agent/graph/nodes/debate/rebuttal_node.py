@@ -66,7 +66,7 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                 logger.info(f"[{sym}] Executing round 2 dialectic rebuttal (direction={decision.upper()})...")
                 if is_sell:
                     rebuttal_res = await generate_bear_rebuttal(
-                        bear_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
+                        bear_client, sym, original_context, fact_sheet, bear_dissent, verified_bull_claim
                     )
                 else:
                     rebuttal_res = await generate_bull_rebuttal(

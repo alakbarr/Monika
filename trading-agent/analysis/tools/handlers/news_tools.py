@@ -30,14 +30,20 @@ async def handle_get_news_items(args: dict, **ctx) -> dict:
     session, _ = _get_session(args, ctx)
     hours_back = int(args.get("hours_back", 24))
     limit = int(args.get("limit", 20))
-    currency = args.get("currency")
+    currency = args.get("currency") or args.get("currency_filter")
     min_impact = args.get("min_impact")
 
     if not session:
         return {"items": [], "status": "no_session"}
 
     cutoff = clock.now() - timedelta(hours=hours_back)
-    query = select(NewsItem).where(NewsItem.published_at >= cutoff)
+    from sqlalchemy import or_
+    query = select(NewsItem).where(
+        or_(
+            NewsItem.fetched_at >= cutoff,
+            and_(NewsItem.published_at.isnot(None), NewsItem.published_at >= cutoff)
+        )
+    )
     if currency:
         query = query.where(NewsItem.currency_tags.like(f"%{currency.upper()}%"))
     if min_impact:
@@ -45,7 +51,8 @@ async def handle_get_news_items(args: dict, **ctx) -> dict:
         min_rank = _impact_ranks.get(str(min_impact).upper(), 0)
         allowed_impacts = [k for k, v in _impact_ranks.items() if v >= min_rank]
         query = query.where(NewsItem.impact.in_(allowed_impacts))
-    query = query.order_by(NewsItem.published_at.desc()).limit(limit)
+    from sqlalchemy import func
+    query = query.order_by(func.coalesce(NewsItem.published_at, NewsItem.fetched_at).desc()).limit(limit)
 
     rows = (await session.execute(query)).scalars().all()
     return {
@@ -80,20 +87,31 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
         return {"status": "no_session", "digest": None, "error": "Database session unavailable"}
 
     hours_back = int(args.get("hours_back", 12))
+    cutoff = clock.now() - timedelta(hours=hours_back)
     assembled_digest = None
 
-    # 1. Priority 1: Modern rolling slices via DigestSliceGenerator
-    try:
-        from analysis.prefetch.digest_slice_generator import DigestSliceGenerator
-        generator = DigestSliceGenerator(settings)
-        assembled_digest = await generator.assemble_12h_digest(session, hours_back=hours_back)
-    except Exception as e:
-        logger.debug(f"[NewsTools] Slice assembly failed (falling back to legacy digest): {e}")
-
-    # 2. Priority 2: Direct query on NewsDigest table using generated_at
+    # 1. Priority 1: Check for existing verified NewsDigest table row within cutoff (Fix 5.3)
     digest_row = (await session.execute(
-        select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
+        select(NewsDigest)
+        .where(NewsDigest.generated_at >= cutoff)
+        .order_by(NewsDigest.generated_at.desc())
+        .limit(1)
     )).scalar_one_or_none()
+
+    # 2. Priority 2: Modern rolling slices via DigestSliceGenerator if no recent verified digest
+    if not digest_row or not getattr(digest_row, "digest_text", None):
+        try:
+            from analysis.prefetch.digest_slice_generator import DigestSliceGenerator
+            generator = DigestSliceGenerator(settings)
+            assembled_digest = await generator.assemble_12h_digest(session, hours_back=hours_back)
+        except Exception as e:
+            logger.debug(f"[NewsTools] Slice assembly failed (falling back to legacy digest): {e}")
+
+    # 3. Priority 3: Fall back to latest available NewsDigest regardless of age
+    if not assembled_digest and not digest_row:
+        digest_row = (await session.execute(
+            select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
+        )).scalar_one_or_none()
 
     if not assembled_digest and not digest_row:
         return {

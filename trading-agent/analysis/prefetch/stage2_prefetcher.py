@@ -305,12 +305,13 @@ class Stage2DataBundler:
         try:
             from utils.protocol.context_coherence import get_base_quote_tags
             currency_filter = get_base_quote_tags(symbol)
-            news_res = await self.executor.execute('get_news_items', {'currency_filter': currency_filter, 'hours_back': 12, 'limit': 8})
+            news_res = await self.executor.execute('get_news_items', {'currency': currency_filter, 'currency_filter': currency_filter, 'symbol': symbol, 'hours_back': 12, 'limit': 8})
             if 'error' not in news_res:
                 import unicodedata
                 import textwrap
                 compact_news = []
-                for n in news_res.get('news', [])[:8]:
+                raw_items = news_res.get('news') or news_res.get('items') or news_res.get('news_items') or []
+                for n in raw_items[:8]:
                     import re as _re
                     import html as _html
                     raw_str = unicodedata.normalize("NFKC", str(n.get('title', '')))

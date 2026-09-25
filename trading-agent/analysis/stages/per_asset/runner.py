@@ -159,7 +159,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             pass
         
         # Ambil nilai confidence dari brief Tahap 1 untuk menyesuaikan agresivitas Tahap 2
-        stage1_confidence = 1.0
+        stage1_confidence = 0.50
         try:
             from database.models import FundamentalBrief
             async with session_factory() as session:
@@ -1002,7 +1002,12 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 mt5_cli = getattr(self, "mt5_client", None)
                 if mt5_cli is not None and callable(getattr(mt5_cli, "get_account_info", None)):
                     try:
-                        acc = getattr(mt5_cli, "get_account_info")()
+                        import inspect
+                        acc_fn = getattr(mt5_cli, "get_account_info")
+                        if inspect.iscoroutinefunction(acc_fn):
+                            acc = await acc_fn()
+                        else:
+                            acc = acc_fn()
                         if acc and isinstance(acc, dict):
                             acc_equity = float(acc.get("equity", 0.0)) or None
                             free_margin = float(acc.get("margin_free", 0.0)) or None
@@ -1017,13 +1022,33 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 bundle_for_grounding.setdefault("account_equity", acc_equity)
                 bundle_for_grounding.setdefault("free_margin", free_margin)
 
+                # Fix 6.10: Extract lot_size from verification ledger, tool evidence, or ez_parsed
+                # (AssetAnalysis model has no lot_size column in DB)
+                lot_size_val = (
+                    getattr(analysis, "lot_size", None)
+                    or (verified.get("lot_size") if isinstance(verified, dict) else None)
+                )
+                if lot_size_val is None:
+                    v_ledger = getattr(self, "verification_ledger", None)
+                    if not v_ledger and hasattr(self, "tool_executor"):
+                        v_ledger = getattr(self.tool_executor, "verification_ledger", None)
+                    if v_ledger and hasattr(v_ledger, "get_passed_records"):
+                        passed_records = v_ledger.get_passed_records(symbol)
+                        for prec in reversed(passed_records):
+                            if prec.tool_name in ("calculate_position_size", "validate_risk_limits") and isinstance(prec.details, dict):
+                                lot_size_val = prec.details.get("lot_size") or prec.details.get("lots") or prec.details.get("recommended_lot_size")
+                                if lot_size_val is not None:
+                                    break
+                if lot_size_val is None and isinstance(ez_parsed, dict):
+                    lot_size_val = ez_parsed.get("lot_size") or ez_parsed.get("lots")
+
                 curr_payload = {
                     "decision": analysis.decision,
                     "entry_price": ez_parsed.get("price") or ez_parsed.get("price_high"),
                     "stop_loss": analysis.stop_loss,
                     "take_profit": analysis.take_profit,
                     "rationale": analysis.rationale,
-                    "lot_size": getattr(analysis, "lot_size", None),
+                    "lot_size": float(lot_size_val) if lot_size_val is not None else None,
                     "account_equity": acc_equity,
                     "free_margin": free_margin,
                 }
@@ -1187,7 +1212,18 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
 
         if analysis and analysis.decision in ("buy", "sell"):
-            effective_threshold = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
+            try:
+                from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+                effective_threshold, _ = await compute_unified_confluence_threshold(
+                    session=session,
+                    symbol=symbol,
+                    settings=self.settings,
+                    market_regime=getattr(analysis, "market_regime", None)
+                )
+            except Exception as thr_err:
+                logger.debug(f"[{symbol}] Failed computing unified threshold, using fallback: {thr_err}")
+                effective_threshold = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
+
             near_threshold = analysis.confluence_score and analysis.confluence_score <= effective_threshold + 1
             elevated_priced_in = analysis.priced_in_score and analysis.priced_in_score >= 6
             

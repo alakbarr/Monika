@@ -239,7 +239,7 @@ class SignalArbitrator:
                         session, default_mult=concordant_risk_mult, max_mult=max_risk_mult
                     )
 
-                boosted_risk = min(max_risk_mult, round(float(llm_decision.get("risk_multiplier", 1.0)) * concordant_risk_mult, 2))
+                boosted_risk = min(max_risk_mult, round(float(llm_decision.get("risk_multiplier") or 1.0) * concordant_risk_mult, 2))
                 
                 # ATR Gap Guard & Optimal Risk:Reward Level Selection (AX1-08)
                 llm_entry = float(llm_decision.get("entry_price") or 0.0)
@@ -380,8 +380,32 @@ class SignalArbitrator:
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
 
-            # 4. If LLM is waiting/avoiding and Quant has active valid signal:
-            if l_dir in ("avoid", "wait") and q_dir in ("buy", "sell"):
+            is_incubating = bool(getattr(quant_signal, "meta", {}).get("is_incubating", False)) if quant_signal else False
+            if is_incubating and l_dir in ("avoid", "wait"):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision=l_dir,
+                    confidence=l_conf,
+                    risk_multiplier=0.0,
+                    selected_source="llm",
+                    arbitration_reason=f"Quant strategy {quant_strat_id} is incubating (not live-ready) — cannot override LLM {l_dir}.",
+                    meta={"is_incubating": True}
+                )
+
+            # 4a. If LLM actively rejected ("avoid"), protect active rejection from quant override
+            if l_dir == "avoid" and q_dir in ("buy", "sell"):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="llm",
+                    arbitration_reason="LLM actively rejected asset (avoid) — quant override blocked for safety.",
+                    meta={"llm_signal": "avoid", "blocked_quant_signal": q_dir}
+                )
+
+            # 4b. If LLM is waiting ("wait") and Quant has active valid signal:
+            if l_dir == "wait" and q_dir in ("buy", "sell"):
                 # If TimesFM strongly opposes Quant, suppress to avoid false breakout
                 if (q_dir == "buy" and tfm_skew < -0.30) or (q_dir == "sell" and tfm_skew > 0.30):
                     return ArbitrationResult(

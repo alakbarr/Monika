@@ -106,36 +106,36 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3247
     - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3254
     - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3269
-      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3378
-    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3397
-    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3407
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3726
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3758
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3798
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3810
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3936
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3963
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3981
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4000
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4043
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4048
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4094
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4582
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4600
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4630
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4663
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4669
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4685
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4712
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4721
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4800
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4829
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4839
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4868
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4878
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4887
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4900
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4925
+      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3379
+    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3398
+    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3408
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3727
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3759
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3799
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3811
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3937
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3964
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 3982
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4001
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4044
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4049
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4095
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4583
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4601
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4631
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4664
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4670
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4686
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4713
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4722
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4801
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4830
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4840
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4869
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4879
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4888
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4901
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4926
 
 ## Root Directory: `/trading-agent`
 
@@ -726,7 +726,7 @@ This document provides an exhaustive structural index of all directories, files,
 ##### Folder: `trading-agent/analysis/grounding`
 **File:** `__init__.py`
 **File:** `provenance_tagger.py`
-  - **Docstring**: Tracks numeric provenance of tool outputs and cross-verifies figures cited by LLM agents. Extended in PR-07 for multi-dimensional grounding (lot_size, spread, margin, equity).
+  - **Docstring**: Tracks numeric provenance of tool outputs and cross-verifies figures cited by LLM agents. Extended in PR-07 for multi-dimensional grounding (lot_size, spread, margin, equity) with broker-verified contract sizes (XAU: 100, BTC: 1, ETH: 10, XTI/XBR: 1000).
   - **Classes**: `ObservedFact`, `ProvenanceLedger`
     - *Methods*: `register_from_tool_output()`, `register_fact()`, `verify_citation()`, `verify_text_citations()`, `verify_lot_size()`, `verify_spread()`, `verify_margin()`, `verify_equity()`, `verify_trade_parameters()`
 
@@ -826,17 +826,17 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `confluence_calculator.py`
   - **Functions**: `calculate_confluence`
 **File:** `daily_range_calculator.py`
-  - **Functions**: `compute_daily_range_context`
+  - **Functions**: `compute_daily_range_context` (Computes dynamic ADR bands, evaluates room remaining, TimesFM 3.0 range integration, and computes `target_sl_min_distance` and `target_sl_max_distance`)
 **File:** `economic_surprise.py`
   - **Functions**: `compute_surprise_scores`
 **File:** `intraday_level_optimizer.py`
   - **Functions**: `compute_optimal_levels(session, symbol, direction, entry_price, settings, existing_sl=None, existing_tp=None)`
-    - *Docstring*: Computes optimal intraday target levels based on H4/D1 zones, ADR, TimesFM cone, and validates R:R >= min_rr pairing (with synthetic TP fallback if structural TP is insufficient).
+    - *Docstring*: Computes optimal intraday target levels based on H4/D1 zones, ADR, TimesFM cone, robust 0.5% entry price fallback ATR, and validates R:R >= min_rr pairing (with synthetic TP fallback if structural TP is insufficient).
 **File:** `invariant_calculator.py`
   - **Classes**: `DeterministicTradeInvariants`
   - **Functions**: `calculate_deterministic_trade_invariants`, `snap_sl_to_structural_anchor`
 **File:** `liquidity_sweep_detector.py`
-  - **Functions**: `detect_liquidity_sweep`
+  - **Functions**: `detect_liquidity_sweep`, `_get_asian_session_range` (Handles current active session `today 00:00` to `now` without session inversion)
 **File:** `macro_bias_filter.py`
   - **Functions**: `evaluate_macro_alignment`
 **File:** `macro_priced_in_calculator.py`
@@ -1177,7 +1177,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `fact_sheet.py`
   - **Global Variables**: `logger`
-  - **Functions**: `build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str, Any]`
+  - **Functions**: `build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str, Any]` (Filters paper trades strictly by `status == 'closed'` for accurate win/loss metrics; queries SMC order blocks and FVGs without gating on ATR > 0)
 
 ##### Folder: `trading-agent/analysis/validators`
 **File:** `adjudication_verifier.py`
@@ -2619,7 +2619,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `reflection_node.py`
   - **Global Variables**: logger
   - **Functions**:
-    - `reflection_node()` - Cross-asset reflection prior to execution; enforces defensive VIX fallback (VIX=25.0 on query failure) preventing filter bypass when DB is unavailable
+    - `reflection_node()` - Cross-asset reflection prior to execution; enforces defensive VIX fallback (VIX=25.1 on query failure) preventing elevated volatility filter bypass when DB is unavailable; expands currency pair coverage (USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP) and strips broker suffixes
 
 **File:** `plan_refinement_node.py`
   - **Global Variables**: logger
@@ -2634,9 +2634,9 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `state_pruner.py`
   - **Functions**:
-    - `prune_after_fundamental(state: TradingState) -> Dict[str, Any]`
-    - `prune_after_debate(state: TradingState) -> Dict[str, Any]`
-    - `prune_before_execution(state: TradingState) -> Dict[str, Any]`
+    - `prune_after_fundamental(state: TradingState) -> Dict[str, Any]` (Uses `_DELETED_` tombstone values to correctly remove keys in LangGraph `merge_dicts` state reducer)
+    - `prune_after_debate(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for heavyweight debate transcripts)
+    - `prune_before_execution(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for transient raw research and context payloads)
 
 #### Folder: `trading-agent/harness`
 
@@ -3352,6 +3352,7 @@ This document provides an exhaustive structural index of all directories, files,
         - `update_parameters(self, new_risk_cfg)`
         - `evaluate(self, session, symbol, direction, sizing, account_equity, analysis, as_of, simulated_positions, simulated_equity, simulated_daily_pnl, is_backtest, pair_group_id, is_paper)`
         - `evaluate_proposal(self, session, proposal, account_equity=None, as_of=None, is_backtest=False, is_paper=None)` (alias: `check_proposal`)
+        - `_check_analysis_quality_scores(self, session, analysis, symbol)`: Evaluates empirical statistical thresholds using AdaptiveRiskPolicy and Wilson score intervals.
         - `check_correlation_exposure(self, session, symbol, direction, simulated_positions, as_of, open_positions)`
         - `_check_strategy_factor_exposure(self, session, analysis, simulated_positions=None)`: Batasi konsentrasi eksposur portofolio per factor family (trend, mean_reversion, stat_arb, breakout).
         - `assess_weekend_gap_risk(self, session, symbol: str)` (alias: `_check_weekend_gap_risk`)

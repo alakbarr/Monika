@@ -183,21 +183,22 @@ class SpecialistCouncil:
                 veto_reason="News embargo window active: entries prohibited."
             )
 
-        # Invariant checks: minimum R:R >= 1.5
+        # Invariant checks: minimum R:R >= configured min_rr (Fix 6.3)
+        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
         est_rr = bundle_data.get("estimated_rr", 2.0)
-        if tentative_action != "HOLD" and est_rr < 1.5:
+        if tentative_action != "HOLD" and est_rr < min_rr:
             return SpecialistVote(
                 role=SpecialistRole.RISK_ARBITRATOR,
                 bias="NEUTRAL",
                 confidence=0.85,
-                rationale=f"Estimated R:R ratio ({est_rr:.2f}) is below mandatory minimum 1.5.",
+                rationale=f"Estimated R:R ratio ({est_rr:.2f}) is below mandatory minimum {min_rr:.1f}.",
                 veto=True,
-                veto_reason=f"Sub-optimal risk-to-reward ratio: {est_rr:.2f} < 1.5"
+                veto_reason=f"Sub-optimal risk-to-reward ratio: {est_rr:.2f} < {min_rr:.1f}"
             )
 
         return SpecialistVote(
             role=SpecialistRole.RISK_ARBITRATOR,
-            bias="BULLISH" if tentative_action == "BUY" else ("BEARISH" if tentative_action == "SELL" else "NEUTRAL"),
+            bias="NEUTRAL",
             confidence=0.8,
             rationale=f"Risk parameters approved with {len(negative_constraints)} negative constraints applied."
         )
@@ -241,7 +242,7 @@ class SpecialistCouncil:
 
         return SpecialistVote(
             role=SpecialistRole.EXECUTION_STRATEGIST,
-            bias="BULLISH" if action == "BUY" else ("BEARISH" if action == "SELL" else "NEUTRAL"),
+            bias="NEUTRAL",
             confidence=0.75,
             rationale=rationale,
             metadata=exec_params
@@ -340,9 +341,11 @@ class SpecialistCouncil:
                 aligned_weight += weight
                 total_consensus += weight * vote.confidence
             elif vote.bias == "NEUTRAL":
-                total_consensus += weight * (vote.confidence * 0.5)
+                if not vote.veto:
+                    aligned_weight += weight * 0.5
+                total_consensus += weight * (vote.confidence * 0.75)
 
-        is_approved = tentative_action != "HOLD" and aligned_weight >= 0.55 and total_consensus >= 0.60
+        is_approved = tentative_action != "HOLD" and aligned_weight >= 0.50 and total_consensus >= 0.60
         final_action = TradeAction(tentative_action) if is_approved else TradeAction.HOLD
 
         rationale = (

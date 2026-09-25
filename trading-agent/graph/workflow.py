@@ -222,10 +222,7 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
     def reflection_routing(state: TradingState) -> str:
         if state.get("should_pause"):
             return "END"
-        actionable = state.get("actionable_trades", [])
-        if actionable:
-            return "risk_gate"
-        return "END"
+        return "risk_gate"  # Always evaluate — quant alpha may promote WAIT assets
         
     workflow.add_conditional_edges(
         "reflection",

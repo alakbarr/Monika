@@ -287,37 +287,61 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
 
     event_data = state.get("event_data") or {}
     pair_group_id = str(event_data.get("pair_group_id") or "")
-    analyses_to_execute = event_data.get("analyses") or []
+    raw_analyses = event_data.get("analyses") or []
+    actionable_symbols = {sym for sym, r in actionable}
+    # Filter analyses to only those approved in actionable_trades
+    analyses_to_execute = [ana for ana in raw_analyses if getattr(ana, "symbol", "") in actionable_symbols]
     session_override = event_data.get("session")
 
     async def _do_execution(session: AsyncSession):
         # 1. Handle paired hedge order from edge strategy runner
-        if len(analyses_to_execute) == 2 and hasattr(exec_svc, "execute_paired_analyses"):
-            try:
-                p_res = await exec_svc.execute_paired_analyses(
-                    session, analyses_to_execute[0], analyses_to_execute[1], pair_group_id
-                )
-                execution_results["paired"] = p_res.get("summary", str(p_res)) if isinstance(p_res, dict) else str(p_res)
-            except Exception as e:
-                logger.error(f"[ReactiveGraph:Execution] Paired execution failed: {e}")
-                execution_results["paired"] = f"error: {e}"
-        elif len(analyses_to_execute) == 1 and hasattr(exec_svc, "execute_analysis"):
-            try:
-                ana_target = analyses_to_execute[0]
-                res = await exec_svc.execute_analysis(session, ana_target, equity)
-                exec_summary = res.summary() if hasattr(res, "summary") else str(res)
-                execution_results[ana_target.symbol] = exec_summary
-                if getattr(res, "executed", False):
-                    ana_target.execution_status = "executed"
-                elif not getattr(res, "risk_approved", True):
-                    ana_target.execution_status = "blocked"
+        if len(raw_analyses) == 2 and hasattr(exec_svc, "execute_paired_analyses"):
+            if len(analyses_to_execute) == 2:
+                if auto_execute:
+                    try:
+                        p_res = await exec_svc.execute_paired_analyses(
+                            session, analyses_to_execute[0], analyses_to_execute[1], pair_group_id
+                        )
+                        execution_results["paired"] = p_res.get("summary", str(p_res)) if isinstance(p_res, dict) else str(p_res)
+                    except Exception as e:
+                        logger.error(f"[ReactiveGraph:Execution] Paired execution failed: {e}")
+                        execution_results["paired"] = f"error: {e}"
                 else:
-                    ana_target.execution_status = "failed"
-                ana_target.execution_notes = exec_summary
+                    logger.info("[ReactiveGraph:Execution] auto_execute=false. Paired proposal logged.")
+                    for ana in analyses_to_execute:
+                        ana.execution_status = "proposed"
+                        ana.execution_notes = "Auto-execute disabled in settings; paired proposal recorded."
+                    await session.commit()
+                    execution_results["paired"] = "proposed"
+            else:
+                logger.warning(
+                    f"[ReactiveGraph:Execution] Paired order leg rejected by risk gate (approved: {[a.symbol for a in analyses_to_execute]}). Cancelling paired execution."
+                )
+                execution_results["paired"] = "blocked: one or both legs rejected by risk gate"
+        elif len(analyses_to_execute) == 1 and hasattr(exec_svc, "execute_analysis"):
+            ana_target = analyses_to_execute[0]
+            if auto_execute:
+                try:
+                    res = await exec_svc.execute_analysis(session, ana_target, equity)
+                    exec_summary = res.summary() if hasattr(res, "summary") else str(res)
+                    execution_results[ana_target.symbol] = exec_summary
+                    if getattr(res, "executed", False):
+                        ana_target.execution_status = "executed"
+                    elif not getattr(res, "risk_approved", True):
+                        ana_target.execution_status = "blocked"
+                    else:
+                        ana_target.execution_status = "failed"
+                    ana_target.execution_notes = exec_summary
+                    await session.commit()
+                except Exception as e:
+                    logger.error(f"[ReactiveGraph:Execution] Analysis execution failed: {e}")
+                    execution_results[ana_target.symbol] = f"error: {e}"
+            else:
+                logger.info(f"[ReactiveGraph:Execution] auto_execute=false. Proposal logged for {ana_target.symbol}.")
+                ana_target.execution_status = "proposed"
+                ana_target.execution_notes = "Auto-execute disabled in settings; proposal recorded."
                 await session.commit()
-            except Exception as e:
-                logger.error(f"[ReactiveGraph:Execution] Analysis execution failed: {e}")
-                execution_results[analyses_to_execute[0].symbol] = f"error: {e}"
+                execution_results[ana_target.symbol] = "proposed"
         else:
             # 2. Standard per-symbol execution from actionable_trades
             for sym, r in actionable:
@@ -401,10 +425,10 @@ async def reactive_checkpoint_node(state: ReactiveState, config: Optional[Runnab
 # -----------------------------------------------------------------------------
 
 def route_after_ingest(state: ReactiveState) -> str:
-    """Route after event ingestion: edge signals go to risk_gate; empty trades to checkpoint."""
+    """Route after event ingestion: edge signals and price triggers go to risk_gate; empty trades to checkpoint."""
     if not state.get("actionable_trades"):
         return "checkpoint"
-    if state.get("event_type") == "edge_signal":
+    if state.get("event_type") in ("edge_signal", "price_trigger"):
         return "risk_gate"
     return "confluence_filter"
 

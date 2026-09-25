@@ -34,6 +34,7 @@ MARKET_CODE_TO_SYMBOL = {
     '096742': 'GBPUSD',
     '097741': 'USDJPY',
     '232741': 'AUDUSD',
+    '067651': 'XTIUSD',
 }
 
 SYMBOL_USD_DIRECTION = {
@@ -42,6 +43,7 @@ SYMBOL_USD_DIRECTION = {
     'GBPUSD': {'bullish': 'USD_WEAK', 'bearish': 'USD_STRONG'},
     'USDJPY': {'bullish': 'USD_STRONG', 'bearish': 'USD_WEAK'},
     'AUDUSD': {'bullish': 'USD_WEAK', 'bearish': 'USD_STRONG'},
+    'XTIUSD': {'bullish': 'USD_WEAK', 'bearish': 'USD_STRONG'},
 }
 
 
@@ -247,15 +249,32 @@ class MacroPreprocessor:
             elif lev_long_pct < 40.0:
                 signal = 'bearish'
                 
-            result[m_code] = {
+            cot_entry = {
                 "asset_mgr_net": asset_mgr_net,
                 "leveraged_net": leveraged_net,
                 "leveraged_net_4wk_avg": int(lev_net_4wk_avg),
                 "signal": signal,
                 "flag": flag,
                 "trend": trend,
-                "trend_strength": int(trend_strength)
+                "trend_strength": int(trend_strength),
+                "market_code": m_code,
+                "symbol": symbol,
             }
+            result[m_code] = cot_entry
+            if symbol:
+                sym_entry = dict(cot_entry)
+                # Invert for USDJPY since CME 097741 is JPY futures (Long JPY = Bearish USDJPY)
+                if symbol == 'USDJPY':
+                    if signal == 'bullish':
+                        sym_entry['signal'] = 'bearish'
+                    elif signal == 'bearish':
+                        sym_entry['signal'] = 'bullish'
+                    if flag == 'extreme_long':
+                        sym_entry['flag'] = 'extreme_short'
+                    elif flag == 'extreme_short':
+                        sym_entry['flag'] = 'extreme_long'
+                    sym_entry['pair_signal'] = sym_entry['signal']
+                result[symbol] = sym_entry
             
         return result
 
@@ -402,56 +421,64 @@ class MacroPreprocessor:
         if not latest_cot_date:
             return True
         
+        latest_date_str = str(latest_cot_date.date())
+        should_recompute = False
+
         for last_precompute_key in ("cot_last_report_date", "gemini_cot_last_report_date"):
             last_cfg = (await session.execute(
                 select(SystemConfig).where(SystemConfig.key == last_precompute_key)
             )).scalar_one_or_none()
             
-            if not last_cfg or not last_cfg.value:
+            if not last_cfg or not last_cfg.value or last_cfg.value != latest_date_str:
+                should_recompute = True
                 if not last_cfg:
-                    session.add(SystemConfig(key=last_precompute_key, value=str(latest_cot_date.date())))
+                    session.add(SystemConfig(key=last_precompute_key, value=latest_date_str))
                 else:
-                    last_cfg.value = str(latest_cot_date.date())
-                await session.commit()
-                return True
-            
-            if str(latest_cot_date.date()) != last_cfg.value:
-                last_cfg.value = str(latest_cot_date.date())
-                await session.commit()
-                return True
+                    last_cfg.value = latest_date_str
+
+        if should_recompute:
+            await session.commit()
+            return True
         
         return False
 
     async def _should_recompute_surprise(self, session: AsyncSession) -> bool:
         """Cek apakah terdapat data surprise ekonomi baru sejak pre-komputasi terakhir."""
-        for last_precompute_key in ("surprise_last_recompute", "gemini_surprise_last_recompute"):
-            last_cfg = (await session.execute(
-                select(SystemConfig).where(SystemConfig.key == last_precompute_key)
-            )).scalar_one_or_none()
-            
-            if not last_cfg or not last_cfg.value:
-                now_str = datetime.now(timezone.utc).isoformat()
-                if not last_cfg:
-                    session.add(SystemConfig(key=last_precompute_key, value=now_str))
+        primary_key = "surprise_last_recompute"
+        last_cfg = (await session.execute(
+            select(SystemConfig).where(SystemConfig.key == primary_key)
+        )).scalar_one_or_none()
+        
+        now_str = datetime.now(timezone.utc).isoformat()
+        if not last_cfg or not last_cfg.value:
+            for k in (primary_key, "gemini_surprise_last_recompute"):
+                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == k))).scalar_one_or_none()
+                if not cfg:
+                    session.add(SystemConfig(key=k, value=now_str))
                 else:
-                    last_cfg.value = now_str
-                await session.commit()
-                return True
+                    cfg.value = now_str
+            await session.commit()
+            return True
+        
+        last_time = datetime.fromisoformat(last_cfg.value)
+        if last_time.tzinfo is None:
+            last_time = last_time.replace(tzinfo=timezone.utc)
             
-            last_time = datetime.fromisoformat(last_cfg.value)
-            if last_time.tzinfo is None:
-                last_time = last_time.replace(tzinfo=timezone.utc)
-                
-            new_surprises = (await session.execute(
-                select(func.count(EconomicCalendar.id))
-                .where(EconomicCalendar.fetched_at > last_time)
-                .where(EconomicCalendar.surprise_score.is_not(None))
-            )).scalar_one_or_none() or 0
-            
-            if new_surprises > 0:
-                last_cfg.value = datetime.now(timezone.utc).isoformat()
-                await session.commit()
-                return True
+        new_surprises = (await session.execute(
+            select(func.count(EconomicCalendar.id))
+            .where(EconomicCalendar.fetched_at > last_time)
+            .where(EconomicCalendar.surprise_score.is_not(None))
+        )).scalar_one_or_none() or 0
+        
+        if new_surprises > 0:
+            for k in (primary_key, "gemini_surprise_last_recompute"):
+                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == k))).scalar_one_or_none()
+                if cfg:
+                    cfg.value = now_str
+                else:
+                    session.add(SystemConfig(key=k, value=now_str))
+            await session.commit()
+            return True
         
         return False
 

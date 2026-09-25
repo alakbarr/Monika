@@ -127,7 +127,8 @@ class VerificationEvidenceLedger:
         latest = passed_sizing[-1]
         if stop_loss is not None and latest.stop_loss is not None:
             denom = abs(latest.stop_loss) or 1.0
-            if abs(latest.stop_loss - stop_loss) / denom > 0.005:  # >0.5% tolerance
+            # FIX 6.9: 1.5% tolerance (instead of overly strict 0.5%) prevents rejecting minor rounding adjustments
+            if abs(latest.stop_loss - stop_loss) / denom > 0.015:
                 return False, (
                     f"Stop loss in proposal ({stop_loss}) deviates significantly from verified level ({latest.stop_loss}). "
                     f"Prior position sizing calculation is stale. Recalculate position size with new stop loss."

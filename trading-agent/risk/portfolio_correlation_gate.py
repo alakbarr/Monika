@@ -48,15 +48,35 @@ async def filter_correlated_proposals(
     as_of: Optional[datetime] = None
 ) -> tuple[list, list]:
     """
-    Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat.
+    Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat,
+    dengan memperhitungkan posisi terbuka yang sudah ada di database.
     """
-    if len(actionable_trades) <= 1:
-        return (actionable_trades, [])
+    if not actionable_trades:
+        return ([], [])
     
+    # 0. Query existing open positions from DB to enforce true portfolio risk
+    from database.models import Position
+    from sqlalchemy import select
+    import math
+
+    open_positions = []
+    if session is not None:
+        try:
+            stmt = select(Position).where(Position.status == "open")
+            res = await session.execute(stmt)
+            open_positions = res.scalars().all()
+        except Exception as e:
+            logger.warning(f"Correlation Gate: Failed to query open positions from DB: {e}")
+
+    # Calculate starting net USD exposure from existing open positions
+    net_usd_exposure = 0
+    for pos in open_positions:
+        p_dir = str(pos.direction or "").lower()
+        net_usd_exposure += _get_usd_directional_delta(pos.symbol, p_dir)
+
     sorted_trades = sorted(actionable_trades, key=lambda x: x[1].get('confidence') or 0.0, reverse=True)
     kept_trades = []
     rejected_trades = []
-    net_usd_exposure = 0
     
     for sym, r in sorted_trades:
         direction = r.get('decision', 'wait').lower()
@@ -65,7 +85,7 @@ async def filter_correlated_proposals(
             
         usd_delta = _get_usd_directional_delta(sym, direction)
         
-        # 1. Systemic Net USD Concentration Check
+        # 1. Systemic Net USD Concentration Check (including open positions)
         if abs(net_usd_exposure + usd_delta) > max_usd_exposure:
             bias_str = "Long-USD" if (net_usd_exposure + usd_delta) > 0 else "Short-USD"
             reason = f"Systemic concentration cap: aggregate net {bias_str} positions would exceed {max_usd_exposure}."
@@ -73,7 +93,32 @@ async def filter_correlated_proposals(
             rejected_trades.append((sym, r, reason))
             continue
 
-        # 2. Pairwise Dynamic Correlation Check
+        # 2. Pairwise Dynamic Correlation Check against existing open positions
+        conflict_found = False
+        conflict_reason = ''
+        
+        for pos in open_positions:
+            pos_sym = pos.symbol
+            pos_dir = str(pos.direction or "").lower()
+            if pos_sym.upper() == sym.upper():
+                continue
+            corr, source = await get_rolling_correlation(session, sym, pos_sym, as_of=as_of)
+            if corr is None or (isinstance(corr, float) and math.isnan(corr)):
+                corr = 0.0
+                source = "neutral_fallback"
+            same_dir = (direction == pos_dir)
+            effective_corr = corr if same_dir else -corr
+            if effective_corr >= threshold:
+                conflict_found = True
+                conflict_reason = f"Correlated with open position {pos_sym} (effective_corr={effective_corr:.2f}, raw={corr:.2f} [{source}])"
+                break
+
+        if conflict_found:
+            logger.info(f"Correlation Gate: Rejected {sym} {direction}. {conflict_reason}")
+            rejected_trades.append((sym, r, conflict_reason))
+            continue
+
+        # 3. Pairwise Dynamic Correlation Check against kept candidates in current batch
         conflict_found = False
         conflict_reason = ''
         

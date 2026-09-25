@@ -71,7 +71,13 @@ class PreFlightTurnGate:
         """Checks if symbol's constituent currencies have high-impact news within +-buffer_minutes."""
         try:
             from database.models import EconomicCalendar
-            currencies = SYMBOL_CURRENCIES.get(symbol, ["USD"])
+            from utils.market.currency_utils import get_symbol_currencies
+            sym_clean = symbol.replace("/", "").replace("_", "").replace(".", "").upper()
+            currencies = SYMBOL_CURRENCIES.get(sym_clean)
+            if not currencies:
+                c_set = get_symbol_currencies(sym_clean)
+                currencies = list(c_set) if c_set else ([sym_clean[:3], sym_clean[3:6]] if len(sym_clean) >= 6 else ["USD"])
+
             window_start = now_utc - timedelta(minutes=buffer_minutes)
             window_end = now_utc + timedelta(minutes=buffer_minutes)
 

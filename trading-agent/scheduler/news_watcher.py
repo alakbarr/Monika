@@ -238,14 +238,21 @@ class NewsWatcher:
                 async with get_session() as session:
                     await processor.classify_unscored_news(session, hours_back=1)
             
-            # Re-query dengan impact filter
+            # Re-query dengan impact filter (Fix 5.9: by ID instead of URL)
             async with get_session() as session:
-                urls = [n.url for n in new_items]
                 from sqlalchemy import select
-                classified = (await session.execute(
-                    select(NewsItem)
-                    .where(NewsItem.url.in_(urls))
-                )).scalars().all()
+                item_ids = [n.id for n in new_items if getattr(n, "id", None)]
+                if item_ids:
+                    classified = (await session.execute(
+                        select(NewsItem)
+                        .where(NewsItem.id.in_(item_ids))
+                    )).scalars().all()
+                else:
+                    urls = [n.url for n in new_items if getattr(n, "url", None)]
+                    classified = (await session.execute(
+                        select(NewsItem)
+                        .where(NewsItem.url.in_(urls))
+                    )).scalars().all() if urls else []
                 
                 # FIX: HIGH impact juga trigger re-analisis
                 high_items = [n for n in classified if n.impact in ("BREAKING", "HIGH")]
@@ -649,12 +656,12 @@ class NewsWatcher:
         POST_EVENT_DELAY_MINUTES = 15
         now = datetime.now(timezone.utc)
         pub_time = None
-        if high_items and getattr(high_items[0], 'published_at', None):
-            pub_time = high_items[0].published_at
-            if pub_time.tzinfo is None:
-                pub_time = pub_time.replace(tzinfo=timezone.utc)
+        if high_items:
+            pub_raw = getattr(high_items[0], 'published_at', None)
+            if isinstance(pub_raw, datetime):
+                pub_time = pub_raw if pub_raw.tzinfo is not None else pub_raw.replace(tzinfo=timezone.utc)
         target_settle = (pub_time or now) + timedelta(minutes=POST_EVENT_DELAY_MINUTES)
-        remaining_wait = max(0.0, (target_settle - now).total_seconds())
+        remaining_wait = max(0.0, (target_settle - now).total_seconds()) if isinstance(target_settle, datetime) else 0.0
         
         if want_full_cycle and self._forced_reruns_today < self._max_forced_reruns:
             # Full cycle re-run (within budget)
@@ -863,18 +870,38 @@ class NewsWatcher:
                     if current_price is None and pos_curr_price is not None:
                         current_price = float(pos_curr_price)
 
+                    # FIX 5.10: Determine pip_size and spread buffer to avoid broker spread loss and INVALID_STOPS
+                    pip_size = 0.0001
+                    if "JPY" in pos.symbol.upper():
+                        pip_size = 0.01
+                    elif "XAU" in pos.symbol.upper() or "BTC" in pos.symbol.upper():
+                        pip_size = 0.1
+                    
+                    spread_buffer = pip_size * 2.0
+                    if hasattr(self._execution_service, "mt5") and self._execution_service.mt5:
+                        try:
+                            s_info = await self._execution_service.mt5.get_symbol_info(pos.symbol)
+                            if s_info:
+                                p_point = float(s_info.get("point") or pip_size)
+                                p_spread = float(s_info.get("spread") or 20)
+                                spread_buffer = max(spread_buffer, p_point * p_spread * 1.5)
+                        except Exception:
+                            pass
+
                     should_tighten = False
                     new_sl: Optional[float] = None
                     if current_price is not None:
-                        # Only tighten to BE if position is currently in profit (avoid MT5 INVALID_STOPS rejection)
-                        if direction == 'buy' and current_price > entry:
-                            if current_sl is None or current_sl < entry:
+                        # Only tighten to BE+buffer if position has moved enough into profit
+                        if direction == 'buy' and current_price > (entry + spread_buffer):
+                            target_sl = round(entry + spread_buffer, 5)
+                            if current_sl is None or current_sl < target_sl:
                                 should_tighten = True
-                                new_sl = entry
-                        elif direction == 'sell' and current_price < entry:
-                            if current_sl is None or current_sl > entry:
+                                new_sl = target_sl
+                        elif direction == 'sell' and current_price < (entry - spread_buffer):
+                            target_sl = round(entry - spread_buffer, 5)
+                            if current_sl is None or current_sl > target_sl:
                                 should_tighten = True
-                                new_sl = entry
+                                new_sl = target_sl
 
                     if should_tighten and new_sl is not None and hasattr(self._execution_service, 'modify_position_sl_tp'):
                         try:

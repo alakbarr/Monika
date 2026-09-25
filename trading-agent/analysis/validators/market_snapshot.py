@@ -219,7 +219,7 @@ class VerifiedMarketSnapshot:
         if close is None:
             return True, []
 
-        action = str(plan.get("action", plan.get("decision", ""))).upper()
+        action = str(plan.get("action", plan.get("decision", plan.get("direction", "")))).upper()
         if action not in ("BUY", "SELL"):
             return True, []
 

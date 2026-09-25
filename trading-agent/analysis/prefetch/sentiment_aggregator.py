@@ -4,6 +4,21 @@ from analysis.schemas.pydantic_schemas import SentimentAnalysisSchema, Sentiment
 
 logger = logging.getLogger("TradingAgent.SentimentAggregator")
 
+SYMBOL_TO_CFTC_CODE = {
+    "XAUUSD": "088691",
+    "GOLD": "088691",
+    "EURUSD": "099741",
+    "GBPUSD": "096742",
+    "USDJPY": "097741",
+    "AUDUSD": "232741",
+    "XTIUSD": "067651",
+    "USOIL": "067651",
+    "CRUDE_OIL": "067651",
+    "XBRUSD": "067651",
+    "UKOIL": "067651",
+    "BTCUSD": "133741",
+}
+
 class SentimentAggregator:
     """
     Aggregates sentiment from multiple sources (COT, Retail, VIX, Funding Rates)
@@ -27,13 +42,40 @@ class SentimentAggregator:
         # 1. COT (Institutional) - 40% weight (0 to 4 points)
         cot_score = 5.0
         if cot_data and not cot_data.get("error"):
-            # Support both direct dict or symbol-keyed dict from MacroPreprocessor
-            m_code = symbol.upper() if symbol else ""
-            actual_cot = cot_data.get(m_code, cot_data) if isinstance(cot_data, dict) else cot_data
-            if not isinstance(actual_cot, dict):
+            sym_clean = symbol.upper().replace("/", "").replace("-", "").strip() if symbol else ""
+            actual_cot = None
+            if isinstance(cot_data, dict):
+                if sym_clean and sym_clean in cot_data:
+                    actual_cot = cot_data[sym_clean]
+                elif sym_clean and sym_clean in SYMBOL_TO_CFTC_CODE and SYMBOL_TO_CFTC_CODE[sym_clean] in cot_data:
+                    actual_cot = cot_data[SYMBOL_TO_CFTC_CODE[sym_clean]]
+                elif "signal" in cot_data or "bias" in cot_data:
+                    actual_cot = cot_data
+                else:
+                    cftc_code = SYMBOL_TO_CFTC_CODE.get(sym_clean)
+                    actual_cot = cot_data.get(cftc_code, cot_data) if cftc_code else cot_data
+            else:
                 actual_cot = cot_data
+
+            if not isinstance(actual_cot, dict):
+                actual_cot = {}
+
             signal = str(actual_cot.get("signal") or actual_cot.get("bias") or "").lower()
             flag = str(actual_cot.get("flag") or "").lower()
+
+            # Handle contract-to-pair directional inversion for USDJPY:
+            # CME 097741 is JPY futures. Long JPY = JPY strengthens = USDJPY falls (Bearish pair).
+            if sym_clean in ("USDJPY", "097741") and "pair_signal" not in actual_cot:
+                if "extreme_long" in flag or signal in ("extreme_long", "strong_bullish"):
+                    signal = "strong_bearish"
+                    flag = "extreme_short"
+                elif "extreme_short" in flag or signal in ("extreme_short", "strong_bearish"):
+                    signal = "strong_bullish"
+                    flag = "extreme_long"
+                elif "bull" in signal or "long" in signal:
+                    signal = "bearish"
+                elif "bear" in signal or "short" in signal:
+                    signal = "bullish"
             
             if "extreme_long" in flag or signal in ("extreme_long", "strong_bullish"):
                 cot_score = 9.0
@@ -65,19 +107,32 @@ class SentimentAggregator:
                 
         # 3. Risk Appetite - 30% weight (0 to 3 points, Safe-Haven aware)
         risk_score = 5.0
-        is_safe_haven = any(s in (symbol or "").upper() for s in ["XAU", "GOLD", "CHF", "JPY"])
+        sym_upper = (symbol or "").upper()
+        is_safe_haven_asset = any(s in sym_upper for s in ["XAU", "GOLD", "XAG"])
+        is_safe_haven_quote = any(sym_upper.endswith(s) for s in ["JPY", "CHF"])
+
         if risk_data and not risk_data.get("error"):
             vix = risk_data.get("close", 20)
             if vix > 30:
-                risk_score = 8.0 if is_safe_haven else 2.0
-                narrative_parts.append(
-                    f"High VIX indicates risk-off environment ({'bullish safe-haven' if is_safe_haven else 'bearish risk assets'})."
-                )
+                if is_safe_haven_asset:
+                    risk_score = 8.0
+                    narrative_parts.append("High VIX indicates risk-off environment (bullish safe-haven gold/silver).")
+                elif is_safe_haven_quote:
+                    risk_score = 2.0
+                    narrative_parts.append("High VIX indicates risk-off environment (safe-haven inflows strengthen JPY/CHF, bearish pair).")
+                else:
+                    risk_score = 2.0
+                    narrative_parts.append("High VIX indicates risk-off environment (bearish risk assets).")
             elif vix < 15:
-                risk_score = 3.0 if is_safe_haven else 8.0
-                narrative_parts.append(
-                    f"Low VIX indicates risk-on environment ({'soft safe-haven demand' if is_safe_haven else 'bullish risk assets'})."
-                )
+                if is_safe_haven_asset:
+                    risk_score = 3.0
+                    narrative_parts.append("Low VIX indicates risk-on environment (soft safe-haven demand).")
+                elif is_safe_haven_quote:
+                    risk_score = 8.0
+                    narrative_parts.append("Low VIX indicates risk-on environment (carry trade expansion, bullish USDJPY/crosses).")
+                else:
+                    risk_score = 8.0
+                    narrative_parts.append("Low VIX indicates risk-on environment (bullish risk assets).")
             else:
                 narrative_parts.append("VIX indicates moderate risk environment.")
 

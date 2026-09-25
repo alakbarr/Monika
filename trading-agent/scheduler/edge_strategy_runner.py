@@ -619,6 +619,7 @@ class EdgeStrategyRunner:
                     "take_profit": a.take_profit,
                     "source_strategy_id": a.source_strategy_id,
                     "pair_group_id": pair_group_id,
+                    "arbitrated_by": f"edge_strategy_runner:{sig.strategy_id}",
                 }) for a in analyses_to_execute
             ]
             regime_name = (regime_dict.get("regime", "normal") if regime_dict else "normal").lower()

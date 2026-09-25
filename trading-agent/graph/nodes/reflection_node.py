@@ -108,13 +108,13 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         if vix_row and vix_row.close is not None:
             vix_value = vix_row.close
         else:
-            # VIX data tidak ada di DB — gunakan defensive default (25.0)
-            vix_value = 25.0
-            logger.warning('[Reflection] VIX data not found in DB. Applying defensive default VIX=25.0')
+            # VIX data tidak ada di DB — gunakan defensive default (25.1)
+            vix_value = 25.1
+            logger.warning('[Reflection] VIX data not found in DB. Applying defensive default VIX=25.1')
     except Exception as e:
-        # Query gagal — gunakan defensive default (25.0)
-        vix_value = 25.0
-        logger.warning(f'[Reflection] VIX query failed ({e}). Applying defensive default VIX=25.0')
+        # Query gagal — gunakan defensive default (25.1)
+        vix_value = 25.1
+        logger.warning(f'[Reflection] VIX query failed ({e}). Applying defensive default VIX=25.1')
     
     if vix_value > 38:
         # Extreme VIX: only keep highest confidence trade
@@ -133,6 +133,9 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
     SYMBOL_CURRENCY_MAP = {
         'EURUSD': ('EUR', 'USD'), 'GBPUSD': ('GBP', 'USD'),
         'USDJPY': ('USD', 'JPY'), 'AUDUSD': ('AUD', 'USD'),
+        'USDCAD': ('USD', 'CAD'), 'USDCHF': ('USD', 'CHF'),
+        'NZDUSD': ('NZD', 'USD'), 'EURJPY': ('EUR', 'JPY'),
+        'GBPJPY': ('GBP', 'JPY'), 'EURGBP': ('EUR', 'GBP'),
         'XAUUSD': ('XAU', 'USD'), 'XTIUSD': ('OIL', 'USD'),
         'XBRUSD': ('OIL', 'USD'),
         'BTCUSD': ('BTC', 'USD'), 'ETHUSD': ('ETH', 'USD')
@@ -157,7 +160,11 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
                 
                 for sym, r in actionable:
                     direction = r.get('decision', 'wait')
-                    base, quote = SYMBOL_CURRENCY_MAP.get(sym, (None, None))
+                    import re
+                    clean_sym = re.sub(r'[^A-Z]', '', sym.upper())[:6]
+                    base, quote = SYMBOL_CURRENCY_MAP.get(sym, SYMBOL_CURRENCY_MAP.get(clean_sym, (None, None)))
+                    if base is None and len(clean_sym) == 6:
+                        base, quote = clean_sym[:3], clean_sym[3:]
                     
                     if base is None or quote is None:
                         consistent_trades.append((sym, r))

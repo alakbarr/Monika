@@ -80,7 +80,7 @@ def validate_macro_judge_output(
     hallucination_reasons: List[str] = []
     
     # 1. Check Score vs Winner Consistency
-    if canonical_winner in ("RISK_ON_USD_BEAR", "US_EXCEPTIONALISM") and bear_score > bull_score:
+    if canonical_winner == "RISK_ON_USD_BEAR" and bear_score > bull_score:
         hallucination_detected = True
         hallucination_reasons.append(
             f"Winner declared {canonical_winner} but Bear score ({bear_score}) > Bull score ({bull_score})"
@@ -128,9 +128,9 @@ def validate_macro_judge_output(
             hallucination_detected = True
             hallucination_reasons.append("Inversion: Winner is US_EXCEPTIONALISM but dxy_bias or risk_asset_bias is BEARISH")
     elif canonical_winner == "STAGFLATION":
-        if risk_asset_bias == "BULLISH" or dxy_bias == "BULLISH":
+        if risk_asset_bias == "BULLISH":
             hallucination_detected = True
-            hallucination_reasons.append("Inversion: Winner is STAGFLATION but dxy_bias or risk_asset_bias is BULLISH")
+            hallucination_reasons.append("Inversion: Winner is STAGFLATION but risk_asset_bias is BULLISH")
             
     # 3. Check Tight Score / Uncertainty Escalation
     # Only force escalation on true exact tie (bull_score == bear_score) or explicit canonical TIE,

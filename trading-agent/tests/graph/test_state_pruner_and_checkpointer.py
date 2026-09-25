@@ -9,8 +9,11 @@ from graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate
 from graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
 
 
+from graph.state import merge_dicts
+
+
 def test_prune_after_fundamental():
-    """Verify pruning removes heavy raw conversations from fundamental stage."""
+    """Verify pruning sets tombstone and removes heavy raw conversations via merge_dicts."""
     state = {
         "summary": {
             "fundamental": {
@@ -25,12 +28,17 @@ def test_prune_after_fundamental():
     fund = pruned["summary"]["fundamental"]
     assert fund["brief"] == "US Dollar remains strong due to hawkish Fed tone."
     assert fund["confidence"] == 0.85
-    assert "raw_conversation" not in fund
-    assert "raw_tool_observations" not in fund
+    assert fund["raw_conversation"] == "_DELETED_"
+    assert fund["raw_tool_observations"] == "_DELETED_"
+
+    merged = merge_dicts(state["summary"], pruned["summary"])
+    merged_fund = merged["fundamental"]
+    assert "raw_conversation" not in merged_fund
+    assert "raw_tool_observations" not in merged_fund
 
 
 def test_prune_after_debate():
-    """Verify pruning removes raw dialogue transcripts from dialectic debate."""
+    """Verify pruning sets tombstone and removes raw dialogue transcripts via merge_dicts."""
     state = {
         "debate_states": {
             "EURUSD": {
@@ -44,9 +52,15 @@ def test_prune_after_debate():
     pruned = prune_after_debate(state)
     eur = pruned["debate_states"]["EURUSD"]
     assert eur["consensus"] == "Neutral to Bearish"
-    assert "raw_bull_text" not in eur
-    assert "raw_bear_text" not in eur
-    assert "raw_judge_text" not in eur
+    assert eur["raw_bull_text"] == "_DELETED_"
+    assert eur["raw_bear_text"] == "_DELETED_"
+    assert eur["raw_judge_text"] == "_DELETED_"
+
+    merged = merge_dicts(state["debate_states"], pruned["debate_states"])
+    merged_eur = merged["EURUSD"]
+    assert "raw_bull_text" not in merged_eur
+    assert "raw_bear_text" not in merged_eur
+    assert "raw_judge_text" not in merged_eur
 
 
 def test_sqlite_checkpointer_persistence():

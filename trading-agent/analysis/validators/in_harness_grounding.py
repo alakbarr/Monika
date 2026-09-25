@@ -85,6 +85,35 @@ class InHarnessGroundingValidator:
                 except (ValueError, TypeError):
                     pass
 
+        # If current price not at top level, search in namespaced price history keys
+        if current_price is None:
+            for ph_key in ("get_price_history_H4", "get_price_history_H1", "price_history_D1_recent", "get_price_history", "price_history"):
+                ph = data_bundle.get(ph_key)
+                if not ph:
+                    continue
+                if isinstance(ph, dict):
+                    # Check for 'close' list or series
+                    if "close" in ph and isinstance(ph["close"], (list, tuple)) and ph["close"]:
+                        try:
+                            current_price = float(ph["close"][-1])
+                            break
+                        except (ValueError, TypeError):
+                            pass
+                    elif "candles" in ph and isinstance(ph["candles"], list) and ph["candles"]:
+                        try:
+                            current_price = float(ph["candles"][-1].get("close", 0))
+                            break
+                        except (ValueError, TypeError):
+                            pass
+                elif isinstance(ph, list) and ph:
+                    last_bar = ph[-1]
+                    if isinstance(last_bar, dict) and "close" in last_bar:
+                        try:
+                            current_price = float(last_bar["close"])
+                            break
+                        except (ValueError, TypeError):
+                            pass
+
         atr_val = None
         for a_key in ("atr", "atr_14", "h4_atr"):
             if a_key in data_bundle and data_bundle[a_key] is not None:
@@ -94,11 +123,27 @@ class InHarnessGroundingValidator:
                 except (ValueError, TypeError):
                     pass
 
-        # If current price not at top level, search in technical bundle
-        if current_price is None and "technical" in data_bundle and isinstance(data_bundle["technical"], dict):
-            tech = data_bundle["technical"]
-            current_price = tech.get("current_price") or tech.get("price")
-            atr_val = atr_val or tech.get("atr") or tech.get("atr_14")
+        # If ATR not at top level, search in namespaced technical indicator bundles
+        if atr_val is None:
+            for ti_key in ("get_technical_indicators_H4", "get_technical_indicators", "get_technical_indicators_H1", "technical"):
+                tech = data_bundle.get(ti_key)
+                if isinstance(tech, dict):
+                    raw_atr = tech.get("atr_14") or tech.get("atr") or tech.get("h4_atr")
+                    if raw_atr is not None:
+                        try:
+                            atr_val = float(raw_atr)
+                            break
+                        except (ValueError, TypeError):
+                            pass
+            if atr_val is None:
+                for atr_key in ("get_atr_H4", "get_atr"):
+                    atr_pkg = data_bundle.get(atr_key)
+                    if isinstance(atr_pkg, dict) and "atr" in atr_pkg:
+                        try:
+                            atr_val = float(atr_pkg["atr"])
+                            break
+                        except (ValueError, TypeError):
+                            pass
 
         # 2. Verify Entry Price
         entry_price = decision_payload.get("entry_price", decision_payload.get("entry"))
@@ -137,8 +182,16 @@ class InHarnessGroundingValidator:
 
         # 4. Verify SMC Zones / Liquidity Pools
         raw_zones = data_bundle.get("smc_zones") or data_bundle.get("zones") or []
-        if not raw_zones and "technical" in data_bundle and isinstance(data_bundle["technical"], dict):
-            raw_zones = data_bundle["technical"].get("smc_zones") or data_bundle["technical"].get("zones") or []
+        if not raw_zones:
+            for smc_key in ("get_smc_zones_H4", "get_smc_zones", "get_smc_zones_H1", "technical"):
+                val = data_bundle.get(smc_key)
+                if isinstance(val, dict):
+                    raw_zones = val.get("zones") or val.get("smc_zones") or []
+                    if raw_zones:
+                        break
+                elif isinstance(val, list):
+                    raw_zones = val
+                    break
 
         unmitigated_zone_prices = []
         if isinstance(raw_zones, list):
