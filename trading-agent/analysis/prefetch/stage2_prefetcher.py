@@ -566,6 +566,45 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 lines.append("MANDATORY GROUNDING: Proposed TP must be statistically reachable (BUY TP <= Q90, SELL TP >= Q10).")
                 lines.append('')
 
+            # Historical Pattern Similarity Screening Block
+            try:
+                ps_cfg = self.settings.get("pattern_similarity", {})
+                if ps_cfg.get("enabled", True) and ps_cfg.get("inject_to_prefetch", True):
+                    from indicators.pattern_similarity import PatternSimilarityEngine
+                    from database.models import PatternScreeningCache
+
+                    ps_engine = PatternSimilarityEngine(session=self.executor.session, settings=self.settings)
+                    ps_result = await ps_engine.screen(symbol=symbol)
+
+                    if ps_result and (ps_result.has_significant_results() or ps_result.overall_bias != "neutral"):
+                        lines.append(ps_result.format_for_prompt())
+                        lines.append("")
+                        data['pattern_similarity'] = ps_result
+
+                        cache_entry = PatternScreeningCache(
+                            symbol=symbol,
+                            screened_at=ps_result.screening_timestamp,
+                            overall_bias=ps_result.overall_bias,
+                            confidence=ps_result.confidence,
+                            consensus_bullish_pct=ps_result.consensus_bullish_pct,
+                            consensus_bearish_pct=ps_result.consensus_bearish_pct,
+                            has_timeframe_conflict=ps_result.has_timeframe_conflict,
+                            significant_timeframes_json=json.dumps(ps_result.significant_timeframes),
+                            per_timeframe_json=json.dumps({
+                                tf: {
+                                    "match_count": res.match_count,
+                                    "avg_similarity": res.avg_similarity,
+                                    "bias": res.statistics.directional_bias,
+                                    "p_value": res.statistics.p_value,
+                                }
+                                for tf, res in ps_result.per_timeframe.items()
+                            }),
+                        )
+                        self.executor.session.add(cache_entry)
+                        await self.executor.session.commit()
+            except Exception as e:
+                logger.debug(f"Failed to prefetch pattern similarity for {symbol}: {e}")
+
             lines.append("── AUTOMATED PRICED-IN SUBSCORES ──")
             lines.append(f"Method 1 (FedWatch): {pi_scores['fedwatch']}/3")
             lines.append(f"Method 2 (COT Extreme): {pi_scores['cot']}/3")

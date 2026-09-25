@@ -335,6 +335,7 @@ Monika/
     │   │       ├── sentiment_tools.py
     │   │       ├── skills_tools.py
     │   │       ├── smc_tools.py
+    │   │       ├── pattern_similarity_tools.py
     │   │       └── trading_tools.py
     │   └── validators
     │       ├── adjudication_verifier.py
@@ -413,6 +414,7 @@ Monika/
     ├── config
     │   ├── atomic_writer.py
     │   ├── hot_reload.py
+    │   ├── historical_macro_milestones.json
     │   ├── key_validator.py
     │   ├── migrations.py
     │   ├── schemas.py
@@ -550,6 +552,16 @@ Monika/
     ├── indicators
     │   ├── microstructure.py
     │   ├── order_flow.py
+    │   ├── pattern_similarity
+    │   │   ├── __init__.py
+    │   │   ├── context_scorer.py
+    │   │   ├── context_verifier.py
+    │   │   ├── engine.py
+    │   │   ├── feature_extractor.py
+    │   │   ├── models.py
+    │   │   ├── normalizer.py
+    │   │   ├── outcome_analyzer.py
+    │   │   └── scanner.py
     │   ├── regime_detector.py
     │   ├── structure.py
     │   ├── technical.py
@@ -1146,6 +1158,15 @@ Monika/
         │   ├── test_threat_scanner.py
         │   ├── test_trading_agent_harness_integration.py
         │   └── test_unified_plugin_engine.py
+        ├── indicators
+        │   ├── __init__.py
+        │   ├── test_advanced_volatility.py
+        │   ├── test_microstructure.py
+        │   ├── test_pattern_similarity.py
+        │   ├── test_regime_detector.py
+        │   ├── test_structure.py
+        │   ├── test_technical.py
+        │   └── test_timesfm_engine.py
         ├── logging_observability
         │   ├── test_activity_logger.py
         │   ├── test_cost_tracking_dashboard.py
