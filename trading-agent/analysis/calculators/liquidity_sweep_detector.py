@@ -70,8 +70,17 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
     if not post_bars:
         result['reasons'].append('no_post_session_bars_yet'); return result
 
+    now_ref = as_of or clock.now()
+    if now_ref.tzinfo is None:
+        now_ref = now_ref.replace(tzinfo=timezone.utc)
+
     sweep_bar, sweep_direction = None, None
     for bar in post_bars:
+        # Ensure candle is confirmed closed (candle start + 1 hour <= now_ref)
+        b_ts = bar.timestamp.replace(tzinfo=timezone.utc) if bar.timestamp.tzinfo is None else bar.timestamp
+        if b_ts + timedelta(hours=1) > now_ref:
+            continue
+
         if bar.high > asian['high'] and bar.close < asian['high']:
             sweep_bar, sweep_direction = bar, 'sell_side'   # swept buy-stops -> bearish reversal expected
             break
@@ -82,6 +91,12 @@ async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: d
     result['asian_high'], result['asian_low'] = asian['high'], asian['low']
     if sweep_bar is None:
         result['reasons'].append('no_confirmed_sweep_this_session'); return result
+
+    # 6-hour TTL expiry: liquidity sweeps older than 6 hours are stale and no longer actionable
+    sweep_ts = sweep_bar.timestamp.replace(tzinfo=timezone.utc) if sweep_bar.timestamp.tzinfo is None else sweep_bar.timestamp
+    if (now_ref - sweep_ts) > timedelta(hours=6):
+        result['reasons'].append(f'sweep_detected_but_expired ({((now_ref - sweep_ts).total_seconds()/3600):.1f}h old > 6.0h TTL)')
+        return result
 
     sweep_price = sweep_bar.high if sweep_direction == 'sell_side' else sweep_bar.low
     result.update(sweep_detected=True, sweep_direction=sweep_direction,

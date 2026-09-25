@@ -52,11 +52,12 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
 
         # Existing checks
         min_rr = float(settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3))
-        if analysis.stop_loss and analysis.take_profit and analysis.price_at_analysis:
-            sl_dist = abs(analysis.price_at_analysis - analysis.stop_loss)
-            tp_dist = abs(analysis.price_at_analysis - analysis.take_profit)
-            if sl_dist > 0 and (tp_dist / sl_dist) < min_rr:
-                deterministic_flags.append(f'R:R only {tp_dist / sl_dist:.2f} at execution time (min {min_rr:.1f} expected)')
+        effective_entry = getattr(analysis, "entry_price", None) or analysis.price_at_analysis
+        if analysis.stop_loss and analysis.take_profit and effective_entry:
+            sl_dist = abs(effective_entry - analysis.stop_loss)
+            tp_dist = abs(effective_entry - analysis.take_profit)
+            if sl_dist > 0 and (tp_dist / sl_dist) < (min_rr - 0.05):
+                deterministic_flags.append(f'R:R only {tp_dist / sl_dist:.2f} based on entry zone (min {min_rr:.1f} expected)')
         if analysis.confluence_score is not None and analysis.confluence_score < 6:
             deterministic_flags.append(f'confluence_score={analysis.confluence_score} is unusually low')
 

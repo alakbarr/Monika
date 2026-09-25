@@ -82,6 +82,53 @@ class FundamentalBriefSchema(BaseModel):
                     ]
         return data
 
+    @field_validator('macro_regime', mode='before')
+    @classmethod
+    def validate_macro_regime_fbs(cls, v):
+        if isinstance(v, MacroRegime):
+            return v
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("-", "_")
+            for m in MacroRegime:
+                if clean == m.value or clean == m.name.lower():
+                    return m
+        return MacroRegime.MIXED
+
+    @field_validator('risk_sentiment', mode='before')
+    @classmethod
+    def validate_risk_sentiment_fbs(cls, v):
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("_", "-")
+            if clean in ["risk-on", "risk-off", "mixed"]:
+                return clean
+            if "on" in clean:
+                return "risk-on"
+            if "off" in clean:
+                return "risk-off"
+        return "mixed"
+
+    @field_validator('currency_bias', mode='before')
+    @classmethod
+    def validate_currency_bias_fbs(cls, v):
+        if not isinstance(v, dict):
+            return {}
+        res = {}
+        for ccy, bias in v.items():
+            ccy_up = str(ccy).upper().strip()
+            if isinstance(bias, str):
+                b_clean = bias.lower().strip().replace("-", "_").replace(" ", "_")
+                if b_clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
+                    res[ccy_up] = b_clean
+                elif "bull" in b_clean:
+                    res[ccy_up] = "bullish"
+                elif "bear" in b_clean:
+                    res[ccy_up] = "bearish"
+                else:
+                    res[ccy_up] = "neutral"
+            else:
+                res[ccy_up] = "neutral"
+        return res
+
     @field_validator('key_drivers', 'risk_events', mode='before')
     @classmethod
     def validate_brief_string_lists(cls, v):
@@ -598,6 +645,53 @@ class SubmitFundamentalBriefSchema(BaseModel):
         default_factory=dict,
         description="Alias untuk bias_continuity_justification (backward compatibility).",
     )
+
+    @field_validator('macro_regime', mode='before')
+    @classmethod
+    def validate_macro_regime_sfbs(cls, v):
+        if isinstance(v, MacroRegime):
+            return v
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("-", "_")
+            for m in MacroRegime:
+                if clean == m.value or clean == m.name.lower():
+                    return m
+        return MacroRegime.MIXED
+
+    @field_validator('risk_sentiment', mode='before')
+    @classmethod
+    def validate_risk_sentiment_sfbs(cls, v):
+        if isinstance(v, str):
+            clean = v.lower().strip().replace("_", "-")
+            if clean in ["risk-on", "risk-off", "mixed"]:
+                return clean
+            if "on" in clean:
+                return "risk-on"
+            if "off" in clean:
+                return "risk-off"
+        return "mixed"
+
+    @field_validator('currency_bias', mode='before')
+    @classmethod
+    def validate_currency_bias_sfbs(cls, v):
+        if not isinstance(v, dict):
+            return {}
+        res = {}
+        for ccy, bias in v.items():
+            ccy_up = str(ccy).upper().strip()
+            if isinstance(bias, str):
+                b_clean = bias.lower().strip().replace("-", "_").replace(" ", "_")
+                if b_clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
+                    res[ccy_up] = b_clean
+                elif "bull" in b_clean:
+                    res[ccy_up] = "bullish"
+                elif "bear" in b_clean:
+                    res[ccy_up] = "bearish"
+                else:
+                    res[ccy_up] = "neutral"
+            else:
+                res[ccy_up] = "neutral"
+        return res
 
     @field_validator('confidence', mode='before')
     @classmethod

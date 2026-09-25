@@ -74,6 +74,7 @@ class PostReleaseAnalyzer:
         self._max_reruns_per_day = 8
         self._today_reruns = 0
         self._today_date: Optional[str] = None
+        self._background_tasks: set[asyncio.Task] = set()
 
         universe = settings.get('trading', {}).get('asset_universe', [])
         self._universe = universe if universe else [
@@ -107,8 +108,37 @@ class PostReleaseAnalyzer:
     def stop(self) -> Any:
         self._running = False
         self._stop_event.set()
+        for task in list(self._background_tasks):
+            if not task.done():
+                task.cancel()
         logger.info("[PostReleaseAnalyzer] Stopped")
         return _AwaitableNone()
+
+    async def _wait_and_reanalyze(
+        self,
+        affected_symbols: list[str],
+        surprise_context: str,
+        events: list,
+        remaining_wait: float,
+        target_analysis_time: datetime,
+    ):
+        """Wait for price settlement non-blockingly, then trigger Stage 2 re-analysis."""
+        if remaining_wait > 0:
+            logger.info(
+                f"[PostReleaseAnalyzer] Background waiting {remaining_wait:.0f}s "
+                f"for price settlement (target: {target_analysis_time.strftime('%H:%M:%S UTC')})"
+            )
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=remaining_wait)
+                return
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                return
+
+        # Run targeted Stage 2 re-analysis (NOT Stage 1)
+        await self._run_targeted_reanalysis(affected_symbols, surprise_context, events)
+        self._today_reruns += 1
 
     async def _check_releases(self):
         """Check for recently-released high-impact events and trigger re-analysis."""
@@ -177,7 +207,7 @@ class PostReleaseAnalyzer:
         # Build surprise context for LLM
         surprise_context = self._build_surprise_context(new_events)
 
-        # Wait for price settlement (15 min from event time)
+        # Calculate price settlement target time (15 min from event time)
         valid_times: list[datetime] = []
         for e in new_events:
             ev_time = getattr(e, 'event_time', None)
@@ -190,22 +220,28 @@ class PostReleaseAnalyzer:
         target_analysis_time = latest_event_time + timedelta(seconds=self._settle_seconds)
         remaining_wait = (target_analysis_time - now).total_seconds()
 
-        if remaining_wait > 0:
-            logger.info(
-                f"[PostReleaseAnalyzer] Waiting {remaining_wait:.0f}s "
-                f"for price settlement (target: {target_analysis_time.strftime('%H:%M:%S UTC')})"
+        # Execute directly if settlement already reached (or in test mode with 0s wait),
+        # otherwise spawn non-blocking background task so polling loop is not frozen for 15 minutes.
+        if remaining_wait <= 0:
+            await self._wait_and_reanalyze(
+                affected_symbols=affected_symbols,
+                surprise_context=surprise_context,
+                events=new_events,
+                remaining_wait=0.0,
+                target_analysis_time=target_analysis_time,
             )
-            try:
-                await asyncio.wait_for(self._stop_event.wait(), timeout=remaining_wait)
-                return
-            except asyncio.TimeoutError:
-                pass
-            except asyncio.CancelledError:
-                return
-
-        # Run targeted Stage 2 re-analysis (NOT Stage 1)
-        await self._run_targeted_reanalysis(affected_symbols, surprise_context, new_events)
-        self._today_reruns += 1
+        else:
+            task = asyncio.create_task(
+                self._wait_and_reanalyze(
+                    affected_symbols=affected_symbols,
+                    surprise_context=surprise_context,
+                    events=new_events,
+                    remaining_wait=remaining_wait,
+                    target_analysis_time=target_analysis_time,
+                )
+            )
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
 
     def _build_surprise_context(self, events: list) -> str:
         """Build rich context about the data release for LLM injection."""

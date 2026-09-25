@@ -89,10 +89,10 @@ class VerifiersMixin:
                     f'Consider prioritizing this analysis.'
                 )
 
-            if brief_age_h > MAX_BRIEF_AGE_FOR_STAGE2:
+            if brief_age_h > (MAX_BRIEF_AGE_FOR_STAGE2 * 2.0):
                 logger.warning(
                     f'[{symbol}] Fundamental brief is {brief_age_h:.1f}h old '
-                    f'(limit: {MAX_BRIEF_AGE_FOR_STAGE2}h). '
+                    f'(exceeds 24.0h hard limit). '
                     f'Submitting WAIT to preserve decision quality.'
                 )
                 return {
@@ -105,6 +105,14 @@ class VerifiersMixin:
                     'elapsed_seconds': 0,
                     'skipped_by_brief_staleness': True
                 }, brief_check, context_blocks
+            elif brief_age_h > MAX_BRIEF_AGE_FOR_STAGE2:
+                logger.warning(
+                    f'[{symbol}] Fundamental brief is aging ({brief_age_h:.1f}h of {MAX_BRIEF_AGE_FOR_STAGE2}h preferred limit). '
+                    f'Proceeding in graceful degradation mode.'
+                )
+                context_blocks.append(
+                    f"⚠️ NOTE: Fundamental brief is aging ({brief_age_h:.1f}h old). Rely primarily on confirmed H4 technical structure and tighten risk management."
+                )
         elif brief_check is None:
             logger.warning(f'[{symbol}] No fundamental brief exists. Skipping Stage 2.')
             return {

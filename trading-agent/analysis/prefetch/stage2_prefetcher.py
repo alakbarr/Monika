@@ -142,9 +142,18 @@ class Stage2DataBundler:
     def _check_bundle_freshness(self, data: dict, now: datetime) -> list[str]:
         """Validate timestamps of fetched data."""
         warnings = []
+        is_forex_closed = False
+        try:
+            from utils.market.session_hours import is_forex_market_closed
+            is_forex_closed = is_forex_market_closed(now)
+        except Exception:
+            pass
+
         for check_tf, max_age_hours in [("H4", 5.0), ("D1", 36.0)]:
-            ohlcv_key = f"get_price_history_{check_tf}"
-            if ohlcv_key in data:
+            ohlcv_key = f"get_price_history_{check_tf}" if f"get_price_history_{check_tf}" in data else (
+                f"price_history_{check_tf}_recent" if f"price_history_{check_tf}_recent" in data else None
+            )
+            if ohlcv_key and ohlcv_key in data:
                 bars = data[ohlcv_key].get("bars", [])
                 if bars:
                     last_bar_time_str = bars[-1].get("time", "")
@@ -153,7 +162,8 @@ class Stage2DataBundler:
                         if last_bar_time.tzinfo is None:
                             last_bar_time = last_bar_time.replace(tzinfo=timezone.utc)
                         age_hours = (now - last_bar_time).total_seconds() / 3600
-                        if age_hours > max_age_hours:
+                        # Skip staleness warning if market is closed (weekend) for non-crypto
+                        if age_hours > max_age_hours and not is_forex_closed:
                             warnings.append(
                                 f"⚠️ {check_tf} OHLCV last bar is {age_hours:.1f}h old "
                                 f"(limit={max_age_hours}h) — MT5 may be disconnected!"
@@ -443,6 +453,8 @@ class Stage2DataBundler:
             lines.append("")
 
         for key, value in data.items():
+            if key == "timesfm_forecast":
+                continue  # Formatted cleanly in dedicated statistical distribution block below
             label = key.upper().replace("_", " ")
             lines.append(f"── {label} ──")
             if "GET PRICE HISTORY" in label:

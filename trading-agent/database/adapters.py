@@ -278,8 +278,9 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
                 .limit(1)
             )).scalar_one_or_none()
             if same_day_corrupt is not None:
-                # Perbaiki timestamp event yang korup ke UTC yang benar
-                same_day_corrupt.event_time = model.event_time
+                # Preserve existing valid event_time; only set if existing is None to prevent cross-scraper timestamp shifting
+                if same_day_corrupt.event_time is None:
+                    same_day_corrupt.event_time = model.event_time
                 existing = same_day_corrupt
 
         if existing is None:

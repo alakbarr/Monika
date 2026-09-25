@@ -72,17 +72,42 @@ class Stage1DataBundler:
         try:
             yields_info = bundled_data.get("treasury_yields", {})
             nom_10y = None
+            est_breakeven = None
+            real_10y = None
+
             if isinstance(yields_info, dict):
                 by_t = yields_info.get("yields_by_tenor", {})
-                if isinstance(by_t, dict) and "10Y" in by_t and by_t["10Y"]:
-                    nom_10y = by_t["10Y"][0].get("yield_pct")
-                elif "us10y" in yields_info:
+                if isinstance(by_t, dict):
+                    if "10Y" in by_t and by_t["10Y"]:
+                        nom_10y = by_t["10Y"][0].get("yield_pct")
+                    # Dynamic 10Y Breakeven Inflation (T10YIE / 10Y_INFLATION)
+                    for k in ("10Y_INFLATION", "T10YIE"):
+                        if k in by_t and by_t[k]:
+                            est_breakeven = by_t[k][0].get("yield_pct")
+                            break
+                    # Dynamic 10Y Real Yield (DFII10 / 10Y_REAL)
+                    for k in ("10Y_REAL", "DFII10"):
+                        if k in by_t and by_t[k]:
+                            real_10y = by_t[k][0].get("yield_pct")
+                            break
+                if nom_10y is None and "us10y" in yields_info:
                     nom_10y = yields_info.get("us10y")
 
             if nom_10y is not None:
                 nom_10y = float(nom_10y)
-                est_breakeven = 2.25
-                real_10y = round(nom_10y - est_breakeven, 2)
+                # Dynamic breakeven / real yield calculation with graceful fallback
+                if est_breakeven is not None:
+                    est_breakeven = float(est_breakeven)
+                elif real_10y is not None:
+                    est_breakeven = round(nom_10y - float(real_10y), 2)
+                else:
+                    est_breakeven = 2.25
+
+                if real_10y is not None:
+                    real_10y = round(float(real_10y), 2)
+                else:
+                    real_10y = round(nom_10y - est_breakeven, 2)
+
                 gold_bias = "BEARISH_HEADWIND" if real_10y > 2.0 else ("BULLISH_TAILWIND" if real_10y < 1.0 else "NEUTRAL_RANGE")
                 bundled_data["real_yield_context"] = {
                     "nominal_us10y_pct": nom_10y,

@@ -91,14 +91,24 @@ class OutputVerifier:
                     logger.warning(f"[{symbol}] Self-correction attempt {attempt+1} failed: {e}")
                     break
 
-        if failures:
+        critical_failures = []
+        for f in failures:
+            if "R:R =" in f and "< minimum" in f:
+                import re
+                m = re.search(r"R:R = ([0-9.]+)", f)
+                if m and float(m.group(1)) >= 1.15:
+                    logger.info(f"[{symbol}] OutputVerifier: R:R {m.group(1)} >= 1.15 tolerated under structural constraints.")
+                    continue
+            critical_failures.append(f)
+
+        if critical_failures:
             logger.warning(
-                f"[{symbol}] {len(failures)} verification issues remain after {max_retries} retries. "
+                f"[{symbol}] {len(critical_failures)} critical verification issues remain after {max_retries} retries. "
                 f"Demoting decision to WAIT (Fail-Closed)."
             )
             output["decision"] = "wait"
             output["is_verified"] = False
-            output["verification_failures"] = failures
+            output["verification_failures"] = critical_failures
         else:
             output["is_verified"] = True
 
@@ -198,12 +208,28 @@ class OutputVerifier:
                 if m and decision == "buy":
                     output["take_profit"] = round(float(m.group(1)), 5)
                     snaps.append(f"Deterministic snap: capped BUY TP to TimesFM Q90 ceiling ({output['take_profit']})")
+                    new_tp_dist = abs(entry - output["take_profit"])
+                    if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
+                        safe_sl_dist = round(new_tp_dist / min_rr, 5)
+                        if atr_val and safe_sl_dist >= (0.75 * atr_val):
+                            sl = round(entry - safe_sl_dist, 5)
+                            output["stop_loss"] = sl
+                            sl_dist = safe_sl_dist
+                            snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
             elif "TimesFM 3.0 Q10 floor" in f:
                 import re
                 m = re.search(r"floor \(([0-9.]+)\)", f)
                 if m and decision == "sell":
                     output["take_profit"] = round(float(m.group(1)), 5)
                     snaps.append(f"Deterministic snap: capped SELL TP to TimesFM Q10 floor ({output['take_profit']})")
+                    new_tp_dist = abs(entry - output["take_profit"])
+                    if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
+                        safe_sl_dist = round(new_tp_dist / min_rr, 5)
+                        if atr_val and safe_sl_dist >= (0.75 * atr_val):
+                            sl = round(entry + safe_sl_dist, 5)
+                            output["stop_loss"] = sl
+                            sl_dist = safe_sl_dist
+                            snaps.append(f"Deterministic snap: harmonized SL to {sl} to preserve R:R {min_rr:.1f} under TimesFM cap")
 
         return output, snaps
 

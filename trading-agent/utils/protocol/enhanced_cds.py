@@ -44,7 +44,8 @@ async def compute_spatial_cds(
     session: AsyncSession,
     symbol: str,
     brief_currency_bias: dict,
-    lookback_bars: int = 20
+    lookback_bars: int = 20,
+    is_reversal: bool = False
 ) -> float:
     """
     Compute spatial CDS: divergence between Stage 1 macro beliefs
@@ -101,6 +102,10 @@ async def compute_spatial_cds(
 
     # Count divergences weighted by magnitude of price move
     magnitude_factor = min(abs(pct_change) / 0.01, 3.0)  # Cap at 3x for >1% moves
+    if is_reversal:
+        # For macro-backed reversal/inflection theses, past momentum naturally opposes
+        # the new forward-looking fundamental thesis. Moderate magnitude penalty and cap at 0.30.
+        magnitude_factor = min(magnitude_factor, 1.0)
 
     divergences = 0.0
     checks = 0
@@ -120,6 +125,8 @@ async def compute_spatial_cds(
 
     # Normalize: 0.0 to 1.0
     raw_cds = divergences / checks
+    if is_reversal:
+        return min(raw_cds, 0.30)
     return min(raw_cds, 1.0)
 
 
@@ -303,7 +310,19 @@ async def compute_composite_cds(
     """
     currency_bias = brief_data.get('currency_bias', {}) if brief_data else {}
 
-    spatial = await compute_spatial_cds(session, symbol, currency_bias)
+    is_reversal = False
+    if brief_data:
+        brief_text = (
+            str(brief_data.get('summary', '') or '') + " " +
+            str(brief_data.get('macro_narrative', '') or '') + " " +
+            str(brief_data.get('notes', '') or '') + " " +
+            str(brief_data.get('rationale', '') or '')
+        ).lower()
+        reversal_keywords = ('reversal', 'turning point', 'inflection', 'pivot', 'oversold', 'overbought', 'counter-trend', 'bottoming', 'topping')
+        if brief_data.get('is_reversal') or any(kw in brief_text for kw in reversal_keywords):
+            is_reversal = True
+
+    spatial = await compute_spatial_cds(session, symbol, currency_bias, is_reversal=is_reversal)
     temporal = await compute_temporal_cds(session, symbol, settings)
     task = await compute_task_cds(session, symbol, current_decision)
 

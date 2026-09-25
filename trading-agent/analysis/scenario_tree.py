@@ -67,7 +67,7 @@ class ScenarioTreeEngine:
         self.settings = settings or {}
         st_cfg = self.settings.get("scenario_tree", {})
         self.ev_threshold: float = float(st_cfg.get("ev_threshold", 0.40) or 0.40)
-        self.min_dominant_prob: float = float(st_cfg.get("min_dominant_prob", 0.45) or 0.45)
+        self.min_dominant_prob: float = float(st_cfg.get("min_dominant_prob", 0.38) or 0.38)
 
     @staticmethod
     def compute_empirical_probabilities(
@@ -92,24 +92,28 @@ class ScenarioTreeEngine:
         chop_logit = 0.0
 
         # 1. Trend alignment
-        if trend == "BULLISH":
+        is_bull_trend = any(k in trend for k in ["BULL", "UP", "LONG"])
+        is_bear_trend = any(k in trend for k in ["BEAR", "DOWN", "SHORT"])
+        if is_bull_trend:
             bull_logit += 0.85
             bear_logit -= 0.85
-        elif trend == "BEARISH":
+        elif is_bear_trend:
             bear_logit += 0.85
             bull_logit -= 0.85
         else:
-            chop_logit += 0.5
+            chop_logit += 0.3
 
         # 2. Macro bias alignment
-        if macro == "BULLISH":
+        is_bull_macro = any(k in macro for k in ["BULL", "RISK_ON", "RISK-ON", "HAWKISH", "STRONG_BUY"])
+        is_bear_macro = any(k in macro for k in ["BEAR", "RISK_OFF", "RISK-OFF", "DOVISH", "STRONG_SELL"])
+        if is_bull_macro:
             bull_logit += 0.65
             bear_logit -= 0.65
-        elif macro == "BEARISH":
+        elif is_bear_macro:
             bear_logit += 0.65
             bull_logit -= 0.65
         else:
-            chop_logit += 0.3
+            chop_logit += 0.2
 
         # 3. Confluence score scaling (baseline 7)
         conf_factor = (max(0, min(14, confluence_score)) - 7) * 0.12
@@ -265,10 +269,17 @@ class ScenarioTreeEngine:
         ev_bull = (bull_node.probability * bull_node.reward_risk_ratio) - (bear_node.probability * 1.0)
         ev_bear = (bear_node.probability * bear_node.reward_risk_ratio) - (bull_node.probability * 1.0)
 
-        if ev_bull > ev_bear and ev_bull >= self.ev_threshold and bull_node.probability >= self.min_dominant_prob:
+        is_bull_dominant = (bull_node.probability >= self.min_dominant_prob) or (
+            bull_node.probability >= 0.35 and bull_node.probability > (1.35 * bear_node.probability)
+        )
+        is_bear_dominant = (bear_node.probability >= self.min_dominant_prob) or (
+            bear_node.probability >= 0.35 and bear_node.probability > (1.35 * bull_node.probability)
+        )
+
+        if ev_bull > ev_bear and ev_bull >= self.ev_threshold and is_bull_dominant:
             tree.expected_value = round(ev_bull, 2)
             tree.final_decision = "BUY"
-        elif ev_bear > ev_bull and ev_bear >= self.ev_threshold and bear_node.probability >= self.min_dominant_prob:
+        elif ev_bear > ev_bull and ev_bear >= self.ev_threshold and is_bear_dominant:
             tree.expected_value = round(ev_bear, 2)
             tree.final_decision = "SELL"
         else:

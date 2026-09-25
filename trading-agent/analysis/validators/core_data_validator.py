@@ -93,8 +93,13 @@ class CoreDataValidator:
             )
         ).total_seconds() / 3600
         
+        issue_note = ""
         if age_hours > max_age:
-            return (False, {}, f"Brief is {age_hours:.1f}h old (limit: {max_age}h)")
+            if age_hours <= 24.0:
+                issue_note = f"Brief is aging ({age_hours:.1f}h old > {max_age}h preferred limit) — operating in graceful degradation mode."
+                logger.warning(f"CoreDataValidator: {issue_note}")
+            else:
+                return (False, {}, f"Brief is {age_hours:.1f}h old (exceeds 24.0h hard limit)")
         
         if not brief.structured_json:
             return (False, {}, "Brief missing structured_json")
@@ -119,8 +124,8 @@ class CoreDataValidator:
             'structured': structured,
             'currency_bias': currency_bias,
             'risk_sentiment': structured.get('risk_sentiment', 'mixed'),
-            'confidence': structured.get('confidence', 0.5)
-        }, "")
+            'confidence': min(structured.get('confidence', 0.5), 0.55 if issue_note else 1.0)
+        }, issue_note)
     
     async def _validate_vix(self) -> Tuple[bool, dict, str]:
         from database.models import VIXData
