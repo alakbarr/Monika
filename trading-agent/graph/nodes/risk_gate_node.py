@@ -1,4 +1,6 @@
 import json
+import math
+import re
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
@@ -442,21 +444,23 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                 except Exception:
                     equity = 10000.0
 
+            def _safe_num(val: Any, default: float = 0.0) -> float:
+                if val is None or hasattr(val, "_mock_name") or hasattr(val, "_mock_return_value"):
+                    return default
+                try:
+                    if isinstance(val, str):
+                        val = re.sub(r'[$€£¥,]', '', val).strip()
+                    f = float(val)
+                    return default if (math.isnan(f) or math.isinf(f)) else f
+                except (ValueError, TypeError):
+                    return default
+
             async with _gs_rg() as rg_session:
                 for sym, r in actionable:
                     analysis_id = r.get("analysis_id")
                     ana = await rg_session.get(AssetAnalysis, analysis_id) if analysis_id else None
 
                     dec = str(r.get("decision") or (ana.decision if ana else "WAIT")).upper()
-                    
-                    def _safe_num(val: Any, default: float = 0.0) -> float:
-                        if val is None or hasattr(val, "_mock_name") or hasattr(val, "_mock_return_value"):
-                            return default
-                        try:
-                            f = float(val)
-                            return default if (math.isnan(f) or math.isinf(f)) else f
-                        except (ValueError, TypeError):
-                            return default
 
                     entry_price = _safe_num(r.get("entry_price"))
                     if entry_price == 0.0 and ana:
@@ -623,7 +627,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
             actionable = gate_approved
         except Exception as e:
-            logger.debug(f"RiskGate evaluation non-fatal error: {e}")
+            logger.warning(f"[RiskGate] Evaluation non-fatal error: {e}", exc_info=True)
 
     # Step 7a.3: Deterministic Trade Pre-Commit Gate
     if actionable:

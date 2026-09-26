@@ -109,33 +109,33 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3416
     - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3435
     - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3445
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3764
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3796
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3836
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3848
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3974
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4001
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4019
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4038
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4081
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4086
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4132
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4635
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4657
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4687
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4720
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4726
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4742
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4769
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4778
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4866
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4895
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4905
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4934
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4944
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4953
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4966
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4991
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3765
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3797
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3837
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3849
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3975
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4002
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4020
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4039
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4082
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4087
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4133
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4636
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4658
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4688
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4721
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4727
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4743
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4770
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4779
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4867
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4896
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4906
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4935
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4945
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4954
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4967
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4992
 
 ## Root Directory: `/trading-agent`
 
@@ -3699,6 +3699,7 @@ This document provides an exhaustive structural index of all directories, files,
         - `validate_code_safety(self, code_str)`
         - `_lint_check_code(cls, code_str)`
         - `sanitize_strategy_code(cls, code_str)`
+        - `_repair_invalid_replace_calls(cls, code_str)`
         - `_repair_unclosed_delimiters(cls, code_str)`
         - `_reindent_unindented_methods(cls, code_str)`
         - `_repair_unclosed_try_blocks(cls, code_str)`

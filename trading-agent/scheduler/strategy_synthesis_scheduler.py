@@ -19,7 +19,7 @@ import subprocess
 import symtable
 import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Type, cast, Callable
 
@@ -381,6 +381,9 @@ class StrategySynthesisScheduler:
             flags=re.IGNORECASE,
         )
 
+        # Auto-repair invalid pandas .replace([inf, -inf], <non_scalar>) resulting in mismatched replacement lists
+        code_str = cls._repair_invalid_replace_calls(code_str)
+
         # Auto-repair unclosed delimiters (e.g. '(' was never closed, unterminated strings)
         code_str = cls._repair_unclosed_delimiters(code_str)
 
@@ -389,6 +392,52 @@ class StrategySynthesisScheduler:
 
         # Auto-repair missing 'except' or 'finally' block from unclosed 'try:' statements
         code_str = cls._repair_unclosed_try_blocks(code_str)
+
+        return code_str
+
+    @classmethod
+    def _repair_invalid_replace_calls(cls, code_str: str) -> str:
+        """
+        Auto-repairs invalid pandas .replace([inf, -inf], <non_scalar>) calls.
+        Pandas requires the replacement value for a list target to be either a scalar
+        or an equal-length list. Passing a Series, DataFrame, or method call results in:
+        ValueError: Replacement lists must match in length. Expecting 2 got <N>.
+        """
+        if not code_str:
+            return code_str
+
+        inf_item = r"(?:-?float\(['\"]-?inf['\"]\)|-?(?:np\.|math\.)?inf)"
+        target_pattern = rf"\[\s*{inf_item}(?:\s*,\s*{inf_item})*\s*\]"
+        call_matches = list(re.finditer(rf"\.replace\s*\(\s*({target_pattern})\s*,\s*", code_str))
+
+        for m in reversed(call_matches):
+            target_str = m.group(1)
+            val_start = m.end()
+            paren_depth = 1
+            i = val_start
+            while i < len(code_str) and paren_depth > 0:
+                if code_str[i] == '(':
+                    paren_depth += 1
+                elif code_str[i] == ')':
+                    paren_depth -= 1
+                    if paren_depth == 0:
+                        break
+                i += 1
+
+            if paren_depth == 0:
+                val_expr = code_str[val_start:i].strip()
+                is_scalar = bool(re.match(
+                    r"^(?:(?:np\.|math\.)?nan|float\(['\"]nan['\"]\)|None|-?\d+(?:\.\d+)?)(?:\s*,\s*inplace\s*=\s*(?:True|False))?$",
+                    val_expr,
+                    re.IGNORECASE
+                ))
+                if not is_scalar:
+                    inplace_match = re.search(r",\s*inplace\s*=\s*(True|False)", val_expr, re.IGNORECASE)
+                    if inplace_match and inplace_match.group(1).lower() == 'true':
+                        replacement = f".replace({target_str}, np.nan, inplace=True)"
+                    else:
+                        replacement = f".replace({target_str}, np.nan).ffill().bfill()"
+                    code_str = code_str[:m.start()] + replacement + code_str[i+1:]
 
         return code_str
 
@@ -947,7 +996,7 @@ class StrategySynthesisScheduler:
                 f"- DO NOT use dynamic getattr(), setattr(), delattr(), eval(), or exec(). Access attributes directly with dot notation (e.g. candle.close) or dict .get().\n"
                 f"- CANDLE ACCESS: get_historical_candles() returns a list of dictionaries (CandleDict). Directly use pd.DataFrame(candles) or candle['close']. NEVER use dunder attributes like .__dict__ or .__class__.\n"
                 f"- PANDAS COMPATIBILITY: NEVER use .fillna(method='ffill') or .fillna(method='bfill') as the 'method' parameter is removed in pandas 2.1+. Always use .ffill() and .bfill() directly.\n"
-                f"- NUMERICAL STABILITY: Always sanitize NaNs/Infs (e.g. using .ffill(), .bfill(), .fillna(0.0), .replace([np.inf, -np.inf], ...), or min_periods=1 in rolling) before casting to integer (.astype(int)). Never call .astype(int) on Series containing NaNs or Infs.\n"
+                f"- NUMERICAL STABILITY: Always sanitize NaNs/Infs using scalar targets e.g. .replace([np.inf, -np.inf], np.nan).ffill().bfill().fillna(0.0) or min_periods=1 in rolling. NEVER pass a Series, DataFrame, or method call as the replacement value to .replace([np.inf, -np.inf], ...).\n"
                 f"- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside class {class_name}.\n"
                 f"- RISK CONTROL: When emitting a trade signal, calculate dynamic ATR-based or structural stop_loss and take_profit (e.g. 1.2-1.5x ATR for SL, 2.4-3.5x ATR for TP). Never leave them unspecified.\n"
                 f"- ERROR RESILIENCE: Wrap indicator calculations inside evaluate() in try-except blocks and return EdgeSignal(..., valid=False, rationale=f'Calculation error: {{e}}', tags=['error']) if an unexpected exception occurs.\n"
@@ -1005,14 +1054,38 @@ class StrategySynthesisScheduler:
                 try:
                     test_inst = strat_cls(self.settings)
                     if test_inst is not None:
+                        # Pre-validate evaluate() on canary slice session to catch runtime calculation errors early
+                        from database.models import PriceOHLCV
+                        now_dt = datetime.now(timezone.utc)
+                        mock_candles = [
+                            PriceOHLCV(
+                                symbol=symbol,
+                                timeframe="H1",
+                                timestamp=now_dt - timedelta(hours=j),
+                                open=1.0,
+                                high=1.05,
+                                low=0.95,
+                                close=1.02,
+                                volume=100.0,
+                            )
+                            for j in range(120, 0, -1)
+                        ]
+                        canary_session = cast(AsyncSession, HistoricalSliceSession(mock_candles))
+                        canary_sig = await asyncio.wait_for(
+                            test_inst.evaluate(canary_session, symbol, self.settings),
+                            timeout=5.0,
+                        )
+                        if canary_sig and ("error" in getattr(canary_sig, "tags", []) or "evaluation_error" in getattr(canary_sig, "tags", [])):
+                            raise RuntimeError(f"evaluate() produced error signal: {canary_sig.rationale}")
+
                         code = sanitized
                         logger.info(f"[StrategySynthesis] Successfully synthesized viable strategy '{class_name}' on attempt {attempt+1}.")
                         break
                 except Exception as canary_err:
                     logger.info(f"[StrategySynthesis] Canary error on attempt {attempt+1} for {symbol}: {canary_err}")
                     current_prompt = (
-                        f"Your strategy instantiated with error: {canary_err}.\n"
-                        f"Please fix the initialization and attribute assignments in {class_name}:\n```python\n{sanitized}\n```"
+                        f"Your strategy encountered a runtime error during validation: {canary_err}.\n"
+                        f"Please fix the initialization, attribute assignments, or evaluate() indicator calculation logic in {class_name}:\n```python\n{sanitized}\n```"
                     )
         except Exception as e:
             logger.debug(f"[StrategySynthesis] LLM synthesis non-fatal fallback: {e}")

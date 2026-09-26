@@ -73,6 +73,9 @@ async def test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists():
     
     mock_scheduler = MagicMock()
     mock_scheduler.settings = {"arbitration": {}}
+    mock_scheduler.risk_gate = MagicMock()
+    mock_scheduler.risk_gate.evaluate_proposal = AsyncMock(return_value=MagicMock(approved=True, rejection_reasons=[]))
+    mock_scheduler.mt5 = None
     config = {"configurable": {"scheduler": mock_scheduler}}
 
     mock_sig = MagicMock()
@@ -181,6 +184,69 @@ async def test_risk_gate_node_proposal_error_fails_closed():
          patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()):
 
         res = await risk_gate_node(state, config)
-
         # STRICT FAIL-CLOSED: The trade must NOT be approved
         assert len(res["approved_trades"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_node_safe_num_uses_math_and_strips_formatting():
+    """Verify that risk_gate_node evaluates math.isnan/isinf and formatted strings without NameError."""
+    state = {
+        "actionable_trades": [
+            ("BTCUSD", {
+                "analysis_id": 999,
+                "decision": "buy",
+                "confidence": 0.85,
+                "entry_price": "$83,729.50",
+                "stop_loss": 82000.0,
+                "take_profit": 87000.0,
+            })
+        ],
+        "asset_analyses": {}
+    }
+
+    mock_verdict = MagicMock()
+    mock_verdict.approved = True
+    mock_verdict.rejection_reasons = []
+
+    mock_scheduler = MagicMock()
+    mock_scheduler.settings = {
+        "trading": {"risk": {"max_risk_per_trade_pct": 1.0}},
+        "arbitration": {}
+    }
+    mock_scheduler.risk_gate = MagicMock()
+    mock_scheduler.risk_gate.evaluate_proposal = AsyncMock(return_value=mock_verdict)
+    mock_scheduler.mt5 = None
+    config = {"configurable": {"scheduler": mock_scheduler}}
+
+    class MockSession:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *a):
+            pass
+        async def get(self, model, ident):
+            return None
+        async def execute(self, stmt):
+            m = MagicMock()
+            m.scalar_one_or_none.return_value = None
+            m.scalars.return_value.all.return_value = []
+            return m
+        async def commit(self):
+            pass
+
+    mock_verdict = MagicMock()
+    mock_verdict.approved = True
+    mock_verdict.rejection_reasons = []
+
+    with patch("database.db.get_session", side_effect=MockSession), \
+         patch("risk.portfolio_correlation_gate.filter_correlated_proposals", new=AsyncMock(return_value=(state["actionable_trades"], []))), \
+         patch("risk.risk_gate.RiskGate.evaluate_proposal", new=AsyncMock(return_value=mock_verdict)), \
+         patch("analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit", new=AsyncMock(return_value=(True, []))), \
+         patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()):
+
+        res = await risk_gate_node(state, config)
+        assert len(res["approved_trades"]) == 1
+        sym, approved_data = res["approved_trades"][0]
+        assert sym == "BTCUSD"
+        assert approved_data["entry_price"] == 83729.5
+
