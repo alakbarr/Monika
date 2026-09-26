@@ -60,11 +60,39 @@ class _AsyncSessionLocalProxy:
 AsyncSessionLocal = _AsyncSessionLocalProxy()
 
 
+def is_running_under_test_suite() -> bool:
+    """Check if process or any ancestor in process tree is a test runner (e.g. pytest)."""
+    import sys
+    if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
+        return True
+    try:
+        import psutil
+        curr = psutil.Process()
+        for p in curr.parents():
+            name = p.name().lower()
+            if "pytest" in name:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def verify_safe_database_url(url: str) -> None:
+    """Ensure test runner doesn't accidentally connect to production database."""
+    if is_running_under_test_suite():
+        lower_url = url.lower()
+        if "prod" in lower_url and not os.environ.get("MONIKA_ALLOW_PROD_DB_IN_TEST"):
+            raise RuntimeError(
+                f"SAFETY GUARD: Test process detected trying to connect to production database ({url}). Aborting."
+            )
+
+
 def get_engine():
     """Lazy engine factory with connection pooling."""
     global engine
     if engine is None:
         db_url = os.getenv("DATABASE_URL", DATABASE_URL)
+        verify_safe_database_url(db_url)
         engine = create_async_engine(
             db_url,
             echo=False,

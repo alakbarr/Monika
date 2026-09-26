@@ -111,6 +111,29 @@ class MonikaMcpServer:
                     "required": ["name"],
                 },
             },
+            {
+                "name": "monika_search_session_memory",
+                "description": "Search local session transcripts, agent reflections, and tool records using SQLite FTS5 with CJK support.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search keyword or natural language query."},
+                        "limit": {"type": "integer", "description": "Maximum records to return (default: 5)."},
+                    },
+                    "required": ["query"],
+                },
+            },
+            {
+                "name": "monika_execute_quant_calc",
+                "description": "Execute Python quantitative calculations, technical indicators, or math in Tier 1 sandbox.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": "string", "description": "Python math or indicator calculation snippet."},
+                    },
+                    "required": ["code"],
+                },
+            },
         ]
 
     async def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -198,6 +221,32 @@ class MonikaMcpServer:
         elif tool_name == "monika_get_playbook":
             from analysis.tools.handlers.skills_tools import handle_skill_view
             return await handle_skill_view({"skill_name": arguments.get("name", "")})
+
+        elif tool_name == "monika_search_session_memory":
+            from database.session_db_wal import SessionDbWal
+            from database.fts5_cjk import Fts5SessionSearch
+            wal = SessionDbWal()
+            try:
+                conn = wal.get_connection()
+                fts = Fts5SessionSearch(conn)
+                query = arguments.get("query", "")
+                limit = int(arguments.get("limit", 5))
+                results = fts.search(query=query, limit=limit)
+                return {"results": results}
+            finally:
+                wal.close()
+
+        elif tool_name == "monika_execute_quant_calc":
+            from analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
+            env = Tier1InProcessEnvironment()
+            code = arguments.get("code", "")
+            outcome = await env.run_python_code(code)
+            return {
+                "exit_code": outcome.exit_code,
+                "stdout": outcome.stdout,
+                "stderr": outcome.stderr,
+                "execution_time_ms": outcome.execution_time_ms,
+            }
 
         raise ValueError(f"Unknown MCP tool: '{tool_name}'")
 

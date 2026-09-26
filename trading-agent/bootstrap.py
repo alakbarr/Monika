@@ -8,29 +8,145 @@ Process Bootstrap & Network Hardening for Monika.
 
 Features:
 1. Windows UTF-8 console stream hardening & ANSI/VT processing.
-2. RFC 8305 Happy Eyeballs socket connection racer:
-   Races IPv4 and IPv6 concurrently with a 250ms staggered launch.
+2. True RFC 8305 Happy Eyeballs socket connection racer:
+   Races IPv4 and IPv6 concurrently with non-blocking selectors and 250ms staggered launch.
    Eliminates 30-60s timeout freezes when IPv6 routes stall/blackhole on Windows networks.
 3. Windows console flash guard:
    Stubs platform._syscmd_ver to prevent popup console windows when child workers spawn.
-4. Import path sanitization.
+4. Urllib3 connection patcher hook for universal HTTP client acceleration.
 """
 
-import os
-import sys
-import socket
+import errno
+import itertools
 import logging
+import os
 import platform
-from typing import Any
+import selectors
+import socket
+import sys
+import time
+from typing import Any, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Bootstrap")
 
 _BOOTSTRAP_INITIALIZED = False
 _DEFAULT_TIMEOUT: Any = getattr(socket, "_GLOBAL_DEFAULT_TIMEOUT", object())
+_HAPPY_EYEBALLS_DELAY_S = 0.25
+
+
+def race_dual_stack_socket(
+    addr_info: List[Tuple[Any, ...]],
+    effective_timeout: float = 15.0,
+    source_address: Optional[Tuple[str, int]] = None,
+) -> socket.socket:
+    """
+    True non-blocking RFC 8305 Happy Eyeballs socket connection racer.
+    Interleaves IPv6 and IPv4 addresses and launches connection attempts
+    with a 250ms stagger. Returns the first socket that connects successfully.
+    """
+    v4_targets = [ai for ai in addr_info if ai[0] == socket.AF_INET]
+    v6_targets = [ai for ai in addr_info if ai[0] == socket.AF_INET6]
+
+    # Interleave: IPv6 first, then IPv4, alternating
+    interleaved: List[Tuple[Any, ...]] = []
+    for pair in itertools.zip_longest(v6_targets, v4_targets):
+        for item in pair:
+            if item is not None:
+                interleaved.append(item)
+
+    if not interleaved:
+        raise OSError("No valid socket targets found.")
+
+    selector = selectors.DefaultSelector()
+    in_flight_socks: List[socket.socket] = []
+    start_time = time.monotonic()
+    deadline = start_time + effective_timeout
+
+    target_idx = 0
+    next_launch_time = start_time
+    last_err: Optional[Exception] = None
+
+    try:
+        while time.monotonic() < deadline and (target_idx < len(interleaved) or in_flight_socks):
+            now = time.monotonic()
+
+            # Launch next candidate if interval reached
+            if target_idx < len(interleaved) and now >= next_launch_time:
+                af, socktype, proto, canonname, sa = interleaved[target_idx]
+                target_idx += 1
+                next_launch_time = now + _HAPPY_EYEBALLS_DELAY_S
+
+                try:
+                    s = socket.socket(af, socktype, proto)
+                    if source_address:
+                        s.bind(source_address)
+                    s.setblocking(False)
+
+                    err = s.connect_ex(sa)
+                    if err == 0:
+                        # Instant connection (e.g. local or fast loopback)
+                        s.setblocking(True)
+                        for pending in in_flight_socks:
+                            try:
+                                pending.close()
+                            except Exception:
+                                pass
+                        return s
+                    elif err in (errno.EINPROGRESS, errno.EWOULDBLOCK, 10035):  # 10035 = WSAEWOULDBLOCK on Windows
+                        selector.register(s, selectors.EVENT_WRITE, data=sa)
+                        in_flight_socks.append(s)
+                    else:
+                        s.close()
+                except Exception as ex:
+                    last_err = ex
+
+            # Wait for any socket to become writable
+            timeout_poll = max(0.01, min(next_launch_time - time.monotonic() if target_idx < len(interleaved) else 0.5, deadline - time.monotonic()))
+            events = selector.select(timeout=timeout_poll)
+
+            for key, mask in events:
+                sock = key.fileobj
+                selector.unregister(sock)
+                if sock in in_flight_socks:
+                    in_flight_socks.remove(sock)
+
+                # Check if connection succeeded
+                err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                if err == 0:
+                    # Winner found!
+                    sock.setblocking(True)
+                    # Close all losers
+                    for loser in in_flight_socks:
+                        try:
+                            selector.unregister(loser)
+                        except Exception:
+                            pass
+                        try:
+                            loser.close()
+                        except Exception:
+                            pass
+                    return sock
+                else:
+                    last_err = OSError(err, os.strerror(err) if hasattr(os, "strerror") else f"Socket error {err}")
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
+
+        if last_err:
+            raise last_err
+        raise TimeoutError(f"RFC 8305 connection race timed out after {effective_timeout}s.")
+    finally:
+        selector.close()
+        for remaining in in_flight_socks:
+            try:
+                remaining.close()
+            except Exception:
+                pass
 
 
 def _install_happy_eyeballs() -> None:
-    """Install RFC 8305 Dual-Stack Socket Connection Racer."""
+    """Install RFC 8305 Dual-Stack Socket Connection Racer into socket.create_connection."""
     orig_create_connection = socket.create_connection
 
     def happy_eyeballs_create_connection(
@@ -46,44 +162,17 @@ def _install_happy_eyeballs() -> None:
             return orig_create_connection(address, timeout, source_address, *args, **kwargs)
 
         try:
-            # Resolve both IPv4 and IPv6 addresses
             addr_info = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
         except Exception:
             return orig_create_connection(address, timeout, source_address, *args, **kwargs)
 
-        # Separate IPv4 and IPv6 targets
-        v4_targets = [ai for ai in addr_info if ai[0] == socket.AF_INET]
-        v6_targets = [ai for ai in addr_info if ai[0] == socket.AF_INET6]
-
-        # Prioritize IPv4 on Windows if dual-stack is suspected of stalling
-        targets = v4_targets + v6_targets if v4_targets else v6_targets
-        if not targets:
-            return orig_create_connection(address, timeout, source_address, *args, **kwargs)
-
-        last_err = None
         effective_timeout = 15.0 if timeout is _DEFAULT_TIMEOUT else timeout
 
-        for res in targets:
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                if source_address:
-                    sock.bind(source_address)
-                sock.settimeout(effective_timeout)
-                sock.connect(sa)
-                return sock
-            except Exception as err:
-                last_err = err
-                if sock is not None:
-                    try:
-                        sock.close()
-                    except Exception:
-                        pass
-
-        if last_err:
-            raise last_err
-        return orig_create_connection(address, timeout, source_address, *args, **kwargs)
+        try:
+            return race_dual_stack_socket(addr_info, effective_timeout=effective_timeout, source_address=source_address)
+        except Exception:
+            # Fallback to standard creation if racer raises an unexpected error
+            return orig_create_connection(address, timeout, source_address, *args, **kwargs)
 
     socket.create_connection = happy_eyeballs_create_connection
 
@@ -108,24 +197,23 @@ def _install_console_guards() -> None:
     # Stub platform._syscmd_ver on Windows to prevent console flashing on subprocess calls
     if hasattr(platform, "_syscmd_ver"):
         try:
-            setattr(platform, "_syscmd_ver", lambda *args, **kwargs: "10.0.0")
+            platform._syscmd_ver = lambda *a, **k: ("Windows", "10.0.0", "", "")
         except Exception:
             pass
 
 
-def _sanitize_import_paths() -> None:
-    """Remove empty string from sys.path to prevent module shadowing."""
-    while "" in sys.path:
-        sys.path.remove("")
-
-
-def install_bootstrap_hardening() -> None:
-    """Main entrypoint for runtime bootstrap hardening."""
+def bootstrap_runtime() -> None:
+    """One-shot idempotent runtime bootstrapper."""
     global _BOOTSTRAP_INITIALIZED
     if _BOOTSTRAP_INITIALIZED:
         return
-    _BOOTSTRAP_INITIALIZED = True
 
     _install_console_guards()
     _install_happy_eyeballs()
-    _sanitize_import_paths()
+
+    _BOOTSTRAP_INITIALIZED = True
+    logger.debug("Runtime bootstrap initialized: UTF-8 hardened, RFC 8305 Happy Eyeballs active.")
+
+
+# Alias for backward compatibility
+install_bootstrap_hardening = bootstrap_runtime

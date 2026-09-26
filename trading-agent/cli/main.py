@@ -1788,6 +1788,15 @@ def parse_args(args_list=None):
     bench_sub.add_parser("tasks", help="List all 45 evaluation tasks and categories")
     bench_sub.add_parser("models", help="List candidate models, tiers, and router matrix")
 
+    # Modular subcommands registry
+    try:
+        from cli.subcommands import AVAILABLE_SUBCOMMANDS
+        for sc in AVAILABLE_SUBCOMMANDS:
+            if sc.name and sc.name not in subparsers.choices:
+                sc.register_subparser(subparsers)
+    except Exception as e:
+        logger.debug(f"Subcommands registration error: {e}")
+
     # Backward compatibility and top-level headless query flag
     parser.add_argument("-q", "--query", type=str, default=None, help="Execute single one-shot query to Monika and exit")
     parser.add_argument("-r", "--raw", action="store_true", default=False, help="Print raw response without formatting")
@@ -1874,6 +1883,12 @@ async def _dispatch_cli(args):
             handle_plugin_command(args)
         elif args.command == "benchmark":
             await _cmd_benchmark(args)
+        elif args.command in ("daemon", "simulation", "trading", "mcp"):
+            from cli.subcommands import AVAILABLE_SUBCOMMANDS
+            for sc in AVAILABLE_SUBCOMMANDS:
+                if sc.name == args.command:
+                    await sc.execute(args)
+                    break
         else:
             # First-run interceptor for daemon execution
             from utils.infra.env_file_manager import EnvFileManager
