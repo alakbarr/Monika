@@ -97,7 +97,7 @@ class Fts5SessionSearch:
         self._init_fts()
 
     def _init_fts(self) -> None:
-        """Create FTS5 table if supported."""
+        """Create FTS5 table if supported and install synchronization triggers."""
         try:
             with self.conn:
                 self.conn.execute("""
@@ -109,12 +109,19 @@ class Fts5SessionSearch:
                         tokenize='unicode61'
                     );
                 """)
+                # Automatic synchronization triggers
+                self.conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS trg_session_messages_fts_ad AFTER DELETE ON session_messages BEGIN
+                        DELETE FROM session_messages_fts WHERE row_id = old.row_id;
+                    END;
+                """)
         except sqlite3.OperationalError as e:
             logger.warning(f"[Fts5SessionSearch] FTS5 virtual table init failed: {e}. Will rely on LIKE fallback.")
 
     def index_message(self, row_id: int, session_id: str, role: str, content: str) -> None:
-        """Index a message into FTS5 table with bigram tokenization."""
-        tokens = tokenize_cjk_bigram(content)
+        """Index a message into FTS5 table with bigram tokenization and 8192 char boundary guard."""
+        truncated_content = content[:8192] if content else ""
+        tokens = tokenize_cjk_bigram(truncated_content)
         try:
             with self.conn:
                 self.conn.execute("""
@@ -125,7 +132,7 @@ class Fts5SessionSearch:
             logger.debug(f"[Fts5SessionSearch] Failed to index row {row_id} in FTS5: {e}")
 
     def reindex_all_messages(self) -> int:
-        """Reindex all messages from session_messages into session_messages_fts."""
+        """Reindex all messages from session_messages into session_messages_fts with 8192 limit."""
         count = 0
         try:
             cursor = self.conn.execute("SELECT row_id, session_id, role, content FROM session_messages;")
@@ -133,7 +140,8 @@ class Fts5SessionSearch:
             with self.conn:
                 self.conn.execute("DELETE FROM session_messages_fts;")
                 for r in rows:
-                    tokens = tokenize_cjk_bigram(r["content"])
+                    truncated = r["content"][:8192] if r["content"] else ""
+                    tokens = tokenize_cjk_bigram(truncated)
                     self.conn.execute("""
                         INSERT INTO session_messages_fts (row_id, session_id, role, search_tokens)
                         VALUES (?, ?, ?, ?);
@@ -142,6 +150,7 @@ class Fts5SessionSearch:
         except Exception as e:
             logger.error(f"[Fts5SessionSearch] Reindex failed: {e}")
         return count
+
 
     def search(
         self,

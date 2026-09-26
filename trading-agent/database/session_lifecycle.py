@@ -180,6 +180,58 @@ class SessionLifecycleManager:
                 WHERE session_id = ?;
             """, (reason, time.time(), session_id))
 
+    def rewind_session(
+        self,
+        session_id: str,
+        target_turn: int,
+        preserve_carrier: bool = True,
+    ) -> int:
+        """
+        In-place soft-rewind: deactivates turns above target_turn (active=0).
+        Preserves complete historical audit trail while allowing the conversation
+        and agent planning to cleanly branch or resume from target_turn.
+        If preserve_carrier is True and a carrier marker existed in rewound turns,
+        ensures the target turn carrier remains bound.
+        """
+        sess = self.db.get_session(session_id)
+        if not sess:
+            raise ValueError(f"Session '{session_id}' not found.")
+
+        # Check if any carrier existed above target_turn
+        all_msgs = self.db.get_messages(session_id, active_only=False)
+        rewound_carrier = None
+        for m in all_msgs:
+            if m.get("turn_ordinal", 0) > target_turn and m.get("carrier_marker"):
+                rewound_carrier = m.get("carrier_marker")
+
+        # Soft-deactivate messages above target_turn
+        deactivated_count = self.db.deactivate_turns_above(session_id, target_turn)
+
+        # Update metadata to track rewind event
+        conn = self.db.get_connection()
+        with conn:
+            meta = json.loads(sess.get("metadata_json") or "{}")
+            rewind_history = meta.get("rewind_history", [])
+            rewind_history.append({
+                "target_turn": target_turn,
+                "deactivated_count": deactivated_count,
+                "rewound_carrier": rewound_carrier,
+                "timestamp": time.time(),
+            })
+            meta["rewind_history"] = rewind_history
+            meta["last_active_turn"] = target_turn
+            conn.execute(
+                "UPDATE sessions SET metadata_json = ?, updated_at = ? WHERE session_id = ?;",
+                (json.dumps(meta), time.time(), session_id),
+            )
+
+        logger.info(
+            f"[SessionLifecycle] Soft-rewound session '{session_id}' to turn {target_turn} "
+            f"({deactivated_count} messages deactivated)."
+        )
+        return deactivated_count
+
+
     def export_session_json(self, session_id: str) -> Dict[str, Any]:
         """
         Exports full session state, transcript, and tool execution logs

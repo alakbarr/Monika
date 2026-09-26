@@ -61,6 +61,10 @@ class WriteFileInput(BaseModel):
         ...,
         description="Full text content to write into the file."
     )
+    allow_overwrite: bool = Field(
+        False,
+        description="Must be set to True if intentionally overwriting an existing file larger than 100 lines."
+    )
 
 
 class PatchFileInput(BaseModel):
@@ -114,9 +118,11 @@ async def handle_write_file(
     success, result = _FILE_PATCH_ENGINE.write_file(
         path=params.path,
         content=params.content,
+        allow_overwrite=params.allow_overwrite,
     )
     status_tag = "[SUCCESS]" if success else "[REJECTED/ERROR]"
     return f"{status_tag} {result}"
+
 
 
 @unified_tool_registry.register(

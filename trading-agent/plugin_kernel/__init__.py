@@ -28,6 +28,13 @@ from harness.installer import (
     run_pip_uninstall,
     validate_package_spec,
 )
+from harness.lifecycle import (
+    ReplacementCoordinator,
+    ReplacementLease,
+    get_replacement_coordinator,
+    safe_dispatch_hook,
+    get_plugin_storage_dir,
+)
 
 __all__ = [
     "TradingPlugin",
@@ -46,4 +53,9 @@ __all__ = [
     "run_pip_install",
     "run_pip_uninstall",
     "validate_package_spec",
+    "ReplacementCoordinator",
+    "ReplacementLease",
+    "get_replacement_coordinator",
+    "safe_dispatch_hook",
+    "get_plugin_storage_dir",
 ]

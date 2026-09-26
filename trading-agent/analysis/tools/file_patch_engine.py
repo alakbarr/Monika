@@ -361,20 +361,40 @@ class FilePatchEngine:
         except Exception as exc:
             return False, f"Error reading file '{path}': {exc}"
 
-    def write_file(self, path: str, content: str) -> Tuple[bool, str]:
+    def write_file(self, path: str, content: str, allow_overwrite: bool = False) -> Tuple[bool, str]:
         """
-        Safely writes full file content under stale-overwrite protection.
+        Safely writes full file content under stale-overwrite and large-file wipeout protection.
         """
+        # Rule 10: Zero-byte/empty file wipeout protection
+        if not content.strip():
+            return False, "Safety Guard: Writing an empty file (0 bytes) is prohibited."
+
         can_mod, reason = self.guard.verify_can_modify(path)
         if not can_mod:
             return False, reason or "Write rejected by safety guard."
+
+        norm_path = os.path.normpath(os.path.abspath(path))
+
+        # Check existing file size/line count to prevent accidental full rewrites
+        if os.path.exists(norm_path) and not allow_overwrite:
+            try:
+                with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
+                    existing_lines = sum(1 for _ in f)
+                if existing_lines > 100:
+                    return (
+                        False,
+                        f"Safety Guard: Existing file '{path}' is large ({existing_lines} lines). "
+                        "To prevent accidental truncation or loss of codebase context, please use 'patch' "
+                        "for targeted edits, or explicitly pass allow_overwrite=True if replacing the entire file.",
+                    )
+            except Exception:
+                pass
 
         # Lint before saving
         lint_err = SyntaxLinter.lint_content(path, content)
         if lint_err:
             return False, f"Write rejected due to syntax error:\n{lint_err}"
 
-        norm_path = os.path.normpath(os.path.abspath(path))
         os.makedirs(os.path.dirname(norm_path), exist_ok=True)
 
         try:
@@ -384,6 +404,7 @@ class FilePatchEngine:
             return True, f"Successfully wrote {len(content)} characters to '{path}'"
         except Exception as exc:
             return False, f"Failed writing to '{path}': {exc}"
+
 
     def patch_file(
         self, path: str, old_string: str, new_string: str, replace_all: bool = False

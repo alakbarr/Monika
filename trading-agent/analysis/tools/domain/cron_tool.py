@@ -121,6 +121,11 @@ _cron_registry = CronRegistry()
 
 
 @unified_tool_registry.register(
+    name="schedule_cron_job",
+    category="TASK_MANAGEMENT",
+    input_model=CronActionInput,
+)
+@unified_tool_registry.register(
     name="manage_cron",
     category="TASK_MANAGEMENT",
     input_model=CronActionInput,

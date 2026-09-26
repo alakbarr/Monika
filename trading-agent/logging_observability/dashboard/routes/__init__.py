@@ -35,6 +35,7 @@ from logging_observability.dashboard.routes.memory import memory_router
 from logging_observability.dashboard.routes.intelligence import intelligence_router
 from logging_observability.dashboard.routes.plugins import plugins_router
 from logging_observability.dashboard.routes.benchmark import benchmark_router
+from logging_observability.dashboard.routes.mcp_server import mcp_router
 
 all_routers = [
     system_router,
@@ -49,6 +50,7 @@ all_routers = [
     intelligence_router,
     plugins_router,
     benchmark_router,
+    mcp_router,
 ]
 
 __all__ = [

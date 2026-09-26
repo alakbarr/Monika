@@ -88,11 +88,15 @@ class SkillsHub:
                 continue
 
             for skill_file in p.glob("**/SKILL.md"):
+                if any(part.startswith(".") or part.startswith("_") for part in skill_file.parts):
+                    continue
                 self._load_skill_file(skill_file)
 
             # Also support legacy direct .md files in the root of category folders
             for skill_file in p.glob("*.md"):
                 if skill_file.name != "SKILL.md" and not skill_file.name.startswith("."):
+                    if any(part.startswith(".") or part.startswith("_") for part in skill_file.parts):
+                        continue
                     self._load_skill_file(skill_file)
 
         logger.info(f"[SkillsHub] Discovered {len(self._skills)} skills across {len(self.search_directories)} paths.")

@@ -15,6 +15,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import time
 from contextlib import contextmanager
@@ -26,6 +27,12 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("TradingAgent.Gateway.DeliveryLedger")
 
 DEFAULT_LEDGER_DB = "data/gateway_delivery_ledger.db"
+
+_FLOOD_REGEX = re.compile(
+    r"(?:retry in|retry after|flood wait:?|wait\s+|too many requests.*?wait\s*)\s*(\d+(?:\.\d+)?)",
+    re.IGNORECASE,
+)
+
 
 
 class DeliveryStatus(str, Enum):
@@ -49,11 +56,13 @@ class DeliveryRecord:
     delivered_at: Optional[float] = None
     error_message: Optional[str] = None
     payload_json: Optional[str] = None
+    flood_not_before: float = 0.0
 
 
 class DeliveryLedger:
     """
-    Transactional SQLite WAL-backed ledger for idempotent omnichannel message delivery.
+    Transactional SQLite WAL-backed ledger for idempotent omnichannel message delivery
+    with precision 429 Flood Control and at-least-once reliability guarantees.
     """
 
     def __init__(self, db_path: str = DEFAULT_LEDGER_DB):
@@ -88,13 +97,39 @@ class DeliveryLedger:
                     updated_at REAL NOT NULL,
                     delivered_at REAL,
                     error_message TEXT,
-                    payload_json TEXT
+                    payload_json TEXT,
+                    flood_not_before REAL DEFAULT 0.0
                 )
                 """
             )
+            # Add column flood_not_before if existing table lacks it
+            try:
+                conn.execute("ALTER TABLE delivery_records ADD COLUMN flood_not_before REAL DEFAULT 0.0")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_delivery_status ON delivery_records(status)"
             )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_delivery_flood ON delivery_records(flood_not_before)"
+            )
+
+    @staticmethod
+    def extract_flood_wait(error_str: str, default: float = 30.0) -> Optional[float]:
+        """Extracts seconds from 429 / flood control error messages."""
+        if not error_str:
+            return None
+        m = _FLOOD_REGEX.search(error_str)
+        if m:
+            try:
+                wait_sec = float(m.group(1))
+                return min(max(wait_sec, 1.0), 600.0)
+            except Exception:
+                return default
+        if "429" in error_str or "too many requests" in error_str.lower() or "flood" in error_str.lower():
+            return default
+        return None
 
     @staticmethod
     def generate_idempotency_key(platform: str, recipient_id: str, content: str) -> str:
@@ -192,11 +227,34 @@ class DeliveryLedger:
             )
         logger.debug(f"[DeliveryLedger] Marked '{idempotency_key[:12]}' as DELIVERED.")
 
+    def mark_flood_delayed(self, idempotency_key: str, wait_seconds: float) -> None:
+        """Postpones delivery attempt due to 429 Flood Control without consuming attempt budget."""
+        now = time.time()
+        not_before = now + max(wait_seconds, 1.0) + 0.5
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE delivery_records
+                SET flood_not_before = ?, updated_at = ?, error_message = ?
+                WHERE idempotency_key = ?
+                """,
+                (not_before, now, f"Flood control wait: {wait_seconds:.1f}s", idempotency_key),
+            )
+        logger.info(
+            f"[DeliveryLedger] '{idempotency_key[:12]}' postponed for {wait_seconds:.1f}s until {not_before:.1f} (429 Flood Control)."
+        )
+
     def mark_failed(self, idempotency_key: str, error: str) -> DeliveryStatus:
         """
         Increments attempt counter and sets status to FAILED or DEAD_LETTER.
+        If the error is recognized as a 429 flood control, automatically defers without consuming attempt quota.
         """
         now = time.time()
+        flood_wait = self.extract_flood_wait(error)
+        if flood_wait is not None:
+            self.mark_flood_delayed(idempotency_key, flood_wait)
+            return DeliveryStatus.FAILED
+
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT attempts, max_attempts FROM delivery_records WHERE idempotency_key = ?",
@@ -224,17 +282,18 @@ class DeliveryLedger:
             return new_status
 
     def get_pending_deliveries(self, limit: int = 50) -> List[DeliveryRecord]:
-        """Fetches pending or retryable failed deliveries."""
+        """Fetches pending or retryable failed deliveries whose flood delay has elapsed."""
+        now = time.time()
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
                 SELECT idempotency_key, platform, recipient_id, payload_hash, status,
-                       attempts, max_attempts, created_at, updated_at, delivered_at, error_message, payload_json
+                       attempts, max_attempts, created_at, updated_at, delivered_at, error_message, payload_json, flood_not_before
                 FROM delivery_records
-                WHERE status IN (?, ?) AND attempts < max_attempts
+                WHERE status IN (?, ?) AND attempts < max_attempts AND (flood_not_before IS NULL OR flood_not_before <= ?)
                 ORDER BY created_at ASC LIMIT ?
                 """,
-                (DeliveryStatus.PENDING.value, DeliveryStatus.FAILED.value, limit),
+                (DeliveryStatus.PENDING.value, DeliveryStatus.FAILED.value, now, limit),
             )
             records = []
             for r in cursor.fetchall():
@@ -252,6 +311,73 @@ class DeliveryLedger:
                         delivered_at=r[9],
                         error_message=r[10],
                         payload_json=r[11],
+                        flood_not_before=r[12] if len(r) > 12 and r[12] is not None else 0.0,
                     )
                 )
             return records
+
+    def get_record(self, idempotency_key: str) -> Optional[DeliveryRecord]:
+        """Fetches a specific delivery record by its idempotency key."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT idempotency_key, platform, recipient_id, payload_hash, status,
+                       attempts, max_attempts, created_at, updated_at, delivered_at, error_message, payload_json, flood_not_before
+                FROM delivery_records
+                WHERE idempotency_key = ?
+                """,
+                (idempotency_key,),
+            )
+            r = cursor.fetchone()
+            if not r:
+                return None
+            return DeliveryRecord(
+                idempotency_key=r[0],
+                platform=r[1],
+                recipient_id=r[2],
+                payload_hash=r[3],
+                status=DeliveryStatus(r[4]),
+                attempts=r[5],
+                max_attempts=r[6],
+                created_at=r[7],
+                updated_at=r[8],
+                delivered_at=r[9],
+                error_message=r[10],
+                payload_json=r[11],
+                flood_not_before=r[12] if len(r) > 12 and r[12] is not None else 0.0,
+            )
+
+    def list_dead_letters(self, limit: int = 50) -> List[DeliveryRecord]:
+        """Fetches records that have exceeded max_attempts and entered DEAD_LETTER state."""
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT idempotency_key, platform, recipient_id, payload_hash, status,
+                       attempts, max_attempts, created_at, updated_at, delivered_at, error_message, payload_json, flood_not_before
+                FROM delivery_records
+                WHERE status = ?
+                ORDER BY updated_at DESC LIMIT ?
+                """,
+                (DeliveryStatus.DEAD_LETTER.value, limit),
+            )
+            records = []
+            for r in cursor.fetchall():
+                records.append(
+                    DeliveryRecord(
+                        idempotency_key=r[0],
+                        platform=r[1],
+                        recipient_id=r[2],
+                        payload_hash=r[3],
+                        status=DeliveryStatus(r[4]),
+                        attempts=r[5],
+                        max_attempts=r[6],
+                        created_at=r[7],
+                        updated_at=r[8],
+                        delivered_at=r[9],
+                        error_message=r[10],
+                        payload_json=r[11],
+                        flood_not_before=r[12] if len(r) > 12 and r[12] is not None else 0.0,
+                    )
+                )
+            return records
+

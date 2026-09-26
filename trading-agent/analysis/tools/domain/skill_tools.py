@@ -88,3 +88,112 @@ async def handle_skill_view(
         session_id=params.session_id,
     )
     return content
+
+
+class SkillManageInput(BaseModel):
+    """Input parameters for managing skill definitions."""
+    action: str = Field(
+        ...,
+        description="Action to perform: 'create', 'edit', 'delete', 'info', or 'hot_reload'."
+    )
+    name: Optional[str] = Field(
+        None,
+        description="Name of the skill to create, edit, delete, or inspect."
+    )
+    category: Optional[str] = Field(
+        "general",
+        description="Category for creation (e.g. 'general', 'trading', 'crystallized')."
+    )
+    description: Optional[str] = Field(
+        None,
+        description="Short description for new skill (< 80 chars)."
+    )
+    content: Optional[str] = Field(
+        None,
+        description="Full markdown content for creation or replacement edit."
+    )
+    old_text: Optional[str] = Field(
+        None,
+        description="Existing text block to replace during edit."
+    )
+    replacement_text: Optional[str] = Field(
+        None,
+        description="New text block to insert in place of old_text during edit."
+    )
+    fuzzy_match: bool = Field(
+        True,
+        description="Whether to use fuzzy matching for text block replacement if exact match fails."
+    )
+    force: bool = Field(
+        False,
+        description="Whether to force deletion of skills."
+    )
+    archive_instead: bool = Field(
+        True,
+        description="If true, move to archive instead of permanent deletion."
+    )
+
+
+@unified_tool_registry.register(
+    name="skill_manage",
+    category="KNOWLEDGE",
+    input_model=SkillManageInput,
+)
+async def handle_skill_manage(
+    params: SkillManageInput,
+    context: Optional[Any] = None,
+) -> str:
+    """Manage domain skills lifecycle: create, edit, delete, inspect info, or hot-reload."""
+    from skills.skill_manager import SkillManager
+    manager = SkillManager(skills_hub=_SKILLS_HUB)
+
+    action = params.action.strip().lower()
+
+    if action == "hot_reload":
+        res = manager.hot_reload()
+        return json.dumps(res, indent=2)
+
+    if action == "info":
+        if not params.name:
+            return "Error: 'name' is required for action 'info'."
+        info = manager.get_skill_info(params.name)
+        if not info:
+            return f"Skill '{params.name}' not found."
+        return json.dumps(info, indent=2)
+
+    if action == "create":
+        if not params.name or not params.content:
+            return "Error: 'name' and 'content' are required for action 'create'."
+        success, msg = manager.create_skill(
+            name=params.name,
+            content=params.content,
+            category=params.category or "general",
+            description=params.description,
+            overwrite=params.force,
+        )
+        return msg
+
+    if action == "edit":
+        if not params.name:
+            return "Error: 'name' is required for action 'edit'."
+        success, msg = manager.edit_skill(
+            name=params.name,
+            new_content=params.content,
+            old_text=params.old_text,
+            replacement_text=params.replacement_text,
+            fuzzy_match=params.fuzzy_match,
+        )
+        return msg
+
+    if action == "delete":
+        if not params.name:
+            return "Error: 'name' is required for action 'delete'."
+        success, msg = manager.delete_skill(
+            name=params.name,
+            force=params.force,
+            archive_instead=params.archive_instead,
+        )
+        return msg
+
+    return f"Unsupported action: '{params.action}'. Expected 'create', 'edit', 'delete', 'info', or 'hot_reload'."
+
