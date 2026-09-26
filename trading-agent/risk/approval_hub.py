@@ -439,6 +439,10 @@ class ApprovalHub:
         """Alias for get_open_requests."""
         return self.get_open_requests()
 
+    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
+        """Retrieves an approval request by its token/ID."""
+        return self._requests.get(request_id)
+
     async def await_decision(
         self,
         token: str,

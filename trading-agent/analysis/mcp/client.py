@@ -9,15 +9,6 @@ import json
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
-import aiohttp
-
-import asyncio
-import json
-import logging
-import os
-import sys
 import urllib.parse
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
@@ -56,6 +47,20 @@ class McpServerProcess:
         self._listen_task: Optional[asyncio.Task] = None
         self._post_url: str = self.url
         self._endpoint_discovered: Optional[asyncio.Event] = None
+
+    @property
+    def is_running(self) -> bool:
+        """Check whether the transport connection or process is currently active."""
+        if self.transport in ("sse", "http"):
+            return self._http_session is not None and not self._http_session.closed
+        return self.process is not None and self.process.returncode is None
+
+    async def ensure_started(self) -> bool:
+        """Ensure server is running, booting it on demand if currently idle."""
+        if self.is_running:
+            return True
+        return await self.start()
+
 
     async def _read_sse_stream(self, resp: aiohttp.ClientResponse):
         """Read Server-Sent Events (SSE) stream from the server."""
@@ -225,32 +230,6 @@ class McpServerProcess:
         except Exception as e:
             self._pending_futures.pop(cur_id, None)
             return {"error": str(e)}
-            return {"error": "Server process is not running"}
-
-        async with self._lock:
-            self._req_id += 1
-            cur_id = self._req_id
-
-        loop = asyncio.get_running_loop()
-        fut: asyncio.Future = loop.create_future()
-        self._pending_futures[cur_id] = fut
-
-        payload = {"jsonrpc": "2.0", "id": cur_id, "method": method}
-        if params is not None:
-            payload["params"] = params
-
-        line = json.dumps(payload) + "\n"
-        try:
-            self.process.stdin.write(line.encode("utf-8"))
-            await self.process.stdin.drain()
-            result = await asyncio.wait_for(fut, timeout=self.timeout)
-            return result
-        except asyncio.TimeoutError:
-            self._pending_futures.pop(cur_id, None)
-            return {"error": f"MCP request to '{self.name}' timed out after {self.timeout}s"}
-        except Exception as e:
-            self._pending_futures.pop(cur_id, None)
-            return {"error": str(e)}
 
     async def send_notification(self, method: str, params: Optional[Dict[str, Any]] = None):
         """Sends a JSON-RPC notification (no response expected)."""
@@ -347,19 +326,74 @@ class McpBridgeHandler(ToolHandler):
         executor: Optional[Any] = None,
         **kwargs: Any
     ) -> Any:
+        if not self.server.is_running:
+            started = await self.server.ensure_started()
+            if not started:
+                return {"error": f"Failed to start MCP server '{self.server.name}' on demand"}
         return await self.server.call_tool(self.remote_tool_name, args)
 
 
 class McpClientManager:
     """Manages connections to all configured external MCP servers with disk schema caching."""
 
+    _instance: Optional["McpClientManager"] = None
+
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
         self.servers: Dict[str, McpServerProcess] = {}
         self.schema_cache = McpSchemaCache()
 
+    @classmethod
+    def get_instance(cls, settings: Optional[Dict[str, Any]] = None) -> "McpClientManager":
+        """Get or initialize singleton instance of McpClientManager."""
+        if cls._instance is None:
+            cls._instance = cls(settings)
+        elif settings and not cls._instance.settings:
+            cls._instance.settings = settings
+        return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset singleton (primarily for test isolation)."""
+        cls._instance = None
+
+    async def call_tool(
+        self,
+        server_name: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        timeout: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Calls an MCP tool on a specific server with lazy auto-start and structured response."""
+        proc = self.servers.get(server_name)
+        if not proc:
+            mcp_cfg = self.settings.get("mcp", {})
+            servers_cfg = mcp_cfg.get("client", {}).get("servers", {})
+            s_cfg = servers_cfg.get(server_name)
+            if s_cfg and isinstance(s_cfg, dict):
+                proc = McpServerProcess(server_name, s_cfg)
+                self.servers[server_name] = proc
+            else:
+                return {"ok": False, "error": f"MCP server '{server_name}' not configured"}
+
+        if not proc.is_running:
+            started = await proc.ensure_started()
+            if not started:
+                return {"ok": False, "error": f"Could not start MCP server '{server_name}'"}
+
+        effective_timeout = timeout or proc.timeout
+        try:
+            res = await asyncio.wait_for(proc.call_tool(tool_name, arguments), timeout=effective_timeout)
+            if isinstance(res, dict) and "error" in res:
+                return {"ok": False, "error": res["error"], "result": res}
+            return {"ok": True, "result": res}
+        except asyncio.TimeoutError:
+            return {"ok": False, "error": f"MCP tool '{tool_name}' on '{server_name}' timed out after {effective_timeout}s"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     async def initialize_servers(self) -> int:
-        """Starts all enabled MCP servers and bridges their tools into default_tool_registry."""
+        """Starts all enabled MCP servers and bridges their tools into default_tool_registry and unified_tool_registry."""
         mcp_cfg = self.settings.get("mcp", {})
         if not mcp_cfg.get("enabled", True):
             logger.info("MCP client integration is disabled in settings.")
@@ -375,13 +409,40 @@ class McpClientManager:
             cached_tools = self.schema_cache.get_cached_tools(s_name, s_cfg)
             if cached_tools:
                 logger.info(f"[McpClientManager] Lazy-booted {len(cached_tools)} cached tools for '{s_name}'.")
+                if s_name not in self.servers:
+                    self.servers[s_name] = McpServerProcess(s_name, s_cfg)
+                proc = self.servers[s_name]
+                for t in cached_tools:
+                    t_name = t.get("name", "")
+                    if not t_name:
+                        continue
+                    local_name = f"mcp_{s_name}_{t_name}"
+                    handler = McpBridgeHandler(proc, t_name, local_name)
+                    default_tool_registry.register(
+                        handler,
+                        name=local_name,
+                        aliases=[f"{s_name}_{t_name}"],
+                        category="MCP",
+                    )
+                    try:
+                        unified_tool_registry.register_tool(
+                            name=local_name,
+                            category="MCP",
+                            handler=handler.execute,
+                            parameters_schema=t.get("inputSchema") or t.get("parameters"),
+                            is_async=True,
+                            description=t.get("description", f"MCP tool {t_name} from {s_name}"),
+                            aliases=[f"{s_name}_{t_name}"],
+                        )
+                    except Exception as reg_err:
+                        logger.debug(f"Could not register cached '{local_name}' to unified_tool_registry: {reg_err}")
 
         # Phase 2: Live Connections & Cache Freshness Update
         for s_name, s_cfg in servers_cfg.items():
             if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
                 continue
 
-            proc = McpServerProcess(s_name, s_cfg)
+            proc = self.servers.get(s_name) or McpServerProcess(s_name, s_cfg)
             success = await proc.start()
             if success:
                 self.servers[s_name] = proc
@@ -408,8 +469,10 @@ class McpClientManager:
                             name=local_name,
                             category="MCP",
                             handler=handler.execute,
+                            parameters_schema=t.get("inputSchema") or t.get("parameters"),
                             is_async=True,
                             description=t.get("description", f"MCP tool {t_name} from {s_name}"),
+                            aliases=[f"{s_name}_{t_name}"],
                         )
                     except Exception as reg_err:
                         logger.debug(f"Could not register '{local_name}' to unified_tool_registry: {reg_err}")
@@ -424,3 +487,8 @@ class McpClientManager:
         for s in self.servers.values():
             await s.stop()
         self.servers.clear()
+
+
+# Cross-compatibility alias
+MCPClientManager = McpClientManager
+

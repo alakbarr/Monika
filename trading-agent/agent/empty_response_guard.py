@@ -20,6 +20,7 @@ Institutional-grade engine turn protection architecture.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Agent.EmptyResponseGuard")
@@ -28,7 +29,19 @@ DEFAULT_COST_THRESHOLD_USD = 0.25
 MAX_CONSECUTIVE_EMPTY_FOR_FAILOVER = 2
 
 
+@dataclass
+class EmptyRecoveryAction:
+    """Action directive emitted by the 7-step empty response recovery ladder."""
+    step: int
+    action_type: str  # "nudge" | "close_reasoning" | "adjust_temp" | "prune_tools" | "retry" | "failover" | "terminal"
+    instruction: str
+    temperature_override: Optional[float] = None
+    prune_tools: bool = False
+    failover_model: Optional[str] = None
+
+
 class EmptyResponseGuard:
+
     """Manages empty response state, consecutive empty tracking, and cost ceilings."""
 
     def __init__(self, cost_threshold_usd: float = DEFAULT_COST_THRESHOLD_USD):
@@ -112,6 +125,71 @@ class EmptyResponseGuard:
 
         return True, f"Eligible for retry ({current_attempt + 1}/{effective_max_retries})."
 
+    def get_recovery_ladder_action(
+        self,
+        provider: str,
+        model: str,
+        attempt: int,
+        raw_response: Optional[str] = None,
+        task_role: Optional[str] = None,
+    ) -> EmptyRecoveryAction:
+        """
+        Calculates the 7-step progressive recovery ladder action for empty turns:
+          Step 1: System prompt formatting nudge
+          Step 2: Close dangling reasoning block and prompt for output
+          Step 3: Temperature laddering (adjust sampling temperature)
+          Step 4: Tool schema simplification (drop auxiliary tools)
+          Step 5: Clean provider retry
+          Step 6: Role fallback model
+          Step 7: Structured terminal emergency fallback
+        """
+        # Step 2 check: Dangling reasoning tag
+        if raw_response and ("<think>" in raw_response and "</think>" not in raw_response):
+            return EmptyRecoveryAction(
+                step=2,
+                action_type="close_reasoning",
+                instruction="Your previous response closed inside a thinking block without public text. Please emit your final answer clearly outside tags.",
+            )
+
+        if attempt <= 1:
+            return EmptyRecoveryAction(
+                step=1,
+                action_type="nudge",
+                instruction="Your previous response was completely empty. Please proceed with your analysis or call the necessary tool directly.",
+            )
+        elif attempt == 2:
+            return EmptyRecoveryAction(
+                step=3,
+                action_type="adjust_temp",
+                instruction="Please provide your direct findings or action recommendation now.",
+                temperature_override=0.2,
+            )
+        elif attempt == 3:
+            return EmptyRecoveryAction(
+                step=4,
+                action_type="prune_tools",
+                instruction="Please formulate your decision with primary tools.",
+                prune_tools=True,
+            )
+        elif attempt == 4:
+            return EmptyRecoveryAction(
+                step=5,
+                action_type="retry",
+                instruction="Clean restart of model generation attempt.",
+            )
+        elif attempt == 5:
+            return EmptyRecoveryAction(
+                step=6,
+                action_type="failover",
+                instruction="Consecutive empty thresholds reached. Switching to fallback provider.",
+            )
+        else:
+            return EmptyRecoveryAction(
+                step=7,
+                action_type="terminal",
+                instruction="Terminal emergency fallback synthesized.",
+            )
+
     def reset(self):
         """Reset all tracking counts."""
         self._consecutive_empty_counts.clear()
@@ -119,3 +197,4 @@ class EmptyResponseGuard:
 
 # Global singleton instance
 global_empty_response_guard = EmptyResponseGuard()
+

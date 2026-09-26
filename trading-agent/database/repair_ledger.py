@@ -186,14 +186,54 @@ class RepairLedger:
         ids.extend(matches)
         return list(set(ids))
 
+    def repair_scratchpad_artifacts(self, session_id: Optional[str] = None) -> int:
+        """
+        Detects and repairs corrupted scratchpad payload artifacts or unclosed code fences
+        in persisted conversation turns.
+        """
+        conn = self.db.get_connection()
+        repaired_count = 0
+        query = "SELECT row_id, session_id, content FROM session_messages WHERE content LIKE '%```%'"
+        params: list[Any] = []
+        if session_id:
+            query += " AND session_id = ?"
+            params.append(session_id)
+
+        cursor = conn.execute(query, tuple(params))
+        rows = cursor.fetchall()
+
+        for row in rows:
+            row_id, sid, content = row[0], row[1], row[2]
+            if not content:
+                continue
+
+            # Check for unclosed markdown code fences
+            fence_count = content.count("```")
+            if fence_count % 2 != 0:
+                fixed_content = content + "\n```"
+                with conn:
+                    conn.execute("UPDATE session_messages SET content = ? WHERE row_id = ?", (fixed_content, row_id))
+                repaired_count += 1
+                self.record_repair(
+                    session_id=sid,
+                    issue_type="CORRUPTED_SCRATCHPAD_FENCE",
+                    action_taken=f"Closed trailing code fence on message {row_id}",
+                    status="RESOLVED",
+                    details={"row_id": row_id},
+                )
+
+        return repaired_count
+
     def run_all_repairs(self) -> Dict[str, Any]:
         """Executes full repair diagnostics suite and returns summary."""
         stale_locks = self.cleanup_stale_lockfiles()
         orphaned_tools = self.detect_and_repair_orphaned_tool_calls()
+        repaired_scratchpads = self.repair_scratchpad_artifacts()
         summary = {
             "stale_locks_cleaned": stale_locks,
             "orphaned_tools_repaired": orphaned_tools,
-            "total_repairs": stale_locks + orphaned_tools,
+            "scratchpads_repaired": repaired_scratchpads,
+            "total_repairs": stale_locks + orphaned_tools + repaired_scratchpads,
             "timestamp": time.time(),
         }
         logger.info(f"[RepairLedger] Diagnostics completed: {summary}")

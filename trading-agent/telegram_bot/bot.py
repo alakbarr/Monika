@@ -201,6 +201,8 @@ class TelegramBot:
         app.add_handler(CommandHandler("rollback",    self._cmd_rollback))
         app.add_handler(CommandHandler("crystallized", self._cmd_crystallized))
         app.add_handler(CommandHandler("cron",        self._cmd_cron))
+        app.add_handler(CommandHandler("model",       self._cmd_model))
+        app.add_handler(CommandHandler("pair",        self._cmd_pair))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -834,6 +836,109 @@ class TelegramBot:
                 await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as exc:
             await update.message.reply_text(f"❌ Error mengevaluasi perintah cron: {exc}")
+
+    async def _cmd_model(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Interactive model routing inspection and hot-swapping (/model)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        try:
+            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            from config.settings import get_settings
+
+            registry = RuntimeModelRegistry.get_instance()
+            args = ctx.args or []
+
+            if not args or args[0].lower() == "list":
+                settings = get_settings()
+                task_roles = settings.get("llm", {}).get("task_roles", {})
+                overrides = registry.get_all_overrides()
+
+                lines = ["🤖 <b>Model Routing & Task Roles</b>\n"]
+                all_roles = sorted(set(list(task_roles.keys()) + list(overrides.keys())))
+
+                for r in all_roles:
+                    cfg_role = task_roles.get(r, {})
+                    def_primary = cfg_role.get("primary", "unknown") if isinstance(cfg_role, dict) else str(cfg_role)
+                    def_fallback = cfg_role.get("fallback_1", "-") if isinstance(cfg_role, dict) else "-"
+
+                    ovr = overrides.get(r, {})
+                    cur_primary = ovr.get("primary", def_primary)
+                    cur_fallback = ovr.get("fallback_1", def_fallback)
+
+                    is_overridden = bool(ovr)
+                    marker = "⚡" if is_overridden else "▫️"
+                    lines.append(f"{marker} <b>{r}</b>:\n  Primary: <code>{cur_primary}</code>\n  Fallback: <code>{cur_fallback}</code>")
+
+                lines.append("\n<b>Penggunaan:</b>\n• <code>/model set &lt;role&gt; &lt;model_name&gt; [primary|fallback_1]</code>\n• <code>/model reset [role]</code>")
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+                return
+
+            subcmd = args[0].lower()
+            if subcmd == "set" and len(args) >= 3:
+                role = args[1].strip()
+                model_name = args[2].strip()
+                slot = args[3].strip().lower() if len(args) > 3 else "primary"
+                if slot not in ("primary", "fallback_1", "fallback_2"):
+                    slot = "primary"
+
+                registry.set_role_model(role, model_name, slot=slot)
+                await update.message.reply_text(
+                    f"✅ <b>Model Hot-Swapped</b>\nRole: <code>{role}</code>\nSlot: <code>{slot}</code>\nModel: <code>{model_name}</code>",
+                    parse_mode=ParseMode.HTML
+                )
+            elif subcmd == "reset":
+                role = args[1].strip() if len(args) > 1 else None
+                registry.clear_overrides(role)
+                target_desc = f"role '{role}'" if role else "seluruh role"
+                await update.message.reply_text(
+                    f"🔄 <b>Model Overrides Direset</b>\nReset {target_desc} kembali ke konfigurasi default settings.yaml.",
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                await update.message.reply_text(
+                    "❌ Format salah. Gunakan:\n• <code>/model</code> (tampilkan semua role)\n• <code>/model set &lt;role&gt; &lt;model&gt; [slot]</code>\n• <code>/model reset [role]</code>",
+                    parse_mode=ParseMode.HTML
+                )
+        except Exception as exc:
+            logger.error(f"Error handling /model command: {exc}", exc_info=True)
+            await update.message.reply_text(f"❌ Error mengevaluasi /model: {exc}")
+
+    async def _cmd_pair(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Interactive DM pairing via out-of-band console OTP (/pair [code])."""
+        if not update.message or not update.effective_user:
+            return
+
+        user_id = str(update.effective_user.id)
+        username = update.effective_user.username
+        args = ctx.args or []
+
+        from gateway.pairing import get_pairing_manager
+        mgr = get_pairing_manager()
+
+        if mgr.is_user_paired("telegram", user_id):
+            await update.message.reply_text("✅ Akun Telegram Anda sudah terhubung (paired) dengan Monika.")
+            return
+
+        if not args:
+            # Generate challenge and print to console
+            user_msg, _ = mgr.create_pairing_request("telegram", user_id, username=username)
+            await update.message.reply_text(user_msg, parse_mode=ParseMode.MARKDOWN)
+            return
+
+        # Attempt verification
+        code_input = args[0].strip()
+        success, reply_msg = mgr.verify_pairing_code("telegram", user_id, code_input)
+        if success:
+            if hasattr(self._router, "allowed_user_ids") and isinstance(self._router.allowed_user_ids, set):
+                self._router.allowed_user_ids.add(int(user_id))
+            await update.message.reply_text(
+                f"🎉 *Pairing Berhasil!*\n\n{reply_msg}\nAnda sekarang memiliki akses penuh ke Monika.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await update.message.reply_text(f"❌ {reply_msg}", parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_vix(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return

@@ -111,6 +111,8 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "playbooks":  {"type": CommandType.DIRECT, "admin_only": False},
     "rollback":   {"type": CommandType.ADMIN,  "admin_only": True},
     "crystallized": {"type": CommandType.DIRECT, "admin_only": False},
+    "model":      {"type": CommandType.ADMIN,  "admin_only": True},
+    "pair":       {"type": CommandType.DIRECT, "admin_only": False},
 }
 
 COMMAND_HELP: dict[str, str] = {
@@ -118,6 +120,8 @@ COMMAND_HELP: dict[str, str] = {
     "positions":   "[Posisi] Daftar semua posisi terbuka beserta PnL",
     "brief":       "[Brief] Ringkasan fundamental terkini dari analisis AI",
     "analysis":    "[Analisis] Analisis terkini untuk simbol: /analysis <symbol>",
+    "model":       "[Model] Model routing hot-swap: /model [set <role> <model>|reset]",
+    "pair":        "[Pair] Pairing DM Telegram dengan Monika via kode OTP konsol",
     "pipeline":    "[Pipeline] Ringkasan alur graf DAG LangGraph dan status node pipeline",
     "history":     "[Riwayat] 10 aktivitas terakhir",
     "risk":        "[Risiko] Status risiko terkini (PnL harian, drawdown)",
@@ -207,11 +211,16 @@ class CommandRouter:
             self.allowed_user_ids = {self.admin_chat_id}
 
     def is_authorized(self, user_id: int) -> bool:
-        """Cek apakah user diizinkan mengakses bot."""
-        if not self.allowed_user_ids:
-            # Jika whitelist kosong, tolak semua user untuk keamanan
-            return False
-        return user_id in self.allowed_user_ids
+        """Cek apakah user diizinkan mengakses bot (whitelist atau paired DM)."""
+        if self.allowed_user_ids and user_id in self.allowed_user_ids:
+            return True
+        try:
+            from gateway.pairing import get_pairing_manager
+            if get_pairing_manager().is_user_paired("telegram", str(user_id)):
+                return True
+        except Exception:
+            pass
+        return False
 
     def is_admin(self, user_id: int) -> bool:
         """Cek apakah user adalah admin."""
@@ -231,7 +240,10 @@ class CommandRouter:
         user_id  = update.effective_user.id
         raw_text = update.message.text.strip()
 
-        if not self.is_authorized(user_id):
+        # Izinkan /pair tanpa syarat otorisasi awal agar stranger dapat memverifikasi kode OTP konsol
+        is_pairing_attempt = raw_text.startswith("/pair")
+
+        if not self.is_authorized(user_id) and not is_pairing_attempt:
             logger.warning(f"Unauthorized access attempt from user_id={user_id}")
             return None
 

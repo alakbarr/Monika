@@ -20,14 +20,24 @@ from typing import List, Tuple
 logger = logging.getLogger("TradingAgent.Providers.StreamingThinkScrubber")
 
 
+DEFAULT_REASONING_TAG_PAIRS: List[Tuple[str, str]] = [
+    ("<think>", "</think>"),
+    ("<thought>", "</thought>"),
+    ("<reasoning>", "</reasoning>"),
+    ("<scratchpad>", "</scratchpad>"),
+]
+
+
 class StreamingThinkScrubber:
     """
     State machine that processes streaming text chunks and separates
-    internal reasoning from final public response tokens.
+    internal reasoning from final public response tokens across all supported tag pairs.
     """
 
-    def __init__(self):
+    def __init__(self, tag_pairs: Optional[List[Tuple[str, str]]] = None):
+        self.tag_pairs = tag_pairs or list(DEFAULT_REASONING_TAG_PAIRS)
         self._in_think_block = False
+        self._active_closing_tag: str = "</think>"
         self._buffer = ""
         self._accumulated_thinking: List[str] = []
         self._accumulated_content: List[str] = []
@@ -46,26 +56,40 @@ class StreamingThinkScrubber:
 
         while self._buffer:
             if not self._in_think_block:
-                # Look for opening tag <think>
-                idx = self._buffer.find("<think>")
-                if idx != -1:
-                    # Content before <think>
-                    before = self._buffer[:idx]
+                # Look for earliest opening tag among all registered tag pairs
+                earliest_idx = -1
+                found_open = ""
+                found_close = ""
+
+                for open_tag, close_tag in self.tag_pairs:
+                    idx = self._buffer.find(open_tag)
+                    if idx != -1 and (earliest_idx == -1 or idx < earliest_idx):
+                        earliest_idx = idx
+                        found_open = open_tag
+                        found_close = close_tag
+
+                if earliest_idx != -1:
+                    before = self._buffer[:earliest_idx]
                     if before:
                         content_out.append(before)
                     self._in_think_block = True
-                    self._buffer = self._buffer[idx + 7:]  # len('<think>') == 7
+                    self._active_closing_tag = found_close
+                    self._buffer = self._buffer[earliest_idx + len(found_open):]
                 else:
-                    # Check for partial prefix of '<think>' at the end of buffer
+                    # Check for partial prefix of any opening tag at buffer end
                     partial_found = False
-                    for p_len in range(1, 7):
-                        if "<think>".startswith(self._buffer[-p_len:]):
-                            safe_content = self._buffer[:-p_len]
-                            if safe_content:
-                                content_out.append(safe_content)
-                            self._buffer = self._buffer[-p_len:]
-                            partial_found = True
+                    for open_tag, _ in self.tag_pairs:
+                        for p_len in range(1, len(open_tag)):
+                            if open_tag.startswith(self._buffer[-p_len:]):
+                                safe_content = self._buffer[:-p_len]
+                                if safe_content:
+                                    content_out.append(safe_content)
+                                self._buffer = self._buffer[-p_len:]
+                                partial_found = True
+                                break
+                        if partial_found:
                             break
+
                     if not partial_found:
                         content_out.append(self._buffer)
                         self._buffer = ""
@@ -73,25 +97,26 @@ class StreamingThinkScrubber:
                         break
 
             else:
-                # Inside think block, look for closing tag </think>
-                idx = self._buffer.find("</think>")
+                # Inside think block, look for active closing tag
+                idx = self._buffer.find(self._active_closing_tag)
                 if idx != -1:
                     thought = self._buffer[:idx]
                     if thought:
                         thinking_out.append(thought)
                     self._in_think_block = False
-                    self._buffer = self._buffer[idx + 8:]  # len('</think>') == 8
+                    self._buffer = self._buffer[idx + len(self._active_closing_tag):]
                 else:
-                    # Check for partial prefix of '</think>' at the end of buffer
+                    # Check for partial prefix of active closing tag at buffer end
                     partial_found = False
-                    for p_len in range(1, 8):
-                        if "</think>".startswith(self._buffer[-p_len:]):
+                    for p_len in range(1, len(self._active_closing_tag)):
+                        if self._active_closing_tag.startswith(self._buffer[-p_len:]):
                             safe_thought = self._buffer[:-p_len]
                             if safe_thought:
                                 thinking_out.append(safe_thought)
                             self._buffer = self._buffer[-p_len:]
                             partial_found = True
                             break
+
                     if not partial_found:
                         thinking_out.append(self._buffer)
                         self._buffer = ""
@@ -126,6 +151,14 @@ class StreamingThinkScrubber:
 
         return c_delta, t_delta
 
+    @classmethod
+    def scrub_text(cls, text: str) -> Tuple[str, str]:
+        """One-shot utility to scrub reasoning tags from a complete text payload."""
+        scrubber = cls()
+        c1, t1 = scrubber.feed_chunk(text)
+        c2, t2 = scrubber.finalize()
+        return (c1 + c2).strip(), (t1 + t2).strip()
+
     @property
     def total_content(self) -> str:
         return "".join(self._accumulated_content)
@@ -133,3 +166,4 @@ class StreamingThinkScrubber:
     @property
     def total_thinking(self) -> str:
         return "".join(self._accumulated_thinking)
+

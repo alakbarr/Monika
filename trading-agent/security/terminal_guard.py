@@ -20,7 +20,7 @@ from utils.security.nt_guard import is_dangerous_nt_namespace, SecurityViolation
 # Hardline command patterns that MUST NEVER execute under any mode or posture
 HARDLINE_BLOCKLIST_PATTERNS = [
     # System destruction & formatting
-    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:\s|$|;)", re.IGNORECASE),
+    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:/|\*|\s|$|;)", re.IGNORECASE),
     re.compile(r"\b(del|erase|rd|rmdir)\s+.*(/s|/q).*(\\|C:\\|C:/)(?:\s|$|;)", re.IGNORECASE),
     re.compile(r"\b(mkfs|format)\b", re.IGNORECASE),
     re.compile(r"\bdd\s+.*of=(/dev/|\\\\.\b)", re.IGNORECASE),
@@ -37,6 +37,15 @@ HARDLINE_BLOCKLIST_PATTERNS = [
     
     # Direct access to shadow/credentials
     re.compile(r"\b(cat|type|more|less|head|tail)\s+.*(/etc/shadow|/etc/passwd|\.ssh/id_|\.env)\b", re.IGNORECASE),
+    
+    # Cloud Instance Metadata Service (IMDS) SSRF Protection
+    re.compile(r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254)", re.IGNORECASE),
+    
+    # Reverse shell & socket pipes
+    re.compile(r"/dev/(?:tcp|udp)/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", re.IGNORECASE),
+    re.compile(r"\bnc(?:\.traditional)?\s+-[a-zA-Z]*e\b|\bncat\s+.*--exec\b", re.IGNORECASE),
+    re.compile(r"\b(?:base64\s+-d|openssl\s+enc\s+-d)\s*\|\s*(?:bash|sh|zsh|powershell|pwsh)\b", re.IGNORECASE),
+    re.compile(r"\b(?:Invoke-Expression|iex)\s*[\(\$].*(?:DownloadString|FromBase64String|webclient)", re.IGNORECASE),
 ]
 
 # Sensitive file and directory names that agent is forbidden from writing or deleting
@@ -65,6 +74,41 @@ PROTECTED_DIRECTORIES: Set[str] = {
 }
 
 
+def deobfuscate_command(cmd_line: str) -> str:
+    """
+    De-obfuscates command line strings to defeat evasion techniques such as:
+    - Intra-token quote concatenation (e.g. c'a't /e"t"c/p'a'sswd)
+    - PowerShell backtick masking (e.g. c`a`t)
+    - Hex escaped strings (e.g. \\x63\\x61\\x74)
+    - Substring concatenation expressions
+    """
+    if not cmd_line:
+        return ""
+
+    result = cmd_line
+
+    # 1. Remove PowerShell backtick evasion (e.g. `c`a`t -> cat)
+    result = re.sub(r"`([a-zA-Z0-9_\-\.\/])", r"\1", result)
+
+    # 2. De-obfuscate intra-token quotes (e.g. c'a't -> cat, /e"t"c -> /etc, r""m -> rm)
+    result = re.sub(r"(?<=[a-zA-Z0-9_\-\.\/\$])['\"]+(?=[a-zA-Z0-9_\-\.\/\$])", "", result)
+    result = re.sub(r"(^|\s)['\"]([a-zA-Z0-9_\-\.\/]+)['\"](?=\s|$)", lambda m: (m.group(1) or "") + m.group(2), result)
+
+    # 3. Decode hex escape sequences (\x41 -> A)
+    def _decode_hex(match: re.Match) -> str:
+        try:
+            return bytes.fromhex(match.group(1)).decode("latin1")
+        except Exception:
+            return match.group(0)
+
+    result = re.sub(r"\\x([0-9a-fA-F]{2})", _decode_hex, result)
+
+    # 4. Remove quote concatenations (e.g. 'c'+'a'+'t' -> cat)
+    result = re.sub(r"['\"]\s*\+\s*['\"]", "", result)
+
+    return result.strip()
+
+
 def unwrap_command_quotes(cmd_line: str) -> str:
     """
     Unwrap nested quotes and execution wrappers (e.g. sh -c '...', bash -c '...', powershell -Command '...')
@@ -85,16 +129,22 @@ def unwrap_command_quotes(cmd_line: str) -> str:
 def is_hardline_blocked_command(cmd_line: str) -> Tuple[bool, str]:
     """
     Evaluate command line string against hardline blocklist.
+    Checks raw command, unwrapped command, and de-obfuscated representations.
     Returns (is_blocked: bool, reason: str).
     """
     if not cmd_line or not cmd_line.strip():
         return False, ""
 
     unwrapped = unwrap_command_quotes(cmd_line)
+    deobfuscated = deobfuscate_command(cmd_line)
+    deobfuscated_unwrapped = deobfuscate_command(unwrapped)
+
+    candidates = [cmd_line, unwrapped, deobfuscated, deobfuscated_unwrapped]
 
     for pattern in HARDLINE_BLOCKLIST_PATTERNS:
-        if pattern.search(cmd_line) or pattern.search(unwrapped):
-            return True, f"Command matched prohibited security signature: '{pattern.pattern}'."
+        for candidate in candidates:
+            if pattern.search(candidate):
+                return True, f"Command matched prohibited security signature: '{pattern.pattern}'."
 
     return False, ""
 

@@ -62,7 +62,8 @@ def check_fd_headroom(reserve: int = _FD_RESERVE_HEADROOM) -> bool:
 class FileLockGuard:
     """
     Cross-platform file locking guard for exclusive database operations.
-    Supports Windows (msvcrt) and POSIX (fcntl).
+    Supports Windows (msvcrt), Linux Open File Description locks (fcntl.F_OFD_SETLK),
+    and standard POSIX advisory locks (fcntl.flock).
     """
 
     def __init__(self, lock_path: Path, timeout: float = 5.0):
@@ -83,7 +84,14 @@ class FileLockGuard:
                     msvcrt.locking(self._fd, msvcrt.LK_NBLCK, 1)
                 else:
                     import fcntl
-                    fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    # Prefer Open File Description (OFD) locks if available on modern Linux
+                    if hasattr(fcntl, "F_OFD_SETLK"):
+                        import struct
+                        # struct flock: l_type (F_WRLCK=1), l_whence (SEEK_SET=0), l_start=0, l_len=0
+                        lockdata = struct.pack("hhqqi", fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)
+                        fcntl.fcntl(self._fd, fcntl.F_OFD_SETLK, lockdata)
+                    else:
+                        fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 return self
             except (BlockingIOError, OSError):
                 if time.time() - start_time >= self.timeout:
@@ -105,7 +113,12 @@ class FileLockGuard:
                 else:
                     import fcntl
                     try:
-                        fcntl.flock(self._fd, fcntl.LOCK_UN)
+                        if hasattr(fcntl, "F_OFD_SETLK"):
+                            import struct
+                            unlockdata = struct.pack("hhqqi", fcntl.F_UNLCK, os.SEEK_SET, 0, 0, 0)
+                            fcntl.fcntl(self._fd, fcntl.F_OFD_SETLK, unlockdata)
+                        else:
+                            fcntl.flock(self._fd, fcntl.LOCK_UN)
                     except OSError:
                         pass
             finally:
