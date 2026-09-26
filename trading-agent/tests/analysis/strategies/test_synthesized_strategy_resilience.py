@@ -751,6 +751,83 @@ class SynthesizedStrategy_alpha_dict_test(EdgeStrategy):
     assert sched.validate_code_safety(sanitized) is True
 
 
+@pytest.mark.asyncio
+async def test_sanitize_strategy_code_repairs_invalid_replace():
+    """Verify StrategySynthesisScheduler.sanitize_strategy_code auto-repairs invalid replace calls with Series/methods."""
+    raw_code = '''
+from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, Dict, Any
+import pandas as pd
+import numpy as np
+
+class SynthesizedStrategy_alpha_test_replace(EdgeStrategy):
+    strategy_id: str = "alpha_test_replace"
+    applicable_symbols: set = {"GBPUSD"}
+
+    def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
+        super().__init__(settings or {}, *args, **kwargs)
+
+    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+        candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=120)
+        df = pd.DataFrame(candles)
+        df = df.replace([np.inf, -np.inf], df.ffill().bfill())
+        df['close'] = df['close'].replace([float('inf'), float('-inf')], df['close'].ffill())
+        s = pd.Series([1.0] * len(df))
+        s = s.replace([np.inf, -np.inf], s)
+        valid_preserved = df.replace([np.inf, -np.inf], np.nan)
+        return EdgeSignal(
+            strategy_id=self.strategy_id,
+            symbol=symbol,
+            direction="buy",
+            valid=True,
+            confidence=0.8,
+            stop_loss=1.2000,
+            take_profit=1.2500,
+            factor_family="trend",
+            rationale="Test replace repair",
+            tags=["test"]
+        )
+'''
+    sanitized = StrategySynthesisScheduler.sanitize_strategy_code(raw_code)
+    assert "df.replace([np.inf, -np.inf], np.nan).ffill().bfill()" in sanitized
+    assert "df['close'].replace([float('inf'), float('-inf')], np.nan).ffill().bfill()" in sanitized
+    assert "s.replace([np.inf, -np.inf], np.nan).ffill().bfill()" in sanitized
+    assert "df.replace([np.inf, -np.inf], np.nan)" in sanitized
+
+    # Now verify compilation and canary execution with 120 candles
+    from database.models import PriceOHLCV
+    from scheduler.strategy_synthesis_scheduler import HistoricalSliceSession
+    import datetime
+
+    sched = StrategySynthesisScheduler(settings={})
+    strat_cls = sched.compile_strategy_class(sanitized, "SynthesizedStrategy_alpha_test_replace")
+    assert strat_cls is not None
+
+    inst = strat_cls({})
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    mock_candles = [
+        PriceOHLCV(
+            symbol="GBPUSD",
+            timeframe="H1",
+            timestamp=now_dt - datetime.timedelta(hours=j),
+            open=1.22,
+            high=1.23,
+            low=1.21,
+            close=1.225,
+            volume=500.0,
+        )
+        for j in range(120, 0, -1)
+    ]
+    canary_session = HistoricalSliceSession(mock_candles)
+    sig = await inst.evaluate(canary_session, "GBPUSD", {})
+    assert sig is not None
+    assert sig.valid is True
+    assert "error" not in getattr(sig, "tags", [])
+    assert sig.direction == "buy"
+
+
+
 
 
 
