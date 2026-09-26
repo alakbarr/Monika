@@ -221,3 +221,57 @@ class TestTechnicalIndicatorCalculator:
         ac1 = compute_lag1_autocorrelation(close, window=10)
         assert isinstance(ac1, pd.Series)
         assert len(ac1) == 30
+
+    @pytest.mark.asyncio
+    async def test_compute_and_save_with_exact_ma_period(self):
+        """Verifikasi bahwa 200 bar cukup untuk menghitung SMA_200 tanpa dibuang."""
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        settings = {
+            "trading": {
+                "indicators": {
+                    "ma_periods": [20, 50, 200],
+                    "rsi_period": 14,
+                }
+            }
+        }
+        calc = TechnicalIndicatorCalculator(mock_session, settings)
+        
+        # 200 bar sintetis
+        dates = pd.date_range("2024-01-01", periods=200, freq="1D", tz="UTC")
+        df = pd.DataFrame({
+            "open": [100.0] * 200,
+            "high": [105.0] * 200,
+            "low": [95.0] * 200,
+            "close": [102.0] * 200,
+            "volume": [1000.0] * 200,
+        }, index=dates)
+        
+        calc._load_ohlcv = AsyncMock(return_value=df)
+        calc._save = AsyncMock(return_value=300)
+        
+        saved = await calc.compute_and_save("BTCUSD", "D1")
+        assert saved == 300
+        # Periode 200 tetap dipertahankan karena 200 <= 200
+        assert 200 in calc.ma_periods
+
+    @pytest.mark.asyncio
+    async def test_load_ohlcv_d1_deduplication(self):
+        """Verifikasi bahwa _load_ohlcv mendeduplikasi beberapa candle pada tanggal yang sama."""
+        mock_session = AsyncMock()
+        calc = TechnicalIndicatorCalculator(mock_session, {})
+        
+        # Simulasikan baris dari DB dengan tanggal sama tapi jam berbeda (polusi offset)
+        row1 = MagicMock(timestamp=datetime(2026, 9, 25, 0, 0, tzinfo=timezone.utc), open=10, high=12, low=8, close=11, volume=100)
+        row2 = MagicMock(timestamp=datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc), open=10, high=12, low=8, close=11.5, volume=120)
+        row3 = MagicMock(timestamp=datetime(2026, 9, 26, 0, 0, tzinfo=timezone.utc), open=11.5, high=13, low=9, close=12, volume=150)
+        
+        mock_result = MagicMock()
+        # Baris di-query descending dari DB: row3, row2, row1
+        mock_result.scalars.return_value.all.return_value = [row3, row2, row1]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        
+        df = await calc._load_ohlcv("BTCUSD", "D1")
+        assert df is not None
+        # Harus terdeduplikasi menjadi 2 bar (1 bar per tanggal unik: 25 Sep & 26 Sep)
+        assert len(df) == 2
