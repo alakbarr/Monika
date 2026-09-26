@@ -270,7 +270,13 @@ def is_native_mt5_available() -> bool:
 
 
 def is_mt5linux_available() -> bool:
-    """Mengecek apakah paket pymt5linux, mt5linux, atau rpyc tersedia."""
+    """Mengecek apakah paket RPC bridge (rpyc, pymt5linux, atau mt5linux) tersedia."""
+    try:
+        import rpyc  # type: ignore # noqa: F401
+        return True
+    except (ImportError, SyntaxError, Exception):
+        pass
+
     try:
         import pymt5linux  # type: ignore # noqa: F401
         return True
@@ -281,18 +287,12 @@ def is_mt5linux_available() -> bool:
         import mt5linux  # type: ignore # noqa: F401
         return True
     except (ImportError, SyntaxError, Exception):
-        pass
-
-    try:
-        import rpyc  # type: ignore # noqa: F401
-        return True
-    except (ImportError, SyntaxError, Exception):
         return False
 
 
 class MT5BridgeProxy:
     """
-    Proxy adaptor untuk jembatan mt5linux / pymt5linux / RPyC RPC.
+    Proxy adaptor untuk jembatan RPyC / pymt5linux / mt5linux RPC.
     Meneruskan panggilan metode ke terminal MT5 yang berjalan di Wine/Windows
     serta menyediakan konstanta resmi MT5.
     """
@@ -307,11 +307,21 @@ class MT5BridgeProxy:
         self.__author__ = "Monika MT5 Linux Bridge Adapter"
 
     def _ensure_client(self) -> Any:
-        """Membuat instance jembatan pymt5linux / mt5linux / RPyC jika belum tersedia."""
+        """Membuat instance jembatan RPyC / pymt5linux / mt5linux jika belum tersedia."""
         if self._bridge_client is not None:
             return self._bridge_client
 
-        # 1. Try pymt5linux (modern, maintained)
+        # 1. Direct RPyC classic client (universal, zero external quirks)
+        try:
+            import rpyc
+            conn = rpyc.classic.connect(self.host, self.port)
+            self._bridge_client = conn.modules.MetaTrader5
+            logger.info(f"[MT5Bridge] Connected via direct RPyC MetaTrader5 proxy -> {self.host}:{self.port}")
+            return self._bridge_client
+        except Exception:
+            pass
+
+        # 2. Try pymt5linux (modern, maintained)
         try:
             from pymt5linux import MetaTrader5 as PyMT5LinuxBridge
             self._bridge_client = PyMT5LinuxBridge(host=self.host, port=self.port)
@@ -320,7 +330,7 @@ class MT5BridgeProxy:
         except (ImportError, SyntaxError, Exception):
             pass
 
-        # 2. Try mt5linux (legacy)
+        # 3. Try mt5linux (legacy)
         try:
             from mt5linux import MetaTrader5 as MT5LinuxBridge
             self._bridge_client = MT5LinuxBridge(host=self.host, port=self.port)
@@ -329,22 +339,12 @@ class MT5BridgeProxy:
         except (ImportError, SyntaxError, Exception):
             pass
 
-        # 3. Direct RPyC classic client fallback
-        try:
-            import rpyc
-            conn = rpyc.classic.connect(self.host, self.port)
-            self._bridge_client = conn.modules.MetaTrader5
-            logger.info(f"[MT5Bridge] Initialized direct RPyC MetaTrader5 proxy -> {self.host}:{self.port}")
-            return self._bridge_client
-        except Exception:
-            pass
-
         msg = (
-            "No MT5 Linux bridge package (pymt5linux, mt5linux, or rpyc) is operational. "
-            "To execute live trades on Linux VPS, run 'pip install pymt5linux' and ensure MT5 server is running under Wine."
+            f"Unable to connect to MT5 RPC Bridge at {self.host}:{self.port}. "
+            "Ensure MT5 terminal and mt5server (or RPyC server) are running on the target host/container."
         )
         logger.error(f"[MT5Bridge] {msg}")
-        raise ImportError(msg)
+        raise ConnectionError(msg)
 
     def initialize(self, path: Optional[str] = None, **kwargs) -> bool:
         """
