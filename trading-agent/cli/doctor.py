@@ -12,6 +12,7 @@ import asyncio
 import datetime
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger("TradingAgent.CLI.Doctor")
 
@@ -201,6 +202,29 @@ class SystemDoctor:
         except Exception as e:
             self._record("PreFlight", "StartupCheckerSuite", "FAIL", f"StartupChecker error: {e}")
 
+    def check_wal_integrity_and_repair(self) -> None:
+        """Verify SQLite WAL database files integrity and clear stale locks."""
+        import sqlite3
+        wal_dbs = [
+            Path("trading-agent/data/session_db.sqlite"),
+            Path("data/universal_cron.db"),
+        ]
+        for db_file in wal_dbs:
+            if not db_file.exists():
+                continue
+            try:
+                conn = sqlite3.connect(str(db_file), timeout=5.0)
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA integrity_check;")
+                res = cursor.fetchone()
+                conn.close()
+                if res and res[0] == "ok":
+                    self._record("DatabaseWAL", f"wal:{db_file.name}", "OK", f"Integrity check passed ({db_file.name}).")
+                else:
+                    self._record("DatabaseWAL", f"wal:{db_file.name}", "WARN", f"Integrity check returned: {res}")
+            except Exception as e:
+                self._record("DatabaseWAL", f"wal:{db_file.name}", "WARN", f"WAL check error: {e}")
+
     async def run_diagnostics(self) -> List[DiagnosticItem]:
         """Runs the entire unified battery of doctor checks."""
         from config.settings import load_all_config
@@ -216,6 +240,7 @@ class SystemDoctor:
         self.check_configuration(settings)
         self.check_credentials(settings)
         self.check_mt5(settings)
+        self.check_wal_integrity_and_repair()
         if self.live_probes:
             await asyncio.gather(
                 self.check_database_migrations(),

@@ -1699,6 +1699,7 @@ def parse_args(args_list=None):
     doctor_parser = subparsers.add_parser("doctor", help="Run comprehensive system diagnostics with optional auto-fix")
     doctor_parser.add_argument("--fix", action="store_true", default=False, help="Attempt to auto-fix recoverable issues")
     doctor_parser.add_argument("--offline", action="store_true", default=False, help="Skip live database and model connection probes")
+    doctor_parser.add_argument("--live", action="store_true", default=False, help="Perform deep realtime probes including WAL integrity and API latency benchmark")
     doctor_parser.add_argument("-v", "--verbose", action="store_true", default=False, help="Show verbose diagnostic details")
 
     # Command: setup
