@@ -1026,7 +1026,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `trading-agent/analysis/schemas`
 **File:** `pydantic_schemas.py`
-  - **Classes**: `FundamentalBriefSchema`, `SentimentAnalysisSchema`, `SubmitAssetAnalysisSchema`, `SpecialistAdjudication`, `EntryCondition`, `ReevaluationTrigger`, `PricedInOverrideJustification`, `ChecklistVerification`, `KeyDataPointsUsed`, `UpcomingRiskEvent`, `PricedInAssessment`
+  - **Classes**: `FundamentalBriefSchema`, `SentimentAnalysisSchema`, `SubmitAssetAnalysisSchema`, `SpecialistAdjudication`, `EntryCondition`, `ReevaluationTrigger`, `PricedInOverrideJustification`, `ChecklistVerification`, `KeyDataPointsUsed`, `UpcomingRiskEvent`, `PricedInAssessment`, `SubmitFundamentalBriefSchema` (Validators: `harmonize_counter_thesis_and_primitives`; Fields: `strongest_counter_thesis` min_length 50 required)
   - **Functions**: `coerce_str()`, `coerce_string_list()`, `coerce_float()`, `coerce_int()`, `make_openai_strict_schema()`
 **File:** `schemas.py`
 
