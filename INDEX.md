@@ -57,85 +57,85 @@ This document provides an exhaustive structural index of all directories, files,
     - [Folder: `trading-agent/config`](#folder-trading-agentconfig) - Line 1614
       - [Folder: `trading-agent/config/plugins`](#folder-trading-agentconfigplugins) - Line 1676
     - [Folder: `trading-agent/data_sources`](#folder-trading-agentdata_sources) - Line 1688
-    - [Folder: `trading-agent/database`](#folder-trading-agentdatabase) - Line 1837
-      - [Folder: `trading-agent/database/domain_models`](#folder-trading-agentdatabasedomain_models) - Line 2105
-      - [Folder: `trading-agent/database/migrations`](#folder-trading-agentdatabasemigrations) - Line 2130
-        - [Folder: `trading-agent/database/migrations/archive`](#folder-trading-agentdatabasemigrationsarchive) - Line 2139
-        - [Folder: `trading-agent/database/migrations/versions`](#folder-trading-agentdatabasemigrationsversions) - Line 2142
-    - [Folder: `trading-agent/evals`](#folder-trading-agentevals-1) - Line 2150
-      - [Folder: `trading-agent/evals/oracles`](#folder-trading-agentevalsoracles-1) - Line 2165
-      - [Folder: `trading-agent/evals/fixtures`](#folder-trading-agentevalsfixtures-1) - Line 2173
-    - [Folder: `trading-agent/execution`](#folder-trading-agentexecution) - Line 2182
-      - [Folder: `trading-agent/execution/service`](#folder-trading-agentexecutionservice) - Line 2421
-      - [Folder: `trading-agent/execution/ea_bridge`](#folder-trading-agentexecutionea_bridge) - Line 2511
-    - [Folder: `trading-agent/graph`](#folder-trading-agentgraph-1) - Line 2535
-      - [Folder: `trading-agent/graph/checkpointers`](#folder-trading-agentgraphcheckpointers) - Line 2566
-      - [Folder: `trading-agent/graph/nodes`](#folder-trading-agentgraphnodes-1) - Line 2578
-        - [Folder: `trading-agent/graph/nodes/debate`](#folder-trading-agentgraphnodesdebate) - Line 2590
-    - [Folder: `trading-agent/harness`](#folder-trading-agentharness) - Line 2671
-      - [Folder: `trading-agent/harness/adapters`](#folder-trading-agentharnessadapters) - Line 2675
-    - [Folder: `trading-agent/plugin_kernel`](#folder-trading-agentplugin_kernel) - Line 2730
-    - [Folder: `trading-agent/indicators`](#folder-trading-agentindicators) - Line 2734
-      - [Folder: `trading-agent/indicators/pattern_similarity`](#folder-trading-agentindicatorspattern_similarity) - Line 2824
-    - [Folder: `trading-agent/logging_observability`](#folder-trading-agentlogging_observability) - Line 2875
-      - [Folder: `trading-agent/logging_observability/reporting`](#folder-trading-agentlogging_observabilityreporting) - Line 2944
-      - [Folder: `trading-agent/logging_observability/tracing`](#folder-trading-agentlogging_observabilitytracing) - Line 2957
-      - [Folder: `trading-agent/logging_observability/dashboard`](#folder-trading-agentlogging_observabilitydashboard) - Line 2973
-        - [Folder: `trading-agent/logging_observability/dashboard/routes`](#folder-trading-agentlogging_observabilitydashboardroutes) - Line 3050
-        - [Folder: `trading-agent/logging_observability/dashboard/frontend`](#folder-trading-agentlogging_observabilitydashboardfrontend) - Line 3098
-          - [Folder: `trading-agent/logging_observability/dashboard/frontend/src`](#folder-trading-agentlogging_observabilitydashboardfrontendsrc) - Line 3106
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentscharts) - Line 3113
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentslayout) - Line 3120
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanels) - Line 3128
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsconfig) - Line 3153
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsgraph) - Line 3157
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelstokens) - Line 3166
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentsui) - Line 3170
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`](#folder-trading-agentlogging_observabilitydashboardfrontendsrchooks) - Line 3197
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`](#folder-trading-agentlogging_observabilitydashboardfrontendsrclib) - Line 3203
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`](#folder-trading-agentlogging_observabilitydashboardfrontendsrcstore) - Line 3208
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctheme) - Line 3211
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctypes) - Line 3214
-    - [Folder: `trading-agent/plugins`](#folder-trading-agentplugins) - Line 3217
-      - [Folder: `trading-agent/plugins/alerts/discord_alert`](#folder-trading-agentpluginsalertsdiscord_alert) - Line 3232
-      - [Folder: `trading-agent/plugins/indicators/custom_indicator`](#folder-trading-agentpluginsindicatorscustom_indicator) - Line 3240
-      - [Folder: `trading-agent/plugins/scrapers/example_scraper`](#folder-trading-agentpluginsscrapersexample_scraper) - Line 3248
-      - [Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`](#folder-trading-agentpluginsanalysis_pipelinesmacro_to_asset) - Line 3256
-      - [Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`](#folder-trading-agentpluginsanalysis_pipelinestechnical_scalping) - Line 3263
-      - [Folder: `trading-agent/plugins/brokers/mt5_local`](#folder-trading-agentpluginsbrokersmt5_local) - Line 3270
-      - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3277
-    - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3284
-    - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3299
-      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3409
-    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3428
-    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3438
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3757
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3789
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3829
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3841
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3967
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 3994
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4012
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4031
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4074
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4079
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4125
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4628
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4650
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4680
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4713
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4719
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4735
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4762
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4771
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4859
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4888
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4898
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4927
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4937
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4946
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4959
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4984
+    - [Folder: `trading-agent/database`](#folder-trading-agentdatabase) - Line 1844
+      - [Folder: `trading-agent/database/domain_models`](#folder-trading-agentdatabasedomain_models) - Line 2112
+      - [Folder: `trading-agent/database/migrations`](#folder-trading-agentdatabasemigrations) - Line 2137
+        - [Folder: `trading-agent/database/migrations/archive`](#folder-trading-agentdatabasemigrationsarchive) - Line 2146
+        - [Folder: `trading-agent/database/migrations/versions`](#folder-trading-agentdatabasemigrationsversions) - Line 2149
+    - [Folder: `trading-agent/evals`](#folder-trading-agentevals-1) - Line 2157
+      - [Folder: `trading-agent/evals/oracles`](#folder-trading-agentevalsoracles-1) - Line 2172
+      - [Folder: `trading-agent/evals/fixtures`](#folder-trading-agentevalsfixtures-1) - Line 2180
+    - [Folder: `trading-agent/execution`](#folder-trading-agentexecution) - Line 2189
+      - [Folder: `trading-agent/execution/service`](#folder-trading-agentexecutionservice) - Line 2428
+      - [Folder: `trading-agent/execution/ea_bridge`](#folder-trading-agentexecutionea_bridge) - Line 2518
+    - [Folder: `trading-agent/graph`](#folder-trading-agentgraph-1) - Line 2542
+      - [Folder: `trading-agent/graph/checkpointers`](#folder-trading-agentgraphcheckpointers) - Line 2573
+      - [Folder: `trading-agent/graph/nodes`](#folder-trading-agentgraphnodes-1) - Line 2585
+        - [Folder: `trading-agent/graph/nodes/debate`](#folder-trading-agentgraphnodesdebate) - Line 2597
+    - [Folder: `trading-agent/harness`](#folder-trading-agentharness) - Line 2678
+      - [Folder: `trading-agent/harness/adapters`](#folder-trading-agentharnessadapters) - Line 2682
+    - [Folder: `trading-agent/plugin_kernel`](#folder-trading-agentplugin_kernel) - Line 2737
+    - [Folder: `trading-agent/indicators`](#folder-trading-agentindicators) - Line 2741
+      - [Folder: `trading-agent/indicators/pattern_similarity`](#folder-trading-agentindicatorspattern_similarity) - Line 2831
+    - [Folder: `trading-agent/logging_observability`](#folder-trading-agentlogging_observability) - Line 2882
+      - [Folder: `trading-agent/logging_observability/reporting`](#folder-trading-agentlogging_observabilityreporting) - Line 2951
+      - [Folder: `trading-agent/logging_observability/tracing`](#folder-trading-agentlogging_observabilitytracing) - Line 2964
+      - [Folder: `trading-agent/logging_observability/dashboard`](#folder-trading-agentlogging_observabilitydashboard) - Line 2980
+        - [Folder: `trading-agent/logging_observability/dashboard/routes`](#folder-trading-agentlogging_observabilitydashboardroutes) - Line 3057
+        - [Folder: `trading-agent/logging_observability/dashboard/frontend`](#folder-trading-agentlogging_observabilitydashboardfrontend) - Line 3105
+          - [Folder: `trading-agent/logging_observability/dashboard/frontend/src`](#folder-trading-agentlogging_observabilitydashboardfrontendsrc) - Line 3113
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentscharts) - Line 3120
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentslayout) - Line 3127
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanels) - Line 3135
+              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsconfig) - Line 3160
+              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsgraph) - Line 3164
+              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelstokens) - Line 3173
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentsui) - Line 3177
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`](#folder-trading-agentlogging_observabilitydashboardfrontendsrchooks) - Line 3204
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`](#folder-trading-agentlogging_observabilitydashboardfrontendsrclib) - Line 3210
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`](#folder-trading-agentlogging_observabilitydashboardfrontendsrcstore) - Line 3215
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctheme) - Line 3218
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctypes) - Line 3221
+    - [Folder: `trading-agent/plugins`](#folder-trading-agentplugins) - Line 3224
+      - [Folder: `trading-agent/plugins/alerts/discord_alert`](#folder-trading-agentpluginsalertsdiscord_alert) - Line 3239
+      - [Folder: `trading-agent/plugins/indicators/custom_indicator`](#folder-trading-agentpluginsindicatorscustom_indicator) - Line 3247
+      - [Folder: `trading-agent/plugins/scrapers/example_scraper`](#folder-trading-agentpluginsscrapersexample_scraper) - Line 3255
+      - [Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`](#folder-trading-agentpluginsanalysis_pipelinesmacro_to_asset) - Line 3263
+      - [Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`](#folder-trading-agentpluginsanalysis_pipelinestechnical_scalping) - Line 3270
+      - [Folder: `trading-agent/plugins/brokers/mt5_local`](#folder-trading-agentpluginsbrokersmt5_local) - Line 3277
+      - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3284
+    - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3291
+    - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3306
+      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3416
+    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3435
+    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3445
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3764
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3796
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3836
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3848
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3974
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4001
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4019
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4038
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4081
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4086
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4132
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4635
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4657
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4687
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4720
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4726
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4742
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4769
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4778
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4866
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4895
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4905
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4934
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4944
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4953
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4966
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4991
 
 ## Root Directory: `/trading-agent`
 
@@ -1778,13 +1778,20 @@ This document provides an exhaustive structural index of all directories, files,
         - `_parse_date(self)`
 
 **File:** `vix_yfinance.py`
-  - **Global Variables**: logger, VIX_TICKER
+  - **Global Variables**: `logger`, `VIX_TICKER`, `CBOE_VIX_CSV_URL`, `YAHOO_VIX_CHART_URL`, `FRED_BASE_URL`
   - **Classes**:
     - `VIXFetcher`
-      - *Docstring*: Retrieves daily closing VIX volatility data from Yahoo Finance.
+      - *Docstring*: Multi-tier resilient fetcher for historical and current VIX daily settlement data (Yahoo Direct, CBOE CDN, FRED, yfinance).
       - *Methods*:
-        - `__init__(self)`
-        - `_download(self)`
+        - `__init__(self, session, ticker=VIX_TICKER, fred_api_key=None)`
+        - `fetch(self, period="10d")`
+        - `_fetch_yahoo_direct(self, period="10d")`
+        - `_fetch_cboe_cdn(self, period="10d")`
+        - `_fetch_fred(self, period="10d")`
+        - `_fetch_yfinance(self, period="10d")`
+        - `_download(self, period)`
+        - `_save(self, df)`
+        - `get_latest(self)`
 
 **File:** `web_search.py`
   - **Global Variables**: `logger`, `_global_web_search_service`

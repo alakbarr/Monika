@@ -205,7 +205,8 @@ class MarketDataScheduler:
                 if vix_cnt < 365:
                     logger.info(f"[DeepHistory] VIX rows={vix_cnt} (<365). Downloading 5y VIX history...")
                     from data_sources.vix_yfinance import VIXFetcher
-                    vix_fetcher = VIXFetcher(sess)
+                    fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
+                    vix_fetcher = VIXFetcher(sess, fred_api_key=fred_key)
                     report["vix"] = await vix_fetcher.fetch(period="5y")
             except Exception as e:
                 logger.warning(f"[DeepHistory] VIX 5y backfill skipped: {e}")
