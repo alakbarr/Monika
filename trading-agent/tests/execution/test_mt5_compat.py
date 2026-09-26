@@ -175,3 +175,53 @@ def test_platform_check_helpers():
     """Verify platform detection helper functions return boolean results."""
     assert isinstance(is_native_mt5_available(), bool)
     assert isinstance(is_mt5linux_available(), bool)
+
+
+def test_ensure_mt5_module_on_linux_simulation(monkeypatch):
+    """Simulate non-Windows platform without native MT5, verifying proxy/fallback behavior."""
+    import execution.mt5_compat as compat
+    monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
+    monkeypatch.setattr(compat, "_active_mt5_module", None)
+    
+    orig = sys.modules.get("MetaTrader5")
+    if "MetaTrader5" in sys.modules:
+        del sys.modules["MetaTrader5"]
+        
+    try:
+        mod = compat.ensure_mt5_module()
+        assert "MetaTrader5" in sys.modules
+        assert hasattr(mod, "TIMEFRAME_H4")
+        assert mod.TIMEFRAME_H4 == 16388
+        assert mod.TRADE_ACTION_DEAL == 1
+    finally:
+        compat._active_mt5_module = None
+        if orig is not None:
+            sys.modules["MetaTrader5"] = orig
+        elif "MetaTrader5" in sys.modules:
+            del sys.modules["MetaTrader5"]
+
+
+def test_ensure_mt5_fallback_when_no_bridge(monkeypatch):
+    """Simulate non-Windows platform with neither native nor bridge package available."""
+    import execution.mt5_compat as compat
+    monkeypatch.setattr(compat, "is_native_mt5_available", lambda: False)
+    monkeypatch.setattr(compat, "is_mt5linux_available", lambda: False)
+    monkeypatch.setattr(compat, "_active_mt5_module", None)
+    
+    orig = sys.modules.get("MetaTrader5")
+    if "MetaTrader5" in sys.modules:
+        del sys.modules["MetaTrader5"]
+        
+    try:
+        mod = compat.ensure_mt5_module()
+        assert "MetaTrader5" in sys.modules
+        assert hasattr(mod, "TIMEFRAME_H4")
+        assert mod.TIMEFRAME_H4 == 16388
+        assert mod.initialize() is False
+    finally:
+        compat._active_mt5_module = None
+        if orig is not None:
+            sys.modules["MetaTrader5"] = orig
+        elif "MetaTrader5" in sys.modules:
+            del sys.modules["MetaTrader5"]
+
