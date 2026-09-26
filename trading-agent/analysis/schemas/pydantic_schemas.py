@@ -675,13 +675,11 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     synth = f"Tesis makro berisiko batal jika skenario invalidasi berikut terwujud: {'; '.join(candidates)}."
                     if len(synth) >= 50:
                         data['strongest_counter_thesis'] = synth
-                elif not ct:
-                    narrative = str(data.get('macro_narrative') or '')
-                    if len(narrative) >= 100:
-                        data['strongest_counter_thesis'] = (
-                            "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
-                            "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
-                        )
+                if not data.get('strongest_counter_thesis') or len(str(data.get('strongest_counter_thesis')).strip()) < 50:
+                    data['strongest_counter_thesis'] = (
+                        "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
+                        "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+                    )
         return data
 
     @field_validator('macro_regime', mode='before')

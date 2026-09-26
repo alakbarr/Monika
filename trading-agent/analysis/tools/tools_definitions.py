@@ -1617,7 +1617,7 @@ STAGE2_FROZEN_TOOLS: list[dict] = [
     SCAN_PATTERN_SIMILARITY,
 ]
 
-STAGE2_TOOLS_V2: list[dict] = STAGE2_FROZEN_TOOLS
+STAGE2_EXPANDED_TOOLS: list[dict] = STAGE2_FROZEN_TOOLS
 
 # Stage 2 Prescreen tools (lightweight subset to filter non-setups before full debate)
 STAGE2_PRESCREEN_TOOLS: list[dict] = [

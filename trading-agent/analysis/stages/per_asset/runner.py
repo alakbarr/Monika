@@ -15,7 +15,7 @@ import utils.clock as clock
 
 from analysis.providers.llm_factory import get_client_for_task, create_client
 from analysis.tools.tools_definitions import (
-    STAGE2_TOOLS, STAGE2_TOOLS_V2, STAGE2_PRESCREEN_TOOLS,
+    STAGE2_TOOLS, STAGE2_EXPANDED_TOOLS, STAGE2_PRESCREEN_TOOLS,
     STAGE2_ESSENTIAL_TOOLS, STAGE2_FROZEN_TOOLS, minify_tool_definitions
 )
 from analysis.stages.preflight_gate import PreFlightTurnGate

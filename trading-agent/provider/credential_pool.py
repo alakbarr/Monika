@@ -18,6 +18,13 @@ from provider.error_taxonomy import FailoverReason
 logger = logging.getLogger("TradingAgent.Provider.CredentialPool")
 
 
+class CredentialStatus(str, Enum):
+    """Monika 3-tier credential operational status."""
+    STATUS_OK = "ok"
+    STATUS_EXHAUSTED = "exhausted"
+    STATUS_DEAD = "dead"
+
+
 @dataclass
 class KeyHealth:
     """Tracks health, usage, rate limits, and financial metrics of an individual API key."""
@@ -34,6 +41,15 @@ class KeyHealth:
     last_used: float = 0.0
     disabled_reason: Optional[str] = None
     model_cooldowns: Dict[str, float] = field(default_factory=dict)
+
+    @property
+    def status(self) -> CredentialStatus:
+        """Monika 3-state tracking: STATUS_OK, STATUS_EXHAUSTED, STATUS_DEAD."""
+        if not self.is_active:
+            return CredentialStatus.STATUS_DEAD
+        if self.is_in_cooldown:
+            return CredentialStatus.STATUS_EXHAUSTED
+        return CredentialStatus.STATUS_OK
 
     @property
     def is_in_cooldown(self) -> bool:
@@ -155,11 +171,15 @@ class CredentialPool:
         base_cooldown_seconds: float = 60.0,
         max_cooldown_seconds: float = 14400.0,
         auto_init_env: bool = True,
+        rotation_strategy: str = "least_used",
     ):
         self.base_cooldown_seconds = base_cooldown_seconds
         self.max_cooldown_seconds = max_cooldown_seconds
+        self.rotation_strategy = rotation_strategy  # "least_used" | "round_robin" | "fill_first" | "random"
         self._pools: Dict[str, List[KeyHealth]] = {}
         self._lock = asyncio.Lock()
+        self._recently_exhausted: Dict[str, float] = {}  # No-recovery guard: key -> cooldown_time
+        self._round_robin_idx: Dict[str, int] = {}
         if auto_init_env:
             self._initialize_from_env()
 
@@ -220,7 +240,8 @@ class CredentialPool:
         task_role: Optional[str] = None,
     ) -> Optional[str]:
         """
-        Get best available API key for provider (LRU round-robin).
+        Get best available API key for provider according to rotation_strategy.
+        Strategies supported: 'least_used' (default), 'round_robin', 'fill_first', 'random'.
         If is_hot_path is True and all keys are in cooldown, returns None immediately.
         """
         prov = provider.lower()
@@ -228,8 +249,16 @@ class CredentialPool:
         if not keys:
             return None
 
-        available = [k for k in keys if k.is_model_available(model)]
-        if not available:
+        # Clean expired no-recovery guard entries
+        now = time.time()
+        self._recently_exhausted = {k: exp for k, exp in self._recently_exhausted.items() if exp > now}
+
+        # Filter available keys (active & not in cooldown), prioritizing keys not in no-recovery window
+        eligible = [k for k in keys if k.is_model_available(model) and k.key not in self._recently_exhausted]
+        if not eligible:
+            eligible = [k for k in keys if k.is_model_available(model)]
+
+        if not eligible:
             cooldown_keys = [k for k in keys if k.is_active]
             if cooldown_keys:
                 earliest = min(cooldown_keys, key=lambda x: x.cooldown_until)
@@ -241,8 +270,19 @@ class CredentialPool:
                 )
             return None
 
-        # Sort by last_used ascending (LRU)
-        selected = min(available, key=lambda x: x.last_used)
+        # Selection according to rotation_strategy
+        if self.rotation_strategy == "fill_first":
+            selected = eligible[0]
+        elif self.rotation_strategy == "round_robin":
+            idx = self._round_robin_idx.get(prov, 0) % len(eligible)
+            selected = eligible[idx]
+            self._round_robin_idx[prov] = (idx + 1) % len(eligible)
+        elif self.rotation_strategy == "random":
+            import random
+            selected = random.choice(eligible)
+        else:  # "least_used"
+            selected = min(eligible, key=lambda x: x.last_used)
+
         selected.last_used = time.time()
         return selected.key
 
@@ -280,19 +320,26 @@ class CredentialPool:
         retry_after: Optional[float] = None,
         reset_at: Optional[float] = None,
     ) -> float:
-        """Report rate limit on key, arming exponential cooldown."""
-        prov = provider.lower()
-        for kh in self._pools.get(prov, []):
-            if kh.key == key:
-                return kh.mark_rate_limited(
-                    cooldown_seconds=cooldown_seconds,
-                    model=model,
-                    retry_after=retry_after,
-                    reset_at=reset_at,
-                    base_seconds=self.base_cooldown_seconds,
-                    max_seconds=self.max_cooldown_seconds,
-                )
-        return cooldown_seconds
+        """Report rate limit on key, arming exponential cooldown and propagating across sibling pools."""
+        # Arm no-recovery guard window (5 seconds)
+        self._recently_exhausted[key] = time.time() + 5.0
+        effective_cd = cooldown_seconds
+
+        # Sibling key propagation: if same physical key is used across providers, mark all instances
+        for pool_prov, key_list in self._pools.items():
+            for kh in key_list:
+                if kh.key == key:
+                    eff = kh.mark_rate_limited(
+                        cooldown_seconds=cooldown_seconds,
+                        model=model,
+                        retry_after=retry_after,
+                        reset_at=reset_at,
+                        base_seconds=self.base_cooldown_seconds,
+                        max_seconds=self.max_cooldown_seconds,
+                    )
+                    effective_cd = max(effective_cd, eff)
+
+        return effective_cd
 
     def report_failure(
         self,
@@ -302,7 +349,15 @@ class CredentialPool:
         is_permanent: bool = False,
         model: Optional[str] = None,
     ) -> None:
-        """Report failure on key (auth, quota, network, or server error)."""
+        """Report failure on key, propagating permanent disabled status across sibling pools."""
+        if is_permanent:
+            # Sibling permanent disable propagation
+            for pool_prov, key_list in self._pools.items():
+                for kh in key_list:
+                    if kh.key == key:
+                        kh.mark_failure(reason=reason, is_permanent=True)
+            return
+
         prov = provider.lower()
         for kh in self._pools.get(prov, []):
             if kh.key == key:
