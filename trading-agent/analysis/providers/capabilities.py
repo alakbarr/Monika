@@ -32,6 +32,30 @@ class ModelCapabilities:
 # Known model capability registry
 MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     # Anthropic
+    "claude-sonnet-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-5-sonnet": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
     "claude-3-5-sonnet": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -64,6 +88,30 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     ),
 
     # Google Gemini
+    "gemini-3.8-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.8-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
     "gemini-2.5-pro": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -97,6 +145,48 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     ),
 
     # OpenAI
+    "gpt-6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-astra": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-sol": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "o3": ModelCapabilities(
+        supports_tool_choice=True,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=32768,
+        context_window=200000,
+    ),
+    "o4": ModelCapabilities(
+        supports_tool_choice=True,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=32768,
+        context_window=500000,
+    ),
     "gpt-4o": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -121,6 +211,27 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     ),
 
     # DeepSeek
+    "deepseek-v4-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "deepseek-v4.1-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "deepseek-v4": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
     "deepseek-chat": ModelCapabilities(
         supports_caching=False,
         supports_structured_output=True,

@@ -20,7 +20,7 @@ def _get_clock():
     return clock
 
 from analysis.tools.tools_definitions import (
-    STAGE2_TOOLS, STAGE2_TOOLS_V2, STAGE2_PRESCREEN_TOOLS,
+    STAGE2_TOOLS, STAGE2_EXPANDED_TOOLS, STAGE2_PRESCREEN_TOOLS,
     STAGE2_ESSENTIAL_TOOLS, STAGE2_FROZEN_TOOLS
 )
 

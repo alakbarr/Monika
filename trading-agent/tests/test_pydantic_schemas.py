@@ -363,7 +363,8 @@ def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
             "priced_in_score": 6,
             "sell_the_news_risk": "medium",
             "cot_positioning_percentile": 75.0
-        }
+        },
+        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
     }
     jsonschema.validate(instance=payload, schema=inlined)
 

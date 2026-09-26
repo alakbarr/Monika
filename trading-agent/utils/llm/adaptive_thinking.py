@@ -22,13 +22,15 @@ class QuantizedThinkingAllocator:
         "LOW": 1024,       # Low volatility / orderly trend (EURUSD, AUDUSD, VIX < 20)
         "MEDIUM": 4096,    # Standard baseline / moderate volatility
         "HIGH": 10000,     # Borderline setups, elevated VIX (20-25), volatile pairs (Gold, Oil)
-        "MAX": 10000,      # Capped for safety and token conservation (was 16000)
+        "MAX": 16000,      # Capped for safety and token conservation
     }
 
     @classmethod
     def quantize(cls, raw_budget: int) -> int:
         """Maps any continuous token budget to the nearest discrete stable bucket."""
-        if raw_budget >= 8500:
+        if raw_budget >= 13000:
+            return cls.BUCKETS["MAX"]
+        elif raw_budget >= 7000:
             return cls.BUCKETS["HIGH"]
         elif raw_budget >= 2500:
             return cls.BUCKETS["MEDIUM"]

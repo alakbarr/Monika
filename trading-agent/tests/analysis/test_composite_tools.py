@@ -11,7 +11,7 @@ from analysis.tools.tools_definitions import (
     GET_TECHNICAL_ANALYSIS,
     GET_PRICE_DATA,
     GET_INSTITUTIONAL_DATA,
-    STAGE2_TOOLS_V2
+    STAGE2_EXPANDED_TOOLS
 )
 
 @pytest.mark.asyncio
@@ -44,9 +44,9 @@ async def test_composite_tools_execution():
     assert "fear_greed" in inst
     assert "funding_rate" in inst
 
-def test_stage2_tools_v2_definitions():
-    assert len(STAGE2_TOOLS_V2) >= 9
-    tool_names = [t["name"] for t in STAGE2_TOOLS_V2]
+def test_stage2_expanded_tools_definitions():
+    assert len(STAGE2_EXPANDED_TOOLS) >= 9
+    tool_names = [t["name"] for t in STAGE2_EXPANDED_TOOLS]
     assert "get_technical_analysis" in tool_names
     assert "get_price_data" in tool_names
     assert "get_institutional_data" in tool_names
