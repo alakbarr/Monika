@@ -1570,7 +1570,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `merge_dicts()`, `merge_lists()`
 
 **File:** `workflow.py`
-  - **Functions**: `build_trading_graph()`
+  - **Functions**: `_extract_tokens_from_result()`, `_build_node_payload_summary()`, `_is_node_skipped()`, `_wrap_traced_node()`, `build_trading_graph()`
 
 ##### Folder: `trading-agent/graph/nodes`
 
@@ -3070,7 +3070,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `MemorySearchRequest`
   - **Functions**: `get_reflections()`, `get_lessons()`, `get_playbooks()`, `search_memory()`, `get_playbook_mutation_history()`, `rollback_playbook_version()`
 **File:** `observability.py`
-  - **Functions**: `get_traces()`, `get_trace_tree()`, `get_cycle_trace_summary()`, `get_playbook_tree()`, `get_prompt_cache_metrics()`, `get_tool_latencies()`, `get_graph_state()`, `get_trade_trajectories()`, `get_cycle_decision_lineage()`
+  - **Functions**: `_build_graph_state_for_cycle()`, `get_traces()`, `get_trace_tree()`, `get_cycle_trace_summary()`, `get_playbook_tree()`, `get_prompt_cache_metrics()`, `get_tool_latencies()`, `get_graph_state()`, `get_trade_trajectories()`, `get_cycle_decision_lineage()`
 **File:** `system.py`
   - **Functions**: `get_system_health()`, `get_system_metrics()`, `ping()`, `get_diagnostics()`, `get_daily_brief()`, `get_vix_data()`, `get_gemini_quota()`, `get_auth_role()`
 **File:** `tokens.py`

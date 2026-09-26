@@ -42,10 +42,14 @@ async def get_trace_tree(trace_id: str):
     return {"trace_id": trace_id, "roots": tree}
 
 
-def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, Any]:
+def _build_graph_state_for_cycle(
+    cycle_id: Optional[str] = None,
+    symbol: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Constructs the LangGraph DAG topology state with node statuses, execution durations,
     token consumption, inputs, and payloads for the frontend visualizer.
+    Supports filtering by specific symbol across Stage 2 and downstream nodes.
     """
     from logging_observability.tracing.exporters import global_trace_store
 
@@ -68,6 +72,8 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
             "total_duration_ms": 0.0,
             "total_tokens": {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0},
             "available_cycles": [],
+            "available_symbols": [],
+            "selected_symbol": None,
             "nodes": [],
             "edges": [],
         }
@@ -94,17 +100,121 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
                 return s
         return None
 
-    def get_node_tokens(node_span_obj):
+    # Identify node spans
+    s_prefetch = find_span(["node:data_gathering", "data_gathering", "node:prefetch_data", "prefetch_data"])
+    s_fund = find_span(["node:fundamental_analysis", "fundamental_analysis", "node:fundamental_brief", "fundamental_brief"])
+    s_asset = find_span(["node:per_asset_analysis", "per_asset_analysis"])
+    s_bull = find_span(["node:bull_advocate", "bull_advocate", "bull_thesis"])
+    s_bear = find_span(["node:bear_dissent", "bear_dissent", "bear_thesis"])
+    s_judge = find_span(["node:debate_judge", "debate_judge", "adjudicator", "node:debate", "debate"])
+    s_reflect = find_span(["node:reflection", "reflection", "reflection_node"])
+    s_risk = find_span(["node:risk_gate", "risk_gate"])
+    s_exec = find_span(["node:execution", "execution"])
+
+    span_map = {
+        "prefetch_data": s_prefetch,
+        "fundamental_brief": s_fund,
+        "per_asset_analysis": s_asset,
+        "bull_advocate": s_bull,
+        "bear_dissent": s_bear,
+        "debate_judge": s_judge,
+        "reflection": s_reflect,
+        "risk_gate": s_risk,
+        "execution": s_exec,
+    }
+
+    # Discover available symbols
+    symbol_set = set()
+    if s_asset and s_asset.attributes.get("output_payload"):
+        payload = s_asset.attributes.get("output_payload")
+        if isinstance(payload, dict):
+            if "per_asset" in payload and isinstance(payload["per_asset"], dict):
+                symbol_set.update(payload["per_asset"].keys())
+            if "symbols" in payload and isinstance(payload["symbols"], list):
+                symbol_set.update(payload["symbols"])
+    for s in cycle_spans:
+        sym = s.attributes.get("symbol")
+        if sym and isinstance(sym, str):
+            symbol_set.add(sym.strip().upper())
+        syms = s.attributes.get("symbols")
+        if syms and isinstance(syms, list):
+            for item in syms:
+                if isinstance(item, str):
+                    symbol_set.add(item.strip().upper())
+
+    if not symbol_set:
+        symbol_set.update(["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"])
+
+    available_symbols = sorted(list(symbol_set))
+    filter_sym = symbol.strip().upper() if symbol and symbol.strip().upper() in available_symbols else None
+
+    # Check which nodes ran downstream
+    node_sequence = [
+        "prefetch_data",
+        "fundamental_brief",
+        "per_asset_analysis",
+        "bull_advocate",
+        "bear_dissent",
+        "debate_judge",
+        "reflection",
+        "risk_gate",
+        "execution",
+    ]
+
+    has_downstream_ran = {}
+    downstream_active = False
+    for nid in reversed(node_sequence):
+        has_downstream_ran[nid] = downstream_active
+        sp = span_map.get(nid)
+        if sp is not None and sp.end_time:
+            downstream_active = True
+
+    has_running_node = any(s.kind in ("node", "cycle") and not s.end_time for s in cycle_spans)
+    cycle_finished = (not has_running_node) and (
+        any(s.kind == "cycle" and s.end_time for s in cycle_spans)
+        or (s_exec is not None and bool(s_exec.end_time))
+        or (s_risk is not None and s_risk.status == "ERROR" and bool(s_risk.end_time))
+    )
+
+    def get_node_tokens(node_id: str, node_span_obj, filter_sym_val: Optional[str] = None):
         if not node_span_obj:
             return {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0}
+
         in_tok = node_span_obj.attributes.get("input_tokens", 0)
         out_tok = node_span_obj.attributes.get("output_tokens", 0)
         cost = node_span_obj.attributes.get("cost_usd", 0.0)
-        for s in cycle_spans:
-            if s.parent_span_id == node_span_obj.span_id and s.kind == "llm":
-                in_tok += s.attributes.get("input_tokens", 0)
-                out_tok += s.attributes.get("output_tokens", 0)
-                cost += s.attributes.get("cost_usd", 0.0)
+
+        child_llm_spans = [
+            s for s in cycle_spans
+            if s.parent_span_id == node_span_obj.span_id and s.kind == "llm"
+        ]
+
+        if filter_sym_val and node_id in ("per_asset_analysis", "bull_advocate", "bear_dissent", "debate_judge"):
+            payload = node_span_obj.attributes.get("output_payload")
+            if isinstance(payload, dict):
+                per_asset_info = payload.get("per_asset", {}).get(filter_sym_val)
+                if isinstance(per_asset_info, dict) and "token_usage" in per_asset_info:
+                    tu = per_asset_info["token_usage"]
+                    if isinstance(tu, dict):
+                        in_tok = int(tu.get("input_tokens", 0) or 0)
+                        out_tok = int(tu.get("output_tokens", 0) or 0)
+                        cost = float(tu.get("cost_usd", 0.0) or 0.0)
+
+            sym_child = [s for s in child_llm_spans if s.attributes.get("symbol") == filter_sym_val]
+            if sym_child:
+                child_llm_spans = sym_child
+
+        if child_llm_spans:
+            child_in = sum(s.attributes.get("input_tokens", 0) for s in child_llm_spans)
+            child_out = sum(s.attributes.get("output_tokens", 0) for s in child_llm_spans)
+            child_cost = sum(s.attributes.get("cost_usd", 0.0) for s in child_llm_spans)
+            if in_tok == 0 and out_tok == 0:
+                in_tok, out_tok, cost = child_in, child_out, child_cost
+            else:
+                in_tok = max(in_tok, child_in)
+                out_tok = max(out_tok, child_out)
+                cost = max(cost, child_cost)
+
         total = in_tok + out_tok
         return {
             "input": in_tok,
@@ -120,6 +230,27 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
         span_obj,
     ):
         if not span_obj:
+            if cycle_finished and (has_downstream_ran.get(node_id, False) or node_id in ("execution", "risk_gate")):
+                skip_reason = f"Skipped in this cycle ({name})"
+                if node_id in ("bull_advocate", "bear_dissent", "debate_judge"):
+                    skip_reason = "Skipped: No actionable trades qualified for dialectic debate"
+                elif node_id == "execution":
+                    skip_reason = "Skipped: No trade proposals approved by Risk Gate"
+
+                return {
+                    "id": node_id,
+                    "name": name,
+                    "stage": stage,
+                    "status": "skipped",
+                    "duration_ms": 0.0,
+                    "tokens": {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0},
+                    "input_summary": skip_reason,
+                    "output_payload": {"status": "skipped", "reason": skip_reason},
+                    "started_at": None,
+                    "completed_at": None,
+                    "error": None,
+                }
+
             return {
                 "id": node_id,
                 "name": name,
@@ -134,7 +265,9 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
                 "error": None,
             }
 
-        if span_obj.status == "ERROR" or span_obj.error:
+        if span_obj.attributes.get("is_skipped") is True:
+            status = "skipped"
+        elif span_obj.status == "ERROR" or span_obj.error:
             status = "failed"
         elif not span_obj.end_time:
             status = "running"
@@ -142,9 +275,49 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
             status = "done"
 
         duration = round(span_obj.duration_ms, 1) if span_obj.duration_ms else 0.0
-        tokens = get_node_tokens(span_obj)
+        tokens = get_node_tokens(node_id, span_obj, filter_sym_val=filter_sym)
         input_sum = span_obj.attributes.get("input_summary") or f"{name} execution ({status})"
         output_data = span_obj.attributes.get("output_payload")
+
+        if filter_sym and status == "done":
+            if node_id == "per_asset_analysis" and isinstance(output_data, dict):
+                per_asset_map = output_data.get("per_asset", {})
+                if filter_sym in per_asset_map:
+                    output_data = {
+                        "symbol": filter_sym,
+                        "data": per_asset_map[filter_sym],
+                        "total_evaluated_assets": len(per_asset_map)
+                    }
+            elif node_id in ("bull_advocate", "bear_dissent", "debate_judge") and isinstance(output_data, dict):
+                trades = output_data.get("actionable_trades", [])
+                theses = output_data.get("asset_theses", {})
+                sym_debated = (
+                    any(t.get("symbol") == filter_sym or (isinstance(t, (list, tuple)) and t[0] == filter_sym) for t in trades)
+                    or (filter_sym in theses)
+                )
+                if not sym_debated:
+                    status = "skipped"
+                    input_sum = f"Skipped: {filter_sym} did not meet confidence threshold for debate"
+                    output_data = {"status": "skipped", "symbol": filter_sym, "reason": input_sum}
+            elif node_id == "risk_gate" and isinstance(output_data, dict):
+                evals = output_data.get("evaluated_trades", [])
+                sym_evals = [t for t in evals if t.get("symbol") == filter_sym]
+                if sym_evals:
+                    output_data = {"symbol": filter_sym, "evaluated_trades": sym_evals}
+                elif evals:
+                    status = "skipped"
+                    input_sum = f"Skipped: No trades evaluated for {filter_sym}"
+                    output_data = {"status": "skipped", "symbol": filter_sym, "reason": input_sum}
+            elif node_id == "execution" and isinstance(output_data, dict):
+                execs = output_data.get("executed_orders", [])
+                sym_execs = [o for o in execs if o.get("symbol") == filter_sym]
+                if sym_execs:
+                    output_data = {"symbol": filter_sym, "executed_orders": sym_execs}
+                else:
+                    status = "skipped"
+                    input_sum = f"Skipped: No orders executed for {filter_sym}"
+                    output_data = {"status": "skipped", "symbol": filter_sym, "reason": input_sum}
+
         if not output_data and status == "done":
             output_data = {"status": "completed", "node": node_id}
 
@@ -162,31 +335,27 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
             "error": span_obj.error,
         }
 
-    s_fund = find_span(["node:fundamental_analysis", "fundamental_analysis", "node:fundamental_brief", "fundamental_brief"])
-    s_prefetch = find_span(["node:data_gathering", "data_gathering", "node:prefetch_data", "prefetch_data"])
-    s_bull = find_span(["node:bull_advocate", "bull_advocate", "bull_thesis"])
-    s_bear = find_span(["node:bear_dissent", "bear_dissent", "bear_thesis"])
-    s_judge = find_span(["node:debate_judge", "debate_judge", "adjudicator", "node:debate", "debate"])
-    s_risk = find_span(["node:risk_gate", "risk_gate"])
-    s_exec = find_span(["node:execution", "execution"])
-
     nodes = [
-        resolve_node("fundamental_brief", "Fundamental Brief", "stage1", s_fund),
         resolve_node("prefetch_data", "Prefetch Data", "prefetch", s_prefetch),
+        resolve_node("fundamental_brief", "Fundamental Brief", "stage1", s_fund),
+        resolve_node("per_asset_analysis", "Per-Asset Analysis", "stage2", s_asset),
         resolve_node("bull_advocate", "Bull Advocate", "debate", s_bull),
         resolve_node("bear_dissent", "Bear Dissent", "debate", s_bear),
         resolve_node("debate_judge", "Debate Judge", "debate", s_judge),
+        resolve_node("reflection", "Reflection & Learning", "reflection", s_reflect),
         resolve_node("risk_gate", "Risk Gate", "risk", s_risk),
-        resolve_node("execution", "Execution", "execution", s_exec),
+        resolve_node("execution", "Execution Service", "execution", s_exec),
     ]
 
     edges = [
-        {"from": "fundamental_brief", "to": "prefetch_data"},
-        {"from": "prefetch_data", "to": "bull_advocate"},
-        {"from": "prefetch_data", "to": "bear_dissent"},
+        {"from": "prefetch_data", "to": "fundamental_brief"},
+        {"from": "fundamental_brief", "to": "per_asset_analysis"},
+        {"from": "per_asset_analysis", "to": "bull_advocate"},
+        {"from": "per_asset_analysis", "to": "bear_dissent"},
         {"from": "bull_advocate", "to": "debate_judge"},
         {"from": "bear_dissent", "to": "debate_judge"},
-        {"from": "debate_judge", "to": "risk_gate"},
+        {"from": "debate_judge", "to": "reflection"},
+        {"from": "reflection", "to": "risk_gate"},
         {"from": "risk_gate", "to": "execution"},
     ]
 
@@ -200,12 +369,12 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
         overall_status = "failed"
     elif "running" in statuses:
         overall_status = "running"
-    elif any(st == "done" for st in statuses) and any(st == "pending" for st in statuses):
-        overall_status = "running"
+    elif all(st in ("done", "skipped") for st in statuses):
+        overall_status = "completed"
     elif all(st == "pending" for st in statuses):
         overall_status = "pending"
     else:
-        overall_status = "completed"
+        overall_status = "completed" if cycle_finished else "running"
 
     started_nodes = [n["started_at"] for n in nodes if n.get("started_at")]
     completed_nodes = [n["completed_at"] for n in nodes if n.get("completed_at")]
@@ -233,30 +402,33 @@ def _build_graph_state_for_cycle(cycle_id: Optional[str] = None) -> Dict[str, An
             "cost_usd": round(total_cost, 6),
         },
         "available_cycles": available_cycles,
+        "available_symbols": available_symbols,
+        "selected_symbol": filter_sym,
         "nodes": nodes,
         "edges": edges,
     }
 
 
 @observability_router.get("/api/traces/cycle/{cycle_id}", tags=["Observability"])
-async def get_cycle_trace_summary(cycle_id: str):
+async def get_cycle_trace_summary(cycle_id: str, symbol: Optional[str] = Query(None)):
     """Retrieve aggregate telemetry and trace spans for a cycle."""
     from logging_observability.tracing.exporters import global_trace_store
     summary = global_trace_store.get_cycle_summary(cycle_id)
     spans = global_trace_store.get_spans(limit=500, cycle_id=cycle_id)
-    graph_state = _build_graph_state_for_cycle(cycle_id)
+    graph_state = _build_graph_state_for_cycle(cycle_id, symbol=symbol)
     return {"cycle_id": cycle_id, "summary": summary, "spans": spans, "graph_state": graph_state}
 
 
 @observability_router.get("/api/observability/graph-state", tags=["Observability"])
 async def get_graph_state(
-    cycle_id: Optional[str] = Query(None, description="Filter graph state by cycle_id. Defaults to latest cycle.")
+    cycle_id: Optional[str] = Query(None, description="Filter graph state by cycle_id. Defaults to latest cycle."),
+    symbol: Optional[str] = Query(None, description="Filter graph state and token/trade breakdown by asset symbol.")
 ):
     """
     Retrieve topology, execution status, latencies, tokens, and payloads
     for the LangGraph multi-agent pipeline visualizer.
     """
-    return _build_graph_state_for_cycle(cycle_id)
+    return _build_graph_state_for_cycle(cycle_id, symbol=symbol)
 
 
 # ---------------------------------------------------------------------------

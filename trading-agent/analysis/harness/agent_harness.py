@@ -1029,6 +1029,7 @@ class AgentHarness:
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
                                 is_direct_free_tier=not is_paid if is_paid is not None else None,
+                                from_agent_harness=True,
                             )
                         except Exception:
                             pass
@@ -1096,6 +1097,7 @@ class AgentHarness:
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
                                 is_direct_free_tier=not is_paid if is_paid is not None else None,
+                                from_agent_harness=True,
                             )
                         except Exception:
                             pass
@@ -1672,6 +1674,7 @@ class AgentHarness:
                     cached_tokens=total_cached_tokens,
                     thinking_tokens=total_thinking_tokens,
                     is_direct_free_tier=not is_paid if is_paid is not None else None,
+                    from_agent_harness=True,
                 )
             except Exception as e:
                 logger.debug(f"[{stage_name}][AgentHarness] Token save failed: {e}")

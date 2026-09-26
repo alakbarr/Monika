@@ -37,22 +37,105 @@ def _extract_tokens_from_result(node_name: str, res: Any) -> tuple[int, int]:
     out = 0
     if isinstance(res, dict):
         if "input_tokens" in res or "output_tokens" in res:
-            inp = int(res.get("input_tokens", 0) or 0)
-            out = int(res.get("output_tokens", 0) or 0)
-            return inp, out
+            inp += int(res.get("input_tokens", 0) or 0)
+            out += int(res.get("output_tokens", 0) or 0)
         sum_dict = res.get("summary")
         if isinstance(sum_dict, dict):
-            node_sum = sum_dict.get(node_name)
-            if isinstance(node_sum, dict):
-                inp = int(node_sum.get("input_tokens", 0) or 0)
-                out = int(node_sum.get("output_tokens", 0) or 0)
-                return inp, out
-            for k in ("fundamental", "per_asset", "debate", "risk_gate", "execution"):
+            for k in (node_name, "fundamental", "per_asset", "debate", "risk_gate", "execution"):
                 sub = sum_dict.get(k)
-                if isinstance(sub, dict) and ("input_tokens" in sub or "output_tokens" in sub):
-                    inp += int(sub.get("input_tokens", 0) or 0)
-                    out += int(sub.get("output_tokens", 0) or 0)
+                if isinstance(sub, dict):
+                    if "input_tokens" in sub or "output_tokens" in sub:
+                        inp += int(sub.get("input_tokens", 0) or 0)
+                        out += int(sub.get("output_tokens", 0) or 0)
+                    else:
+                        # Nested dict per symbol (e.g., summary["per_asset"]["EURUSD"] = {...})
+                        for sym_val in sub.values():
+                            if isinstance(sym_val, dict):
+                                inp += int(sym_val.get("input_tokens", 0) or 0)
+                                out += int(sym_val.get("output_tokens", 0) or 0)
     return inp, out
+
+
+def _build_node_payload_summary(node_name: str, res: Any, state: Any) -> Optional[dict]:
+    """Extract structured output summary payload for the dashboard node inspector."""
+    if not isinstance(res, dict):
+        return None
+    try:
+        if node_name in ("data_gathering", "prefetch_data"):
+            return {
+                "events_count": len(res.get("upcoming_events", [])),
+                "market_regime": res.get("market_regime", "normal"),
+                "status": "data_gathered"
+            }
+        elif node_name == "fundamental_analysis":
+            sum_fund = res.get("summary", {}).get("fundamental", {})
+            return {
+                "brief_id": sum_fund.get("brief_id"),
+                "success": sum_fund.get("success", True),
+                "tool_calls": sum_fund.get("tool_calls", 0),
+                "elapsed_s": sum_fund.get("elapsed_s", 0.0),
+                "input_tokens": sum_fund.get("input_tokens", 0),
+                "output_tokens": sum_fund.get("output_tokens", 0),
+            }
+        elif node_name == "per_asset_analysis":
+            pa = res.get("asset_analyses", {})
+            actionable = res.get("actionable_trades", [])
+            decisions = {sym: (r.get("decision") if isinstance(r, dict) else str(r)) for sym, r in pa.items()}
+            return {
+                "total_analyzed": len(pa),
+                "decisions": decisions,
+                "actionable_symbols": [sym for sym, _ in actionable] if actionable else [],
+            }
+        elif node_name in ("bull_advocate", "bear_dissent", "debate_judge", "rebuttal", "debate"):
+            deb_states = res.get("debate_states") or (state.get("debate_states") if isinstance(state, dict) else {}) or {}
+            actionable = res.get("actionable_trades") or (state.get("actionable_trades") if isinstance(state, dict) else []) or []
+            return {
+                "actionable_count": len(actionable),
+                "symbols": [s for s, _ in actionable] if actionable else [],
+                "debate_states": {
+                    s: {
+                        "decision": d.get("decision"),
+                        "strength": (d.get("verified_bull_claim") or {}).get("strength_score"),
+                        "judge_verdict": d.get("investment_verdict") or d.get("final_decision"),
+                    }
+                    for s, d in deb_states.items()
+                } if deb_states else {},
+            }
+        elif node_name == "reflection":
+            sum_refl = res.get("summary", {}).get("reflection", {}) if isinstance(res.get("summary"), dict) else {}
+            return {
+                "reflection_summary": sum_refl,
+                "vix": res.get("vix"),
+            }
+        elif node_name == "risk_gate":
+            actionable = res.get("actionable_trades", [])
+            approved = res.get("approved_trades", [])
+            return {
+                "actionable_count": len(actionable),
+                "approved_count": len(approved),
+                "approved_symbols": [s for s, _ in approved] if approved else [],
+            }
+        elif node_name == "execution":
+            sum_exec = res.get("summary", {}).get("execution", {}) if isinstance(res.get("summary"), dict) else {}
+            return {
+                "status": sum_exec.get("status", "completed"),
+                "count": sum_exec.get("count", 0),
+            }
+    except Exception:
+        pass
+    return None
+
+
+def _is_node_skipped(node_name: str, res: Any, state: Any) -> bool:
+    """Determine if a node was skipped/bypassed due to empty candidate set."""
+    actionable = state.get("actionable_trades", []) if isinstance(state, dict) else []
+    if node_name in ("bull_advocate", "bear_dissent", "debate_judge", "rebuttal") and not actionable:
+        return True
+    if node_name == "execution":
+        approved = state.get("approved_trades", []) if isinstance(state, dict) else []
+        if not approved and not actionable:
+            return True
+    return False
 
 
 def _wrap_traced_node(node_name: str, node_fn: Any):
@@ -67,8 +150,19 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             sym = state.get("symbol", "") if isinstance(state, dict) else ""
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
-            with node_span(node_name, cycle_id=cycle_id):
+            res = None
+            with node_span(node_name, cycle_id=cycle_id) as span_inst:
                 res = await node_fn(state, *args, **kwargs)
+                dur_s = time.time() - t0
+                inp, out = _extract_tokens_from_result(node_name, res)
+                if span_inst:
+                    span_inst.set_attribute("input_tokens", inp)
+                    span_inst.set_attribute("output_tokens", out)
+                    is_skipped = _is_node_skipped(node_name, res, state)
+                    span_inst.set_attribute("is_skipped", is_skipped)
+                    payload = _build_node_payload_summary(node_name, res, state)
+                    if payload:
+                        span_inst.set_attribute("output_payload", payload)
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
@@ -98,8 +192,19 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             sym = state.get("symbol", "") if isinstance(state, dict) else ""
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
-            with node_span(node_name, cycle_id=cycle_id):
+            res = None
+            with node_span(node_name, cycle_id=cycle_id) as span_inst:
                 res = node_fn(state, *args, **kwargs)
+                dur_s = time.time() - t0
+                inp, out = _extract_tokens_from_result(node_name, res)
+                if span_inst:
+                    span_inst.set_attribute("input_tokens", inp)
+                    span_inst.set_attribute("output_tokens", out)
+                    is_skipped = _is_node_skipped(node_name, res, state)
+                    span_inst.set_attribute("is_skipped", is_skipped)
+                    payload = _build_node_payload_summary(node_name, res, state)
+                    if payload:
+                        span_inst.set_attribute("output_payload", payload)
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:

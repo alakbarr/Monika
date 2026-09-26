@@ -147,6 +147,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               {selectedNode.status === 'done' && <CheckCircle2 size={14} />}
               {selectedNode.status === 'running' && <Clock size={14} />}
               {selectedNode.status === 'failed' && <AlertCircle size={14} />}
+              {selectedNode.status === 'skipped' && <Activity size={14} />}
               [{selectedNode.status}]
             </div>
           </div>
@@ -170,7 +171,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 color: 'var(--color-ink)',
               }}
             >
-              {((selectedNode.duration_ms ?? 0) / 1000).toFixed(2)}s
+              {selectedNode.status === 'skipped' ? 'bypassed' : `${((selectedNode.duration_ms ?? 0) / 1000).toFixed(2)}s`}
             </div>
           </div>
 
@@ -192,10 +193,26 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 fontSize: 'var(--text-body-sm)',
                 fontWeight: 700,
                 fontFamily: 'var(--font-precision)',
-                color: 'var(--color-win-blue)',
+                color: (selectedNode.tokens?.total ?? 0) > 0 ? 'var(--color-win-blue)' : 'var(--color-ink-soft)',
               }}
             >
-              {selectedNode.tokens?.input ?? 0} / {selectedNode.tokens?.output ?? 0}
+              {(selectedNode.tokens?.total ?? 0) > 0 ? (
+                `${selectedNode.tokens?.input ?? 0} / ${selectedNode.tokens?.output ?? 0}`
+              ) : selectedNode.id === 'execution' ? (
+                <span title="Deterministic MetaTrader 5 trade execution service (no LLM consumption by design)" style={{ fontSize: '11px' }}>
+                  0 (Deterministic MT5)
+                </span>
+              ) : selectedNode.id === 'risk_gate' ? (
+                <span title="Deterministic mathematical risk and exposure validation (rule-based)" style={{ fontSize: '11px' }}>
+                  0 (Rule-Based Risk)
+                </span>
+              ) : selectedNode.status === 'skipped' ? (
+                <span title="Node execution was bypassed in this cycle" style={{ fontSize: '11px' }}>
+                  0 (Skipped)
+                </span>
+              ) : (
+                '0 / 0'
+              )}
             </div>
           </div>
 
@@ -348,6 +365,8 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             >
               {selectedNode.output_payload
                 ? JSON.stringify(selectedNode.output_payload, null, 2)
+                : selectedNode.status === 'skipped'
+                ? `Node execution bypassed: ${selectedNode.input_summary}`
                 : selectedNode.status === 'pending'
                 ? 'Node has not executed yet in this cycle (Pending upstream step completion)'
                 : 'No output payload recorded for this node'}
