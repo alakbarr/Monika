@@ -447,194 +447,21 @@ async def run_cli_chat(
     session_id: Optional[str] = None,
     offline: bool = False,
     model: str = "auto",
+    theme: str = "retro_vintage",
 ) -> None:
     """
     Interactive standalone REPL chat with AI Trading Agent.
-
-    Streams tokens in real time to the terminal.
+    Delegates to the redesigned institutional CLI Chat subsystem in cli.chat.
     """
-    console = get_console()
-    api_url = api_url.rstrip("/")
-    api_key = api_key or os.getenv("DASHBOARD_API_KEY", "")
-    session_id = session_id or "cli:repl_user"
-
-    console.print(f"[bold {PHOSPHOR_AMBER}]┌─────────────────────────────────────────────────────────────┐[/]")
-    console.print(f"[bold {PHOSPHOR_AMBER}]│  MONIKA QUANTITATIVE TRADING DESK — REPL CONSOLE            │[/]")
-    console.print(f"[dim {MUTED}]│  Type /help for command reference, /exit to disconnect.     │[/]")
-    console.print(f"[bold {PHOSPHOR_AMBER}]└─────────────────────────────────────────────────────────────┘[/]\n")
-
-    ws_url = api_url.replace("http://", "ws://").replace("https://", "wss://") + f"/ws/agent-chat?session_id={session_id}"
-    if api_key:
-        ws_url += f"&token={api_key}"
-
-    prompt_session = _get_prompt_session()
-
-    ws = None
-    session_client = None
-    local_agent = None
-
-    if not offline:
-        try:
-            session_client = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3.0))
-            ws = await asyncio.wait_for(session_client.ws_connect(ws_url), timeout=3.0)
-            init_msg = await ws.receive_json()
-            console.print(f"{stamp_ok('CONNECTED')} Live agent service online (Session: {session_id}).\n")
-        except Exception as e:
-            if session_client and not session_client.closed:
-                await session_client.close()
-            session_client = None
-            ws = None
-            console.print(f"{stamp_info('LOCAL')} API Gateway unreachable ({e}). Falling back to local engine.\n")
-
-    if ws is None:
-        try:
-            from telegram_bot.chat_agent import ChatAgent
-            settings = load_settings()
-            local_agent = ChatAgent(settings=settings, user_id=session_id)
-            console.print(f"{stamp_ok('LOCAL')} Local ChatAgent engine initialized.\n")
-        except Exception as e:
-            console.print(f"{stamp_err('INITIALIZATION')} Failed to initialize ChatAgent: {e}")
-            return
-
-    pending_action_id: Optional[str] = None
-
-    while True:
-        try:
-            if prompt_session is not None:
-                user_input = await asyncio.to_thread(prompt_session.prompt, "MONIKA > ")
-            else:
-                user_input = await asyncio.to_thread(input, "MONIKA > ")
-        except (EOFError, KeyboardInterrupt):
-            console.print(f"\n[dim {MUTED}]Session terminated by operator.[/]")
-            break
-
-        text = user_input.strip()
-        if not text:
-            continue
-
-        if text.lower() in ("/quit", "/exit", "quit", "exit"):
-            console.print(f"[dim {MUTED}]Terminating interactive chat session. Disconnected.[/]")
-            break
-
-        if text.lower() == "/clear":
-            os.system("cls" if os.name == "nt" else "clear")
-            continue
-
-        if text.lower() == "/help":
-            console.print(
-                f"\n[bold {PHOSPHOR_AMBER}]Interactive Command Reference:[/]\n"
-                f" • [{PAPER}]/exit, /quit[/]     : Disconnect and exit interactive desk session\n"
-                f" • [{PAPER}]/clear[/]            : Clear console display\n"
-                f" • [{PAPER}]/allow[/]            : Authorize pending order execution proposal (single-order authorization)\n"
-                f" • [{PAPER}]/session[/]          : Grant 4-hour execution authorization for current session\n"
-                f" • [{PAPER}]/deny[/]             : Reject pending order execution proposal\n"
-                f" • [{PAPER}]/fast <prompt>[/]    : Route query via Tier 1 Low-Latency model (Gemini Flash)\n"
-                f" • [{PAPER}]/analyze <prompt>[/] : Route query via Tier 3 Deep Synthesis model\n"
-                f" • [{PAPER}]/research <prompt>[/]: Route query via Tier 4 Macro Research model\n"
-            )
-            continue
-
-        # Handle approval responses
-        if pending_action_id:
-            if text.lower() in ("/allow", "/yes", "allow", "yes"):
-                await _submit_cli_decision(ws, local_agent, pending_action_id, "allow_once", console)
-                pending_action_id = None
-                continue
-            elif text.lower() in ("/session", "allow_session"):
-                await _submit_cli_decision(ws, local_agent, pending_action_id, "allow_session", console)
-                pending_action_id = None
-                continue
-            elif text.lower() in ("/deny", "/no", "deny", "no"):
-                await _submit_cli_decision(ws, local_agent, pending_action_id, "deny", console)
-                pending_action_id = None
-                continue
-
-        # Send turn
-        if ws is not None:
-            if not is_ws_alive(ws):
-                try:
-                    if session_client is None or session_client.closed:
-                        session_client = aiohttp.ClientSession()
-                    ws = await asyncio.wait_for(session_client.ws_connect(ws_url), timeout=3.0)
-                    try:
-                        await ws.receive(timeout=2.0)
-                    except Exception:
-                        pass
-                except Exception:
-                    ws = None
-
-        if ws is not None:
-            try:
-                await ws.send_json({"type": "message", "text": text, "model": model})
-                while True:
-                    try:
-                        msg = await asyncio.wait_for(ws.receive(), timeout=60.0)
-                    except asyncio.TimeoutError:
-                        console.print(f"\n{stamp_err()} WebSocket stream timed out after 60s.\n")
-                        break
-                    if msg.type != aiohttp.WSMsgType.TEXT:
-                        break
-                    data = json.loads(msg.data)
-                    etype = data.get("type")
-
-                    if etype == "connection_established":
-                        continue
-                    elif etype == "delta":
-                        sys.stdout.write(data.get("text", ""))
-                        sys.stdout.flush()
-                    elif etype == "tool_start":
-                        console.print(f"\n[dim {MUTED}]  [{BRASS}][ TOOL ][/] {data.get('tool')}...[/]", end="")
-                    elif etype == "tool_result":
-                        console.print(f" {stamp_ok()}", end="")
-                    elif etype == "approval_request":
-                        action = data.get("action", {})
-                        pending_action_id = action.get("id")
-                        desc = action.get("description", "Proposed execution action")
-                        console.print(
-                            f"\n\n{stamp_warn('AUTHORIZATION REQUIRED')} {desc}\n"
-                            f"[dim {MUTED}]Type [bold {BULL_PROFIT}]/allow[/] to authorize, [bold {BRASS}]/session[/] for 4h session, or [bold {BEAR_LOSS}]/deny[/] to reject.[/]"
-                        )
-                        break
-                    elif etype == "complete":
-                        console.print("\n")
-                        break
-                    elif etype == "error":
-                        console.print(f"\n{stamp_err()} {data.get('message')}\n")
-                        break
-            except Exception as e:
-                console.print(f"\n{stamp_warn('CONNECTION')} WebSocket connection dropped ({e}). Falling back to local engine...\n")
-                if ws and not ws.closed:
-                    try:
-                        await ws.close()
-                    except Exception:
-                        pass
-                ws = None
-
-        if ws is None:
-            try:
-                if local_agent is None:
-                    from telegram_bot.chat_agent import ChatAgent
-                    settings = load_settings()
-                    local_agent = ChatAgent(settings=settings, user_id=session_id)
-                reply_text, pending = await local_agent.handle(text)
-                sys.stdout.write(reply_text)
-                sys.stdout.flush()
-                console.print("\n")
-
-                if pending:
-                    pending_action_id = getattr(pending, "action_id", getattr(pending, "id", None))
-                    console.print(
-                        f"\n{stamp_warn('AUTHORIZATION REQUIRED')} {pending.description}\n"
-                        f"[dim {MUTED}]Type [bold {BULL_PROFIT}]/allow[/] to authorize, or [bold {BEAR_LOSS}]/deny[/] to reject.[/]\n"
-                    )
-            except Exception as e:
-                console.print(f"\n{stamp_err('EXECUTION')} {e}\n")
-
-    # Cleanup
-    if ws and not ws.closed:
-        await ws.close()
-    if session_client and not session_client.closed:
-        await session_client.close()
+    from cli.chat import run_cli_chat as _run_chat
+    await _run_chat(
+        api_url=api_url,
+        api_key=api_key,
+        session_id=session_id,
+        offline=offline,
+        model=model,
+        theme=theme,
+    )
 
 
 async def _submit_cli_decision(ws, local_agent, action_id: str, decision: str, console: Console) -> None:
