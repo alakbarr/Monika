@@ -47,6 +47,15 @@ logger = logging.getLogger("TradingAgent.Scheduler.UniversalCron")
 DEFAULT_CRON_DB = "data/universal_cron.db"
 
 
+_ANTI_SUICIDE_PATTERNS = [
+    re.compile(r"\brm\s+-(?:r|f|rf|fr)\s+(?:/|~|\$HOME|trading-agent|\*)", re.IGNORECASE),
+    re.compile(r"\bdel\s+/[fs]\s+c:\\", re.IGNORECASE),
+    re.compile(r"\bkill\s+-9\b|\bkillall\b|\btaskkill\s+/[fF]\b", re.IGNORECASE),
+    re.compile(r"\bformat\s+[a-z]:|\bshutdown\b|\breboot\b", re.IGNORECASE),
+    re.compile(r":\(\)\s*\{\s*:\|\:&\s*\};:", re.IGNORECASE),
+]
+
+
 @dataclass
 class CronJob:
     job_id: str
@@ -76,6 +85,7 @@ class UniversalCronScheduler:
         self._is_running = False
         self._worker_thread: Optional[threading.Thread] = None
         self._execution_callbacks: List[Callable[[CronJob], None]] = []
+        self._running_jobs: Dict[str, float] = {}
         self._init_db()
 
     def _init_db(self) -> None:
@@ -144,6 +154,14 @@ class UniversalCronScheduler:
         no_agent: bool = False,
     ) -> CronJob:
         """Registers and schedules a new cron job."""
+        for pat in _ANTI_SUICIDE_PATTERNS:
+            if pat.search(prompt):
+                logger.error(f"[UniversalCron] Rejected job '{job_id}': prompt matches destructive pattern.")
+                raise ValueError("Job rejected: prompt matches prohibited destructive pattern.")
+            if monitor_script and pat.search(monitor_script):
+                logger.error(f"[UniversalCron] Rejected job '{job_id}': monitor_script matches destructive pattern.")
+                raise ValueError("Job rejected: monitor_script matches prohibited destructive pattern.")
+
         next_run = self.parse_schedule_expression(schedule_expression)
         job = CronJob(
             job_id=job_id,
@@ -229,6 +247,7 @@ class UniversalCronScheduler:
         while self._is_running:
             try:
                 self._evaluate_due_jobs()
+                self.check_hung_jobs()
             except Exception as exc:
                 logger.error(f"[UniversalCron] Error in tick loop: {exc}", exc_info=True)
             time.sleep(15.0)
@@ -318,8 +337,46 @@ class UniversalCronScheduler:
                 logger.warning(f"[UniversalCron] Monitor script failed for job '{job.job_id}': {exc}")
 
         logger.info(f"[UniversalCron] Dispatching job '{job.job_id}'")
-        for cb in self._execution_callbacks:
-            try:
-                cb(job)
-            except Exception as exc:
-                logger.error(f"[UniversalCron] Callback error for job '{job.job_id}': {exc}")
+        self._running_jobs[job.job_id] = time.time()
+        try:
+            for cb in self._execution_callbacks:
+                try:
+                    cb(job)
+                except Exception as exc:
+                    logger.error(f"[UniversalCron] Callback error for job '{job.job_id}': {exc}")
+        finally:
+            self._running_jobs.pop(job.job_id, None)
+
+    def check_hung_jobs(self, max_runtime_sec: float = 600.0) -> List[str]:
+        """
+        Inactivity watchdog: scans active jobs exceeding max_runtime_sec.
+        Marks timed-out jobs in DB and evicts them from active tracking.
+        """
+        now = time.time()
+        hung_jobs: List[str] = []
+
+        with self._lock:
+            for job_id, start_time in list(self._running_jobs.items()):
+                if now - start_time > max_runtime_sec:
+                    hung_jobs.append(job_id)
+                    logger.warning(
+                        f"[UniversalCronWatchdog] Job '{job_id}' hung (running for {now - start_time:.1f}s > {max_runtime_sec}s). "
+                        "Evicting and recording timeout."
+                    )
+                    self._running_jobs.pop(job_id, None)
+
+            if hung_jobs:
+                try:
+                    conn = sqlite3.connect(self.db_path)
+                    for jid in hung_jobs:
+                        conn.execute(
+                            "UPDATE cron_jobs SET last_exit_code = -1 WHERE job_id = ?",
+                            (jid,),
+                        )
+                    conn.commit()
+                    conn.close()
+                except Exception as exc:
+                    logger.error(f"[UniversalCronWatchdog] Failed updating hung jobs status: {exc}")
+
+        return hung_jobs
+

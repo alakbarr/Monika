@@ -49,6 +49,8 @@ class AcpServer:
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._active_turn_locks: Dict[str, threading.Event] = {}
+        self._pending_client_requests: Dict[str, Dict[str, Any]] = {}
+        self._next_request_id: int = 1
 
     def send_response(self, request_id: Any, result: Any = None, error: Optional[Dict[str, Any]] = None) -> None:
         """Emits a formatted JSON-RPC response to stdout."""
@@ -69,6 +71,24 @@ class AcpServer:
         sys.stdout.write(payload)
         sys.stdout.flush()
 
+    def send_request(self, method: str, params: Any = None) -> str:
+        """Emits an outbound JSON-RPC request to editor client and returns request id."""
+        with self._lock:
+            req_id = f"monika_req_{self._next_request_id}"
+            self._next_request_id += 1
+            event = threading.Event()
+            self._pending_client_requests[req_id] = {
+                "event": event,
+                "result": None,
+                "error": None,
+            }
+
+        msg: Dict[str, Any] = {"jsonrpc": "2.0", "id": req_id, "method": method, "params": params or {}}
+        payload = json.dumps(msg) + "\n"
+        sys.stdout.write(payload)
+        sys.stdout.flush()
+        return req_id
+
     def handle_message(self, raw_line: str) -> None:
         """Parses and dispatches a JSON-RPC message from editor."""
         line = raw_line.strip()
@@ -79,6 +99,11 @@ class AcpServer:
             req = json.loads(line)
         except json.JSONDecodeError as exc:
             self.send_response(None, error={"code": -32700, "message": f"Parse error: {exc}"})
+            return
+
+        # Check if this is a response to an outbound request
+        if "method" not in req and "id" in req and ("result" in req or "error" in req):
+            self._handle_client_response(req["id"], req.get("result"), req.get("error"))
             return
 
         req_id = req.get("id")
@@ -96,12 +121,17 @@ class AcpServer:
             self.send_response(req_id, result={"authenticated": True})
         elif method == "new_session":
             self._handle_new_session(req_id, params)
+        elif method == "load_session":
+            self._handle_load_session(req_id, params)
         elif method == "prompt":
             self._handle_prompt(req_id, params)
         elif method == "cancel":
             self._handle_cancel(req_id, params)
+        elif method == "permission_response":
+            self._handle_permission_response(req_id, params)
         else:
             self.send_response(req_id, error={"code": -32601, "message": f"Method '{method}' not found"})
+
 
     def _handle_initialize(self, req_id: Any, params: Dict[str, Any]) -> None:
         """Handles ACP handshake and capability negotiation."""
@@ -135,6 +165,29 @@ class AcpServer:
             }
 
         self.send_response(req_id, result={"session_id": session_id, "cwd": cwd})
+
+    def _handle_load_session(self, req_id: Any, params: Dict[str, Any]) -> None:
+        """Restores an existing session state or workspace binding."""
+        session_id = params.get("session_id")
+        if not session_id:
+            self.send_response(req_id, error={"code": -32602, "message": "Missing 'session_id' parameter"})
+            return
+
+        with self._lock:
+            session = self._sessions.get(session_id)
+
+        if not session:
+            self.send_response(req_id, error={"code": -32602, "message": f"Session '{session_id}' not found"})
+            return
+
+        self.send_response(
+            req_id,
+            result={
+                "session_id": session_id,
+                "cwd": session.get("cwd", os.getcwd()),
+                "history_length": len(session.get("history", [])),
+            },
+        )
 
     def _handle_prompt(self, req_id: Any, params: Dict[str, Any]) -> None:
         """Processes a prompt turn in a background worker thread."""
@@ -182,6 +235,68 @@ class AcpServer:
         session_id = params.get("session_id")
         logger.info(f"[ACPServer] Received cancellation request for session: {session_id}")
         self.send_response(req_id, result={"cancelled": True, "session_id": session_id})
+
+    def _handle_client_response(self, req_id: str, result: Any, error: Optional[Dict[str, Any]]) -> None:
+        """Processes response received from client for an outbound request."""
+        with self._lock:
+            pending = self._pending_client_requests.get(req_id)
+        if pending:
+            pending["result"] = result
+            pending["error"] = error
+            pending["event"].set()
+
+    def _handle_permission_response(self, req_id: Any, params: Dict[str, Any]) -> None:
+        """Handles explicit permission confirmation sent by client UI."""
+        perm_id = params.get("permission_id") or params.get("id") or req_id
+        decision = params.get("decision", "deny")  # allow_once, allow_session, deny
+        granted = decision in ("allow_once", "allow_session", True)
+        self.send_response(req_id, result={"status": "recorded", "granted": granted})
+
+    def request_permission(
+        self,
+        session_id: str,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        risk_level: int = 2,
+        timeout: float = 30.0,
+    ) -> bool:
+        """
+        Sends interactive 'request_permission' request to client IDE/editor.
+        Blocks until client responds or timeout expires.
+        """
+        req_id = self.send_request(
+            "request_permission",
+            {
+                "session_id": session_id,
+                "tool_name": tool_name,
+                "tool_args": tool_args,
+                "risk_level": risk_level,
+            },
+        )
+        with self._lock:
+            pending = self._pending_client_requests.get(req_id)
+
+        if not pending:
+            return False
+
+        signaled = pending["event"].wait(timeout=timeout)
+        with self._lock:
+            self._pending_client_requests.pop(req_id, None)
+
+        if not signaled:
+            logger.warning(f"[ACPServer] Permission request '{req_id}' timed out after {timeout}s.")
+            return False
+
+        if pending["error"]:
+            logger.warning(f"[ACPServer] Permission request '{req_id}' returned error: {pending['error']}")
+            return False
+
+        res = pending["result"]
+        if isinstance(res, dict):
+            decision = res.get("decision")
+            return decision in ("allow_once", "allow_session", True)
+        return bool(res)
+
 
     def run_stdio_loop(self) -> None:
         """Main blocking stdio event loop reading from stdin."""

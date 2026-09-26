@@ -200,6 +200,7 @@ class TelegramBot:
         app.add_handler(CommandHandler("playbooks",   self._cmd_playbooks))
         app.add_handler(CommandHandler("rollback",    self._cmd_rollback))
         app.add_handler(CommandHandler("crystallized", self._cmd_crystallized))
+        app.add_handler(CommandHandler("cron",        self._cmd_cron))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -778,6 +779,61 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_crystallized_text()
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_cron(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        try:
+            from analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            registry = CronRegistry(DEFAULT_CRON_FILE)
+            args = ctx.args or []
+            subcmd = args[0].lower() if args else "list"
+
+            if subcmd == "list":
+                jobs = registry.list_jobs()
+                if not jobs:
+                    await update.message.reply_text("⏰ *Universal Cron Schedules*\n\nTidak ada jadwal cron aktif.", parse_mode=ParseMode.MARKDOWN)
+                    return
+                lines = [f"⏰ *Universal Cron Schedules ({len(jobs)} Active)*\n"]
+                for j in jobs:
+                    status = "✅" if j.enabled else "⏸️"
+                    lines.append(f"{status} *{j.name}* (`{j.cron_expression}`)\n  _{j.description}_\n  Prompt: `{j.instruction[:60]}...`\n")
+                lines.append("Gunakan `/cron add <name> <expr> <prompt>` atau `/cron remove <name>`.")
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+            elif subcmd == "remove" and len(args) > 1:
+                name = args[1].strip()
+                ok = registry.remove_job(name)
+                if ok:
+                    await update.message.reply_text(f"✅ Jadwal cron `{name}` berhasil dihapus.", parse_mode=ParseMode.MARKDOWN)
+                else:
+                    await update.message.reply_text(f"❌ Jadwal cron `{name}` tidak ditemukan.", parse_mode=ParseMode.MARKDOWN)
+            elif subcmd == "add" and len(args) >= 4:
+                name = args[1].strip()
+                expr = args[2].strip()
+                prompt = " ".join(args[3:]).strip()
+                job = CronJobRecord(
+                    name=name,
+                    cron_expression=expr,
+                    instruction=prompt,
+                    description=f"Telegram: {prompt[:40]}",
+                    enabled=True,
+                    created_at=time.time(),
+                )
+                registry.add_job(job)
+                await update.message.reply_text(f"✅ Jadwal cron `{name}` (`{expr}`) berhasil didaftarkan.", parse_mode=ParseMode.MARKDOWN)
+            else:
+                help_text = (
+                    "⏰ *Penggunaan Perintah Cron*\n\n"
+                    "• `/cron` atau `/cron list` : Tampilkan seluruh jadwal\n"
+                    "• `/cron add <nama> <cron_expr> <prompt>` : Tambah jadwal baru\n"
+                    "  _Contoh:_ `/cron add cot_scan */30 * * * * Jalankan audit COT_\n"
+                    "• `/cron remove <nama>` : Hapus jadwal yang ada"
+                )
+                await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as exc:
+            await update.message.reply_text(f"❌ Error mengevaluasi perintah cron: {exc}")
 
     async def _cmd_vix(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return

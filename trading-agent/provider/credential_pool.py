@@ -130,6 +130,57 @@ class KeyHealth:
         self.total_tokens += tokens
         self.total_cost_usd += cost_usd
 
+    def update_from_headers(self, headers: Dict[str, Any]) -> None:
+        """
+        Proactively monitors upstream HTTP rate-limit response headers.
+        Extracts remaining requests, remaining tokens, and reset timestamps.
+        If limits are exhausted (0 remaining), arms a proactive cooldown BEFORE a 429 occurs.
+        """
+        if not headers or not isinstance(headers, dict):
+            return
+
+        lower_headers = {str(k).lower(): str(v) for k, v in headers.items()}
+
+        rem_req = None
+        for key in ("x-ratelimit-remaining-requests", "ratelimit-remaining", "x-ratelimit-remaining"):
+            if key in lower_headers:
+                try:
+                    rem_req = int(lower_headers[key])
+                    break
+                except ValueError:
+                    pass
+
+        rem_tokens = None
+        for key in ("x-ratelimit-remaining-tokens", "ratelimit-remaining-tokens"):
+            if key in lower_headers:
+                try:
+                    rem_tokens = int(lower_headers[key])
+                    break
+                except ValueError:
+                    pass
+
+        reset_sec = None
+        for key in ("retry-after", "x-ratelimit-reset-requests", "x-ratelimit-reset-tokens", "ratelimit-reset"):
+            if key in lower_headers:
+                val = lower_headers[key].strip()
+                try:
+                    parsed_val = float(val)
+                    if parsed_val > 1000000000:
+                        reset_sec = max(1.0, parsed_val - time.time())
+                    else:
+                        reset_sec = parsed_val
+                    break
+                except ValueError:
+                    pass
+
+        if (rem_req is not None and rem_req == 0) or (rem_tokens is not None and rem_tokens < 100):
+            cd = reset_sec if reset_sec and reset_sec > 0 else 10.0
+            self.cooldown_until = max(self.cooldown_until, time.time() + cd)
+            logger.info(
+                f"[CredentialPool] Proactive rate limit arming on {self.key[:6]}... ({self.provider}): "
+                f"remaining_req={rem_req}, remaining_tokens={rem_tokens}, cooldown={cd:.1f}s."
+            )
+
     def mark_failure(
         self,
         reason: Union[FailoverReason, str] = FailoverReason.UNKNOWN,
@@ -432,6 +483,22 @@ class CredentialPool:
         if provider:
             return sum(k.total_cost_usd for k in self._pools.get(provider.lower(), []))
         return sum(sum(k.total_cost_usd for k in keys) for keys in self._pools.values())
+
+    def record_response_headers(
+        self,
+        provider: str,
+        key: str,
+        headers: Dict[str, Any],
+    ) -> None:
+        """
+        Record upstream HTTP response headers to proactively trigger rate-limit cooldown
+        before a 429 error occurs.
+        """
+        prov = provider.lower()
+        for kh in self._pools.get(prov, []):
+            if kh.key == key:
+                kh.update_from_headers(headers)
+                return
 
     def get_pool_status(self, provider: Optional[str] = None) -> Dict[str, Any]:
         """Return diagnostic metrics of all keys in pool."""

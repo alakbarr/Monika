@@ -280,6 +280,7 @@ class SessionDbWal:
                     carrier_marker TEXT,
                     created_at REAL NOT NULL,
                     turn_ordinal INTEGER NOT NULL,
+                    active INTEGER DEFAULT 1,
                     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
                 );
 
@@ -301,6 +302,13 @@ class SessionDbWal:
                 CREATE INDEX IF NOT EXISTS idx_tool_lookup 
                 ON tool_records(session_id, turn_ordinal);
             """)
+
+            # Schema evolution: ensure active column exists in legacy databases
+            try:
+                conn.execute("ALTER TABLE session_messages ADD COLUMN active INTEGER DEFAULT 1;")
+            except sqlite3.OperationalError:
+                pass
+
 
     def create_or_touch_session(
         self,
@@ -345,15 +353,16 @@ class SessionDbWal:
         content: str,
         turn_ordinal: int,
         carrier_marker: Optional[str] = None,
+        active: int = 1,
     ) -> int:
         self.create_or_touch_session(session_id)
         conn = self.get_connection()
         now = time.time()
         with conn:
             cursor = conn.execute("""
-                INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal)
-                VALUES (?, ?, ?, ?, ?, ?);
-            """, (session_id, role, content, carrier_marker, now, turn_ordinal))
+                INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?);
+            """, (session_id, role, content, carrier_marker, now, turn_ordinal, active))
             return cursor.lastrowid
 
     def record_tool_execution(
@@ -384,26 +393,39 @@ class SessionDbWal:
             ))
             return cursor.lastrowid
 
-    def get_messages(self, session_id: str) -> List[Dict[str, Any]]:
-        """Fetch all messages for session."""
+    def get_messages(self, session_id: str, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Fetch messages for session, optionally filtering for active turns only."""
+        where_clause = "WHERE session_id = ? AND (active IS NULL OR active = 1)" if active_only else "WHERE session_id = ?"
+        sql = f"""
+            SELECT row_id, session_id, role, content, carrier_marker, created_at, turn_ordinal, active
+            FROM session_messages
+            {where_clause}
+            ORDER BY row_id ASC;
+        """
         if self._read_pool:
             with self._read_pool.acquire_reader() as conn:
-                cursor = conn.execute("""
-                    SELECT row_id, session_id, role, content, carrier_marker, created_at, turn_ordinal
-                    FROM session_messages
-                    WHERE session_id = ?
-                    ORDER BY row_id ASC;
-                """, (session_id,))
+                cursor = conn.execute(sql, (session_id,))
                 return [dict(row) for row in cursor.fetchall()]
         else:
             conn = self.get_connection()
-            cursor = conn.execute("""
-                SELECT row_id, session_id, role, content, carrier_marker, created_at, turn_ordinal
-                FROM session_messages
-                WHERE session_id = ?
-                ORDER BY row_id ASC;
-            """, (session_id,))
+            cursor = conn.execute(sql, (session_id,))
             return [dict(row) for row in cursor.fetchall()]
+
+    def deactivate_turns_above(self, session_id: str, turn_ordinal: int) -> int:
+        """Soft-deactivates all messages in turns above turn_ordinal (active=0)."""
+        conn = self.get_connection()
+        now = time.time()
+        with conn:
+            cursor = conn.execute("""
+                UPDATE session_messages
+                SET active = 0
+                WHERE session_id = ? AND turn_ordinal > ? AND (active IS NULL OR active = 1);
+            """, (session_id, turn_ordinal))
+            affected = cursor.rowcount
+            conn.execute("UPDATE sessions SET updated_at = ? WHERE session_id = ?;", (now, session_id))
+            logger.info(f"[SessionDbWal] Deactivated {affected} messages in session '{session_id}' above turn {turn_ordinal}.")
+            return affected
+
 
     def get_tool_records(self, session_id: str, turn_ordinal: Optional[int] = None) -> List[Dict[str, Any]]:
         """Fetch tool execution records for session."""

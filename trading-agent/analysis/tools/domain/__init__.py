@@ -3,7 +3,9 @@
 from analysis.tools.domain import (
     clarify_tool,
     code_execution_tool,
+    code_search_tool,
     computer_use_tool,
+
     cron_tool,
     delegate_tool,
     file_tools,
@@ -11,15 +13,17 @@ from analysis.tools.domain import (
     multimodal_tools,
     skill_tools,
     spill_reader_tool,
-    terminal_tools,
     todo_tool,
     tool_search_tools,
+    web_tools,
 )
 
 __all__ = [
     "clarify_tool",
     "code_execution_tool",
+    "code_search_tool",
     "computer_use_tool",
+
     "cron_tool",
     "delegate_tool",
     "file_tools",
@@ -30,4 +34,5 @@ __all__ = [
     "terminal_tools",
     "todo_tool",
     "tool_search_tools",
+    "web_tools",
 ]

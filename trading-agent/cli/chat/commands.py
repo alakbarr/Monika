@@ -167,6 +167,10 @@ class ChatCommandRouter:
             self._handle_export(arg, history_records or [])
             return CommandResult(handled=True)
 
+        if cmd == "/cron":
+            self._handle_cron(arg)
+            return CommandResult(handled=True)
+
         # Unrecognized slash command
         self.renderer.render_notice(
             f"Unrecognized command '{cmd}'. Type [bold]/help[/] for command catalog.",
@@ -199,6 +203,7 @@ class ChatCommandRouter:
             ("/allow", "[action_id?]", "Authorize proposed trade execution (single-trade)"),
             ("/session", "[action_id?]", "Grant 4-hour trade execution window for active session"),
             ("/deny", "[action_id?]", "Reject proposed trade execution"),
+            ("/cron", "[list|add|remove]", "View and manage autonomous background cron jobs"),
             ("/export", "[filepath?]", "Export conversation transcript to Markdown or JSON"),
             ("/clear", "None", "Clear terminal screen display"),
             ("/exit, /quit", "None", "Terminate interactive session and disconnect"),
@@ -427,3 +432,70 @@ class ChatCommandRouter:
             self.renderer.render_notice(f"Transcript exported successfully to [bold]{out_path}[/].", level="success")
         except Exception as e:
             self.renderer.render_notice(f"Failed to export transcript: {e}", level="error")
+
+    def _handle_cron(self, arg: str) -> None:
+        """Inspect and manage dynamic recurring cron schedules."""
+        p = self.renderer.palette
+        console = self.renderer.console
+
+        try:
+            from analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            registry = CronRegistry(DEFAULT_CRON_FILE)
+            parts = arg.split(maxsplit=2) if arg else []
+            subcmd = parts[0].lower() if parts else "list"
+
+            if subcmd == "list":
+                jobs = registry.list_jobs()
+                if not jobs:
+                    console.print(f"[{p.muted}]No dynamic cron schedules currently registered.[/{p.muted}]\n")
+                    return
+
+                table = Table(
+                    title=f"[bold {p.primary}]DYNAMIC CRON SCHEDULES ({len(jobs)} Active)[/]",
+                    box=box.ROUNDED,
+                    border_style=p.border,
+                    header_style=f"bold {p.accent}",
+                    expand=True,
+                )
+                table.add_column("Name", style=f"bold {p.text}", width=20)
+                table.add_column("Expression", style=f"{p.accent}", width=15)
+                table.add_column("Status", width=10)
+                table.add_column("Instruction", style=f"dim {p.muted}")
+
+                for j in jobs:
+                    st = f"[bold {p.success}]ACTIVE[/]" if j.enabled else f"[{p.muted}]PAUSED[/]"
+                    table.add_row(j.name, j.cron_expression, st, j.instruction[:80])
+
+                console.print()
+                console.print(table)
+                console.print(f"[dim {p.muted}]Usage: /cron add <name> <expr> <prompt> | /cron remove <name>[/]\n")
+            elif subcmd == "remove" and len(parts) > 1:
+                name = parts[1].strip()
+                ok = registry.remove_job(name)
+                if ok:
+                    self.renderer.render_notice(f"Cron schedule '{name}' successfully removed.", level="info")
+                else:
+                    self.renderer.render_notice(f"Cron schedule '{name}' not found.", level="warn")
+            elif subcmd == "add" and len(parts) >= 3:
+                name = parts[1].strip()
+                rest = parts[2].strip().split(maxsplit=1)
+                expr = rest[0].strip()
+                prompt = rest[1].strip() if len(rest) > 1 else ""
+                if not prompt:
+                    self.renderer.render_notice("Usage: /cron add <name> <expr> <prompt>", level="warn")
+                    return
+                job = CronJobRecord(
+                    name=name,
+                    cron_expression=expr,
+                    instruction=prompt,
+                    description=f"CLI: {prompt[:40]}",
+                    enabled=True,
+                    created_at=time.time(),
+                )
+                registry.add_job(job)
+                self.renderer.render_notice(f"Cron schedule '{name}' ('{expr}') registered.", level="info")
+            else:
+                self.renderer.render_notice("Usage: /cron [list | add <name> <expr> <prompt> | remove <name>]", level="info")
+        except Exception as exc:
+            self.renderer.render_notice(f"Error managing cron schedules: {exc}", level="error")
+
