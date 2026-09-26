@@ -97,6 +97,8 @@ class ExecutionConfig(SubscriptableConfig):
     remote_gateway_url: Optional[str] = "http://127.0.0.1:8080"
     remote_gateway_token: Optional[str] = ""
     mt5_common_dir: Optional[str] = ""
+    mt5_linux_host: Optional[str] = "127.0.0.1"
+    mt5_linux_port: Optional[int] = Field(default=18812, ge=1024, le=65535)
     max_spread_multiplier: Optional[Dict[str, Any]] = None
 
 

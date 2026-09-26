@@ -484,6 +484,7 @@ Monika/
     │   ├── health_check.py
     │   ├── idempotency_guard.py
     │   ├── mt5_client.py
+    │   ├── mt5_compat.py
     │   ├── order_emulator.py
     │   ├── paper_tracker.py
     │   ├── rate_throttler.py
@@ -1135,6 +1136,7 @@ Monika/
         │   ├── test_ea_watchdog.py
         │   ├── test_idempotency_guard.py
         │   ├── test_mt5_client.py
+        │   ├── test_mt5_compat.py
         │   ├── test_mt5_priority_queue.py
         │   ├── test_mt5_tick_poller.py
         │   ├── test_order_emulator.py

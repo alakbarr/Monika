@@ -72,6 +72,8 @@ services:
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000
       - MT5_COMMON_FILES_PATH=/shared/mt5_bridge
+      - MT5_LINUX_HOST=mt5-wine
+      - MT5_LINUX_PORT=18812
     volumes:
       - ../trading-agent/config/settings.yaml:/app/trading-agent/config/settings.yaml:ro
       - vps_agent_logs:/app/trading-agent/logs
@@ -108,6 +110,8 @@ services:
       - MT5_LOGIN=${MT5_ACCOUNT:-0}
       - MT5_PASSWORD=${MT5_PASSWORD:-""}
       - MT5_SERVER=${MT5_SERVER:-"FBS-Real"}
+    ports:
+      - "127.0.0.1:18812:18812"
     volumes:
       - vps_mt5_bridge:/shared/mt5_bridge
     logging:
