@@ -55,3 +55,11 @@ class OllamaProvider(OpenAIProvider):
         except ImportError:
             logger.warning("OpenAI package not installed for Ollama client. Run `pip install openai`.")
             self.client = None
+
+    def _apply_reasoning_params(self, kwargs: dict) -> None:
+        super()._apply_reasoning_params(kwargs)
+        extra = kwargs.setdefault("extra_body", {})
+        if isinstance(extra, dict) and "keep_alive" not in extra:
+            # Keep model & KV cache resident in memory to maximize prompt cache hits across cycles
+            extra["keep_alive"] = "1h"
+

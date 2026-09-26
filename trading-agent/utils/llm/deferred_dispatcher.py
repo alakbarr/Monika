@@ -153,6 +153,18 @@ class DeferredLLMDispatcher:
         full_cost = cost_usd(model_name=model, input_tokens=input_tokens, output_tokens=output_tokens)
         return round(full_cost * 0.50, 6)
 
+    async def execute_or_defer(self, task_name: str, model: str, messages: List[Dict[str, Any]], execute_fn: Any) -> Any:
+        """
+        If task is in DEFERRABLE_TASKS and batch mode is enabled, enqueues request.
+        Otherwise executes execute_fn immediately.
+        """
+        if self.should_defer(task_name):
+            req = DeferredRequest(task_name=task_name, model=model, messages=messages)
+            req_id = self.enqueue(req)
+            logger.info(f"[DeferredDispatcher] Task '{task_name}' deferred with ID {req_id}.")
+            return {"status": "deferred", "request_id": req_id}
+        return await execute_fn()
+
 
 # Global singleton
 global_deferred_dispatcher = DeferredLLMDispatcher()

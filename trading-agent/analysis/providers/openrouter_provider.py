@@ -357,11 +357,24 @@ class OpenRouterProvider(OpenAIProvider):
                 "sort": "latency",
                 "require_parameters": True,
                 "data_collection": "deny",
+                "allow_fallbacks": True,
             }
-        session_id = kwargs.pop("session_id", None) or getattr(self, "session_id", None) or "tradeagent_live_session"
+        session_id = (
+            kwargs.pop("session_id", None)
+            or getattr(self, "session_id", None)
+            or getattr(self, "_session_affinity_id", None)
+        )
+        if not session_id:
+            affinity = self._get_session_affinity_headers()
+            session_id = affinity.get("X-Session-ID", "tradeagent_live_session")
         headers = kwargs.setdefault("extra_headers", {})
-        if isinstance(headers, dict) and "X-Session-ID" not in headers:
-            headers["X-Session-ID"] = str(session_id)
+        if isinstance(headers, dict):
+            if "X-Session-ID" not in headers:
+                headers["X-Session-ID"] = str(session_id)
+            if "HTTP-Referer" not in headers:
+                headers["HTTP-Referer"] = "https://github.com/alakbarr/Monika"
+            if "X-Title" not in headers:
+                headers["X-Title"] = "Monika Trading Agent"
 
     @classmethod
     def reset_cooldowns(cls, api_key: Optional[str] = None, model: Optional[str] = None) -> int:

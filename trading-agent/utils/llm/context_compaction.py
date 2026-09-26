@@ -55,6 +55,8 @@ class ContextCompactionEngine:
 
     SYNTHESIS_THRESHOLD = 0.50  # 50% of context window -> Layer 2 synthesis
     EMERGENCY_THRESHOLD = 0.85  # 85% of context window -> Layer 3 emergency guard
+    SYNTHESIS_THRESHOLD_ABSOLUTE = 28000  # Layer 2 synthesis trigger regardless of huge context windows (e.g. Gemini 1M)
+    EMERGENCY_THRESHOLD_ABSOLUTE = 45000  # Layer 3 emergency hard truncation trigger
 
 
     TOOL_FAMILIES = {
@@ -598,10 +600,10 @@ class ContextCompactionEngine:
         current_tokens = self.calculate_history_tokens(messages)
         ratio = current_tokens / context_window
 
-        if ratio >= self.EMERGENCY_THRESHOLD:
+        if ratio >= self.EMERGENCY_THRESHOLD or current_tokens >= self.EMERGENCY_THRESHOLD_ABSOLUTE:
             return self.emergency_guard(messages, context_window)
-        elif ratio >= self.SYNTHESIS_THRESHOLD or current_tokens > 32000:
-            # If above 50% capacity or >32k tokens, prune older turns keeping the most recent 1-2 turns
+        elif ratio >= self.SYNTHESIS_THRESHOLD or current_tokens >= self.SYNTHESIS_THRESHOLD_ABSOLUTE:
+            # If above 50% capacity or >=28k tokens, prune older turns keeping the most recent 1-2 turns
             return self.mask_aged_observations(messages, keep_recent_turns=1)
         elif current_tokens > 10000 and len(messages) > 4:
             # Intermediate tier: mask aged observations keeping recent turn intact
@@ -762,7 +764,7 @@ class ContextCompactionEngine:
         ratio = current_tokens / context_window
 
         # Only trigger under genuine pressure
-        if ratio < self.SYNTHESIS_THRESHOLD and current_tokens <= 32000:
+        if ratio < self.SYNTHESIS_THRESHOLD and current_tokens < self.SYNTHESIS_THRESHOLD_ABSOLUTE:
             return messages
 
         try:

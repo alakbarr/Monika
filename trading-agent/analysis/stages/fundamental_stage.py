@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from analysis.providers.llm_factory import get_client_for_task, create_client
 from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
-from analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC
+from analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC, minify_tool_definitions
 from analysis.validators.fundamental_verifier import verify_fundamental_brief
 from database.db import get_session
 from database.models import ActivityLog, FundamentalBrief, SystemConfig, EconomicCalendar
@@ -577,7 +577,7 @@ class FundamentalStage:
         result = None
         last_error = None
         
-        tools_to_use = STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS
+        tools_to_use = minify_tool_definitions(STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS)
         # Permanent Tool Schema Freeze: preserving 100% KV-cache hit rate across all cycles.
         # ToolExecutor already handles prefetch cache hit checks internally without modifying schema.
         

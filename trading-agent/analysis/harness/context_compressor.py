@@ -265,6 +265,56 @@ class ContextCompressor:
 
         return pruned_messages
 
+    @classmethod
+    def distill_initial_bundle_after_turn_1(cls, messages: List[dict]) -> List[dict]:
+        """
+        P0 Token Optimization: Prunes the verbose 50k character raw prefetch bundle
+        from messages[0] once Turn 1 has completed.
+        Retains core anchors, regime, and macro bias while compressing thousands of raw candle rows.
+        """
+        if not messages or len(messages) < 3:
+            return messages
+
+        first_msg = messages[0]
+        if first_msg.get("role") != "user":
+            return messages
+
+        content = first_msg.get("content")
+        if not isinstance(content, str) or "[PRE-FETCHED DATA]" not in content:
+            return messages
+
+        if "[PRE-FETCHED DATA DISTILLED]" in content:
+            return messages
+
+        # Split before and after [PRE-FETCHED DATA]
+        parts = content.split("[PRE-FETCHED DATA]")
+        prefix = parts[0]
+        bundle_body = parts[1]
+
+        # Extract essential summary lines (regime, bias, ATR, fundamental brief)
+        lines = bundle_body.strip().split("\n")
+        retained_lines = []
+        for line in lines:
+            l_lower = line.lower()
+            if any(k in l_lower for k in ("regime", "vix", "dxy", "bias", "fundamental", "atr", "confluence", "economic calendar", "order block", "fvg", "support", "resistance")):
+                retained_lines.append(line)
+            if len(retained_lines) >= 30:
+                break
+
+        distilled_bundle = "\n".join(retained_lines)
+        new_content = (
+            f"{prefix}\n\n[PRE-FETCHED DATA DISTILLED]\n"
+            f"[Turn 1 ingestion complete. Detailed candlestick history & raw indicator tables pruned for token efficiency.]\n"
+            f"{distilled_bundle}\n"
+            f"[... Remaining raw candle arrays truncated ...]"
+        )
+
+        messages_copy = list(messages)
+        new_first = dict(first_msg)
+        new_first["content"] = new_content
+        messages_copy[0] = new_first
+        return messages_copy
+
     def _snap_boundary(self, messages: List[dict], split_idx: int) -> int:
         """Snaps split index to ensure tool-pair integrity (prevents orphaned tool_use or tool_result)."""
         if split_idx <= 1 or split_idx >= len(messages):

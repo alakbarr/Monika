@@ -128,6 +128,33 @@ class CacheBreakpointManager:
         return cls.MIN_CACHEABLE_CHARS  # ~1,050 tokens default (Sonnet 3.5/3.7 / OpenAI 1,024 threshold)
 
     @classmethod
+    def should_inject_anchor(
+        cls,
+        model_name: str = "",
+        provider_name: str = "",
+        current_prompt_chars: int = 0
+    ) -> bool:
+        """
+        Determines whether CANONICAL_TIER0_ANCHOR should be injected.
+        Eliminates 4,125 token padding waste when:
+        1. Target provider does not support prompt caching (Groq, Ollama, etc.).
+        2. Prompt naturally exceeds the provider's minimum cache threshold.
+        """
+        prov = (provider_name or "").lower()
+        mod = (model_name or "").lower()
+
+        # Non-caching providers or local inference: never inject padding anchor
+        if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
+            return False
+
+        min_chars = cls.get_min_cacheable_chars(mod)
+        # If prompt is already large enough naturally to trigger caching, skip anchor
+        if current_prompt_chars >= min_chars:
+            return False
+
+        return True
+
+    @classmethod
     def pad_system_prompt_to_threshold(
         cls, system_prompt: str, model_name: str = "", provider_name: str = ""
     ) -> str:
