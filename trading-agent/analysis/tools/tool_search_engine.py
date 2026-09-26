@@ -184,3 +184,50 @@ class ToolSearchEngine:
         """Estimates total token burden of currently active tool schemas."""
         serialized = json.dumps(self.get_active_tool_schemas())
         return len(serialized) // 4
+
+    def materialize_tools_for_query(self, query: str, top_k: int = 5) -> List[str]:
+        """
+        Dynamically finds and mounts the top-K relevant tools for a user query or turn context
+        if they are not already active, respecting token budgets.
+        """
+        matches = self.search_tools(query, limit=top_k)
+        activated = []
+        for m in matches:
+            tname = m["name"]
+            if tname not in self._active_tools:
+                # Check token budget before activating
+                if self.estimate_schema_tokens() < self.token_budget:
+                    self._active_tools.add(tname)
+                    rec = self._tools.get(tname)
+                    if rec:
+                        rec.is_active = True
+                    activated.append(tname)
+        return activated
+
+    def execute_progressive_tool(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        executor: Optional[Any] = None,
+    ) -> Any:
+        """
+        Executes a tool discovered progressively. If the tool is not active,
+        it automatically describes and activates it, then dispatches execution.
+        """
+        if tool_name not in self._tools:
+            return {"success": False, "error": f"Tool '{tool_name}' not registered in ToolSearchEngine."}
+
+        self.describe_tool(tool_name)
+
+        if executor is not None:
+            if hasattr(executor, "execute_tool"):
+                return executor.execute_tool(tool_name, arguments)
+            elif callable(executor):
+                return executor(tool_name, arguments)
+
+        return {
+            "success": True,
+            "tool_name": tool_name,
+            "status": "activated",
+            "message": f"Tool '{tool_name}' mounted into active context.",
+        }

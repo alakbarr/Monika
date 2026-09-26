@@ -43,6 +43,8 @@ trading-agent/logs/
 .agents/
 .agent_state/
 .freebuff/
+.worktrees/
+moa-traces/
 trading-agent/data/sessions/
 trading-agent/data/sessions/browser_profile/
 dummy_test_state.json

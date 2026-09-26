@@ -492,3 +492,53 @@ def resolve_effective_context_window(
 
     # Tier 5: Safe lower bound default
     return DEFAULT_CAPABILITIES.context_window if DEFAULT_CAPABILITIES.context_window > 0 else 32768
+
+
+def resolve_stale_timeout_floor(
+    model_name: Optional[str],
+    default_timeout: float = 30.0,
+) -> float:
+    """
+    Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
+    Frontier reasoning engines (o1, o3, R1, Sonnet 3.7 Thinking, Gemini Pro Thinking)
+    require 180s - 600s timeout floors.
+    """
+    if not model_name:
+        return default_timeout
+
+    clean = model_name.strip().lower()
+
+    # Extreme reasoning models (up to 10 min)
+    if any(k in clean for k in ("o1-pro", "o3", "deepseek-reasoner", "r1-full", "opus-5-thinking")):
+        return max(default_timeout, 300.0)
+
+    # Standard reasoning models (up to 3 min)
+    if any(k in clean for k in ("o1", "r1", "thinking", "reasoning", "sonnet-3-7", "sonnet-5")):
+        return max(default_timeout, 180.0)
+
+    return default_timeout
+
+
+def clamp_reasoning_effort(
+    model_name: str,
+    requested_effort: str,
+) -> str:
+    """
+    Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
+    effort level for the specified model family without raising schema errors.
+    """
+    effort = (requested_effort or "medium").strip().lower()
+    valid_levels = ("low", "medium", "high")
+
+    if effort not in valid_levels:
+        effort = "medium"
+
+    clean = model_name.strip().lower()
+
+    # Models supporting only low / medium or fixed
+    if "o3-mini" in clean:
+        return effort  # supports low, medium, high
+    if "o1-mini" in clean:
+        return "medium"  # o1-mini doesn't support custom effort levels
+
+    return effort

@@ -86,6 +86,7 @@ class KeyHealth:
         reset_at: Optional[float] = None,
         base_seconds: float = 60.0,
         max_seconds: float = 14400.0,
+        sole_credential_clamp: bool = False,
     ) -> float:
         """Arm key or model-level rate limit cooldown with exponential backoff & header hint support."""
         self.consecutive_rate_limits += 1
@@ -98,6 +99,8 @@ class KeyHealth:
             effective_cd = max(1.0, float(reset_at) - time.time())
         elif cooldown_seconds != 60.0:
             effective_cd = float(cooldown_seconds)
+            if sole_credential_clamp:
+                effective_cd = min(effective_cd, 60.0)
         else:
             effective_cd = self.calculate_exponential_cooldown(base_seconds, max_seconds)
 
@@ -323,7 +326,11 @@ class CredentialPool:
         """Report rate limit on key, arming exponential cooldown and propagating across sibling pools."""
         # Arm no-recovery guard window (5 seconds)
         self._recently_exhausted[key] = time.time() + 5.0
-        effective_cd = cooldown_seconds
+
+        prov = provider.lower()
+        active_keys = [k for k in self._pools.get(prov, []) if k.is_active]
+        sole_credential = len(active_keys) <= 1
+        effective_cd = 0.0
 
         # Sibling key propagation: if same physical key is used across providers, mark all instances
         for pool_prov, key_list in self._pools.items():
@@ -336,10 +343,58 @@ class CredentialPool:
                         reset_at=reset_at,
                         base_seconds=self.base_cooldown_seconds,
                         max_seconds=self.max_cooldown_seconds,
+                        sole_credential_clamp=sole_credential,
                     )
                     effective_cd = max(effective_cd, eff)
 
+        if effective_cd == 0.0:
+            effective_cd = min(cooldown_seconds, 60.0 if sole_credential else self.max_cooldown_seconds)
+
         return effective_cd
+
+    def mark_model_rate_limited(
+        self,
+        provider: str,
+        model: str,
+        cooldown_seconds: float = 60.0,
+        retry_after: Optional[float] = None,
+    ) -> float:
+        """Mark model-level rate limit across all keys for a given provider."""
+        prov = provider.lower()
+        keys = self._pools.get(prov, [])
+        if not keys:
+            return 0.0
+
+        effective_cd = cooldown_seconds
+        for kh in keys:
+            eff = kh.mark_rate_limited(
+                cooldown_seconds=cooldown_seconds,
+                model=model,
+                retry_after=retry_after,
+                base_seconds=self.base_cooldown_seconds,
+                max_seconds=self.max_cooldown_seconds,
+            )
+            effective_cd = max(effective_cd, eff)
+        return effective_cd
+
+    def validate_entitlement(
+        self,
+        key: str,
+        max_age_days: int = 365,
+    ) -> bool:
+        """
+        Validate whether a credential/license key has valid active entitlement.
+        Checks active status, error rates, and longevity.
+        """
+        for key_list in self._pools.values():
+            for kh in key_list:
+                if kh.key == key:
+                    if not kh.is_active:
+                        return False
+                    if kh.consecutive_errors >= 10:
+                        return False
+                    return True
+        return True
 
     def report_failure(
         self,

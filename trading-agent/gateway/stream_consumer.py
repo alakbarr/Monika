@@ -17,11 +17,35 @@ import asyncio
 import logging
 import re
 import time
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Gateway.StreamConsumer")
 
 _CODE_FENCE_REGEX = re.compile(r"^```", re.MULTILINE)
+_THINK_CLOSED_REGEX = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
+_THINK_OPEN_REGEX = re.compile(r"<think>.*$", re.DOTALL | re.IGNORECASE)
+
+
+def scrub_thinking_tags(text: str) -> Tuple[str, str]:
+    """
+    Separates internal thinking tokens (<think>...</think>) from user-facing answer text.
+    Returns (cleaned_text, extracted_thoughts).
+    """
+    if not text:
+        return "", ""
+
+    thoughts = []
+    for m in _THINK_CLOSED_REGEX.finditer(text):
+        thoughts.append(m.group(1).strip())
+
+    cleaned = _THINK_CLOSED_REGEX.sub("", text)
+    # Strip any currently open unclosed <think> tag at the tail of streaming preview
+    unclosed_m = _THINK_OPEN_REGEX.search(cleaned)
+    if unclosed_m:
+        thoughts.append(unclosed_m.group(0).replace("<think>", "").strip())
+        cleaned = _THINK_OPEN_REGEX.sub("", cleaned)
+
+    return cleaned.strip(), "\n".join(thoughts).strip()
 
 
 def ensure_closed_code_fences(text: str) -> str:
@@ -44,7 +68,7 @@ def ensure_closed_code_fences(text: str) -> str:
 
 class LiveStreamConsumer:
     """
-    Throttled streaming accumulator for platform message dispatching.
+    Throttled streaming accumulator for platform message dispatching with optional think scrubbing.
     Flushes partial text updates to a destination callback at controlled intervals.
     """
 
@@ -52,9 +76,11 @@ class LiveStreamConsumer:
         self,
         flush_interval_seconds: float = 0.5,
         publisher_callback: Optional[Callable[[str, bool], Coroutine[Any, Any, None]]] = None,
+        scrub_thinking: bool = False,
     ):
         self.flush_interval_seconds = flush_interval_seconds
         self.publisher_callback = publisher_callback
+        self.scrub_thinking = scrub_thinking
         self._buffer: str = ""
         self._last_flush_time: float = 0.0
         self._is_completed: bool = False
@@ -73,11 +99,15 @@ class LiveStreamConsumer:
         if not self.publisher_callback or not self._buffer:
             return
 
+        text = self._buffer
+        if self.scrub_thinking:
+            text, _ = scrub_thinking_tags(text)
+
         # Prepare balanced content
         if not is_final:
-            display_text = ensure_closed_code_fences(self._buffer)
+            display_text = ensure_closed_code_fences(text)
         else:
-            display_text = self._buffer
+            display_text = text
 
         try:
             await self.publisher_callback(display_text, is_final)

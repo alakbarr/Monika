@@ -640,9 +640,31 @@ class ChatAgent:
             interrupt_note = self._interrupt_message or "Turn was interrupted."
             self._interrupt_message = None
             logger.info(f"[ChatAgent] Turn interrupted for user {self.user_id}: {interrupt_note}")
+            await self._close_durable_failed_turn(session_id=session_id, reason=interrupt_note)
             return f"⚠️ {interrupt_note}", None
+        except Exception as unhandled_exc:
+            from agent.error_classifier import classify_api_error
+            classified = classify_api_error(unhandled_exc)
+            err_msg = f"Maaf, terjadi kendala teknis: {classified.reason.value}. {classified.message}"
+            logger.error(f"[ChatAgent] Unhandled turn exception: {unhandled_exc}", exc_info=True)
+            await self._close_durable_failed_turn(session_id=session_id, reason=f"Error: {classified.reason.value}")
+            return f"⚠️ {err_msg}", None
         finally:
             self._active_task = None
+
+    async def _close_durable_failed_turn(
+        self, session_id: Optional[str] = None, reason: str = "Turn aborted before completion"
+    ) -> None:
+        """Appends a synthetic assistant boundary to session messages in DB if the last message was from user, preserving role alternation."""
+        try:
+            async with get_session() as session:
+                history = await self._load_history(session, session_id=session_id)
+                if history and history[-1].get("role") == "user":
+                    notice = f"[System Notice: {reason}]"
+                    await self._save_message(session, "assistant", notice, session_id=session_id)
+                    logger.debug(f"[ChatAgent] Sealed durable failed turn with synthetic assistant boundary for session: {session_id}")
+        except Exception as e:
+            logger.warning(f"[ChatAgent] Failed to close durable failed turn: {e}")
 
     async def _handle_streaming(
         self,

@@ -31,12 +31,56 @@ import utils.clock as clock
 logger = logging.getLogger("TradingAgent.WebSearch")
 
 
+class SearchMemo:
+    """
+    Single-flight coalescing per-query mutex to prevent thundering-herd duplicate web searches.
+    Ensures that concurrent identical queries share a single in-flight network request.
+    """
+
+    def __init__(self):
+        self._inflight: Dict[str, asyncio.Future] = {}
+        self._lock = asyncio.Lock()
+
+    async def execute_coalesced(
+        self,
+        cache_key: str,
+        coro_factory: Any,
+    ) -> Dict[str, Any]:
+        async with self._lock:
+            if cache_key in self._inflight:
+                fut = self._inflight[cache_key]
+                is_leader = False
+            else:
+                loop = asyncio.get_running_loop()
+                fut = loop.create_future()
+                self._inflight[cache_key] = fut
+                is_leader = True
+
+        if not is_leader:
+            result = await asyncio.shield(fut)
+            res_copy = dict(result)
+            res_copy["coalesced"] = True
+            return res_copy
+
+        try:
+            res = await coro_factory()
+            fut.set_result(res)
+            return res
+        except BaseException as exc:
+            fut.set_exception(exc)
+            raise
+        finally:
+            async with self._lock:
+                self._inflight.pop(cache_key, None)
+
+
 class WebSearchService:
     """Service pencarian web asinkron dengan rotasi kunci dan multi-tier fallback."""
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
         search_cfg = self.settings.get("search", {})
+        self._search_memo = SearchMemo()
 
         # 1. Parse Tavily keys pool
         def _is_valid_val(val: Any) -> bool:
@@ -135,7 +179,7 @@ class WebSearchService:
     ) -> Dict[str, Any]:
         """
         Lakukan pencarian web dengan query yang diberikan.
-        Mengembalikan dict hasil terstruktur dengan fallback berjenjang.
+        Mengembalikan dict hasil terstruktur dengan fallback berjenjang dan single-flight deduplication.
         """
         if not query or not query.strip():
             return {
@@ -161,6 +205,28 @@ class WebSearchService:
                 else:
                     del self._cache[cache_key]
 
+        return await self._search_memo.execute_coalesced(
+            cache_key,
+            lambda: self._execute_search_pipeline(
+                query=query,
+                topic=topic,
+                search_depth=search_depth,
+                time_range=time_range,
+                max_results=max_results,
+                cache_key=cache_key,
+            ),
+        )
+
+    async def _execute_search_pipeline(
+        self,
+        query: str,
+        topic: str,
+        search_depth: str,
+        time_range: str,
+        max_results: int,
+        cache_key: str,
+    ) -> Dict[str, Any]:
+        """Eksekusi multi-tier fallback pencarian saat cache miss."""
         # Tier 1: Tavily API with multi-key round-robin rotation
         if self._tavily_keys:
             tavily_res = await self._search_tavily_with_rotation(

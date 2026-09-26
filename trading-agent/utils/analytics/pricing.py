@@ -30,6 +30,13 @@ class Price:
     output: float         # $ / 1M output token
     note: str = ""
     tier: Optional[PricingTier] = None
+    cache_write: Optional[float] = None  # $ / 1M cache creation tokens
+
+    @property
+    def effective_cache_write(self) -> float:
+        if self.cache_write is not None:
+            return self.cache_write
+        return round(self.input * 1.25, 4)
 
 
 # Harga resmi USD per 1.000.000 token
@@ -436,6 +443,7 @@ def cost_usd(
     provider: Optional[str] = None,
     is_direct_free_tier: Optional[bool] = None,
     is_already_uncached: Optional[bool] = None,
+    cache_creation_tokens: int = 0,
 ) -> float:
     """
     Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal.
@@ -467,6 +475,7 @@ def cost_usd(
     # Use Decimal for high-precision institutional accounting
     rate_in = Decimal(str(p.input))
     rate_cache = Decimal(str(p.cached_input))
+    rate_cache_write = Decimal(str(p.effective_cache_write))
     rate_out = Decimal(str(p.output))
     one_million = Decimal("1000000.0")
 
@@ -488,6 +497,9 @@ def cost_usd(
     else:
         cost_cache = (Decimal(str(cached_tokens)) / one_million) * rate_cache
 
+    # Cache creation / write cost
+    cost_cache_write = (Decimal(str(cache_creation_tokens)) / one_million) * rate_cache_write
+
     # Output cost
     if p.tier and output_tokens > p.tier.threshold_tokens:
         base_out = Decimal(str(p.tier.threshold_tokens))
@@ -497,7 +509,7 @@ def cost_usd(
     else:
         cost_out = (Decimal(str(output_tokens)) / one_million) * rate_out
 
-    total_cost = cost_in + cost_cache + cost_out
+    total_cost = cost_in + cost_cache + cost_cache_write + cost_out
     # Quantize to 6 decimal places
     quantized = total_cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
     return float(quantized)
@@ -516,9 +528,69 @@ def cost_from_canonical(
         cached_tokens=usage.cache_read_tokens,
         provider=provider,
         is_already_uncached=True,
+        cache_creation_tokens=usage.cache_creation_tokens,
     )
+
+
+async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Dict[str, Price]:
+    """
+    Fetches live model pricing from OpenRouter API (/api/v1/models) with local disk caching.
+    Provides instant fallback to static PRICING dictionary on network failure or rate limit.
+    """
+    import json
+    import os
+    import aiohttp
+    from pathlib import Path
+
+    cache_file = Path(cache_path or "trading-agent/data/openrouter_pricing.json")
+    # Check fresh cache (less than 24 hours)
+    if cache_file.exists():
+        try:
+            if time.time() - cache_file.stat().st_mtime < 86400:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    res = {}
+                    for m_id, p in data.items():
+                        res[m_id] = Price(
+                            input=float(p.get("input", 0.0)),
+                            cached_input=float(p.get("cached_input", 0.0)),
+                            output=float(p.get("output", 0.0)),
+                            cache_write=float(p.get("cache_write", 0.0)) if "cache_write" in p else None,
+                        )
+                    return res
+        except Exception:
+            pass
+
+    url = "https://openrouter.ai/api/v1/models"
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8.0)) as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    body = await resp.json()
+                    models_data = body.get("data", [])
+                    extracted: Dict[str, Dict[str, float]] = {}
+                    for item in models_data:
+                        mid = item.get("id")
+                        pricing = item.get("pricing", {})
+                        if mid and pricing:
+                            in_rate = float(pricing.get("prompt", 0.0)) * 1000000.0
+                            out_rate = float(pricing.get("completion", 0.0)) * 1000000.0
+                            extracted[mid] = {
+                                "input": in_rate,
+                                "cached_input": in_rate * 0.5,
+                                "output": out_rate,
+                            }
+                    cache_file.parent.mkdir(parents=True, exist_ok=True)
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump(extracted, f, indent=2)
+                    return {k: Price(input=v["input"], cached_input=v["cached_input"], output=v["output"]) for k, v in extracted.items()}
+    except Exception as e:
+        logger.debug(f"[Pricing] OpenRouter live pricing fetch fallback to static: {e}")
+
+    return PRICING
 
 
 # Alias for backward compatibility
 estimate_cost = cost_usd
+
 

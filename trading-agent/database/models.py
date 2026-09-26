@@ -1691,3 +1691,61 @@ class PatternScreeningCache(Base):
         Index("idx_pattern_cache_sym_at", "symbol", "screened_at"),
     )
 
+
+# =============================================================================
+# Unified Agent State & Session Lineage Models
+# =============================================================================
+
+class SystemPrompt(Base):
+    """Content-addressable deduplicated system prompt storage."""
+    __tablename__ = "system_prompts"
+
+    hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class AgentSession(Base):
+    """Institutional multi-tenant agent session tracking with parent-child lineage."""
+    __tablename__ = "agent_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    parent_session_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True, default="default")
+    platform: Mapped[str] = mapped_column(String(32), default="telegram")
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    system_prompt_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cached_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        Index("idx_agent_sess_user_plat", "user_id", "platform"),
+    )
+
+
+class AgentSessionMessage(Base):
+    """Granular turn and tool execution log supporting non-destructive compaction."""
+    __tablename__ = "agent_session_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)  # user, assistant, system, tool
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    active: Mapped[int] = mapped_column(Integer, default=1, index=True)
+    compacted: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    tool_call_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    tool_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    carrier_marker: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+    __table_args__ = (
+        Index("idx_asm_sess_active", "session_id", "active"),
+        Index("idx_asm_sess_created", "session_id", "created_at"),
+    )
+
+

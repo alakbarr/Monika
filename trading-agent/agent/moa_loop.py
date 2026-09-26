@@ -166,6 +166,39 @@ class MoAResult:
     trace_path: Optional[str] = None
 
 
+def trim_head_tail_context(
+    messages: List[Dict[str, Any]],
+    max_tool_chars: int = 500,
+    max_total_messages: int = 24,
+) -> List[Dict[str, Any]]:
+    """
+    Applies zero-cost head-tail preview to historical tool responses and trims excessive
+    turn depth so MoA deliberation layers never encounter token bloat.
+    """
+    if not messages:
+        return []
+
+    pruned = []
+    for msg in messages:
+        m = dict(msg)
+        content = m.get("content")
+        role = m.get("role")
+        if role == "tool" and isinstance(content, str) and len(content) > max_tool_chars:
+            half = max_tool_chars // 2
+            head = content[:half]
+            tail = content[-half:]
+            omitted = len(content) - max_tool_chars
+            m["content"] = f"{head}\n... [truncated {omitted} characters in historical context] ...\n{tail}"
+        pruned.append(m)
+
+    if len(pruned) > max_total_messages:
+        head_zone = pruned[:2]
+        tail_zone = pruned[-(max_total_messages - 2):]
+        pruned = head_zone + tail_zone
+
+    return pruned
+
+
 class MoARuntime:
     """
     Orchestrates Mixture-of-Agents parallel generation, aggregation, and failovers.
@@ -210,9 +243,10 @@ class MoARuntime:
         label = proposer.get("label", proposer.get("model", "unknown"))
         start_time = time.monotonic()
 
+        cleaned_history = trim_head_tail_context(history)
         messages = [
             {"role": "system", "content": MOA_ADVISORY_SYSTEM_PROMPT},
-            *history,
+            *cleaned_history,
             {
                 "role": "user",
                 "content": f"[Role Focus: {proposer.get('role_focus', 'Advisory Analysis')}]\n{user_prompt}",
@@ -314,9 +348,10 @@ class MoARuntime:
             )
             is_degraded = len(successful_proposals) < len(proposers)
 
+        agg_history = trim_head_tail_context(history_msgs)
         agg_messages = [
             {"role": "system", "content": MOA_AGGREGATOR_SYSTEM_PROMPT},
-            *history_msgs,
+            *agg_history,
             {"role": "user", "content": synth_user_msg},
         ]
         agg_messages = merge_same_role_messages(agg_messages)
@@ -391,3 +426,83 @@ class MoARuntime:
                 timeout=timeout,
             ),
         )
+
+
+class MoAChatCompletions:
+    """
+    Standard OpenAI-compatible Chat Completions adapter for the MoA engine.
+    Allows drop-in use anywhere a chat completion client is expected.
+    """
+
+    def __init__(self, runtime: Optional[MoARuntime] = None, preset: str = "trading_quant_moa"):
+        self.runtime = runtime or MoARuntime()
+        self.preset = preset
+
+    def create(
+        self,
+        messages: List[Dict[str, Any]],
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        timeout: Optional[float] = None,
+        session_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Synchronous chat completion."""
+        if not messages:
+            return {"choices": [{"message": {"role": "assistant", "content": ""}}]}
+
+        last_msg = messages[-1]
+        user_prompt = last_msg.get("content", "")
+        history = messages[:-1]
+
+        res = self.runtime.run_moa(
+            user_prompt=user_prompt,
+            history=history,
+            preset_name=model or self.preset,
+            session_id=session_id,
+            timeout=timeout,
+        )
+
+        total_tokens = sum(
+            p.get("usage", {}).get("total_tokens", 0) for p in res.proposer_metrics
+        ) + res.aggregator_metrics.get("usage", {}).get("total_tokens", 0)
+
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": res.synthesis,
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "total_tokens": total_tokens,
+            },
+            "moa_result": res,
+        }
+
+    async def create_async(
+        self,
+        messages: List[Dict[str, Any]],
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        timeout: Optional[float] = None,
+        session_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Asynchronous chat completion."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.create(
+                messages=messages,
+                model=model,
+                temperature=temperature,
+                timeout=timeout,
+                session_id=session_id,
+                **kwargs,
+            ),
+        )
+
