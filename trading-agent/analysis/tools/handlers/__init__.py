@@ -30,6 +30,7 @@ from analysis.tools.handlers import (
     pattern_similarity_tools,
 )
 from analysis.tools.domain import spill_reader_tool
+from analysis.tools import domain
 
 __all__ = [
     "market_data",

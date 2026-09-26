@@ -628,6 +628,15 @@ class TradingAgent:
         except Exception as e:
             logger.warning(f"PluginEngine initialization error: {e}")
 
+        # Initialize Universal Cron Scheduler
+        try:
+            from scheduler.universal_cron_scheduler import UniversalCronScheduler
+            self.universal_cron = UniversalCronScheduler()
+            logger.info("  [OK] UniversalCronScheduler initialized")
+        except Exception as e:
+            logger.warning(f"UniversalCronScheduler initialization error: {e}")
+            self.universal_cron = None
+
         logger.info("All components initialized")
 
     async def publish_tick(self, symbol: str, bid: float, ask: float, last: float = 0.0, spread: float = 0.0) -> None:
@@ -1276,6 +1285,8 @@ class TradingAgent:
             _launch_task("BackgroundReviewEngine", self.background_review_engine.run, "background_review_engine")
         if hasattr(self, "playbook_curator") and self.playbook_curator:
             _launch_task("PlaybookCurator", self.playbook_curator.start, "playbook_curator")
+        if hasattr(self, "universal_cron") and self.universal_cron:
+            self.universal_cron.start()
 
         if self.telegram_bot:
             self._tg_task = _launch_task("TelegramBot", self.telegram_bot.start, "telegram_bot")
@@ -1714,6 +1725,7 @@ class TradingAgent:
             (getattr(self, "strategy_synthesis_scheduler", None), "StrategySynthesisScheduler"),
             (getattr(self, "background_review_engine", None), "BackgroundReviewEngine"),
             (getattr(self, "playbook_curator", None), "PlaybookCurator"),
+            (getattr(self, "universal_cron", None), "UniversalCronScheduler"),
             (self._active_scraper_runner, "ActiveScraperRunner"),
             (getattr(self, "execution_service", None), "ExecutionService"),
             (getattr(self, "mt5_health_checker", None), "MT5HealthChecker"),
