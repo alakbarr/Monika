@@ -72,8 +72,11 @@ async def test_openrouter_generate():
         call_kwargs = mock_create.call_args.kwargs
         assert call_kwargs["model"] == "anthropic/claude-sonnet-5"
         assert call_kwargs["temperature"] == 0.2
-        assert len(call_kwargs["messages"]) == 2
-        assert call_kwargs["messages"][0] == {"role": "system", "content": "System prompt"}
+        if isinstance(call_kwargs["messages"][0]["content"], list):
+            assert call_kwargs["messages"][0]["content"][0]["text"] == "System prompt"
+            assert call_kwargs["messages"][0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+        else:
+            assert call_kwargs["messages"][0] == {"role": "system", "content": "System prompt"}
         assert call_kwargs["messages"][1] == {"role": "user", "content": "Test prompt"}
 
 

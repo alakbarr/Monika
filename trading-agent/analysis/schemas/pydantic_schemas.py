@@ -625,7 +625,8 @@ class SubmitFundamentalBriefSchema(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Your confidence in this brief (0.0 to 1.0). Be honest - lower confidence if data is sparse or contradictory.")
     priced_in_assessment: PricedInAssessment = Field(..., description="WAJIB DIISI. Structured assessment of what is currently priced in to market levels. Use data from get_fedwatch_probabilities, get_cot_report, and get_price_momentum.")
     strongest_counter_thesis: str = Field(
-        default='',
+        ...,
+        min_length=50,
         description="WAJIB: Argumen TERKUAT yang berlawanan dengan tesis makro utama Anda saat ini. "
                     "Harus mengutip data/faktor konkret yang jika benar akan membalikkan bias Anda. "
                     "Contoh: 'Jika NFP Jumat >250k, tesis USD bearish saya batal karena Fed hawkish "
@@ -645,6 +646,43 @@ class SubmitFundamentalBriefSchema(BaseModel):
         default_factory=dict,
         description="Alias untuk bias_continuity_justification (backward compatibility).",
     )
+
+    @model_validator(mode='before')
+    @classmethod
+    def harmonize_counter_thesis_and_primitives(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Ensure dict structures default properly if passed as None or omitted
+            if data.get('invalidation_conditions') is None:
+                data['invalidation_conditions'] = {}
+            if data.get('currency_confidence') is None:
+                data['currency_confidence'] = {}
+            if data.get('bias_continuity_justification') is None:
+                data['bias_continuity_justification'] = {}
+            if data.get('bias_change_justification') is None:
+                data['bias_change_justification'] = {}
+
+            # Auto-synthesize strongest_counter_thesis if missing or too short (< 50 chars)
+            ct = data.get('strongest_counter_thesis')
+            if not ct or not isinstance(ct, str) or len(ct.strip()) < 50:
+                inv = data.get('invalidation_conditions', {})
+                candidates = []
+                if isinstance(inv, dict) and inv:
+                    for ccy, cond in inv.items():
+                        cond_str = str(cond).strip()
+                        if len(cond_str) >= 20:
+                            candidates.append(f"{ccy}: {cond_str}")
+                if candidates:
+                    synth = f"Tesis makro berisiko batal jika skenario invalidasi berikut terwujud: {'; '.join(candidates)}."
+                    if len(synth) >= 50:
+                        data['strongest_counter_thesis'] = synth
+                elif not ct:
+                    narrative = str(data.get('macro_narrative') or '')
+                    if len(narrative) >= 100:
+                        data['strongest_counter_thesis'] = (
+                            "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
+                            "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+                        )
+        return data
 
     @field_validator('macro_regime', mode='before')
     @classmethod

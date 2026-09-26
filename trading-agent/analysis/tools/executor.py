@@ -1065,7 +1065,7 @@ class ToolExecutor:
         if not inp.get('strongest_counter_thesis'):
             errors.append("MISSING_COUNTER_THESIS: Anda WAJIB memberikan strongest_counter_thesis yang valid.")
         elif len(inp.get('strongest_counter_thesis', '')) < 50:
-            errors.append("WEAK_COUNTER_THESIS: strongest_counter_thesis terlalu pendek, sebutkan data/skenario makro spesifik yang bisa membatalkan tesis Anda.")
+            errors.append("WEAK_COUNTER_THESIS: strongest_counter_thesis terlalu pendek (WAJIB >= 50 karakter), sebutkan data/skenario makro spesifik yang bisa membatalkan tesis Anda.")
 
         # NEW P2-4: Check priced_in_assessment completeness
         pi = inp.get('priced_in_assessment', {})
@@ -1365,7 +1365,7 @@ class ToolExecutor:
 
         try:
             validated_data = SubmitFundamentalBriefSchema.model_validate(inp)
-            inp = validated_data.model_dump(exclude_unset=True, mode="json")
+            inp = validated_data.model_dump(mode="json")
         except ValidationError as e:
             error_msgs = [f"Field '{'.'.join(str(x) for x in err['loc'])}': {err['msg']}" for err in e.errors()]
             logger.warning(f"Pydantic validation failed for submit_fundamental_brief: {error_msgs}")
@@ -1623,11 +1623,15 @@ class ToolExecutor:
                 "currency_bias": inp.get("currency_bias", {}),
                 "currency_confidence": inp.get("currency_confidence", {}),
                 "invalidation_conditions": inp.get("invalidation_conditions", {}),
+                "strongest_counter_thesis": inp.get("strongest_counter_thesis", ""),
                 "key_upcoming_risks": inp.get("key_upcoming_risks", []),
                 "risk_sentiment": inp.get("risk_sentiment", "mixed"),
                 "macro_regime": inp.get("macro_regime", "mixed"),
                 "confidence": inp.get("confidence", 0.5),
                 "priced_in_assessment": inp.get("priced_in_assessment", None),
+                "key_data_points_used": inp.get("key_data_points_used", {}),
+                "checklist": inp.get("checklist", {}),
+                "bias_continuity_justification": inp.get("bias_continuity_justification", {}),
                 "_data_quality_degraded": inp.get("_data_quality_degraded", False),
                 "_degradation_reasons": inp.get("_degradation_reasons", []),
             }),
@@ -2220,7 +2224,7 @@ class ToolExecutor:
 
         try:
             validated_data = SubmitAssetAnalysisSchema.model_validate(inp)
-            inp = validated_data.model_dump(exclude_unset=True, mode="json") # Overwrite inp with clean coerced data
+            inp = validated_data.model_dump(mode="json") # Overwrite inp with clean coerced data
         except ValidationError as e:
             self.submit_attempts += 1
             error_msgs = [f"Field '{'.'.join(str(x) for x in err['loc'])}': {err['msg']}" for err in e.errors()]
@@ -2356,7 +2360,7 @@ class ToolExecutor:
                     )
                 
         # === CONFLUENCE OVERLAP DETECTION ===
-        factors = inp.get('confluence_factors', [])
+        factors = inp.get('confluence_factors') or []
         if factors and decision in ('buy', 'sell'):
             zone_factors = {'near_fvg', 'near_order_block', 'in_ote_zone', 'near_sr_zone'}
             active_zone_factors = set(factors) & zone_factors
@@ -2406,7 +2410,7 @@ class ToolExecutor:
                             f'{zone_factor_score} → {effective_zone_contribution} pts.'
                         )
                 
-        if 'fundamental_bias' in factors and decision in ('buy', 'sell'):
+        if factors and 'fundamental_bias' in factors and decision in ('buy', 'sell'):
             try:
                 from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
                 pair_info = SYMBOL_CURRENCY_MAP.get(symbol)

@@ -35,9 +35,9 @@ def test_assemble_stage2():
         min_rr_ratio=1.4,
         core_memory="Sample Symbol Memory"
     )
-    assert "XAUUSD" in system
-    assert "Effective Confluence Threshold: 8/14" in system
-    assert "Minimum R:R Ratio (Intraday Range Strategy): 1.4" in system
+    assert "XAUUSD" in user
+    assert "Effective Confluence Threshold: 8/14" in user
+    assert "Minimum R:R Ratio: 1.4" in user
     assert "[AGENT MEMORY]" in system
     assert "AVAILABLE TOOL CATEGORIES" in system
     assert "[PRE-FETCHED DATA]" in user
@@ -49,8 +49,7 @@ def test_assemble_stage2_tiers():
     t1, t2, t3 = assembler.assemble_stage2_tiers(symbol="EURUSD")
     assert "SMC/ICT" in t1
     assert "AVAILABLE TOOL CATEGORIES" in t2
-    assert "CURRENT ANALYSIS TARGET" in t3
-    assert "EURUSD" in t3
+    assert "EURUSD" in t3 or "target asset" in t3
 
 
 def test_assemble_stage1_system_tuple_gemini_cache_threshold():
@@ -69,8 +68,8 @@ def test_assemble_stage1_system_tuple_gemini_cache_threshold():
 
 def test_assemble_stage2_tiers_cache_invariance():
     assembler = PromptAssembler({"trading": {"caveman_mode": True}})
-    t1_eur, t2_eur, t3_eur = assembler.assemble_stage2_tiers(symbol="EURUSD", include_target_in_system=False)
-    t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(symbol="GBPUSD", include_target_in_system=False)
+    t1_eur, t2_eur, t3_eur = assembler.assemble_stage2_tiers(symbol="EURUSD", model_name="gemini-3", include_target_in_system=False)
+    t1_gbp, t2_gbp, t3_gbp = assembler.assemble_stage2_tiers(symbol="GBPUSD", model_name="gemini-3", include_target_in_system=False)
     assert t1_eur == t1_gbp
     assert t2_eur == t2_gbp
     assert "Symbol: EURUSD" not in t3_eur

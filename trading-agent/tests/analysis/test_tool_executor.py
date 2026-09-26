@@ -920,5 +920,66 @@ class TestToolExecutor:
         assert "🚨 CRITICAL" not in res_10_5h["staleness_warning"]
         assert res_10_5h["is_stale"] is False
 
+    @pytest.mark.asyncio
+    async def test_submit_fundamental_brief_schema_required_counter_thesis(self):
+        """Verify that SUBMIT_FUNDAMENTAL_BRIEF tool schema strictly requires strongest_counter_thesis with minLength 50."""
+        from analysis.tools.tools_definitions import SUBMIT_FUNDAMENTAL_BRIEF
+        schema = SUBMIT_FUNDAMENTAL_BRIEF["input_schema"]
+        required_fields = schema.get("required", [])
+        assert "strongest_counter_thesis" in required_fields
+        prop = schema.get("properties", {}).get("strongest_counter_thesis", {})
+        assert prop.get("minLength") == 50
+
+    @pytest.mark.asyncio
+    async def test_submit_fundamental_brief_auto_harmonize_counter_thesis(self):
+        """Verify that omitting strongest_counter_thesis auto-synthesizes from invalidation_conditions without rejection."""
+        mock_session = AsyncMock()
+        executor = ToolExecutor(mock_session, settings={})
+        executor.called_tools.update({"get_dxy", "get_vix"})
+
+        # Payload without strongest_counter_thesis
+        brief_data = {
+            "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+            "key_data_points_used": {"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5},
+            "macro_narrative": "USD bullish due to resilient labor market while European data continues to soften. VIX remains subdued around 15.5 with risk sentiment balanced.",
+            "currency_bias": {
+                "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
+                "JPY": "neutral", "AUD": "neutral", "XAU": "neutral"
+            },
+            "invalidation_conditions": {
+                "USD": "Bias USD bullish batal jika DXY D1 close di bawah level 103.50 ATAU NFP miss > 50k",
+                "EUR": "Bias EUR bearish batal jika break di atas 1.0950 ATAU ECB rate hike signal"
+            },
+            "currency_confidence": {"USD": 0.75, "EUR": 0.65},
+            "risk_sentiment": "mixed",
+            "macro_regime": "mixed",
+            "confidence": 0.70,
+            "priced_in_assessment": {
+                "dominant_driver": "Fed hawkish expectations",
+                "priced_in_score": 5,
+                "sell_the_news_risk": "medium",
+                "cot_positioning_percentile": 55.0,
+                "retail_sentiment_percentile": 50.0
+            }
+        }
+
+        # Mock DB queries inside _tool_submit_fundamental_brief
+        mock_session.execute = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute.return_value = mock_result
+
+        result = await executor._tool_submit_fundamental_brief(brief_data)
+        assert result.get("status") == "saved"
+        assert "valid_until" in result
+        mock_session.add.assert_called_once()
+        args, _ = mock_session.add.call_args
+        saved_brief = args[0]
+        saved_data = json.loads(saved_brief.structured_json)
+        assert saved_data.get("strongest_counter_thesis") is not None
+        assert len(saved_data["strongest_counter_thesis"]) >= 50
+        assert "invalidasi" in saved_data["strongest_counter_thesis"].lower()
+
 
 
