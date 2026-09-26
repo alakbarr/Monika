@@ -1173,19 +1173,42 @@ class SystemConfig(Base):
 
     @classmethod
     async def upsert(cls, session, key: str, value: Optional[str] = None, description: Optional[str] = None) -> "SystemConfig":
-        """Upsert key-value record safely."""
+        """Upsert key-value record safely and atomically across concurrent transactions."""
         from sqlalchemy import select
-        cfg = (await session.execute(select(cls).where(cls.key == key))).scalar_one_or_none()
-        if cfg:
+        bind = session.bind
+        dialect_name = bind.dialect.name if bind else "postgresql"
+        if dialect_name == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            now = _utcnow()
+            update_dict: dict[str, Any] = {"updated_at": now}
             if value is not None:
-                cfg.value = value
+                update_dict["value"] = value
             if description is not None:
-                cfg.description = description
-            cfg.updated_at = _utcnow()
+                update_dict["description"] = description
+
+            stmt = pg_insert(cls).values(
+                key=key,
+                value=value,
+                description=description,
+                updated_at=now
+            ).on_conflict_do_update(
+                index_elements=['key'],
+                set_=update_dict
+            )
+            await session.execute(stmt)
+            return (await session.execute(select(cls).where(cls.key == key))).scalar_one()
         else:
-            cfg = cls(key=key, value=value, description=description, updated_at=_utcnow())
-            session.add(cfg)
-        return cfg
+            cfg = (await session.execute(select(cls).where(cls.key == key))).scalar_one_or_none()
+            if cfg:
+                if value is not None:
+                    cfg.value = value
+                if description is not None:
+                    cfg.description = description
+                cfg.updated_at = _utcnow()
+            else:
+                cfg = cls(key=key, value=value, description=description, updated_at=_utcnow())
+                session.add(cfg)
+            return cfg
 
 class CyclePerformance(Base):
     """Track setiap siklus analisis untuk pemantauan performa."""

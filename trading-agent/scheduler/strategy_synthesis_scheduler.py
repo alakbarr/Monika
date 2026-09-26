@@ -348,6 +348,11 @@ class StrategySynthesisScheduler:
             code_str
         )
 
+        # Auto-repair dunder attribute traversal on candles / dicts (e.g. c.__dict__ -> c)
+        code_str = re.sub(r'\b([a-zA-Z0-9_]+)\s*\.\s*__dict__', r'\1', code_str)
+        # Auto-repair vars(c) -> c
+        code_str = re.sub(r'\bvars\s*\(\s*([a-zA-Z0-9_]+)\s*\)', r'\1', code_str)
+
         # Pattern 1: .fillna(method='ffill'|'bfill', inplace=True|False)
         def _sub_method_first(m):
             method = m.group(1).lower()
@@ -940,6 +945,7 @@ class StrategySynthesisScheduler:
                 f"- ONLY use the allowed imports shown in the skeleton above.\n"
                 f"- DO NOT import any other modules (do NOT import app, core, os, sys, subprocess, requests, edge_engine, trading_system).\n"
                 f"- DO NOT use dynamic getattr(), setattr(), delattr(), eval(), or exec(). Access attributes directly with dot notation (e.g. candle.close) or dict .get().\n"
+                f"- CANDLE ACCESS: get_historical_candles() returns a list of dictionaries (CandleDict). Directly use pd.DataFrame(candles) or candle['close']. NEVER use dunder attributes like .__dict__ or .__class__.\n"
                 f"- PANDAS COMPATIBILITY: NEVER use .fillna(method='ffill') or .fillna(method='bfill') as the 'method' parameter is removed in pandas 2.1+. Always use .ffill() and .bfill() directly.\n"
                 f"- NUMERICAL STABILITY: Always sanitize NaNs/Infs (e.g. using .ffill(), .bfill(), .fillna(0.0), .replace([np.inf, -np.inf], ...), or min_periods=1 in rolling) before casting to integer (.astype(int)). Never call .astype(int) on Series containing NaNs or Infs.\n"
                 f"- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside class {class_name}.\n"

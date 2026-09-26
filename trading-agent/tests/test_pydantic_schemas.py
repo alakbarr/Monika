@@ -321,4 +321,52 @@ def test_upcoming_risk_events_coercion_robustness():
     assert evt2.time == "upcoming"
 
 
+def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
+    import jsonschema
+    from analysis.schemas.schemas import SubmitFundamentalBriefSchema, _inline_refs
+
+    raw_schema = SubmitFundamentalBriefSchema.model_json_schema()
+    inlined = _inline_refs(raw_schema)
+
+    # Check that fedwatch_dominant_pct allows null / None
+    fedwatch_prop = inlined["properties"]["key_data_points_used"]["properties"]["fedwatch_dominant_pct"]
+    assert "type" in fedwatch_prop
+    assert isinstance(fedwatch_prop["type"], list)
+    assert "number" in fedwatch_prop["type"]
+    assert "null" in fedwatch_prop["type"]
+
+    # Validate a payload with None for nullable number fields using jsonschema
+    payload = {
+        "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+        "key_data_points_used": {
+            "dxy_trend_5d": "strengthening +0.8%",
+            "fedwatch_dominant_pct": None,
+            "treasury_10y_yield_pct": None,
+            "cot_leveraged_long_pct": 55.0,
+            "vix_close": 16.0,
+        },
+        "macro_narrative": "Detailed macro narrative describing the economic drivers...",
+        "currency_bias": {
+            "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
+            "JPY": "neutral", "AUD": "neutral", "XAU": "bearish"
+        },
+        "currency_confidence": {
+            "USD": 0.8,
+            "EUR": 0.7,
+            "XAU": 0.9
+        },
+        "confidence": 0.85,
+        "risk_sentiment": "risk-on",
+        "macro_regime": "mixed",
+        "priced_in_assessment": {
+            "dominant_driver": "Fed cut",
+            "priced_in_score": 6,
+            "sell_the_news_risk": "medium",
+            "cot_positioning_percentile": 75.0
+        }
+    }
+    jsonschema.validate(instance=payload, schema=inlined)
+
+
+
 

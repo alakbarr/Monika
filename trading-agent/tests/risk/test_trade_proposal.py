@@ -204,3 +204,71 @@ async def test_risk_gate_evaluate_proposal_wait():
     verdict = await gate.evaluate_proposal(mock_session, wait_prop)
     assert verdict.approved is True
     assert "fortress_admission" in verdict.checks_passed
+
+
+def test_trade_proposal_accepts_analysis_and_dynamic_attributes():
+    class DummyAnalysis:
+        id = 123
+        symbol = "EURUSD"
+
+    ana = DummyAnalysis()
+    # Test through constructor
+    prop = TradeProposal(
+        symbol="EURUSD",
+        direction="BUY",
+        entry_price=1.0850,
+        stop_loss=1.0800,
+        take_profit=1.0950,
+        lot_size=0.1,
+        analysis=ana,
+    )
+    assert prop.analysis is ana
+
+    # Test through from_analysis
+    prop2 = TradeProposal.from_analysis(
+        symbol="EURUSD",
+        decision="BUY",
+        entry_price=1.0850,
+        stop_loss=1.0800,
+        take_profit=1.0950,
+        lot_size=0.1,
+        analysis=ana,
+    )
+    assert prop2.analysis is ana
+
+    # Test dynamic attribute assignment (no "object has no field" error)
+    prop2.custom_flag = True
+    assert getattr(prop2, "custom_flag") is True
+    setattr(prop2, "analysis", ana)
+    assert prop2.analysis is ana
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_evaluate_proposal_forwards_analysis():
+    gate = RiskGate(settings={})
+    gate.evaluate = AsyncMock(return_value=MagicMock(approved=True, checks_passed=["all"], checks_failed=[]))
+    mock_session = AsyncMock()
+
+    class DummyAnalysis:
+        id = 456
+
+    ana = DummyAnalysis()
+    prop = TradeProposal(
+        symbol="EURUSD",
+        direction="BUY",
+        entry_price=1.0850,
+        stop_loss=1.0800,
+        take_profit=1.0950,
+        lot_size=0.1,
+    )
+    await gate.evaluate_proposal(mock_session, prop, analysis=ana)
+    gate.evaluate.assert_awaited_once()
+    assert gate.evaluate.call_args.kwargs["analysis"] is ana
+
+    # Also verify fallback to prop.analysis if not explicitly passed
+    gate.evaluate.reset_mock()
+    prop.analysis = ana
+    await gate.evaluate_proposal(mock_session, prop)
+    gate.evaluate.assert_awaited_once()
+    assert gate.evaluate.call_args.kwargs["analysis"] is ana
+

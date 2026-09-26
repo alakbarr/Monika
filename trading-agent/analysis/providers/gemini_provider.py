@@ -494,6 +494,25 @@ class GeminiProvider(BaseLLMClient):
                 continue
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
                 logger.warning(f"Gemini generate streaming timeout on {self.model}: {e}")
+                self._key_cooldowns[api_key] = time.time() + 15.0
+                if use_streaming:
+                    try:
+                        logger.info(f"Gemini {self.model} attempting non-streaming fallback for generate...")
+                        non_stream_url = f"{self.BASE_URL}/{self.resolved_model}:generateContent"
+                        data = await fetch_with_retry(
+                            non_stream_url, method="POST", json=payload, headers=headers,
+                            timeout=int(timeout_sec), max_retries=1, raise_on_429=True, use_circuit_breaker=False
+                        )
+                        if data and isinstance(data, dict):
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                for part in candidates[0].get("content", {}).get("parts", []):
+                                    if "text" in part and part.get("thought") is not True:
+                                        return part["text"]
+                    except Exception as fb_err:
+                        logger.warning(f"Gemini generate non-streaming fallback failed: {fb_err}")
+                if attempt + 1 < max_attempts:
+                    continue
                 raise
             except Exception as e:
                 if self._is_transient_error(e):
@@ -754,6 +773,23 @@ class GeminiProvider(BaseLLMClient):
                 last_req_err = e
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
                 logger.warning(f"Gemini run_tool_agent streaming timeout on {self.model}: {e}")
+                self._key_cooldowns[api_key] = time.time() + 15.0
+                last_req_err = e
+                if use_streaming:
+                    try:
+                        logger.info(f"Gemini {self.model} attempting non-streaming fallback for run_tool_agent...")
+                        non_stream_url = f"{self.BASE_URL}/{self.resolved_model}:generateContent"
+                        data = await fetch_with_retry(
+                            non_stream_url, method="POST", json=payload, headers=headers, timeout=int(timeout_sec),
+                            max_retries=1, raise_on_429=True, use_circuit_breaker=False
+                        )
+                        if data and isinstance(data, dict):
+                            use_streaming = False
+                            break
+                    except Exception as fb_err:
+                        logger.warning(f"Gemini run_tool_agent non-streaming fallback failed: {fb_err}")
+                if attempt + 1 < max_attempts:
+                    continue
                 raise
             except Exception as e:
                 last_req_err = e
