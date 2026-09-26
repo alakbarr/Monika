@@ -3,17 +3,20 @@
 # ==============================================================================
 
 """
-Async VIX Data Fetcher using yfinance.
+Resilient Multi-Tier VIX Data Fetcher.
 
 VIX (CBOE Volatility Index) represents market implied volatility expectations.
-Data source: Yahoo Finance via yfinance (public endpoint).
-
-Note: yfinance executes synchronously; blocking network calls are dispatched
-via asyncio executor threads to prevent blocking the async event loop.
+Fetches VIX daily settlement data through a hardened 4-tier pipeline:
+  1. Tier 1: Direct Async Yahoo Finance Chart API (fast, pure async, no thread overhead)
+  2. Tier 2: CBOE Official Daily Price CDN (authoritative fallback, no key required, CloudFront CDN)
+  3. Tier 3: FRED API VIXCLS Series (optional fallback if FRED_API_KEY is configured)
+  4. Tier 4: Hardened yfinance in worker thread with strict socket timeout
 """
 
 import asyncio
+import io
 import logging
+import os
 from datetime import datetime, timezone, date
 from typing import Optional
 
@@ -23,28 +26,31 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import VIXData
+from utils.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.VIX")
 
 VIX_TICKER = "^VIX"
+CBOE_VIX_CSV_URL = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+YAHOO_VIX_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX"
+FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 
 class VIXFetcher:
     """
-    Fetches historical and current VIX daily settlement data from Yahoo Finance.
-
-    Executes synchronous yfinance requests inside a thread pool executor
-    to prevent event loop latency.
+    Fetches historical and current VIX daily settlement data using a resilient multi-tier pipeline.
     """
 
-    def __init__(self, session: AsyncSession, ticker: str = VIX_TICKER):
+    def __init__(self, session: AsyncSession, ticker: str = VIX_TICKER, fred_api_key: Optional[str] = None):
         """
         Args:
             session: Async SQLAlchemy session.
             ticker: Yahoo Finance ticker symbol for VIX. Default '^VIX'.
+            fred_api_key: Optional FRED API key for St. Louis Fed fallback.
         """
         self.session = session
         self.ticker = ticker
+        self.fred_api_key = fred_api_key if fred_api_key is not None else os.getenv("FRED_API_KEY", "")
 
     # ------------------------------------------------------------------
     # Public API
@@ -52,30 +58,36 @@ class VIXFetcher:
 
     async def fetch(self, period: str = "10d") -> int:
         """
-        Mengunduh data VIX terbaru dan menyimpannya ke DB.
+        Mengunduh data VIX terbaru dan menyimpannya ke DB menggunakan multi-tier pipeline.
 
         Args:
-            period: String periode yfinance (contoh: '5d', '10d', '1mo').
+            period: String periode (contoh: '5d', '10d', '1mo', '5y').
 
         Returns:
             Jumlah baris baru yang disimpan.
         """
-        logger.info(f"Fetching VIX data for period={period}...")
+        logger.info(f"Fetching VIX data (multi-tier resilient) for period={period}...")
 
-        try:
-            df = await asyncio.wait_for(
-                asyncio.to_thread(self._download, period),
-                timeout=20.0,
-            )
-        except asyncio.TimeoutError:
-            logger.warning("VIX yfinance download timed out after 20.0s")
-            return 0
-        except Exception as e:
-            logger.error(f"VIX download failed: {e}")
-            return 0
+        # Tier 1: Direct Async Yahoo Finance Chart API (Fast & Pure Async)
+        df = await self._fetch_yahoo_direct(period)
+
+        # Tier 2: CBOE Official CDN (Authoritative Fallback, No Key, Anti-block)
+        if df is None or df.empty:
+            logger.info("Tier 1 (Yahoo Direct) unavailable. Falling back to Tier 2 (CBOE Official CDN)...")
+            df = await self._fetch_cboe_cdn(period)
+
+        # Tier 3: FRED API Fallback (if FRED_API_KEY available)
+        if (df is None or df.empty) and self.fred_api_key:
+            logger.info("Tier 1 & 2 unavailable. Falling back to Tier 3 (FRED VIXCLS)...")
+            df = await self._fetch_fred(period)
+
+        # Tier 4: Hardened yfinance in ThreadPool with strict socket timeout
+        if df is None or df.empty:
+            logger.info("Falling back to Tier 4 (Hardened yfinance thread)...")
+            df = await self._fetch_yfinance(period)
 
         if df is None or df.empty:
-            logger.warning("VIX download returned empty DataFrame")
+            logger.warning("All VIX data fetch tiers failed. Data feed unchanged.")
             return 0
 
         saved = await self._save(df)
@@ -83,18 +95,183 @@ class VIXFetcher:
         return saved
 
     # ------------------------------------------------------------------
-    # Internal
+    # Multi-Tier Fetch Implementations
     # ------------------------------------------------------------------
 
+    async def _fetch_yahoo_direct(self, period: str = "10d") -> Optional[pd.DataFrame]:
+        """Tier 1: Direct async request to Yahoo Finance chart v8 endpoint."""
+        range_map = {
+            "1d": "1d",
+            "5d": "5d",
+            "10d": "10d",
+            "15d": "1mo",
+            "1mo": "1mo",
+            "3mo": "3mo",
+            "6mo": "6mo",
+            "1y": "1y",
+            "2y": "2y",
+            "5y": "5y",
+        }
+        range_param = range_map.get(period, "1mo")
+        url = f"{YAHOO_VIX_CHART_URL}?interval=1d&range={range_param}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json",
+        }
+        try:
+            res = await fetch_with_retry(
+                url,
+                headers=headers,
+                timeout=8,
+                max_retries=2,
+                base_delay=0.5,
+                response_type="json",
+            )
+            if not res or not isinstance(res, dict):
+                return None
+            chart = res.get("chart", {})
+            results = chart.get("result")
+            if not results or not isinstance(results, list):
+                return None
+            result_data = results[0]
+            timestamps = result_data.get("timestamp", [])
+            indicators = result_data.get("indicators", {}).get("quote", [{}])[0]
+            closes = indicators.get("close", [])
+            if not timestamps or not closes:
+                return None
+
+            records = []
+            for ts, close_val in zip(timestamps, closes):
+                if close_val is not None:
+                    records.append({
+                        "Date": pd.to_datetime(ts, unit="s", utc=True),
+                        "Close": float(close_val),
+                    })
+            if not records:
+                return None
+            df = pd.DataFrame(records)
+            df.set_index("Date", inplace=True)
+            return df
+        except Exception as e:
+            logger.warning(f"VIX Tier 1 (Yahoo Direct) failed: {e}")
+            return None
+
+    async def _fetch_cboe_cdn(self, period: str = "10d") -> Optional[pd.DataFrame]:
+        """Tier 2: Authoritative CBOE official daily settlement CSV from CloudFront CDN."""
+        try:
+            csv_text = await fetch_with_retry(
+                CBOE_VIX_CSV_URL,
+                timeout=10,
+                max_retries=2,
+                base_delay=0.5,
+                response_type="text",
+            )
+            if not csv_text or not isinstance(csv_text, str) or "DATE" not in csv_text:
+                return None
+
+            df = pd.read_csv(io.StringIO(csv_text))
+            df.columns = [c.strip().capitalize() for c in df.columns]
+            if "Date" not in df.columns or "Close" not in df.columns:
+                return None
+
+            df["Date"] = pd.to_datetime(df["Date"], format="%m/%d/%Y", utc=True, errors="coerce")
+            df.dropna(subset=["Date", "Close"], inplace=True)
+            df.set_index("Date", inplace=True)
+
+            limit_map = {
+                "1d": 5,
+                "5d": 10,
+                "10d": 20,
+                "15d": 30,
+                "1mo": 45,
+                "3mo": 100,
+                "6mo": 180,
+                "1y": 300,
+                "2y": 600,
+                "5y": 1500,
+            }
+            limit = limit_map.get(period)
+            if limit and len(df) > limit:
+                df = df.tail(limit)
+
+            return df
+        except Exception as e:
+            logger.warning(f"VIX Tier 2 (CBOE CDN) failed: {e}")
+            return None
+
+    async def _fetch_fred(self, period: str = "10d") -> Optional[pd.DataFrame]:
+        """Tier 3: FRED API VIXCLS series (St. Louis Fed official benchmark)."""
+        if not self.fred_api_key:
+            return None
+        limit_map = {"1d": 5, "5d": 10, "10d": 20, "15d": 30, "1mo": 45, "5y": 1500}
+        limit = limit_map.get(period, 30)
+        params = {
+            "series_id": "VIXCLS",
+            "api_key": self.fred_api_key,
+            "file_type": "json",
+            "sort_order": "desc",
+            "limit": limit,
+        }
+        try:
+            res = await fetch_with_retry(
+                FRED_BASE_URL,
+                params=params,
+                timeout=8,
+                max_retries=2,
+                response_type="json",
+            )
+            if not res or not isinstance(res, dict):
+                return None
+            observations = res.get("observations", [])
+            records = []
+            for obs in observations:
+                val = obs.get("value")
+                dt_str = obs.get("date")
+                if val and val != "." and dt_str:
+                    try:
+                        records.append({
+                            "Date": pd.to_datetime(dt_str, utc=True),
+                            "Close": float(val),
+                        })
+                    except (ValueError, TypeError):
+                        continue
+            if not records:
+                return None
+            df = pd.DataFrame(records)
+            df.set_index("Date", inplace=True)
+            return df
+        except Exception as e:
+            logger.warning(f"VIX Tier 3 (FRED) failed: {e}")
+            return None
+
+    async def _fetch_yfinance(self, period: str = "10d") -> Optional[pd.DataFrame]:
+        """Tier 4: Hardened yfinance download in worker thread with strict socket timeout."""
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(self._download, period),
+                timeout=10.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("VIX Tier 4 (yfinance) thread timed out after 10.0s")
+            return None
+        except Exception as e:
+            logger.warning(f"VIX Tier 4 (yfinance) failed: {e}")
+            return None
+
     def _download(self, period: str) -> Optional[pd.DataFrame]:
-        """Unduhan yfinance (berjalan secara synchronous di thread pool)."""
+        """Unduhan yfinance synchronous (legacy/fallback kompatibel)."""
         res = yf.download(
             self.ticker,
             period=period,
             progress=False,
             auto_adjust=True,
+            timeout=8,
         )
         return res if isinstance(res, pd.DataFrame) else None
+
+    # ------------------------------------------------------------------
+    # Database Persistence
+    # ------------------------------------------------------------------
 
     async def _save(self, df: pd.DataFrame) -> int:
         """Menyimpan record VIX ke DB, mengabaikan tanggal yang sudah ada."""

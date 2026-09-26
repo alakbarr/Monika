@@ -106,11 +106,12 @@ class MacroDataScheduler:
                 logger.warning(f"MacroDataScheduler: FXSSI sentiment fetch failed: {e}")
                 results['fxssi_sentiment'] = {'error': str(e)}
 
-            # 5. VIX (Yahoo Finance)
+            # 5. VIX (Multi-tier: Yahoo Direct, CBOE CDN, FRED, yfinance)
             try:
                 from data_sources.vix_yfinance import VIXFetcher
+                fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
                 async with get_session() as session:
-                    fetcher = VIXFetcher(session)
+                    fetcher = VIXFetcher(session, fred_api_key=fred_key)
                     n = await fetcher.fetch(period='5d')
                     results['vix'] = {'saved': n}
                     logger.info(f"MacroDataScheduler: VIX refreshed ({n} records)")
