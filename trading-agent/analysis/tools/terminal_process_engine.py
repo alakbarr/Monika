@@ -45,6 +45,51 @@ FOREGROUND_MAX_TIMEOUT = 600
 DEFAULT_CHECKPOINT_FILE = "data/processes.json"
 
 
+class PtyQueryResponder:
+    """
+    Responds to terminal escape sequence queries commonly sent by interactive tools
+    (e.g., cursor position report, device attributes, device status).
+    """
+
+    QUERY_RESPONSES = {
+        "\x1b[6n": "\x1b[1;1R",     # Cursor position report (row 1, col 1)
+        "\x1b[c": "\x1b[?1;0c",      # Primary device attributes (VT101/VT102)
+        "\x1b[0c": "\x1b[?1;0c",     # Primary device attributes alt
+        "\x1b[5n": "\x1b[0n",        # Device status: Terminal OK
+    }
+
+    @classmethod
+    def scan_and_reply(cls, chunk: str) -> Optional[str]:
+        """Scans chunk for known ANSI query escape sequences and returns response."""
+        for code, resp in cls.QUERY_RESPONSES.items():
+            if code in chunk:
+                return resp
+        return None
+
+
+def rewrite_sudo_command(command: str) -> str:
+    """
+    Sanitizes or rewrites 'sudo' commands for environments without sudo or running as root/Windows.
+    """
+    if not command:
+        return command
+
+    # On Windows: sudo does not exist natively
+    if sys.platform == "win32":
+        cleaned = re.sub(r"(^|[;&|]\s*)sudo(\s+-[A-Za-z0-9]+)*\s+", r"\1", command)
+        return cleaned.strip()
+
+    # On POSIX: if running as UID 0 (root), strip sudo
+    try:
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            cleaned = re.sub(r"(^|[;&|]\s*)sudo(\s+-[A-Za-z0-9]+)*\s+", r"\1", command)
+            return cleaned.strip()
+    except Exception:
+        pass
+
+    return command
+
+
 @dataclass
 class ProcessEntry:
     session_id: str
@@ -142,6 +187,9 @@ class TerminalProcessEngine:
                 patterns = [r"__FINISHED__"]
 
         session_id = f"proc_{int(time.time())}_{os.urandom(3).hex()}"
+
+        # Sanitize sudo if applicable
+        command = rewrite_sudo_command(command)
 
         # Choose shell based on platform
         shell = ["powershell.exe", "-NoProfile", "-Command"] if sys.platform == "win32" else ["/bin/bash", "-c"]
@@ -252,6 +300,15 @@ class TerminalProcessEngine:
 
         try:
             for line in iter(proc.stdout.readline, ""):
+                # Check and respond to terminal escape queries (e.g. cursor position report)
+                reply = PtyQueryResponder.scan_and_reply(line)
+                if reply and proc.stdin and not proc.stdin.closed:
+                    try:
+                        proc.stdin.write(reply)
+                        proc.stdin.flush()
+                    except Exception:
+                        pass
+
                 with self._lock:
                     entry = self._processes.get(session_id)
                     if not entry:
@@ -340,6 +397,14 @@ class TerminalProcessEngine:
                 return {"success": False, "error": f"Process '{session_id}' not active."}
 
         try:
+            # Safely close open pipes to avoid leaking handles
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                if stream and not stream.closed:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+
             if sys.platform == "win32":
                 subprocess.run(
                     ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
@@ -353,8 +418,14 @@ class TerminalProcessEngine:
                 except subprocess.TimeoutExpired:
                     proc.kill()
 
+            try:
+                proc.wait(timeout=1)
+            except Exception:
+                pass
+
             with self._lock:
                 entry.is_running = False
+                self._subprocesses.pop(session_id, None)
                 self._save_checkpoints()
 
             return {"success": True, "message": f"Killed process '{session_id}' (PID={entry.pid})."}

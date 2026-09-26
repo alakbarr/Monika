@@ -3,8 +3,8 @@
 # ==============================================================================
 
 """
-Three-Part Context Compressor & Tool Result Deterministic Pruner.
-Hierarchical memory compaction architecture with commit-fence protection.
+Three-Part Context Compressor & Dual-Tier Compaction Engine.
+Hierarchical memory compaction architecture with commit-fence protection and rolling micro-compaction.
 
 Partitions conversation trajectories into three distinct zones:
   1. HEAD (Protected): System prompt, trading invariants, initial user directives.
@@ -12,29 +12,29 @@ Partitions conversation trajectories into three distinct zones:
   2. MIDDLE (Compacted): Older conversation exchanges and tool iterations.
      - Step 2A: Zero-cost deterministic tool result truncation (replaces massive tool outputs
        with concise structural headers/stubs).
-     - Step 2B: Hierarchical semantic summarization via fast auxiliary LLM.
+     - Step 2B: Hierarchical semantic summarization with role-alternation preservation.
   3. TAIL (Protected): The most recent N messages (default 8-10 turns).
      Preserves immediate working memory, active tool call responses, and recent context.
 
-Commit Fence:
-  Ensures that context mutations are atomically staged and committed under a mutex,
-  guaranteeing that SIGINT, cancellations, or worker interrupts never leave the
-  underlying session database in a corrupt or half-truncated state.
+Rolling Micro-Compactor:
+  Continuously compresses individual historical tool-assistant exchanges between turns
+  without touching user directives, keeping working memory lean.
 """
 
 from __future__ import annotations
 
+import inspect
 import logging
 import threading
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger("TradingAgent.Agent.ThreePartContextCompressor")
 
 
 class ThreePartContextCompressor:
     """
-    Manages bounded context compaction while protecting foundational instructions
-    and immediate working memory.
+    Manages bounded context compaction while protecting foundational instructions,
+    immediate working memory, and valid role alternations.
     """
 
     def __init__(
@@ -95,6 +95,71 @@ class ThreePartContextCompressor:
 
         return pruned_messages, chars_saved
 
+    def micro_compact_exchange(
+        self,
+        messages: List[Dict[str, Any]],
+        exchange_summarizer: Optional[Callable[[str], str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Scans messages for completed historical assistant+tool exchanges and compacts
+        them into a concise assistant memory note, NEVER compressing user instructions.
+        """
+        if len(messages) <= self.protect_last_n + 2:
+            return messages
+
+        compacted: List[Dict[str, Any]] = []
+        i = 0
+        limit = len(messages) - self.protect_last_n
+
+        def safe_append(target_list: List[Dict[str, Any]], msg: Dict[str, Any]) -> None:
+            if not target_list:
+                target_list.append(dict(msg))
+                return
+            prev = target_list[-1]
+            if prev.get("role") == msg.get("role") and msg.get("role") in ("user", "assistant"):
+                prev_content = prev.get("content") or ""
+                new_content = msg.get("content") or ""
+                prev["content"] = f"{prev_content}\n\n{new_content}".strip()
+                if msg.get("tool_calls"):
+                    prev["tool_calls"] = (prev.get("tool_calls") or []) + msg["tool_calls"]
+            else:
+                target_list.append(dict(msg))
+
+        while i < len(messages):
+            # If within head or tail zone, keep as is
+            if i < self.protect_first_n or i >= limit:
+                safe_append(compacted, messages[i])
+                i += 1
+                continue
+
+            msg = messages[i]
+            # Look for assistant tool calling block followed by tool responses
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                tool_exchange = [msg]
+                j = i + 1
+                while j < limit and messages[j].get("role") in ("tool", "assistant"):
+                    tool_exchange.append(messages[j])
+                    j += 1
+
+                # If exchange has tool calls + responses and summarizer is provided
+                if len(tool_exchange) >= 2 and exchange_summarizer:
+                    exchange_text = "\n".join(f"[{m.get('role')}]: {m.get('content') or ''}" for m in tool_exchange)
+                    try:
+                        summary = exchange_summarizer(exchange_text)
+                        safe_append(compacted, {
+                            "role": "assistant",
+                            "content": f"[Historical Tool Execution Summary]: {summary}",
+                        })
+                        i = j
+                        continue
+                    except Exception as e:
+                        logger.debug(f"[ThreePartContextCompressor] Micro-compact failed: {e}")
+
+            safe_append(compacted, messages[i])
+            i += 1
+
+        return compacted
+
     def compact(
         self,
         messages: List[Dict[str, Any]],
@@ -102,7 +167,7 @@ class ThreePartContextCompressor:
         force: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        Executes Three-Part Compaction if token threshold is exceeded.
+        Executes Three-Part Macro Compaction if token threshold is exceeded.
         Atomic execution protected by the commit fence lock.
         """
         with self._commit_fence_lock:
@@ -142,8 +207,11 @@ class ThreePartContextCompressor:
                 middle_text_corpus = "\n".join(middle_text_fragments)
                 try:
                     summary_text = summarizer_fn(middle_text_corpus)
+                    # Preserve valid role alternation: if head ends with user, summary is assistant
+                    head_last_role = head_zone[-1].get("role") if head_zone else "system"
+                    summary_role = "assistant" if head_last_role == "user" else "user"
                     summary_message = {
-                        "role": "user",
+                        "role": summary_role,
                         "content": f"[Summary of earlier conversation ({len(middle_zone)} turns compacted)]:\n{summary_text}",
                     }
                     middle_representation = [summary_message]
@@ -153,7 +221,7 @@ class ThreePartContextCompressor:
             else:
                 middle_representation = pruned_middle
 
-            # 4. Atomic Reassembly
+            # 4. Atomic Reassembly & Alternation Verification
             compacted_messages = head_zone + middle_representation + tail_zone
             new_tokens = self.estimate_tokens(compacted_messages)
             logger.info(

@@ -431,3 +431,252 @@ class FilePatchEngine:
             )
         except Exception as exc:
             return False, f"Error patching '{path}': {exc}"
+
+    def apply_multi_patch(
+        self, patch_text: str, dry_run: bool = False
+    ) -> Tuple[bool, str, List[Dict[str, Any]]]:
+        """
+        Two-phase transactional multi-file patch execution.
+        Phase 1: In-memory simulation and full AST / syntax lint verification.
+        Phase 2: Atomic disk commit if and only if Phase 1 passes 100%.
+        """
+        ops = V4APatchParser.parse(patch_text)
+        if not ops:
+            return False, "No valid patch operations found in patch text.", []
+
+        staged_contents: Dict[str, str] = {}
+        staged_deletions: List[str] = []
+        staged_moves: List[Tuple[str, str]] = []
+        op_summaries: List[Dict[str, Any]] = []
+
+        # Phase 1: In-memory simulation & linting
+        for idx, op in enumerate(ops):
+            norm_path = os.path.normpath(os.path.abspath(op.path)) if op.path else ""
+
+            if op.action == "UPDATE":
+                if not norm_path:
+                    return False, f"Phase 1 Dry-run failed: UPDATE missing target file path.", op_summaries
+
+                # Check guard
+                can_mod, reason = self.guard.verify_can_modify(norm_path)
+                if not can_mod:
+                    return False, f"Phase 1 Dry-run rejected for '{op.path}': {reason}", op_summaries
+
+                # Get existing or already-staged content
+                if norm_path in staged_contents:
+                    current_content = staged_contents[norm_path]
+                else:
+                    if not os.path.exists(norm_path):
+                        return False, f"Phase 1 Dry-run failed: file '{op.path}' does not exist on disk.", op_summaries
+                    try:
+                        with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
+                            current_content = f.read()
+                    except Exception as e:
+                        return False, f"Phase 1 Dry-run failed reading '{op.path}': {e}", op_summaries
+
+                if op.search_content:
+                    match_span, stage = FuzzyMatcher.find_match(current_content, op.search_content)
+                    if match_span is None:
+                        return (
+                            False,
+                            f"Phase 1 Dry-run failed: search block #{idx + 1} not found in '{op.path}' across 9 fuzzy stages.",
+                            op_summaries,
+                        )
+                    start, end = match_span
+                    new_content = current_content[:start] + (op.replace_content or "") + current_content[end:]
+                else:
+                    new_content = op.replace_content or ""
+                    stage = "full_replace"
+
+                # In-memory post-patch linting check
+                lint_err = SyntaxLinter.lint_content(norm_path, new_content)
+                if lint_err:
+                    return (
+                        False,
+                        f"Phase 1 Dry-run failed: syntax error in '{op.path}' after applying patch #{idx + 1}:\n{lint_err}",
+                        op_summaries,
+                    )
+
+                staged_contents[norm_path] = new_content
+                op_summaries.append({
+                    "action": "UPDATE",
+                    "path": op.path,
+                    "stage": stage,
+                    "length": len(new_content),
+                })
+
+            elif op.action == "ADD":
+                if not norm_path:
+                    return False, "Phase 1 Dry-run failed: ADD missing target file path.", op_summaries
+                new_content = op.new_file_content or ""
+                lint_err = SyntaxLinter.lint_content(norm_path, new_content)
+                if lint_err:
+                    return (
+                        False,
+                        f"Phase 1 Dry-run failed: syntax error in new file '{op.path}':\n{lint_err}",
+                        op_summaries,
+                    )
+                staged_contents[norm_path] = new_content
+                op_summaries.append({
+                    "action": "ADD",
+                    "path": op.path,
+                    "length": len(new_content),
+                })
+
+            elif op.action == "DELETE":
+                if not norm_path or not os.path.exists(norm_path):
+                    return False, f"Phase 1 Dry-run failed: file to delete '{op.path}' does not exist.", op_summaries
+                staged_deletions.append(norm_path)
+                op_summaries.append({"action": "DELETE", "path": op.path})
+
+            elif op.action == "MOVE":
+                if not norm_path or not op.new_path:
+                    return False, f"Phase 1 Dry-run failed: MOVE operation missing target path for '{op.path}'.", op_summaries
+                norm_new_path = os.path.normpath(os.path.abspath(op.new_path))
+                if not os.path.exists(norm_path):
+                    return False, f"Phase 1 Dry-run failed: file to move '{op.path}' does not exist.", op_summaries
+                staged_moves.append((norm_path, norm_new_path))
+                op_summaries.append({"action": "MOVE", "path": op.path, "new_path": op.new_path})
+
+        if dry_run:
+            return True, f"Dry-run passed: all {len(ops)} operations verified with zero syntax errors.", op_summaries
+
+        # Phase 2: Atomic Disk Commit
+        try:
+            for file_path, content in staged_contents.items():
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                self.guard.record_read(file_path)
+
+            for src, dst in staged_moves:
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                os.replace(src, dst)
+                self.guard.record_read(dst)
+
+            for del_path in staged_deletions:
+                if os.path.exists(del_path):
+                    os.remove(del_path)
+
+            return True, f"Successfully committed {len(ops)} operations across {len(staged_contents)} files.", op_summaries
+        except Exception as exc:
+            return False, f"Phase 2 Commit failed during disk write: {exc}", op_summaries
+
+
+@dataclass
+class PatchOperation:
+    action: str  # "UPDATE", "ADD", "DELETE", "MOVE"
+    path: str
+    new_path: Optional[str] = None
+    search_content: Optional[str] = None
+    replace_content: Optional[str] = None
+    new_file_content: Optional[str] = None
+
+
+class V4APatchParser:
+    """
+    Parses unified multi-file patches with syntax:
+    *** Update File: path/to/file ***
+    <<<<<<< SEARCH
+    ...
+    =======
+    ...
+    >>>>>>> REPLACE
+
+    *** Add File: path/to/file ***
+    ... content ...
+
+    *** Delete File: path/to/file ***
+
+    *** Move File: old/path -> new/path ***
+    """
+
+    FILE_HEADER_RE = re.compile(
+        r"^\*{3}\s+(Update File|Add File|Delete File|Move File):\s*(.+?)\s*\*{3}$",
+        re.MULTILINE,
+    )
+
+    SEARCH_REPLACE_RE = re.compile(
+        r"<<<<<<<\s*SEARCH\r?\n(.*?)\r?\n=======\r?\n(.*?)\r?\n>>>>>>>\s*REPLACE",
+        re.DOTALL,
+    )
+
+    @classmethod
+    def parse(cls, patch_text: str) -> List[PatchOperation]:
+        operations: List[PatchOperation] = []
+        if not patch_text or not patch_text.strip():
+            return operations
+
+        matches = list(cls.FILE_HEADER_RE.finditer(patch_text))
+        if not matches:
+            # Single search/replace block fallback
+            sr_match = cls.SEARCH_REPLACE_RE.search(patch_text)
+            if sr_match:
+                operations.append(
+                    PatchOperation(
+                        action="UPDATE",
+                        path="",
+                        search_content=sr_match.group(1),
+                        replace_content=sr_match.group(2),
+                    )
+                )
+            return operations
+
+        for i, m in enumerate(matches):
+            action_type = m.group(1).upper()
+            target_info = m.group(2).strip()
+            start_body = m.end()
+            end_body = matches[i + 1].start() if i + 1 < len(matches) else len(patch_text)
+            body = patch_text[start_body:end_body].strip()
+
+            if "UPDATE FILE" in action_type:
+                sr_blocks = list(cls.SEARCH_REPLACE_RE.finditer(body))
+                if sr_blocks:
+                    for sr in sr_blocks:
+                        operations.append(
+                            PatchOperation(
+                                action="UPDATE",
+                                path=target_info,
+                                search_content=sr.group(1),
+                                replace_content=sr.group(2),
+                            )
+                        )
+                else:
+                    operations.append(
+                        PatchOperation(
+                            action="UPDATE",
+                            path=target_info,
+                            search_content="",
+                            replace_content=body,
+                        )
+                    )
+            elif "ADD FILE" in action_type:
+                content_m = re.search(r"<<<<<<<\s*CONTENT\r?\n(.*?)\r?\n>>>>>>>\s*CONTENT", body, re.DOTALL)
+                file_content = content_m.group(1) if content_m else body
+                operations.append(
+                    PatchOperation(
+                        action="ADD",
+                        path=target_info,
+                        new_file_content=file_content,
+                    )
+                )
+            elif "DELETE FILE" in action_type:
+                operations.append(
+                    PatchOperation(
+                        action="DELETE",
+                        path=target_info,
+                    )
+                )
+            elif "MOVE FILE" in action_type:
+                parts = [p.strip() for p in target_info.split("->")]
+                if len(parts) == 2:
+                    operations.append(
+                        PatchOperation(
+                            action="MOVE",
+                            path=parts[0],
+                            new_path=parts[1],
+                        )
+                    )
+
+        return operations
+

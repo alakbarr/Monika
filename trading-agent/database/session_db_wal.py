@@ -233,6 +233,11 @@ class SessionDbWal:
             conn.execute("PRAGMA journal_size_limit = 67108864;")  # 64MB WAL ceiling
             conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute("PRAGMA cache_size = -64000;")  # 64MB page cache
+            if sys.platform == "darwin":
+                try:
+                    conn.execute("PRAGMA fullfsync = ON;")
+                except sqlite3.OperationalError:
+                    pass
             try:
                 conn.execute("PRAGMA mmap_size = 268435456;")  # 256MB mmap
             except sqlite3.OperationalError:

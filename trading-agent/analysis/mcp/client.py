@@ -11,8 +11,11 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+import aiohttp
 
 from analysis.mcp.protocol import LATEST_PROTOCOL_VERSION
+from analysis.mcp.mcp_death_supervisor import McpDeathSupervisor
+from analysis.mcp.mcp_schema_cache import McpSchemaCache
 from analysis.tools.base_handler import ToolHandler
 from analysis.tools.registry import default_tool_registry, ToolDefinition
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,33 +24,50 @@ logger = logging.getLogger("TradingAgent.MCP.Client")
 
 
 class McpServerProcess:
-    """Manages an individual stdio-based MCP server subprocess."""
+    """Manages an individual stdio-based or HTTP/SSE-based MCP server process/connection."""
 
     def __init__(self, name: str, config: Dict[str, Any]):
         self.name = name
         self.config = config
+        self.transport = config.get("transport", "stdio").lower()
         self.command = config.get("command", "python")
         self.args = config.get("args", [])
+        self.url = config.get("url", "")
+        self.auth_token = config.get("auth_token")
+        self.proxy = config.get("proxy")
         self.env = {**os.environ, **config.get("env", {})}
         self.timeout = config.get("timeout_seconds", 15)
         self.process: Optional[asyncio.subprocess.Process] = None
+        self._http_session: Optional[aiohttp.ClientSession] = None
         self._req_id = 0
         self._lock = asyncio.Lock()
         self._pending_futures: Dict[int, asyncio.Future] = {}
         self._listen_task: Optional[asyncio.Task] = None
 
     async def start(self) -> bool:
-        """Starts the MCP server subprocess and performs initialization handshake."""
+        """Starts the MCP server subprocess or HTTP/SSE session and performs handshake."""
         try:
-            cmd = [self.command] + self.args
-            self.process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=self.env,
-            )
-            self._listen_task = asyncio.create_task(self._read_responses())
+            if self.transport in ("sse", "http"):
+                timeout = aiohttp.ClientTimeout(total=self.timeout)
+                headers = {"Content-Type": "application/json"}
+                if self.auth_token:
+                    headers["Authorization"] = f"Bearer {self.auth_token}"
+                self._http_session = aiohttp.ClientSession(
+                    headers=headers, timeout=timeout, trust_env=True
+                )
+            else:
+                # Default stdio
+                cmd = [self.command] + self.args
+                self.process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=self.env,
+                )
+                if self.process and self.process.pid:
+                    McpDeathSupervisor.register_process(self.process.pid)
+                self._listen_task = asyncio.create_task(self._read_responses())
 
             # Perform initialize handshake
             init_res = await self.send_request(
@@ -64,15 +84,55 @@ class McpServerProcess:
 
             # Send initialized notification
             await self.send_notification("notifications/initialized", {})
-            logger.info(f"Connected to MCP server '{self.name}' (PID {self.process.pid})")
+            conn_info = f"PID {self.process.pid}" if self.process else f"URL {self.url}"
+            logger.info(f"Connected to MCP server '{self.name}' via {self.transport} ({conn_info})")
             return True
         except Exception as e:
             logger.warning(f"Failed to start MCP server '{self.name}': {e}")
             return False
 
     async def send_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        """Sends a JSON-RPC request and awaits the response."""
+        """Sends a JSON-RPC request and awaits the response over stdio or HTTP/SSE."""
+        async with self._lock:
+            self._req_id += 1
+            cur_id = self._req_id
+
+        payload = {"jsonrpc": "2.0", "id": cur_id, "method": method}
+        if params is not None:
+            payload["params"] = params
+
+        # HTTP / SSE transport dispatch
+        if self.transport in ("sse", "http"):
+            if not self._http_session:
+                return {"error": "HTTP session is not initialized"}
+            try:
+                async with self._http_session.post(self.url, json=payload) as resp:
+                    if resp.status == 200:
+                        return await resp.json()
+                    return {"error": f"HTTP {resp.status}: {await resp.text()}"}
+            except Exception as exc:
+                return {"error": f"HTTP request failed: {exc}"}
+
+        # Stdio transport dispatch
         if not self.process or not self.process.stdin:
+            return {"error": "Server process is not running"}
+
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future = loop.create_future()
+        self._pending_futures[cur_id] = fut
+
+        line = json.dumps(payload) + "\n"
+        try:
+            self.process.stdin.write(line.encode("utf-8"))
+            await self.process.stdin.drain()
+            result = await asyncio.wait_for(fut, timeout=self.timeout)
+            return result
+        except asyncio.TimeoutError:
+            self._pending_futures.pop(cur_id, None)
+            return {"error": f"MCP request to '{self.name}' timed out after {self.timeout}s"}
+        except Exception as e:
+            self._pending_futures.pop(cur_id, None)
+            return {"error": str(e)}
             return {"error": "Server process is not running"}
 
         async with self._lock:
@@ -157,10 +217,16 @@ class McpServerProcess:
             logger.debug(f"MCP server '{self.name}' reader stopped: {e}")
 
     async def stop(self):
-        """Cleanly terminates the server process."""
+        """Cleanly terminates the server process or HTTP/SSE session."""
         if self._listen_task and not self._listen_task.done():
             self._listen_task.cancel()
+        if self._http_session and not self._http_session.closed:
+            await self._http_session.close()
+            self._http_session = None
+
         if self.process:
+            if self.process.pid:
+                McpDeathSupervisor.unregister_process(self.process.pid)
             try:
                 self.process.terminate()
                 await asyncio.wait_for(self.process.wait(), timeout=3.0)
@@ -193,11 +259,12 @@ class McpBridgeHandler(ToolHandler):
 
 
 class McpClientManager:
-    """Manages connections to all configured external MCP servers."""
+    """Manages connections to all configured external MCP servers with disk schema caching."""
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
         self.servers: Dict[str, McpServerProcess] = {}
+        self.schema_cache = McpSchemaCache()
 
     async def initialize_servers(self) -> int:
         """Starts all enabled MCP servers and bridges their tools into default_tool_registry."""
@@ -209,6 +276,15 @@ class McpClientManager:
         servers_cfg = mcp_cfg.get("client", {}).get("servers", {})
         connected_count = 0
 
+        # Phase 1: Optimistic Lazy Registration from disk schema cache
+        for s_name, s_cfg in servers_cfg.items():
+            if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
+                continue
+            cached_tools = self.schema_cache.get_cached_tools(s_name, s_cfg)
+            if cached_tools:
+                logger.info(f"[McpClientManager] Lazy-booted {len(cached_tools)} cached tools for '{s_name}'.")
+
+        # Phase 2: Live Connections & Cache Freshness Update
         for s_name, s_cfg in servers_cfg.items():
             if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
                 continue
@@ -218,6 +294,9 @@ class McpClientManager:
             if success:
                 self.servers[s_name] = proc
                 tools = await proc.list_tools()
+                if tools:
+                    self.schema_cache.save_cached_tools(s_name, s_cfg, tools)
+
                 for t in tools:
                     t_name = t.get("name", "")
                     if not t_name:
@@ -238,7 +317,7 @@ class McpClientManager:
         return connected_count
 
     async def stop(self):
-        """Stops all running MCP client subprocesses."""
+        """Stops all running MCP client subprocesses and connections."""
         for s in self.servers.values():
             await s.stop()
         self.servers.clear()

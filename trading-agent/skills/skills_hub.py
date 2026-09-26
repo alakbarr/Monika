@@ -29,14 +29,18 @@ Key Architectural Capabilities:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+from skills.skills_guard import SkillsGuard, AuditReport
 
 logger = logging.getLogger("TradingAgent.Skills.SkillsHub")
 
@@ -55,6 +59,7 @@ class SkillMetadata:
     required_env: List[str] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     linked_files: Dict[str, List[str]] = field(default_factory=dict)
+    provenance: Optional[Dict[str, Any]] = None
 
 
 class SkillsHub:
@@ -260,3 +265,61 @@ class SkillsHub:
                 return match.group(0)
 
         return pattern.sub(replacer, text)
+
+    def audit_skill(self, name: str) -> Optional[AuditReport]:
+        """Runs static AST security audit on a registered skill."""
+        meta = self._skills.get(name)
+        if not meta:
+            return None
+        base_path = Path(meta.path)
+        skill_dir = base_path.parent if base_path.name == "SKILL.md" else base_path.parent
+        return SkillsGuard.audit_skill_directory(str(skill_dir), skill_name=name)
+
+    def install_skill(
+        self,
+        source_dir: str,
+        category: str = "general",
+        enforce_security: bool = True,
+    ) -> Tuple[bool, str, Optional[AuditReport]]:
+        """
+        Installs a new skill package from local directory into the appropriate category folder,
+        subject to strict static AST security audit.
+        """
+        import time
+        src = Path(source_dir)
+        if not src.exists() or not src.is_dir():
+            return False, f"Source directory '{source_dir}' does not exist.", None
+
+        skill_name = src.name
+        # Run pre-installation AST security audit
+        report = SkillsGuard.audit_skill_directory(str(src), skill_name=skill_name)
+        if enforce_security and not report.is_safe:
+            findings_summary = "; ".join(f"{f.rule}: {f.message}" for f in report.findings[:3])
+            return (
+                False,
+                f"Security Gate Rejected skill '{skill_name}' (Score: {report.score}/100). Violations: {findings_summary}",
+                report,
+            )
+
+        target_base = Path("trading-agent/skills") / category.lower() / skill_name
+        target_base.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            if target_base.exists():
+                shutil.rmtree(target_base)
+            shutil.copytree(src, target_base)
+
+            # Discover and reload
+            self.discover_skills()
+            meta = self._skills.get(skill_name)
+            if meta:
+                meta.provenance = {
+                    "installed_from": str(src.resolve()),
+                    "installed_at": time.time(),
+                    "audit_score": report.score,
+                    "is_safe": report.is_safe,
+                }
+
+            return True, f"Skill '{skill_name}' installed and verified successfully (Score: {report.score}/100).", report
+        except Exception as exc:
+            return False, f"Installation failed during file transfer: {exc}", report

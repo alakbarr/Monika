@@ -1,246 +1,230 @@
-"""
-Unified Cross-Surface Approval Hub & Steering Bus.
+# ==============================================================================
+# File: risk/approval_hub.py
+# ==============================================================================
 
-Enforces unified Human-In-The-Loop (HITL) approvals across all interfaces:
-Telegram Bot, Dashboard WebSockets, and TUI Terminal.
-
-Key Capabilities:
-1. Singleton event bus managing pending ApprovalRequests (trade tickets, risk overrides, emergency cuts).
-2. Cross-surface synchronization: Once resolved (approved/rejected) on one surface,
-   all other surfaces update instantly to prevent duplicate executions.
-3. Handshake Hydration: Provides full snapshot of open requests when any surface reconnects.
-4. Unified In-Flight Steering: Dispatches `/steer <symbol> <instruction>` to persistent storage
-   and notifies all live listeners in real time.
 """
+Human-in-the-Loop (HITL) Interactive Approval Hub & 4-Tier Security Gate.
+Safeguards execution of high-risk trading orders, terminal commands,
+and system-level interventions via interactive confirmation cards.
+
+Approval Hierarchy:
+  - Level 0 (INFO): Read-only queries, market quotes, status checks -> Auto-approved.
+  - Level 1 (STANDARD): Standard algorithmic trades within risk thresholds -> Auto-approved with activity log.
+  - Level 2 (SENSITIVE): Large position sizes, parameter overrides, shell commands -> Requires HITL confirmation card.
+  - Level 3 (CRITICAL): Kill-switch activations, emergency account halts, database mutations -> Mandatory explicit admin confirmation with strict timeout.
+"""
+
 from __future__ import annotations
-import asyncio
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone, timedelta
-import logging
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple
 
-logger = logging.getLogger("TradingAgent.ApprovalHub")
+import asyncio
+import logging
+import os
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger("TradingAgent.Risk.ApprovalHub")
+
+DEFAULT_APPROVAL_TTL = 300.0  # 5 minutes
+
+
+class ApprovalStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
 
 
 @dataclass
 class ApprovalRequest:
-    request_id: str
-    request_type: str  # "trade_proposal", "risk_override", "emergency_cut", "session_approval"
-    symbol: str
-    action: str  # "BUY", "SELL", "CLOSE", "ALLOW_SESSION"
-    details: Dict[str, Any] = field(default_factory=dict)
-    status: str = "pending"  # "pending", "approved", "rejected", "expired"
-    operator: Optional[str] = None
-    rejection_reason: Optional[str] = None
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    expires_at: str = field(default_factory=lambda: (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat())
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-    @property
-    def is_expired(self) -> bool:
-        try:
-            exp = datetime.fromisoformat(self.expires_at)
-            return datetime.now(timezone.utc) > exp
-        except Exception:
-            return False
+    token: str
+    level: int
+    action_type: str
+    description: str
+    details: Dict[str, Any]
+    requested_at: float
+    expires_at: float
+    status: ApprovalStatus = ApprovalStatus.PENDING
+    decided_by: Optional[str] = None
+    decision_reason: Optional[str] = None
 
 
 class ApprovalHub:
-    """Unified singleton approval hub & steering event bus."""
-    _instance: Optional[ApprovalHub] = None
+    """
+    Coordinates interactive human approval workflows across Telegram, Web Dashboard, and API.
+    """
 
-    def __init__(self):
+    def __init__(self, default_ttl: float = DEFAULT_APPROVAL_TTL):
+        self.default_ttl = default_ttl
         self._requests: Dict[str, ApprovalRequest] = {}
-        self._listeners: List[Callable[[str, Dict[str, Any]], Coroutine[Any, Any, None]]] = []
-        self._execution_service = None
+        self._pending_futures: Dict[str, asyncio.Future] = {}
+        self._lock = asyncio.Lock()
 
-    @classmethod
-    def get_instance(cls) -> ApprovalHub:
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    def set_execution_service(self, execution_service: Any) -> None:
-        self._execution_service = execution_service
-
-    def register_listener(self, callback: Callable[[str, Dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        """Register an async callback for cross-surface event broadcasts."""
-        if callback not in self._listeners:
-            self._listeners.append(callback)
-
-    def unregister_listener(self, callback: Callable[[str, Dict[str, Any]], Coroutine[Any, Any, None]]) -> None:
-        if callback in self._listeners:
-            self._listeners.remove(callback)
-
-    async def _broadcast(self, event_type: str, data: Dict[str, Any]) -> None:
-        """Broadcast event to all registered UI listeners (WS, TG, TUI) and live feed."""
-        for listener in list(self._listeners):
-            try:
-                await listener(event_type, data)
-            except Exception as e:
-                logger.debug(f"[ApprovalHub] Listener broadcast error: {e}")
-
-        try:
-            from logging_observability.dashboard.routes.common import broadcast_live_event
-            await broadcast_live_event(event_type, data)
-        except Exception:
-            pass
-
-    def create_request(
+    def request_approval(
         self,
-        request_id: str,
-        symbol: str,
-        action: str,
-        request_type: str = "trade_proposal",
+        action_type: str,
+        level: int,
+        description: str,
         details: Optional[Dict[str, Any]] = None,
-        ttl_minutes: int = 15,
+        ttl_seconds: Optional[float] = None,
     ) -> ApprovalRequest:
-        """Create and register a new pending approval request."""
-        now = datetime.now(timezone.utc)
-        expires_at = (now + timedelta(minutes=ttl_minutes)).isoformat()
+        """
+        Creates a new approval request. For Level 0 and 1, automatically approves.
+        For Level 2 and 3, creates an interactive approval card.
+        """
+        token = f"appr_{int(time.time())}_{os.urandom(4).hex()}"
+        now = time.time()
+        ttl = ttl_seconds or self.default_ttl
+        details_dict = details or {}
+
+        # Auto-approve levels 0 and 1
+        if level <= 1:
+            req = ApprovalRequest(
+                token=token,
+                level=level,
+                action_type=action_type,
+                description=description,
+                details=details_dict,
+                requested_at=now,
+                expires_at=now + ttl,
+                status=ApprovalStatus.APPROVED,
+                decided_by="system_auto_guard",
+                decision_reason=f"Level {level} automatically authorized by risk policy.",
+            )
+            self._requests[token] = req
+            logger.info(f"[ApprovalHub] Level {level} action '{action_type}' auto-approved (token={token}).")
+            return req
+
         req = ApprovalRequest(
-            request_id=request_id,
-            request_type=request_type,
-            symbol=symbol.upper(),
-            action=action.upper(),
-            details=details or {},
-            status="pending",
-            created_at=now.isoformat(),
-            expires_at=expires_at,
+            token=token,
+            level=level,
+            action_type=action_type,
+            description=description,
+            details=details_dict,
+            requested_at=now,
+            expires_at=now + ttl,
+            status=ApprovalStatus.PENDING,
         )
-        self._requests[request_id] = req
-        logger.info(f"[ApprovalHub] Created approval request {request_id} for {action} {symbol}")
-
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self._broadcast("approval_requested", req.to_dict()))
-        except RuntimeError:
-            pass
-
+        self._requests[token] = req
+        logger.warning(
+            f"[ApprovalHub] Level {level} action '{action_type}' requires human authorization! (token={token})"
+        )
         return req
 
-    async def approve(self, request_id: str, operator: str = "operator") -> Tuple[bool, str]:
-        """Approve a pending request across all surfaces."""
-        req = self._requests.get(request_id)
-        if not req:
-            return False, f"Approval request '{request_id}' not found."
-
-        if req.status != "pending":
-            return False, f"Request '{request_id}' already resolved with status: {req.status} by {req.operator}."
-
-        if req.is_expired:
-            req.status = "expired"
-            await self._broadcast("approval_resolved", req.to_dict())
-            return False, f"Request '{request_id}' has expired."
-
-        req.status = "approved"
-        req.operator = operator
-        logger.info(f"[ApprovalHub] Request {request_id} APPROVED by {operator}")
-
-        exec_result_str = "Approved"
-        analysis_id = req.details.get("analysis_id")
-        if self._execution_service and analysis_id:
-            try:
-                res = await self._execution_service.execute_by_analysis_id(int(analysis_id))
-                exec_result_str = res.summary() if hasattr(res, "summary") else str(res)
-            except Exception as ex:
-                logger.error(f"[ApprovalHub] Failed executing approved trade #{analysis_id}: {ex}")
-                exec_result_str = f"Approved, but execution failed: {ex}"
-
-        await self._broadcast("approval_resolved", {
-            **req.to_dict(),
-            "execution_result": exec_result_str,
-        })
-        return True, exec_result_str
-
-    async def reject(self, request_id: str, operator: str = "operator", reason: str = "") -> Tuple[bool, str]:
-        """Reject a pending request across all surfaces."""
-        req = self._requests.get(request_id)
-        if not req:
-            return False, f"Approval request '{request_id}' not found."
-
-        if req.status != "pending":
-            return False, f"Request '{request_id}' already resolved with status: {req.status} by {req.operator}."
-
-        req.status = "rejected"
-        req.operator = operator
-        req.rejection_reason = reason or "Rejected by operator"
-        logger.info(f"[ApprovalHub] Request {request_id} REJECTED by {operator} (reason: {req.rejection_reason})")
-
-        await self._broadcast("approval_resolved", req.to_dict())
-        return True, f"Rejected by {operator}: {req.rejection_reason}"
-
-    def get_request(self, request_id: str) -> Optional[ApprovalRequest]:
-        """Fetch request by ID."""
-        return self._requests.get(request_id)
-
-    async def settle_expired_requests(self) -> List[ApprovalRequest]:
-        """Auto-settles and broadcasts expired status for pending requests past their TTL."""
-        expired = []
-        for req in list(self._requests.values()):
-            if req.status == "pending" and req.is_expired:
-                req.status = "expired"
-                expired.append(req)
-                await self._broadcast("approval_settled_expired", req.to_dict())
-                logger.info(f"[ApprovalHub] Auto-settled request {req.request_id} ({req.action} {req.symbol}) as EXPIRED.")
-        return expired
-
-    def get_open_requests(self) -> List[Dict[str, Any]]:
-        """Return list of valid, unexpired pending requests for handshake hydration."""
-        open_list = []
-        for r in list(self._requests.values()):
-            if r.status == "pending":
-                if r.is_expired:
-                    r.status = "expired"
-                else:
-                    open_list.append(r.to_dict())
-        return open_list
-
-    async def steer(
+    async def await_decision(
         self,
-        symbol: str,
-        instruction: str,
-        operator: str = "operator",
-    ) -> Dict[str, Any]:
+        token: str,
+        timeout_seconds: Optional[float] = None,
+    ) -> Tuple[bool, str]:
         """
-        Unified In-Flight Steering Dispatched across Telegram, Dashboard CRT, and TUI.
+        Asynchronously waits for human operator approval or rejection.
+        Returns (is_approved, explanation_message).
         """
-        sym_clean = symbol.upper().strip() if symbol else "ALL"
-        clean_inst = instruction.strip()
+        req = self._requests.get(token)
+        if not req:
+            return False, f"Approval token '{token}' not found."
+
+        if req.status == ApprovalStatus.APPROVED:
+            return True, req.decision_reason or "Action approved."
+        if req.status == ApprovalStatus.REJECTED:
+            return False, req.decision_reason or "Action rejected by operator."
+
+        now = time.time()
+        remaining_ttl = max(0.1, req.expires_at - now)
+        wait_timeout = min(timeout_seconds or remaining_ttl, remaining_ttl)
+
+        loop = asyncio.get_running_loop()
+        async with self._lock:
+            fut = loop.create_future()
+            self._pending_futures[token] = fut
 
         try:
-            from database.db import AsyncSessionLocal
-            from database.models import UserMarketIntel, ActivityLog, _utcnow
-            now = _utcnow()
-            async with AsyncSessionLocal() as db_sess:
-                db_sess.add(UserMarketIntel(
-                    telegram_user_id=operator,
-                    intel_type="tactical_directive",
-                    title=f"Steer Directive ({sym_clean})",
-                    summary=clean_inst,
-                    directive="neutral",
-                    target_cycle="continuous",
-                    affected_symbols=sym_clean,
-                    is_active=True,
-                    created_at=now,
-                ))
-                db_sess.add(ActivityLog(
-                    category="analysis",
-                    description=f"Steer Directive injected for {sym_clean} by {operator}: {clean_inst[:150]}",
-                    actor=operator,
-                ))
-                await db_sess.commit()
-        except Exception as e:
-            logger.warning(f"[ApprovalHub] Failed persisting steer directive to DB: {e}")
+            result = await asyncio.wait_for(fut, timeout=wait_timeout)
+            return result
+        except asyncio.TimeoutError:
+            async with self._lock:
+                self._pending_futures.pop(token, None)
+            req.status = ApprovalStatus.EXPIRED
+            req.decision_reason = "Approval request timed out without operator response."
+            logger.warning(f"[ApprovalHub] Request '{token}' expired after {wait_timeout}s.")
+            return False, req.decision_reason
 
-        steer_payload = {
-            "symbol": sym_clean,
-            "instruction": clean_inst,
-            "operator": operator,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        await self._broadcast("steer_injected", steer_payload)
-        logger.info(f"[ApprovalHub] Steer synchronized across all surfaces for {sym_clean}: {clean_inst}")
-        return steer_payload
+    def decide(
+        self,
+        token: str,
+        approved: bool,
+        user_id: str,
+        reason: Optional[str] = None,
+    ) -> bool:
+        """
+        Resolves a pending approval card with operator's decision.
+        """
+        req = self._requests.get(token)
+        if not req or req.status != ApprovalStatus.PENDING:
+            return False
+
+        now = time.time()
+        if now > req.expires_at:
+            req.status = ApprovalStatus.EXPIRED
+            req.decision_reason = "Request expired prior to decision."
+            return False
+
+        req.decided_by = user_id
+        if approved:
+            req.status = ApprovalStatus.APPROVED
+            req.decision_reason = reason or f"Approved by operator '{user_id}'."
+        else:
+            req.status = ApprovalStatus.REJECTED
+            req.decision_reason = reason or f"Rejected by operator '{user_id}'."
+
+        logger.info(f"[ApprovalHub] Token '{token}' marked as {req.status.value} by '{user_id}'.")
+
+        # Resolve pending future if awaiting
+        fut = self._pending_futures.pop(token, None)
+        if fut and not fut.done():
+            fut.set_result((approved, req.decision_reason))
+
+        return True
+
+    def format_card_markdown(self, token: str) -> str:
+        """Renders GitHub-style alert markdown card for human review."""
+        req = self._requests.get(token)
+        if not req:
+            return f"Approval request `{token}` not found."
+
+        urgency_badge = "CRITICAL ACTION" if req.level >= 3 else "HIGH RISK ACTION"
+        lines = [
+            f"### [HITL GATE] {urgency_badge} (Level {req.level})",
+            f"**Action**: `{req.action_type}`",
+            f"**Description**: {req.description}",
+            f"**Token**: `{req.token}`",
+            f"**Expires**: <t:{int(req.expires_at)}:R>",
+            "",
+            "**Operation Details:**",
+            "```json",
+        ]
+        import json
+        lines.append(json.dumps(req.details, indent=2))
+        lines.append("```")
+        lines.append("")
+        lines.append(f"*Reply with `/approve {req.token}` or `/reject {req.token}`*")
+        return "\n".join(lines)
+
+    def format_telegram_inline_keyboard(self, token: str) -> List[List[Dict[str, str]]]:
+        """Generates inline keyboard markup buttons for Telegram bot."""
+        return [
+            [
+                {"text": "Approve", "callback_data": f"appr_yes:{token}"},
+                {"text": "Reject", "callback_data": f"appr_no:{token}"},
+            ]
+        ]
+
+
+_global_approval_hub: Optional[ApprovalHub] = None
+
+def get_approval_hub() -> ApprovalHub:
+    global _global_approval_hub
+    if _global_approval_hub is None:
+        _global_approval_hub = ApprovalHub()
+    return _global_approval_hub

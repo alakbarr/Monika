@@ -18,22 +18,26 @@ Replaces monolithic nested while-loops with an explicit phase state machine:
 
 from __future__ import annotations
 
+import asyncio
 import enum
+import inspect
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+from agent.turn_stop_gates import StopGateContext, apply_stop_gates
 
 logger = logging.getLogger("TradingAgent.Agent.TurnPhaseMachine")
 
 
 class TurnVerdict(str, enum.Enum):
     """Execution directives returned by each phase step."""
-    CONTINUE = "continue"      # Proceed to next iteration in loop
-    BREAK = "break"            # Terminate turn loop normally (e.g. final text response rendered)
-    RETURN = "return"          # Immediate exit from turn handler
-    FALLTHROUGH = "fallthrough"# Proceed to subsequent phase within current iteration
-    RETRY_PHASE = "retry_phase"# Re-run current phase (e.g. after parameter ladder adjustment)
+    CONTINUE = "continue"        # Proceed to next iteration in loop
+    BREAK = "break"              # Terminate turn loop normally (e.g. final text response rendered)
+    RETURN = "return"            # Immediate exit from turn handler
+    FALLTHROUGH = "fallthrough"  # Proceed to subsequent phase within current iteration
+    RETRY_PHASE = "retry_phase"  # Re-run current phase (e.g. after parameter ladder adjustment)
 
 
 class TurnPhase(str, enum.Enum):
@@ -111,24 +115,35 @@ class TurnState:
     metadata: Dict[str, Any] = field(default_factory=dict)
     start_time: float = field(default_factory=time.time)
     phase_latencies: Dict[str, float] = field(default_factory=dict)
+    stop_gate_context: StopGateContext = field(default_factory=lambda: StopGateContext(turn_id=""))
+
+    def __post_init__(self):
+        if not self.stop_gate_context.turn_id:
+            self.stop_gate_context.turn_id = self.turn_id
+
+
+PhaseHandler = Union[
+    Callable[[TurnState], TurnVerdict],
+    Callable[[TurnState], Any],  # Can return Coroutine[Any, Any, TurnVerdict]
+]
 
 
 class TurnPhaseMachine:
     """
     Orchestrates the lifecycle of a single or multi-turn agent interaction
-    by evaluating discrete phases with invariant checks.
+    by evaluating discrete phases with invariant checks, supporting both async and sync dispatch.
     """
 
     def __init__(
         self,
         budget: Optional[IterationBudget] = None,
-        prepare_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        assemble_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        preflight_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        api_call_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        normalize_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        tool_round_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
-        finalize_handler: Optional[Callable[[TurnState], TurnVerdict]] = None,
+        prepare_handler: Optional[PhaseHandler] = None,
+        assemble_handler: Optional[PhaseHandler] = None,
+        preflight_handler: Optional[PhaseHandler] = None,
+        api_call_handler: Optional[PhaseHandler] = None,
+        normalize_handler: Optional[PhaseHandler] = None,
+        tool_round_handler: Optional[PhaseHandler] = None,
+        finalize_handler: Optional[PhaseHandler] = None,
     ):
         self.budget = budget or IterationBudget()
         self._prepare_handler = prepare_handler
@@ -139,50 +154,49 @@ class TurnPhaseMachine:
         self._tool_round_handler = tool_round_handler
         self._finalize_handler = finalize_handler
 
-    def run_turn(self, state: TurnState) -> TurnState:
+    async def run_turn_async(self, state: TurnState) -> TurnState:
         """
-        Executes iterations through the phase machine until a termination verdict
-        is reached or the iteration budget is exhausted.
+        Asynchronously executes iterations through the phase machine until a termination
+        verdict is reached or the iteration budget is exhausted.
         """
-        logger.info(f"[TurnPhaseMachine] Starting turn {state.turn_id} for session {state.session_id}")
+        logger.info(f"[TurnPhaseMachine] Starting async turn {state.turn_id} for session {state.session_id}")
 
         while self.budget.can_proceed():
             state.iteration = self.budget.consume()
             logger.debug(f"[TurnPhaseMachine] Iteration {state.iteration}/{self.budget.max_iterations}")
 
             # 1. Prepare Iteration
-            verdict = self._run_phase(TurnPhase.PREPARE, self._prepare_handler, state)
+            verdict = await self._run_phase_async(TurnPhase.PREPARE, self._prepare_handler, state)
             if verdict == TurnVerdict.BREAK:
                 break
             elif verdict == TurnVerdict.RETURN:
                 return state
 
             # 2. Assemble Request
-            verdict = self._run_phase(TurnPhase.ASSEMBLE, self._assemble_handler, state)
+            verdict = await self._run_phase_async(TurnPhase.ASSEMBLE, self._assemble_handler, state)
             if verdict == TurnVerdict.BREAK:
                 break
             elif verdict == TurnVerdict.RETURN:
                 return state
 
             # 3. Preflight Gate
-            verdict = self._run_phase(TurnPhase.PREFLIGHT, self._preflight_handler, state)
+            verdict = await self._run_phase_async(TurnPhase.PREFLIGHT, self._preflight_handler, state)
             if verdict == TurnVerdict.BREAK:
                 break
             elif verdict == TurnVerdict.RETURN:
                 return state
 
             # 4. API Call
-            verdict = self._run_phase(TurnPhase.API_CALL, self._api_call_handler, state)
+            verdict = await self._run_phase_async(TurnPhase.API_CALL, self._api_call_handler, state)
             if verdict == TurnVerdict.BREAK:
                 break
             elif verdict == TurnVerdict.RETURN:
                 return state
             elif verdict == TurnVerdict.RETRY_PHASE:
-                # Re-run current iteration
                 continue
 
             # 5. Normalize Response
-            verdict = self._run_phase(TurnPhase.NORMALIZE, self._normalize_handler, state)
+            verdict = await self._run_phase_async(TurnPhase.NORMALIZE, self._normalize_handler, state)
             if verdict == TurnVerdict.BREAK:
                 break
             elif verdict == TurnVerdict.RETURN:
@@ -190,29 +204,46 @@ class TurnPhaseMachine:
 
             # 6. Tool Round or Terminal Response
             if state.extracted_tool_calls:
-                verdict = self._run_phase(TurnPhase.TOOL_ROUND, self._tool_round_handler, state)
+                verdict = await self._run_phase_async(TurnPhase.TOOL_ROUND, self._tool_round_handler, state)
                 if verdict == TurnVerdict.BREAK:
                     break
                 elif verdict == TurnVerdict.RETURN:
                     return state
-                # Continue loop to process tool results in next iteration
             else:
-                # No tool calls: final text response has been rendered
+                # Evaluate stop gates before finalizing text response
+                can_stop, nudge = apply_stop_gates(state.extracted_text or "", state.stop_gate_context)
+                if not can_stop and nudge:
+                    logger.warning(f"[TurnPhaseMachine] Stop gate prevented exit: {nudge}")
+                    # Inject nudge as user/system correction and proceed to next iteration
+                    state.messages.append({"role": "user", "content": f"[SYSTEM SAFETY DIRECTIVE]: {nudge}"})
+                    continue
+
                 state.has_final_response = True
                 break
 
         # 7. Finalize Turn
-        self._run_phase(TurnPhase.FINALIZE, self._finalize_handler, state)
-        logger.info(f"[TurnPhaseMachine] Completed turn {state.turn_id} in {time.time() - state.start_time:.3f}s")
+        await self._run_phase_async(TurnPhase.FINALIZE, self._finalize_handler, state)
+        logger.info(f"[TurnPhaseMachine] Completed async turn {state.turn_id} in {time.time() - state.start_time:.3f}s")
         return state
 
-    def _run_phase(
+    def run_turn(self, state: TurnState) -> TurnState:
+        """
+        Synchronous execution entrypoint (delegates to async runner if inside event loop or executes sync).
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            # If already running in an async event loop, use task or direct call
+            return loop.run_until_complete(self.run_turn_async(state))
+        except RuntimeError:
+            return asyncio.run(self.run_turn_async(state))
+
+    async def _run_phase_async(
         self,
         phase: TurnPhase,
-        handler: Optional[Callable[[TurnState], TurnVerdict]],
+        handler: Optional[PhaseHandler],
         state: TurnState,
     ) -> TurnVerdict:
-        """Executes a single phase with timing and error isolation."""
+        """Executes a single phase asynchronously with timing and error isolation."""
         state.current_phase = phase
         t0 = time.perf_counter()
 
@@ -220,8 +251,15 @@ class TurnPhaseMachine:
             return TurnVerdict.FALLTHROUGH
 
         try:
-            verdict = handler(state)
-            return verdict
+            if inspect.iscoroutinefunction(handler):
+                verdict = await handler(state)
+            else:
+                res = handler(state)
+                if inspect.iscoroutine(res):
+                    verdict = await res
+                else:
+                    verdict = res
+            return verdict or TurnVerdict.FALLTHROUGH
         except Exception as exc:
             logger.error(f"[TurnPhaseMachine] Phase {phase.value} failed with exception: {exc}", exc_info=True)
             raise
