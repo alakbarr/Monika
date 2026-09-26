@@ -25,11 +25,14 @@ RUN dpkg --add-architecture i386 && \
 
 WORKDIR /wine
 
-# Create shared bridge folder and prefix
+# Create shared bridge folder, mt5 directory, and wine prefix
 RUN mkdir -p /wine/prefix /shared/mt5_bridge /opt/mt5
 
 COPY entrypoint_mt5.sh /wine/entrypoint.sh
 RUN chmod +x /wine/entrypoint.sh
+
+# Expose MT5 Linux RPyC RPC bridge port
+EXPOSE 18812
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD pgrep -f "terminal64.exe" > /dev/null || exit 1

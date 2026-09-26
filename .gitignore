@@ -17,6 +17,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+*.ex5
 
 # Node / Frontend
 node_modules/

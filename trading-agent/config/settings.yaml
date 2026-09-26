@@ -316,6 +316,8 @@ execution:
   remote_gateway_url: http://127.0.0.1:8080
   remote_gateway_token: ''
   mt5_common_dir: ''
+  mt5_linux_host: 127.0.0.1
+  mt5_linux_port: 18812
 paper_trading:
   enabled: true
   initial_balance: 10000.0

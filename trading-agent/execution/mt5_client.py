@@ -16,6 +16,7 @@ import asyncio
 import functools
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
@@ -45,6 +46,8 @@ TIMEFRAME_MAP: dict[str, int] = {}
 def _build_timeframe_map():
     """Membuat pemetaan timeframe string ke konstanta MT5. Dipanggil secara lazy (saat dibutuhkan)."""
     try:
+        from execution.mt5_compat import ensure_mt5_module
+        ensure_mt5_module()
         import MetaTrader5 as _mt5
         mt5: Any = _mt5
         return {
@@ -1181,7 +1184,13 @@ def _connect(path: str, account: int, password: str, server: str) -> bool:
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
     logger.info(f"Initializing MT5: {path}")
-    if not mt5.initialize(path=path):
+    init_kwargs: dict[str, Any] = {}
+    if path and (os.path.exists(path) or sys.platform == "win32"):
+        init_kwargs["path"] = path
+    elif path:
+        logger.debug(f"Path '{path}' not found on host filesystem; connecting to running MT5 terminal instance.")
+
+    if not mt5.initialize(**init_kwargs):
         logger.error(f"MT5 initialize failed: {mt5.last_error()}")
         return False
     if not mt5.login(account, password=password, server=server):
@@ -1189,9 +1198,11 @@ def _connect(path: str, account: int, password: str, server: str) -> bool:
         mt5.shutdown()
         return False
     info = mt5.account_info()
+    bal = getattr(info, 'balance', 0.0) if info else 0.0
+    curr = getattr(info, 'currency', 'USD') if info else 'USD'
     logger.info(
         f"MT5 connected: {server} | Account {account} | "
-        f"Balance={info.balance:.2f} {info.currency}"
+        f"Balance={bal:.2f} {curr}"
     )
     return True
 

@@ -12,9 +12,19 @@ taskkill /F /IM python.exe /FI "WINDOWTITLE eq Administrator: Claude AI Trading 
 
 :: Terminate Vite / Node.js development server on port 5173 if running
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
-    echo Terminating Dashboard frontend process on port 5173 (PID %%a)...
+    echo Terminating Dashboard frontend process on port 5173 [PID %%a]...
     taskkill /F /PID %%a 2>nul
 )
+
+:: Terminate 9Router AI Gateway on port 20128 if running
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :20128 ^| findstr LISTENING') do (
+    echo Terminating 9Router AI Gateway process on port 20128 [PID %%a]...
+    taskkill /F /PID %%a 2>nul
+)
+
+:: Terminate Windows Terminal if running
+echo Terminating Windows Terminal tabs...
+taskkill /F /IM WindowsTerminal.exe 2>nul
 
 :: Terminate MT5 terminal (terminal64.exe)
 echo Checking for MetaTrader 5 terminal...
