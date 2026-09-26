@@ -33,10 +33,10 @@ class SetupWizard:
         from cli.theme import get_console, stamp_ok, stamp_err, stamp_warn, stamp_info, BRASS, PAPER, MUTED
         console = get_console()
         try:
-            import MetaTrader5 as _mt5
-            mt5: Any = _mt5
+            from execution.mt5_compat import ensure_mt5_module
+            mt5: Any = ensure_mt5_module()
         except ImportError:
-            console.print(f"{stamp_err('MT5 PKG')} MetaTrader5 Python package is not installed.")
+            console.print(f"{stamp_err('MT5 PKG')} MetaTrader5 Python package or mt5linux bridge is not installed.")
             return False
 
         init_kwargs: Dict[str, Any] = {}

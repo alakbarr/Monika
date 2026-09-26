@@ -604,8 +604,10 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            import MetaTrader5 as mt5
-            logger.info("  [OK] MetaTrader5 library available")
+            from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            mt5 = ensure_mt5_module()
+            mode_desc = "native Windows" if is_native_mt5_available() else ("Linux RPC bridge" if is_mt5linux_available() else "fallback")
+            logger.info(f"  [OK] MetaTrader5 library available ({mode_desc})")
             from execution.mt5_client import MT5Client
             test_client = self.mt5_client or MT5Client(self.settings)
             if await test_client.connect():

@@ -74,12 +74,18 @@ class SystemDoctor:
         else:
             self._record("Dependencies", "Node/NPM", "WARN", "Node.js or npm not found. Dashboard frontend build may fail.", details="Install Node.js LTS if running the local web dashboard.")
 
-        # Check MetaTrader5 Python package
+        # Check MetaTrader5 Python package or Linux RPC bridge
         try:
-            import MetaTrader5 as mt5
-            self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 Python package installed (v{getattr(mt5, '__version__', 'unknown')}).")
-        except ImportError:
-            self._record("Dependencies", "MetaTrader5-Pkg", "WARN", "MetaTrader5 python package not found in virtual environment.", details="Run: pip install MetaTrader5")
+            from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            mt5 = ensure_mt5_module()
+            if is_native_mt5_available():
+                self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 native Python package installed (v{getattr(mt5, '__version__', 'unknown')}).")
+            elif is_mt5linux_available():
+                self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 Linux RPC bridge (mt5linux) available.")
+            else:
+                self._record("Dependencies", "MetaTrader5-Pkg", "WARN", "MetaTrader5 native package or mt5linux not installed.", details="For Windows: pip install MetaTrader5. For Linux VPS: pip install mt5linux")
+        except Exception as e:
+            self._record("Dependencies", "MetaTrader5-Pkg", "WARN", f"MetaTrader5 check error: {e}", details="For Windows: pip install MetaTrader5. For Linux VPS: pip install mt5linux")
 
     def check_market_session(self) -> None:
         """Checks whether the global financial markets are open or in weekend closure."""
