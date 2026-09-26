@@ -106,36 +106,36 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3284
     - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3291
     - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3306
-      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3416
-    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3435
-    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3445
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3765
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3797
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3837
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3849
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3975
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4002
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4020
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4039
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4082
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4087
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4133
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4636
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4658
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4688
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4721
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4727
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4743
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4770
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4779
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4867
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4896
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4906
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4935
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4945
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4954
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4967
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 4992
+      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3418
+    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3437
+    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3447
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 3767
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 3799
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 3839
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 3851
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 3977
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4004
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4022
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4041
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4084
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4089
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4135
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4655
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 4677
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 4707
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 4740
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 4746
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 4762
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 4789
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 4798
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 4886
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 4915
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 4925
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 4954
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 4964
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 4973
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 4986
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 5011
 
 ## Root Directory: `/trading-agent`
 
@@ -1600,7 +1600,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `debate_node()`
 
 **File:** `risk_gate_node.py`
-  - **Functions**: `risk_gate_node()`
+  - **Functions**: `_safe_num()`, `risk_gate_node()`
 
 **File:** `plan_refinement_node.py`
   - **Functions**: `plan_refinement_node()`
@@ -3363,10 +3363,12 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `portfolio_correlation_gate.py`
   - **Global Variables**: logger
   - **Functions**:
-    - `get_correlation(sym1, sym2)`
-      - *Docstring*: Returns static correlation from CORRELATION_PAIRS.
-    - `filter_correlated_proposals(actionable_trades, threshold)`
-      - *Docstring*: Given a list of tuples (symbol, result_dict), filter out trades that are highly correlated with each other to avoid overexposure. Keeps the trade with the higher confidence.
+    - `compute_portfolio_correlation_matrix(session, symbols, as_of=None)`
+      - *Docstring*: Menghitung matriks korelasi penuh N x N antar instrumen portofolio aktif.
+    - `_get_usd_directional_delta(symbol, direction)`
+      - *Docstring*: Menghitung arah eksposur USD (+1 Long USD, -1 Short USD, 0 Neutral).
+    - `filter_correlated_proposals(session, actionable_trades, threshold=0.65, max_usd_exposure=3, as_of=None)`
+      - *Docstring*: Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat, dengan memperhitungkan posisi terbuka di database.
 
 **File:** `risk_gate.py`
   - **Global Variables**: logger
@@ -4632,6 +4634,23 @@ This document provides an exhaustive structural index of all directories, files,
         - `test_cross_symbol_matching_bonus()`
         - `test_non_overlapping_filter()`
         - `test_cold_start_resilience_proxies()`
+
+**File:** `tests/analysis/test_precommit_gate.py`
+  - **Functions**:
+    - `test_precommit_gate_wait_avoid_passthrough()`
+    - `test_precommit_gate_geometry_validation()`
+
+**File:** `tests/graph/test_risk_gate_node_levels.py`
+  - **Functions**:
+    - `test_safe_num()`
+    - `test_quant_promoted_trade_synthesizes_levels()`
+
+**File:** `tests/risk/test_portfolio_correlation_gate.py`
+  - **Functions**:
+    - `test_usd_directional_delta()`
+    - `test_compute_portfolio_correlation_matrix()`
+    - `test_filter_correlated_proposals_nan_handling()`
+    - `test_filter_correlated_proposals_max_usd_exposure()`
 
 #### Folder: `trading-agent/scripts`
 

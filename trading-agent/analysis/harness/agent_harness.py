@@ -756,6 +756,9 @@ class AgentHarness:
 
         # Reset all guardrails for fresh stage execution
         self.guardrail_controller.reset_all()
+        if prefetch_satisfied_tools:
+            for p_tool in prefetch_satisfied_tools:
+                self.guardrail_controller.read_before_act.record_call(p_tool)
         self.stall_guard.reset()
         self.verification_ledger.reset_turn()
 
@@ -1392,8 +1395,11 @@ class AgentHarness:
                     return call_item["_schema_error"]
 
                 # Unified Tool Guardrails (Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Anti-Oscillation)
+                guard_ctx = dict(kwargs)
+                if prefetch_satisfied_tools:
+                    guard_ctx["prefetch_satisfied_tools"] = prefetch_satisfied_tools
                 guard_verdict = self.guardrail_controller.validate_tool_call(
-                    c_name, c_input, context=kwargs
+                    c_name, c_input, context=guard_ctx
                 )
                 if not guard_verdict.allowed:
                     logger.warning(

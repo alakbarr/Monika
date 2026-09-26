@@ -85,6 +85,29 @@ def test_read_before_act_guard():
     v_after_read = guard.evaluate("submit_asset_analysis", {"decision": "buy", "symbol": "GBPUSD"})
     assert v_after_read.allowed is True
 
+    # New guard: 'wait' and 'avoid' do not require tool reads
+    guard_fresh = ReadBeforeActGuard()
+    v_wait = guard_fresh.evaluate("submit_asset_analysis", {"decision": "wait", "symbol": "GBPUSD"})
+    assert v_wait.allowed is True
+
+    v_avoid = guard_fresh.evaluate("submit_asset_analysis", {"decision": "avoid", "symbol": "GBPUSD"})
+    assert v_avoid.allowed is True
+
+    # New guard: prefetch satisfied tools or raw bundle data in context bypasses block
+    v_prefetch = guard_fresh.evaluate(
+        "submit_asset_analysis",
+        {"decision": "buy", "symbol": "BTCUSD"},
+        context={"prefetch_satisfied_tools": ["get_price_history"]}
+    )
+    assert v_prefetch.allowed is True
+
+    v_bundle = guard_fresh.evaluate(
+        "submit_asset_analysis",
+        {"decision": "buy", "symbol": "BTCUSD"},
+        context={"raw_bundle_data": {"price": 83000}}
+    )
+    assert v_bundle.allowed is True
+
 
 def test_mandatory_sizing_guard():
     guard = MandatorySizingGuard()

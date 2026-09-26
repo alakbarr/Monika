@@ -267,9 +267,19 @@ class ReadBeforeActGuard:
 
     def evaluate(self, tool_name: str, args: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> GuardrailVerdict:
         if tool_name in TERMINAL_ACTION_TOOLS:
-            # Pengecualian jika keputusan hanya 'avoid' atau 'wait'
             decision = str(args.get("decision") or args.get("action") or "").lower().strip()
-            if decision in ("avoid", "wait") and len(self._read_tools_called) > 0:
+            # Non-directional defensive decisions (wait/avoid) carry zero market risk and do not require prior data queries
+            if decision in ("avoid", "wait"):
+                return GuardrailVerdict(allowed=True, guard_name="ReadBeforeActGuard", reason="OK")
+
+            # Check if market data was pre-bundled / satisfied in execution context
+            ctx = context or {}
+            has_prefetched = bool(
+                ctx.get("prefetch_satisfied_tools")
+                or ctx.get("has_prefetched_data")
+                or ctx.get("raw_bundle_data")
+            )
+            if has_prefetched:
                 return GuardrailVerdict(allowed=True, guard_name="ReadBeforeActGuard", reason="OK")
 
             if len(self._read_tools_called) == 0:
