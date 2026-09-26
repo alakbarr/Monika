@@ -390,3 +390,86 @@ class TestExecutionService:
         assert res.executed is False
         assert "stale_fundamental_brief" in res.risk_checks_failed
 
+    @pytest.mark.asyncio
+    async def test_kill_switch_paper_reconciliation_and_de_arming(self):
+        from database.models import Position, SystemConfig
+        mock_mt5 = AsyncMock()
+        mock_mt5.close_all_positions.return_value = {"closed": 0, "failed": 0, "total": 0}
+        mock_mt5.sync_positions_from_mt5 = AsyncMock()
+        svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
+        svc.gate = AsyncMock()
+
+        # Mock open paper positions in DB
+        p1 = Position(id=1, symbol="EURUSD", direction="buy", status="open", volume=0.1, is_paper=True)
+        p2 = Position(id=2, symbol="GBPUSD", direction="sell", status="open", volume=0.1, is_paper=True)
+
+        with patch('execution.execution_service.get_session') as mock_get_session, \
+             patch.object(svc, '_close_paper_position', new_callable=AsyncMock) as mock_close_p:
+            mock_close_p.return_value = {"success": True, "ticket": 1}
+            mock_session = AsyncMock()
+            mock_session.add = MagicMock()
+            
+            async def fake_execute(query, *args, **kwargs):
+                res = MagicMock()
+                q_str = str(query).lower()
+                if "is_paper = false" in q_str or "is_paper is false" in q_str:
+                    res.scalars.return_value.all.return_value = []
+                elif "positions" in q_str:
+                    res.scalars.return_value.all.return_value = [p1, p2]
+                elif "system_config" in q_str:
+                    res.scalars.return_value.first.return_value = SystemConfig(key="kill_switch", value="true")
+                else:
+                    res.scalars.return_value.all.return_value = []
+                    res.scalars.return_value.first.return_value = None
+                return res
+
+            mock_session.execute = AsyncMock(side_effect=fake_execute)
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_session
+            mock_get_session.return_value = mock_ctx
+
+            res = await svc.kill_switch(reason="Test Kill Switch")
+
+            assert res["closed"] == 2
+            assert res["paper_closed"] == 2
+            assert mock_close_p.await_count == 2
+            svc.gate.pause_trading.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_resume_trading_clears_gates_and_state(self):
+        from database.models import SystemConfig
+        
+        mock_mt5 = AsyncMock()
+        mock_mt5.is_connected = True
+        svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
+        svc.gate = AsyncMock()
+
+        svc.effect_gate.request_abort("Test Abort")
+        assert svc.effect_gate.is_aborted is True
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        
+        cfg_kill = SystemConfig(key="kill_switch", value="true")
+        
+        async def fake_execute(query, *args, **kwargs):
+            res = MagicMock()
+            q_str = str(query).lower()
+            if "system_config" in q_str:
+                res.scalar_one_or_none.return_value = cfg_kill
+                res.scalars.return_value.first.return_value = cfg_kill
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.first.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=fake_execute)
+
+        res = await svc.resume_trading(session=mock_session, requested_by="admin_test")
+
+        assert res["success"] is True
+        assert svc.effect_gate.is_aborted is False
+        svc.gate.resume_trading.assert_awaited_once_with(mock_session)
+        assert cfg_kill.value == "false"
+

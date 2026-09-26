@@ -1231,6 +1231,15 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 await self._save_position(session, hedge, sizing_hedge,
                                            result_hedge, pair_group_id=pair_group_id, auto_commit=False)
                 await session.commit()
+
+                # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
+                try:
+                    from utils.analytics.paper_tracker import PaperTracker
+                    paper_tracker = PaperTracker(self.settings)
+                    await paper_tracker.open_paper_trade(session, primary, risk_pct=sizing_primary.risk_percent)
+                    await paper_tracker.open_paper_trade(session, hedge, risk_pct=sizing_hedge.risk_percent)
+                except Exception as paper_err:
+                    logger.debug(f"Paper trade open for pair failed (non-fatal): {paper_err}")
             except Exception as db_err:
                 logger.critical(f"DB save failed after paired MT5 orders {result_primary.get('ticket')}/{result_hedge.get('ticket')}: {db_err}. CLOSING orphan paired positions.")
                 if not self.dry_run:

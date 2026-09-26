@@ -263,7 +263,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
     async def kill_switch(self, reason: str = "Manual kill switch activated") -> dict:
         """
-        DARURAT: Tutup SEMUA posisi terbuka segera.
+        DARURAT: Tutup SEMUA posisi terbuka segera (baik MT5 live maupun DB paper/synthetic).
         Beroperasi independen dari pipeline analisis.
         """
         import asyncio
@@ -285,58 +285,74 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 ))
                 await session.commit()
 
-            # Close all MT5 positions with retries
-            from database.models import Position
+            from database.models import Position, PaperTradeRecord
             from sqlalchemy import select
-            
+
             max_retries = 3
             result: Dict[str, Any] = {"closed": 0, "failed": 0, "total": 0, "errors": []}
             adapter = getattr(self, "broker_adapter", None)
+            paper_closed_count = 0
+            live_closed_count = 0
+
             for attempt in range(max_retries):
+                # 1. Broker terminal liquidation
                 if adapter and hasattr(adapter, "close_all_positions"):
                     result = await adapter.close_all_positions(comment="KillSwitch")
                 elif hasattr(self, "mt5") and hasattr(self.mt5, "close_all_positions"):
                     result = await self.mt5.close_all_positions(comment="KillSwitch")
                 else:
                     result = {"closed": 0, "failed": 0, "total": 0, "errors": []}
-                
+
+                broker_closed = result.get('closed', 0)
+                live_closed_count = max(live_closed_count, broker_closed)
+
+                # 2. Sync broker state to DB & liquidate synthetic/paper positions
                 async with get_session() as temp_session:
                     if hasattr(self, "mt5") and hasattr(self.mt5, "sync_positions_from_mt5"):
                         await self.mt5.sync_positions_from_mt5(temp_session)
-                    active_db = (await temp_session.execute(
+
+                    # Close all open paper/dry-run positions in DB
+                    open_db_positions = (await temp_session.execute(
                         select(Position).where(Position.status == 'open')
                     )).scalars().all()
-                    
-                if result.get('failed', 0) == 0 and not active_db:
+
+                    for pos in open_db_positions:
+                        is_paper_pos = getattr(pos, 'is_paper', False) or getattr(self, 'dry_run', False)
+                        if is_paper_pos or not pos.mt5_ticket:
+                            close_res = await self._close_paper_position(
+                                temp_session, pos, requested_by="kill_switch", reason=reason
+                            )
+                            if close_res and close_res.get('success'):
+                                paper_closed_count += 1
+
+                    # Check remaining live broker positions in DB
+                    active_live_db = (await temp_session.execute(
+                        select(Position).where(Position.status == 'open', Position.is_paper == False)
+                    )).scalars().all()
+
+                if result.get('failed', 0) == 0 and not active_live_db:
                     break
                 logger.warning(f"Kill switch attempt {attempt+1} failed or DB still has open positions. Retrying in 1s...")
                 await asyncio.sleep(1.0)
 
-            # TAMBAHKAN: paper trade cleanup
+            # 3. Clean up any remaining orphaned PaperTradeRecord rows
             try:
                 async with get_session() as paper_session:
-                    from utils.analytics.paper_tracker import PaperTracker
-                    from database.models import PaperTradeRecord, PriceOHLCV
-                    from sqlalchemy import update as sql_update
-                    
-                    # Close semua open paper trades dengan exit at current price
+                    from database.models import PriceOHLCV
                     open_papers = (await paper_session.execute(
                         select(PaperTradeRecord).where(PaperTradeRecord.status == 'open')
                     )).scalars().all()
-                    
+
                     now = clock.now()
                     for paper in open_papers:
-                        # Ambil harga terakhir
                         last_bar = (await paper_session.execute(
                             select(PriceOHLCV)
                             .where(PriceOHLCV.symbol == paper.symbol)
-                            .where(PriceOHLCV.timeframe == 'H4')
                             .order_by(PriceOHLCV.timestamp.desc())
                             .limit(1)
                         )).scalar_one_or_none()
-                        
+
                         exit_price = last_bar.close if last_bar else paper.entry_price
-                        
                         if paper.entry_price and exit_price:
                             move = exit_price - paper.entry_price
                             if paper.direction == 'sell':
@@ -346,33 +362,41 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                         else:
                             pnl_pct = 0.0
                             exit_price = paper.entry_price
-                        
+
                         paper.status = 'closed'
                         paper.closed_at = now
                         paper.exit_price = exit_price
                         paper.exit_reason = 'kill_switch'
                         paper.pnl_pct = round(pnl_pct, 4)
                         paper.holding_hours = (now - paper.opened_at).total_seconds() / 3600 if paper.opened_at else 0
-                    
+                        paper_closed_count += 1
+
                     await paper_session.commit()
-                    logger.info(f'Kill switch: closed {len(open_papers)} paper trades')
+                    logger.info(f'Kill switch: closed {paper_closed_count} paper trades')
             except Exception as e:
                 logger.error(f'Failed to close paper trades during kill switch (non-fatal): {e}')
 
-            # Sync DB to reflect closures and log
-            closed_cnt = result.get('closed', 0)
+            # 4. Aggregate metrics (live + paper)
+            total_closed = live_closed_count + paper_closed_count
             failed_cnt = result.get('failed', 0)
-            total_cnt = result.get('total', closed_cnt + failed_cnt)
+            total_cnt = max(result.get('total', 0) + paper_closed_count, total_closed + failed_cnt)
+            result['closed'] = total_closed
+            result['failed'] = failed_cnt
+            result['total'] = total_cnt
+            result['paper_closed'] = paper_closed_count
+            result['live_closed'] = live_closed_count
+
+            # 5. Sync DB to reflect closures and de-arm kill_switch trigger flag
             async with get_session() as session:
                 session.add(ActivityLog(
                     category='trading',
                     description=(
-                        f"Kill switch complete: closed={closed_cnt}, "
-                        f"failed={failed_cnt}, total={total_cnt}"
+                        f"Kill switch complete: closed={total_closed} (live={live_closed_count}, "
+                        f"paper={paper_closed_count}), failed={failed_cnt}, total={total_cnt}"
                     ),
                     actor='execution_service',
                 ))
-                
+
                 session.add(OrderLog(
                     action='kill_switch',
                     symbol='ALL',
@@ -381,9 +405,29 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     approved_by='execution_service',
                     result=json.dumps(result),
                 ))
+
+                # De-arm SystemConfig kill_switch so restarted agent does not loop-trigger
+                cfg_kill = (await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == "kill_switch")
+                )).scalar_one_or_none()
+                if cfg_kill:
+                    cfg_kill.value = "false"
+                else:
+                    session.add(SystemConfig(key="kill_switch", value="false"))
+
+                # Lockout is maintained safely via manual_trading_paused
+                cfg_pause = (await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == "manual_trading_paused")
+                )).scalar_one_or_none()
+                pause_val = f"true:KILL SWITCH: {reason}"
+                if cfg_pause:
+                    cfg_pause.value = pause_val
+                else:
+                    session.add(SystemConfig(key="manual_trading_paused", value=pause_val))
+
                 await safe_commit(session, label="kill_switch")
 
-            # Final verification - tunggu 2 detik dan cek ulang hanya jika ada posisi sebelumnya
+            # 6. Final verification - alert if any live agent positions remain on broker
             if result.get('total', 0) > 0 or result.get('failed', 0) > 0:
                 await asyncio.sleep(2)
                 if adapter and hasattr(adapter, "get_open_positions"):
@@ -406,15 +450,60 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                         logger.error(f"Failed to send kill switch incomplete alert: {notif_err}")
 
             logger.critical(
-                f"Kill switch complete: {closed_cnt}/{total_cnt} positions closed"
+                f"Kill switch complete: {total_closed}/{total_cnt} positions closed"
             )
-            
+
             try:
                 from utils.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
-                await notifier.send_critical(f"🛑 <b>KILL SWITCH COMPLETE</b>\nClosed: {closed_cnt}/{total_cnt}\nReason: {reason}")
+                await notifier.send_critical(
+                    f"🛑 <b>KILL SWITCH COMPLETE</b>\n"
+                    f"Closed: {total_closed}/{total_cnt} (live={live_closed_count}, paper={paper_closed_count})\n"
+                    f"Reason: {reason}"
+                )
             except Exception as e:
                 logger.error(f"Failed to notify kill switch completion: {e}")
-                
+
             return result
+
+    async def resume_trading(self, session: Optional[AsyncSession] = None, requested_by: str = "operator") -> dict:
+        """
+        Universal resume handler:
+        - Resets EffectGate to ACTIVE
+        - Unpauses RiskGate (trading_paused = False)
+        - Clears SystemConfig pause & kill_switch flags
+        - Clears suspended symbols in PaperTracker
+        - Logs audit trail
+        """
+        if hasattr(self, "effect_gate") and self.effect_gate is not None:
+            self.effect_gate.reset()
+
+        async def _do_resume(sess: AsyncSession):
+            if hasattr(self, "gate") and self.gate is not None:
+                await self.gate.resume_trading(sess)
+
+            # Ensure all flags are cleared in SystemConfig
+            for key in ("kill_switch", "manual_trading_paused", "trading_paused", "system_paused"):
+                cfg = (await sess.execute(
+                    select(SystemConfig).where(SystemConfig.key == key)
+                )).scalar_one_or_none()
+                if cfg:
+                    cfg.value = "false"
+
+            sess.add(ActivityLog(
+                category="trading",
+                description=f"Trading resumed by {requested_by}: all pause & kill flags cleared, EffectGate reset.",
+                actor=requested_by,
+            ))
+            await safe_commit(sess, label="universal_resume_trading")
+
+        if session is not None:
+            await _do_resume(session)
+        else:
+            async with get_session() as new_session:
+                await _do_resume(new_session)
+
+        logger.info(f"[ExecutionService] Trading successfully resumed by {requested_by}.")
+        return {"success": True, "message": f"Trading resumed by {requested_by}."}
+
 

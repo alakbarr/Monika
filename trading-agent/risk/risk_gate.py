@@ -1582,11 +1582,12 @@ class RiskGate:
             state.trading_paused = False
             state.reason = None
 
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == 'manual_trading_paused')
-        )).scalar_one_or_none()
-        if cfg:
-            cfg.value = 'false'
+        for key in ('manual_trading_paused', 'kill_switch', 'trading_paused', 'system_paused'):
+            cfg = (await session.execute(
+                select(SystemConfig).where(SystemConfig.key == key)
+            )).scalar_one_or_none()
+            if cfg:
+                cfg.value = 'false'
 
         await self.clear_edge_status_pause(session)
         
@@ -1598,7 +1599,7 @@ class RiskGate:
             logger.debug(f"Failed to clear suspended symbols on resume: {e}")
 
         await session.commit()
-        logger.info('Trading manually RESUMED (RiskState + Manual + EdgeTracker + SuspendedSymbols flags cleared)')
+        logger.info('Trading manually RESUMED (RiskState + Manual + KillSwitch + EdgeTracker + SuspendedSymbols flags cleared)')
 
     async def _check_post_loss_cooldown(
         self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False

@@ -150,7 +150,8 @@ async def test_cli_subcommand_kill(capsys):
     mock_session.execute.return_value = mock_res
 
     with patch("cli.main.init_db", AsyncMock()), \
-         patch("cli.main.get_session") as mock_get_sess:
+         patch("cli.main.get_session") as mock_get_sess, \
+         patch("aiohttp.ClientSession"):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_kill(args)
 

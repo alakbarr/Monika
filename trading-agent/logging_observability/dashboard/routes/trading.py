@@ -1093,6 +1093,36 @@ async def action_emergency_kill(request: Request):
     return {"status": "success", "message": "Emergency kill switch activated. Position closures completed."}
 
 
+@trading_router.post("/api/actions/resume", tags=["Actions"])
+@trading_router.post("/api/actions/resume-trading", tags=["Actions"])
+@trading_router.post("/api/resume", tags=["Actions"])
+@require_role(Role.ADMIN)
+async def action_resume_trading(request: Request):
+    """Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate."""
+    from database.db import AsyncSessionLocal
+    exec_svc = get_dashboard_dependency("execution_service")
+    risk_gate = get_dashboard_dependency("risk_gate")
+
+    async with AsyncSessionLocal() as session:
+        if exec_svc and hasattr(exec_svc, "resume_trading"):
+            res = await exec_svc.resume_trading(session, requested_by="dashboard_admin")
+        elif risk_gate and hasattr(risk_gate, "resume_trading"):
+            await risk_gate.resume_trading(session)
+            res = {"success": True, "message": "Trading resumed via RiskGate."}
+        else:
+            from risk.risk_gate import RiskGate
+            settings = get_dashboard_dependency("settings") or {}
+            gate = RiskGate(settings)
+            await gate.resume_trading(session)
+            res = {"success": True, "message": "Trading resumed."}
+
+    await broadcast_live_event("trading_resumed", {
+        "resumed_at": datetime.now(timezone.utc).isoformat(),
+        "actor": "admin",
+    })
+    return {"status": "success", "message": "Trading resumed. All pause & kill flags cleared, EffectGate reset."}
+
+
 @trading_router.api_route("/api/actions/approve-trade/{trade_id}", methods=["POST", "PUT"], tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_approve_trade(trade_id: int, request: Request):
