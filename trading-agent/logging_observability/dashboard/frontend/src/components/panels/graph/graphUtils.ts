@@ -1,9 +1,11 @@
 import {
   FileText,
   Database,
+  Activity,
   TrendingUp,
   TrendingDown,
   Scale,
+  Brain,
   Shield,
   Zap,
   Layers,
@@ -12,16 +14,20 @@ import type { GraphNodeStatus } from '../../../types/api';
 
 export const getNodeIcon = (id: string) => {
   switch (id) {
-    case 'fundamental_brief':
-      return FileText;
     case 'prefetch_data':
       return Database;
+    case 'fundamental_brief':
+      return FileText;
+    case 'per_asset_analysis':
+      return Activity;
     case 'bull_advocate':
       return TrendingUp;
     case 'bear_dissent':
       return TrendingDown;
     case 'debate_judge':
       return Scale;
+    case 'reflection':
+      return Brain;
     case 'risk_gate':
       return Shield;
     case 'execution':
@@ -39,6 +45,8 @@ export const getStatusColor = (status: GraphNodeStatus) => {
       return 'var(--color-brass)';
     case 'failed':
       return 'var(--color-ledger-red)';
+    case 'skipped':
+      return 'var(--color-ink-muted)';
     case 'pending':
     default:
       return 'var(--color-ink-soft)';
@@ -46,23 +54,27 @@ export const getStatusColor = (status: GraphNodeStatus) => {
 };
 
 export const COMPACT_POSITIONS: Record<string, { x: number; y: number }> = {
-  fundamental_brief: { x: 40, y: 50 },
-  prefetch_data: { x: 40, y: 250 },
-  bull_advocate: { x: 340, y: 50 },
-  bear_dissent: { x: 340, y: 250 },
-  debate_judge: { x: 630, y: 150 },
-  risk_gate: { x: 930, y: 50 },
-  execution: { x: 930, y: 250 },
+  prefetch_data: { x: 30, y: 40 },
+  fundamental_brief: { x: 30, y: 240 },
+  per_asset_analysis: { x: 310, y: 140 },
+  bull_advocate: { x: 590, y: 40 },
+  bear_dissent: { x: 590, y: 240 },
+  debate_judge: { x: 870, y: 140 },
+  reflection: { x: 1150, y: 140 },
+  risk_gate: { x: 1430, y: 140 },
+  execution: { x: 1710, y: 140 },
 };
 
 export const WIDE_POSITIONS: Record<string, { x: number; y: number }> = {
-  fundamental_brief: { x: 50, y: 260 },
-  prefetch_data: { x: 330, y: 260 },
-  bull_advocate: { x: 650, y: 130 },
-  bear_dissent: { x: 650, y: 390 },
-  debate_judge: { x: 950, y: 260 },
-  risk_gate: { x: 1250, y: 260 },
-  execution: { x: 1510, y: 260 },
+  prefetch_data: { x: 40, y: 240 },
+  fundamental_brief: { x: 320, y: 240 },
+  per_asset_analysis: { x: 600, y: 240 },
+  bull_advocate: { x: 890, y: 110 },
+  bear_dissent: { x: 890, y: 370 },
+  debate_judge: { x: 1180, y: 240 },
+  reflection: { x: 1470, y: 240 },
+  risk_gate: { x: 1750, y: 240 },
+  execution: { x: 2030, y: 240 },
 };
 
 export const CANONICAL_POSITIONS = COMPACT_POSITIONS;

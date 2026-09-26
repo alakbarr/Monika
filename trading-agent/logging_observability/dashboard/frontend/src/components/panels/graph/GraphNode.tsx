@@ -50,8 +50,10 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
         height={nodeHeight}
         rx="3"
         fill="var(--color-paper-raised)"
-        stroke={isSelected ? 'var(--color-brass)' : 'var(--color-rule)'}
+        stroke={isSelected ? 'var(--color-brass)' : node.status === 'skipped' ? 'var(--color-ink-muted)' : 'var(--color-rule)'}
         strokeWidth={isSelected ? 2.5 : 1.5}
+        strokeDasharray={node.status === 'skipped' ? '4 3' : undefined}
+        opacity={node.status === 'skipped' ? 0.8 : 1}
       />
 
       {/* Top Accent Strip */}
@@ -62,6 +64,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
         height="4"
         rx="2"
         fill={statusColor}
+        opacity={node.status === 'skipped' ? 0.6 : 1}
       />
 
       {/* Node Header: Icon + Title */}
@@ -169,7 +172,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               }}
             >
               <Clock size={11} />
-              {(node.duration_ms / 1000).toFixed(2)}s
+              {node.status === 'skipped' ? 'bypassed' : `${(node.duration_ms / 1000).toFixed(2)}s`}
             </span>
 
             <span

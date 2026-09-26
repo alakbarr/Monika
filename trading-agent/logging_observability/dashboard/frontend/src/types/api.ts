@@ -437,7 +437,7 @@ export interface ChatToolEvent {
 // -----------------------------------------------------------------------------
 // Phase 5: LangGraph DAG Visualizer Types
 // -----------------------------------------------------------------------------
-export type GraphNodeStatus = 'done' | 'running' | 'pending' | 'failed';
+export type GraphNodeStatus = 'done' | 'running' | 'pending' | 'failed' | 'skipped';
 
 export interface GraphNodeTokens {
   input: number;
@@ -449,7 +449,7 @@ export interface GraphNodeTokens {
 export interface GraphNode {
   id: string;
   name: string;
-  stage: 'stage1' | 'prefetch' | 'debate' | 'risk' | 'execution';
+  stage: 'stage1' | 'prefetch' | 'stage2' | 'debate' | 'reflection' | 'risk' | 'execution' | string;
   status: GraphNodeStatus;
   duration_ms: number;
   tokens: GraphNodeTokens;
@@ -476,12 +476,14 @@ export interface CycleItem {
 
 export interface GraphStateResponse {
   cycle_id: string;
-  status: 'completed' | 'running' | 'failed';
+  status: 'completed' | 'running' | 'failed' | 'idle' | 'pending';
   started_at?: string | null;
   completed_at?: string | null;
   total_duration_ms: number;
   total_tokens: GraphNodeTokens;
   available_cycles: CycleItem[];
+  available_symbols?: string[];
+  selected_symbol?: string | null;
   nodes: GraphNode[];
   edges: GraphEdge[];
 }

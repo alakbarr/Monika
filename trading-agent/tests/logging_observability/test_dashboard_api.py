@@ -739,22 +739,27 @@ class TestDashboardAPI:
         assert "available_cycles" in data
 
         node_ids = [n["id"] for n in data["nodes"]]
-        assert "fundamental_brief" in node_ids
         assert "prefetch_data" in node_ids
+        assert "fundamental_brief" in node_ids
+        assert "per_asset_analysis" in node_ids
         assert "bull_advocate" in node_ids
         assert "bear_dissent" in node_ids
         assert "debate_judge" in node_ids
+        assert "reflection" in node_ids
         assert "risk_gate" in node_ids
         assert "execution" in node_ids
+        assert len(data["nodes"]) == 9
 
         # Verify edge connectivity
         edge_pairs = [(e["from"], e["to"]) for e in data["edges"]]
-        assert ("fundamental_brief", "prefetch_data") in edge_pairs
-        assert ("prefetch_data", "bull_advocate") in edge_pairs
-        assert ("prefetch_data", "bear_dissent") in edge_pairs
+        assert ("prefetch_data", "fundamental_brief") in edge_pairs
+        assert ("fundamental_brief", "per_asset_analysis") in edge_pairs
+        assert ("per_asset_analysis", "bull_advocate") in edge_pairs
+        assert ("per_asset_analysis", "bear_dissent") in edge_pairs
         assert ("bull_advocate", "debate_judge") in edge_pairs
         assert ("bear_dissent", "debate_judge") in edge_pairs
-        assert ("debate_judge", "risk_gate") in edge_pairs
+        assert ("debate_judge", "reflection") in edge_pairs
+        assert ("reflection", "risk_gate") in edge_pairs
         assert ("risk_gate", "execution") in edge_pairs
 
     def test_get_graph_state_with_cycle_id(self):
@@ -763,7 +768,7 @@ class TestDashboardAPI:
         assert res.status_code == 200
         data = res.json()
         assert data["cycle_id"] == "cycle-custom-2026"
-        assert len(data["nodes"]) == 7
+        assert len(data["nodes"]) == 9
 
     def test_get_graph_state_with_real_spans(self):
         """Test that real spans in global_trace_store accurately reflect in graph state."""
@@ -903,7 +908,7 @@ class TestDashboardAPI:
         assert "summary" in data
         assert "spans" in data
         assert "graph_state" in data
-        assert len(data["graph_state"]["nodes"]) == 7
+        assert len(data["graph_state"]["nodes"]) == 9
 
     def test_pagination_limits_bounded_validation(self):
         """Test that query parameters enforce ge=1 and le bounds."""
@@ -914,6 +919,134 @@ class TestDashboardAPI:
         # limit=500 should fail validation (le=200)
         res_over = client.get("/api/positions?limit=500")
         assert res_over.status_code == 422
+
+    def test_get_graph_state_per_symbol_filtering(self):
+        """Test GET /api/observability/graph-state with symbol parameter."""
+        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+
+        test_cycle = "cycle-symbol-filter-test"
+        asset_span = TraceRecord(
+            trace_id=test_cycle,
+            span_id="span-asset-filter-1",
+            parent_span_id=None,
+            name="node:per_asset_analysis",
+            kind="node",
+            start_time="2026-09-14T03:00:00Z",
+            end_time="2026-09-14T03:00:03Z",
+            duration_ms=3000.0,
+            attributes={
+                "cycle_id": test_cycle,
+                "node_name": "per_asset_analysis",
+                "input_tokens": 12000,
+                "output_tokens": 3000,
+                "cost_usd": 0.015,
+                "output_payload": {
+                    "per_asset": {
+                        "EURUSD": {
+                            "signal": "BUY",
+                            "confidence": 0.85,
+                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075}
+                        },
+                        "GBPUSD": {
+                            "signal": "WAIT",
+                            "confidence": 0.40,
+                            "token_usage": {"input_tokens": 6000, "output_tokens": 1500, "cost_usd": 0.0075}
+                        }
+                    }
+                }
+            },
+            status="OK"
+        )
+        global_trace_store.record_span(asset_span)
+
+        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}&symbol=EURUSD")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["cycle_id"] == test_cycle
+        assert data["selected_symbol"] == "EURUSD"
+        assert "EURUSD" in data["available_symbols"]
+        assert "GBPUSD" in data["available_symbols"]
+
+        nodes_by_id = {n["id"]: n for n in data["nodes"]}
+        asset_node = nodes_by_id["per_asset_analysis"]
+        assert asset_node["tokens"]["input"] == 6000
+        assert asset_node["tokens"]["output"] == 1500
+        assert asset_node["output_payload"]["symbol"] == "EURUSD"
+
+    def test_get_graph_state_skipped_debate_when_cycle_completed(self):
+        """Test that unexecuted debate nodes are marked as skipped when cycle completes."""
+        from logging_observability.tracing.exporters import global_trace_store, TraceRecord
+
+        test_cycle = "cycle-skipped-debate-test"
+        cycle_span = TraceRecord(
+            trace_id=test_cycle,
+            span_id="span-cycle-1",
+            parent_span_id=None,
+            name=f"cycle:{test_cycle}",
+            kind="cycle",
+            start_time="2026-09-14T04:00:00Z",
+            end_time="2026-09-14T04:00:10Z",
+            duration_ms=10000.0,
+            attributes={"cycle_id": test_cycle},
+            status="OK"
+        )
+        fund_span = TraceRecord(
+            trace_id=test_cycle,
+            span_id="span-fund-skip-1",
+            parent_span_id=None,
+            name="node:fundamental_analysis",
+            kind="node",
+            start_time="2026-09-14T04:00:00Z",
+            end_time="2026-09-14T04:00:02Z",
+            duration_ms=2000.0,
+            attributes={"cycle_id": test_cycle, "node_name": "fundamental_analysis"},
+            status="OK"
+        )
+        reflect_span = TraceRecord(
+            trace_id=test_cycle,
+            span_id="span-reflect-skip-1",
+            parent_span_id=None,
+            name="node:reflection",
+            kind="node",
+            start_time="2026-09-14T04:00:05Z",
+            end_time="2026-09-14T04:00:07Z",
+            duration_ms=2000.0,
+            attributes={"cycle_id": test_cycle, "node_name": "reflection"},
+            status="OK"
+        )
+        risk_span = TraceRecord(
+            trace_id=test_cycle,
+            span_id="span-risk-skip-1",
+            parent_span_id=None,
+            name="node:risk_gate",
+            kind="node",
+            start_time="2026-09-14T04:00:08Z",
+            end_time="2026-09-14T04:00:09Z",
+            duration_ms=1000.0,
+            attributes={"cycle_id": test_cycle, "node_name": "risk_gate"},
+            status="OK"
+        )
+
+        global_trace_store.record_span(cycle_span)
+        global_trace_store.record_span(fund_span)
+        global_trace_store.record_span(reflect_span)
+        global_trace_store.record_span(risk_span)
+
+        res = client.get(f"/api/observability/graph-state?cycle_id={test_cycle}")
+        assert res.status_code == 200
+        data = res.json()
+        nodes_by_id = {n["id"]: n for n in data["nodes"]}
+
+        # Debate judge and advocates should be skipped because cycle finished and downstream reflection/risk ran
+        assert nodes_by_id["debate_judge"]["status"] == "skipped"
+        assert nodes_by_id["bull_advocate"]["status"] == "skipped"
+        assert nodes_by_id["bear_dissent"]["status"] == "skipped"
+        assert "Skipped: No actionable trades" in nodes_by_id["debate_judge"]["input_summary"]
+
+        # Execution had no approved trades so it should also be marked skipped
+        assert nodes_by_id["execution"]["status"] == "skipped"
+        assert "Skipped" in nodes_by_id["execution"]["input_summary"]
+
 
 
 

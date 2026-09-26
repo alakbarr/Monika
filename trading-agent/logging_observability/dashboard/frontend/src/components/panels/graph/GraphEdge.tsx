@@ -76,16 +76,21 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
   const isRunning =
     srcNode?.status === 'running' ||
     (srcNode?.status === 'done' && dstNode?.status === 'running');
+  const isSkipped = srcNode?.status === 'skipped' || dstNode?.status === 'skipped';
 
   const strokeColor = isDone
     ? 'var(--color-ledger-green)'
     : isRunning
     ? 'var(--color-brass)'
+    : isSkipped
+    ? 'var(--color-ink-muted)'
     : 'var(--color-ink-soft)';
   const markerId = isDone
     ? 'url(#arrow-done)'
     : isRunning
     ? 'url(#arrow-running)'
+    : isSkipped
+    ? 'url(#arrow-skipped)'
     : 'url(#arrow-pending)';
 
   return (
@@ -104,8 +109,8 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
         fill="none"
         stroke={strokeColor}
         strokeWidth={isRunning ? 3 : 2}
-        strokeOpacity={isDone ? 1 : isRunning ? 1 : 0.6}
-        strokeDasharray={isRunning ? '6 4' : undefined}
+        strokeOpacity={isDone ? 1 : isRunning ? 1 : isSkipped ? 0.45 : 0.6}
+        strokeDasharray={isRunning ? '6 4' : isSkipped ? '4 3' : undefined}
         markerEnd={markerId}
       />
     </g>

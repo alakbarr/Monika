@@ -702,6 +702,7 @@ class BaseLLMClient(ABC):
         slot_name: str = "primary",
         exact_cost: Optional[float] = None,
         is_direct_free_tier: Optional[bool] = None,
+        **kwargs: Any,
     ) -> None:
         """Save comprehensive token usage to DB. Shared implementation for all providers."""
         if input_tokens == 0 and output_tokens == 0:
@@ -726,14 +727,14 @@ class BaseLLMClient(ABC):
             else:
                 try:
                     from utils.analytics.pricing import cost_usd
-                    kwargs = {"cached_tokens": cached_tokens, "provider": provider_name}
+                    kwargs_cost = {"cached_tokens": cached_tokens, "provider": provider_name}
                     if is_direct_free_tier is not None:
-                        kwargs["is_direct_free_tier"] = is_direct_free_tier
+                        kwargs_cost["is_direct_free_tier"] = is_direct_free_tier
                     cost_estimate = cost_usd(
                         model_name,
                         input_tokens,
                         output_tokens,
-                        **kwargs
+                        **kwargs_cost
                     )
                 except Exception:
                     pass
@@ -775,6 +776,38 @@ class BaseLLMClient(ABC):
                 )
             except Exception:
                 pass
+
+            # Tracing Integration: Record an 'llm' span in the active distributed trace
+            if not kwargs.get("from_agent_harness", False):
+                try:
+                    from logging_observability.tracing.context import get_current_trace_id, get_current_span_id
+                    from logging_observability.tracing.tracer import get_tracer
+                    current_trace = get_current_trace_id()
+                    current_parent_span = get_current_span_id()
+                    if current_trace:
+                        tracer = get_tracer()
+                        role_label = resolved_role or task_name or model_name
+                        llm_span_inst = tracer.start_span(
+                            name=f"llm:{role_label}",
+                            kind="llm",
+                            attributes={
+                                "llm.provider": provider_name,
+                                "llm.model": model_name,
+                                "llm.task_role": resolved_role or "unknown",
+                                "input_tokens": input_tokens,
+                                "output_tokens": output_tokens,
+                                "cached_tokens": cached_tokens,
+                                "thinking_tokens": thinking_tokens,
+                                "cost_usd": cost_estimate or 0.0,
+                                "cycle_id": resolved_cycle_id,
+                                "symbol": resolved_symbol,
+                            },
+                            trace_id=current_trace,
+                            parent_span_id=current_parent_span,
+                        )
+                        llm_span_inst.end()
+                except Exception as tr_err:
+                    logger.debug(f"Direct LLM span trace recording non-fatal: {tr_err}")
 
             log_entry = TokenUsageLog(
                 provider=provider_name,

@@ -23,6 +23,7 @@ export const GraphVisualizerPanel: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCycle, setSelectedCycle] = useState<string>('');
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('');
   const [layoutMode, setLayoutMode] = useState<'compact' | 'wide'>('compact');
   const [autoFit, setAutoFit] = useState<boolean>(true);
 
@@ -106,11 +107,11 @@ export const GraphVisualizerPanel: React.FC = () => {
   }, [graphData, layoutMode]);
 
   // Load graph state from backend
-  const loadGraphState = useCallback(async (cycleId?: string, isBackground: boolean = false) => {
+  const loadGraphState = useCallback(async (cycleId?: string, symbol?: string, isBackground: boolean = false) => {
     try {
       if (!isBackground) setLoading(true);
       const [res, traceRes, tokensRes] = await Promise.all([
-        api.graphState(cycleId),
+        api.graphState(cycleId, symbol || undefined),
         cycleId ? api.cycleTraceSummary(cycleId).catch(() => null) : Promise.resolve(null),
         api.tokenCycles(cycleId).catch(() => null),
       ]);
@@ -130,16 +131,16 @@ export const GraphVisualizerPanel: React.FC = () => {
   }, [selectedCycle]);
 
   useEffect(() => {
-    loadGraphState(selectedCycle || undefined, false);
-  }, [selectedCycle, loadGraphState]);
+    loadGraphState(selectedCycle || undefined, selectedSymbol || undefined, false);
+  }, [selectedCycle, selectedSymbol, loadGraphState]);
 
   // Polling fallback without loading flash
   useEffect(() => {
     const interval = setInterval(() => {
-      loadGraphState(selectedCycle || undefined, true);
+      loadGraphState(selectedCycle || undefined, selectedSymbol || undefined, true);
     }, 4000);
     return () => clearInterval(interval);
-  }, [selectedCycle, loadGraphState]);
+  }, [selectedCycle, selectedSymbol, loadGraphState]);
 
   // Auto-fit on resize (window resize, sidebar toggle, or inspector open/close)
   useEffect(() => {
@@ -341,7 +342,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)' }}>
                 EXECUTION CYCLE:
               </span>
@@ -366,6 +367,33 @@ export const GraphVisualizerPanel: React.FC = () => {
                   </option>
                 ))}
               </select>
+
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)', marginLeft: '6px' }}>
+                ASSET FILTER:
+              </span>
+              <select
+                value={selectedSymbol}
+                onChange={(e) => setSelectedSymbol(e.target.value)}
+                style={{
+                  background: 'var(--color-paper)',
+                  border: '1.5px solid var(--color-rule)',
+                  color: 'var(--color-ink)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '3px 8px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-precision)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value="">ALL ASSETS (AGGREGATE)</option>
+                {(graphData?.available_symbols || []).map((sym: string) => (
+                  <option key={sym} value={sym}>
+                    {sym}
+                  </option>
+                ))}
+              </select>
+
               {loading && <Loader2 size={13} color="var(--color-brass)" style={{ animation: 'spin 1s linear infinite' }} />}
             </div>
           </div>
@@ -556,16 +584,27 @@ export const GraphVisualizerPanel: React.FC = () => {
               >
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-soft)" opacity="0.6" />
               </marker>
+              <marker
+                id="arrow-skipped"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-muted)" opacity="0.5" />
+              </marker>
             </defs>
 
             {/* Root SVG Transform Group */}
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
               {/* Subgraph container box: Dialectic Arbitration */}
               <rect
-                x={layoutMode === 'compact' ? '305' : '600'}
-                y={layoutMode === 'compact' ? '15' : '60'}
-                width={layoutMode === 'compact' ? '575' : '590'}
-                height={layoutMode === 'compact' ? '385' : '510'}
+                x={layoutMode === 'compact' ? '565' : '865'}
+                y={layoutMode === 'compact' ? '15' : '80'}
+                width={layoutMode === 'compact' ? '545' : '555'}
+                height={layoutMode === 'compact' ? '370' : '435'}
                 rx="4"
                 fill="var(--color-subgraph-bg)"
                 stroke="var(--color-brass)"
@@ -573,8 +612,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                 strokeDasharray="6 4"
               />
               <text
-                x={layoutMode === 'compact' ? '320' : '620'}
-                y={layoutMode === 'compact' ? '38' : '92'}
+                x={layoutMode === 'compact' ? '580' : '880'}
+                y={layoutMode === 'compact' ? '35' : '102'}
                 fill="var(--color-brass)"
                 fontSize={layoutMode === 'compact' ? '11' : '12'}
                 fontWeight="800"

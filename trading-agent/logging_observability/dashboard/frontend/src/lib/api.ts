@@ -211,10 +211,15 @@ export const api = {
     post<{ status: string; message?: string }>(`/actions/approve-trade/${tradeId}`),
 
   // Phase 5: LangGraph Pipeline Visualizer
-  graphState: (cycleId?: string) =>
-    get<import('../types/api').GraphStateResponse>(
-      `/observability/graph-state${cycleId ? `?cycle_id=${encodeURIComponent(cycleId)}` : ''}`
-    ),
+  graphState: (cycleId?: string, symbol?: string) => {
+    const sp = new URLSearchParams();
+    if (cycleId) sp.append('cycle_id', cycleId);
+    if (symbol) sp.append('symbol', symbol);
+    const qs = sp.toString();
+    return get<import('../types/api').GraphStateResponse>(
+      `/observability/graph-state${qs ? `?${qs}` : ''}`
+    );
+  },
   cycleTraceSummary: (cycleId: string) =>
     get<import('../types/api').CycleTraceSummaryResponse>(
       `/traces/cycle/${encodeURIComponent(cycleId)}`
