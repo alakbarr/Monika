@@ -363,19 +363,86 @@ def get_price(model_name: str) -> Price:
     return _FREE
 
 
+from decimal import Decimal, ROUND_HALF_UP
+
+
+@dataclass(frozen=True)
+class CanonicalUsage:
+    """Normalized multi-provider token usage snapshot."""
+    input_tokens: int = 0          # Uncached input prompt tokens
+    output_tokens: int = 0         # Generated completion tokens
+    cache_read_tokens: int = 0     # Cached prompt tokens read
+    cache_creation_tokens: int = 0 # Tokens written to cache
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens + self.cache_read_tokens + self.cache_creation_tokens
+
+    @classmethod
+    def from_anthropic(cls, usage: Any) -> CanonicalUsage:
+        """
+        Anthropic official API returns input_tokens as ALREADY UNCACHED tokens.
+        cache_read_input_tokens represents cache hits.
+        cache_creation_input_tokens represents 1.25x cache write overhead.
+        """
+        inp = getattr(usage, "input_tokens", 0) or 0
+        out = getattr(usage, "output_tokens", 0) or 0
+        c_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+        c_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+        return cls(
+            input_tokens=int(inp),
+            output_tokens=int(out),
+            cache_read_tokens=int(c_read),
+            cache_creation_tokens=int(c_write),
+        )
+
+    @classmethod
+    def from_openai(cls, usage: Any) -> CanonicalUsage:
+        """
+        OpenAI API prompt_tokens includes cached_tokens in prompt_tokens_details.
+        """
+        p_tokens = getattr(usage, "prompt_tokens", 0) or 0
+        out = getattr(usage, "completion_tokens", 0) or 0
+        details = getattr(usage, "prompt_tokens_details", None)
+        c_read = getattr(details, "cached_tokens", 0) if details else 0
+        c_read = c_read or 0
+        uncached = max(0, p_tokens - c_read)
+        return cls(
+            input_tokens=int(uncached),
+            output_tokens=int(out),
+            cache_read_tokens=int(c_read),
+            cache_creation_tokens=0,
+        )
+
+    @classmethod
+    def from_gemini(cls, usage_metadata: Any) -> CanonicalUsage:
+        p_tokens = getattr(usage_metadata, "prompt_token_count", 0) or 0
+        out = getattr(usage_metadata, "candidates_token_count", 0) or 0
+        c_read = getattr(usage_metadata, "cached_content_token_count", 0) or 0
+        uncached = max(0, p_tokens - c_read)
+        return cls(
+            input_tokens=int(uncached),
+            output_tokens=int(out),
+            cache_read_tokens=int(c_read),
+            cache_creation_tokens=0,
+        )
+
+
 def cost_usd(
     model_name: str,
     input_tokens: int,
     output_tokens: int,
     cached_tokens: int = 0,
     provider: Optional[str] = None,
-    is_direct_free_tier: Optional[bool] = None
+    is_direct_free_tier: Optional[bool] = None,
+    is_already_uncached: Optional[bool] = None,
 ) -> float:
     """
-    Menghitung estimasi biaya pemanggilan API dalam USD.
+    Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal.
     
-    Rumus:
-      Cost = (Input_Non_Cached * Rate_In) + (Cached_Tokens * Rate_Cache) + (Output_Tokens * Rate_Out)
+    Perhatian Khusus Provider Anthropic:
+    Pada API resmi Anthropic Claude, input_tokens yang dikembalikan sudah uncached.
+    Oleh karena itu, sistem tidak mengurangkan cached_tokens dua kali jika model adalah Anthropic.
     """
     if is_free_tier(model_name, provider=provider, is_direct_free_tier=is_direct_free_tier):
         return 0.0
@@ -383,31 +450,73 @@ def cost_usd(
     p = get_price(model_name)
     if p.input == 0.0 and p.output == 0.0:
         return 0.0
-        
-    uncached_input = max(0, input_tokens - cached_tokens)
-    
+
+    prov = (provider or infer_provider_from_model(model_name)).lower()
+    clean_name = str(model_name).lower()
+
+    # Tentukan apakah input_tokens sudah berstatus uncached
+    if is_already_uncached is not None:
+        uncached_input = input_tokens if is_already_uncached else max(0, input_tokens - cached_tokens)
+    elif prov == "anthropic" or "claude" in clean_name:
+        # Anthropic standard: input_tokens is already uncached
+        uncached_input = input_tokens
+    else:
+        # Standard OpenAI/others: subtract cached tokens if input_tokens was total
+        uncached_input = max(0, input_tokens - cached_tokens)
+
+    # Use Decimal for high-precision institutional accounting
+    rate_in = Decimal(str(p.input))
+    rate_cache = Decimal(str(p.cached_input))
+    rate_out = Decimal(str(p.output))
+    one_million = Decimal("1000000.0")
+
+    # Input cost
     if p.tier and uncached_input > p.tier.threshold_tokens:
-        base_tokens = p.tier.threshold_tokens
-        tier_tokens = uncached_input - base_tokens
-        cost_in = (base_tokens / 1_000_000.0) * p.input + (tier_tokens / 1_000_000.0) * p.tier.input_rate
+        base_tokens = Decimal(str(p.tier.threshold_tokens))
+        tier_tokens = Decimal(str(uncached_input - p.tier.threshold_tokens))
+        tier_in_rate = Decimal(str(p.tier.input_rate))
+        cost_in = (base_tokens / one_million) * rate_in + (tier_tokens / one_million) * tier_in_rate
     else:
-        cost_in = (uncached_input / 1_000_000.0) * p.input
+        cost_in = (Decimal(str(uncached_input)) / one_million) * rate_in
 
+    # Cache read cost
     if p.tier and cached_tokens > p.tier.threshold_tokens:
-        base_cached = p.tier.threshold_tokens
-        tier_cached = cached_tokens - base_cached
-        cost_cache = (base_cached / 1_000_000.0) * p.cached_input + (tier_cached / 1_000_000.0) * p.tier.cached_input_rate
+        base_cached = Decimal(str(p.tier.threshold_tokens))
+        tier_cached = Decimal(str(cached_tokens - p.tier.threshold_tokens))
+        tier_cache_rate = Decimal(str(p.tier.cached_input_rate))
+        cost_cache = (base_cached / one_million) * rate_cache + (tier_cached / one_million) * tier_cache_rate
     else:
-        cost_cache = (cached_tokens / 1_000_000.0) * p.cached_input
+        cost_cache = (Decimal(str(cached_tokens)) / one_million) * rate_cache
 
+    # Output cost
     if p.tier and output_tokens > p.tier.threshold_tokens:
-        base_out = p.tier.threshold_tokens
-        tier_out = output_tokens - base_out
-        cost_out = (base_out / 1_000_000.0) * p.output + (tier_out / 1_000_000.0) * p.tier.output_rate
+        base_out = Decimal(str(p.tier.threshold_tokens))
+        tier_out = Decimal(str(output_tokens - p.tier.threshold_tokens))
+        tier_out_rate = Decimal(str(p.tier.output_rate))
+        cost_out = (base_out / one_million) * rate_out + (tier_out / one_million) * tier_out_rate
     else:
-        cost_out = (output_tokens / 1_000_000.0) * p.output
-    
-    return round(cost_in + cost_cache + cost_out, 6)
+        cost_out = (Decimal(str(output_tokens)) / one_million) * rate_out
+
+    total_cost = cost_in + cost_cache + cost_out
+    # Quantize to 6 decimal places
+    quantized = total_cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+    return float(quantized)
+
+
+def cost_from_canonical(
+    model_name: str,
+    usage: CanonicalUsage,
+    provider: Optional[str] = None,
+) -> float:
+    """Calculate USD cost directly from CanonicalUsage."""
+    return cost_usd(
+        model_name=model_name,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cached_tokens=usage.cache_read_tokens,
+        provider=provider,
+        is_already_uncached=True,
+    )
 
 
 # Alias for backward compatibility

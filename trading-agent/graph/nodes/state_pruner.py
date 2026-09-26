@@ -3,10 +3,15 @@
 # ==============================================================================
 
 """
-Context Window Hygiene & State Pruner.
+Context Window Hygiene & Lossless State Archiving Pruner.
+Institutional-grade state and turn persistence architecture.
+
 Eliminates intermediate conversation bloat and raw payloads between LangGraph nodes,
-retaining distilled analytical synthesis and ground truths.
+retaining distilled analytical synthesis and ground truths while archiving verbose
+computations into 'archived_payloads' rather than destructively overwriting them.
 """
+
+from __future__ import annotations
 
 import logging
 from typing import Any, Dict
@@ -16,13 +21,14 @@ logger = logging.getLogger("TradingAgent.StatePruner")
 
 
 def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
-    """Prune raw conversational payload from Stage 1, keeping distilled brief & bias."""
+    """Prune raw conversational payload from Stage 1, losslessly archiving to archived_payloads."""
     summary_raw = state.get("summary")
     summary: Dict[str, Any] = dict(summary_raw) if isinstance(summary_raw, dict) else {}
     fund_raw = summary.get("fundamental")
     fund: Dict[str, Any] = dict(fund_raw) if isinstance(fund_raw, dict) else {}
 
-    # Discard voluminous raw conversation, messages, & intermediate observations
+    archived_payloads: Dict[str, Any] = dict(state.get("archived_payloads", {}) or {})
+
     pruned_keys = [
         "raw_conversation",
         "raw_tool_observations",
@@ -34,18 +40,25 @@ def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, A
     ]
     pruned_count = 0
     for k in pruned_keys:
-        if k in fund:
-            fund[k] = "_DELETED_"
+        if k in fund and fund[k] != "_DELETED_":
+            archived_payloads[f"fundamental.{k}"] = fund[k]
+            # Replace active key with compact archival reference pointer
+            fund[k] = {"$ref": f"archived_payloads/fundamental.{k}"}
             pruned_count += 1
 
     summary["fundamental"] = fund
-    logger.debug(f"[StatePruner] Pruned {pruned_count} verbose keys after fundamental analysis")
-    return {"summary": summary}
+    logger.debug(f"[StatePruner] Losslessly archived {pruned_count} verbose keys after fundamental analysis")
+    return {
+        "summary": summary,
+        "archived_payloads": archived_payloads,
+    }
 
 
 def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
-    """Prune verbose dialectic arguments and heavy asset payloads, retaining final consensus and trade plans."""
+    """Prune verbose dialectic arguments, losslessly archiving heavy assets to archived_payloads."""
+    archived_payloads: Dict[str, Any] = dict(state.get("archived_payloads", {}) or {})
     debate_states = dict(state.get("debate_states", {}) or {})
+
     for sym, ds in debate_states.items():
         if isinstance(ds, dict):
             for key in [
@@ -56,8 +69,9 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                 "transcript",
                 "dialogue_history",
             ]:
-                if key in ds:
-                    ds[key] = "_DELETED_"
+                if key in ds and ds[key] != "_DELETED_":
+                    archived_payloads[f"debate.{sym}.{key}"] = ds[key]
+                    ds[key] = {"$ref": f"archived_payloads/debate.{sym}.{key}"}
 
     # Prune heavy data payloads from asset_analyses
     asset_analyses = dict(state.get("asset_analyses", {}) or {})
@@ -71,22 +85,25 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                 "raw_tool_history",
                 "intermediate_reasoning",
             ]:
-                if heavy in aa:
-                    aa[heavy] = "_DELETED_"
+                if heavy in aa and aa[heavy] != "_DELETED_":
+                    archived_payloads[f"asset.{sym}.{heavy}"] = aa[heavy]
+                    aa[heavy] = {"$ref": f"archived_payloads/asset.{sym}.{heavy}"}
 
     # Prune risk debate turns
     risk_debate_states = dict(state.get("risk_debate_states", {}) or {})
     for sym, rds in risk_debate_states.items():
         if isinstance(rds, dict):
             for key in ["raw_conservative_text", "raw_aggressive_text", "raw_neutral_text", "intermediate_dialogue"]:
-                if key in rds:
-                    rds[key] = "_DELETED_"
+                if key in rds and rds[key] != "_DELETED_":
+                    archived_payloads[f"risk.{sym}.{key}"] = rds[key]
+                    rds[key] = {"$ref": f"archived_payloads/risk.{sym}.{key}"}
 
-    logger.debug("[StatePruner] Pruned intermediate dialogue turns & heavy payloads after dialectic debate")
+    logger.debug("[StatePruner] Losslessly archived debate dialogue turns & heavy payloads")
     return {
         "debate_states": debate_states,
         "asset_analyses": asset_analyses,
         "risk_debate_states": risk_debate_states,
+        "archived_payloads": archived_payloads,
     }
 
 
@@ -108,7 +125,6 @@ def prune_before_execution(state: TradingState, *args, **kwargs) -> Dict[str, An
                 cleaned.pop(heavy, None)
             clean_actionable.append(cleaned)
         elif isinstance(item, tuple):
-            # If actionable trade is stored as a tuple (symbol, plan_dict)
             if len(item) == 2 and isinstance(item[1], dict):
                 plan = dict(item[1])
                 for heavy in (

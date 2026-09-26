@@ -113,6 +113,14 @@ class SkillsHub:
                     if subdir.exists() and subdir.is_dir():
                         linked[sub] = [f.name for f in subdir.glob("*") if f.is_file()]
 
+            raw_tags = frontmatter.get("tags") or frontmatter.get("metadata", {}).get("tags") or []
+            if isinstance(raw_tags, str):
+                tags_list = [t.strip() for t in raw_tags.split(",") if t.strip()]
+            elif isinstance(raw_tags, list):
+                tags_list = [str(t).strip() for t in raw_tags if str(t).strip()]
+            else:
+                tags_list = []
+
             meta = SkillMetadata(
                 name=name,
                 description=desc[:MAX_DESCRIPTION_LENGTH],
@@ -122,7 +130,7 @@ class SkillsHub:
                 platforms=frontmatter.get("platforms", ["windows", "linux", "macos"]),
                 conditions=frontmatter.get("conditions", {}),
                 required_env=frontmatter.get("required_environment_variables", []),
-                tags=frontmatter.get("metadata", {}).get("tags", []),
+                tags=tags_list,
                 linked_files=linked,
             )
             self._skills[name] = meta
@@ -130,7 +138,7 @@ class SkillsHub:
             logger.debug(f"[SkillsHub] Error parsing skill file '{path}': {exc}")
 
     def _parse_frontmatter(self, text: str) -> Tuple[Dict[str, Any], str]:
-        """Simple YAML frontmatter parser without external dependencies."""
+        """Parses YAML frontmatter delimited by ---."""
         if not text.startswith("---"):
             return {}, text
 
@@ -140,6 +148,14 @@ class SkillsHub:
 
         raw_yaml = parts[1]
         body = parts[2].lstrip()
+
+        try:
+            import yaml
+            meta = yaml.safe_load(raw_yaml)
+            if isinstance(meta, dict):
+                return meta, body
+        except Exception:
+            pass
 
         meta = {}
         for line in raw_yaml.splitlines():
@@ -154,6 +170,10 @@ class SkillsHub:
 
         return meta, body
 
+    def get_skill(self, name: str) -> Optional[SkillMetadata]:
+        """Retrieve full SkillMetadata object by name."""
+        return self._skills.get(name)
+
     def list_skills(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """Tier 1 Progressive Disclosure: returns compact metadata list."""
         cat_filter = category.upper() if category else None
@@ -165,6 +185,7 @@ class SkillsHub:
                 "name": meta.name,
                 "category": meta.category,
                 "description": meta.description,
+                "tags": meta.tags,
                 "linked_files": meta.linked_files,
             })
         return output

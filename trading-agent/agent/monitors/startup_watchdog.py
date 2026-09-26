@@ -74,12 +74,32 @@ class StartupWatchdog:
         return self._complete.is_set()
 
     def _watch(self):
+        last_cpu = time.process_time()
+        cpu_extensions = 0
+        max_cpu_extensions = 3
+        cpu_progress_min_s = 1.0
+        cpu_extension_s = 60.0
+
         while not self._complete.is_set():
             now = time.time()
             with self._lock:
                 remaining = self._deadline - now
 
             if remaining <= 0:
+                # Check if process is actively computing (e.g. heavy migrations, indicator warmup)
+                current_cpu = time.process_time()
+                delta_cpu = current_cpu - last_cpu
+                if delta_cpu >= cpu_progress_min_s and cpu_extensions < max_cpu_extensions:
+                    cpu_extensions += 1
+                    last_cpu = current_cpu
+                    with self._lock:
+                        self._deadline = time.time() + cpu_extension_s
+                    logger.info(
+                        f"[StartupWatchdog] Active CPU progress detected (+{delta_cpu:.2f}s). "
+                        f"Extending phase '{self._current_phase}' lease by {cpu_extension_s:.0f}s "
+                        f"(extension {cpu_extensions}/{max_cpu_extensions})"
+                    )
+                    continue
                 break
             # Sleep in short increments to allow early exit
             time.sleep(min(remaining, 1.0))
