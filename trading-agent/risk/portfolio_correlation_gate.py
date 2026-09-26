@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 import logging
+import math
 from utils.market.dynamic_correlation import get_rolling_correlation
 
 logger = logging.getLogger('TradingAgent.PortfolioCorrelationGate')
@@ -126,7 +127,6 @@ async def filter_correlated_proposals(
             kept_direction = kept_r.get('decision', 'wait').lower()
             corr, source = await get_rolling_correlation(session, sym, kept_sym, as_of=as_of)
             
-            import math
             if corr is None or (isinstance(corr, float) and math.isnan(corr)):
                 logger.info(f"Correlation Gate: Correlation data unavailable for {sym}-{kept_sym}. Defaulting to neutral 0.0 fallback.")
                 corr = 0.0
