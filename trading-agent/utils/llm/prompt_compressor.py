@@ -224,6 +224,18 @@ class ContextCompressor:
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
 
+    def compress_narrative_text(self, text: str, rate: float = 0.5) -> str:
+        """
+        Compresses narrative news, sentiment reports, or macro commentary using
+        Adaptive LLMLingua-2 (auto-routed to GPU when available, or CPU-only).
+        """
+        try:
+            from utils.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
+            return AdaptiveLLMLinguaCompressor.get_instance().compress_text(text, rate=rate)
+        except Exception as e:
+            logger.debug(f"Adaptive LLMLingua compression fallback: {e}")
+            return text
+
     def compress_ohlcv(self, bars: List[Dict[str, Any]], max_bars: int = 20) -> List[Dict[str, Any]]:
         """Subsample bars using regular stride without dropping chronological continuity."""
         if not bars or len(bars) <= max_bars:

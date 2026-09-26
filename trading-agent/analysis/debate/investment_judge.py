@@ -193,6 +193,18 @@ Respond in valid JSON format conforming to the schema."""
         rebuttal_key = "bear_rebuttal" if decision == "SELL" else "bull_rebuttal"
         debate_payload[rebuttal_key] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
 
+    # S²-MAD Sparse Debate: Inject structured blackboard state for dense, low-token evaluation
+    try:
+        from analysis.debate.blackboard import DebateBlackboard
+        bb = DebateBlackboard(symbol=symbol, fact_sheet=original_context)
+        b_thesis = bull_claim.get("thesis") or bull_claim.get("argument") or str(bull_claim)[:300]
+        bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0)) / 10.0)
+        br_thesis = bear_dissent.get("counter_thesis") or bear_dissent.get("argument") or str(bear_dissent)[:300]
+        bb.add_bear_thesis(br_thesis, confidence=float(bear_dissent.get("risk_severity", 5.0)) / 10.0)
+        debate_payload["sparse_blackboard"] = bb.render_sparse_summary()
+    except Exception as bb_err:
+        logger.debug(f"DebateBlackboard injection non-fatal: {bb_err}")
+
     user_prompt = f"Evaluate Debate for {symbol} ({decision}):\n{json.dumps(debate_payload, separators=(',', ':'), default=str)}\n\nProceed with evaluation based strictly on the data above."
     
     try:

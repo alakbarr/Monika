@@ -704,6 +704,14 @@ class AgentHarness:
             stage_name.replace("per_asset_", "") if stage_name.startswith("per_asset_") else None
         )
 
+        # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop
+        if tools:
+            try:
+                from analysis.tools.tools_definitions import minify_tool_definitions
+                tools = minify_tool_definitions(tools)
+            except Exception as e:
+                logger.debug(f"Tool minification fallback (non-fatal): {e}")
+
         curr_max = getattr(self.llm_client, "max_tokens", None)
         if isinstance(curr_max, int) and curr_max < 32000:
             if getattr(self.llm_client, "provider_name", "") in ("groq", "openrouter"):
@@ -819,9 +827,23 @@ class AgentHarness:
             # Offload heavy multimodal chart data from historical turns (>2 turns old)
             current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
 
+            # P0: Distill raw 50k prefetch bundle in messages[0] once Turn 1 has completed
+            try:
+                from analysis.harness.context_compressor import ContextCompressor
+                current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(current_messages)
+            except Exception as dist_err:
+                logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
+
             current_messages = self.compactor.check_and_compact(
                 current_messages, context_window=context_win
             )
+
+            # Progressive Tool Observation Condensation: Prune tool outputs older than 1 turn to concise decisive state
+            if turns > 2 and len(current_messages) > 4:
+                try:
+                    current_messages = self.compactor.mask_aged_observations(current_messages, keep_recent_turns=1)
+                except Exception as mask_err:
+                    logger.debug(f"Progressive observation masking non-fatal: {mask_err}")
 
             # 2. Context Compression (HIGH-4)
             if hasattr(self, "context_compressor") and self.context_compressor:

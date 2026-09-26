@@ -65,6 +65,11 @@ class ToolExecutor:
         self._pending_charts: dict[str, Any] = {}
         self.verification_ledger: Optional[Any] = None
         self.is_admin: bool = False
+        try:
+            from utils.llm.data_dedup import DataFetchDeduplicator
+            self.deduplicator = DataFetchDeduplicator()
+        except Exception:
+            self.deduplicator = None
         if session is not None:
             lock = getattr(session, "_session_lock", None)
             if lock is None:
@@ -375,6 +380,16 @@ class ToolExecutor:
                 "schemas": schemas,
             }
 
+        # Prefetch Deduplication Check: Return lightweight stub if data was already in prefetch bundle
+        if normalized_name in self.prefetch_satisfied_tools and isinstance(tool_input, dict) and not tool_input.get("force_refresh"):
+            logger.info(f"[{self.symbol or 'global'}][ToolExecutor] Tool '{normalized_name}' already satisfied in prefetch bundle. Returning lightweight dedup notice.")
+            self.called_tools.add(normalized_name)
+            return {
+                "status": "success",
+                "tool": normalized_name,
+                "message": f"[PREFETCH DEDUP] Tool '{normalized_name}' data was already provided in the pre-fetched bundle. Refer to pre-fetched context."
+            }
+
         # 1. Monotonic Risk Invariant:
         # Once risk gate denies within a cycle, execution tools cannot override or escalate
         if "risk_denied" in self.monotonic_restrictions and normalized_name in ("execute_order_guard", "modify_position", "execute_market_order"):
@@ -582,6 +597,18 @@ class ToolExecutor:
                         result = condensed_str
                 except Exception as cond_err:
                     logger.debug(f"Tool observation condenser non-fatal error: {cond_err}")
+
+            if self.deduplicator and result is not None:
+                try:
+                    res_text = json.dumps(result, default=str) if isinstance(result, (dict, list)) else str(result)
+                    dedup_notice = self.deduplicator.check_and_record(
+                        normalized_name, tool_input if isinstance(tool_input, dict) else {}, res_text
+                    )
+                    if dedup_notice:
+                        logger.info(f"[{self.symbol or 'global'}][ToolExecutor] Tool '{normalized_name}' returned duplicate data — deduplicating response.")
+                        return {"status": "success", "tool": normalized_name, "message": dedup_notice}
+                except Exception as d_err:
+                    logger.debug(f"Data deduplicator check non-fatal error: {d_err}")
                 
             logger.debug(f"Tool {normalized_name} executed successfully")
             return result

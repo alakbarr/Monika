@@ -16,7 +16,7 @@ import utils.clock as clock
 from analysis.providers.llm_factory import get_client_for_task, create_client
 from analysis.tools.tools_definitions import (
     STAGE2_TOOLS, STAGE2_TOOLS_V2, STAGE2_PRESCREEN_TOOLS,
-    STAGE2_ESSENTIAL_TOOLS, STAGE2_FROZEN_TOOLS
+    STAGE2_ESSENTIAL_TOOLS, STAGE2_FROZEN_TOOLS, minify_tool_definitions
 )
 from analysis.stages.preflight_gate import PreFlightTurnGate
 from database.models import ActivityLog
@@ -697,7 +697,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             logger.debug(f"Failed to fetch market regime for prompt injection: {e}")
 
         # SOTA Frozen Tool Selection: Deterministic 9 pinned tools permanently preserving 100% KV-Cache prefix hit rate across all symbols and turns
-        dynamic_tools = STAGE2_FROZEN_TOOLS
+        dynamic_tools = minify_tool_definitions(STAGE2_FROZEN_TOOLS)
 
         ineffective_factors_note = ""
         try:
@@ -776,6 +776,22 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         if use_specialists and not bundle_success:
             logger.warning(f"[{symbol}] Specialist decomposition dilewati — pre-fetch data bundle gagal, laporan specialist akan berjalan tanpa konteks dan berpotensi menyesatkan adjudicator dengan sinyal 'NEUTRAL' palsu.")
             use_specialists = False
+
+        # Conditional Specialist Gate: Skip 3 LLM calls if asset is confirmed flat/ranging with low momentum
+        if use_specialists and isinstance(raw_bundle_data, dict):
+            f_brief = raw_bundle_data.get('get_fundamental_brief', {})
+            s1_conf = stage1_confidence or (f_brief.get('confidence') if isinstance(f_brief, dict) else 0.5)
+            r_data = raw_bundle_data.get('get_volatility_regime', {})
+            regime_name = str(r_data.get('regime') or raw_bundle_data.get('regime') or "").lower()
+            adx_val = None
+            tech_ind = raw_bundle_data.get('get_technical_indicators', {})
+            if isinstance(tech_ind, dict):
+                adx_val = tech_ind.get('adx') or tech_ind.get('ADX')
+
+            if (s1_conf is not None and s1_conf < 0.40) or (adx_val is not None and adx_val < 18.0 and regime_name in ("range", "squeeze_consolidation", "ranging")):
+                logger.info(f"[{symbol}] Skipping specialist pipeline (ADX={adx_val}, regime={regime_name}, s1_conf={s1_conf}) — zero LLM tokens burned for flat/ranging asset")
+                use_specialists = False
+
         if use_specialists:
             spec_extra_ctx, specialist_biases, specialist_confidence, specialist_trust = await self._execute_specialist_debate_pipeline(
                 session, symbol, raw_bundle_data
@@ -829,6 +845,11 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     'regime': regime_val
                 }
             )
+            # Smart Confluence Gate: If Stage 1 confidence is weak (<0.45), prevent burning expensive reasoning tokens on likely WAIT setups
+            if stage1_confidence is not None and stage1_confidence < 0.45:
+                adaptive_budget = min(adaptive_budget, 4096)
+                logger.info(f"[{symbol}] Adaptive thinking budget capped to 4096 due to low Stage 1 confidence ({stage1_confidence:.2f})")
+
             if hasattr(active_client, 'set_thinking_budget'):
                 active_client.set_thinking_budget(adaptive_budget)
             elif hasattr(active_client, 'thinking_budget'):

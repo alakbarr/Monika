@@ -116,20 +116,29 @@ async def conservative_risk_node(state: TradingState, config: Optional[RunnableC
 
                     if use_deterministic:
                         cons_risk = analyze_risk_conservative(strict_context)
+                        return sym, {"conservative": cons_risk}
                     else:
                         client = get_client_for_task("risk_gate_conservative", settings)
-                        cons_risk = await analyze_risk_conservative_llm(client, sym, strict_context)
-
-                    return sym, cons_risk
+                        try:
+                            from analysis.debate.multi_persona_risk_llm import analyze_risk_multi_persona_llm
+                            batch_eval = await analyze_risk_multi_persona_llm(client, sym, strict_context)
+                            return sym, batch_eval
+                        except Exception as b_err:
+                            logger.debug(f"[{sym}] Multi-persona batch fallback: {b_err}")
+                            cons_risk = await analyze_risk_conservative_llm(client, sym, strict_context)
+                            return sym, {"conservative": cons_risk}
             except Exception as e:
                 logger.error(f"[{sym}] Conservative risk analysis failed: {e}", exc_info=True)
                 return sym, None
 
     results = await asyncio.gather(*[_process_single(sym, r) for sym, r in actionable])
-    for sym, cons_risk in results:
-        if cons_risk:
+    for sym, batch_res in results:
+        if batch_res:
             existing = risk_debate_states.get(sym, {})
-            existing["conservative"] = cons_risk
+            if isinstance(batch_res, dict):
+                existing.update(batch_res)
+            else:
+                existing["conservative"] = batch_res
             risk_debate_states[sym] = existing
 
     return {"risk_debate_states": risk_debate_states}
@@ -154,6 +163,10 @@ async def aggressive_risk_node(state: TradingState, config: Optional[RunnableCon
     async def _process_single(sym: str, r: dict):
         async with semaphore:
             try:
+                # If aggressive persona was already evaluated during multi-persona batch, reuse directly
+                if sym in risk_debate_states and "aggressive" in risk_debate_states[sym]:
+                    return sym, risk_debate_states[sym]["aggressive"]
+
                 async with get_session() as session:
                     ana, strict_context, _ = await _build_strict_context(session, sym, r, state, scheduler)
                     if not strict_context:
@@ -204,6 +217,10 @@ async def neutral_risk_node(state: TradingState, config: Optional[RunnableConfig
     async def _process_single(sym: str, r: dict):
         async with semaphore:
             try:
+                # If neutral persona was already evaluated during multi-persona batch, reuse directly
+                if sym in risk_debate_states and "neutral" in risk_debate_states[sym]:
+                    return sym, risk_debate_states[sym]["neutral"]
+
                 async with get_session() as session:
                     ana, strict_context, _ = await _build_strict_context(session, sym, r, state, scheduler)
                     if not strict_context:

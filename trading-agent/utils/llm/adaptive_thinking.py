@@ -22,15 +22,13 @@ class QuantizedThinkingAllocator:
         "LOW": 1024,       # Low volatility / orderly trend (EURUSD, AUDUSD, VIX < 20)
         "MEDIUM": 4096,    # Standard baseline / moderate volatility
         "HIGH": 10000,     # Borderline setups, elevated VIX (20-25), volatile pairs (Gold, Oil)
-        "MAX": 16000,      # Crisis regime (VIX > 25), high macro conflict
+        "MAX": 10000,      # Capped for safety and token conservation (was 16000)
     }
 
     @classmethod
     def quantize(cls, raw_budget: int) -> int:
         """Maps any continuous token budget to the nearest discrete stable bucket."""
-        if raw_budget >= 13000:
-            return cls.BUCKETS["MAX"]
-        elif raw_budget >= 7000:
+        if raw_budget >= 8500:
             return cls.BUCKETS["HIGH"]
         elif raw_budget >= 2500:
             return cls.BUCKETS["MEDIUM"]
@@ -99,7 +97,7 @@ class PerSymbolAdaptiveThinkingAllocator:
                 conf_val = float(confluence)
                 if conf_val < 5.0:
                     # Very low confluence: fast exit without endless deliberation
-                    conf_mult = 0.7
+                    conf_mult = 0.5
                 elif conf_val < 8.0:
                     # Borderline setup: deep reasoning required to resolve conflicts
                     conf_mult = 1.3
@@ -121,7 +119,7 @@ class PerSymbolAdaptiveThinkingAllocator:
             regime_mult = 1.0
 
         computed = int(base_budget * asset_mult * vix_mult * conf_mult * regime_mult)
-        clamped = max(1024, min(16384, computed))
+        clamped = max(1024, min(10000, computed))
 
         final_budget = QuantizedThinkingAllocator.quantize(clamped) if quantized else clamped
 

@@ -525,7 +525,22 @@ class OpenAIProvider(BaseLLMClient):
             dynamic_sys = str(system[1]).strip() if system[1] else ""
         flat_sys = _flatten_system_prompt(static_sys)
         if flat_sys:
-            messages.append({"role": "system", "content": flat_sys})
+            provider_name = self._get_provider_name()
+            is_openrouter = provider_name in ("openrouter", "9router") or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+            is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
+            if is_openrouter and is_claude_or_qwen:
+                messages.append({
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": flat_sys,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ]
+                })
+            else:
+                messages.append({"role": "system", "content": flat_sys})
         actual_prompt = f"{prompt}\n\n{dynamic_sys}" if dynamic_sys else prompt
         messages.append({"role": "user", "content": actual_prompt})
         
@@ -633,10 +648,25 @@ class OpenAIProvider(BaseLLMClient):
             return None
 
     async def generate_content(self, system_prompt: str = "", user_message: str = "", response_schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[str]:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ]
+        messages = []
+        if system_prompt:
+            provider_name = self._get_provider_name()
+            is_openrouter = provider_name in ("openrouter", "9router") or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+            is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
+            if is_openrouter and is_claude_or_qwen:
+                messages.append({
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ]
+                })
+            else:
+                messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": user_message})
         eff_temp = temperature if temperature is not None else self.kwargs.get("temperature", self.default_temperature)
         is_groq = "groq" in self.__class__.__name__.lower()
         is_openrouter = "openrouter" in self.__class__.__name__.lower()
@@ -858,8 +888,14 @@ class OpenAIProvider(BaseLLMClient):
     def _convert_tools(self, tools: list) -> list:
         # Lexicographical sort by tool name and recursive schema key sorting guarantees 100% deterministic prefix order for DeepSeek & OpenAI KV cache
         sorted_tools = sorted(tools, key=lambda t: t.get("name", "") if isinstance(t, dict) else "")
-        return [
-            {
+        provider_name = self._get_provider_name()
+        is_openrouter = provider_name in ("openrouter", "9router") or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+        is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
+        supports_cache_control = is_openrouter and is_claude_or_qwen
+
+        converted = []
+        for i, t in enumerate(sorted_tools):
+            tool_obj = {
                 "type": "function",
                 "function": {
                     "name": t["name"],
@@ -867,8 +903,10 @@ class OpenAIProvider(BaseLLMClient):
                     "parameters": _canonicalize_schema(t.get("input_schema", {"type": "object", "properties": {}}))
                 }
             }
-            for t in sorted_tools
-        ]
+            if supports_cache_control and i == len(sorted_tools) - 1:
+                tool_obj["cache_control"] = {"type": "ephemeral"}
+            converted.append(tool_obj)
+        return converted
 
     def _normalize_messages(self, messages: list) -> list:
         """Normalizes messages across heterogeneous provider formats (Anthropic/Gemini to OpenAI)."""
@@ -947,7 +985,22 @@ class OpenAIProvider(BaseLLMClient):
 
         flat_sys = _flatten_system_prompt(static_sys)
         if flat_sys:
-            req_messages.append({"role": "system", "content": flat_sys})
+            provider_name = self._get_provider_name()
+            is_openrouter = provider_name in ("openrouter", "9router") or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+            is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
+            if is_openrouter and is_claude_or_qwen:
+                req_messages.append({
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": flat_sys,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ]
+                })
+            else:
+                req_messages.append({"role": "system", "content": flat_sys})
 
         norm_msgs = self._normalize_messages(messages)
         if dynamic_sys and norm_msgs:
