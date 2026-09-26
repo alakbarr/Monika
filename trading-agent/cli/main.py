@@ -72,6 +72,153 @@ logger = logging.getLogger("TradingAgent.CLI")
 
 DEFAULT_API_URL = os.environ.get("MONIKA_API_URL") or os.environ.get("TRADEAGENT_API_URL") or os.environ.get("DASHBOARD_URL") or "http://127.0.0.1:8000"
 
+def get_pid_file_path() -> str:
+    """Resolve active or expected PID file path for the trading daemon."""
+    pid_file = getattr(_root_main, "PID_FILE", None)
+    if pid_file and os.path.exists(pid_file):
+        return pid_file
+    for cand in [
+        os.path.join(_parent_dir, "logs", "trading_agent.pid"),
+        os.path.join(os.getcwd(), "logs", "trading_agent.pid"),
+        "logs/trading_agent.pid",
+    ]:
+        if os.path.exists(cand):
+            return cand
+    return os.path.join(_parent_dir, "logs", "trading_agent.pid")
+
+
+def get_daemon_pid() -> Optional[int]:
+    """Retrieve daemon PID if process is actively running."""
+    import psutil
+    pid_file = get_pid_file_path()
+    if os.path.exists(pid_file):
+        try:
+            with open(pid_file, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    pid = int(content)
+                    if psutil.pid_exists(pid):
+                        proc = psutil.Process(pid)
+                        if proc.is_running() and "python" in proc.name().lower():
+                            return pid
+        except Exception:
+            pass
+    return None
+
+
+def is_daemon_running(api_url: Optional[str] = None) -> bool:
+    """Check if Monika trading daemon is actively running."""
+    if get_daemon_pid() is not None:
+        return True
+
+    url = (api_url or DEFAULT_API_URL).rstrip("/")
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"{url}/api/overview", headers={"User-Agent": "Monika-CLI"})
+        with urllib.request.urlopen(req, timeout=0.8) as resp:
+            if resp.status == 200:
+                return True
+    except Exception:
+        pass
+
+    return False
+
+
+def spawn_daemon_background(mode: str = "paper", config_path: Optional[str] = None) -> Optional[int]:
+    """Spawn the Monika trading daemon as a persistent background process."""
+    import subprocess
+    cmd = [sys.executable, "-m", "cli.main", "run", "--mode", mode]
+    if mode == "live":
+        cmd.append("--confirm-live")
+    if config_path:
+        cmd.extend(["--config", config_path])
+
+    log_dir = os.path.join(_parent_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    daemon_log_path = os.path.join(log_dir, "daemon.log")
+
+    log_file = open(daemon_log_path, "a", encoding="utf-8")
+
+    creationflags = 0
+    start_new_session = False
+    if sys.platform == "win32":
+        creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        start_new_session = True
+
+    env = os.environ.copy()
+    if _parent_dir not in env.get("PYTHONPATH", ""):
+        env["PYTHONPATH"] = _parent_dir + os.pathsep + env.get("PYTHONPATH", "")
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=_parent_dir,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            creationflags=creationflags,
+            start_new_session=start_new_session,
+            close_fds=True,
+            env=env,
+        )
+        return proc.pid
+    finally:
+        log_file.close()
+
+
+def ensure_daemon_running(args, console=None) -> bool:
+    """Ensure that Monika trading daemon is active before executing client commands."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return True
+
+    if getattr(args, "no_daemon", False) or getattr(args, "standalone", False) or getattr(args, "offline", False):
+        return True
+
+    api_url = getattr(args, "url", DEFAULT_API_URL)
+    if is_daemon_running(api_url):
+        return True
+
+    try:
+        from utils.infra.env_file_manager import EnvFileManager
+        if not EnvFileManager.is_configured():
+            return False
+    except Exception:
+        pass
+
+    if console is None:
+        console = get_console()
+
+    mode = getattr(args, "mode", "paper")
+    cfg_path = getattr(args, "config", None)
+
+    console.print(f"{stamp_info('DAEMON')} Monika trading daemon belum aktif.")
+    console.print(f"[{MUTED}]Memulai Monika daemon di latar belakang (mode: {mode.upper()})...[/]")
+
+    try:
+        pid = spawn_daemon_background(mode=mode, config_path=cfg_path)
+    except Exception as e:
+        console.print(f"{stamp_err('DAEMON')} Gagal memulai daemon background: {e}")
+        return False
+
+    console.print(f"[{MUTED}]Menunggu daemon siap (PID: {pid})...[/]")
+
+    start_t = time.time()
+    ready = False
+    while time.time() - start_t < 10.0:
+        time.sleep(1.0)
+        if is_daemon_running(api_url):
+            ready = True
+            break
+
+    if ready:
+        console.print(f"{stamp_ok('DAEMON')} Monika daemon aktif & siap (PID: {pid}).\n")
+        return True
+    else:
+        console.print(f"{stamp_warn('DAEMON')} Daemon telah di-spawn (PID {pid}), log: logs/daemon.log. Melanjutkan perintah...\n")
+        return True
+
+
 async def _cmd_status(args):
     console = get_console()
     await init_db()
@@ -231,6 +378,70 @@ async def _cmd_kill(args):
         console.print(f"{stamp_info('DATABASE')} Kill signal recorded in database. PositionGuardian will safely close all open positions.")
 
     console.print(f"{stamp_err('HALTED')} All trading operations permanently halted.")
+
+
+async def _cmd_stop(args):
+    """Stop running Monika daemon gracefully."""
+    console = get_console()
+    force = getattr(args, "force", False)
+
+    pid = get_daemon_pid()
+    if not pid:
+        console.print(f"{stamp_info('STOP')} Tidak ada Monika daemon yang sedang berjalan.")
+        return
+
+    import psutil
+    console.print(f"{stamp_info('STOP')} Menghentikan Monika daemon (PID: {pid})...")
+
+    # Mark clean shutdown flag so auto-restart loop scripts won't loop
+    try:
+        from agent.task_registry import mark_clean_shutdown
+        mark_clean_shutdown()
+    except Exception:
+        pass
+
+    # Try API shutdown first if API is up
+    if not force:
+        try:
+            url = getattr(args, "url", DEFAULT_API_URL).rstrip("/")
+            timeout = aiohttp.ClientTimeout(total=2.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(f"{url}/api/actions/shutdown") as res:
+                    pass
+        except Exception:
+            pass
+
+    stopped = False
+    try:
+        if psutil.pid_exists(pid):
+            proc = psutil.Process(pid)
+            if not force:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5.0)
+                    stopped = True
+                except psutil.TimeoutExpired:
+                    pass
+            if not stopped and psutil.pid_exists(pid):
+                proc.kill()
+                try:
+                    proc.wait(timeout=3.0)
+                    stopped = True
+                except Exception:
+                    pass
+    except psutil.NoSuchProcess:
+        stopped = True
+    except Exception as e:
+        console.print(f"{stamp_warn('STOP')} Catatan terminasi: {e}")
+
+    pid_file = get_pid_file_path()
+    if pid_file and os.path.exists(pid_file):
+        try:
+            os.remove(pid_file)
+        except Exception:
+            pass
+
+    console.print(f"{stamp_ok('STOP')} Monika daemon (PID {pid}) berhasil dihentikan.")
 
 
 async def _cmd_positions(args):
@@ -1379,6 +1590,7 @@ class MonikaArgumentParser(argparse.ArgumentParser):
 def parse_args(args_list=None):
     parser = MonikaArgumentParser(description="AI Trading Agent CLI Interface")
     parser.add_argument("-p", "--profile", type=str, default=None, help="Target isolated environment profile (e.g. paper, live, propfirm)")
+    parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
     subparsers = parser.add_subparsers(dest="command", help="Administrative subcommands")
 
     # Command: run (default)
@@ -1388,7 +1600,8 @@ def parse_args(args_list=None):
     run_parser.add_argument("--config", type=str, default=None, help="Optional custom path to settings.yaml")
 
     # Command: status
-    subparsers.add_parser("status", help="Show system status, flags, and open positions")
+    status_parser = subparsers.add_parser("status", help="Show system status, flags, and open positions")
+    status_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
 
     # Command: pause
     subparsers.add_parser("pause", help="Pause all new trading proposals")
@@ -1401,8 +1614,14 @@ def parse_args(args_list=None):
     kill_parser = subparsers.add_parser("kill", help="Trigger emergency kill switch")
     kill_parser.add_argument("-y", "--yes", action="store_true", help="Skip interactive confirmation")
 
+    # Command: stop
+    stop_parser = subparsers.add_parser("stop", help="Stop the background trading daemon gracefully")
+    stop_parser.add_argument("-f", "--force", action="store_true", default=False, help="Force terminate daemon immediately")
+    stop_parser.add_argument("--url", type=str, default=DEFAULT_API_URL, help="Dashboard API base URL")
+
     # Command: positions
-    subparsers.add_parser("positions", help="List all open positions (real & paper)")
+    positions_parser = subparsers.add_parser("positions", help="List all open positions (real & paper)")
+    positions_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
 
     # Command: unsuspend
     unsuspend_parser = subparsers.add_parser("unsuspend", help="Unsuspend symbols blocked by streak losses")
@@ -1415,6 +1634,7 @@ def parse_args(args_list=None):
     tui_parser.add_argument("--token", type=str, default=None, help="Dashboard API key")
     tui_parser.add_argument("--refresh", type=int, default=5, help="Refresh interval in seconds")
     tui_parser.add_argument("--theme", type=str, default=None, choices=["retro_vintage", "modern_dark", "high_contrast", "daylight"], help="TUI color theme")
+    tui_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
 
     # Command: chat
     chat_parser = subparsers.add_parser("chat", help="Interactive REPL chat with agent")
@@ -1423,6 +1643,7 @@ def parse_args(args_list=None):
     chat_parser.add_argument("--session-id", type=str, default=None, help="Conversation session ID")
     chat_parser.add_argument("--offline", action="store_true", default=False, help="Force direct local engine (bypasses API server)")
     chat_parser.add_argument("--model", type=str, default="auto", choices=["auto", "fast", "medium", "analyze", "research"], help="Model routing preference")
+    chat_parser.add_argument("--no-daemon", action="store_true", default=False, help="Disable auto-spawning trading daemon if not running")
 
     # Command: config
     config_parser = subparsers.add_parser("config", help="Inspect and update system configuration")
@@ -1601,6 +1822,10 @@ def parse_args(args_list=None):
 
 
 async def _dispatch_cli(args):
+    DAEMON_CLIENT_COMMANDS = {"status", "positions", "chat", "ask", "analyze"}
+    if args.command in DAEMON_CLIENT_COMMANDS and not getattr(args, "no_daemon", False):
+        ensure_daemon_running(args)
+
     try:
         if args.command == "status":
             await _cmd_status(args)
@@ -1618,6 +1843,8 @@ async def _dispatch_cli(args):
             await _cmd_unsuspend(args)
         elif args.command == "kill":
             await _cmd_kill(args)
+        elif args.command == "stop":
+            await _cmd_stop(args)
         elif args.command == "positions":
             await _cmd_positions(args)
         elif args.command == "chat":
@@ -1681,6 +1908,10 @@ def run():
     args = parse_args()
     from logging_observability.activity_logger import setup_logging
     setup_logging(level=logging.INFO)
+
+    DAEMON_CLIENT_COMMANDS = {"tui", "chat", "status", "positions", "ask", "analyze"}
+    if args.command in DAEMON_CLIENT_COMMANDS and not getattr(args, "no_daemon", False):
+        ensure_daemon_running(args)
 
     if args.command == "tui":
         from cli.tui import run_tui

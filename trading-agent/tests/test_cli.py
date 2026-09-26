@@ -916,3 +916,122 @@ def test_cli_parse_args_mcp_serve():
     assert args.config == "custom_config.yaml"
 
 
+def test_cli_parse_args_stop_and_no_daemon():
+    """Verify parse_args handles stop command and --no-daemon flag."""
+    args1 = parse_args(["stop", "--force"])
+    assert args1.command == "stop"
+    assert args1.force is True
+
+    args2 = parse_args(["tui", "--no-daemon"])
+    assert args2.command == "tui"
+    assert args2.no_daemon is True
+
+
+def test_is_daemon_running(monkeypatch):
+    """Verify is_daemon_running detects active PID and falls back properly."""
+    from cli.main import is_daemon_running
+
+    # Case 1: PID is None and API fails -> False
+    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
+    monkeypatch.setattr("urllib.request.urlopen", MagicMock(side_effect=Exception("Connection refused")))
+    assert is_daemon_running("http://127.0.0.1:8999") is False
+
+    # Case 2: get_daemon_pid returns an active PID -> True
+    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: 12345)
+    assert is_daemon_running("http://127.0.0.1:8999") is True
+
+
+def test_ensure_daemon_running_bypasses(monkeypatch):
+    """Verify ensure_daemon_running respects bypass flags."""
+    from cli.main import ensure_daemon_running
+
+    args = MagicMock()
+    args.no_daemon = True
+    assert ensure_daemon_running(args) is True
+
+    args.no_daemon = False
+    args.standalone = True
+    assert ensure_daemon_running(args) is True
+
+
+def test_ensure_daemon_running_when_already_running(monkeypatch):
+    """Verify ensure_daemon_running returns True immediately if daemon is already up."""
+    from cli.main import ensure_daemon_running
+
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: True)
+
+    args = MagicMock()
+    args.no_daemon = False
+    args.standalone = False
+    args.offline = False
+    assert ensure_daemon_running(args) is True
+
+
+def test_ensure_daemon_running_spawns_process(monkeypatch):
+    """Verify ensure_daemon_running triggers spawn when daemon is down."""
+    from cli.main import ensure_daemon_running
+
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    states = [False, True]
+    monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True)
+    monkeypatch.setattr("cli.main.spawn_daemon_background", MagicMock(return_value=99999))
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    args = MagicMock()
+    args.no_daemon = False
+    args.standalone = False
+    args.offline = False
+    args.mode = "paper"
+    args.config = None
+
+    mock_console = MagicMock()
+    result = ensure_daemon_running(args, console=mock_console)
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_cmd_stop_when_no_daemon(monkeypatch):
+    """Verify _cmd_stop handles when no daemon is active."""
+    from cli.main import _cmd_stop
+
+    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: None)
+    mock_console = MagicMock()
+    monkeypatch.setattr("cli.main.get_console", lambda: mock_console)
+
+    args = MagicMock()
+    args.force = False
+    await _cmd_stop(args)
+    mock_console.print.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_cmd_stop_terminates_process(monkeypatch, tmp_path):
+    """Verify _cmd_stop terminates the active process and cleans PID file."""
+    from cli.main import _cmd_stop
+
+    pid_file = str(tmp_path / "trading_agent.pid")
+    with open(pid_file, "w", encoding="utf-8") as f:
+        f.write("54321")
+
+    monkeypatch.setattr("cli.main.get_daemon_pid", lambda: 54321)
+    monkeypatch.setattr("cli.main.get_pid_file_path", lambda: pid_file)
+
+    mock_proc = MagicMock()
+    mock_proc.is_running.return_value = True
+    monkeypatch.setattr("psutil.pid_exists", lambda pid: True)
+    monkeypatch.setattr("psutil.Process", lambda pid: mock_proc)
+
+    mock_console = MagicMock()
+    monkeypatch.setattr("cli.main.get_console", lambda: mock_console)
+
+    args = MagicMock()
+    args.force = True
+    await _cmd_stop(args)
+
+    mock_proc.kill.assert_called()
+    import os
+    assert not os.path.exists(pid_file)
+
+
+
