@@ -710,6 +710,48 @@ class {cls_name}(EdgeStrategy):
         StrategyRegistry._blacklisted_ids.discard(s_id)
 
 
+def test_sanitize_strategy_code_repairs_dunder_dict_and_vars():
+    """Verify that c.__dict__ and vars(c) are auto-repaired and pass AST security checks."""
+    raw_code = """
+from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from sqlalchemy.ext.asyncio import AsyncSession
+import pandas as pd
+from typing import Optional, Dict, Any
+
+class SynthesizedStrategy_alpha_dict_test(EdgeStrategy):
+    strategy_id: str = "alpha_dict_test"
+    applicable_symbols: set = {"EURUSD"}
+
+    def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
+        super().__init__(settings or {}, *args, **kwargs)
+
+    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+        candles = []
+        df = pd.DataFrame([c.__dict__ for c in candles])
+        df2 = pd.DataFrame([vars(c) for c in candles])
+        return EdgeSignal(
+            strategy_id=self.strategy_id,
+            symbol=symbol,
+            direction="wait",
+            valid=True,
+            confidence=0.5,
+            rationale="Test dict repair",
+            tags=["test"]
+        )
+"""
+    # Before sanitization, raw_code fails AST security check due to .__dict__
+    sched = StrategySynthesisScheduler(settings={})
+    assert sched.validate_code_safety(raw_code) is False
+
+    # After sanitization, .__dict__ and vars() are repaired and code passes AST security check
+    sanitized = StrategySynthesisScheduler.sanitize_strategy_code(raw_code)
+    assert ".__dict__" not in sanitized
+    assert "vars(" not in sanitized
+    assert "[c for c in candles]" in sanitized
+    assert sched.validate_code_safety(sanitized) is True
+
+
+
 
 
 

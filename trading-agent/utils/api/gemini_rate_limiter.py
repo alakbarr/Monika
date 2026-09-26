@@ -102,17 +102,8 @@ class GeminiRateLimiter:
             key = f"gemini_quota_{model}_{today}"
             count = self._daily_counts[model]["count"]
             
-            from sqlalchemy import select
             from database.models import SystemConfig
-            
-            cfg = (await self._session.execute(
-                select(SystemConfig).where(SystemConfig.key == key)
-            )).scalar_one_or_none()
-            
-            if cfg:
-                cfg.value = str(count)
-            else:
-                self._session.add(SystemConfig(key=key, value=str(count)))
+            await SystemConfig.upsert(self._session, key=key, value=str(count))
             await self._session.commit()
         except Exception as e:
             logger.debug(f"Gemini quota persist failed (non-fatal): {e}")
@@ -176,15 +167,8 @@ class GeminiRateLimiter:
             async with _gs() as persist_session:
                 key = f"gemini_quota_{model}_{today}"
                 count = self._daily_counts.get(model, {}).get("count", 0)
-                from sqlalchemy import select as _sel
                 from database.models import SystemConfig as _SC
-                cfg = (await persist_session.execute(
-                    _sel(_SC).where(_SC.key == key)
-                )).scalar_one_or_none()
-                if cfg:
-                    cfg.value = str(count)
-                else:
-                    persist_session.add(_SC(key=key, value=str(count)))
+                await _SC.upsert(persist_session, key=key, value=str(count))
                 await persist_session.commit()
         except Exception as e:
             logger.debug(f"Gemini quota async persist failed (non-fatal): {e}")

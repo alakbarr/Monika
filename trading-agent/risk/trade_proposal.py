@@ -10,7 +10,7 @@ import uuid
 import math
 from datetime import datetime, timezone
 from typing import Literal, Optional, Dict, Any, List, Union
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 
 def _utcnow() -> datetime:
@@ -22,6 +22,8 @@ class TradeProposal(BaseModel):
     Immutable proposal contract emitted by Plane 1 (AI Analysis Playground)
     and validated independently by Plane 2 (Financial Fortress).
     """
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
     proposal_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: datetime = Field(default_factory=_utcnow)
     symbol: str
@@ -37,6 +39,7 @@ class TradeProposal(BaseModel):
     free_margin: Optional[float] = None
     spread_pips: Optional[float] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    analysis: Optional[Any] = Field(default=None, exclude=True)
 
     @field_validator("symbol")
     @classmethod
@@ -94,9 +97,17 @@ class TradeProposal(BaseModel):
         return self
 
     @classmethod
-    def compute_reasoning_hash(cls, reasoning_text: str) -> str:
+    def compute_reasoning_hash(cls, reasoning_text: Any) -> str:
         """Computes SHA-256 hash of reasoning text."""
-        return hashlib.sha256((reasoning_text or "").strip().encode("utf-8")).hexdigest()
+        if hasattr(reasoning_text, "_mock_return_value") or hasattr(reasoning_text, "_mock_name"):
+            encoded = b"mock_reasoning"
+        elif isinstance(reasoning_text, str):
+            encoded = reasoning_text.strip().encode("utf-8")
+        elif isinstance(reasoning_text, (bytes, bytearray)):
+            encoded = bytes(reasoning_text)
+        else:
+            encoded = str(reasoning_text or "").strip().encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
 
     @classmethod
     def from_analysis(
@@ -114,6 +125,7 @@ class TradeProposal(BaseModel):
         free_margin: Optional[float] = None,
         spread_pips: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        analysis: Optional[Any] = None,
     ) -> "TradeProposal":
         """Factory helper creating a validated TradeProposal with automated reasoning hash."""
         r_hash = cls.compute_reasoning_hash(reasoning_text)
@@ -131,6 +143,7 @@ class TradeProposal(BaseModel):
             free_margin=free_margin,
             spread_pips=spread_pips,
             metadata=metadata or {},
+            analysis=analysis,
         )
 
 

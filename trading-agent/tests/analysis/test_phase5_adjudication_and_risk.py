@@ -136,3 +136,51 @@ async def test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists():
         # Verify persistence to AssetAnalysis
         assert mock_ana.decision == "buy"
         assert mock_ana.decision_source == "quant_donchian_breakout"
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_node_proposal_error_fails_closed():
+    """Verify that if proposal creation or validation raises an exception, the trade fails closed and is rejected."""
+    state = {
+        "summary": {},
+        "actionable_trades": [
+            ("BTCUSD", {
+                "analysis_id": 888,
+                "decision": "sell",
+                "confidence": 0.70,
+                "entry_price": 60000.0,
+                "stop_loss": 0.0,
+                "take_profit": 0.0,
+            })
+        ],
+        "asset_analyses": {}
+    }
+
+    mock_scheduler = MagicMock()
+    mock_scheduler.settings = {"arbitration": {}}
+    config = {"configurable": {"scheduler": mock_scheduler}}
+
+    class MockSession:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *a):
+            pass
+        async def get(self, model, ident):
+            return None
+        async def execute(self, stmt):
+            m = MagicMock()
+            m.scalar_one_or_none.return_value = None
+            m.scalars.return_value.all.return_value = []
+            return m
+        async def commit(self):
+            pass
+
+    with patch("database.db.get_session", side_effect=MockSession), \
+         patch("risk.portfolio_correlation_gate.filter_correlated_proposals", new=AsyncMock(return_value=([("BTCUSD", {"analysis_id": 888, "decision": "sell", "confidence": 0.70})], []))), \
+         patch("risk.trade_proposal.TradeProposal.from_analysis", side_effect=ValueError("Simulated proposal validation crash")), \
+         patch("utils.infra.notifier.AgentNotifier.send_info", new=AsyncMock()):
+
+        res = await risk_gate_node(state, config)
+
+        # STRICT FAIL-CLOSED: The trade must NOT be approved
+        assert len(res["approved_trades"]) == 0

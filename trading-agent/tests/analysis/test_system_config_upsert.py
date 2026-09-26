@@ -112,3 +112,48 @@ async def test_debate_node_context_drift_query_updated_at(test_db_session):
     
     assert drift_cfg is not None
     assert "context_drift_GBPUSD_" in drift_cfg.key
+
+
+def test_system_config_pg_upsert_compilation():
+    """Verify that PostgreSQL atomic UPSERT constructs valid ON CONFLICT DO UPDATE statement."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert, dialect as pg_dialect
+    from database.models import SystemConfig
+    from datetime import datetime, timezone
+
+    stmt = (
+        pg_insert(SystemConfig)
+        .values(
+            key="gemini_quota_test",
+            value="15",
+            description=None,
+            updated_at=datetime.now(timezone.utc),
+        )
+        .on_conflict_do_update(
+            index_elements=[SystemConfig.key],
+            set_={"value": "15", "updated_at": datetime.now(timezone.utc)},
+        )
+    )
+    compiled = str(stmt.compile(dialect=pg_dialect()))
+    assert "ON CONFLICT (key) DO UPDATE" in compiled
+    assert "SET value =" in compiled
+
+
+@pytest.mark.asyncio
+async def test_gemini_quota_upsert(test_db_session):
+    """Simulate rapid quota persistence calls updating the exact same daily quota key."""
+    session = test_db_session
+    quota_key = "gemini_quota_gemini-3.5-flash-lite_2026-09-26"
+
+    # Rapid consecutive calls
+    for count in range(1, 15):
+        await SystemConfig.upsert(
+            session=session,
+            key=quota_key,
+            value=str(count),
+            description="Persistent daily request counter for Gemini rate limiter",
+        )
+        await session.commit()
+
+    rows = (await session.execute(select(SystemConfig).where(SystemConfig.key == quota_key))).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].value == "14"

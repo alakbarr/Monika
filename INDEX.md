@@ -2045,7 +2045,7 @@ This document provides an exhaustive structural index of all directories, files,
       - *Class Variables*: __tablename__
       - *Methods*:
         - `upsert()`
-          - *Docstring*: Upsert key-value record safely.
+          - *Docstring*: Upsert key-value record safely with atomic PostgreSQL ON CONFLICT DO UPDATE and SQLite fallback.
     - `CyclePerformance`
       - *Docstring*: Tracks each analysis cycle for performance monitoring.
       - *Class Variables*: __tablename__

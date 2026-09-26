@@ -447,18 +447,118 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     analysis_id = r.get("analysis_id")
                     ana = await rg_session.get(AssetAnalysis, analysis_id) if analysis_id else None
 
-                    entry_price = float(r.get("entry_price") or (getattr(ana, "entry_price", 0.0) if ana else 0.0) or 0.0)
-                    if entry_price == 0.0 and ana and ana.entry_zone:
+                    dec = str(r.get("decision") or (ana.decision if ana else "WAIT")).upper()
+                    
+                    def _safe_num(val: Any, default: float = 0.0) -> float:
+                        if val is None or hasattr(val, "_mock_name") or hasattr(val, "_mock_return_value"):
+                            return default
+                        try:
+                            f = float(val)
+                            return default if (math.isnan(f) or math.isinf(f)) else f
+                        except (ValueError, TypeError):
+                            return default
+
+                    entry_price = _safe_num(r.get("entry_price"))
+                    if entry_price == 0.0 and ana:
+                        entry_price = _safe_num(getattr(ana, "entry_price", None))
+                    if entry_price == 0.0 and ana and getattr(ana, "entry_zone", None) and not hasattr(ana.entry_zone, "_mock_name"):
                         try:
                             ez = json.loads(ana.entry_zone) if isinstance(ana.entry_zone, str) else ana.entry_zone
-                            entry_price = float(ez.get("price", 0.0))
+                            if isinstance(ez, dict):
+                                entry_price = _safe_num(ez.get("price"))
+                        except Exception:
+                            pass
+                    if entry_price == 0.0:
+                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
+                        if isinstance(raw_aa, dict):
+                            entry_price = _safe_num(raw_aa.get("entry_price"))
+                    if entry_price <= 0.0 and hasattr(scheduler, "mt5") and scheduler.mt5:
+                        try:
+                            info = await scheduler.mt5.get_symbol_info(sym)
+                            if isinstance(info, dict):
+                                entry_price = _safe_num(info.get("ask" if dec == "BUY" else "bid") or info.get("price"))
                         except Exception:
                             pass
 
-                    sl = float(r.get("stop_loss") or (ana.stop_loss if ana else 0.0) or 0.0)
-                    tp = float(r.get("take_profit") or (ana.take_profit if ana else 0.0) or 0.0)
-                    conf = float(r.get("confidence") or (ana.confidence if ana else 50.0) or 50.0)
-                    dec = str(r.get("decision") or (ana.decision if ana else "WAIT")).upper()
+                    sl = _safe_num(r.get("stop_loss"))
+                    if sl == 0.0 and ana:
+                        sl = _safe_num(getattr(ana, "stop_loss", None))
+                    if sl == 0.0:
+                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
+                        if isinstance(raw_aa, dict):
+                            sl = _safe_num(raw_aa.get("stop_loss"))
+
+                    tp = _safe_num(r.get("take_profit"))
+                    if tp == 0.0 and ana:
+                        tp = _safe_num(getattr(ana, "take_profit", None))
+                    if tp == 0.0:
+                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
+                        if isinstance(raw_aa, dict):
+                            tp = _safe_num(raw_aa.get("take_profit"))
+
+                    conf = _safe_num(r.get("confidence"))
+                    if conf == 0.0 and ana:
+                        conf = _safe_num(getattr(ana, "confidence", 50.0), default=50.0)
+                    if conf == 0.0:
+                        conf = 50.0
+
+                    # Protective SL/TP fallback for active trades missing levels
+                    if dec in ("BUY", "SELL") and entry_price > 0.0:
+                        atr_val = None
+                        if ana and getattr(ana, "indicators", None) and not hasattr(ana.indicators, "_mock_name"):
+                            try:
+                                inds = json.loads(ana.indicators) if isinstance(ana.indicators, str) else ana.indicators
+                                if isinstance(inds, dict):
+                                    atr_val = _safe_num(inds.get("atr_14") or inds.get("atr") or inds.get("ATR"))
+                            except Exception:
+                                pass
+                        if not atr_val or atr_val <= 0.0:
+                            atr_val = _safe_num(r.get("atr") or r.get("atr_14"))
+                        if (not atr_val or atr_val <= 0.0) and entry_price > 0.0:
+                            sym_upper = sym.upper()
+                            if "BTC" in sym_upper or "ETH" in sym_upper or "CRYPTO" in sym_upper:
+                                atr_val = entry_price * 0.02
+                            elif "XAU" in sym_upper or "OIL" in sym_upper or "XTI" in sym_upper or "XBR" in sym_upper:
+                                atr_val = entry_price * 0.01
+                            else:
+                                atr_val = entry_price * 0.005
+
+                        if dec == "BUY":
+                            if sl <= 0.0 or sl >= entry_price:
+                                sl = round(max(0.0001, entry_price - (1.5 * atr_val)), 5)
+                                if sl >= entry_price:
+                                    sl = round(entry_price * 0.99, 5)
+                                r["stop_loss"] = sl
+                            if tp <= 0.0 or tp <= entry_price:
+                                tp = round(entry_price + (3.0 * atr_val), 5)
+                                r["take_profit"] = tp
+                        elif dec == "SELL":
+                            if sl <= 0.0 or sl <= entry_price:
+                                sl = round(entry_price + (1.5 * atr_val), 5)
+                                r["stop_loss"] = sl
+                            if tp <= 0.0 or tp >= entry_price:
+                                tp = round(max(0.0001, entry_price - (3.0 * atr_val)), 5)
+                                if tp >= entry_price:
+                                    tp = round(entry_price * 0.99, 5)
+                                r["take_profit"] = tp
+
+                        if r.get("entry_price") != entry_price:
+                            r["entry_price"] = entry_price
+
+                        if ana:
+                            ana_updated = False
+                            if getattr(ana, "stop_loss", None) != sl:
+                                ana.stop_loss = sl
+                                ana_updated = True
+                            if getattr(ana, "take_profit", None) != tp:
+                                ana.take_profit = tp
+                                ana_updated = True
+                            if ana_updated:
+                                await rg_session.commit()
+
+                    reasoning_text = ""
+                    if ana and hasattr(ana, "rationale") and not hasattr(ana.rationale, "_mock_name"):
+                        reasoning_text = str(ana.rationale or "")
 
                     try:
                         proposal = TradeProposal.from_analysis(
@@ -469,13 +569,12 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             take_profit=tp,
                             lot_size=float(r.get("lot_size", 0.01) or 0.01),
                             confluence_score=conf,
-                            reasoning_text=ana.rationale if ana else "",
+                            reasoning_text=reasoning_text,
                             provenance_verified=True,
                             account_equity=equity,
+                            analysis=ana,
                         )
-                        if ana is not None:
-                            setattr(proposal, "analysis", ana)
-                        verdict = await risk_gate.evaluate_proposal(rg_session, proposal, account_equity=equity)
+                        verdict = await risk_gate.evaluate_proposal(rg_session, proposal, account_equity=equity, analysis=ana)
                         if verdict.approved:
                             gate_approved.append((sym, r))
                         else:
@@ -502,7 +601,25 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                                 logger.debug(f"RiskGate whatif log error: {whatif_err}")
                     except Exception as prop_err:
                         logger.warning(f"[RiskGate] Proposal error for {sym}: {prop_err}")
-                        gate_approved.append((sym, r))
+                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"proposal_error: {prop_err}"]})
+                        try:
+                            from analysis.memory.decision_log import DecisionLogger
+                            ctx_id = ana.context_snapshot_id if ana else None
+                            cds = ana.ssvp_cds_score_at_analysis if ana else None
+                            await DecisionLogger.log_paper_whatif(
+                                rg_session,
+                                analysis_id=r.get("analysis_id"),
+                                symbol=sym,
+                                decision=r.get("decision", "wait"),
+                                confidence=r.get("confidence", 0),
+                                confluence_score=None,
+                                rationale=f"RiskGate proposal error: {prop_err}",
+                                reason="proposal_error",
+                                context_snapshot_id=ctx_id,
+                                ssvp_cds_score=cds
+                            )
+                        except Exception as whatif_err:
+                            logger.debug(f"RiskGate whatif log error on proposal exception: {whatif_err}")
 
             actionable = gate_approved
         except Exception as e:

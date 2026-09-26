@@ -166,3 +166,34 @@ async def test_fallback_on_stream_timeout():
         assert result == {"winner": "BULL", "confidence": 0.85}
         assert primary_client.classify_json.called
         assert fallback_client.classify_json.called
+
+
+@pytest.mark.asyncio
+async def test_gemini_generate_streaming_timeout_fallback_to_non_streaming():
+    """Verify GeminiProvider.generate falls back to non-streaming POST and sets key cooldown on stream timeout."""
+    provider = GeminiProvider("gemini-3.5-flash-lite", settings=SAMPLE_SETTINGS)
+    provider.free_api_keys = ["mock-key-stalled", "mock-key-next"]
+
+    mock_resp_dict = {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": "Non-streaming fallback response"}]},
+                "finishReason": "STOP"
+            }
+        ],
+        "usageMetadata": {"promptTokenCount": 30, "candidatesTokenCount": 15}
+    }
+
+    with patch("analysis.providers.gemini_provider.streaming_request", new_callable=AsyncMock) as mock_stream:
+        mock_stream.side_effect = StreamTimeoutError("Streaming idle timeout (45s) after 47 chunks", idle_seconds=45.0, chunks_received=47)
+        with patch("analysis.providers.gemini_provider.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = mock_resp_dict
+            with patch.object(provider, "_save_token_usage", new_callable=AsyncMock):
+                with patch("analysis.providers.gemini_provider.get_session"):
+                    with patch("analysis.providers.gemini_provider.GeminiRateLimiter.try_acquire", return_value=True):
+                        res = await provider.generate("Test prompt")
+                        assert res == "Non-streaming fallback response"
+                        assert mock_stream.called
+                        assert mock_fetch.called
+                        # Verify cooldown was placed on the used key
+                        assert any(cd > 0 for cd in provider._key_cooldowns.values())
