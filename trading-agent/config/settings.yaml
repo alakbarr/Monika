@@ -268,6 +268,7 @@ trading:
     stat_arb_confirmation: true
     momentum_anti_exhaustion: true
   mt5:
+    broker_utc_offset_hours: 3
     timeframes:
     - M15
     - H1

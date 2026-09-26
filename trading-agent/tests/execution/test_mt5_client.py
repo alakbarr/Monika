@@ -295,6 +295,45 @@ class TestMT5Client:
         assert df.iloc[0]["close"] == 1.15
         assert "volume" in df.columns
 
+    @pytest.mark.asyncio
+    async def test_get_broker_utc_offset_configured(self):
+        """Verifikasi offset broker menggunakan konfigurasi settings.yaml jika tersedia."""
+        from execution.mt5_client import MT5Client
+        client = MT5Client(settings={"trading": {"mt5": {"broker_utc_offset_hours": 3}}})
+        offset = await client.get_broker_utc_offset_seconds()
+        assert offset == 10800
+
+    @pytest.mark.asyncio
+    async def test_save_ohlcv_d1_deduplicates_near_window(self, client):
+        """Verifikasi bahwa save_ohlcv D1 tidak membuat baris duplikat jika bar pada hari yang sama sudah ada."""
+        mock_session = AsyncMock()
+        existing_d1 = MagicMock(
+            timestamp=datetime(2026, 9, 25, 0, 0, tzinfo=timezone.utc),
+            open=100.0, high=105.0, low=95.0, close=102.0, volume=500.0
+        )
+        
+        # Panggilan pertama (where timestamp == ts_dt) return None
+        # Panggilan kedua (where timestamp between +-6h) return existing_d1
+        first_res = MagicMock()
+        first_res.scalar_one_or_none.return_value = None
+        
+        second_res = MagicMock()
+        second_res.scalar_one_or_none.return_value = existing_d1
+        
+        mock_session.execute.side_effect = [first_res, second_res]
+        
+        # Candle masuk dengan timestamp 21:00 (bergeser 3 jam dari 00:00)
+        df_new = pd.DataFrame([{
+            "time": datetime(2026, 9, 24, 21, 0, tzinfo=timezone.utc),
+            "open": 100.0, "high": 106.0, "low": 95.0, "close": 103.0, "volume": 600.0
+        }])
+        
+        saved = await client.save_ohlcv(mock_session, "BTCUSD", "D1", df_new)
+        assert saved == 1
+        # Memperbarui bar lama dan tidak memanggil session.add (tidak duplikat)
+        mock_session.add.assert_not_called()
+        mock_session.commit.assert_awaited_once()
+
 
 
 

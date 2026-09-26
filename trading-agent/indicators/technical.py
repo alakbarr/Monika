@@ -34,6 +34,7 @@ import utils.clock as clock
 from database.models import PriceOHLCV, TechnicalIndicator
 
 logger = logging.getLogger("TradingAgent.Indicators")
+_WARNED_INSUFFICIENT_BARS: set[str] = set()
 
 
 def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Series:
@@ -139,21 +140,28 @@ class TechnicalIndicatorCalculator:
             logger.warning(f"No OHLCV data for {symbol}/{timeframe}")
             return 0
             
-        min_bars = max(self.ma_periods) + 5 if self.ma_periods else 30
+        min_bars = max(self.ma_periods) if self.ma_periods else 30
         
         if len(df) < min_bars:
-            logger.warning(
-                f"Insufficient OHLCV bars for {symbol}/{timeframe}: "
-                f"have {len(df)}, need {min_bars}. "
-                f"{'SMA_200 requires ~205 D1 bars — wait for more history.' if timeframe == 'D1' else 'Fetch more price history.'}"
-            )
+            warn_key = f"{symbol}/{timeframe}"
+            if warn_key not in _WARNED_INSUFFICIENT_BARS:
+                _WARNED_INSUFFICIENT_BARS.add(warn_key)
+                logger.warning(
+                    f"Insufficient OHLCV bars for {symbol}/{timeframe}: "
+                    f"have {len(df)}, need {min_bars}. "
+                    f"{'SMA_200 requires ~200 D1 bars — wait for more history.' if timeframe == 'D1' else 'Fetch more price history.'}"
+                )
+            else:
+                logger.debug(
+                    f"Insufficient OHLCV bars for {symbol}/{timeframe}: have {len(df)}, need {min_bars}."
+                )
             # Tetap hitung indikator yang memungkinkan dengan data terbatas
             # Lewati sepenuhnya jika data terlalu sedikit bahkan untuk RSI
             if len(df) < 20:
                 return 0
                 
-            # Sesuaikan ma_periods hanya untuk yang bisa dihitung
-            computable_periods = [p for p in self.ma_periods if p <= len(df) - 5]
+            # Sesuaikan ma_periods hanya untuk yang bisa dihitung (SMA_p membutuhkan p bar)
+            computable_periods = [p for p in self.ma_periods if p <= len(df)]
             if not computable_periods:
                 return 0
                 
@@ -219,12 +227,13 @@ class TechnicalIndicatorCalculator:
 
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
         """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
+        fetch_limit = 2500 if timeframe.upper() in ("D1", "H4") else 1000
         result = await self.session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
             .where(PriceOHLCV.timeframe == timeframe)
             .order_by(PriceOHLCV.timestamp.desc())  # DESC to get most recent rows
-            .limit(1000)
+            .limit(fetch_limit)
         )
         rows = result.scalars().all()
         if not rows:
@@ -247,6 +256,11 @@ class TechnicalIndicatorCalculator:
         # Ensure chronological monotonic index
         if not df.index.is_monotonic_increasing:
             df.sort_index(inplace=True)
+
+        # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
+        if timeframe.upper() == "D1" and len(df) > 1:
+            df.index = pd.DatetimeIndex(df.index).normalize()
+            df = df[~df.index.duplicated(keep="last")]
             
         # Resample and forward-fill to handle missing candles without time distortion
         tf_freq_map = {
@@ -256,13 +270,14 @@ class TechnicalIndicatorCalculator:
             "M30": "30min",
             "H1": "1h",
             "H4": "4h",
-            "D1": "24h",
+            "D1": "1D",
         }
         freq = tf_freq_map.get(timeframe.upper())
         if freq and len(df) > 1:
             try:
                 deduped = df[~df.index.duplicated(keep='first')]
-                resampled = deduped.resample(freq, origin='start').asfreq()
+                resample_kwargs = {} if freq == "1D" else {"origin": "start"}
+                resampled = deduped.resample(freq, **resample_kwargs).asfreq()
                 # If resampling produced NaNs across the series, fallback to raw deduped data
                 if not resampled['close'].isna().all():
                     # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)
