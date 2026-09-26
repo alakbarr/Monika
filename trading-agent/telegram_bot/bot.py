@@ -916,11 +916,14 @@ class TelegramBot:
         from database.db import get_session
         from risk.risk_gate import RiskGate
         from utils.analytics.cost_tracker import CostTracker
-        gate = RiskGate(self.settings)
         async with get_session() as session:
-            await gate.resume_trading(session)
+            if hasattr(self, "execution_service") and self.execution_service and hasattr(self.execution_service, "resume_trading"):
+                await self.execution_service.resume_trading(session, requested_by="telegram_admin")
+            else:
+                gate = RiskGate(self.settings)
+                await gate.resume_trading(session)
             await CostTracker.clear_budget_pause(session)
-        await update.message.reply_text("[ RESUMED ] Trading & AI Budget dilanjutkan.", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("[ RESUMED ] Trading & AI Budget dilanjutkan (All pause & kill flags cleared).", parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_unsuspend(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
