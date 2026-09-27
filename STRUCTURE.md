@@ -455,7 +455,6 @@ Monika/
 │   │   │   ├── system.py
 │   │   │   └── trading.py
 │   │   ├── migrations
-│   │   │   ├── archive
 │   │   │   ├── versions
 │   │   │   ├── __init__.py
 │   │   │   ├── env.py
