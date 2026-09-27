@@ -1,7 +1,6 @@
 """
 Provenance Tagger & Ledger: Tracks numeric provenance of tool outputs
 and cross-verifies figures cited by LLM agents.
-Source: Vibe-Trading src/agent/grounding/
 """
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -106,6 +105,50 @@ class ProvenanceLedger:
                 unverified_nums.append(num)
 
         return verified, unverified, unverified_nums
+
+    def redact_unprovenanced_figures(
+        self,
+        text: str,
+        tolerance: float = 1e-3,
+        redaction_mask: str = "[UNVERIFIED_FIGURE_REDACTED]",
+        allowed_common_ints: Optional[Sequence[float]] = None,
+    ) -> Tuple[str, List[float]]:
+        """
+        Scans narrative text for unprovenanced numbers not found in the ProvenanceLedger.
+        Replaces ungrounded figures with a clear redaction mask to prevent hallucinations
+        from corrupting subsequent reasoning or execution.
+        Returns: (sanitized_text, list_of_redacted_numbers)
+        """
+        if not text:
+            return text, []
+
+        common_allowed = set(allowed_common_ints) if allowed_common_ints is not None else {
+            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+            14.0, 20.0, 50.0, 100.0, 200.0
+        }
+
+        redacted_nums: List[float] = []
+
+        def _replace_match(match: re.Match) -> str:
+            token = match.group(0)
+            try:
+                num = float(token)
+            except ValueError:
+                return token
+
+            if num in common_allowed:
+                return token
+
+            matched_fact = self.verify_citation(num, tolerance=tolerance)
+            if matched_fact is not None:
+                return token
+
+            redacted_nums.append(num)
+            return redaction_mask
+
+        pattern = r"[-+]?(?:\d*\.\d+|\d+)"
+        sanitized_text = re.sub(pattern, _replace_match, text)
+        return sanitized_text, redacted_nums
 
     def _extract_numerics(self, obj: Any, prefix: str = "") -> Dict[str, float]:
         """Recursively extract float values from nested dict/list/primitives."""
@@ -338,3 +381,45 @@ class ProvenanceLedger:
                 meta["verified_extended"] += 1
 
         return len(errors) == 0, errors, meta
+
+
+class AutomatedFigureRedactionGate:
+    """
+    Automated gate that inspects LLM deliberation or signal payloads,
+    cross-references numbers against the ProvenanceLedger, and redacts or rejects
+    hallucinated figures before execution.
+    """
+
+    def __init__(self, ledger: Optional[ProvenanceLedger] = None, strict: bool = False):
+        self.ledger = ledger or ProvenanceLedger()
+        self.strict = strict
+
+    def sanitize_payload(
+        self,
+        payload: Dict[str, Any],
+        text_fields: Optional[Sequence[str]] = None,
+    ) -> Tuple[Dict[str, Any], List[float], bool]:
+        """
+        Sanitizes text fields in a payload by redacting ungrounded numeric figures.
+        Returns: (sanitized_payload, all_redacted_numbers, passed_gate)
+        """
+        target_fields = list(text_fields) if text_fields else ["reason", "rationale", "bull_thesis", "bear_dissent"]
+        cleaned_payload = dict(payload)
+        all_redacted: List[float] = []
+
+        for field_name in target_fields:
+            val = cleaned_payload.get(field_name)
+            if isinstance(val, str) and val:
+                sanitized_str, redacted = self.ledger.redact_unprovenanced_figures(val)
+                if redacted:
+                    all_redacted.extend(redacted)
+                    cleaned_payload[field_name] = sanitized_str
+
+        # In strict mode, any unprovenanced figure causes the gate to fail
+        passed = (len(all_redacted) == 0) if self.strict else True
+        cleaned_payload["_redaction_gate"] = {
+            "passed": passed,
+            "redacted_count": len(all_redacted),
+            "redacted_figures": all_redacted,
+        }
+        return cleaned_payload, all_redacted, passed

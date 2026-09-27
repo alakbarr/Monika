@@ -52,6 +52,12 @@ Rely heavily on the 'original_context' (entry, SL, TP, invalidation) and the Fac
 
 {get_universal_execution_discipline()}
 
+[COMPUTE, DO NOT ASSERT DISCIPLINE]:
+- NEVER invent, guess, hallucinate, or rhetorically declare numbers, indicators, or prices.
+- EVERY numerical claim MUST be explicitly cited from the Fact Sheet or calculated from explicit formulas (e.g. entry-SL gap, R:R ratio, ATR multiple).
+- Unsupported rhetorical assertions (e.g. 'momentum will explode', 'support will easily hold') without quantitative metrics are strictly forbidden.
+- Ground all arguments in concrete mathematical and structural evidence: ATR levels, liquidity zones, CVD divergence, orderbook imbalance, and quantified price gaps.
+
 [TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bull_thesis must be concise (max 2 sentences) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
 Respond in valid JSON format ONLY conforming to the schema."""
     

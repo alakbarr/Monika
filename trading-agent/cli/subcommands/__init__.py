@@ -12,10 +12,12 @@ from cli.subcommands.daemon import DaemonSubcommand
 from cli.subcommands.trading import TradingSubcommand
 from cli.subcommands.simulation import SimulationSubcommand
 from cli.subcommands.mcp import McpSubcommand
+from cli.subcommands.runcard import RunCardSubcommand
 
 AVAILABLE_SUBCOMMANDS: List[Subcommand] = [
     DaemonSubcommand(),
     TradingSubcommand(),
     SimulationSubcommand(),
     McpSubcommand(),
+    RunCardSubcommand(),
 ]

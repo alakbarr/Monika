@@ -13,6 +13,7 @@ Layer 3 - VOLATILE CONTEXT (per-invocation, never persisted):
 
 import logging
 import json
+import math
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
@@ -24,6 +25,26 @@ from analysis.memory.session_search import SessionSearchEngine
 logger = logging.getLogger("TradingAgent.LayeredMemory")
 
 MAX_CORE_TOKENS = 800  # Hard token budget cap
+
+
+def compute_ebbinghaus_retention(
+    timestamp: Optional[datetime],
+    stability_days: float = 14.0,
+    now_dt: Optional[datetime] = None,
+) -> float:
+    """
+    Subsystem 6: Computes memory retention using the Ebbinghaus forgetting curve:
+    R = exp(-delta_t / S)
+    where delta_t is elapsed time in days and S is memory stability.
+    """
+    if timestamp is None:
+        return 0.50
+    now = now_dt or datetime.now(timezone.utc)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    elapsed_days = max(0.0, (now - timestamp).total_seconds() / 86400.0)
+    retention = math.exp(-elapsed_days / max(1.0, stability_days))
+    return float(retention)
 
 
 def _wrap_market_memory(content: str, max_tokens: int = 400) -> str:
@@ -314,50 +335,57 @@ class LayeredMemoryManager:
             return "USD_NEUTRAL"
 
     async def _get_top_lessons(self, session: Optional[AsyncSession], n: int = 3) -> List[str]:
-        """Top N most recent unique lessons with specific adjustments."""
+        """Top N most relevant lessons ranked by Ebbinghaus retention decay and empirical stability."""
         if not session:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
         try:
             from database.models import DecisionReflection, CandidateLesson
             seen_texts = set()
-            lessons = []
+            scored_lessons: List[tuple[float, str]] = []
 
-            # Prioritize out-of-sample validated promoted lessons
+            now_utc = datetime.now(timezone.utc)
+
+            # 1. Promoted lessons (high stability S = 60 days)
             promoted = (await session.execute(
                 select(CandidateLesson)
                 .where(CandidateLesson.status == 'promoted')
                 .order_by(desc(CandidateLesson.promoted_at))
-                .limit(n)
+                .limit(n * 2)
             )).scalars().all()
             for pl in promoted:
                 if pl.lesson_text and pl.lesson_text not in seen_texts:
-                    prefix = f"[{pl.symbol}] " if pl.symbol and pl.symbol != "ALL" else ""
-                    lessons.append(f"{prefix}{pl.lesson_text[:90]}")
-                    seen_texts.add(pl.lesson_text)
+                    ret = compute_ebbinghaus_retention(pl.promoted_at, stability_days=60.0, now_dt=now_utc)
+                    if ret >= 0.10:  # Exclude decayed memories
+                        prefix = f"[{pl.symbol}] " if pl.symbol and pl.symbol != "ALL" else ""
+                        scored_lessons.append((ret * 1.5, f"{prefix}{pl.lesson_text[:90]}"))
+                        seen_texts.add(pl.lesson_text)
 
-            if len(lessons) < n:
-                results = (await session.execute(
-                    select(DecisionReflection)
-                    .where(
-                        or_(
-                            DecisionReflection.alpha_lesson != None,
-                            DecisionReflection.specific_lesson != None
-                        )
+            # 2. Recent reflections (standard stability S = 14 days)
+            results = (await session.execute(
+                select(DecisionReflection)
+                .where(
+                    or_(
+                        DecisionReflection.alpha_lesson != None,
+                        DecisionReflection.specific_lesson != None
                     )
-                    .order_by(desc(DecisionReflection.resolved_at))
-                    .limit(n * 2)
-                )).scalars().all()
-                for r in results:
-                    txt = getattr(r, 'specific_lesson', None) or getattr(r, 'alpha_lesson', None)
-                    adj = getattr(r, 'next_trade_adjustment', None)
-                    if txt and adj and adj not in txt:
-                        txt = f"{txt} -> {adj}"
-                    if txt and txt not in seen_texts:
-                        lessons.append(txt[:100])
+                )
+                .order_by(desc(DecisionReflection.resolved_at))
+                .limit(n * 3)
+            )).scalars().all()
+            for r in results:
+                txt = getattr(r, 'specific_lesson', None) or getattr(r, 'alpha_lesson', None)
+                adj = getattr(r, 'next_trade_adjustment', None)
+                if txt and adj and adj not in txt:
+                    txt = f"{txt} -> {adj}"
+                if txt and txt not in seen_texts:
+                    ret = compute_ebbinghaus_retention(r.resolved_at, stability_days=14.0, now_dt=now_utc)
+                    if ret >= 0.10:
+                        scored_lessons.append((ret, txt[:100]))
                         seen_texts.add(txt)
-                    if len(lessons) >= n:
-                        break
-            return lessons if lessons else ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
+
+            scored_lessons.sort(key=lambda x: x[0], reverse=True)
+            top = [item[1] for item in scored_lessons[:n]]
+            return top if top else ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
         except Exception:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
 

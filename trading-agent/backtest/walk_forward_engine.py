@@ -124,6 +124,24 @@ class WalkForwardEngine:
 
         return folds
 
+    @staticmethod
+    def detect_boundary_leakage(
+        is_end: datetime,
+        oos_start: datetime,
+        purge_days: int = 0,
+    ) -> tuple[bool, str]:
+        """
+        Validates that there is no boundary leakage or label horizon overlap
+        between In-Sample and Out-of-Sample datasets.
+        Returns (is_leakage, diagnostic_message).
+        """
+        if is_end > oos_start:
+            return True, f"Direct temporal overlap: IS end ({is_end}) is after OOS start ({oos_start})"
+        gap = (oos_start - is_end).total_seconds() / 86400.0
+        if purge_days > 0 and gap < (purge_days - 0.01):
+            return True, f"Purge gap violation: expected at least {purge_days} days purge gap, but got {gap:.2f} days"
+        return False, "Clean boundary: no temporal leakage detected"
+
     async def run(self) -> WalkForwardResult:
         """
         Execute Walk-Forward Optimization across all generated folds.

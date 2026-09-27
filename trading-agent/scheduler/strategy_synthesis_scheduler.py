@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from analysis.strategies.registry import StrategyRegistry
+from analysis.strategies.hypothesis_registry import HypothesisRegistry, HypothesisStatus
 from database.db import get_session
 from database.models import SystemConfig, ActivityLog
 
@@ -49,6 +50,8 @@ class SynthesizedStrategyCandidate:
     status: str = "QUALIFIED"  # "QUALIFIED", "REGISTERED", "REJECTED"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     file_path: Optional[str] = None
+    derived_from: Optional[str] = None
+    generation: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -128,6 +131,7 @@ class StrategySynthesisScheduler:
         self._running = False
         self._stop_event = asyncio.Event()
         self.candidates: List[SynthesizedStrategyCandidate] = []
+        self.hypothesis_registry = HypothesisRegistry()
         self.SYNTHESIZED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Institutional module allowlist for quantitative EdgeStrategy code
@@ -1107,14 +1111,33 @@ class StrategySynthesisScheduler:
         code_str: str,
         symbol: str,
         simulated_returns: Optional[List[float]] = None,
+        concept: Optional[str] = None,
+        derived_from: Optional[str] = None,
+        generation: int = 0,
     ) -> Optional[SynthesizedStrategyCandidate]:
         """
         Compiles the candidate, runs sandbox backtest, and if Sharpe > 1.5 and Max DD < 10%,
         registers into StrategyRegistry and saves to disk / DB SystemConfig.
         """
+        thesis = concept or f"Synthesized strategy {strategy_id} on {symbol}"
+        hyp = self.hypothesis_registry.register(
+            thesis=thesis,
+            signal_definition=f"{class_name} generated for {symbol}",
+            target_universe=[symbol],
+            timeframe="H1",
+            derived_from=derived_from,
+            generation=generation,
+        )
+        self.hypothesis_registry.update_status(hyp.hypothesis_id, HypothesisStatus.TESTING)
+
         code_str = self.sanitize_strategy_code(code_str)
         strat_cls = self.compile_strategy_class(code_str, class_name)
         if not strat_cls:
+            self.hypothesis_registry.update_status(
+                hyp.hypothesis_id,
+                HypothesisStatus.REJECTED,
+                invalidation_notes="Failed code compilation or syntax validation",
+            )
             return None
 
         # Canary instantiation and evaluation test before backtesting or registering
@@ -1148,25 +1171,50 @@ class StrategySynthesisScheduler:
                 logger.warning(
                     f"[StrategySynthesis] Canary evaluation timed out (> 5.0s) for {class_name}"
                 )
+                self.hypothesis_registry.update_status(
+                    hyp.hypothesis_id,
+                    HypothesisStatus.REJECTED,
+                    invalidation_notes=f"Canary evaluation timed out (> 5.0s)",
+                )
                 return None
             if canary_sig is not None:
                 if not isinstance(canary_sig, EdgeSignal):
                     logger.warning(
                         f"[StrategySynthesis] Canary evaluation returned non-EdgeSignal for {class_name}: {type(canary_sig)}"
                     )
+                    self.hypothesis_registry.update_status(
+                        hyp.hypothesis_id,
+                        HypothesisStatus.REJECTED,
+                        invalidation_notes=f"Canary evaluation returned non-EdgeSignal: {type(canary_sig)}",
+                    )
                     return None
                 if "error" in getattr(canary_sig, "tags", []) or "evaluation_error" in getattr(canary_sig, "tags", []):
                     logger.warning(
                         f"[StrategySynthesis] Canary evaluation produced error signal for {class_name}: {canary_sig.rationale}"
+                    )
+                    self.hypothesis_registry.update_status(
+                        hyp.hypothesis_id,
+                        HypothesisStatus.REJECTED,
+                        invalidation_notes=f"Canary evaluation produced error signal: {canary_sig.rationale}",
                     )
                     return None
                 if getattr(canary_sig, "valid", False) and getattr(canary_sig, "direction", None) not in ('buy', 'sell'):
                     logger.warning(
                         f"[StrategySynthesis] Canary evaluation valid=True without directional bias ('buy'/'sell') for {class_name}"
                     )
+                    self.hypothesis_registry.update_status(
+                        hyp.hypothesis_id,
+                        HypothesisStatus.REJECTED,
+                        invalidation_notes="Canary evaluation valid=True without directional bias ('buy'/'sell')",
+                    )
                     return None
         except Exception as canary_err:
             logger.warning(f"[StrategySynthesis] Canary check failed for {class_name}: {canary_err}")
+            self.hypothesis_registry.update_status(
+                hyp.hypothesis_id,
+                HypothesisStatus.REJECTED,
+                invalidation_notes=f"Canary check failed: {canary_err}",
+            )
             return None
 
         # Obtain trade returns: from simulated_returns if provided (unit tests),
@@ -1195,6 +1243,16 @@ class StrategySynthesisScheduler:
         )
 
         if not meets_criteria:
+            self.hypothesis_registry.update_status(
+                hyp.hypothesis_id,
+                HypothesisStatus.REJECTED,
+                invalidation_notes=(
+                    f"Threshold failure: Sharpe={sharpe:.2f} (min {self.min_sharpe}), "
+                    f"MaxDD={max_dd:.1f}% (max {self.max_drawdown_pct}%), "
+                    f"Trades={trades} (min {self.min_trades})"
+                ),
+                metrics={"sharpe": sharpe, "max_drawdown_pct": max_dd, "trades": trades, "win_rate": win_rate},
+            )
             return None
 
         # Walk-Forward Gating before activation
@@ -1224,10 +1282,17 @@ class StrategySynthesisScheduler:
                     wf_res = {"passed": False, "reason": str(wf_err)}
 
             if not wf_res.get("passed", False):
-                logger.info(
-                    f"[StrategySynthesis] Candidate '{strategy_id}' rejected by Walk-Forward Gating: "
+                reason = (
+                    f"Rejected by Walk-Forward Gating: "
                     f"OOS Sharpe={wf_res.get('oos_sharpe', wf_res.get('aggregate_oos_sharpe', 0.0)):.2f}, "
                     f"WFE={wf_res.get('wfe', wf_res.get('overall_wfe', 0.0)):.2f}"
+                )
+                logger.info(f"[StrategySynthesis] Candidate '{strategy_id}' {reason}")
+                self.hypothesis_registry.update_status(
+                    hyp.hypothesis_id,
+                    HypothesisStatus.REJECTED,
+                    invalidation_notes=reason,
+                    metrics=wf_res,
                 )
                 return None
             logger.info(
@@ -1235,6 +1300,19 @@ class StrategySynthesisScheduler:
                 f"OOS Sharpe={wf_res.get('oos_sharpe', wf_res.get('aggregate_oos_sharpe', 0.0)):.2f}, "
                 f"WFE={wf_res.get('wfe', wf_res.get('overall_wfe', 0.0)):.2f}"
             )
+
+        # Transition hypothesis status to INCUBATING upon passing all gates
+        self.hypothesis_registry.update_status(
+            hyp.hypothesis_id,
+            HypothesisStatus.INCUBATING,
+            metrics={
+                "sharpe": sharpe,
+                "max_drawdown_pct": max_dd,
+                "win_rate": win_rate,
+                "trades": trades,
+                "strategy_id": strategy_id,
+            },
+        )
 
         # Persist to disk and verify integrity
         file_path = self.SYNTHESIZED_DIR / f"{strategy_id}.py"
@@ -1273,6 +1351,8 @@ class StrategySynthesisScheduler:
             total_trades=trades,
             status="REGISTERED",
             file_path=str(file_path),
+            derived_from=derived_from,
+            generation=generation,
         )
         self.candidates.append(candidate)
 
@@ -1361,12 +1441,18 @@ class StrategySynthesisScheduler:
         for sym in self.target_symbols:
             for concept in concepts:
                 try:
+                    # Deduplication & rejection check in hypothesis registry
+                    is_dup, dup_reason = self.hypothesis_registry.is_duplicate_or_rejected(concept)
+                    if is_dup:
+                        logger.info(f"[StrategySynthesis] Concept skipped for {sym} (duplicate/rejected): {dup_reason}")
+                        continue
+
                     res = await self.synthesize_code(sym, concept)
                     if not res:
                         continue
                     strat_id, class_name, code = res
                     cand = await self.evaluate_and_register_candidate(
-                        strat_id, class_name, code, sym
+                        strat_id, class_name, code, sym, concept=concept
                     )
                     if cand:
                         new_promoted.append(cand)

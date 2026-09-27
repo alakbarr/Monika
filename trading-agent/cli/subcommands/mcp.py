@@ -16,7 +16,9 @@ class McpSubcommand(Subcommand):
     description = "Expose Monika as a Model Context Protocol (MCP) server."
 
     def register_subparser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-        parser = subparsers.add_parser("mcp-serve", help="Start Monika MCP stdio server.")
+        if "mcp" in subparsers.choices:
+            return subparsers.choices["mcp"]
+        parser = subparsers.add_parser("mcp", help="Start Monika MCP stdio server.")
         parser.add_argument("--config", default=None, help="Custom settings YAML path.")
         return parser
 

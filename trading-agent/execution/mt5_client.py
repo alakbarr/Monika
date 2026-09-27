@@ -43,6 +43,11 @@ PRIORITY_BACKGROUND = 10 # Bulk historical rates (get_rates, copy_rates_range)
 TIMEFRAME_MAP: dict[str, int] = {}
 
 
+class MT5ProfileMismatchError(RuntimeError):
+    """Raised when the connected MT5 terminal login or trade mode does not match configured expectations."""
+    pass
+
+
 def _build_timeframe_map():
     """Membuat pemetaan timeframe string ke konstanta MT5. Dipanggil secara lazy (saat dibutuhkan)."""
     try:
@@ -112,7 +117,9 @@ class MT5Client:
             self.settings.get("trading", {}).get("schedule", {}).get("tick_poller_interval_seconds", 0.25)
         )
         self._broker_utc_offset_seconds: Optional[int] = None
-        # Note: do NOT store event loop in __init__ — get it lazily in _run()
+        # 2-Phase Order Commit Protocol Manager
+        from risk.pending_action import PendingActionManager
+        self.pending_action_manager = PendingActionManager()
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
         """Mengembalikan parameter koneksi untuk gateway yang sedang aktif."""
@@ -130,8 +137,9 @@ class MT5Client:
             from concurrent.futures import ThreadPoolExecutor
             self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
         curr_path, curr_acc, curr_pass, curr_serv = self.get_current_gateway_params()
+        expected_trade_mode = self.settings.get("execution", {}).get("expected_trade_mode") or os.getenv("MT5_EXPECTED_TRADE_MODE")
         try:
-            success = await self._run(_connect, curr_path, curr_acc, curr_pass, curr_serv, timeout=timeout)
+            success = await self._run(_connect, curr_path, curr_acc, curr_pass, curr_serv, expected_trade_mode, timeout=timeout)
             self._connected = success
             if success:
                 try:
@@ -142,6 +150,10 @@ class MT5Client:
                 except Exception:
                     pass
             return success
+        except MT5ProfileMismatchError as pe:
+            logger.critical(f"MT5 [{self.active_gateway.upper()}] Profile Mismatch: {pe}")
+            self._connected = False
+            raise
         except (ConnectionError, TimeoutError) as ce:
             logger.error(f"MT5 [{self.active_gateway.upper()}] Connection failed or timed out: {ce}")
             self._connected = False
@@ -809,14 +821,33 @@ class MT5Client:
             exec_cfg = self.settings.get("execution", {})
             mult_map = exec_cfg.get("max_spread_multiplier", {})
             max_spread_multiplier = mult_map.get(symbol, 10.0) # Default 10x if not found
-            
+
+        # Phase 1: Persistent pre-dispatch marker
+        pending_act = None
+        if hasattr(self, "pending_action_manager") and self.pending_action_manager:
+            try:
+                pending_act = self.pending_action_manager.begin_action(
+                    symbol=symbol,
+                    action=direction,
+                    volume=volume,
+                    price=price,
+                    sl=sl,
+                    tp=tp,
+                    order_type=order_type,
+                    comment=comment,
+                )
+            except Exception as e:
+                logger.error(f"Failed writing Phase 1 pending action marker: {e}")
+
         try:
             result = await self._run(
                 _place_order, symbol, direction, volume, price, sl, tp, comment, order_type, max_spread_multiplier,
                 priority=PRIORITY_CRITICAL,
                 timeout=3.0
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except (TimeoutError, asyncio.TimeoutError) as te:
+            if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                self.pending_action_manager.mark_unconfirmed(pending_act.client_order_id, f"Timeout 3.0s: {te}")
             logger.warning(f"MT5 place_order timed out after 3.0s for {symbol}. Performing in-flight order reconciliation...")
             # Reconcile: Periksa apakah posisi sebenarnya sudah terbentuk di MT5 dalam beberapa detik terakhir
             try:
@@ -830,6 +861,8 @@ class MT5Client:
                     # Cek kesesuaian tipe, volume mendekati, dan timestamp dalam 10 detik terakhir
                     if pos_type == expected_type and abs(float(op.get('volume', 0)) - float(volume)) < 0.001 and (now_ts - pos_time) < 10:
                         logger.critical(f"MT5 in-flight reconciliation SUCCESS: Found open position ticket={op.get('ticket')} for {symbol}")
+                        if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                            self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=op.get('ticket'))
                         return {
                             'success': True,
                             'ticket': op.get('ticket'),
@@ -842,18 +875,32 @@ class MT5Client:
             except Exception as rec_err:
                 logger.error(f"In-flight reconciliation error for {symbol}: {rec_err}")
             return {'success': False, 'error': f'MT5 order placement timed out for {symbol} (in-flight not detected)', 'retcode': -999}
+        except Exception as general_err:
+            if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                self.pending_action_manager.mark_unconfirmed(pending_act.client_order_id, f"Execution exception: {general_err}")
+            raise
 
         if result.get('success'):
+            if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=result.get('ticket'))
             logger.info(
                 f"Order placed: {direction.upper()} {volume} {symbol} "
                 f"@ {result.get('price')} | ticket={result.get('ticket')}"
             )
         else:
+            if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
+                self.pending_action_manager.fail_action(pending_act.client_order_id, error_message=str(result.get('error')))
             logger.error(
                 f"Order failed: {direction.upper()} {volume} {symbol} | "
                 f"error={result.get('error')} retcode={result.get('retcode')}"
             )
         return result
+
+    async def calculate_dom_vwap(self, symbol: str, direction: str, volume: float) -> dict:
+        """Calculates L2 DOM ladder walk VWAP and expected slippage for orders."""
+        if not await self.ensure_connected():
+            return {"has_dom": False, "vwap": None, "slippage_pts": 0.0, "filled_pct": 1.0}
+        return await self._run(_calculate_dom_vwap, symbol, direction, volume, priority=PRIORITY_NORMAL)
 
     async def modify_position(
         self,
@@ -1205,7 +1252,7 @@ def _market_book_release(symbol: str) -> bool:
         return False
 
 
-def _connect(path: str, account: int, password: str, server: str) -> bool:
+def _connect(path: str, account: int, password: str, server: str, expected_trade_mode: Optional[str] = None) -> bool:
     from typing import Any
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
@@ -1224,11 +1271,42 @@ def _connect(path: str, account: int, password: str, server: str) -> bool:
         mt5.shutdown()
         return False
     info = mt5.account_info()
+    if info is None:
+        logger.error("MT5 account_info() returned None after login")
+        mt5.shutdown()
+        return False
+
+    # Account Login Pinning Assertion
+    logged_login = getattr(info, "login", 0)
+    if account > 0 and logged_login != account:
+        err_msg = (
+            f"MT5 Login Pinning Violation: Terminal active account is {logged_login}, "
+            f"but configured account is {account}. Immediate shutdown to prevent profile mismatch."
+        )
+        logger.critical(err_msg)
+        mt5.shutdown()
+        raise MT5ProfileMismatchError(err_msg)
+
+    # Trade Mode Hard Assertion (0=DEMO, 1=CONTEST, 2=REAL)
+    target_mode = (expected_trade_mode or os.getenv("MT5_EXPECTED_TRADE_MODE", "")).strip().upper()
+    if target_mode:
+        trade_mode = getattr(info, "trade_mode", None)
+        mode_names = {0: "DEMO", 1: "CONTEST", 2: "REAL"}
+        actual_mode = mode_names.get(trade_mode, "UNKNOWN")
+        if actual_mode != target_mode:
+            err_msg = (
+                f"MT5 Trade Mode Mismatch: Terminal is running in {actual_mode} mode (code={trade_mode}), "
+                f"but expected {target_mode}! Immediate shutdown to prevent accidental live execution."
+            )
+            logger.critical(err_msg)
+            mt5.shutdown()
+            raise MT5ProfileMismatchError(err_msg)
+
     bal = getattr(info, 'balance', 0.0) if info else 0.0
     curr = getattr(info, 'currency', 'USD') if info else 'USD'
     logger.info(
         f"MT5 connected: {server} | Account {account} | "
-        f"Balance={bal:.2f} {curr}"
+        f"Balance={bal:.2f} {curr} | TradeMode={getattr(info, 'trade_mode', 'N/A')}"
     )
     return True
 
@@ -1283,6 +1361,73 @@ def _get_last_tick(symbol: str):
     return mt5.symbol_info_tick(symbol)
 
 
+def _calculate_dom_vwap(symbol: str, direction: str, volume: float) -> dict:
+    """
+    Computes Level 2 DOM ladder walk VWAP for large orders using MT5 market depth.
+    Walks bids (for sell) or asks (for buy) to compute weighted average execution price
+    and expected slippage vs Top-of-Book BBO.
+    """
+    from typing import Any
+    import MetaTrader5 as _mt5
+    mt5: Any = _mt5
+
+    book = mt5.market_book_get(symbol)
+    if not book or len(book) == 0:
+        return {"has_dom": False, "vwap": None, "slippage_pts": 0.0, "filled_pct": 1.0}
+
+    is_buy = (str(direction).lower().strip() == "buy")
+    ladder = []
+    for item in book:
+        item_type = getattr(item, "type", None)
+        if item_type is None and isinstance(item, (tuple, list)):
+            item_type = item[0]
+            item_price = float(item[1])
+            item_vol = float(item[2])
+        else:
+            item_price = float(getattr(item, "price", 0.0))
+            item_vol = float(getattr(item, "volume_dbl", getattr(item, "volume", 0.0)))
+
+        if is_buy and item_type == 2:  # BOOK_TYPE_SELL (Asks)
+            ladder.append((item_price, item_vol))
+        elif not is_buy and item_type == 1:  # BOOK_TYPE_BUY (Bids)
+            ladder.append((item_price, item_vol))
+
+    if not ladder:
+        return {"has_dom": False, "vwap": None, "slippage_pts": 0.0, "filled_pct": 1.0}
+
+    ladder.sort(key=lambda x: x[0], reverse=not is_buy)
+    bbo_price = ladder[0][0]
+
+    remaining = float(volume)
+    weighted_sum = 0.0
+    filled_vol = 0.0
+
+    for p, d in ladder:
+        take = min(remaining, d)
+        weighted_sum += take * p
+        filled_vol += take
+        remaining -= take
+        if remaining <= 1e-6:
+            break
+
+    if filled_vol <= 0:
+        return {"has_dom": True, "vwap": bbo_price, "slippage_pts": 0.0, "filled_pct": 0.0}
+
+    vwap = weighted_sum / filled_vol
+    info = mt5.symbol_info(symbol)
+    point = float(getattr(info, "point", 0.00001) or 0.00001)
+    digits = int(getattr(info, "digits", 5) or 5)
+    slippage_pts = abs(vwap - bbo_price) / point
+
+    return {
+        "has_dom": True,
+        "vwap": round(vwap, digits),
+        "bbo_price": bbo_price,
+        "slippage_pts": round(slippage_pts, 1),
+        "filled_pct": round(filled_vol / volume, 2),
+    }
+
+
 def _place_order(
     symbol: str,
     direction: str,
@@ -1320,7 +1465,20 @@ def _place_order(
 
     spread_pts = (tick.ask - tick.bid) / info.point if info.point else 0
     mult = max_spread_multiplier if max_spread_multiplier is not None else 3.0
-    
+
+    # Level 2 DOM Ladder Walk Check for large lot orders (Subsystem 5)
+    if float(volume) >= 1.0:
+        try:
+            dom_res = _calculate_dom_vwap(symbol, direction, float(volume))
+            if dom_res.get("has_dom") and dom_res.get("slippage_pts", 0.0) > 40.0:
+                logger.warning(
+                    f"[{symbol}] Level 2 DOM Ladder Walk: large lot {volume} expected slippage "
+                    f"{dom_res['slippage_pts']:.1f} pts exceeds 40.0 pts tolerance. "
+                    f"VWAP={dom_res['vwap']} vs BBO={dom_res['bbo_price']}."
+                )
+        except Exception as dom_err:
+            logger.debug(f"[{symbol}] DOM VWAP check non-fatal: {dom_err}")
+
     # 2. Normalize Direction & Map Action/Order Type
     direction = (direction or "").lower().strip()
     if direction not in ("buy", "sell"):

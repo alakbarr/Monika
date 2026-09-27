@@ -55,6 +55,13 @@ async def handle_get_fxssi_sentiment(args: dict, **ctx) -> dict:
     return await handle_get_retail_sentiment(args, **ctx)
 
 
+async def handle_get_prediction_market_odds(args: dict, **ctx) -> dict:
+    session, _, _ = _get_sentiment_context(args, ctx)
+    from data_sources.prediction_market import PredictionMarketClient
+    client = PredictionMarketClient(session=session)
+    return await client.ingest_and_persist()
+
+
 async def handle_get_structured_sentiment(args: dict, **ctx) -> dict:
     fg = await handle_get_fear_greed_index(args, **ctx)
     ret = await handle_get_retail_sentiment(args, **ctx)
@@ -105,6 +112,14 @@ def register_sentiment_tools():
             description="Fetch FXSSI retail sentiment positioning index.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
             handler=handle_get_fxssi_sentiment,
+            toolset="sentiment",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_prediction_market_odds",
+            description="Fetch decentralized prediction market odds on Fed rates, CPI, tariffs, and geopolitical events.",
+            parameters={"type": "object", "properties": {"tags": {"type": "array", "items": {"type": "string"}}}},
+            handler=handle_get_prediction_market_odds,
             toolset="sentiment",
             requires_db=True,
         ),

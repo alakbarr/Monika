@@ -339,11 +339,58 @@ class TradeReflector:
         except Exception:
             pass
 
-        # Closed-Loop Skill Crystallization
+        # Subsystem 6: Dual-Branch Closed-Loop Memory (Win -> Playbook Promotion, Loss -> Negative Constraint)
         if getattr(reflection, 'was_profitable', False):
+            # Branch A: Win -> Skill Crystallization & Playbook Promotion
             try:
                 from analysis.memory.skill_crystallizer import SkillCrystallizer
                 crystallizer = SkillCrystallizer(self.settings)
                 await crystallizer.evaluate_and_crystallize(session, symbol=reflection.symbol)
             except Exception as cry_err:
                 logger.debug(f"Skill crystallization non-fatal error: {cry_err}")
+        else:
+            # Branch B: Loss -> Negative Constraint Generation & Storage
+            try:
+                from database.models import SystemConfig
+                import time
+
+                lesson_str = getattr(reflection, "specific_lesson", "") or "unspecified execution failure"
+                tags = json.loads(getattr(reflection, "lesson_tags", "[]") or "[]")
+                primary_tag = tags[0] if tags else "execution_flaw"
+
+                constraint_text = (
+                    f"[NEGATIVE_CONSTRAINT]: For {reflection.symbol} ({reflection.decision}), avoid setup when: "
+                    f"'{lesson_str}' (Primary Tag: {primary_tag})."
+                )
+
+                now_ts = int(time.time())
+                constraint_key = f"negative_constraint_{reflection.symbol}_{now_ts}"
+                constraint_payload = {
+                    "symbol": reflection.symbol,
+                    "direction": reflection.decision,
+                    "lesson": lesson_str,
+                    "tags": tags,
+                    "constraint_text": constraint_text,
+                    "reflection_id": reflection_id,
+                    "created_at": now_ts,
+                }
+
+                session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
+                from database.safe_ops import safe_commit
+                await safe_commit(session, label="negative_constraint_save")
+
+                try:
+                    from database.event_store import TradingEventStore
+                    await TradingEventStore.emit(
+                        session=session,
+                        event_type="learning.negative_constraint",
+                        payload=constraint_payload,
+                        correlation_id=f"neg_constraint_{reflection.symbol}_{now_ts}",
+                        actor="trade_reflector",
+                    )
+                except Exception:
+                    pass
+
+                logger.info(f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}")
+            except Exception as neg_err:
+                logger.debug(f"Negative constraint generation error (non-fatal): {neg_err}")
