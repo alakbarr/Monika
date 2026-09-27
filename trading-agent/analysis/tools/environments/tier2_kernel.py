@@ -44,7 +44,7 @@ class Tier2HostKernelEnvironment(BaseExecutionEnvironment):
     """Executes commands and Python scripts as guarded host subprocesses."""
 
     def __init__(self, safe_work_dir: Optional[Path] = None):
-        self.safe_work_dir = safe_work_dir or Path(os.environ.get("MONIKA_WRITE_SAFE_ROOT", "D:/Monika"))
+        self.safe_work_dir = safe_work_dir or Path(os.environ.get("MONIKA_WRITE_SAFE_ROOT") or Path.cwd())
 
     def is_available(self) -> bool:
         return True
