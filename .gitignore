@@ -82,7 +82,51 @@ trading-agent/results/
 !trading-agent/benchmark/results/
 
 # Scripts and Prompts
-scripts/
+scripts/*
+!scripts/install.ps1
+!scripts/install.sh
+!scripts/install_uv_managed.ps1
+!scripts/download_timesfm_weights.py
+!scripts/check_env_keys.py
+!scripts/reset_paper_trades.py
+!scripts/run_tests.bat
+!scripts/run_tests.sh
 trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md
+
+# AI Assistant Rules & Instructions
+GEMINI.md
+AGENTS.md
+.geminiignore
+
+# Internal Design & Developer Notes
+DESIGN.md
+history_chat.md
+audit_prompt*.md
+bug_bounty_instruction.md
+central-banks-mandat-and-data.md
+Graph Engineering.md
+Hallucination*.pdf
+Hallucination*.md
+IMPLEMENTATION_PLAN.md
+tui_error.md
+input.txt
+output.txt
+git_log.txt
+
+# LLM Codebase Text Dumps & Structure
+all_codebase*.md
+llm_bundle*.md
+llm_codebase_structure.md
+selected_codebase.md
+selected_structure.md
+STRUKTUR*.md
+
+# Cost & Benchmark Analysis Files
+ai_cost_analysis*.md
+model_*.csv
+model_quadrant_analysis.html
+
+# Database Migration Archives
+trading-agent/database/migrations/archive/
