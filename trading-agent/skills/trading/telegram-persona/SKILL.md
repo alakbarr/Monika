@@ -1,4 +1,11 @@
-# file: skills/trading/telegram_persona.md
+---
+name: telegram-persona
+description: "Telegram chat agent persona, tool invocation playbook, and tone standards."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [telegram, persona, chat_agent, assistant, operational_tone]
+---
 
 # Telegram Chat Agent Master Persona & Tool Playbook
 

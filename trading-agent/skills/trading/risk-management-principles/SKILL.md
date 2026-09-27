@@ -1,4 +1,11 @@
-# file: skills/risk_management_principles.md
+---
+name: risk-management-principles
+description: "Intraday range edge risk management, SL ATR floor, and position sizing rules."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [risk_management, position_sizing, stop_loss, adr, atr, drawdown]
+---
 
 # Risk Management Principles — Intraday Range-Edge
 

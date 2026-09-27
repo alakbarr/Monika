@@ -1,3 +1,12 @@
+---
+name: central-banks-framework
+description: "Institutional framework for Fed, ECB, BoE, BoJ, and RBA reaction functions."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [central_banks, monetary_policy, fomc, ecb, boe, boj, rba, macro, yields]
+---
+
 # Central Banks Framework — Mandates, Monetary Policy Expectations & Multi-Channel Transmission
 
 Institutional framework for evaluating central bank reaction functions, interest rate expectations, yield differentials, and multi-channel transmission to currency valuation.

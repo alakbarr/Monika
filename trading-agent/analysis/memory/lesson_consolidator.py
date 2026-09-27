@@ -220,7 +220,10 @@ async def promote_lesson_to_playbook(content: str) -> None:
     from pathlib import Path
     import re
     now = clock.now()
-    path = Path(__file__).resolve().parent.parent.parent / 'skills' / 'trading' / 'lessons_learned.md'
+    base_skills = Path(__file__).resolve().parent.parent.parent / 'skills' / 'trading'
+    target_skill = base_skills / 'lessons-learned' / 'SKILL.md'
+    legacy_skill = base_skills / 'lessons_learned.md'
+    path = target_skill if target_skill.exists() or not legacy_skill.exists() else legacy_skill
     existing_text = path.read_text(encoding='utf-8') if path.exists() else ""
     
     section_marker = "## 4. Pelajaran Empiris Terkonsolidasi (Auto-Consolidated)"

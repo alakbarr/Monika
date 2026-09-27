@@ -65,8 +65,14 @@ class SkillCurator:
             if ".archive" in skill_file.parts:
                 continue
 
-            stem = skill_file.stem
-            if stem in self.PROTECTED_SKILLS:
+            stem = skill_file.parent.name if skill_file.name == "SKILL.md" else skill_file.stem
+            stem_norm = stem.replace("-", "_")
+            stem_kebab = stem.replace("_", "-")
+            if (
+                stem in self.PROTECTED_SKILLS
+                or stem_norm in self.PROTECTED_SKILLS
+                or stem_kebab in self.PROTECTED_SKILLS
+            ):
                 results["active"].append(stem)
                 continue
 
@@ -83,15 +89,21 @@ class SkillCurator:
 
             if days_idle >= self.archive_days:
                 # Move to .archive directory
-                rel_path = skill_file.relative_to(self.skills_dir)
-                dest = self.archive_dir / rel_path
-                dest.parent.mkdir(parents=True, exist_ok=True)
                 try:
-                    shutil.move(str(skill_file), str(dest))
-                    # Also move .usage.json if present
-                    usage_file = skill_file.parent / f"{skill_file.stem}.usage.json"
-                    if usage_file.exists():
-                        shutil.move(str(usage_file), str(dest.parent / usage_file.name))
+                    if skill_file.name == "SKILL.md":
+                        skill_folder = skill_file.parent
+                        rel_path = skill_folder.relative_to(self.skills_dir)
+                        dest = self.archive_dir / rel_path
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(skill_folder), str(dest))
+                    else:
+                        rel_path = skill_file.relative_to(self.skills_dir)
+                        dest = self.archive_dir / rel_path
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(skill_file), str(dest))
+                        usage_file = skill_file.parent / f"{skill_file.stem}.usage.json"
+                        if usage_file.exists():
+                            shutil.move(str(usage_file), str(dest.parent / usage_file.name))
                     results["archived"].append(stem)
                     logger.info(f"[SkillCurator] Archived idle skill '{stem}' ({days_idle} days idle).")
                 except Exception as e:

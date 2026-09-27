@@ -42,15 +42,23 @@ class ProgressivePlaybookLoader:
 
         # Scan trading playbooks
         if self.playbooks_dir.exists():
-            for p in sorted(self.playbooks_dir.glob("*.md")):
-                stem = p.stem.replace("_", " ").title()
+            for p in sorted(self.playbooks_dir.glob("*/SKILL.md")):
+                stem = p.parent.name.replace("-", " ").replace("_", " ").title()
                 skills_summary.append(f"- Playbook: {stem}")
+            for p in sorted(self.playbooks_dir.glob("*.md")):
+                if p.name != "SKILL.md":
+                    stem = p.stem.replace("_", " ").replace("-", " ").title()
+                    skills_summary.append(f"- Playbook: {stem}")
 
         # Scan crystallized skills
         if self.crystallized_dir.exists():
-            for c in sorted(self.crystallized_dir.glob("*.md")):
-                stem = c.stem.replace("_", " ").title()
+            for c in sorted(self.crystallized_dir.glob("*/SKILL.md")):
+                stem = c.parent.name.replace("-", " ").replace("_", " ").title()
                 skills_summary.append(f"- Crystallized: {stem}")
+            for c in sorted(self.crystallized_dir.glob("*.md")):
+                if c.name != "SKILL.md":
+                    stem = c.stem.replace("_", " ").replace("-", " ").title()
+                    skills_summary.append(f"- Crystallized: {stem}")
 
         if not skills_summary:
             return "[AVAILABLE_PLAYBOOKS]: Standard SMC/ICT and Macro Disciplinary Frameworks Active."
@@ -62,10 +70,15 @@ class ProgressivePlaybookLoader:
         Level 1: Load symbol-specific or asset-class playbook.
         """
         clean_sym = symbol.strip().upper()
+        sym_lower = clean_sym.lower()
         candidates = [
-            self.playbooks_dir / f"{clean_sym.lower()}.md",
-            self.playbooks_dir / f"{clean_sym.lower()}_playbook.md",
-            self.crystallized_dir / f"{clean_sym.lower()}.md",
+            self.playbooks_dir / sym_lower / "SKILL.md",
+            self.playbooks_dir / f"{sym_lower}-playbook" / "SKILL.md",
+            self.playbooks_dir / f"{sym_lower}_playbook" / "SKILL.md",
+            self.playbooks_dir / f"{sym_lower}.md",
+            self.playbooks_dir / f"{sym_lower}_playbook.md",
+            self.crystallized_dir / sym_lower / "SKILL.md",
+            self.crystallized_dir / f"{sym_lower}.md",
         ]
         for c in candidates:
             if c.exists():
@@ -76,13 +89,17 @@ class ProgressivePlaybookLoader:
                     logger.warning(f"Failed to read Level 1 playbook {c}: {e}")
 
         # Fallback to general SMC playbook if specific one does not exist
-        gen_smc = self.base_dir / "smc_ict_playbook.md"
-        if gen_smc.exists():
-            try:
-                with open(gen_smc, "r", encoding="utf-8") as f:
-                    return f.read()
-            except Exception:
-                pass
+        for gen_smc in (
+            self.base_dir / "smc-ict-playbook" / "SKILL.md",
+            self.base_dir / "smc_ict_playbook" / "SKILL.md",
+            self.base_dir / "smc_ict_playbook.md",
+        ):
+            if gen_smc.exists():
+                try:
+                    with open(gen_smc, "r", encoding="utf-8") as f:
+                        return f.read()
+                except Exception:
+                    pass
         return None
 
     def get_level2_reference(self, topic: str) -> Optional[str]:

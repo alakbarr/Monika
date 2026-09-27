@@ -479,8 +479,8 @@ async def get_playbook_tree():
     base_dir = Path(__file__).resolve().parent.parent.parent.parent
     playbooks_dir = base_dir / "skills" / "trading" / "playbooks"
     if playbooks_dir.exists():
-        for f in playbooks_dir.glob("*.md"):
-            name = f.name
+        for f in list(playbooks_dir.glob("*.md")) + list(playbooks_dir.glob("*/SKILL.md")):
+            name = f.parent.name if f.name == "SKILL.md" else f.name
             sym = "GENERIC"
             for part in ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "BTCUSD", "XTIUSD"]:
                 if part.lower() in name.lower():

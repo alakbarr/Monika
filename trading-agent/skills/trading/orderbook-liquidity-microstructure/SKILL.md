@@ -1,8 +1,9 @@
 ---
-name: orderbook_liquidity_microstructure
+name: orderbook-liquidity-microstructure
 description: "Order book imbalance, market depth analysis, and microstructure sweeps."
-version: 1.0.0
 category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
 tags: [orderbook, microstructure, depth_of_market, liquidity, vwap, execution]
 ---
 

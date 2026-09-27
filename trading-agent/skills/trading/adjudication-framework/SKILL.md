@@ -1,3 +1,12 @@
+---
+name: adjudication-framework
+description: "Stage 2 synthesis adjudication rules for Technical, Sentiment, and Macro."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [adjudication, synthesis, confluence, stage2, trade_gate]
+---
+
 # Adjudication Framework — Stage 2 Synthesis Rules
 
 Stage 2 Synthesis Adjudicator combining Technical, Sentiment, and Macro specialist biases into final decision (`buy`, `sell`, `wait`).

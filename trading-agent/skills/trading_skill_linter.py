@@ -155,7 +155,10 @@ class TradingSkillLinter:
                 continue
             issues = self.lint_file(md_file)
             if issues:
-                results[md_file.name] = issues
+                rel_key = str(md_file.relative_to(dir_path)).replace("\\", "/")
+                results[rel_key] = issues
+                if md_file.name != "SKILL.md":
+                    results[md_file.name] = issues
 
         return results
 

@@ -1,3 +1,12 @@
+---
+name: liquidity-and-macro-edge
+description: "Liquidity sweeps, macro bias alignment, and volatility regime edge layer."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [liquidity_sweep, macro_bias, volatility_regime, edge_layer, confluence]
+---
+
 # Liquidity Sweep, Macro Bias & Volatility Regime — Edge Layer
 
 Call these tools alongside your standard workflow:

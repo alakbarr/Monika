@@ -1,4 +1,11 @@
-# file: skills/crypto_analysis.md
+---
+name: crypto-analysis
+description: "Cryptocurrency analysis framework for BTCUSD, ETF flows, and funding rates."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [crypto, btcusd, etf_flows, funding_rate, fear_greed, digital_assets]
+---
 
 # Crypto Analysis Framework — BTCUSD
 

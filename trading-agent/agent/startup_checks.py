@@ -708,8 +708,8 @@ class StartupChecker:
         try:
             from utils.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
             from skills.loader import _SKILLS_DIR
-            if PERFORMANCE_NOTES_PATH.parent.resolve() != _SKILLS_DIR.resolve():
-                logger.error(f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH.parent} does not match skills read path {_SKILLS_DIR}")
+            if not PERFORMANCE_NOTES_PATH.resolve().is_relative_to(_SKILLS_DIR.resolve()):
+                logger.error(f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside skills read path {_SKILLS_DIR}")
                 ok = False
         except Exception as e:
             logger.error(f"Performance path check failed: {e}")

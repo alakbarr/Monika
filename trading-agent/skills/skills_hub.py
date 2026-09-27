@@ -180,8 +180,21 @@ class SkillsHub:
         return meta, body
 
     def get_skill(self, name: str) -> Optional[SkillMetadata]:
-        """Retrieve full SkillMetadata object by name."""
-        return self._skills.get(name)
+        """Retrieve full SkillMetadata object by name with alias tolerance."""
+        if not name:
+            return None
+        if name in self._skills:
+            return self._skills[name]
+        alt = name.replace("_", "-")
+        if alt in self._skills:
+            return self._skills[alt]
+        alt2 = name.replace("-", "_")
+        if alt2 in self._skills:
+            return self._skills[alt2]
+        for k, v in self._skills.items():
+            if k.lower() in (name.lower(), alt.lower(), alt2.lower()):
+                return v
+        return None
 
     def list_skills(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """Tier 1 Progressive Disclosure: returns compact metadata list."""
@@ -206,7 +219,7 @@ class SkillsHub:
         Tier 2 Progressive Disclosure: reads full content, executes inline preprocessing,
         and provides deduplication checking.
         """
-        meta = self._skills.get(name)
+        meta = self.get_skill(name)
         if not meta:
             return False, f"Skill '{name}' not found in registry."
 

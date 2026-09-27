@@ -1,6 +1,13 @@
-# file: skills/smc_ict_playbook.md
+---
+name: smc-ict-playbook
+description: "Stage 2 SMC/ICT institutional playbook, order blocks, FVG, and confluence."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [smc, ict, order_block, fvg, market_structure, liquidity, stage2]
+---
 
-# SMC/ICT Playbook — Stage 2 Per-Asset Analysis
+# SMC/ICT Playbook (smc_ict_playbook) — Stage 2 Per-Asset Analysis
 
 ## IMPORTANT NOTE ON PLACEHOLDERS
 Placeholders like {symbol}, {cot_code}, {effective_threshold} are GENERIC TEMPLATES. ACTUAL values are in "=== CURRENT ANALYSIS TARGET ===" block. Use values from that block.
@@ -168,4 +175,3 @@ Every WAIT has an opportunity cost equivalent to a loss. Before finalizing WAIT:
 When D1 ADX > 25 AND setup is trend-following: effective threshold is -1.
 When all 3 specialists (technical + sentiment + macro) agree: effective threshold is -1.
 These bonuses stack: if both conditions met, threshold effectively -2.
-

@@ -59,23 +59,46 @@ class FilesystemMcpServer:
         clean = Path(filename).name
         target = self.root_dir / "skills" / "trading" / clean
         if not target.exists():
+            clean_stem = Path(filename).stem
+            variants = [clean_stem, clean_stem.replace("_", "-"), clean_stem.replace("-", "_")]
+            for v in variants:
+                t_skill = self.root_dir / "skills" / "trading" / v / "SKILL.md"
+                if t_skill.exists():
+                    return t_skill
             target_pb = self.root_dir / "skills" / "trading" / "playbooks" / clean
             if target_pb.exists():
                 return target_pb
+            for v in variants:
+                pb_skill = self.root_dir / "skills" / "trading" / "playbooks" / v / "SKILL.md"
+                if pb_skill.exists():
+                    return pb_skill
             target_cr = self.root_dir / "skills" / "crystallized" / clean
             if target_cr.exists():
                 return target_cr
+            for v in variants:
+                cr_skill = self.root_dir / "skills" / "crystallized" / v / "SKILL.md"
+                if cr_skill.exists():
+                    return cr_skill
             raise FileNotFoundError(f"File '{clean}' not found in skills directory.")
         return target
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         if tool_name == "fs_list_playbooks":
             skills_dir = self.root_dir / "skills" / "trading"
-            files = [f.name for f in skills_dir.glob("*.md")]
+            files = []
+            for d in skills_dir.glob("*/SKILL.md"):
+                files.append(f"{d.parent.name}/SKILL.md")
+            for f in skills_dir.glob("*.md"):
+                if f.name != "SKILL.md":
+                    files.append(f.name)
             pb_dir = skills_dir / "playbooks"
             if pb_dir.exists():
-                files.extend([f"playbooks/{f.name}" for f in pb_dir.glob("*.md")])
-            return {"files": files}
+                for d in pb_dir.glob("*/SKILL.md"):
+                    files.append(f"playbooks/{d.parent.name}/SKILL.md")
+                for f in pb_dir.glob("*.md"):
+                    if f.name != "SKILL.md":
+                        files.append(f"playbooks/{f.name}")
+            return {"files": sorted(files)}
 
         elif tool_name == "fs_read_playbook":
             fname = arguments.get("filename", "")

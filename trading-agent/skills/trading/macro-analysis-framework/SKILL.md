@@ -1,4 +1,11 @@
-# file: skills/macro_analysis_framework.md
+---
+name: macro-analysis-framework
+description: "Stage 1 fundamental brief macro analysis framework and sequential checkpoints."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [macro, fundamental_brief, stage1, dxy, yields, cot, fedwatch]
+---
 
 # Macro Analysis Framework — Stage 1 Fundamental Brief
 
@@ -65,4 +72,3 @@ Verify all checkpoints → call `submit_fundamental_brief()`.
 ## Multi-Asset Transmission Mapping (Downstream Stage 2)
 - **RISK_ON_USD_BEAR (DXY Bear / Easing Spread)**: EURUSD/GBPUSD/AUDUSD Buy; USDJPY Sell; BTCUSD Buy; Gold Bullish.
 - **RISK_OFF_USD_BULL (DXY Bull / Tightening Spread)**: EURUSD/GBPUSD/AUDUSD Sell; USDJPY Buy; BTCUSD Sell/Avoid; Gold Mixed/Safe-haven.
-

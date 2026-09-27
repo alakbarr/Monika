@@ -1,4 +1,11 @@
-# file: skills/session_timing_rules.md
+---
+name: session-timing-rules
+description: "Market session timing rules, UTC windows, and liquidity session modifiers."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [session_timing, tokyo, london, new_york, kill_zones, utc_windows]
+---
 
 # Market Session Timing Rules
 
@@ -49,4 +56,3 @@
 - Primary volume: 13:00-20:00 UTC (US session + overlap).
 - EIA Weekly Inventory (Wednesday ~14:30 UTC): -3 confluence penalty 30min before/after.
 - OPEC news: Treat as major event → WAIT or reduce size 50%.
-

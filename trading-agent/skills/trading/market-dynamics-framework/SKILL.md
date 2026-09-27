@@ -1,4 +1,11 @@
-# file: skills/market_dynamics_framework.md
+---
+name: market-dynamics-framework
+description: "Market expectations, buy rumor sell news matrix, and pricing asymmetry."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [market_dynamics, pricing_in, buy_the_rumor, sell_the_news, sentiment]
+---
 
 # Market Dynamics Framework — Expectations, Pricing & Event Behavior
 
