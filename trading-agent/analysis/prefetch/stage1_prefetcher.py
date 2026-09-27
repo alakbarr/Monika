@@ -24,6 +24,7 @@ PREFETCH_KEY_TO_TOOL: dict[str, str] = {
     'funding_rate': 'get_funding_rate',
     'bond_yield_spreads': 'get_bond_yield_spreads',
     'central_bank_expectations': 'get_central_bank_expectations',
+    'prediction_market': 'get_prediction_market_odds',
 }
 
 class Stage1DataBundler:
@@ -56,7 +57,8 @@ class Stage1DataBundler:
             "market_session": self.executor.execute("get_market_session", {}),
             "funding_rate": self.executor.execute("get_funding_rate", {}),
             "bond_yield_spreads": self.executor.execute("get_bond_yield_spreads", {}),
-            "central_bank_expectations": self.executor.execute("get_central_bank_expectations", {})
+            "central_bank_expectations": self.executor.execute("get_central_bank_expectations", {}),
+            "prediction_market": self.executor.execute("get_prediction_market_odds", {}),
         }
 
         # Execute tasks sequentially to prevent AsyncSession concurrency issues

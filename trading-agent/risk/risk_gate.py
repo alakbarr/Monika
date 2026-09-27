@@ -272,6 +272,10 @@ class RiskGate:
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest)),
             ("schmitt_regime", self._check_schmitt_regime(session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest)),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
+            ("adv_liquidity_floor", self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest)),
+            ("copula_tail_risk", self._check_copula_tail_risk(session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest)),
+            ("evidence_gate", self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest)),
+            ("bounded_mandate", self._check_bounded_mandate(session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions)),
         ]
         
         if analysis is not None:
@@ -1714,6 +1718,191 @@ class RiskGate:
             logger.debug(f"VPIN toxicity check error: {e}")
             return True, "vpin_check_fallback_ok"
 
+    async def _check_adv_liquidity(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        sizing: SizingResult,
+        as_of: Optional[datetime] = None,
+        is_backtest: bool = False,
+    ) -> tuple[bool, str]:
+        """
+        Subsystem 5: ADV (Average Daily Volume) liquidity floor.
+        Blocks orders where proposed lot size exceeds institutional capacity
+        (> 1.0% of 20-day Average Daily Volume) or during illiquid rollover windows.
+        """
+        now = as_of or clock.now()
+        hour = now.hour
+        # Illiquid daily rollover gap (21:55 - 22:15 UTC): wide spreads and empty books
+        if (hour == 21 and now.minute >= 55) or (hour == 22 and now.minute <= 15):
+            if sizing.recommended_lots > 0.5:
+                return False, f"Illiquid rollover window (21:55-22:15 UTC): lots={sizing.recommended_lots} exceeds 0.5 lot ceiling"
+
+        try:
+            from database.models import PriceOHLCV
+            cutoff = now - timedelta(days=30)
+            stmt = (
+                select(PriceOHLCV.volume)
+                .where(PriceOHLCV.symbol == symbol)
+                .where(PriceOHLCV.timeframe.in_(["D1", "D", "1D"]))
+                .where(PriceOHLCV.timestamp >= cutoff)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(20)
+            )
+            rows = (await session.execute(stmt)).scalars().all()
+            if rows and len(rows) >= 5:
+                adv = float(sum(rows)) / len(rows)
+                if adv > 0 and (sizing.recommended_lots > (adv * 0.01)):
+                    return False, f"Proposed volume {sizing.recommended_lots} lots exceeds 1.0% of 20-day ADV ({adv:.0f} units)"
+        except Exception as e:
+            logger.debug(f"[{symbol}] ADV calculation non-fatal: {e}")
+
+        return True, "ADV liquidity floor satisfied"
+
+    async def _check_copula_tail_risk(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        simulated_positions: Optional[list] = None,
+        as_of: Optional[datetime] = None,
+        is_backtest: bool = False,
+    ) -> tuple[bool, str]:
+        """
+        Subsystem 5: Copula Tail Risk Haircut & Gate.
+        Inspects Clayton (lower tail) dependency against existing open positions.
+        If tail risk lambda > 0.40, enforces caution or rejection to protect against market crash contagion.
+        """
+        try:
+            if simulated_positions is not None:
+                active_symbols = list({
+                    p.get("symbol") for p in simulated_positions
+                    if isinstance(p, dict) and p.get("symbol") != symbol
+                })
+            else:
+                stmt = select(Position.symbol).where(Position.symbol != symbol).where(Position.status == "open").distinct()
+                active_symbols = (await session.execute(stmt)).scalars().all()
+
+            if not active_symbols:
+                return True, "No concurrent portfolio positions for tail dependency"
+
+            from database.models import PriceOHLCV
+            from analysis.calculators.copula_tail_risk import fit_clayton_copula
+            import numpy as np
+
+            now = as_of or clock.now()
+            cutoff = now - timedelta(days=60)
+
+            c_stmt = (
+                select(PriceOHLCV.close)
+                .where(PriceOHLCV.symbol == symbol)
+                .where(PriceOHLCV.timeframe == "H1")
+                .where(PriceOHLCV.timestamp >= cutoff)
+                .order_by(PriceOHLCV.timestamp.asc())
+            )
+            c_closes = np.array((await session.execute(c_stmt)).scalars().all(), dtype=float)
+            if len(c_closes) < 30:
+                return True, "Insufficient candle history for copula tail risk"
+
+            c_returns = np.diff(c_closes) / c_closes[:-1]
+
+            for other_sym in active_symbols[:3]:
+                o_stmt = (
+                    select(PriceOHLCV.close)
+                    .where(PriceOHLCV.symbol == other_sym)
+                    .where(PriceOHLCV.timeframe == "H1")
+                    .where(PriceOHLCV.timestamp >= cutoff)
+                    .order_by(PriceOHLCV.timestamp.asc())
+                )
+                o_closes = np.array((await session.execute(o_stmt)).scalars().all(), dtype=float)
+                if len(o_closes) < 30:
+                    continue
+                o_returns = np.diff(o_closes) / o_closes[:-1]
+
+                min_len = min(len(c_returns), len(o_returns))
+                fit_res = fit_clayton_copula(c_returns[-min_len:], o_returns[-min_len:])
+                lower_tail = fit_res.get("lower_tail_dependence", 0.0)
+
+                if lower_tail > 0.40:
+                    return False, f"Extreme crash contagion tail risk: Clayton lambda={lower_tail:.2f} > 0.40 with active position in {other_sym}"
+
+        except Exception as e:
+            logger.debug(f"[{symbol}] Copula tail risk check non-fatal: {e}")
+
+        return True, "Copula tail risk within institutional limits"
+
+    async def _check_evidence_gate(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        analysis: Optional['AssetAnalysis'] = None,
+        is_backtest: bool = False,
+    ) -> tuple[bool, str]:
+        """
+        Subsystem 5: Strategy Evidence Store Gate.
+        Verifies that the proposing strategy has non-negative empirical expectancy
+        in the current regime before permitting execution.
+        """
+        if is_backtest or analysis is None:
+            return True, "Evidence gate skipped for backtest or missing analysis"
+
+        try:
+            from analysis.strategies.evidence_store import EvidenceStore
+            strat_id = getattr(analysis, "strategy_id", None) or "general"
+            regime = getattr(analysis, "market_regime", "UNKNOWN") or "UNKNOWN"
+
+            ev_store = EvidenceStore()
+            is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
+            if not is_valid:
+                return False, f"EvidenceStore rejected trade: {reason}"
+        except Exception as e:
+            logger.debug(f"[{symbol}] Evidence gate non-fatal check: {e}")
+
+        return True, "Strategy passed regime evidence verification"
+
+    async def _check_bounded_mandate(
+        self,
+        session: Any,
+        symbol: str,
+        sizing: Any,
+        as_of: Optional[Any] = None,
+        simulated_positions: Optional[List[Any]] = None,
+    ) -> tuple[bool, str]:
+        """
+        Subsystem 7: Bounded Mandate Contract Gate.
+        Enforces 30-day operator authorization TTL, authorized symbol coverage,
+        and maximum risk / position boundaries.
+        """
+        from risk.approval_hub import get_approval_hub
+        hub = get_approval_hub()
+
+        if not hub._mandates and hub._active_mandate_id is None:
+            return True, "No operator mandate registered; mandate enforcement dormant"
+
+        open_count = len(simulated_positions) if simulated_positions is not None else 0
+        if simulated_positions is None and session:
+            try:
+                from database.models import Position
+                from sqlalchemy import select, func
+                stmt = select(func.count(Position.id)).where(Position.status == "open")
+                scalar_val = res.scalar() if hasattr(res, "scalar") else 0
+                if asyncio.iscoroutine(scalar_val):
+                    scalar_val = await scalar_val
+                open_count = int(scalar_val or 0)
+            except Exception:
+                open_count = 0
+
+        risk_pct = getattr(sizing, 'risk_percent', 1.0)
+        check_ts = None
+        if as_of is not None:
+            check_ts = as_of.timestamp() if hasattr(as_of, 'timestamp') else float(as_of)
+
+        return hub.validate_mandate(
+            symbol=symbol,
+            risk_pct=risk_pct,
+            current_positions=open_count,
+            as_of=check_ts,
+        )
+
     async def get_current_scorecard(
         self,
         session: AsyncSession,
@@ -1759,6 +1948,10 @@ class RiskGate:
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, "buy", dummy_sizing)),
             ("schmitt_regime", self._check_schmitt_regime(session, symbol)),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol)),
+            ("adv_liquidity_floor", self._check_adv_liquidity(session, symbol, dummy_sizing)),
+            ("copula_tail_risk", self._check_copula_tail_risk(session, symbol)),
+            ("evidence_gate", self._check_evidence_gate(session, symbol)),
+            ("bounded_mandate", self._check_bounded_mandate(session, symbol, dummy_sizing)),
         ]
 
         for name, coro in checks:

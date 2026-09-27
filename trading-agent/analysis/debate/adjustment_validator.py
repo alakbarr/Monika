@@ -1,9 +1,15 @@
 import json
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import TechnicalIndicator, AssetAnalysis
+from analysis.debate.exact_decimal_math import (
+    to_exact_decimal,
+    exact_rr_ratio,
+    exact_price_deviation_pct,
+)
 
 logger = logging.getLogger('TradingAgent.AdjustmentValidator')
 
@@ -17,10 +23,9 @@ async def validate_and_apply_judge_adjustments(
 ) -> tuple[bool, str]:
     """Re-validasi SL/TP/entry hasil adjustment Investment Judge terhadap aturan
     struktural yang sama seperti saat submit_asset_analysis (min R:R, min ATR
-    multiplier, max entry deviation). Judge TIDAK punya akses tool untuk verifikasi
-    ulang ATR — validasi mekanis ini wajib ada di sisi backend sebelum nilai
-    di-persist, karena Judge bisa saja mengusulkan SL yang secara matematis
-    melanggar risk management meskipun argumennya terdengar masuk akal secara teks.
+    multiplier, max entry deviation) menggunakan kalkulasi 28-digit Decimal exact.
+    Judge TIDAK punya akses tool untuk verifikasi ulang ATR — validasi mekanis ini
+    wajib ada di sisi backend sebelum nilai di-persist.
     """
     adjusted_entry = verdict.get('adjusted_entry')
     adjusted_sl = verdict.get('adjusted_sl')
@@ -30,34 +35,47 @@ async def validate_and_apply_judge_adjustments(
         return True, ''  # tidak ada adjustment untuk divalidasi
 
     original_price = entry_zone_data.get('price') or ana.price_at_analysis
-    new_entry = float(adjusted_entry) if adjusted_entry is not None else original_price
-    new_sl = float(adjusted_sl) if adjusted_sl is not None else ana.stop_loss
-    new_tp = float(adjusted_tp) if adjusted_tp is not None else ana.take_profit
+    raw_entry = adjusted_entry if adjusted_entry is not None else original_price
+    raw_sl = adjusted_sl if adjusted_sl is not None else ana.stop_loss
+    raw_tp = adjusted_tp if adjusted_tp is not None else ana.take_profit
 
-    if not new_entry or not new_sl or not new_tp:
+    if raw_entry is None or raw_sl is None or raw_tp is None:
         return False, 'Judge adjustment tidak lengkap (entry/sl/tp referensi hilang)'
+
+    try:
+        d_entry = to_exact_decimal(raw_entry)
+        d_sl = to_exact_decimal(raw_sl)
+        d_tp = to_exact_decimal(raw_tp)
+    except Exception as exc:
+        return False, f'Format angka Judge adjustment tidak valid: {exc}'
+
+    if d_entry <= 0 or d_sl <= 0 or d_tp <= 0:
+        return False, 'Entry, SL, and TP must be strictly positive'
 
     direction = str(getattr(ana, 'direction', None) or getattr(ana, 'action', None) or '').upper()
     if direction == "BUY":
-        if new_sl >= new_entry:
-            return False, f"BUY geometry violation: SL ({new_sl}) >= Entry ({new_entry})"
-        if new_tp <= new_entry:
-            return False, f"BUY geometry violation: TP ({new_tp}) <= Entry ({new_entry})"
+        if d_sl >= d_entry:
+            return False, f"BUY geometry violation: SL ({d_sl}) >= Entry ({d_entry})"
+        if d_tp <= d_entry:
+            return False, f"BUY geometry violation: TP ({d_tp}) <= Entry ({d_entry})"
     elif direction == "SELL":
-        if new_sl <= new_entry:
-            return False, f"SELL geometry violation: SL ({new_sl}) <= Entry ({new_entry})"
-        if new_tp >= new_entry:
-            return False, f"SELL geometry violation: TP ({new_tp}) >= Entry ({new_entry})"
+        if d_sl <= d_entry:
+            return False, f"SELL geometry violation: SL ({d_sl}) <= Entry ({d_entry})"
+        if d_tp >= d_entry:
+            return False, f"SELL geometry violation: TP ({d_tp}) <= Entry ({d_entry})"
 
-    sl_dist = abs(new_entry - new_sl)
-    tp_dist = abs(new_entry - new_tp)
-    if sl_dist <= 0:
-        return False, 'Judge SL distance = 0'
+    try:
+        rr = exact_rr_ratio(d_entry, d_sl, d_tp)
+    except ValueError as e:
+        return False, f'Judge SL distance error: {e}'
 
-    rr = tp_dist / sl_dist
-    min_rr = float(settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3))
+    raw_min_rr = settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3)
+    min_rr = to_exact_decimal(raw_min_rr)
     if rr < min_rr:
-        return False, f'Judge-adjusted R:R={rr:.2f} di bawah minimum {min_rr}'
+        return False, f'Judge-adjusted R:R={float(rr):.2f} di bawah minimum {float(min_rr)}'
+
+    sl_dist = float(abs(d_entry - d_sl))
+    tp_dist = float(abs(d_entry - d_tp))
 
     atr_row = (await session.execute(
         select(TechnicalIndicator)
@@ -95,12 +113,17 @@ async def validate_and_apply_judge_adjustments(
     except Exception as e:
         logger.debug(f"ADR validation in adjustment_validator failed (non-fatal): {e}")
 
-    if original_price and original_price > 0:
-        deviation_pct = abs(new_entry - original_price) / original_price * 100
-        if deviation_pct > 3.0:
-            return False, (
-                f'Judge-adjusted entry deviasi {deviation_pct:.1f}% dari harga analisis '
-                f'asli (maks 3%). Kemungkinan Judge memakai harga stale/halusinasi.'
-            )
+    if original_price:
+        try:
+            d_orig = to_exact_decimal(original_price)
+            if d_orig > Decimal(0):
+                deviation_pct = exact_price_deviation_pct(d_entry, d_orig)
+                if deviation_pct > Decimal("3.0"):
+                    return False, (
+                        f'Judge-adjusted entry deviasi {float(deviation_pct):.1f}% dari harga analisis '
+                        f'asli (maks 3%). Kemungkinan Judge memakai harga stale/halusinasi.'
+                    )
+        except Exception as e:
+            logger.debug(f"Exact deviation calculation failed: {e}")
 
     return True, ''

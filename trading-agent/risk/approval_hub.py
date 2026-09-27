@@ -108,6 +108,61 @@ class ApprovalRequest:
         return time.time() > self.expires_at
 
 
+DEFAULT_MANDATE_TTL = 30.0 * 86400.0  # 30 days in seconds
+
+
+@dataclass
+class BoundedMandate:
+    """
+    Institutional Bounded Mandate Contract.
+    Enforces a strict 30-day operator authorization window, symbol scope,
+    and portfolio risk boundaries with cryptographic tamper-evidence.
+    """
+    mandate_id: str
+    operator: str
+    authorized_symbols: List[str] = field(default_factory=lambda: ["ALL"])
+    max_risk_per_trade_pct: float = 2.0
+    max_daily_drawdown_pct: float = 5.0
+    max_open_positions: int = 5
+    max_leverage: float = 30.0
+    issued_at: float = field(default_factory=time.time)
+    expires_at: float = 0.0
+    status: str = "active"  # "active", "expired", "revoked"
+    signature: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.expires_at == 0.0:
+            self.expires_at = self.issued_at + DEFAULT_MANDATE_TTL
+        if not self.signature:
+            self.signature = self.compute_signature()
+
+    def compute_signature(self, secret: str = "monika_mandate_sec") -> str:
+        import hashlib
+        import json
+        payload = {
+            "mandate_id": self.mandate_id,
+            "operator": self.operator,
+            "authorized_symbols": sorted(self.authorized_symbols),
+            "max_risk_per_trade_pct": float(self.max_risk_per_trade_pct),
+            "max_daily_drawdown_pct": float(self.max_daily_drawdown_pct),
+            "max_open_positions": int(self.max_open_positions),
+            "max_leverage": float(self.max_leverage),
+            "issued_at": round(float(self.issued_at), 3),
+            "expires_at": round(float(self.expires_at), 3),
+            "secret": secret,
+        }
+        canonical = json.dumps(payload, sort_keys=True)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def verify_integrity(self, secret: str = "monika_mandate_sec") -> bool:
+        return self.signature == self.compute_signature(secret)
+
+    @property
+    def is_expired(self) -> bool:
+        return time.time() > self.expires_at
+
+
 class ApprovalHub:
     """
     Coordinates interactive human approval workflows across Telegram, Web Dashboard, and API.
@@ -122,9 +177,15 @@ class ApprovalHub:
             cls._instance = cls()
         return cls._instance
 
+    @classmethod
+    def reset_instance(cls) -> None:
+        cls._instance = None
+
     def __init__(self, default_ttl: float = DEFAULT_APPROVAL_TTL):
         self.default_ttl = default_ttl
         self._requests: Dict[str, ApprovalRequest] = {}
+        self._mandates: Dict[str, BoundedMandate] = {}
+        self._active_mandate_id: Optional[str] = None
         self._pending_futures: Dict[str, asyncio.Future] = {}
         self._listeners: List[Callable[[str, Dict[str, Any]], Awaitable[None]]] = []
         self._steer_history: List[Dict[str, Any]] = []
@@ -603,6 +664,155 @@ class ApprovalHub:
                 {"text": "Reject", "callback_data": f"appr_no:{token}"},
             ]
         ]
+
+    def issue_mandate(
+        self,
+        operator: str,
+        authorized_symbols: Optional[List[str]] = None,
+        max_risk_pct: float = 2.0,
+        max_daily_dd_pct: float = 5.0,
+        max_open_positions: int = 5,
+        max_leverage: float = 30.0,
+        ttl_days: float = 30.0,
+        metadata: Optional[Dict[str, Any]] = None,
+        secret: str = "monika_mandate_sec",
+    ) -> BoundedMandate:
+        """
+        Issues a cryptographic Bounded Mandate Contract with a strict 30-day TTL.
+        Authorizes autonomous agent trading within strict risk and symbol boundaries.
+        """
+        now = time.time()
+        ttl_seconds = ttl_days * 86400.0
+        mandate_id = f"mandate_{int(now)}_{os.urandom(4).hex()}"
+        symbols = authorized_symbols if authorized_symbols is not None else ["ALL"]
+
+        mandate = BoundedMandate(
+            mandate_id=mandate_id,
+            operator=operator,
+            authorized_symbols=symbols,
+            max_risk_per_trade_pct=max_risk_pct,
+            max_daily_drawdown_pct=max_daily_dd_pct,
+            max_open_positions=max_open_positions,
+            max_leverage=max_leverage,
+            issued_at=now,
+            expires_at=now + ttl_seconds,
+            status="active",
+            metadata=metadata or {},
+        )
+        mandate.signature = mandate.compute_signature(secret)
+        self._mandates[mandate_id] = mandate
+        self._active_mandate_id = mandate_id
+
+        logger.info(
+            f"[ApprovalHub] Issued Bounded Mandate '{mandate_id}' by {operator} "
+            f"(symbols={symbols}, max_risk={max_risk_pct}%, TTL={ttl_days:.1f}d, sig={mandate.signature[:12]})."
+        )
+        return mandate
+
+    def validate_mandate(
+        self,
+        symbol: str,
+        risk_pct: float,
+        current_positions: int = 0,
+        leverage: float = 1.0,
+        mandate_id: Optional[str] = None,
+        as_of: Optional[float] = None,
+        secret: str = "monika_mandate_sec",
+    ) -> Tuple[bool, str]:
+        """
+        Validates trade execution against the active Bounded Mandate Contract.
+        Strictly rejects trades if mandate has expired, been revoked, or breached.
+        """
+        target_id = mandate_id or self._active_mandate_id
+        if not target_id or target_id not in self._mandates:
+            revoked_list = [m for m in self._mandates.values() if m.status == "revoked"]
+            if revoked_list:
+                return False, f"Operator mandate '{revoked_list[-1].mandate_id}' has been revoked. Re-authorization required."
+            return False, "No active operator mandate found. Re-authorization required."
+
+        mandate = self._mandates[target_id]
+
+        if mandate.status == "revoked":
+            return False, f"Operator mandate '{target_id}' has been revoked. Re-authorization required."
+
+        if not mandate.verify_integrity(secret):
+            return False, f"Operator mandate '{target_id}' cryptographic integrity check failed."
+
+        check_time = as_of if as_of is not None else time.time()
+        if check_time > mandate.expires_at:
+            mandate.status = "expired"
+            return False, f"Operator mandate '{target_id}' expired (30-day TTL exceeded). Re-authorization required."
+
+        # Check symbol authorization
+        auth_upper = [s.upper() for s in mandate.authorized_symbols]
+        if "ALL" not in auth_upper and symbol.upper() not in auth_upper:
+            return False, f"Symbol '{symbol}' not authorized under mandate '{target_id}'. Allowed: {mandate.authorized_symbols}."
+
+        # Check risk percent
+        if risk_pct > mandate.max_risk_per_trade_pct:
+            return False, (
+                f"Proposed risk {risk_pct:.2f}% exceeds mandate limit "
+                f"{mandate.max_risk_per_trade_pct:.2f}%."
+            )
+
+        # Check concurrent positions limit
+        try:
+            current_pos_count = int(current_positions or 0)
+        except Exception:
+            current_pos_count = 0
+
+        if current_pos_count >= mandate.max_open_positions:
+            return False, (
+                f"Active open positions ({current_pos_count}) reach/exceed "
+                f"mandate ceiling ({mandate.max_open_positions})."
+            )
+
+        # Check leverage limit
+        if leverage > mandate.max_leverage:
+            return False, (
+                f"Leverage {leverage:.1f}x exceeds mandate ceiling "
+                f"{mandate.max_leverage:.1f}x."
+            )
+
+        return True, f"Trade complies with Bounded Mandate '{target_id}'."
+
+    def revoke_mandate(self, mandate_id: str, operator: str = "admin", reason: str = "") -> Tuple[bool, str]:
+        """Revokes an active mandate immediately."""
+        mandate = self._mandates.get(mandate_id)
+        if not mandate:
+            return False, f"Mandate '{mandate_id}' not found."
+
+        mandate.status = "revoked"
+        mandate.metadata["revoked_by"] = operator
+        mandate.metadata["revocation_reason"] = reason or "Revoked by operator"
+        mandate.metadata["revoked_at"] = time.time()
+
+        if self._active_mandate_id == mandate_id:
+            self._active_mandate_id = None
+
+        logger.warning(f"[ApprovalHub] Mandate '{mandate_id}' revoked by {operator}: {reason}")
+        return True, f"Mandate '{mandate_id}' successfully revoked."
+
+    def get_active_mandate(self, mandate_id: Optional[str] = None) -> Optional[BoundedMandate]:
+        """Retrieves active mandate, verifying non-expiry."""
+        target_id = mandate_id or self._active_mandate_id
+        if not target_id or target_id not in self._mandates:
+            return None
+        mandate = self._mandates[target_id]
+        if mandate.status != "active":
+            return None
+        if time.time() > mandate.expires_at:
+            mandate.status = "expired"
+            return None
+        return mandate
+
+    def list_mandates(self) -> List[BoundedMandate]:
+        """Lists all registered mandates with refreshed expiry status."""
+        now = time.time()
+        for m in self._mandates.values():
+            if m.status == "active" and now > m.expires_at:
+                m.status = "expired"
+        return list(self._mandates.values())
 
 
 _global_approval_hub: Optional[ApprovalHub] = None

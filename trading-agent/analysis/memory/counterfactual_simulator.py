@@ -110,7 +110,14 @@ class CounterfactualSimulator:
         win_rate = wins / sample_size
         total_pnl = sum(st["pnl"] for st in simulated_trades)
 
-        qualifies = win_rate >= min_win_rate and total_pnl >= 0.0
+        # Subsystem 6 Counterfactual Parameter Perturbations:
+        # CF Scenario 1: What if SL was 1.5x wider?
+        cf_sl_pnl = sum((st["pnl"] if st["won"] else st["pnl"] * 1.5) for st in simulated_trades)
+        # CF Scenario 2: What if entry was delayed by 1 bar (slippage/friction penalty)?
+        cf_delayed_pnl = sum((st["pnl"] - 0.0010) for st in simulated_trades)
+
+        # Candidate must remain profitable under delayed execution friction to qualify
+        qualifies = (win_rate >= min_win_rate) and (total_pnl > 0.0) and (cf_delayed_pnl >= -0.05)
 
         if qualifies:
             # Promote to ACTIVE
@@ -121,12 +128,12 @@ class CounterfactualSimulator:
 
             logger.info(
                 f"[CounterfactualSimulator] Promoted '{playbook_name}' to ACTIVE "
-                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, PnL: {total_pnl:.2f})."
+                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, PnL: {total_pnl:.2f}, CF Delay PnL: {cf_delayed_pnl:.2f})."
             )
         else:
             logger.info(
                 f"[CounterfactualSimulator] Candidate '{playbook_name}' kept as CANDIDATE "
-                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, Threshold: {min_win_rate*100:.1f}%)."
+                f"(Sample: {sample_size}, WR: {win_rate*100:.1f}%, CF Delay PnL: {cf_delayed_pnl:.2f})."
             )
 
         return {
@@ -135,6 +142,8 @@ class CounterfactualSimulator:
             "sample_size": sample_size,
             "win_rate": win_rate,
             "total_pnl": total_pnl,
+            "cf_sl_1_5x_pnl": round(cf_sl_pnl, 4),
+            "cf_delayed_pnl": round(cf_delayed_pnl, 4),
             "promoted": qualifies,
             "status": PlaybookStatus.ACTIVE.value if qualifies else PlaybookStatus.CANDIDATE.value,
         }

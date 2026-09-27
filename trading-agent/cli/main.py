@@ -1884,7 +1884,7 @@ async def _dispatch_cli(args):
             handle_plugin_command(args)
         elif args.command == "benchmark":
             await _cmd_benchmark(args)
-        elif args.command in ("daemon", "simulation", "trading", "mcp"):
+        elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard"):
             from cli.subcommands import AVAILABLE_SUBCOMMANDS
             for sc in AVAILABLE_SUBCOMMANDS:
                 if sc.name == args.command:

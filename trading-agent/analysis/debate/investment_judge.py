@@ -105,6 +105,14 @@ async def evaluate_debate(
     regime_weights = resolve_regime_weights(original_context)
     detected_regime = regime_weights["detected_regime"]
 
+    bull_brier = float(original_context.get("bull_brier_score") or original_context.get("bull_brier") or 0.25)
+    bear_brier = float(original_context.get("bear_brier_score") or original_context.get("bear_brier") or 0.25)
+    bw_bull = 1.0 / max(0.01, bull_brier)
+    bw_bear = 1.0 / max(0.01, bear_brier)
+    tot_bw = bw_bull + bw_bear
+    norm_bull_bw = bw_bull / tot_bw
+    norm_bear_bw = bw_bear / tot_bw
+
     system_prompt = f"""{anchor}
 
 ---
@@ -120,6 +128,11 @@ MARKET REGIME CALIBRATION CONTEXT:
 - Counter Thesis Weight: {regime_weights['counter_thesis_weight']:.2f}
 - Volatility Penalty: {regime_weights['volatility_penalty']:.2f}
 - Guidance: {regime_weights['description']}
+
+BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
+- Bull Analyst Historical Brier: {bull_brier:.3f} (Calibration weight: {norm_bull_bw:.0%})
+- Bear Analyst Historical Brier: {bear_brier:.3f} (Calibration weight: {norm_bear_bw:.0%})
+- The analyst with lower Brier score has superior empirical calibration; give their arguments proportionally higher weight.
 
 DIRECTIONAL ADJUDICATION RULES:
 If original_context decision is SELL:
@@ -257,6 +270,22 @@ Respond in valid JSON format conforming to the schema."""
 
         raw_multiplier = float(parsed.get("risk_multiplier", 1.0) or 1.0)
 
+        # Brier-score post-processing calibration (Subsystem 4)
+        dissenter_brier = bull_brier if is_sell else bear_brier
+        pro_brier = bear_brier if is_sell else bull_brier
+        if dissenter_brier < pro_brier - 0.08:
+            # Dissenter has superior empirical calibration; heighten caution on counter-threats
+            if effective_counter_threat >= 6:
+                raw_multiplier = round(raw_multiplier * 0.75, 2)
+                logger.info(
+                    f"[{symbol}] Dissenter Brier calibration advantage ({dissenter_brier:.3f} vs {pro_brier:.3f}) applied: "
+                    f"risk dampened to {raw_multiplier}x."
+                )
+        elif pro_brier < dissenter_brier - 0.08:
+            # Advocate has superior empirical calibration; mitigate ungrounded dissenter penalties
+            if effective_counter_threat < 8 and raw_multiplier < 1.0:
+                raw_multiplier = min(1.0, round(raw_multiplier * 1.15, 2))
+
         # In volatile regimes, penalize raw risk multiplier or enforce avoid on high counter threat
         if detected_regime == "volatile":
             if effective_counter_threat >= 7 and pro_strength < 8:
@@ -272,6 +301,12 @@ Respond in valid JSON format conforming to the schema."""
             parsed["risk_multiplier"] = max(0.20, min(1.0, raw_multiplier))
 
         parsed["regime_weights_used"] = regime_weights
+        parsed["brier_calibration"] = {
+            "bull_brier": bull_brier,
+            "bear_brier": bear_brier,
+            "bull_weight": round(norm_bull_bw, 3),
+            "bear_weight": round(norm_bear_bw, 3),
+        }
         return parsed
     except Exception as e:
         logger.critical(f"FATAL: Failed to parse Investment Judge JSON: {e}. Enforcing fail-closed capital protection.")

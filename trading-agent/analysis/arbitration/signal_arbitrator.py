@@ -53,6 +53,52 @@ class SignalArbitrator:
             regime_info=regime_info,
             **kwargs,
         )
+
+        # Borderline Buffer Band Guard (Subsystem 3: 0.60x risk multiplier for borderline strategies)
+        if res.decision in ("buy", "sell") and res.risk_multiplier > 0:
+            q_meta = {}
+            if quant_signal is not None:
+                if isinstance(quant_signal, dict):
+                    q_meta = quant_signal.get("meta", {}) or {}
+                else:
+                    q_meta = getattr(quant_signal, "meta", {}) or {}
+
+            wfe = q_meta.get("wfe") or q_meta.get("walk_forward_efficiency") or kwargs.get("wfe")
+            sharpe = q_meta.get("sharpe") or q_meta.get("sharpe_ratio") or kwargs.get("sharpe")
+
+            is_borderline = False
+            borderline_reasons = []
+            if wfe is not None:
+                try:
+                    wfe_val = float(wfe)
+                    if 0.55 <= wfe_val <= 0.65:
+                        is_borderline = True
+                        borderline_reasons.append(f"WFE {wfe_val:.2f} in borderline band [0.55, 0.65]")
+                except (ValueError, TypeError):
+                    pass
+            if sharpe is not None:
+                try:
+                    sharpe_val = float(sharpe)
+                    if 1.40 <= sharpe_val <= 1.60:
+                        is_borderline = True
+                        borderline_reasons.append(f"Sharpe {sharpe_val:.2f} in borderline band [1.40, 1.60]")
+                except (ValueError, TypeError):
+                    pass
+
+            if is_borderline:
+                old_mult = res.risk_multiplier
+                new_mult = round(old_mult * 0.60, 2)
+                res.risk_multiplier = new_mult
+                res.arbitration_reason += f" [Borderline Buffer Guard: {' & '.join(borderline_reasons)} -> risk damped 0.60x to {new_mult:.2f}]"
+                if not isinstance(res.meta, dict):
+                    res.meta = {}
+                res.meta["borderline_buffer_guard"] = {
+                    "applied": True,
+                    "reasons": borderline_reasons,
+                    "original_risk_multiplier": old_mult,
+                    "damped_risk_multiplier": new_mult,
+                }
+
         if session is not None:
             try:
                 from database.event_store import TradingEventStore

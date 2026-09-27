@@ -23,6 +23,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -32,6 +33,14 @@ from scheduler.cron_nlp_parser import MARKET_SESSIONS_UTC, parse_natural_schedul
 logger = logging.getLogger("TradingAgent.Scheduler.UnifiedCronEngine")
 
 DEFAULT_CRON_DB = "data/universal_cron.db"
+DELIVERY_LEASE_SECONDS = 300.0
+
+
+class DeliveryStatus:
+    PENDING = "PENDING"
+    SENDING = "SENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"
 
 # Safety blocklist against destructive host commands in scheduled tasks
 _ANTI_SUICIDE_PATTERNS = [
@@ -170,6 +179,22 @@ class UnifiedCronEngine:
                     metadata_json TEXT
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS outbox_deliveries (
+                    delivery_id TEXT PRIMARY KEY,
+                    job_id TEXT NOT NULL,
+                    channel TEXT NOT NULL,
+                    destination TEXT,
+                    payload TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    lease_expires_at REAL DEFAULT 0,
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL,
+                    retry_count INTEGER DEFAULT 0,
+                    error_message TEXT
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_outbox_status_lease ON outbox_deliveries(status, lease_expires_at);")
             conn.commit()
         finally:
             conn.close()
@@ -497,16 +522,158 @@ class UnifiedCronEngine:
                         exit_code = 1
                         execution_output = str(cb_exc)
 
-            # Dispatch result to requested channel if configured
-            if self._channel_dispatcher and execution_output:
+            # Dispatch result to requested channel if configured via Outbox Delivery Lease
+            if self._channel_dispatcher and execution_output and job.target_delivery != "session":
+                del_id = self.enqueue_outbox_delivery(
+                    job_id=job.job_id,
+                    channel=job.target_delivery,
+                    destination=job.target_destination,
+                    payload=execution_output,
+                )
                 try:
                     self._channel_dispatcher(job, execution_output)
+                    self.mark_outbox_sent(del_id)
                 except Exception as dist_exc:
                     logger.warning(f"[UnifiedCronEngine] Result dispatch error: {dist_exc}")
+                    self.mark_outbox_failed(del_id, str(dist_exc))
 
         finally:
             self._running_jobs.pop(job.job_id, None)
             self._release_pending_slot(job.job_id, exit_code=exit_code, output=execution_output)
+
+    def enqueue_outbox_delivery(
+        self,
+        job_id: str,
+        channel: str,
+        destination: Optional[str],
+        payload: str,
+    ) -> str:
+        """Enqueues an outbox delivery with initial PENDING status."""
+        delivery_id = f"del_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
+        now = time.time()
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO outbox_deliveries (
+                        delivery_id, job_id, channel, destination, payload,
+                        status, lease_expires_at, created_at, updated_at, retry_count
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        delivery_id,
+                        job_id,
+                        channel,
+                        destination,
+                        payload,
+                        DeliveryStatus.PENDING,
+                        0.0,
+                        now,
+                        now,
+                        0,
+                    ),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        return delivery_id
+
+    def acquire_outbox_lease(
+        self,
+        batch_size: int = 10,
+        lease_seconds: float = DELIVERY_LEASE_SECONDS,
+    ) -> List[Dict[str, Any]]:
+        """
+        Acquires lease on pending or expired sending deliveries.
+        Returns list of delivery dictionaries.
+        """
+        now = time.time()
+        new_expiry = now + lease_seconds
+        deliveries = []
+
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT delivery_id, job_id, channel, destination, payload, status, retry_count
+                    FROM outbox_deliveries
+                    WHERE (status = ? OR (status = ? AND lease_expires_at < ?) OR (status = ? AND retry_count < 3))
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                    """,
+                    (
+                        DeliveryStatus.PENDING,
+                        DeliveryStatus.SENDING,
+                        now,
+                        DeliveryStatus.FAILED,
+                        batch_size,
+                    ),
+                )
+                rows = cursor.fetchall()
+                for row in rows:
+                    del_id = row[0]
+                    cursor.execute(
+                        """
+                        UPDATE outbox_deliveries
+                        SET status = ?, lease_expires_at = ?, updated_at = ?
+                        WHERE delivery_id = ?
+                        """,
+                        (DeliveryStatus.SENDING, new_expiry, now, del_id),
+                    )
+                    deliveries.append({
+                        "delivery_id": del_id,
+                        "job_id": row[1],
+                        "channel": row[2],
+                        "destination": row[3],
+                        "payload": row[4],
+                        "status": DeliveryStatus.SENDING,
+                        "retry_count": row[6],
+                    })
+                conn.commit()
+            finally:
+                conn.close()
+
+        return deliveries
+
+    def mark_outbox_sent(self, delivery_id: str) -> None:
+        """Marks outbox delivery as successfully delivered."""
+        now = time.time()
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                conn.execute(
+                    """
+                    UPDATE outbox_deliveries
+                    SET status = ?, updated_at = ?, lease_expires_at = 0
+                    WHERE delivery_id = ?
+                    """,
+                    (DeliveryStatus.SENT, now, delivery_id),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+    def mark_outbox_failed(self, delivery_id: str, error_message: str) -> None:
+        """Marks outbox delivery as failed and increments retry count."""
+        now = time.time()
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                conn.execute(
+                    """
+                    UPDATE outbox_deliveries
+                    SET status = ?, error_message = ?, retry_count = retry_count + 1,
+                        updated_at = ?, lease_expires_at = 0
+                    WHERE delivery_id = ?
+                    """,
+                    (DeliveryStatus.FAILED, error_message, now, delivery_id),
+                )
+                conn.commit()
+            finally:
+                conn.close()
 
     def _release_pending_slot(self, job_id: str, exit_code: int = 0, output: Optional[str] = None) -> None:
         """Releases pending lock and updates execution status in DB."""

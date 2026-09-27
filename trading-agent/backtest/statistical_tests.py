@@ -161,3 +161,122 @@ def benjamini_hochberg(p_values: Sequence[float], alpha: float = 0.05) -> list[b
     # Any hypothesis with rank <= max_k is significant
     significant_orig_indices = set(orig_idx for orig_idx, _ in indexed_p[:max_k]) if max_k > 0 else set()
     return [i in significant_orig_indices for i in range(m)]
+
+
+def benjamini_hochberg_adjusted_p(p_values: Sequence[float]) -> list[float]:
+    """
+    Computes FDR-adjusted q-values (Benjamini-Hochberg).
+    q_(i) = min_(j >= i) (min(1.0, (m / j) * p_(j)))
+    """
+    m = len(p_values)
+    if m == 0:
+        return []
+    indexed_p = sorted(enumerate(p_values), key=lambda x: x[1])
+    q_vals = [0.0] * m
+    cum_min = 1.0
+    # Walk backwards from largest rank m down to 1
+    for rank in range(m, 0, -1):
+        orig_idx, p = indexed_p[rank - 1]
+        adj = (m / rank) * p
+        cum_min = min(cum_min, adj)
+        q_vals[orig_idx] = float(min(1.0, max(0.0, cum_min)))
+    return q_vals
+
+
+def probability_of_backtest_overfitting(
+    matrix_returns: Any,
+    n_partitions: int = 16,
+    max_combinations: int = 1000,
+) -> dict[str, Any]:
+    """
+    Combinatorially Symmetric Cross-Validation (CSCV) for Probability of Backtest Overfitting (PBO)
+    based on Bailey, Borwein, López de Prado, and Zhu (2017).
+
+    Args:
+        matrix_returns: Matrix of shape (T, N) where T = observations and N = trial strategies.
+        n_partitions: Number of equal time partitions (must be even, e.g. 8, 12, 16).
+        max_combinations: Maximum number of combinations to evaluate to bound computation.
+
+    Returns:
+        dict containing:
+          - pbo: Probability of Backtest Overfitting in [0.0, 1.0] (PBO > 0.50 indicates severe overfitting)
+          - is_overfit: True if pbo > 0.50
+          - median_oos_rank: Median percentile rank of the IS-optimal strategy in OOS
+          - n_combinations: Number of CSCV combinations evaluated
+    """
+    import itertools
+    import numpy as np
+
+    arr = np.asarray(matrix_returns, dtype=np.float64)
+    if arr.ndim != 2:
+        raise ValueError(f"matrix_returns must be 2-dimensional (T, N), got shape {arr.shape}")
+
+    T, N = arr.shape
+    if N < 2:
+        return {"pbo": 0.0, "is_overfit": False, "median_oos_rank": 1.0, "n_combinations": 0}
+
+    # Split T into n_partitions chunks
+    s = min(n_partitions, T)
+    if s % 2 != 0:
+        s -= 1
+    if s < 4:
+        return {"pbo": 0.0, "is_overfit": False, "median_oos_rank": 0.5, "n_combinations": 0}
+
+    indices = np.arange(T)
+    chunks = np.array_split(indices, s)
+
+    # Form combinations of size s // 2
+    half_s = s // 2
+    all_combos = list(itertools.combinations(range(s), half_s))
+
+    if len(all_combos) > max_combinations:
+        step = len(all_combos) / max_combinations
+        selected_combos = [all_combos[int(i * step)] for i in range(max_combinations)]
+    else:
+        selected_combos = all_combos
+
+    underperforming_count = 0
+    oos_ranks = []
+
+    for is_indices in selected_combos:
+        is_set = set(is_indices)
+        oos_indices = [idx for idx in range(s) if idx not in is_set]
+
+        is_rows = np.concatenate([chunks[i] for i in is_indices])
+        oos_rows = np.concatenate([chunks[j] for j in oos_indices])
+
+        is_mat = arr[is_rows, :]
+        oos_mat = arr[oos_rows, :]
+
+        is_mean = np.mean(is_mat, axis=0)
+        is_std = np.std(is_mat, axis=0, ddof=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            is_sr = np.where(is_std > 1e-12, is_mean / is_std, -np.inf)
+
+        oos_mean = np.mean(oos_mat, axis=0)
+        oos_std = np.std(oos_mat, axis=0, ddof=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            oos_sr = np.where(oos_std > 1e-12, oos_mean / oos_std, -np.inf)
+
+        best_is_strat = int(np.argmax(is_sr))
+        oos_val = oos_sr[best_is_strat]
+        valid_oos = oos_sr[~np.isnan(oos_sr) & ~np.isneginf(oos_sr)]
+        if len(valid_oos) > 0:
+            rank_oos = float(np.sum(valid_oos <= oos_val) / len(valid_oos))
+        else:
+            rank_oos = 0.5
+
+        oos_ranks.append(rank_oos)
+        if rank_oos <= 0.50:
+            underperforming_count += 1
+
+    total_eval = len(selected_combos)
+    pbo = float(underperforming_count / total_eval) if total_eval > 0 else 0.0
+    median_rank = float(np.median(oos_ranks)) if oos_ranks else 0.5
+
+    return {
+        "pbo": round(pbo, 4),
+        "is_overfit": pbo > 0.50,
+        "median_oos_rank": round(median_rank, 4),
+        "n_combinations": total_eval,
+    }
