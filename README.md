@@ -1,12 +1,12 @@
-# Monika — Autonomous Multi-Agent Trading Harness & Execution Engine for MetaTrader 5
+# Monika — Multi-Agent Trading Research Framework for MetaTrader 5
 
 <p align="center">
   <img src="docs/images/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; box-shadow: 0 4px 25px rgba(0,0,0,0.4);" />
 </p>
 
 <p align="center">
-  <strong>An institutional-grade, open-source multi-agent research harness and automated execution substrate for MetaTrader 5 (MT5).</strong><br />
-  <em>Unifying macroeconomic synthesis, Smart Money Concepts (SMC) order flow, dialectical Bull/Bear adversarial debate, and an unbypassable mechanical risk fortress.</em>
+  <strong>An open-source research framework exploring LLM-assisted market analysis with deterministic, code-enforced risk management in MetaTrader 5.</strong><br />
+  <em>Integrates macroeconomic news ingestion, market structure indicators, bull/bear debate prompts, and hard mathematical risk gates.</em>
 </p>
 
 <p align="center">
@@ -23,232 +23,227 @@
 
 ---
 
-## 📌 Executive Summary & Project Status
+## Project Status and Reality Check
 
-> [!NOTE]
-> **Monika is an active quantitative research project and experimental trading harness.**  
-> It represents an engineering exploration into how generative Large Language Models (LLMs), dialectical multi-agent debates, and macroeconomic knowledge graphs can be safely integrated into automated trading workflows without ever surrendering risk control or capital authority to non-deterministic models.
+> [!WARNING]
+> **This is an experimental personal research project, not a turnkey commercial trading system, and not an automated profit generator.**
 >
-> **The codebase is shared openly in the spirit of collaborative systems engineering.** We make no claims of turnkey institutional perfection, push-button riches, or guaranteed alpha. What we provide is a rigorous, fail-closed software architecture where probabilistic AI models can hypothesize while deterministic mathematical fortresses enforce immutable capital protection.
->
-> 💡 *We warmly welcome feedback, bug reports, and architectural contributions from quantitative developers, systematic traders, AI researchers, and hobbyist engineers alike!*
+> - **Trading risks:** Financial trading involves substantial risk of loss. Adding language models to an algorithmic pipeline does not eliminate market risk.
+> - **Model limitations:** Large language models are probabilistic. They make calculation errors, hallucinate price levels, and suffer from confirmation bias. They must never have direct, unconstrained access to broker order execution.
+> - **Active development:** This codebase is an ongoing engineering exploration. Expect breaking changes, architectural refactoring, and edge-case bugs.
+> - **Demo accounts only:** Always run this framework on paper-trading or demo accounts. Never deploy live capital without thoroughly auditing the code and risk models.
+
+The goal of this project is to explore a strict separation of concerns: **the language model acts solely as a qualitative research assistant to draft hypotheses, while deterministic Python code performs all mathematics, indicator computations, lot sizing, and risk validation.**
 
 ---
 
-## 🧭 Table of Contents
+## Table of Contents
 
-- [1. What is Monika? (The "Agent Harness" Concept)](#-1-what-is-monika-the-agent-harness-concept)
-  - [The Core Dilemma: Bots vs. Naive Generative AI](#the-core-dilemma-bots-vs-naive-generative-ai)
-  - [The Monika Solution: Fail-Closed Architecture](#the-monika-solution-fail-closed-architecture)
-  - [The Five Non-Negotiable Core Principles](#the-five-non-negotiable-core-principles)
-- [2. Who is Monika For? (Target Personas)](#-2-who-is-monika-for-target-personas)
-- [3. What Can You Get from Monika? (Tangible Benefits & Features)](#-3-what-can-you-get-from-monika-tangible-benefits--features)
-  - [Pillar I: Macroeconomic Intelligence & News Surprise Ingestion](#pillar-i-macroeconomic-intelligence--news-surprise-ingestion)
-  - [Pillar II: Microstructure, Order Flow & SMC Engine](#pillar-ii-microstructure-order-flow--smc-engine)
-  - [Pillar III: Dialectical Multi-Agent Adversarial Debate](#pillar-iii-dialectical-multi-agent-adversarial-debate)
-  - [Pillar IV: The Unbypassable 10-Layer RiskGate Fortress](#pillar-iv-the-unbypassable-10-layer-riskgate-fortress)
-  - [Pillar V: Hybrid Quant Alpha & Centralized Signal Arbitration](#pillar-v-hybrid-quant-alpha--centralized-signal-arbitration)
-  - [Pillar VI: Dual-Bridge Execution & MQL5 Dead-Man's Switch](#pillar-vi-dual-bridge-execution--mql5-dead-mans-switch)
-  - [Pillar VII: Omnichannel Supervision, Memory & Continuous Learning](#pillar-vii-omnichannel-supervision-memory--continuous-learning)
-- [4. Visual Tour & Observability Suite](#-4-visual-tour--observability-suite)
-  - [Web Dashboard (React 19 + Vite)](#1-web-dashboard-react-19--vite)
-  - [Terminal User Interface (TUI)](#2-terminal-user-interface-tui)
-- [5. System Architecture & Workflow Pipeline](#-5-system-architecture--workflow-pipeline)
-  - [End-to-End Decision Flow](#end-to-end-decision-flow)
-  - [Concurrent Autonomous Schedulers](#the-18-concurrent-background-schedulers)
-- [6. Supported Asset Universe & LLM Ecosystem](#-6-supported-asset-universe--llm-ecosystem)
-- [7. Practical Getting Started Guide](#-7-practical-getting-started-guide)
-  - [Prerequisites & System Requirements](#1-prerequisites--system-requirements)
-  - [Installation from Source](#2-installation-from-source)
-  - [Database Setup & Alembic Migrations](#3-database-setup--alembic-migrations)
-  - [Environment Configuration (.env)](#4-environment-configuration-env)
-  - [Pre-Flight Health Verification (Doctor)](#5-pre-flight-health-verification-doctor)
-  - [Running Monika](#6-running-monika)
-- [8. CLI & Telegram Command Reference](#-8-cli--telegram-command-reference)
-- [9. Testing, Backtesting & Evaluation Suite](#-9-testing-backtesting--evaluation-suite)
-- [10. Frequently Asked Questions (FAQ)](#-10-frequently-asked-questions-faq)
-- [11. Repository Structure](#-11-repository-structure)
-- [12. Contributing, Security & Community](#-12-contributing-security--community)
-- [13. Financial & Research Disclaimer](#-13-financial--research-disclaimer)
+- [1. Overview](#1-overview)
+  - [Comparison of Approaches](#comparison-of-approaches)
+  - [The Core Architecture: AI Proposes, Code Disposes](#the-core-architecture-ai-proposes-code-disposes)
+  - [Design Principles](#design-principles)
+- [2. Intended Audience](#2-intended-audience)
+- [3. Core System Components](#3-core-system-components)
+  - [Macroeconomic and News Ingestion](#macroeconomic-and-news-ingestion)
+  - [Market Structure and Technical Indicators](#market-structure-and-technical-indicators)
+  - [Bull vs. Bear Adversarial Debate](#bull-vs-bear-adversarial-debate)
+  - [Pre-Trade Risk Controls (RiskGate)](#pre-trade-risk-controls-riskgate)
+  - [Rule-Based Strategies and Signal Arbitration](#rule-based-strategies-and-signal-arbitration)
+  - [MetaTrader 5 Interface and Watchdog EA](#metatrader-5-interface-and-watchdog-ea)
+  - [Persistence and Post-Trade Review](#persistence-and-post-trade-review)
+- [4. User Interfaces & Observability](#4-user-interfaces--observability)
+  - [Web Dashboard (React 19 + Vite)](#web-dashboard-react-19--vite)
+  - [Terminal User Interface (TUI)](#terminal-user-interface-tui)
+- [5. System Architecture & Workflows](#5-system-architecture--workflows)
+  - [End-to-End Pipeline](#end-to-end-pipeline)
+  - [Background Task Schedulers](#background-task-schedulers)
+- [6. Supported Assets & Model Configuration](#6-supported-assets--model-configuration)
+  - [Supported Instruments](#supported-instruments)
+  - [Model Routing Configuration](#model-routing-configuration)
+- [7. Installation & Quickstart](#7-installation--quickstart)
+  - [Prerequisites](#prerequisites)
+  - [Step-by-Step Setup](#step-by-step-setup)
+  - [Database Initialization](#database-initialization)
+  - [Environment Variables (.env)](#environment-variables-env)
+  - [Pre-Flight Diagnostic Check](#pre-flight-diagnostic-check)
+  - [Starting the Application](#starting-the-application)
+- [8. CLI & Telegram Reference](#8-cli--telegram-reference)
+  - [Command-Line Interface](#command-line-interface)
+  - [Telegram Bot Commands](#telegram-bot-commands)
+- [9. Testing & Backtesting](#9-testing--backtesting)
+  - [Running the Test Suite](#running-the-test-suite)
+  - [Offline Backtesting](#offline-backtesting)
+  - [Model Benchmarks](#model-benchmarks)
+- [10. Frequently Asked Questions](#10-frequently-asked-questions)
+- [11. Repository Structure](#11-repository-structure)
+- [12. Contributing](#12-contributing)
+- [13. Disclaimer](#13-disclaimer)
 
 ---
 
-## 💡 1. What is Monika? (The "Agent Harness" Concept)
+## 1. Overview
 
-### The Core Dilemma: Bots vs. Naive Generative AI
+Monika is an experimental harness built to test whether generative language models can assist with market intelligence and pattern analysis without risking unconstrained execution errors.
 
-Automated trading has historically been split between two flawed paradigms:
+### Comparison of Approaches
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ TRADITIONAL BOTS (EAs / Scripts)           NAIVE GENERATIVE AI CHATBOTS                │
-├─────────────────────────────────────────┬──────────────────────────────────────────────┤
-│ ❌ Rigid & brittle rules (MA crosses)   │ ❌ Prone to severe mathematical hallucinations│
-│ ❌ Completely blind to macroeconomic    │ ❌ Fabricates invalid stops, targets, or lots│
-│    context, speeches, and news shocks   │ ❌ Suffers from sycophancy & confirmation bias│
-│ ❌ Whipsawed during regime transitions  │ ❌ High latency and catastrophic lack of      │
-│    and high-impact event volatility     │    hard capital boundaries                   │
-└─────────────────────────────────────────┴──────────────────────────────────────────────┘
-```
+| Dimension | Traditional Expert Advisors | Direct LLM Trading Bots | Monika Approach |
+| :--- | :--- | :--- | :--- |
+| **Macro & News Context** | Blind to calendar events and policy speeches | Able to read text, but lacks reliable market grounding | Synthesizes macro feeds and calendars into structured briefs |
+| **Math & Sizing** | Exact floating-point calculations | Frequent hallucinations and arithmetic errors | Plain Python computes all ATR sizing, lot bounds, and pips |
+| **Analytical Bias** | Rigid static thresholds during market shifts | High confirmation bias; agrees with prompts | Adversarial Bull/Bear debate challenges trade ideas |
+| **Execution Authority** | Direct order placement | Direct API calls with no safety boundaries | Strict deterministic code filters (RiskGate) must pass |
+| **Safety Mechanisms** | Basic stop loss only | None built-in | Drawdown ceilings, spread limits, news blackout windows |
 
-### The Monika Solution: Fail-Closed Architecture
-
-Monika bridges this divide by treating generative AI not as an unconstrained executioner, but as a **contextual perception and analytical drafting organ** confined inside an **Agent Harness**:
-
-> ### 🛡️ **"AI Proposes, Mechanical Fortress Disposes"**
->
-> In Monika, an LLM possesses **zero authority** to touch broker order books. The AI can only generate structured hypotheses (`SubmitAssetAnalysisSchema`). Before any trade can materialize as a broker ticket, it must clear an unbypassable, deterministic mathematical fortress (`RiskGate`) that calculates exact position sizing, inspects portfolio drawdown budgets, and cross-checks high-impact news windows.
->
-> If there is any discrepancy, missing data feed, or risk limit breach, the system deterministically defaults to **`NO TRADE`** or **`WAIT`**.
+### The Core Architecture: AI Proposes, Code Disposes
 
 ```mermaid
 flowchart LR
-    A[Unstructured Feeds & News] --> B[Perception Ingestion]
-    C[Verified Tick/Bar Data] --> D[Deterministic SMC & Math]
-    B --> E[LangGraph Multi-Agent Debate]
-    D --> E
-    E --> F[Structured Trade Proposal]
-    F --> G{Mechanical RiskGate Fortress}
-    G -- Passed --> H[Deterministic Volatility Sizer]
-    G -- Failed --> I[Rejected & Audited]
-    H --> J[MetaTrader 5 Native IPC]
-    J --> K[MQL5 Dead-Man EA Watchdog]
+    subgraph S1["1. Inputs"]
+        direction TB
+        Quotes["Price & Tick Quotes"]
+        News["News & Calendar Feeds"]
+    end
+
+    subgraph S2["2. Deliberation"]
+        direction TB
+        TechMath["Technical Math<br/>(Pivots, FVG, Volume)"]
+        LLMDebate["LangGraph Pipeline<br/>(Bull vs. Bear Debate)"]
+        Proposal["Structured Trade Proposal"]
+        TechMath --> LLMDebate
+        LLMDebate --> Proposal
+    end
+
+    subgraph S3["3. Validation"]
+        direction TB
+        RiskGate{"RiskGate Checks<br/>(Loss, Spread, News, RRR)"}
+        Sizer["Lot Sizer via ATR"]
+        Reject["Reject & Audit Log"]
+        Proposal --> RiskGate
+        RiskGate -- Pass --> Sizer
+        RiskGate -- Reject --> Reject
+    end
+
+    subgraph S4["4. Broker Execution"]
+        direction TB
+        MT5["MetaTrader 5 (Python IPC)"]
+        Watchdog["MQL5 Watchdog EA"]
+        Sizer --> MT5
+        MT5 -.->|Heartbeat| Watchdog
+    end
+
+    Quotes --> TechMath
+    Quotes & News --> LLMDebate
 ```
 
-### The Five Non-Negotiable Core Principles
+### Design Principles
 
-1. **Fail-Closed Execution:** Any unhandled exception, missing data source, API timeout, or ambiguity triggers an immediate, safe abort to `WAIT` / `NO TRADE`. Capital survival always trumps trade frequency.
-2. **Strict Separation of Concerns:** LLMs handle qualitative synthesis, sentiment contextualization, and adversarial argument; deterministic Python modules handle all floating-point math, indicator extraction, ATR calculations, and lot sizing.
-3. **Capital Preservation Over Alpha:** Cash is a valid position. When markets are choppy, spread-widened, or heading into tier-1 central bank decisions, defensive patience is explicitly rewarded.
-4. **Absolute Auditability:** Every single prompt payload, reasoning step, debate argument, judicial confidence score, token dollar cost, and broker order ticket is permanently persisted to PostgreSQL.
-5. **Dual-Layer Execution Resiliency:** A native Python IPC bridge handles order routing, while an independent MQL5 Expert Advisor (`AIAgent_EA.mq5`) monitors a continuous heartbeat file inside the MT5 terminal to act as an automated dead-man's switch.
+1. **Fail-Closed Execution:** Any unhandled exception, missing data source, API timeout, or ambiguous signal defaults to `WAIT` or `NO TRADE`. Capital preservation strictly overrides trade frequency.
+2. **Clear Division of Responsibilities:** LLMs handle qualitative synthesis and adversarial critique; deterministic Python modules handle floating-point arithmetic, indicator values, and risk gates.
+3. **Patience as a Priority:** The system favors waiting in cash when spreads widen, high-impact news approaches, or setups lack clear structure.
+4. **Complete Traceability:** Every prompt payload, debate argument, judicial confidence score, and broker ticket is recorded in PostgreSQL.
+5. **Independent Watchdog:** A companion MQL5 script (`AIAgent_EA.mq5`) monitors a heartbeat file written by Python. If the Python process terminates unexpectedly, the EA can safeguard open positions.
 
 ---
 
-## 👥 2. Who is Monika For? (Target Personas)
+## 2. Intended Audience
 
-| Target Persona | Key Pain Points Addressed | How Monika Solves Them |
+| Target Audience | Description | Suitability |
 | :--- | :--- | :--- |
-| **Quantitative Developers & Quants** | Disjointed tech stacks, lack of macro awareness in quant algorithms, difficulty integrating modern multi-modal LLM APIs with MT5. | Complete async Python framework, modular indicators (SMC, FVG, L2 DOM, TimesFM), typed event bus, Kahn's topological plugin engine, and native MT5 IPC. |
-| **Systematic & Algorithmic Traders** | Getting stopped out during news spread spikes, emotional overtrading, catastrophic EA crashes during VPS network dropouts. | 10-layer deterministic `RiskGate`, mandatory news blackout windows, dynamic volatility-adjusted sizing, and an MQL5 dead-man's switch. |
-| **AI & NLP Researchers** | Hallucinations in financial reasoning, single-prompt confirmation bias, excessive LLM token costs in multi-turn dialogues. | Stateful LangGraph workflow, dialectical Bull/Bear adversarial debate, impartial Investment Judge calibration, and KV prompt caching optimizations (~70–80% hit rates). |
-| **Self-Hosted Operators & Prop Traders** | Needing 24/7 autonomous monitoring with remote human-in-the-loop (HITL) kill switches and transparent observability. | Comprehensive React 19 Web Dashboard, terminal TUI, interactive Telegram bot with one-tap emergency `/kill`, and hard daily drawdown circuit breakers tailored for prop firm rules. |
+| **Developers & Quantitative Hobbyists** | Exploring how to build and orchestrate multi-agent workflows using LangGraph and Python. | Recommended |
+| **Systematic Traders** | Testing ways to integrate qualitative news summaries with deterministic indicators and risk gates. | Recommended |
+| **AI & NLP Researchers** | Experimenting with structured output schemas, multi-agent adversarial debate, and prompt caching. | Recommended |
+| **Users Seeking Guaranteed Income** | Looking for turnkey profitability, automated signal services, or passive income bots. | Unsuitable |
+| **High-Frequency Scalpers** | Requiring sub-second execution speeds (LLM inference cycles take multiple seconds). | Unsuitable |
+| **Complete Beginners** | Unfamiliar with Python 3.11, PostgreSQL configuration, or MetaTrader 5 demo accounts. | Unsuitable |
 
 ---
 
-## 💎 3. What Can You Get from Monika? (Tangible Benefits & Features)
+## 3. Core System Components
 
-Monika is structured into **seven core operational pillars**:
+### Macroeconomic and News Ingestion
+- **Economic Calendar:** Continuously monitors scheduled releases (CPI, Non-Farm Payrolls, FOMC, GDP) and enforces blackout windows around high-impact events.
+- **Yield Curves & Macro Data:** Ingests US Treasury yield data and macroeconomic indices via the FRED API.
+- **News Clustering:** Aggregates headlines from financial feeds and filters them into currency-specific summaries.
 
-### Pillar I: Macroeconomic Intelligence & News Surprise Ingestion
-- **Automated Macro Feeds:** Continuous background ingestion of central bank announcements (Federal Reserve, ECB, BoE, BoJ), US Treasury yield curves via the FRED API, and thematic economic data.
-- **Active Calendar Poller:** Monitors upcoming tier-1 releases (CPI, Non-Farm Payrolls, FOMC, GDP). As a scheduled release approaches, polling frequency accelerates to capture reported figures within seconds.
-- **15-Minute News Settlement & Economic Surprise:** Imposes a mandatory trading blackout $\pm 15$ minutes around high-impact events to avoid catastrophic spread widening. After 15 minutes, calculates the *economic surprise index* ($\text{actual} - \text{forecast}$) to update currency narrative biases.
-- **Thematic Currency Digests:** Scrapes global financial news (Reuters, Bloomberg, FXStreet, CoinDesk) and clusters headlines into currency-specific briefs, filtering out noise.
-
-### Pillar II: Microstructure, Order Flow & SMC Engine
-- **Smart Money Concepts (SMC):** Deterministic extraction of market milestones:
-  - Swing Highs and Lows (Fractal pivots).
+### Market Structure and Technical Indicators
+- **Deterministic Indicator Engine:** Indicator calculations are performed directly in Python:
+  - Swing highs and lows (fractal pivots).
   - Break of Structure (BOS) and Change of Character (CHoCH).
-  - Fair Value Gaps (FVG) tracked across lifecycles: unfilled, partially filled, and mitigated.
-  - Liquidity Pools (buy-side and sell-side liquidity clusters).
-- **Order Flow & Microstructure Metrics:**
-  - Real Level-2 Depth of Market (DOM) analysis with Order Book Imbalance (OBI).
-  - Cumulative Volume Delta (CVD) with automatic fallback to Lee-Ready synthetic tick rule.
-  - Volume-Synchronized Probability of Toxicity (VPIN), Kyle's Lambda, and Amihud illiquidity metrics.
-- **Deep Learning Forecasting (Google TimesFM 3.0):** Optional integration with Google's foundation time-series model to calculate forward-looking quantile volatility bands ($q_{0.1}$ to $q_{0.9}$) for adaptive intraday boundaries.
+  - Fair Value Gaps (FVG) and liquidity pools.
+  - Level-2 Depth of Market (DOM) imbalance and Cumulative Volume Delta (CVD) where broker data permits.
+  - Optional Google TimesFM time-series volatility bands.
 
-### Pillar III: Dialectical Multi-Agent Adversarial Debate
-Rather than relying on a single prompt that suffers from confirmation bias, candidate trade setups undergo structured adversarial debate inside a LangGraph state machine:
+### Bull vs. Bear Adversarial Debate
+Rather than querying a single prompt, Monika coordinates a multi-agent debate within a LangGraph state machine:
 
-```
-             ┌─────────────────────────────────────────────────────────┐
-             │                STAGE 2: TACTICAL SYNTHESIS              │
-             └────────────────────────────┬────────────────────────────┘
-                                          │
-                  ┌───────────────────────┴───────────────────────┐
-                  ▼                                               ▼
-         ┌───────────────────┐                         ┌───────────────────┐
-         │   Bull Analyst    │                         │   Bear Analyst    │
-         │ (Upside Catalysts,│                         │(Downside Threats, │
-         │  Support Defense) │                         │  Order Block Risk)│
-         └─────────┬─────────┘                         └─────────┬─────────┘
-                   │                                             │
-                   └───────────────► ┌─────────┐ ◄───────────────┘
-                                     │ Debate  │  Delta Watermarks &
-                                     │ Council │  (pass) Protocol
-                                     └────┬────┘
-                                          │
-                                          ▼
-                             ┌─────────────────────────┐
-                             │    Investment Judge     │
-                             │ Dynamic Regime Weights  │
-                             │   (Trending/Ranging/    │
-                             │    Volatile via VIX)    │
-                             └────────────┬────────────┘
-                                          ▼
-                             Calibrated Confidence Score
-                                     [0.0 - 1.0]
+```mermaid
+flowchart TD
+    subgraph Intake["Analysis Inputs"]
+        M["Macro Narrative & Calendar Context"]
+        T["Calculated Technical Levels & Gaps"]
+    end
+
+    subgraph Deliberation["Adversarial Deliberation"]
+        M & T --> Bull["Bull Analyst<br/>(Upside catalysts, support defense)"]
+        M & T --> Bear["Bear Analyst<br/>(Downside risks, supply resistance)"]
+        Bull -->|Challenge thesis| Bear
+        Bear -->|Counter-arguments| Bull
+        Bull & Bear --> Judge["Investment Judge<br/>(Regime & volatility calibration)"]
+    end
+
+    subgraph Outcome["Decision Stage"]
+        Judge --> Check{"Confidence Threshold Met?"}
+        Check -- Yes --> Proposal["Structured Proposal<br/>(Entry, SL, TP bounds)"]
+        Check -- No --> Skip["No Trade / Wait"]
+    end
 ```
 
-- **Bull Analyst:** Defends long arguments or stress-tests short proposals, citing order book absorption, CVD divergences, and support zones.
-- **Bear Analyst:** Highlights overhead supply barriers, unmitigated order blocks, liquidity traps, and adverse macro head-winds.
-- **Token-Efficient Deliberation:** Implements **Delta Watermarks** (agents only receive new arguments since their last turn) and a **`(pass)` protocol** (agents pass when their thesis is satisfied), preventing $O(N^2)$ quadratic token inflation.
-- **Impartial Investment Judge:** Evaluates arguments against a dynamic `REGIME_WEIGHT_MATRIX` weighted by current market regime and VIX levels, producing a calibrated confidence score ($0.0 - 1.0$).
-- **Deterministic Coordinate Snapping:** Automatically snaps any slightly drifting LLM price coordinates to validated swing levels or FVG bounds.
+- **Bull Analyst:** Identifies long catalysts, demand zones, and order absorption.
+- **Bear Analyst:** Highlights supply barriers, unmitigated gaps, and macro headwinds.
+- **Investment Judge:** Weighs arguments against current market regime metrics and assigns a confidence score.
+- **Coordinate Snapping:** Automatically snaps proposed price levels to validated swing levels or gap boundaries.
 
-### Pillar IV: The Unbypassable 10-Layer RiskGate Fortress
-Every trade proposal must clear all 10 independent checks:
+### Pre-Trade Risk Controls (`RiskGate`)
+Every trade proposal must clear an immutable checklist before an order reaches MetaTrader 5:
+1. **Operating Status:** Verifies the system is not globally paused.
+2. **Parameter Validity:** Confirms that entry, stop loss, and take profit prices are mathematically valid.
+3. **Daily & Weekly Drawdown Limits:** Halts new orders if realized or unrealized loss thresholds are breached.
+4. **Concurrent Position Limits:** Enforces an absolute cap on open positions.
+5. **Single-Symbol Exposure:** Blocks duplicate directional exposure on the same asset.
+6. **News Event Proximity:** Enforces trading blackouts within a configurable window around tier-1 events.
+7. **Correlated Exposure:** Monitors cross-asset currency correlation across open trades.
+8. **Spread Thresholds:** Blocks orders during illiquid market rollovers or abnormal spread spikes.
+9. **Risk-to-Reward Ratio (RRR):** Requires a minimum planned ratio (e.g. 1:1.5).
+10. **Weekend Gap Protection:** Suspends new positions ahead of weekend market closes.
 
-1. **System Operational Status Check:** Verifies trading is not globally paused or in maintenance mode.
-2. **Positive Lot & Parameter Validity:** Validates non-zero lot calculations and correct SL/TP orientation.
-3. **Daily Realized & Floating Drawdown Ceiling:** Hard limit (default max 4.0% daily / 6.0% weekly).
-4. **Maximum Concurrent Open Positions:** Limits overall portfolio exposure (default max 5 positions).
-5. **Single-Symbol Exposure Cap:** Prevents stacking multiple directional positions on the same pair.
-6. **High-Impact News Proximity Filter:** Blocks new order entries within $\pm 15$ minutes of tier-1 events.
-7. **Portfolio Heat & Cross-Asset Correlation:** Limits correlated currency exposure (e.g., EURUSD and GBPUSD simultaneously).
-8. **Maximum Broker Spread Threshold:** Blocks execution during illiquid market rollovers or spread widening.
-9. **Minimum Risk-to-Reward Ratio (RRR):** Enforces a strict mathematical edge (default minimum $1:1.3$ or $1:2.0$).
-10. **Weekend Gap Risk Quarantine:** Automatically closes or suspends new trades late Friday UTC.
+### Rule-Based Strategies and Signal Arbitration
+- **Rule-Based Runners (`EdgeStrategyRunner`):** Runs standalone algorithms (e.g. Donchian breakout, gap fade, trend models) alongside the LLM workflow.
+- **Signal Arbitrator:** Reconciles signals between quantitative rules and the LLM debate. If both agree, the setup is prioritized; if they conflict, the system defaults to avoidance (`WAIT`).
 
-### Pillar V: Hybrid Quant Alpha & Centralized Signal Arbitration
-- **Parallel Deterministic Quant Runners (`EdgeStrategyRunner`):** Runs quantitative algorithms concurrently with the LLM pipeline:
-  - `btc_donchian_breakout`: Adaptive Donchian channel breakouts for Bitcoin.
-  - `gap_fade`: Weekend and opening gap mean-reversion.
-  - `liquidity_sweep_edge`: High-probability false breakout sweeps.
-  - `tsm_momentum`: Multi-timeframe trend-following momentum.
-  - `xau_trend_engine`: Specialized institutional trend model for Gold.
-- **Centralized `SignalArbitrator`:** Reconciles signals from quantitative models and LLM debates:
-  - *Concordant Agreement:* Both quant and LLM agree $\rightarrow$ confidence boost and risk multiplier applied.
-  - *Conflict Suppression:* Quant and LLM clash $\rightarrow$ trade is defensively suppressed (`AVOID`).
-  - *Defensive Override:* Elevated volatility or VIX forces defensive sizing or trade cancellation.
+### MetaTrader 5 Interface and Watchdog EA
+- **Native Python IPC:** Direct local communication with the MetaTrader 5 desktop terminal on Windows.
+- **MQL5 Watchdog (`AIAgent_EA.mq5`):** A lightweight Expert Advisor running inside MT5 that checks a local `heartbeat.txt` updated periodically by Python. If Python stops responding, the EA can take defensive action.
+- **Enforced Paper Trading:** Defaults to `paper_trading.enabled: true` to prevent accidental real-money execution.
 
-### Pillar VI: Dual-Bridge Execution & MQL5 Dead-Man's Switch
-- **Native MetaTrader 5 Python IPC:** Sub-millisecond direct communication with the MT5 terminal on Windows hosts.
-- **MQL5 EA Dead-Man's Switch (`AIAgent_EA.mq5`):** Running directly inside the MT5 terminal, this independent Expert Advisor continuously monitors a shared `heartbeat.txt` written by Monika every 20 seconds. If the Python process crashes, operating system locks up, or network fails (> 120 seconds stale), the EA automatically intervenes to protect open capital.
-- **Mandatory Paper Trading Graduation Gate:** Default configuration strictly enforces paper trading (`paper_trading.enabled: true`). Live capital execution requires accumulating at least **50 validated paper trades** with a verified win rate $\ge 55\%$.
-
-### Pillar VII: Omnichannel Supervision, Memory & Continuous Learning
-- **4-Layer Cognitive Memory Architecture:**
-  - *Layer 0 (Soul):* Immutable core trading philosophy and risk identities.
-  - *Layer 1 (Macro Reality):* Verified geopolitical, central bank, and yield curve baselines.
-  - *Layer 2 (Chronicle):* Ongoing timeline of macroeconomic regimes and shifts.
-  - *Layer 3 (Episodic Reflection):* Post-trade reflections evaluating whether executed setups unfolded as expected, distilling lessons into persistent storage.
-- **Omnichannel Gateway:** Multi-platform routing engine supporting Telegram, Discord, Slack, and the Agent Client Protocol (ACP).
+### Persistence and Post-Trade Review
+- **Audit Database:** Stores every prompt, debate exchange, model output, and execution ticket in PostgreSQL.
+- **Post-Trade Reflection:** A background task reviews closed trades to note whether market movement aligned with the original thesis.
 
 ---
 
-## 🖥️ 4. Visual Tour & Observability Suite
+## 4. User Interfaces & Observability
 
-> [!TIP]
-> All telemetry readings, account balances, and win-rate statistics shown in the screenshots below represent paper-trading simulations and diagnostic verification sessions.
+> [!NOTE]
+> All metrics, account balances, and win rates displayed in the screenshots below represent **paper-trading simulations** during diagnostic test sessions. They do not represent real financial returns.
 
-### 1. Web Dashboard (React 19 + Vite)
+### Web Dashboard (React 19 + Vite)
 
-The web dashboard provides a control center for monitoring live agent cognition and execution telemetry.
+The web dashboard is a local interface for inspecting system state, open demo positions, and execution logs.
 
-#### Trading Desk Overview & Equity Growth
-Real-time portfolio equity curves, open MT5 execution tickets, factor dispatch feeds, and daily profit/loss meters.
+#### Trading Desk Overview
+Monitors open demo positions, simulated equity curves, and system log events.
 
 <p align="center">
   <img src="docs/images/01_trading_desk_overview.png" alt="Monika Trading Desk Overview" width="100%" style="border-radius: 8px; border: 1px solid #334155;" />
@@ -256,8 +251,8 @@ Real-time portfolio equity curves, open MT5 execution tickets, factor dispatch f
 
 ---
 
-#### Market Intelligence & LangGraph Pipeline DAG
-Interactive visualization of the LangGraph state machine. Inspect node execution latencies, input/output JSON schemas, and live transitions from Macro Stage 1 to Asset Synthesis Stage 2.
+#### Market Intelligence & Pipeline DAG
+Visualizes the execution path and latency of each step in the LangGraph analysis pipeline.
 
 <p align="center">
   <img src="docs/images/04_market_intelligence_pipeline_dag.png" alt="LangGraph Pipeline DAG" width="100%" style="border-radius: 8px; border: 1px solid #334155;" />
@@ -265,8 +260,8 @@ Interactive visualization of the LangGraph state machine. Inspect node execution
 
 ---
 
-#### Signals Matrix & Streaming Market Feed
-Real-time tracking of pending conditional triggers (liquidity sweeps, zone retests), latency benchmarks, and active quote depth.
+#### Signals Matrix & Market Data
+Tracks pending conditional triggers and live market quotes.
 
 <p align="center">
   <img src="docs/images/02_trading_desk_signals.png" alt="Signals Matrix" width="49%" style="border-radius: 8px; border: 1px solid #334155;" />
@@ -275,9 +270,9 @@ Real-time tracking of pending conditional triggers (liquidity sweeps, zone retes
 
 ---
 
-#### Hard Risk Limits & Token Economics Audit
-- **Left:** Analog-style VU gauges tracking daily drawdown budgets, portfolio heat, and circuit breaker health.
-- **Right:** Granular tracking of LLM prompt/completion tokens, model provider routing, and prompt cache hit rates (~70–80% cost savings).
+#### Risk Limits & Token Usage
+- **Left:** Real-time gauges for daily drawdown budgets and circuit breaker status.
+- **Right:** Tracking of token consumption, model provider calls, and prompt cache hit rates.
 
 <p align="center">
   <img src="docs/images/06_ledger_risk_limits.png" alt="Hard Risk Limits" width="49%" style="border-radius: 8px; border: 1px solid #334155;" />
@@ -286,9 +281,9 @@ Real-time tracking of pending conditional triggers (liquidity sweeps, zone retes
 
 ---
 
-#### Telegraph HITL Desk & System Configuration
-- **Left:** Human-In-The-Loop (HITL) interactive console allowing operators to converse with the agent, inspect trade rationales, and manually confirm or veto proposed orders.
-- **Right:** Dynamic system configuration editor with hot-reloading support.
+#### Console Chat & Settings
+- **Left:** Interactive console to query current agent state and market theses.
+- **Right:** Configuration management editor.
 
 <p align="center">
   <img src="docs/images/08_telegraph_desk_console_chat.png" alt="Telegraph Console Chat" width="49%" style="border-radius: 8px; border: 1px solid #334155;" />
@@ -297,182 +292,149 @@ Real-time tracking of pending conditional triggers (liquidity sweeps, zone retes
 
 ---
 
-### 2. Terminal User Interface (TUI)
+### Terminal User Interface (TUI)
 
-For lightweight environments, headless servers, Linux VPS nodes, or remote SSH sessions:
+For headless servers, remote SSH sessions, or lightweight resource environments:
 
 <p align="center">
   <img src="docs/images/10_terminal_ui_tui.png" alt="Terminal UI (TUI)" width="100%" style="border-radius: 8px; border: 1px solid #334155;" />
 </p>
 
-- Built with **Textual** and **Rich** for zero-dependency terminal rendering.
-- Real-time ASCII sparkline equity trajectories and position tables.
-- Keyboard-driven navigation (`Tab`, `1-4`, `q`) and integrated command-line controls.
+- Built with **Textual** and **Rich** for lightweight terminal rendering.
+- Displays live simulated equity curves, open demo orders, and system logs.
 
 ---
 
-## 🏗️ 5. System Architecture & Workflow Pipeline
+## 5. System Architecture & Workflows
 
-### End-to-End Decision Flow
+### End-to-End Pipeline
 
 ```mermaid
 flowchart TD
-    subgraph S1_Perception ["1. Ingestion & Preprocessing"]
-        Ticks[MT5 Market Ticks & OHLCV Bars] --> DataHub[Data Hub]
-        Macro[FRED API / Yield Curves] --> DataHub
-        News[News RSS & Central Bank Feeds] --> DataHub
-        DataHub --> SMC_Eng[SMC Engine: BOS, CHoCH, FVG, L2 DOM]
-        DataHub --> TimesFM_Eng[Google TimesFM 3.0 Volatility Bounds]
+    subgraph S1["1. External Feeds & Ingestion"]
+        MT5_Data["MetaTrader 5 Quotes & Bars"]
+        FRED_Data["FRED Yields & Macro Data"]
+        News_Data["Financial News RSS & Calendar"]
+        DataHub["Data Hub Preprocessor"]
+        MT5_Data --> DataHub
+        FRED_Data --> DataHub
+        News_Data --> DataHub
     end
 
-    subgraph S2_Cognition ["2. Cognitive Reasoning (LangGraph)"]
-        DataHub --> S1_Macro[Stage 1: Macroeconomic Grounding Brief]
-        SMC_Eng --> S2_Asset[Stage 2: Tactical Asset Synthesis]
-        TimesFM_Eng --> S2_Asset
-        S1_Macro --> S2_Asset
-        S2_Asset --> BullAgent[Bull Specialist Persona]
-        S2_Asset --> BearAgent[Bear Specialist Persona]
-        BullAgent <--> AdversarialDebate[Dialectical Adversarial Debate]
-        BearAgent <--> AdversarialDebate
-        AdversarialDebate --> JudgeAgent[Investment Arbitration Judge]
-        JudgeAgent --> Proposal[Structured Trade Proposal]
+    subgraph S2["2. Analysis & Deliberation Engine"]
+        DataHub --> TechMath["Indicator & Structure Engine<br/>(Pivots, FVG, L2 DOM, TimesFM)"]
+        DataHub --> MacroBrief["Macroeconomic Context Synthesis"]
+        TechMath & MacroBrief --> LangGraphEngine["LangGraph State Machine<br/>(Bull / Bear / Judge Debate)"]
+        LangGraphEngine --> Proposal["Structured Trade Proposal"]
     end
 
-    subgraph S3_Fortress ["3. Mechanical Risk Fortress"]
-        Proposal --> RiskGate{Deterministic RiskGate<br/>10-Layer Checkpoint Filter}
-        QuantRunner[EdgeStrategyRunner<br/>Quant Alphas] --> SignalArb[Centralized Signal Arbitrator]
-        RiskGate -- Failed --> AuditReject[Rejected & Persisted to DB]
-        RiskGate -- Passed --> Sizer[Deterministic Volatility Sizer]
-        SignalArb --> Sizer
+    subgraph S3["3. Risk Control & Arbitration"]
+        RuleStrategies["Rule-Based Quant Runners<br/>(Breakout, Gap Fade, Sweeps)"]
+        Arbitrator["Signal Arbitrator"]
+        Proposal --> RiskGate{"Deterministic RiskGate<br/>(Drawdown, Spread, News, RRR)"}
+        RuleStrategies --> Arbitrator
+        Arbitrator --> RiskGate
+        RiskGate -- Rejected --> AuditLog["Audit Logger (Reject Trace)"]
+        RiskGate -- Approved --> Sizer["ATR Volatility Position Sizer"]
     end
 
-    subgraph S4_Execution ["4. Execution & Watchdogs"]
-        Sizer --> ExecService[Execution Service]
-        ExecService --> MT5_IPC[Native MetaTrader 5 Python IPC]
-        ExecService --> EA_Bridge[MQL5 EA Dead-Man Switch]
-        MT5_IPC --> BrokerOrder[Broker Order Book]
-        EA_Bridge --> BrokerOrder
+    subgraph S4["4. Execution & Watchdog Layer"]
+        Sizer --> OrderRouter["Order Router"]
+        OrderRouter --> MT5_Bridge["MetaTrader 5 Python IPC"]
+        MT5_Bridge --> MT5_Terminal["MT5 Desktop Terminal"]
+        MT5_Bridge -.->|Heartbeat| MQL5_EA["MQL5 Watchdog EA"]
     end
 
-    subgraph S5_Observability ["5. Observability & Memory"]
-        BrokerOrder --> Postgres[(PostgreSQL 16+ Database)]
-        Postgres --> FastAPI_Svc[FastAPI Telemetry Backend]
-        FastAPI_Svc --> WebUI[React 19 Web Dashboard]
-        FastAPI_Svc --> TUI_Cli[Terminal UI - Textual]
-        FastAPI_Svc --> TelegramDaemon[Telegram Bot & HITL]
-        BrokerOrder --> MemoryReflect[Episodic Reflection & Learning]
+    subgraph S5["5. Persistence & Monitoring"]
+        MT5_Terminal --> Postgres[("PostgreSQL 16 Database")]
+        AuditLog --> Postgres
+        Postgres --> Backend["FastAPI Telemetry Service"]
+        Backend --> WebUI["React 19 Web Dashboard"]
+        Backend --> TUI["Terminal UI (Textual)"]
+        Backend --> TelegramBot["Telegram Supervision Bot"]
     end
 ```
 
-### The 18+ Concurrent Background Schedulers
+### Background Task Schedulers
 
-Monika coordinates multiple asynchronous tasks orchestrated via Python's `asyncio` event loop:
+Monika coordinates multiple asynchronous loops managed through Python's `asyncio`:
 
-| Task Component | Interval | Primary Responsibility |
+| Task Component | Interval | Operational Responsibility |
 | :--- | :--- | :--- |
-| `GraphCycleScheduler` | Every 6–8 hrs | Executes the full LangGraph macro analysis and multi-asset debate cycle. |
-| `NewsWatcher` | Every 5 min | Polls breaking news feeds and triggers rapid ad-hoc re-evaluations on tier-1 events. |
-| `TriggerChecker` | Every 2 min | Checks pending conditional orders (price sweep confirmations, FVG retests). |
-| `ActiveCalendarPoller` | Real-time | Accelerates polling around high-impact economic releases (CPI, NFP, FOMC). |
-| `PostReleaseAnalyzer` | Post-event | Analyzes economic surprise indices after the mandatory 15-minute settlement window. |
-| `PositionGuardian` | Every 5 min | Inspects open positions and closes them before high-impact news if configured. |
-| `TrailingStopManager` | Every 30 sec | Dynamic trailing stop adjustments (breakeven locks, ATR ratchet). |
-| `FlashCrashDetector` | Every 30 sec | Detects sudden price travel ($>5\times$ ATR in 30s) and trails stops to breakeven. |
-| `EdgeStrategyRunner` | Continuous | Executes deterministic quant alpha models (Donchian, Gap Fade, Sweeps). |
-| `HeartbeatManager` | Every 20 sec | Writes timestamps to `heartbeat.txt` for the MQL5 EA dead-man's switch. |
-| `OrderReconciler` | Every 5 min | Resolves discrepancies between database records and live MT5 broker tickets. |
-| `PositionExitReviewer` | Event-driven | Triggers post-exit reflections to extract empirical lessons into Layer 3 memory. |
-| `PositionSupervisor` | Every 1 min | Monitors total margin utilization, portfolio heat, and aggregate leverage. |
-| `MarketDataScheduler` | Continuous | Ingests live tick data, OHLCV bars, and DOM Level-2 book depth. |
-| `MacroDataScheduler` | Periodic | Refreshes FRED yield curves, inflation indices, and central bank speeches. |
-| `DigestSliceScheduler` | Hourly | Summarizes accumulated news headlines into clean thematic digests. |
-| `TelegramBot` | Continuous | Long-polling Telegram interface for alerts, status, and HITL authorization. |
-| `Dashboard API` | Daemon | High-performance FastAPI REST & WebSocket server powering the frontend. |
+| `GraphCycleScheduler` | Every 6-8 hrs | Runs the full macro analysis and asset debate workflow. |
+| `NewsWatcher` | Every 5 min | Checks for fresh news headlines from RSS and calendar feeds. |
+| `TriggerChecker` | Every 2 min | Monitors pending conditional triggers (e.g. price entering a specified zone). |
+| `ActiveCalendarPoller` | Real-time | Accelerates check frequency around scheduled tier-1 economic events. |
+| `PositionGuardian` | Every 5 min | Reviews open positions against upcoming news blackouts and risk rules. |
+| `TrailingStopManager` | Every 30 sec | Adjusts trailing stops or moves stops to breakeven when thresholds are reached. |
+| `FlashCrashDetector` | Every 30 sec | Detects abnormal rapid price travel (>5x ATR) and moves stops defensively. |
+| `EdgeStrategyRunner` | Continuous | Evaluates rule-based quant models in parallel with the LLM cycle. |
+| `HeartbeatManager` | Every 20 sec | Writes a timestamp to `heartbeat.txt` for the MQL5 watchdog EA. |
+| `OrderReconciler` | Every 5 min | Verifies that database position records match active MT5 broker tickets. |
+| `PositionExitReviewer` | Event-driven | Triggers post-exit reflections to log observations from closed trades. |
+| `PositionSupervisor` | Every 1 min | Monitors margin utilization and overall portfolio leverage. |
+| `TelegramBot` | Continuous | Long-polling daemon for remote notifications and manual operator commands. |
+| `Dashboard API` | Continuous | FastAPI backend serving REST endpoints and WebSockets to the web dashboard. |
 
 ---
 
-## 🌐 6. Supported Asset Universe & LLM Ecosystem
+## 6. Supported Assets & Model Configuration
 
-### Supported Asset Universe
-Configured via `trading-agent/config/settings.yaml`, Monika natively supports:
-- **Commodities:** `XAUUSD` (Spot Gold), `XTIUSD` (WTI Crude Oil), `XBRUSD` (Brent Crude Oil).
-- **Major Forex:** `EURUSD`, `GBPUSD`, `USDJPY`, `AUDUSD`.
-- **Cryptocurrencies:** `BTCUSD` (Bitcoin).
+### Supported Instruments
+Configured via `trading-agent/config/settings.yaml`:
+- **Commodities:** `XAUUSD` (Spot Gold), `XTIUSD` (WTI Crude Oil), `XBRUSD` (Brent Crude Oil)
+- **Major Forex:** `EURUSD`, `GBPUSD`, `USDJPY`, `AUDUSD`
+- **Cryptocurrency:** `BTCUSD` (Bitcoin)
 
-### Multi-Provider LLM Routing Architecture (Decoupled Task-Role Design)
+### Model Routing Configuration
+Model selection is decoupled from application code. Tasks request an abstract role (e.g. `stage1_fundamental`, `debate_bull`, `debate_judge`), which is mapped to a provider and model in `trading-agent/config/settings.yaml`.
 
-Monika separates analytical logic from specific AI models. **Zero model names are hardcoded into the codebase.** Every analytical module requests an abstract role (e.g. `get_client_for_task("stage1_fundamental")`), and the runtime dynamically resolves the model from `trading-agent/config/settings.yaml`.
+Supported providers:
+- **Google Gemini:** Direct Google GenAI SDK integration with key rotation.
+- **Groq:** Fast inference for lightweight prescreening.
+- **OpenRouter:** Access to multiple open-source and proprietary models.
+- **Anthropic / OpenAI / DeepSeek:** Standard compatible endpoints.
+- **Local Ollama:** For local, self-hosted environments.
 
-This decoupled architecture gives you complete freedom to **experiment, benchmark, and hot-swap models** across any provider at any time without modifying a single line of Python code.
-
-#### 1. Task Complexity Tiers
-Analytical tasks are organized into four functional complexity tiers:
-
-- **Tier 1: Macro & Deep Narrative Synthesis** (`stage1_fundamental`, `stage1_escalation`, `deep_research`)  
-  *Characteristics:* High-context reasoning, synthesizing central bank policy shifts, yield curve trends, and multi-source global news. Best suited for high-reasoning, large-context foundation models.
-- **Tier 2: Tactical Asset Synthesis & Adversarial Debate** (`stage2_per_asset`, `debate_bull`, `debate_bear`, `debate_judge`)  
-  *Characteristics:* Strict JSON schema compliance, microstructure/SMC chart alignment, adversarial cross-examination, and calibrated confidence scoring ($0.0 - 1.0$). Best suited for disciplined, high-fidelity reasoning models.
-- **Tier 3: High-Frequency Verification & Prescreening** (`stage1_shadow_check`, `stage2_prescreen`, `news_classification`, `fundamental_verifier`)  
-  *Characteristics:* Sub-second validation, rapid headline filtering, and structural sanity checks executed before spinning up heavier debate pipelines. Best suited for ultra-fast, zero-cost, or lightweight inference engines.
-- **Tier 4: Operator & Telegram Interaction** (`chat_telegram`, `report_synthesizer`)  
-  *Characteristics:* Conversational explanations of trade setups, command parsing, and Human-in-the-Loop (HITL) authorization dialogs with tool-calling capabilities.
-
-#### 2. Automated Multi-Tier Fallback Cascades
-Every task role in `settings.yaml` supports an ordered chain of fallbacks (`fallback_1`, `fallback_2`, `fallback_3`, etc.). If a provider experiences rate limits (HTTP 429), API outages, or token exhaustion, Monika automatically cascades down to subsequent providers in milliseconds, guaranteeing high system availability.
-
-#### 3. Configuring Your Preferred Models
-To assign or test different models, simply update `trading-agent/config/settings.yaml`:
-
+Example configuration in `trading-agent/config/settings.yaml`:
 ```yaml
 llm:
   task_roles:
     stage1_fundamental:
-      primary: your-preferred-macro-model       # e.g., your favorite frontier reasoning model
-      fallback_1: your-fast-backup-model        # e.g., low-latency secondary model
-      fallback_2: openrouter/free               # e.g., zero-cost community fallback
+      primary: your-chosen-macro-model
+      fallback_1: your-backup-model
       max_tokens: 16384
       temperature: 0.0
 
     debate_judge:
-      primary: your-preferred-arbitration-model # e.g., impartial reasoning model
+      primary: your-chosen-reasoning-model
       fallback_1: your-backup-model
       max_tokens: 6144
       temperature: 0.0
 
     stage2_prescreen:
-      primary: your-fastest-prescreen-model     # e.g., high-throughput verification engine
-      fallback_1: your-lightweight-fallback
+      primary: your-fast-filter-model
       max_tokens: 1024
       temperature: 0.0
 ```
 
-#### 4. Supported Provider Protocols
-Monika natively interfaces with a wide spectrum of providers:
-- **Google Gemini API:** Native Google SDK with multi-key rotation and thinking budget controls.
-- **Groq API:** Ultra-low latency inference for fast-turn fallbacks and rapid tool calls.
-- **OpenRouter & 9Router:** Unified gateway to hundreds of frontier and open-source models with prompt caching and free-tier options.
-- **Anthropic, OpenAI, DeepSeek:** Native and OpenAI-compatible REST endpoints.
-- **Ollama:** On-premise, fully private local execution for air-gapped environments.
-
-
-
 ---
 
-## 🚀 7. Practical Getting Started Guide
+## 7. Installation & Quickstart
 
-### 1. Prerequisites & System Requirements
-- **Operating System:** Windows 10/11 or Windows Server (required for native MT5 Terminal execution; Linux supported via Wine / Docker container in `deploy/`).
+### Prerequisites
+- **Operating System:** Windows 10/11 or Windows Server (required for native MetaTrader 5; Linux requires Wine/Docker).
 - **Python:** `3.11` or higher.
-- **Database:** PostgreSQL `16.0` or higher (mandatory for async concurrency and advisory locks).
-- **Node.js:** `18.0` or higher and `npm` (for the React Web Dashboard).
-- **Broker:** MetaTrader 5 Desktop Terminal installed with an active demo account.
+- **Database:** PostgreSQL `16.0` or higher.
+- **Node.js:** `18.0` or higher (only required if building the Web Dashboard frontend).
+- **MetaTrader 5:** Installed desktop terminal with a **demo account**.
 
 ---
 
-### 2. Installation from Source
+### Step-by-Step Setup
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/alakbarr/Monika.git
 cd Monika
 
@@ -489,7 +451,7 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r trading-agent/requirements.txt
 
-# 4. Build the Web Dashboard frontend
+# 4. Optional: Build the Web Dashboard frontend
 cd trading-agent/logging_observability/dashboard/frontend
 npm install
 npm run build
@@ -498,14 +460,14 @@ cd ../../../..
 
 ---
 
-### 3. Database Setup & Alembic Migrations
+### Database Initialization
 
-Ensure your PostgreSQL service is running, create an empty database:
+Ensure your PostgreSQL service is running, then create a database:
 ```sql
 CREATE DATABASE monika_trading;
 ```
 
-Run database migrations to generate all required tables and indexes:
+Apply database migrations:
 ```bash
 cd trading-agent
 alembic upgrade head
@@ -514,264 +476,249 @@ cd ..
 
 ---
 
-### 4. Environment Configuration (`.env`)
+### Environment Variables (`.env`)
 
 Copy the template configuration file:
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` in a text editor and fill in your credentials:
+Configure `.env` with your credentials:
 ```ini
-# Database Connection (PostgreSQL 16+)
+# PostgreSQL 16+ Database
 DATABASE_URL=postgresql+asyncpg://postgres:yourpassword@localhost:5432/monika_trading
 
-# MetaTrader 5 Configuration
+# MetaTrader 5 Demo Account
 MT5_ACCOUNT=12345678
 MT5_PASSWORD=YourDemoPassword
 MT5_SERVER=MetaQuotes-Demo
 MT5_PATH=C:/Program Files/MetaTrader 5/terminal64.exe
 
-# LLM Providers (Gemini and/or OpenRouter/Groq recommended)
-GEMINI_API_KEYS=AIzaSyKey1,AIzaSyKey2
-OPENROUTER_API_KEYS=sk-or-v1-...
-GROQ_API_KEY=gsk_...
-# Optional / Upstream Providers
-ANTHROPIC_API_KEY=sk-ant-api03-...
-OPENAI_API_KEY=sk-proj-...
-TYPESAFE_API_KEY=ts_...
+# LLM Providers (Configure at least one)
+GEMINI_API_KEYS=your_gemini_api_key
+OPENROUTER_API_KEYS=your_openrouter_api_key
+GROQ_API_KEY=your_groq_api_key
 
-# Optional Data Feeds & Sentiment
+# Optional Data Feeds
 FRED_API_KEY=your_fred_api_key
 FINNHUB_API_KEY=your_finnhub_api_key
 
-# Remote Telegram Supervision (Recommended)
+# Optional Telegram Remote Supervision
 TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
 TELEGRAM_ADMIN_CHAT_ID=123456789
 ```
 
 > [!CAUTION]
-> **Never commit your `.env` file to version control.** It is protected by `.gitignore` by default.
+> **Never commit your `.env` file to version control.** It contains private credentials and is excluded by `.gitignore`.
 
 ---
 
-### 5. Pre-Flight Health Verification (Doctor)
+### Pre-Flight Diagnostic Check
 
-Before launching the autonomous daemon, verify that all systems, database connections, MT5 IPC bridges, and API credentials are functional:
+Run the diagnostic utility to verify database connectivity, MT5 path, and API keys:
 
 ```bash
 python trading-agent/cli/main.py doctor
 ```
 
-The Doctor utility verifies:
-- PostgreSQL connection & Alembic migration status.
-- MetaTrader 5 path existence and account authentication.
-- LLM API key validity and connectivity.
-- MQL5 heartbeat folder read/write permissions.
+The doctor check verifies:
+- PostgreSQL connectivity and Alembic schema migration status.
+- MetaTrader 5 executable path and account authentication.
+- LLM API key responsiveness.
+- Heartbeat file path write permissions.
 
 ---
 
-### 6. Running Monika
+### Starting the Application
 
-#### Option A: One-Click Startup Script (Windows)
-Launches the background trading daemon, web dashboard, and gateway in separate terminal tabs:
+#### Option A: Windows Batch Script
+Launches the daemon and dashboard:
 ```cmd
 trading-agent\start_agent.bat
 ```
 
-#### Option B: One-Click Startup Script (Linux / macOS)
+#### Option B: Linux / macOS Shell Script
 ```bash
 bash trading-agent/start_agent.sh
 ```
 
-#### Option C: Interactive CLI Daemon (Paper Mode)
+#### Option C: CLI Daemon (Paper Mode)
 ```bash
 python trading-agent/cli/main.py run --mode paper
 ```
 
-#### Option D: Terminal UI (TUI) Mode
-To open the real-time terminal telemetry interface:
+#### Option D: Terminal UI Mode
 ```bash
 python trading-agent/cli/main.py tui
 ```
 
-#### Option E: Containerized Deployment (Docker Compose)
-To launch PostgreSQL and the background environment in Docker:
+#### Option E: Containerized Deployment
 ```bash
 docker compose up -d
 ```
 
 ---
 
-## 🕹️ 8. CLI & Telegram Command Reference
+## 8. CLI & Telegram Reference
 
-### CLI Command Suite (`trading-agent/cli/main.py`)
+### Command-Line Interface
 
-| Command | Action / Purpose |
+| Command | Primary Function |
 | :--- | :--- |
-| `python -m cli.main setup` | Interactive terminal wizard to configure `.env` and broker settings. |
-| `python -m cli.main doctor` | Diagnostic health check verifying DB, MT5, and API keys. |
-| `python -m cli.main run` | Launches the autonomous trading agent daemon. |
-| `python -m cli.main status` | Displays system status, active background tasks, and account equity. |
-| `python -m cli.main positions` | Lists open MT5 positions, lots, floating PnL, and active stops. |
-| `python -m cli.main analyze [SYMBOL]` | Runs an on-demand analysis cycle for a specified asset (e.g. `XAUUSD`). |
+| `python -m cli.main setup` | Interactive terminal wizard to configure `.env` and broker parameters. |
+| `python -m cli.main doctor` | Runs diagnostic health checks for PostgreSQL, MT5, and LLM API keys. |
+| `python -m cli.main run` | Starts the background trading agent daemon. |
+| `python -m cli.main status` | Displays system health, active background tasks, and account equity. |
+| `python -m cli.main positions` | Lists open demo positions, active stops, and unrealized profit/loss. |
+| `python -m cli.main analyze [SYMBOL]` | Executes an on-demand analysis cycle for a specified instrument (e.g. `XAUUSD`). |
 | `python -m cli.main chat` | Starts an interactive chat REPL with the agent assistant. |
-| `python -m cli.main ask "QUERY"` | Executes a one-shot market or system query and exits. |
-| `python -m cli.main pause` | Temporarily halts new trade proposal execution. |
-| `python -m cli.main resume` | Resumes automated trade execution. |
-| `python -m cli.main kill` | **Emergency Circuit Breaker:** Liquidates all active positions and halts the daemon. |
-| `python -m cli.main tui` | Opens the full-screen interactive Terminal UI (Textual). |
-| `python -m cli.main backtest` | Launches the historical point-in-time backtesting engine. |
-| `python -m cli.main benchmark` | Runs the Alpha Arena LLM model comparison benchmark. |
+| `python -m cli.main ask "QUERY"` | Executes a one-off query and prints the response. |
+| `python -m cli.main pause` | Pauses automated trade proposal execution. |
+| `python -m cli.main resume` | Resumes automated trade proposal execution. |
+| `python -m cli.main kill` | Emergency stop: closes open positions and terminates the daemon. |
+| `python -m cli.main tui` | Launches the full-screen terminal interface (Textual). |
+| `python -m cli.main backtest` | Runs strategy evaluations against historical price data. |
+| `python -m cli.main benchmark` | Evaluates and compares reasoning responses across configured models. |
 
 ---
 
-### Telegram Remote Bot Commands
+### Telegram Bot Commands
 
-| Command | Access Level | Description |
+| Command | Permission | Description |
 | :--- | :--- | :--- |
-| `/status` | Public | View system health, open positions, floating PnL, and risk state. |
-| `/positions`| Public | List open tickets, entry prices, stop losses, and take profits. |
-| `/brief` | Public | Display the latest Stage 1 macroeconomic narrative brief. |
-| `/risk` | Public | Inspect current daily drawdown gauges and circuit breaker status. |
-| `/vix` | Public | View current market volatility reading and active regime mode. |
-| `/tokens` | Public | Check LLM token usage, cost expenditure, and cache hit rates. |
-| `/run` | Admin | Manually trigger an immediate multi-agent analysis cycle. |
-| `/pause` | Admin | Pause automated trade intake with optional reason. |
-| `/resume` | Admin | Resume automated trade intake. |
-| `/close <ticket>` | Admin | Close a specific open ticket (requires confirmation). |
-| `/kill` | Admin | **Emergency Circuit Breaker:** Liquidate all active positions and halt immediately. |
-| `/help` | Public | Display command menu and usage instructions. |
+| `/status` | Public | View system health, open positions, and account metrics. |
+| `/positions` | Public | List open tickets, entry prices, stop losses, and take profits. |
+| `/brief` | Public | Display the latest macroeconomic narrative summary. |
+| `/risk` | Public | Inspect current daily drawdown and risk limit utilization. |
+| `/vix` | Public | View current volatility readings and active regime classification. |
+| `/tokens` | Public | Review token consumption and estimated API expenditures. |
+| `/run` | Admin | Manually trigger an analysis cycle. |
+| `/pause` | Admin | Pause automated trade execution. |
+| `/resume` | Admin | Resume automated trade execution. |
+| `/close <ticket>` | Admin | Request manual closure of a specific open ticket. |
+| `/kill` | Admin | Emergency stop: close all open positions and halt execution. |
+| `/help` | Public | Display available commands and usage instructions. |
 
 ---
 
-## 🧪 9. Testing, Backtesting & Evaluation Suite
+## 9. Testing & Backtesting
 
-### Running Automated Tests
-Monika enforces rigorous test coverage across risk calculations, SMC indicator logic, debate arbitration, and broker execution bridges:
+### Running the Test Suite
+Run automated unit and integration tests across risk calculation, indicators, and broker bridges:
 
 ```bash
-# Run full test suite (PowerShell):
+# Run full test suite (Windows PowerShell):
 $env:PYTHONPATH="trading-agent"; python -m pytest trading-agent/tests -v
 
 # Run full test suite (Linux/macOS):
 PYTHONPATH=trading-agent pytest trading-agent/tests -v
 
-# Run targeted RiskGate validation tests:
+# Run RiskGate validation tests:
 PYTHONPATH=trading-agent pytest trading-agent/tests/risk/test_risk_gate.py -v
 
-# Run SMC market structure tests:
+# Run market structure indicator tests:
 PYTHONPATH=trading-agent pytest trading-agent/tests/indicators/test_structure.py -v
 ```
 
-### Point-in-Time Backtesting Engine
-Test strategies against historical market conditions without lookahead bias:
+### Offline Backtesting
+Evaluate strategy logic against historical data:
 ```bash
 python trading-agent/cli/main.py backtest --symbol XAUUSD --days 30
 ```
 
-### Alpha Arena Model Benchmarking
-Compare reasoning quality, confidence calibration, and token efficiency across different LLM providers using historical market fixtures:
+### Model Benchmarks
+Evaluate reasoning consistency across different models using recorded test fixtures:
 ```bash
-python trading-agent/cli/main.py benchmark --models model_a,model_b,model_c
+python trading-agent/cli/main.py benchmark --models model_a,model_b
 ```
 
 ---
 
-## ❓ 10. Frequently Asked Questions (FAQ)
+## 10. Frequently Asked Questions
 
-### Q: What is Monika in one sentence?
-**A:** Monika is a domain-specific multi-agent trading harness for MetaTrader 5 that combines macroeconomic synthesis and SMC order flow with dialectical Bull/Bear debate, guarded by an unbypassable mechanical risk fortress.
+### What is Monika?
+Monika is an experimental Python framework that explores whether language models can assist in market analysis while keeping all actual risk management and order validation in deterministic code. The AI can propose ideas, but plain code enforces the rules.
 
-### Q: Is Monika guaranteed to be profitable?
-**A:** **No.** Financial markets are non-linear, unpredictable, and subject to structural regime shifts. Monika is engineered to enforce extreme risk discipline and capital preservation, but no software can eliminate market risk.
+### Does this framework guarantee trading profits?
+**No.** Financial markets are non-linear, unpredictable, and subject to regime changes. Most automated trading strategies lose money in live conditions. This project is built for research and software engineering experimentation.
 
-### Q: Why can't I just connect ChatGPT or Claude directly to MetaTrader 5?
-**A:** Unconstrained LLMs suffer from mathematical hallucinations, cannot calculate accurate lot sizes or pip values, suffer from confirmation bias, and lack emergency circuit breakers. Monika provides the essential *harness*—handling data normalization, multi-agent cross-examination, and deterministic mathematical risk filtering.
+### Why not let language models place orders directly?
+Language models make arithmetic mistakes, misjudge lot sizes, hallucinate price levels, and suffer from confirmation bias. Leaving position sizing, stop placement, and risk rules to deterministic Python code prevents the model from making catastrophic execution errors.
 
-### Q: Why is PostgreSQL required instead of SQLite?
-**A:** Monika coordinates 18+ concurrent asynchronous background tasks. SQLite suffers from write lock contention under high async loads. Furthermore, Monika relies on PostgreSQL advisory locks and partial unique indexes to guarantee that no duplicate orders can ever be submitted for the same asset signal.
+### Why is PostgreSQL required instead of SQLite?
+Monika coordinates numerous concurrent asynchronous tasks (market streaming, news polling, trailing stops, dashboard WebSockets). SQLite experiences database lock contention under concurrent async writes. PostgreSQL handles concurrent operations reliably and provides advisory locks to prevent duplicate order generation.
 
-### Q: Why does Monika refuse to start without Paper Trading mode?
-**A:** Safety is the primary architectural directive. Monika enforces `paper_trading.enabled: true` by default. Switching to live money execution requires accumulating at least 50 validated paper trades with an overall win rate $\ge 55\%$.
+### Why is paper trading enforced by default?
+Accidental execution errors are common during automated trading development. Keeping `paper_trading.enabled: true` as the default ensures users can test and debug safely without risking capital.
 
-### Q: How much does it cost in LLM API fees to run Monika?
-**A:** Because Monika utilizes KV prompt caching (~70–80% cache hit rate), delta watermarks, and routes high-frequency prescreening to zero-cost or lightweight models while reserving heavier models for complex escalation, operating costs typically range between **$0.50 – $2.00 per day** under normal continuous operation (and can be $0 if leveraging local Ollama or free-tier community providers).
+### What are the estimated LLM API operating costs?
+By employing prompt caching and routing lightweight prescreening tasks to fast models, operating costs typically range between **$0.50 and $2.00 per day** of continuous operation. Costs can be reduced to zero by using local models via Ollama or free provider tiers.
 
-### Q: Can I run Monika on a Linux VPS?
-**A:** Yes. While the official `MetaTrader5` Python package is a Windows C-extension, Monika provides a containerized Wine/Docker RPC solution in `deploy/Dockerfile.mt5-wine` and `deploy/vps_deployment_guide.md`.
+### Can this run on Linux?
+Yes. Although MetaTrader 5 is a native Windows application, Linux support is provided using Wine and Docker container configurations available in the `deploy/` directory.
 
 ---
 
-## 📁 11. Repository Structure
+## 11. Repository Structure
 
 ```
 Monika/
-├── PRD.md                     # Project Requirements Document (Comprehensive Spec)
-├── README.md                  # System overview, quickstart, and interfaces
-├── DESIGN.md                  # Web Dashboard design specifications
+├── PRD.md                     # Project requirements & design notes
+├── README.md                  # System documentation & quickstart guide
+├── DESIGN.md                  # Web dashboard UI specifications
 ├── CONTRIBUTING.md            # Guidelines for open-source contributions
 ├── CODE_OF_CONDUCT.md         # Community code of conduct
-├── SECURITY.md                # Security policy and vulnerability disclosure
-├── INDEX.md                   # Exhaustive codebase index with line citations
-├── STRUCTURE.md               # Complete directory inventory and file tree
-├── deploy/                    # Linux VPS deployment assets (Wine, Docker, guides)
-├── docs/                      # UI screenshots, architecture diagrams, assets
-├── scripts/                   # Migration, benchmark, and administrative scripts
+├── SECURITY.md                # Security policy & vulnerability reporting
+├── INDEX.md                   # Codebase index and references
+├── STRUCTURE.md               # Directory and file inventory
+├── deploy/                    # Linux / Wine deployment scripts & Dockerfiles
+├── docs/                      # Screenshots, architecture diagrams, assets
+├── scripts/                   # Migration, benchmark, and utility scripts
 └── trading-agent/             # Core application codebase
-    ├── main.py                # Top-level orchestrator & asyncio runtime
+    ├── main.py                # Top-level runtime and asyncio orchestrator
     ├── agent/                 # Lifecycle managers, health monitors, watchdogs
-    ├── analysis/              # Multi-agent debate, SMC calculators, prompt templates
-    │   ├── arbitration/       # SignalArbitrator (Quant Alpha vs. LLM Debate)
-    │   ├── calculators/       # Economic surprise, FVG, volume profile, TimesFM
-    │   ├── debate/            # Bull Analyst, Bear Analyst, Investment Judge
-    │   ├── memory/            # 4-Layer Memory (Soul, Macro, Chronicle, Reflection)
-    │   └── providers/         # Multi-provider LLM clients & KV prompt caching
-    ├── backtest/              # Point-in-time, walk-forward, and Monte Carlo engine
-    ├── benchmark/             # Alpha Arena, model registry, prompt evolution
-    ├── cli/                   # Terminal UI (TUI) and comprehensive CLI subcommands
-    ├── config/                # settings.yaml, schema validators, hot-reload engine
-    ├── database/              # SQLAlchemy 2.0 async models, migrations, advisory locks
-    ├── evals/                 # Hostile market scenario probes & simulation clocks
-    ├── execution/             # Native MT5 client, MQL5 EA bridge, execution service
-    ├── gateway/               # Omnichannel router (Telegram, Discord, Slack, ACP)
-    ├── graph/                 # LangGraph state machine node implementations
-    ├── harness/               # Universal plugin engine, lifecycle & event bus
-    ├── indicators/            # Classical indicators, SMC structures, Google TimesFM 3.0
-    ├── logging_observability/ # Structured activity logs, Prometheus, React 19 Web Dashboard
-    ├── risk/                  # Deterministic RiskGate (10 layers), sizing, circuit breakers
-    ├── scheduler/             # 18+ Background task loops (news, triggers, cycles, guardians)
-    ├── scrapers/              # Scraping engines (Calendars, FRED, News RSS, Sentiment)
-    ├── skills/                # Unified skills runtime & continuous learning playbooks
-    └── telegram_bot/          # Telegram bot handler & interactive keyboards
+    ├── analysis/              # Multi-agent debate, indicator math, LLM clients
+    │   ├── arbitration/       # Signal arbitration (rule-based vs. LLM)
+    │   ├── calculators/       # Technical indicators (FVG, volume, surprise)
+    │   ├── debate/            # Bull, Bear, and Judge debate prompts
+    │   ├── memory/            # Storage for context, daily summaries, and notes
+    │   └── providers/         # Multi-provider LLM integrations & caching
+    ├── backtest/              # Offline backtesting engine
+    ├── benchmark/             # Model benchmarking tools
+    ├── cli/                   # Command-line tools and TUI (Textual)
+    ├── config/                # settings.yaml and schema validators
+    ├── database/              # SQLAlchemy models, migrations, advisory locks
+    ├── logging_observability/ # Activity logs, metrics, React Web Dashboard
+    ├── risk/                  # Deterministic RiskGate rules and lot sizing
+    ├── scheduler/             # Background task loops (news, triggers, guardians)
+    ├── scrapers/              # Scraping utilities (FRED, news RSS, calendar)
+    └── telegram_bot/          # Telegram bot handlers
 ```
 
 ---
 
-## 🤝 12. Contributing, Security & Community
+## 12. Contributing
 
-We believe the most resilient trading software is built through public peer review, transparent engineering, and collective scrutiny.
+Constructive feedback, bug reports, and pull requests are welcome.
 
-- **Found a bug or risk calculation error?** Please submit a detailed [GitHub Issue](https://github.com/alakbarr/Monika/issues).
-- **Have architectural suggestions?** Join the conversation in [GitHub Discussions](https://github.com/alakbarr/Monika/discussions).
-- **Want to contribute code?** Check out our [Contributing Guidelines](CONTRIBUTING.md) and submit a pull request!
-- **Security Vulnerabilities:** Please review our [Security Policy](SECURITY.md) to report vulnerabilities privately.
+- **Issue Tracker:** Submit bug reports or edge-case findings to [GitHub Issues](https://github.com/alakbarr/Monika/issues).
+- **Discussions:** Share ideas or architecture feedback in [GitHub Discussions](https://github.com/alakbarr/Monika/discussions).
+- **Contributing Code:** Please review [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+- **Security Vulnerabilities:** Review [SECURITY.md](SECURITY.md) to report vulnerabilities responsibly.
 
 ---
 
-## ⚖️ 13. Financial & Research Disclaimer
+## 13. Disclaimer
 
 > [!CAUTION]
-> **STRICTLY FOR RESEARCH, EDUCATIONAL, AND EXPERIMENTAL PURPOSES ONLY.**
+> **FOR EDUCATIONAL, RESEARCH, AND EXPERIMENTAL PURPOSES ONLY.**
 >
-> Financial speculation and trading in foreign exchange, commodities, cryptocurrencies, and leveraged instruments carry a **substantial risk of financial loss**.
+> Trading foreign exchange, commodities, cryptocurrencies, and leveraged financial products involves a high degree of risk and can result in the complete loss of invested capital.
 >
-> The developers, authors, and contributors of Monika make no claims, promises, warranties, or representations regarding profitability, performance, or fitness for real-money trading.
->
-> **Never risk capital you cannot comfortably afford to lose.** Always validate algorithmic software extensively under paper-trading or demo-account conditions before considering live capital deployment.
+> The authors and contributors of Monika make no warranties, representations, or claims regarding profitability, reliability, or fitness for live trading. Never trade with money you cannot afford to lose. Always test thoroughly in demo environments.
 
 ---
 
 <p align="center">
-  <sub>Monika Quantitative Trading Agent Harness &bull; Built with LangGraph, FastAPI, and MetaTrader 5</sub>
+  <sub>Monika &bull; Multi-agent trading research harness for MetaTrader 5 &bull; Open source under the MIT License</sub>
 </p>
