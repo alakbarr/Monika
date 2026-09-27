@@ -22,6 +22,14 @@ async def compute_portfolio_correlation_matrix(
     return matrix
 
 
+GROUP_POSITION_LIMITS: Dict[str, int] = {
+    "USD_MAJORS": 3,
+    "METALS": 2,
+    "ENERGY": 1,
+    "CRYPTO": 1,
+}
+
+
 def _get_usd_directional_delta(symbol: str, direction: str) -> int:
     """
     Menghitung arah eksposur USD:
@@ -69,11 +77,23 @@ async def filter_correlated_proposals(
         except Exception as e:
             logger.warning(f"Correlation Gate: Failed to query open positions from DB: {e}")
 
-    # Calculate starting net USD exposure from existing open positions
+    # Calculate starting net USD exposure and sector counts from existing open positions
+    from risk.portfolio_optimizer import DEFAULT_GROUP_MAP, DEFAULT_GROUP_CAPS
+    GROUP_POSITION_LIMITS = {
+        "USD_MAJORS": 3,
+        "METALS": 2,
+        "ENERGY": 1,
+        "CRYPTO": 1,
+        "OTHER": 2,
+    }
+
     net_usd_exposure = 0
+    group_counts: Dict[str, int] = {k: 0 for k in GROUP_POSITION_LIMITS}
     for pos in open_positions:
         p_dir = str(pos.direction or "").lower()
         net_usd_exposure += _get_usd_directional_delta(pos.symbol, p_dir)
+        grp = DEFAULT_GROUP_MAP.get(pos.symbol.upper(), "OTHER")
+        group_counts[grp] = group_counts.get(grp, 0) + 1
 
     sorted_trades = sorted(actionable_trades, key=lambda x: x[1].get('confidence') or 0.0, reverse=True)
     kept_trades = []
@@ -85,6 +105,15 @@ async def filter_correlated_proposals(
             continue
             
         usd_delta = _get_usd_directional_delta(sym, direction)
+        grp = DEFAULT_GROUP_MAP.get(sym.upper(), "OTHER")
+        max_grp_limit = GROUP_POSITION_LIMITS.get(grp, 2)
+        
+        # Sector Concentration Check
+        if group_counts.get(grp, 0) + 1 > max_grp_limit:
+            reason = f"Sector concentration cap: {grp} positions ({group_counts.get(grp, 0) + 1}) would exceed limit of {max_grp_limit}."
+            logger.info(f"Correlation Gate: Rejected {sym} {direction}. {reason}")
+            rejected_trades.append((sym, r, reason))
+            continue
         
         # 1. Systemic Net USD Concentration Check (including open positions)
         if abs(net_usd_exposure + usd_delta) > max_usd_exposure:
@@ -146,5 +175,6 @@ async def filter_correlated_proposals(
         else:
             kept_trades.append((sym, r))
             net_usd_exposure += usd_delta
+            group_counts[grp] = group_counts.get(grp, 0) + 1
             
     return (kept_trades, rejected_trades)

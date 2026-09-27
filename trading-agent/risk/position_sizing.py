@@ -18,7 +18,7 @@ import logging
 import math
 from decimal import Decimal, ROUND_HALF_UP, ROUND_FLOOR
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
 import utils.clock as clock
 
@@ -366,6 +366,26 @@ class PositionSizer:
                     logger.info(f"[{symbol}] Streak loss risk scaling applied: {scale_mult:.2f}x (3+ consecutive losses)")
         except Exception as streak_err:
             logger.debug(f"[{symbol}] Streak loss sizing adjustment non-fatal: {streak_err}")
+
+        # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
+        try:
+            from database.models import TradeOrder
+            from sqlalchemy import select, func
+            lookback_24h = (as_of or clock.now()) - timedelta(hours=24)
+            stmt = select(func.count(TradeOrder.id)).where(
+                TradeOrder.symbol == symbol,
+                TradeOrder.created_at >= lookback_24h
+            )
+            recent_count = (await session.execute(stmt)).scalar() or 0
+            if recent_count >= 3:
+                churn_mult = max(0.4, 1.0 / (1.0 + 0.15 * float(recent_count - 2)))
+                risk_pct *= churn_mult
+                logger.info(
+                    f"[{symbol}] Turnover churn penalty applied: {churn_mult:.2f}x "
+                    f"(recent 24h trades={recent_count})"
+                )
+        except Exception as turn_err:
+            logger.debug(f"[{symbol}] Turnover churn check non-fatal: {turn_err}")
                 
         spec = await self._get_instrument_spec_dynamic(session, symbol)
         if spec is None:
@@ -921,10 +941,15 @@ class PositionSizer:
 
     @staticmethod
     def _round_lots(raw: float, step: float) -> float:
-        """Bulatkan ke bawah ke step lot terdekat (demi keamanan), dinamis desimal dengan Decimal fixed-point precision."""
+        """Bulatkan ke bawah ke step lot terdekat (demi keamanan), dengan strict floor snapping dan Decimal fixed-point precision."""
         if raw is None or step is None or math.isnan(raw) or math.isinf(raw) or math.isnan(step) or math.isinf(step) or step <= 0 or raw <= 0:
             return 0.0
         
+        # Strict floor snapping using math.floor with 1e-9 epsilon to prevent float precision drift
+        steps = math.floor((float(raw) / float(step)) + 1e-9)
+        if steps <= 0:
+            return 0.0
+            
         # Determine number of decimals from step
         decimals = 2
         if step < 0.01:
@@ -932,10 +957,9 @@ class PositionSizer:
         elif step >= 1.0:
             decimals = 0
             
-        d_raw = Decimal(str(round(raw, 8)))
+        d_steps = Decimal(str(steps))
         d_step = Decimal(str(step))
-        steps = (d_raw / d_step).quantize(Decimal("1"), rounding=ROUND_FLOOR)
-        rounded = (steps * d_step).quantize(Decimal(10) ** -decimals)
+        rounded = (d_steps * d_step).quantize(Decimal(10) ** -decimals, rounding=ROUND_FLOOR)
         return float(rounded)
 
     @staticmethod

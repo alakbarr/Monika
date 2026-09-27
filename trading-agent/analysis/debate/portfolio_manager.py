@@ -50,6 +50,26 @@ async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debat
         return data
     except Exception as e:
         logger.error(f"Failed to parse Portfolio Manager JSON: {e}")
-        # FIX: Fail-open with cautious multiplier (trade passed preceding gates)
-        return {"approval": True, "recommended_risk_multiplier": 0.5, "reason": f"Fallback - Parse Error (fail-open, reduced size): {e}", "parse_error": True}
+        # Fail-closed institutional protection: reject trade execution if Portfolio Manager fails
+        return {"approval": False, "recommended_risk_multiplier": 0.0, "reason": f"Fallback - Parse Error (fail-closed capital preservation): {e}", "parse_error": True}
+
+
+async def evaluate_portfolio_impact(
+    client: BaseLLMClient,
+    proposal: dict,
+    portfolio_state: dict | None = None,
+    risk_debate_states: dict | None = None,
+) -> dict:
+    """
+    Evaluates proposed trade impact on current portfolio.
+    Guarantees fail-closed institutional protection if LLM or parsing fails.
+    """
+    symbol = proposal.get("symbol", "UNKNOWN") if isinstance(proposal, dict) else str(proposal)
+    return await make_portfolio_decision(
+        client=client,
+        symbol=symbol,
+        risk_debate_states=risk_debate_states or {},
+        actual_risk_state=portfolio_state or {},
+    )
+
 
