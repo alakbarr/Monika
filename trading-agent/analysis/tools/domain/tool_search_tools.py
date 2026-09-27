@@ -40,9 +40,12 @@ def _sync_from_registry(engine: ToolSearchEngine) -> None:
     for name, entry in unified_tool_registry._tools.items():
         if name not in engine._tools:
             schema = {}
-            if hasattr(entry.input_model, "model_json_schema"):
-                schema = entry.input_model.model_json_schema()
-                schema.pop("title", None)
+            if hasattr(entry.input_model, "model_json_schema") and entry.input_model is not BaseModel:
+                try:
+                    schema = entry.input_model.model_json_schema()
+                    schema.pop("title", None)
+                except Exception:
+                    schema = {}
             engine.register_tool(
                 name=entry.name,
                 description=entry.description or f"Tool {entry.name}",

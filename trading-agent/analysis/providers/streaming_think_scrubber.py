@@ -15,7 +15,7 @@ Handles partial boundary tags split across consecutive streaming chunks.
 from __future__ import annotations
 
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Providers.StreamingThinkScrubber")
 

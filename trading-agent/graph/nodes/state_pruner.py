@@ -42,8 +42,7 @@ def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, A
     for k in pruned_keys:
         if k in fund and fund[k] != "_DELETED_":
             archived_payloads[f"fundamental.{k}"] = fund[k]
-            # Replace active key with compact archival reference pointer
-            fund[k] = {"$ref": f"archived_payloads/fundamental.{k}"}
+            fund[k] = "_DELETED_"
             pruned_count += 1
 
     summary["fundamental"] = fund
@@ -71,7 +70,7 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
             ]:
                 if key in ds and ds[key] != "_DELETED_":
                     archived_payloads[f"debate.{sym}.{key}"] = ds[key]
-                    ds[key] = {"$ref": f"archived_payloads/debate.{sym}.{key}"}
+                    ds[key] = "_DELETED_"
 
     # Prune heavy data payloads from asset_analyses
     asset_analyses = dict(state.get("asset_analyses", {}) or {})
@@ -87,7 +86,7 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
             ]:
                 if heavy in aa and aa[heavy] != "_DELETED_":
                     archived_payloads[f"asset.{sym}.{heavy}"] = aa[heavy]
-                    aa[heavy] = {"$ref": f"archived_payloads/asset.{sym}.{heavy}"}
+                    aa[heavy] = "_DELETED_"
 
     # Prune risk debate turns
     risk_debate_states = dict(state.get("risk_debate_states", {}) or {})
@@ -96,7 +95,7 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
             for key in ["raw_conservative_text", "raw_aggressive_text", "raw_neutral_text", "intermediate_dialogue"]:
                 if key in rds and rds[key] != "_DELETED_":
                     archived_payloads[f"risk.{sym}.{key}"] = rds[key]
-                    rds[key] = {"$ref": f"archived_payloads/risk.{sym}.{key}"}
+                    rds[key] = "_DELETED_"
 
     logger.debug("[StatePruner] Losslessly archived debate dialogue turns & heavy payloads")
     return {

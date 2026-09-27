@@ -192,10 +192,11 @@ class _EncryptedFileVault:
             # Try initializing Fernet if library installed
             try:
                 import base64
-                from cryptography.fernet import Fernet
+                import importlib
+                Fernet = importlib.import_module("cryptography.fernet").Fernet
                 b64_key = base64.urlsafe_b64encode(hashlib.sha256(self._raw_key).digest())
                 self._fernet = Fernet(b64_key)
-            except ImportError:
+            except (ImportError, Exception):
                 self._fernet = None
         except Exception as e:
             logger.debug(f"EncryptedFileVault init skipped: {e}")

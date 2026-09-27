@@ -96,9 +96,8 @@ def test_prune_after_fundamental_lossless():
     fund = result["summary"]["fundamental"]
     archives = result["archived_payloads"]
 
-    # Active state key is replaced by compact reference
-    assert "$ref" in fund["raw_conversation"]
-    assert fund["raw_conversation"]["$ref"] == "archived_payloads/fundamental.raw_conversation"
+    # Active state key is pruned with tombstone for LangGraph merge_dicts
+    assert fund["raw_conversation"] == "_DELETED_"
     # Macro bias is kept intact
     assert fund["macro_bias"] == "BULLISH"
 
@@ -133,6 +132,6 @@ def test_prune_after_debate_lossless():
     assert archives["debate.EURUSD.raw_bear_text"] == "Detailed bear thesis"
     assert archives["asset.EURUSD.raw_candles"] == [1.08, 1.085, 1.082]
 
-    # Active keys contain $ref pointers
-    assert "$ref" in result["debate_states"]["EURUSD"]["raw_bull_text"]
-    assert "$ref" in result["asset_analyses"]["EURUSD"]["raw_candles"]
+    # Active keys contain _DELETED_ tombstone
+    assert result["debate_states"]["EURUSD"]["raw_bull_text"] == "_DELETED_"
+    assert result["asset_analyses"]["EURUSD"]["raw_candles"] == "_DELETED_"

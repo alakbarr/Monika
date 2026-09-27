@@ -50,7 +50,7 @@ DEFAULT_SANDBOX_TOOLS = frozenset({
 })
 
 
-def generate_monika_tools_client_code(port: int, token: str, allowed_tools: Set[str] | Frozenset[str]) -> str:
+def generate_monika_tools_client_code(port: int, token: str, allowed_tools: Set[str] | FrozenSet[str]) -> str:
     """
     Generate client stub script to be injected into the execution sandbox environment.
     Provides convenient `call_tool(tool_name, **kwargs)` and named stubs.
@@ -123,12 +123,12 @@ class CodeExecutionRpcServer:
 
     def __init__(
         self,
-        allowed_tools: Optional[Frozenset[str] | Set[str]] = None,
+        allowed_tools: Optional[FrozenSet[str] | Set[str]] = None,
         max_tool_calls: int = DEFAULT_MAX_TOOL_CALLS,
         dispatch_fn: Optional[Callable[[str, Dict[str, Any]], str]] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
-        self.allowed_tools: Frozenset[str] = frozenset(allowed_tools or DEFAULT_SANDBOX_TOOLS)
+        self.allowed_tools: FrozenSet[str] = frozenset(allowed_tools or DEFAULT_SANDBOX_TOOLS)
         self.max_tool_calls = max_tool_calls
         self.tool_call_counter = [0]
         self.tool_call_log: List[Dict[str, Any]] = []

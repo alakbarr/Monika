@@ -17,7 +17,7 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Callable, Coroutine, Dict, List, Optional, Set
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.MCP.EventBridge")
 

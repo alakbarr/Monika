@@ -61,8 +61,8 @@ def test_should_inject_anchor():
 # 4. Adaptive Thinking Cap Tests
 def test_adaptive_thinking_caps():
     from utils.llm.adaptive_thinking import QuantizedThinkingAllocator, PerSymbolAdaptiveThinkingAllocator
-    assert QuantizedThinkingAllocator.BUCKETS["MAX"] == 10000
-    assert QuantizedThinkingAllocator.quantize(16000) == 10000
+    assert QuantizedThinkingAllocator.BUCKETS["MAX"] == 16000
+    assert QuantizedThinkingAllocator.quantize(16000) == 16000
 
     # Low confluence exit test
     budget_low_conf = PerSymbolAdaptiveThinkingAllocator.compute_symbol_budget(

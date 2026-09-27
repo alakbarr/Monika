@@ -142,19 +142,22 @@ def test_trajectory_compressor_boundary_snapping():
     ]
 
     compressed = compressor.compress_trajectory(messages)
-    assert len(compressed) == len(messages)
+    assert len(compressed) == len(messages) + 1
 
     # Head anchors preserved intact
     assert compressed[0]["content"] == "You are Monika institutional agent."
     assert compressed[1]["content"] == "Initial trade goal: backtest strategy A."
 
+    # Semantic compaction anchor injected
+    assert "[Context Compaction Notice:" in compressed[2]["content"]
+
     # Intermediate message has <think> tag stripped
-    assert "<think>" not in compressed[2]["content"]
-    assert "Here is the plan." in compressed[2]["content"]
+    assert "<think>" not in compressed[3]["content"]
+    assert "Here is the plan." in compressed[3]["content"]
 
     # Intermediate tool output truncated with notice
-    assert len(compressed[3]["content"]) < 150
-    assert "[Output truncated" in compressed[3]["content"]
+    assert len(compressed[4]["content"]) < 150
+    assert "[Output truncated" in compressed[4]["content"]
 
     # Tail anchors preserved intact
     assert compressed[-1]["content"] == "Recent answer 2"
