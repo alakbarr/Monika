@@ -507,7 +507,7 @@ class TelegramBot:
         try:
             from database.db import get_session
             from utils.analytics.paper_tracker import PaperTracker
-            from telegram_bot.vintage_formatter import format_stats_slip
+            from telegram_bot.message_formatter import format_stats_slip
             
             async with get_session() as session:
                 tracker = PaperTracker()
@@ -2489,7 +2489,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import Position, RiskState, AssetAnalysis
         from sqlalchemy import select, func
-        from telegram_bot.vintage_formatter import format_status_slip
+        from telegram_bot.message_formatter import format_status_slip
 
         try:
             async with get_session() as session:
@@ -2534,7 +2534,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import Position
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_positions_slip
+        from telegram_bot.message_formatter import format_positions_slip
 
         try:
             async with get_session() as session:
@@ -2636,7 +2636,7 @@ class TelegramBot:
         from database.models import RiskState
         from sqlalchemy import select
         from utils.analytics.paper_tracker import PaperTracker
-        from telegram_bot.vintage_formatter import format_risk_slip
+        from telegram_bot.message_formatter import format_risk_slip
 
         try:
             async with get_session() as session:
@@ -2673,7 +2673,7 @@ class TelegramBot:
     async def _build_risk_deep_text(self) -> str:
         from database.db import get_session
         from risk.risk_gate import RiskGate
-        from telegram_bot.vintage_formatter import format_risk_deep_slip
+        from telegram_bot.message_formatter import format_risk_deep_slip
 
         try:
             gate = RiskGate(self.settings)
@@ -2712,7 +2712,7 @@ class TelegramBot:
             return f"[ FAILED ] Error: {e}"
 
     async def _build_pipeline_text(self) -> str:
-        from telegram_bot.vintage_formatter import format_pipeline_slip
+        from telegram_bot.message_formatter import format_pipeline_slip
         try:
             status = "IDLE"
             stage = "AWAITING TRIGGER"
@@ -2758,7 +2758,7 @@ class TelegramBot:
 
     async def _build_approvals_text(self) -> str:
         from risk.approval_hub import ApprovalHub
-        from telegram_bot.vintage_formatter import format_approvals_slip
+        from telegram_bot.message_formatter import format_approvals_slip
 
         try:
             hub = ApprovalHub.get_instance()
@@ -2771,7 +2771,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import Position
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_trailing_slip
+        from telegram_bot.message_formatter import format_trailing_slip
 
         try:
             async with get_session() as session:
@@ -2794,7 +2794,7 @@ class TelegramBot:
 
     async def _build_reconcile_text(self) -> str:
         from scheduler.order_reconciler import OrderReconciler
-        from telegram_bot.vintage_formatter import format_reconcile_slip
+        from telegram_bot.message_formatter import format_reconcile_slip
 
         try:
             reconciler = OrderReconciler(settings=self.settings, execution_service=self.execution_service)
@@ -2807,7 +2807,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import FedWatchProbability, CentralBankRateExpectation
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_fedwatch_slip
+        from telegram_bot.message_formatter import format_fedwatch_slip
         import json
 
         try:
@@ -2848,7 +2848,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import TreasuryYield, BondYieldData
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_yields_slip
+        from telegram_bot.message_formatter import format_yields_slip
 
         try:
             async with get_session() as session:
@@ -2881,7 +2881,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import SystemConfig
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_fear_greed_slip
+        from telegram_bot.message_formatter import format_fear_greed_slip
         import json
 
         try:
@@ -2900,7 +2900,7 @@ class TelegramBot:
         from database.db import get_session
         from database.models import COTReport
         from sqlalchemy import select
-        from telegram_bot.vintage_formatter import format_cot_slip
+        from telegram_bot.message_formatter import format_cot_slip
 
         try:
             async with get_session() as session:
@@ -2926,7 +2926,7 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_playbooks_text(self) -> str:
-        from telegram_bot.vintage_formatter import format_playbooks_slip
+        from telegram_bot.message_formatter import format_playbooks_slip
         try:
             from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
             mgr = PlaybookLifecycleManager()
@@ -2945,7 +2945,7 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_rollback_text(self, name: str) -> str:
-        from telegram_bot.vintage_formatter import format_rollback_slip
+        from telegram_bot.message_formatter import format_rollback_slip
         try:
             from analysis.memory.playbook_ledger import PlaybookLedger
             ledger = PlaybookLedger()
@@ -2960,7 +2960,7 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_crystallized_text(self) -> str:
-        from telegram_bot.vintage_formatter import format_crystallized_slip
+        from telegram_bot.message_formatter import format_crystallized_slip
         try:
             from analysis.memory.skill_crystallizer import SkillCrystallizer
             import yaml

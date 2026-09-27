@@ -1,6 +1,6 @@
 // ==============================================================================
 // File: src/components/ui/EmptyState.tsx
-// Description: Reusable Retro OS Empty State with Teletype Stamp & Action Slot
+// Description: Reusable Dashboard Empty State with Teletype Stamp & Action Slot
 // ==============================================================================
 
 import React from 'react';

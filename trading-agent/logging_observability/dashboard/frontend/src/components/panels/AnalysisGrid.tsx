@@ -2,7 +2,7 @@ import React from 'react';
 import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
-import { MagnifierDeskIcon } from '../ui/RetroIcons';
+import { MagnifierDeskIcon } from '../ui/Icons';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 

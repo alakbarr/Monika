@@ -1,10 +1,10 @@
 """
-Unit Tests for Telegram Vintage Formatter (telegram_bot/vintage_formatter.py).
+Unit Tests for Telegram Message Formatter (telegram_bot/message_formatter.py).
 """
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
-from telegram_bot.vintage_formatter import (
+from telegram_bot.message_formatter import (
     make_header,
     make_footer,
     format_status_slip,

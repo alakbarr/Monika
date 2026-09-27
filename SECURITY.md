@@ -1,6 +1,6 @@
 # Monika Security Policy
 
-Monika executes automated operations that interact with live financial broker accounts and external services. We treat security, credential privacy, and deterministic risk enforcement as critical safety requirements.
+Monika is a domain-specific Trading Agent Harness and multi-agent execution framework for MetaTrader 5. Because automated operations interact with financial broker accounts and external APIs, we treat security, credential privacy, and deterministic risk enforcement as non-negotiable safety requirements.
 
 ---
 

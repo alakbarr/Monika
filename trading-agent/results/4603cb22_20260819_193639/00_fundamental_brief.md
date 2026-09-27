@@ -1,3 +1,0 @@
-# Fundamental Brief
-
-{}

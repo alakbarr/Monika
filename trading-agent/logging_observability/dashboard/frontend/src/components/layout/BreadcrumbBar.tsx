@@ -1,6 +1,6 @@
 // ==============================================================================
 // File: src/components/layout/BreadcrumbBar.tsx
-// Description: Retro OS Breadcrumb Bar displaying current Workspace & Subtab context
+// Description: Dashboard Breadcrumb Bar displaying current Workspace & Subtab context
 // ==============================================================================
 
 import React from 'react';

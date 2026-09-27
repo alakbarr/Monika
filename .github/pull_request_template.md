@@ -27,5 +27,5 @@ Fixes # (issue)
 - [ ] I have run `ruff format .` to format the code.
 - [ ] I have added automated unit tests covering the changes.
 - [ ] All existing and new tests pass locally (`pytest trading-agent/tests`).
-- [ ] I have manually updated `INDEX.md` and `STRUKTUR.md` if any files, classes, or public functions were modified/added.
+- [ ] I have manually updated `INDEX.md` and `STRUCTURE.md` if any files, classes, or public functions were modified/added.
 - [ ] I have run `python scripts/update_index_toc.py` to synchronize Table of Contents line numbers.

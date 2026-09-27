@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface RetroVuMeterProps {
+export interface VuMeterProps {
   label: string;
   value: number; // current value
   min?: number;
@@ -13,7 +13,7 @@ interface RetroVuMeterProps {
   variant?: 'green' | 'amber' | 'red';
 }
 
-export const RetroVuMeter: React.FC<RetroVuMeterProps> = ({
+export const VuMeter: React.FC<VuMeterProps> = ({
   label,
   value,
   min = 0,

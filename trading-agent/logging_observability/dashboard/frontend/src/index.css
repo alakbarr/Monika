@@ -254,7 +254,7 @@ body {
   position: relative;
 }
 
-/* Retro Vintage OS Scrollbar (Chunky with solid outline) */
+/* Web Dashboard Scrollbar (Chunky with solid outline) */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -384,7 +384,7 @@ body {
   line-height: 1.7;
 }
 
-/* Retro OS / Typewriter Tactile Buttons (§7 & §9) */
+/* Web Dashboard Tactile Buttons */
 .win-btn,
 .typewriter-btn {
   font-family: var(--font-precision);
@@ -435,12 +435,12 @@ body {
   background: var(--color-ledger-red);
 }
 
-/* Greenbar / Retro Listview Table Rows */
+/* Greenbar / Tabular Listview Table Rows */
 .greenbar-row:nth-child(even) {
   background: color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-win-green)) !important;
 }
 
-/* Rubber Stamp / Retro OS Stamp Badges */
+/* Rubber Stamp Badges */
 .stamp-badge,
 .win-badge {
   display: inline-flex;

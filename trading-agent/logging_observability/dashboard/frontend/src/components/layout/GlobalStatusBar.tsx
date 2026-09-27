@@ -1,6 +1,6 @@
 // ==============================================================================
 // File: src/components/layout/GlobalStatusBar.tsx
-// Description: Retro OS Taskbar Footer focused strictly on Live Trading Metrics
+// Description: Dashboard Taskbar Footer focused strictly on Live Trading Metrics
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
