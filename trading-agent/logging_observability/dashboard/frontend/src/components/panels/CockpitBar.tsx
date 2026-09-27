@@ -1,6 +1,6 @@
 // ==============================================================================
-// File: src/components/panels/RetroCockpitBar.tsx
-// Description: Compact Retro Cockpit Instrument Cluster (Replaces bulky MetricCard row)
+// File: src/components/panels/CockpitBar.tsx
+// Description: Compact Cockpit Instrument Cluster (Replaces bulky MetricCard row)
 // ==============================================================================
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { SegmentedProgressBar } from '../ui/SegmentedProgressBar';
 import { fmt, vixSentiment } from '../../lib/formatters';
 
-export const RetroCockpitBar: React.FC = () => {
+export const CockpitBar: React.FC = () => {
   const { overview, paperStats, loading } = useDashboardStore();
 
   const dailyPnl = overview?.daily_pnl ?? 0;

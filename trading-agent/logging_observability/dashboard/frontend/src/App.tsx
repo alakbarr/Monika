@@ -8,7 +8,7 @@ import { MobileNavDrawer } from './components/layout/MobileNavDrawer';
 import { BootSequence } from './components/ui/BootSequence';
 import { TickerTape } from './components/ui/TickerTape';
 import { WeekendGapBanner } from './components/ui/WeekendGapBanner';
-import { RetroCockpitBar } from './components/panels/RetroCockpitBar';
+import { CockpitBar } from './components/panels/CockpitBar';
 import { PositionsTable } from './components/panels/PositionsTable';
 import { ActivityFeed } from './components/panels/ActivityFeed';
 import { AnalysisGrid } from './components/panels/AnalysisGrid';
@@ -38,7 +38,7 @@ import { sounds } from './lib/soundEffects';
 
 const OverviewTab: React.FC = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-    <RetroCockpitBar />
+    <CockpitBar />
     <div
       className="overview-grid"
       style={{
@@ -277,10 +277,10 @@ const App: React.FC = () => {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--color-desktop)' }}>
-      {/* 1. Retro OS Boot Sequence */}
+      {/* 1. Dashboard Boot Sequence */}
       <BootSequence />
 
-      {/* 2. Retro Error Dialog Popup */}
+      {/* 2. Error Dialog Popup */}
       {showError && error && (
         <div
           className="win-window"

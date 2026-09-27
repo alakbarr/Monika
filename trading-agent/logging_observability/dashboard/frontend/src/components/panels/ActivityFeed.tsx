@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
-import { TelegraphDeskIcon } from '../ui/RetroIcons';
+import { TelegraphDeskIcon } from '../ui/Icons';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 

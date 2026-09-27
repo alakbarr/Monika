@@ -80,3 +80,9 @@ data/
 results/
 trading-agent/results/
 !trading-agent/benchmark/results/
+
+# Scripts and Prompts
+scripts/
+trading-agent/scripts/
+contoh_pertanyaan.md
+prompt_benchmark.md

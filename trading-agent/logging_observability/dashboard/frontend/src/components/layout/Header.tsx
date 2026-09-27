@@ -1,13 +1,13 @@
 // ==============================================================================
 // File: src/components/layout/Header.tsx
-// Description: Retro OS Taskbar Header with Audio Feedback, Status LEDs, and Menu Bar
+// Description: Dashboard Taskbar Header with Audio Feedback, Status LEDs, and Menu Bar
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
 import { StatusIndicator } from '../ui/StatusIndicator';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { KeyboardShortcutsPanel } from '../ui/KeyboardShortcutsPanel';
-import { AudioToggleIcon } from '../ui/RetroIcons';
+import { AudioToggleIcon } from '../ui/Icons';
 import { sounds } from '../../lib/soundEffects';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt, vixSentiment } from '../../lib/formatters';
@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav }) => {
         boxShadow: '0 2px 0 var(--color-rule)',
       }}
     >
-      {/* Brand & Retro OS Menu */}
+      {/* Brand & Workspace Menu */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {onToggleMobileNav && (
           <button

@@ -1,15 +1,15 @@
 # ==============================================================================
-# File: telegram_bot/vintage_formatter.py
-# Description: Retro-Vintage Teletype / Telegraph Slip Formatter for Telegram
+# File: telegram_bot/message_formatter.py
+# Description: Message and Dispatch Slip Formatter for Telegram
 # ==============================================================================
 
 """
-Vintage Teletype Slip Formatters for Telegram Bot.
+Message and Dispatch Slip Formatters for Telegram Bot.
 
 Converts trading agent outputs into clean monospace banking ledgers / dispatch slips:
 - Fixed-width ASCII telegraph borders
 - Monospace wrapping (``` ... ```)
-- Telegraph stamps ([ OK ], [ FAILED ], [ EXECUTION ], [ STANDBY ])
+- Status stamps ([ OK ], [ FAILED ], [ EXECUTION ], [ STANDBY ])
 - Zero emoji clutter or AI-slop gradients
 """
 

@@ -5,195 +5,237 @@ This document provides an exhaustive structural index of all directories, files,
 ## Table of Contents
 *(Note: Line numbers are auto-updated by `scripts/update_index_toc.py`)*
 
-- [Root Directory: `/trading-agent`](#root-directory-trading-agent) - Line 149
-  - [Folder: `.github`](#folder-github) - Line 175
-    - [Folder: `.github/workflows`](#folder-githubworkflows) - Line 177
-    - [Folder: `.github/ISSUE_TEMPLATE`](#folder-githubissue_template) - Line 181
-  - [Folder: `deploy`](#folder-deploy) - Line 190
-  - [Folder: `docs`](#folder-docs) - Line 204
-    - [Folder: `docs/images`](#folder-docsimages) - Line 206
-  - [Folder: `scripts`](#folder-scripts) - Line 228
-  - [Folder: `trading-agent`](#folder-trading-agent) - Line 265
-    - [Folder: `trading-agent/systemd`](#folder-trading-agentsystemd) - Line 311
-    - [Folder: `trading-agent/cli`](#folder-trading-agentcli) - Line 315
-      - [Folder: `trading-agent/cli/subcommands`](#folder-trading-agentclisubcommands) - Line 474
-      - [Folder: `trading-agent/cli/chat`](#folder-trading-agentclichat) - Line 493
-      - [Folder: `trading-agent/cli/overlays`](#folder-trading-agentclioverlays) - Line 550
-    - [Folder: `trading-agent/benchmark`](#folder-trading-agentbenchmark) - Line 565
-      - [Folder: `trading-agent/benchmark/fixtures`](#folder-trading-agentbenchmarkfixtures) - Line 620
-      - [Folder: `trading-agent/benchmark/results`](#folder-trading-agentbenchmarkresults) - Line 639
-    - [Folder: `trading-agent/evals`](#folder-trading-agentevals) - Line 654
-      - [Folder: `trading-agent/evals/oracles`](#folder-trading-agentevalsoracles) - Line 673
-      - [Folder: `trading-agent/evals/fixtures`](#folder-trading-agentevalsfixtures) - Line 688
-    - [Folder: `trading-agent/agent`](#folder-trading-agentagent) - Line 696
-      - [Folder: `trading-agent/agent/monitors`](#folder-trading-agentagentmonitors) - Line 793
-    - [Folder: `trading-agent/analysis`](#folder-trading-agentanalysis) - Line 808
-      - [Folder: `trading-agent/analysis/harness`](#folder-trading-agentanalysisharness) - Line 850
-      - [Folder: `trading-agent/analysis/grounding`](#folder-trading-agentanalysisgrounding) - Line 904
-      - [Folder: `trading-agent/analysis/subagent`](#folder-trading-agentanalysissubagent) - Line 911
-      - [Folder: `trading-agent/analysis/arbitration`](#folder-trading-agentanalysisarbitration) - Line 923
-      - [Folder: `trading-agent/analysis/stages`](#folder-trading-agentanalysisstages) - Line 931
-        - [Folder: `trading-agent/analysis/stages/per_asset`](#folder-trading-agentanalysisstagesper_asset) - Line 944
-      - [Folder: `trading-agent/analysis/validators`](#folder-trading-agentanalysisvalidators) - Line 968
-      - [Folder: `trading-agent/analysis/calculators`](#folder-trading-agentanalysiscalculators) - Line 1001
-      - [Folder: `trading-agent/analysis/tools`](#folder-trading-agentanalysistools) - Line 1039
-        - [Folder: `trading-agent/analysis/tools/core`](#folder-trading-agentanalysistoolscore) - Line 1121
-        - [Folder: `trading-agent/analysis/tools/environments`](#folder-trading-agentanalysistoolsenvironments) - Line 1141
-        - [Folder: `trading-agent/analysis/tools/quant_sandbox`](#folder-trading-agentanalysistoolsquant_sandbox) - Line 1164
-        - [Folder: `trading-agent/analysis/tools/kernel`](#folder-trading-agentanalysistoolskernel) - Line 1171
-        - [Folder: `trading-agent/analysis/tools/domain`](#folder-trading-agentanalysistoolsdomain) - Line 1199
-        - [Folder: `trading-agent/analysis/tools/handlers`](#folder-trading-agentanalysistoolshandlers) - Line 1279
-      - [Folder: `trading-agent/analysis/schemas`](#folder-trading-agentanalysisschemas) - Line 1328
-      - [Folder: `trading-agent/analysis/stages`](#folder-trading-agentanalysisstages-1) - Line 1334
-      - [Folder: `trading-agent/analysis/strategies`](#folder-trading-agentanalysisstrategies) - Line 1344
-        - [Folder: `trading-agent/analysis/strategies/synthesized`](#folder-trading-agentanalysisstrategiessynthesized) - Line 1380
-          - [Folder: `trading-agent/analysis/strategies/synthesized/quarantine`](#folder-trading-agentanalysisstrategiessynthesizedquarantine) - Line 1381
-      - [Folder: `trading-agent/analysis/prefetch`](#folder-trading-agentanalysisprefetch) - Line 1418
-      - [Folder: `trading-agent/analysis/debate`](#folder-trading-agentanalysisdebate) - Line 1439
-      - [Folder: `trading-agent/analysis/validators`](#folder-trading-agentanalysisvalidators-1) - Line 1500
-      - [Folder: `trading-agent/analysis/providers`](#folder-trading-agentanalysisproviders) - Line 1516
-      - [Folder: `trading-agent/analysis/memory`](#folder-trading-agentanalysismemory) - Line 1632
-      - [Folder: `trading-agent/analysis/mcp`](#folder-trading-agentanalysismcp) - Line 1776
-        - [Folder: `trading-agent/analysis/mcp/servers`](#folder-trading-agentanalysismcpservers) - Line 1819
-    - [Folder: `trading-agent/backtest`](#folder-trading-agentbacktest) - Line 1831
-    - [Folder: `trading-agent/graph`](#folder-trading-agentgraph) - Line 1972
-      - [Folder: `trading-agent/graph/nodes`](#folder-trading-agentgraphnodes) - Line 1981
-    - [Folder: `trading-agent/config`](#folder-trading-agentconfig) - Line 2008
-      - [Folder: `trading-agent/config/plugins`](#folder-trading-agentconfigplugins) - Line 2070
-    - [Folder: `trading-agent/data_sources`](#folder-trading-agentdata_sources) - Line 2082
-    - [Folder: `trading-agent/database`](#folder-trading-agentdatabase) - Line 2238
-      - [Folder: `trading-agent/database/domain_models`](#folder-trading-agentdatabasedomain_models) - Line 2524
-      - [Folder: `trading-agent/database/migrations`](#folder-trading-agentdatabasemigrations) - Line 2549
-        - [Folder: `trading-agent/database/migrations/archive`](#folder-trading-agentdatabasemigrationsarchive) - Line 2558
-        - [Folder: `trading-agent/database/migrations/versions`](#folder-trading-agentdatabasemigrationsversions) - Line 2561
-    - [Folder: `trading-agent/evals`](#folder-trading-agentevals-1) - Line 2570
-      - [Folder: `trading-agent/evals/oracles`](#folder-trading-agentevalsoracles-1) - Line 2589
-      - [Folder: `trading-agent/evals/fixtures`](#folder-trading-agentevalsfixtures-1) - Line 2597
-    - [Folder: `trading-agent/execution`](#folder-trading-agentexecution) - Line 2606
-      - [Folder: `trading-agent/execution/backends`](#folder-trading-agentexecutionbackends) - Line 2608
-      - [Folder: `trading-agent/execution/service`](#folder-trading-agentexecutionservice) - Line 2857
-      - [Folder: `trading-agent/execution/ea_bridge`](#folder-trading-agentexecutionea_bridge) - Line 2947
-    - [Folder: `trading-agent/gateway`](#folder-trading-agentgateway) - Line 2971
-      - [Folder: `trading-agent/gateway/platforms`](#folder-trading-agentgatewayplatforms) - Line 3027
-    - [Folder: `trading-agent/graph`](#folder-trading-agentgraph-1) - Line 3046
-      - [Folder: `trading-agent/graph/checkpointers`](#folder-trading-agentgraphcheckpointers) - Line 3077
-      - [Folder: `trading-agent/graph/nodes`](#folder-trading-agentgraphnodes-1) - Line 3089
-        - [Folder: `trading-agent/graph/nodes/debate`](#folder-trading-agentgraphnodesdebate) - Line 3101
-    - [Folder: `trading-agent/harness`](#folder-trading-agentharness) - Line 3182
-      - [Folder: `trading-agent/harness/adapters`](#folder-trading-agentharnessadapters) - Line 3186
-    - [Folder: `trading-agent/plugin_kernel`](#folder-trading-agentplugin_kernel) - Line 3246
-    - [Folder: `trading-agent/indicators`](#folder-trading-agentindicators) - Line 3250
-      - [Folder: `trading-agent/indicators/pattern_similarity`](#folder-trading-agentindicatorspattern_similarity) - Line 3344
-    - [Folder: `trading-agent/logging_observability`](#folder-trading-agentlogging_observability) - Line 3395
-      - [Folder: `trading-agent/logging_observability/reporting`](#folder-trading-agentlogging_observabilityreporting) - Line 3470
-      - [Folder: `trading-agent/logging_observability/tracing`](#folder-trading-agentlogging_observabilitytracing) - Line 3483
-      - [Folder: `trading-agent/logging_observability/dashboard`](#folder-trading-agentlogging_observabilitydashboard) - Line 3499
-        - [Folder: `trading-agent/logging_observability/dashboard/routes`](#folder-trading-agentlogging_observabilitydashboardroutes) - Line 3589
-        - [Folder: `trading-agent/logging_observability/dashboard/frontend`](#folder-trading-agentlogging_observabilitydashboardfrontend) - Line 3641
-          - [Folder: `trading-agent/logging_observability/dashboard/frontend/src`](#folder-trading-agentlogging_observabilitydashboardfrontendsrc) - Line 3649
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentscharts) - Line 3656
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentslayout) - Line 3663
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanels) - Line 3671
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsconfig) - Line 3696
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsgraph) - Line 3700
-              - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelstokens) - Line 3709
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentsui) - Line 3713
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`](#folder-trading-agentlogging_observabilitydashboardfrontendsrchooks) - Line 3740
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`](#folder-trading-agentlogging_observabilitydashboardfrontendsrclib) - Line 3746
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`](#folder-trading-agentlogging_observabilitydashboardfrontendsrcstore) - Line 3751
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctheme) - Line 3754
-            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctypes) - Line 3757
-    - [Folder: `trading-agent/plugins`](#folder-trading-agentplugins) - Line 3760
-      - [Folder: `trading-agent/plugins/alerts/discord_alert`](#folder-trading-agentpluginsalertsdiscord_alert) - Line 3775
-      - [Folder: `trading-agent/plugins/indicators/custom_indicator`](#folder-trading-agentpluginsindicatorscustom_indicator) - Line 3783
-      - [Folder: `trading-agent/plugins/scrapers/example_scraper`](#folder-trading-agentpluginsscrapersexample_scraper) - Line 3791
-      - [Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`](#folder-trading-agentpluginsanalysis_pipelinesmacro_to_asset) - Line 3799
-      - [Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`](#folder-trading-agentpluginsanalysis_pipelinestechnical_scalping) - Line 3806
-      - [Folder: `trading-agent/plugins/brokers/mt5_local`](#folder-trading-agentpluginsbrokersmt5_local) - Line 3813
-      - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 3820
-    - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 3827
-    - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 3842
-      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 3960
-    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 3979
-    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 3996
-    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 4355
-      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 4387
-      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 4427
-      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 4439
-      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 4565
-      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4592
-    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 4610
-    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 4629
-      - [Folder: `trading-agent/skills/operator`](#folder-trading-agentskillsoperator) - Line 4695
-      - [Folder: `trading-agent/skills/general`](#folder-trading-agentskillsgeneral) - Line 4700
-      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 4729
-      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 4734
-    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 4786
-    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 5316
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 5342
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 5382
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 5415
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 5421
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 5437
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 5464
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 5473
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 5561
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 5590
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 5600
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 5633
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 5643
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 5656
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 5679
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 5704
+- [Root Directory: `/trading-agent`](#root-directory-trading-agent) - Line 153
+  - [Folder: `.github`](#folder-github) - Line 214
+    - [Folder: `.github/ISSUE_TEMPLATE`](#folder-githubissue_template) - Line 219
+    - [Folder: `.github/workflows`](#folder-githubworkflows) - Line 227
+  - [Folder: `deploy`](#folder-deploy) - Line 232
+  - [Folder: `docs`](#folder-docs) - Line 246
+  - [Folder: `scripts`](#folder-scripts) - Line 251
+  - [Folder: `trading-agent`](#folder-trading-agent) - Line 256
+    - [Folder: `trading-agent/agent`](#folder-trading-agentagent) - Line 319
+      - [Folder: `trading-agent/agent/monitors`](#folder-trading-agentagentmonitors) - Line 488
+    - [Folder: `trading-agent/analysis`](#folder-trading-agentanalysis) - Line 509
+      - [Folder: `trading-agent/analysis/arbitration`](#folder-trading-agentanalysisarbitration) - Line 554
+      - [Folder: `trading-agent/analysis/calculators`](#folder-trading-agentanalysiscalculators) - Line 564
+      - [Folder: `trading-agent/analysis/debate`](#folder-trading-agentanalysisdebate) - Line 618
+      - [Folder: `trading-agent/analysis/grounding`](#folder-trading-agentanalysisgrounding) - Line 678
+      - [Folder: `trading-agent/analysis/harness`](#folder-trading-agentanalysisharness) - Line 687
+      - [Folder: `trading-agent/analysis/mcp`](#folder-trading-agentanalysismcp) - Line 755
+        - [Folder: `trading-agent/analysis/mcp/servers`](#folder-trading-agentanalysismcpservers) - Line 808
+      - [Folder: `trading-agent/analysis/memory`](#folder-trading-agentanalysismemory) - Line 824
+      - [Folder: `trading-agent/analysis/prefetch`](#folder-trading-agentanalysisprefetch) - Line 982
+      - [Folder: `trading-agent/analysis/providers`](#folder-trading-agentanalysisproviders) - Line 1011
+      - [Folder: `trading-agent/analysis/schemas`](#folder-trading-agentanalysisschemas) - Line 1134
+      - [Folder: `trading-agent/analysis/stages`](#folder-trading-agentanalysisstages) - Line 1144
+        - [Folder: `trading-agent/analysis/stages/per_asset`](#folder-trading-agentanalysisstagesper_asset) - Line 1163
+      - [Folder: `trading-agent/analysis/strategies`](#folder-trading-agentanalysisstrategies) - Line 1191
+        - [Folder: `trading-agent/analysis/strategies/synthesized`](#folder-trading-agentanalysisstrategiessynthesized) - Line 1239
+      - [Folder: `trading-agent/analysis/subagent`](#folder-trading-agentanalysissubagent) - Line 1244
+      - [Folder: `trading-agent/analysis/tools`](#folder-trading-agentanalysistools) - Line 1259
+        - [Folder: `trading-agent/analysis/tools/core`](#folder-trading-agentanalysistoolscore) - Line 1359
+        - [Folder: `trading-agent/analysis/tools/domain`](#folder-trading-agentanalysistoolsdomain) - Line 1385
+        - [Folder: `trading-agent/analysis/tools/environments`](#folder-trading-agentanalysistoolsenvironments) - Line 1486
+        - [Folder: `trading-agent/analysis/tools/handlers`](#folder-trading-agentanalysistoolshandlers) - Line 1515
+        - [Folder: `trading-agent/analysis/tools/kernel`](#folder-trading-agentanalysistoolskernel) - Line 1588
+        - [Folder: `trading-agent/analysis/tools/quant_sandbox`](#folder-trading-agentanalysistoolsquant_sandbox) - Line 1621
+      - [Folder: `trading-agent/analysis/validators`](#folder-trading-agentanalysisvalidators) - Line 1630
+    - [Folder: `trading-agent/backtest`](#folder-trading-agentbacktest) - Line 1676
+    - [Folder: `trading-agent/benchmark`](#folder-trading-agentbenchmark) - Line 1817
+      - [Folder: `trading-agent/benchmark/fixtures`](#folder-trading-agentbenchmarkfixtures) - Line 1891
+      - [Folder: `trading-agent/benchmark/results`](#folder-trading-agentbenchmarkresults) - Line 1896
+    - [Folder: `trading-agent/cli`](#folder-trading-agentcli) - Line 1901
+      - [Folder: `trading-agent/cli/chat`](#folder-trading-agentclichat) - Line 2061
+      - [Folder: `trading-agent/cli/overlays`](#folder-trading-agentclioverlays) - Line 2119
+      - [Folder: `trading-agent/cli/subcommands`](#folder-trading-agentclisubcommands) - Line 2135
+    - [Folder: `trading-agent/config`](#folder-trading-agentconfig) - Line 2160
+      - [Folder: `trading-agent/config/plugins`](#folder-trading-agentconfigplugins) - Line 2230
+    - [Folder: `trading-agent/data`](#folder-trading-agentdata) - Line 2235
+    - [Folder: `trading-agent/data_sources`](#folder-trading-agentdata_sources) - Line 2240
+    - [Folder: `trading-agent/database`](#folder-trading-agentdatabase) - Line 2396
+      - [Folder: `trading-agent/database/domain_models`](#folder-trading-agentdatabasedomain_models) - Line 2687
+      - [Folder: `trading-agent/database/migrations`](#folder-trading-agentdatabasemigrations) - Line 2720
+        - [Folder: `trading-agent/database/migrations/archive`](#folder-trading-agentdatabasemigrationsarchive) - Line 2735
+        - [Folder: `trading-agent/database/migrations/versions`](#folder-trading-agentdatabasemigrationsversions) - Line 2740
+    - [Folder: `trading-agent/evals`](#folder-trading-agentevals) - Line 2745
+      - [Folder: `trading-agent/evals/fixtures`](#folder-trading-agentevalsfixtures) - Line 2773
+      - [Folder: `trading-agent/evals/oracles`](#folder-trading-agentevalsoracles) - Line 2778
+    - [Folder: `trading-agent/execution`](#folder-trading-agentexecution) - Line 2799
+      - [Folder: `trading-agent/execution/backends`](#folder-trading-agentexecutionbackends) - Line 3038
+      - [Folder: `trading-agent/execution/ea_bridge`](#folder-trading-agentexecutionea_bridge) - Line 3057
+      - [Folder: `trading-agent/execution/service`](#folder-trading-agentexecutionservice) - Line 3083
+    - [Folder: `trading-agent/gateway`](#folder-trading-agentgateway) - Line 3173
+      - [Folder: `trading-agent/gateway/platforms`](#folder-trading-agentgatewayplatforms) - Line 3241
+    - [Folder: `trading-agent/graph`](#folder-trading-agentgraph) - Line 3265
+      - [Folder: `trading-agent/graph/checkpointers`](#folder-trading-agentgraphcheckpointers) - Line 3297
+      - [Folder: `trading-agent/graph/nodes`](#folder-trading-agentgraphnodes) - Line 3312
+        - [Folder: `trading-agent/graph/nodes/debate`](#folder-trading-agentgraphnodesdebate) - Line 3360
+    - [Folder: `trading-agent/harness`](#folder-trading-agentharness) - Line 3407
+      - [Folder: `trading-agent/harness/adapters`](#folder-trading-agentharnessadapters) - Line 3471
+    - [Folder: `trading-agent/indicators`](#folder-trading-agentindicators) - Line 3482
+      - [Folder: `trading-agent/indicators/pattern_similarity`](#folder-trading-agentindicatorspattern_similarity) - Line 3576
+    - [Folder: `trading-agent/logging_observability`](#folder-trading-agentlogging_observability) - Line 3627
+      - [Folder: `trading-agent/logging_observability/dashboard`](#folder-trading-agentlogging_observabilitydashboard) - Line 3702
+        - [Folder: `trading-agent/logging_observability/dashboard/frontend`](#folder-trading-agentlogging_observabilitydashboardfrontend) - Line 3795
+          - [Folder: `trading-agent/logging_observability/dashboard/frontend/public`](#folder-trading-agentlogging_observabilitydashboardfrontendpublic) - Line 3821
+          - [Folder: `trading-agent/logging_observability/dashboard/frontend/src`](#folder-trading-agentlogging_observabilitydashboardfrontendsrc) - Line 3832
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/assets`](#folder-trading-agentlogging_observabilitydashboardfrontendsrcassets) - Line 3842
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentscharts) - Line 3853
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentslayout) - Line 3865
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanels) - Line 3879
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsconfig) - Line 3927
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelsgraph) - Line 3933
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentspanelstokens) - Line 3947
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`](#folder-trading-agentlogging_observabilitydashboardfrontendsrccomponentsui) - Line 3953
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`](#folder-trading-agentlogging_observabilitydashboardfrontendsrchooks) - Line 4004
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`](#folder-trading-agentlogging_observabilitydashboardfrontendsrclib) - Line 4012
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`](#folder-trading-agentlogging_observabilitydashboardfrontendsrcstore) - Line 4020
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctheme) - Line 4024
+            - [Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`](#folder-trading-agentlogging_observabilitydashboardfrontendsrctypes) - Line 4028
+        - [Folder: `trading-agent/logging_observability/dashboard/routes`](#folder-trading-agentlogging_observabilitydashboardroutes) - Line 4032
+      - [Folder: `trading-agent/logging_observability/reporting`](#folder-trading-agentlogging_observabilityreporting) - Line 4099
+      - [Folder: `trading-agent/logging_observability/tracing`](#folder-trading-agentlogging_observabilitytracing) - Line 4112
+    - [Folder: `trading-agent/plugin_kernel`](#folder-trading-agentplugin_kernel) - Line 4134
+    - [Folder: `trading-agent/plugins`](#folder-trading-agentplugins) - Line 4139
+        - [Folder: `trading-agent/plugins/alerts/discord_alert`](#folder-trading-agentpluginsalertsdiscord_alert) - Line 4154
+        - [Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`](#folder-trading-agentpluginsanalysis_pipelinesmacro_to_asset) - Line 4164
+        - [Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`](#folder-trading-agentpluginsanalysis_pipelinestechnical_scalping) - Line 4173
+        - [Folder: `trading-agent/plugins/brokers/mt5_local`](#folder-trading-agentpluginsbrokersmt5_local) - Line 4182
+        - [Folder: `trading-agent/plugins/brokers/paper_trading`](#folder-trading-agentpluginsbrokerspaper_trading) - Line 4191
+        - [Folder: `trading-agent/plugins/indicators/custom_indicator`](#folder-trading-agentpluginsindicatorscustom_indicator) - Line 4200
+        - [Folder: `trading-agent/plugins/scrapers/example_scraper`](#folder-trading-agentpluginsscrapersexample_scraper) - Line 4210
+    - [Folder: `trading-agent/provider`](#folder-trading-agentprovider) - Line 4220
+    - [Folder: `trading-agent/risk`](#folder-trading-agentrisk) - Line 4235
+      - [Folder: `trading-agent/risk/invariants`](#folder-trading-agentriskinvariants) - Line 4354
+    - [Folder: `trading-agent/scheduler`](#folder-trading-agentscheduler) - Line 4378
+    - [Folder: `trading-agent/scrapers`](#folder-trading-agentscrapers) - Line 4739
+      - [Folder: `trading-agent/scrapers/calendar`](#folder-trading-agentscraperscalendar) - Line 4773
+      - [Folder: `trading-agent/scrapers/macro`](#folder-trading-agentscrapersmacro) - Line 4813
+      - [Folder: `trading-agent/scrapers/news`](#folder-trading-agentscrapersnews) - Line 4825
+      - [Folder: `trading-agent/scrapers/sentiment`](#folder-trading-agentscraperssentiment) - Line 4951
+      - [Folder: `trading-agent/scrapers/social`](#folder-trading-agentscraperssocial) - Line 4980
+    - [Folder: `trading-agent/scripts`](#folder-trading-agentscripts) - Line 4998
+      - [Folder: `trading-agent/scripts/check_scrapers`](#folder-trading-agentscriptscheck_scrapers) - Line 5007
+    - [Folder: `trading-agent/security`](#folder-trading-agentsecurity) - Line 5059
+    - [Folder: `trading-agent/services`](#folder-trading-agentservices) - Line 5076
+    - [Folder: `trading-agent/skills`](#folder-trading-agentskills) - Line 5095
+      - [Folder: `trading-agent/skills/crystallized`](#folder-trading-agentskillscrystallized) - Line 5166
+        - [Folder: `trading-agent/skills/general/academic-literature`](#folder-trading-agentskillsgeneralacademic-literature) - Line 5171
+        - [Folder: `trading-agent/skills/general/code-optimization`](#folder-trading-agentskillsgeneralcode-optimization) - Line 5176
+        - [Folder: `trading-agent/skills/general/codebase-inspection`](#folder-trading-agentskillsgeneralcodebase-inspection) - Line 5181
+        - [Folder: `trading-agent/skills/general/data-science-modeling`](#folder-trading-agentskillsgeneraldata-science-modeling) - Line 5186
+        - [Folder: `trading-agent/skills/general/devops-automation`](#folder-trading-agentskillsgeneraldevops-automation) - Line 5191
+        - [Folder: `trading-agent/skills/general/financial-research`](#folder-trading-agentskillsgeneralfinancial-research) - Line 5196
+        - [Folder: `trading-agent/skills/general/research-analysis`](#folder-trading-agentskillsgeneralresearch-analysis) - Line 5201
+        - [Folder: `trading-agent/skills/general/software-development`](#folder-trading-agentskillsgeneralsoftware-development) - Line 5206
+        - [Folder: `trading-agent/skills/general/systematic-debugging`](#folder-trading-agentskillsgeneralsystematic-debugging) - Line 5211
+      - [Folder: `trading-agent/skills/operator`](#folder-trading-agentskillsoperator) - Line 5216
+      - [Folder: `trading-agent/skills/trading`](#folder-trading-agentskillstrading) - Line 5221
+    - [Folder: `trading-agent/systemd`](#folder-trading-agentsystemd) - Line 5275
+    - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 5280
+    - [Folder: `trading-agent/tests`](#folder-trading-agenttests) - Line 5465
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 5470
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 5510
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 5564
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 5618
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 5630
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 5674
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 5791
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 5832
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 5845
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 5870
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 5883
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 5909
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 5918
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 5934
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 5961
 
 ## Root Directory: `/trading-agent`
 
 **File:** `.dockerignore`
+
 **File:** `.env.example`
+
+**File:** `.geminiignore`
+
 **File:** `.gitignore`
+
 **File:** `AGENTS.md`
+
 **File:** `CHANGELOG.md`
+
 **File:** `CODE_OF_CONDUCT.md`
-**File:** `CONTRIBUTING.md`
+
 **File:** `contoh_pertanyaan.md`
+
+**File:** `CONTRIBUTING.md`
+
 **File:** `DESIGN.md`
-**File:** `Dockerfile`
+
 **File:** `docker-compose.yml`
+
+**File:** `Dockerfile`
+
 **File:** `GEMINI.md`
+
 **File:** `INDEX.md`
+
 **File:** `LICENSE`
+
 **File:** `Makefile`
+
+**File:** `PRD.md`
+  - **Description**: Master Project Requirements Document (PRD) defining product vision, target audience, core architectural principles ("AI Proposes, Mechanical Fortress Disposes"), functional requirements (FR-1 through FR-10), non-functional requirements (NFR-1 through NFR-5), database schema, operational workflows, and open collaboration guidelines for Monika domain-specific trading agent harness.
+
 **File:** `prompt_benchmark.md`
   - **Description**: Architectural benchmarking specifications and multi-agent upgrade directives for Monika quantitative trading agent.
+
 **File:** `pyproject.toml`
+
 **File:** `pyrightconfig.json`
+
 **File:** `pytest.ini`
+
 **File:** `README.md`
+
 **File:** `SECURITY.md`
-**File:** `STRUKTUR.md`
+
+**File:** `setup.bat`
+  - **Description**: Shell / batch execution script.
+
+**File:** `setup.sh`
+  - **Description**: !/usr/bin/env bash
+
+**File:** `skills-lock.json`
+  - **Description**: Structured JSON data / schema definition.
+
+**File:** `STRUCTURE.md`
 
 ### Folder: `.github`
-
-#### Folder: `.github/workflows`
-**File:** `ci.yml`
-  - **Description**: GitHub Actions CI pipeline executing Python linting (Ruff), automated test suites (Pytest), and frontend dashboard compilation.
-
-#### Folder: `.github/ISSUE_TEMPLATE`
-**File:** `bug_report.md`
-  - **Description**: Structured bug reporting template with credential sanitization guidelines.
-**File:** `feature_request.md`
-  - **Description**: Feature proposal template incorporating capital safety criteria and RiskGate compatibility.
 
 **File:** `pull_request_template.md`
   - **Description**: Pull request verification checklist enforcing RiskGate integrity, paper trading validation, and credential protection.
 
-### Folder: `deploy`
+#### Folder: `.github/ISSUE_TEMPLATE`
 
-**File:** `Dockerfile.mt5-wine`
-  - **Docstring**: Production multi-stage Dockerfile bundling Wine, Xvfb virtual display, MetaTrader 5 terminal runner, and Python 3.11 runtime for headless Linux VPS execution.
+**File:** `bug_report.md`
+  - **Description**: Structured bug reporting template with credential sanitization guidelines.
+
+**File:** `feature_request.md`
+  - **Description**: Feature proposal template incorporating capital safety criteria and RiskGate compatibility.
+
+#### Folder: `.github/workflows`
+
+**File:** `ci.yml`
+  - **Description**: GitHub Actions CI pipeline executing Python linting (Ruff), automated test suites (Pytest), and frontend dashboard compilation.
+
+### Folder: `deploy`
 
 **File:** `docker-compose.vps.yml`
   - **Docstring**: Production Docker Compose configuration orchestrating PostgreSQL 16 with pgvector, MT5 Wine service, and Monika Trading Agent container on VPS.
+
+**File:** `Dockerfile.mt5-wine`
+  - **Docstring**: Production multi-stage Dockerfile bundling Wine, Xvfb virtual display, MetaTrader 5 terminal runner, and Python 3.11 runtime for headless Linux VPS execution.
 
 **File:** `entrypoint_mt5.sh`
   - **Docstring**: Shell entrypoint script for initializing virtual X11 framebuffer (Xvfb), Wine environment, MT5 terminal bridge, and python runtime inside the container.
@@ -203,72 +245,32 @@ This document provides an exhaustive structural index of all directories, files,
 
 ### Folder: `docs`
 
-#### Folder: `docs/images`
-**File:** `01_trading_desk_overview.png`
-  - **Description**: High-resolution showcase screenshot of the main Trading Desk Overview with real-time portfolio telemetry, equity curve, and open positions.
-**File:** `02_trading_desk_signals.png`
-  - **Description**: Showcase screenshot of the Signals & Triggers Matrix highlighting latency benchmarks and active conditional triggers.
-**File:** `03_trading_desk_market.png`
-  - **Description**: Showcase screenshot of Live Market Data featuring real MT5 tick feeds, VIX volatility gauge, and macroeconomic event calendar.
-**File:** `04_market_intelligence_pipeline_dag.png`
-  - **Description**: Showcase screenshot of the LangGraph 7-node autonomous decision pipeline DAG visualizer.
-**File:** `05_market_intelligence_macro_brief.png`
-  - **Description**: Showcase screenshot of the AI-synthesized Macroeconomic Intelligence Brief.
-**File:** `06_ledger_risk_limits.png`
-  - **Description**: Showcase screenshot of the Hard Risk Limits & Circuit Breakers panel with analog VU meters.
-**File:** `07_ledger_llm_token_audit.png`
-  - **Description**: Showcase screenshot of the LLM Token Audit & Cost Economics panel with prompt caching telemetry.
-**File:** `08_telegraph_desk_console_chat.png`
-  - **Description**: Showcase screenshot of the Phosphor CRT Telegraph Desk Console with human-in-the-loop trade authorization.
-**File:** `09_system_configuration.png`
-  - **Description**: Showcase screenshot of the Dynamic System Configuration and YAML editor panel.
-**File:** `10_terminal_ui_tui.png`
-  - **Description**: Showcase screenshot of the Textual Terminal UI (TUI) running in headless terminal environment.
+  - **Description**: Documentation repository, system guides, and UI showcase screenshot assets.
+  - **Note**: Collapsed directory containing 11 internal files.
 
 ### Folder: `scripts`
 
-**File:** `generate_model_quadrant.py`
-  - **Docstring**: Script to generate standalone interactive HTML quadrant visualization for LLM models.
-  - **Functions**:
-    - `clean_num(val: str, default: float = 0.0) -> float`
-    - `parse_csv(filepath: str)`
-    - `compute_stats(models)`
-    - `generate_html(models, stats, output_path: str)`
-    - `main()`
-**File:** `generate_showcase_screenshots.py`
-  - **Docstring**: Ephemeral FastAPI mock server and headless Chrome automation script for capturing high-resolution dashboard screenshots.
-  - **Functions**:
-    - `find_chrome_path() -> str`
-    - `run_mock_server(port: int = 8899)`
-    - `capture_screenshots(port: int = 8899)`
-    - `main()`
-**File:** `update_index_toc.py`
-**File:** `download_timesfm_weights.py`
-  - **Docstring**: Script to download Google TimesFM 3.0 model weights using HF_TOKEN.
-**File:** `deep_dependency_audit.py`
-  - **Docstring**: Exhaustive dependency scanner checking AST imports, dynamic imports, and try-except blocks across codebase.
-**File:** `fix_venv_entrypoints.py`
-  - **Docstring**: Utility script to repair and regenerate virtualenv console_scripts launcher stubs on Windows to current Python path.
-**File:** `reset_paper_trades.py`
-  - **Docstring**: CLI utility to safely reset paper trading history, clear loss streaks to 0, unlock suspensions, and auto-backup JSON.
-  - **Functions**:
-    - `main()`
-**File:** `install.ps1`
-  - **Docstring**: Windows one-click installer automating isolated virtual environment setup, core dependencies, and setup doctor inspection.
-**File:** `install.sh`
-  - **Docstring**: Linux VPS one-click installer automating system dependencies, isolated virtual environment setup, core requirements, and setup doctor inspection.
-**File:** `run_tests.bat`
-  - **Docstring**: Isolated Windows test runner script. Sanitizes runtime environment, strips live credentials, enforces mock trading flags, and executes pytest test suite.
-**File:** `run_tests.sh`
-  - **Docstring**: Isolated Linux/macOS test runner script. Sanitizes runtime environment, strips live credentials, enforces mock trading flags, and executes pytest test suite.
+  - **Description**: Maintenance, administrative, and local development utility scripts (ignored from version control).
+  - **Note**: Collapsed directory containing 21 internal files.
 
 ### Folder: `trading-agent`
+
+**File:** `.env.example`
+  - **Description**: Monika: Autonomous MT5 Quantitative Trading Agent — Environment Configuration
+
+**File:** `__init__.py`
+
+**File:** `alembic.ini`
+  - **Description**: A generic, single database configuration.
 
 **File:** `bootstrap.py`
   - **Docstring**: Cross-platform pre-flight bootstrap and network hardening module. Performs early environment stabilization, stream UTF-8 encoding configuration, console flashing suppression on Windows, and RFC 8305 Happy Eyeballs socket racing to prevent IPv6 routing latency hangs on external API calls.
   - **Functions**:
     - `bootstrap_runtime()`
     - `race_dual_stack_socket(host, port, timeout_ms=250)`
+
+**File:** `docker-compose.linux.yml`
+  - **Description**: Production Docker Compose configuration for Linux/Ubuntu VPS deployment (PostgreSQL asyncpg + isolated Monika MT5 Trading Agent runtime).
 
 **File:** `main.py`
   - **Global Variables**: logger, BANNER, PERMANENT_ERRORS, LONG_RETRY_ERRORS, CORE_TRADING_TASKS, CLEAN_SHUTDOWN_FLAG
@@ -295,532 +297,232 @@ This document provides an exhaustive structural index of all directories, files,
         - `_run_risk_parameter_reloader(self)`
         - `stop(self)`
 
-**File:** `spesifikasi_final_ai_trading_agent.md`
-  - **Description**: Master technical architecture blueprint and system specification (SSOT). Details the production architecture: multi-provider LLM fabric with 8-tier fallback, LangGraph StateGraph, multi-agent dialectical debate, quantitative edge strategies, Google TimesFM 3.0 deep learning, 4-tier memory, 18+ concurrent schedulers/guardians, 10-layer deterministic risk gate, MT5 EA dead-man switch, 50+ tool catalog, 35+ PostgreSQL models, and observability stack.
-**File:** `start_agent.bat`
-  - **Description**: Primary Windows startup wrapper. Automatically auto-compiles `AIAgent_EA.mq5` via `metaeditor64.exe` (headless), detects Windows Terminal (`wt.exe`) to launch Monika in 3 separate tabs (Monika Agent, Dashboard Frontend, and 9Router Gateway), with graceful fallback to Git Bash Mintty. Supports execution flags: `start_agent.bat` (paper mode, default) or `start_agent.bat live`.
-**File:** `start_agent.sh`
-  - **Description**: Cross-platform startup script (Windows via Git Bash, Linux, and macOS). Automatically auto-compiles `AIAgent_EA.mq5` via `metaeditor64.exe` (or Wine), initializes MT5 terminal, launches Vite Dashboard Frontend (localhost:5173), starts 9Router AI Gateway (localhost:20128, unless MONIKA_EXTERNAL_SERVICES=1), executes Alembic database migrations via `python -m alembic upgrade head`, and manages the agent auto-restart loop (`python -m cli.main run`). Supports flags `bash start_agent.sh` (paper) or `bash start_agent.sh live`.
-**File:** `stop_agent.bat`
-  - **Description**: Windows shutdown script. Terminates active Python agent processes, Vite frontend dev server (port 5173), 9Router AI Gateway (port 20128), Windows Terminal tabs (`WindowsTerminal.exe`), and MetaTrader 5 terminal (`terminal64.exe`).
+**File:** `PRD.md`
+  - **Description**: Pointer to the canonical Project Requirements Document located at root `../PRD.md`.
+
+**File:** `requirements.txt`
+  - **Description**: LLM Integration
+
 **File:** `run_benchmark.py`
 
-**File:** `docker-compose.linux.yml`
-  - **Description**: Production Docker Compose configuration for Linux/Ubuntu VPS deployment (PostgreSQL asyncpg + isolated Monika MT5 Trading Agent runtime).
+**File:** `start_agent.bat`
+  - **Description**: Primary Windows startup wrapper. Automatically auto-compiles `AIAgent_EA.mq5` via `metaeditor64.exe` (headless), detects Windows Terminal (`wt.exe`) to launch Monika in 3 separate tabs (Monika Agent, Dashboard Frontend, and 9Router Gateway), with graceful fallback to Git Bash Mintty. Supports execution flags: `start_agent.bat` (paper mode, default) or `start_agent.bat live`.
 
-#### Folder: `trading-agent/systemd`
-**File:** `tradeagent.service`
-  - **Description**: Production systemd service unit file configuring Monika MT5 Trading Agent as a background daemon on Linux/Ubuntu VPS hosts.
+**File:** `start_agent.sh`
+  - **Description**: Cross-platform startup script (Windows via Git Bash, Linux, and macOS). Automatically auto-compiles `AIAgent_EA.mq5` via `metaeditor64.exe` (or Wine), initializes MT5 terminal, launches Vite Dashboard Frontend (localhost:5173), starts 9Router AI Gateway (localhost:20128, unless MONIKA_EXTERNAL_SERVICES=1), executes Alembic database migrations via `python -m alembic upgrade head`, and manages the agent auto-restart loop (`python -m cli.main run`). Supports flags `bash start_agent.sh` (paper) or `bash start_agent.sh live`.
 
-#### Folder: `trading-agent/cli`
-**File:** `__init__.py`
+**File:** `startup_agent.vbs`
 
-**File:** `main.py`
-  - **Global Variables**: logger, DEFAULT_API_URL, TradingAgent, acquire_single_instance_lock, run_startup_checks
-  - **Functions**:
-    - `get_pid_file_path()`
-      - *Docstring*: Resolve active or expected PID file path for the trading daemon.
-    - `get_daemon_pid()`
-      - *Docstring*: Retrieve daemon PID if process is actively running.
-    - `is_daemon_running(api_url=None)`
-      - *Docstring*: Check if Monika trading daemon is actively running via PID file or API overview endpoint.
-    - `spawn_daemon_background(mode="paper", config_path=None)`
-      - *Docstring*: Spawn the Monika trading daemon as a persistent detached background process with logs redirected to logs/daemon.log.
-    - `ensure_daemon_running(args, console=None)`
-      - *Docstring*: Ensure that Monika trading daemon is active before executing client commands (tui, chat, status, positions, ask, analyze).
-    - `parse_args(args_list=None)`
-      - *Docstring*: Parse CLI arguments for trading mode, subcommands (run, status, pause, resume, kill, stop, positions, unsuspend, tui, chat, config, sessions, logs, doctor, setup, profile, mcp-serve), and optional config with --no-daemon bypass.
-    - `_acli_run(args)`
-      - *Docstring*: Asynchronous CLI execution pipeline.
-    - `_cmd_status(args)`
-      - *Docstring*: Show system status, flags, and open positions.
-    - `_cmd_pause(args)`
-      - *Docstring*: Pause system trading proposals.
-    - `_cmd_resume(args)`
-      - *Docstring*: Resume system trading proposals.
-    - `_cmd_kill(args)`
-      - *Docstring*: Trigger emergency kill switch.
-    - `_cmd_stop(args)`
-      - *Docstring*: Stop running Monika daemon gracefully with PID cleanup and auto-restart suppression.
-    - `_cmd_positions(args)`
-      - *Docstring*: List active open positions (real & paper).
-    - `_cmd_unsuspend(args)`
-      - *Docstring*: Unsuspend symbols blocked by streak losses.
-    - `_cmd_tui(args)`
-      - *Docstring*: Launch rich Textual terminal dashboard.
-    - `_cmd_chat(args)`
-      - *Docstring*: Launch interactive REPL chat with agent.
-    - `_cmd_config_show(args)`
-      - *Docstring*: Show system configuration or section.
-    - `_cmd_config_set(args)`
-      - *Docstring*: Update configuration parameter via API or local settings.yaml with validation.
-    - `_cmd_config(args)`
-      - *Docstring*: Handle config subcommand routing.
-    - `_cmd_sessions(args)`
-      - *Docstring*: List conversation sessions with metadata.
-    - `_cmd_logs(args)`
-      - *Docstring*: Stream or tail live activity logs.
-    - `_cmd_doctor(args)`
-      - *Docstring*: Run deep diagnostic health checks across environment, credentials, MT5, and database.
-    - `_cmd_profile(args)`
-      - *Docstring*: Manage isolated trading profiles (list, use, create).
-    - `_cmd_setup(args)`
-      - *Docstring*: Interactive terminal configuration setup wizard.
-    - `_cmd_backtest(args)`
-      - *Docstring*: Run historical backtest or walk-forward analysis from command line.
-    - `_dispatch_cli(args)`
-      - *Docstring*: Consolidated async CLI subcommand dispatcher with single event loop lifecycle.
-    - `run()`
-      - *Docstring*: Synchronous CLI entrypoint.
-
-**File:** `plugins.py`
-  - **Docstring*: Command-line management for Monika plugins (list, install, uninstall, info).
-  - **Functions**:
-    - `register_plugin_subparsers(subparsers)`
-    - `handle_plugin_command(args)`
-    - `cmd_plugin_list(args)`
-    - `cmd_plugin_install(args)`
-    - `cmd_plugin_uninstall(args)`
-    - `cmd_plugin_info(args)`
-
-**File:** `doctor.py`
-  - **Classes**:
-    - `DiagnosticResult`: Dataclass holding individual diagnostic check outcome (name, passed, message, severity, fix_applied).
-    - `SystemDoctor`: Comprehensive system diagnostics engine checking filesystem, YAML validity, credentials, MT5 terminals, and PostgreSQL database.
-      - *Methods*: `check_filesystem()`, `check_configuration()`, `check_credentials()`, `check_mt5_environment()`, `check_database()`, `run_all(fix=False)`
-
-**File:** `profile_manager.py`
-  - **Classes**:
-    - `ProfileManager`: Isolated multi-environment profile manager creating, switching, deleting, exporting, importing, and listing environment profiles under profiles/<name>/.
-      - *Methods*: `list_profiles()`, `get_active_profile()`, `switch_profile(name)`, `create_profile(name, clone_from=None)`, `delete_profile(name)`, `export_profile(name, zip_path)`, `import_profile(zip_path, new_name=None)`, `get_env_path_for_active()`, `get_data_dir_for_active()`, `get_settings_path_for_active()`
-
-**File:** `onboarding_trader.py`
-  - **Classes**:
-    - `TraderProfile`: Dataclass holding trader persona, experience level, risk tolerance, preferred assets, and operating mandates.
-    - `TraderOnboarding`: Interactive terminal onboarding wizard syncing trader profile into Layer 0 TRADING_SOUL.md memory.
-      - *Methods*: `run_interactive()`, `save_profile()`, `load_profile()`, `sync_to_soul()`
-
-**File:** `setup_wizard.py`
-  - **Classes**:
-    - `SetupWizard`: Guided interactive CLI setup wizard configuring MT5 accounts, PostgreSQL connections, and LLM API providers with automated verification and modular section execution.
-      - *Methods*: `run_interactive()`, `run_wizard(section='all', quick=False)`, `prompt_mt5()`, `prompt_database()`, `prompt_llm()`, `save_configuration()`
-
-**File:** `analysis_tree.py`
-  - **Classes**:
-    - `AnalysisCycleTree(Widget)`: Textual widget rendering LangGraph pipeline DAG nodes with icons, durations, tokens, braille sparklines, and collapsed historical cycle runs.
-      - *Methods*: `compose()`, `update_from_events()`, `update_node()`, `add_completed_cycle()`
-
-**File:** `busy_input.py`
-  - **Classes**:
-    - `InputDelivery(str, Enum)`: Input delivery modes (one_at_a_time, batch, immediate).
-    - `BusyInputBuffer`: Dual-queue buffer distinguishing high-priority steering from follow-up inputs.
-      - *Methods*: `submit()`, `has_pending_steer()`, `get_next_steer()`, `get_next_follow_up()`, `dequeue()`, `clear()`, `pending_count()`
-
-**File:** `platform_compat.py`
-  - **Functions**:
-    - `apply_platform_fixes()`: Hardens standard streams (UTF-8 encoding) and enables Windows VT virtual terminal processing.
-    - `detect_color_depth()`: Detects terminal color depth (truecolor, 256, 16, dumb).
-    - `supports_unicode()`: Checks Unicode / UTF-8 rendering capability in active console.
-    - `get_platform_diagnostics()`: Returns platform compatibility diagnostic dict.
-
-**File:** `sparklines.py`
-  - **Functions**:
-    - `braille_sparkline(values, min_val=None, max_val=None, width=None)`: Pure Python unicode braille sparkline generator for mini inline terminal trends.
-    - `bar_gauge(value, max_val=100.0, width=10, warn_ratio=0.75, crit_ratio=0.90)`: Compact ASCII/Unicode progress bar gauge with warning/critical threshold coloring.
-
-**File:** `theme.py`
-  - **Classes**:
-    - `ThemePack`: Dataclass defining semantic color tokens for CLI & TUI skins (retro_vintage, modern_dark, high_contrast, daylight).
-  - **Global Variables**: `THEME_PACKS`, `PHOSPHOR_AMBER`, `BRASS`, `BULL_PROFIT`, `BEAR_LOSS`, `MUTED`, `DIM`, `PAPER`, `CHARCOAL`, `SURFACE`, `BORDER`, `MONIKA_THEME`, `LEDGER_BOX`
-  - **Functions**:
-    - `get_theme_pack(name)`: Retrieve ThemePack preset by name.
-    - `list_theme_packs()`: List all available theme pack names.
-    - `get_console(theme_name)`: Return a Rich Console preconfigured with specified theme.
-    - `stamp_ok(text="OK")`: Return formatted green ledger OK stamp.
-    - `stamp_err(text="FAILED")`: Return formatted wax red error stamp.
-    - `stamp_warn(text="WARNING")`: Return formatted brass warning stamp.
-    - `stamp_info(text="INFO")`: Return formatted brass info stamp.
-    - `stamp_exec(text="EXECUTE")`: Return formatted amber execution stamp.
-    - `build_tui_css(theme_name)`: Generate Textual CSS stylesheet for TUI dashboard using theme semantic tokens.
-    - `build_chat_css(theme_name)`: Generate Textual CSS stylesheet for chat screen.
-
-**File:** `tui.py`
-  - **Global Variables**: logger, DEFAULT_API_URL, COMMAND_SUGGESTIONS, DETERMINISTIC_RISK_CHECKS
-  - **Classes**:
-    - `KillConfirmModalScreen(ModalScreen)`: Confirmation dialog modal requiring explicit operator confirmation before executing emergency kill switch.
-    - `LiveTickerBanner(Static)`: Top live ticker banner with braille price/VIX sparklines and dynamic trend arrows (•, ▲, ▼).
-    - `StatusBar(Static)`: Status footer showing context gauge, cache hit rate, tokens, cost, uptime, and WS status.
-    - `TradingDashboard(App)`: Multi-tab rich terminal dashboard (Overview, Analysis Tree, Performance, Signals, Risk, Chat) with theme switching, toast notifications, and live event subscriptions.
-      - *Methods*: `action_focus_input()`, `action_blur_input()`, `action_next_tab()`, `action_prev_tab()`, `action_switch_tab()`, `action_tab_overview()`, `action_tab_tree()`, `action_tab_perf()`, `action_tab_signals()`, `action_tab_risk()`, `action_tab_chat()`, `on_tabbed_content_tab_activated()`, `set_theme()`, `_send_inline_chat()`, `_fetch_overview_data()`, `_fetch_data_from_db()`, `_update_ui_state()`, `_is_input_focused()`
-  - **Functions**:
-    - `run_tui(api_url, api_key, refresh_interval, theme)`: Entrypoint function to run the Textual TUI dashboard.
-
-**File:** `tui_chat.py`
-  - **Global Variables**: logger, DEFAULT_API_URL, CHAT_SCREEN_CSS
-  - **Classes**:
-    - `ChatScreen(Screen)`: Full-screen interactive chat REPL within Textual TUI.
-      - *Methods*: `_is_ws_healthy()`, `_close_ws()`, `_connect_ws()`, `_ensure_ws()`, `action_interrupt()`, `action_clear_transcript()`, `on_input_submitted()`, `_handle_approval_decision()`, `_run_ws_turn()`, `_run_local_turn()`
-  - **Functions**:
-    - `is_ws_alive(ws)`: Check if ClientWebSocketResponse and underlying transport are active and open.
-    - `_get_prompt_session()`: Safely initialize prompt_toolkit PromptSession with fallback for Windows non-console.
-    - `run_cli_chat(api_url, api_key, session_id, offline, model, theme)`: Interactive standalone REPL chat with Monika (MT5 Trading Agent), delegating to cli.chat.
-    - `_submit_cli_decision(ws, local_agent, action_id, decision, console)`: Submit approval decision in CLI REPL.
-
-**File:** `width_budget.py`
-  - **Docstring**: Progressive Terminal Width Budgeting & Adaptive Column Allocator dynamically partitioning terminal character width across data table columns and dropping low-priority columns on narrow displays.
-  - **Classes**: `ColumnSpec`
-  - **Functions**: `compute_progressive_width_budget()`
-
-##### Folder: `trading-agent/cli/subcommands`
-**File:** `__init__.py`
-**File:** `base.py`
-  - **Docstring**: Base Abstract Class for Modular CLI Subcommands.
-  - **Classes**: `Subcommand`
-    - *Methods*: `register(parser)`, `execute(args)`
-**File:** `daemon.py`
-  - **Docstring**: Daemon lifecycle management subcommand (start, stop, status).
-  - **Functions**: `register(parser)`, `execute(args)`
-**File:** `mcp.py`
-  - **Docstring**: Model Context Protocol (MCP) server launch subcommand.
-  - **Functions**: `register(parser)`, `execute(args)`
-**File:** `simulation.py`
-  - **Docstring**: Quantitative simulation and backtest runner subcommand.
-  - **Functions**: `register(parser)`, `execute(args)`
-**File:** `trading.py`
-  - **Docstring**: Active trading operations and position oversight subcommand.
-  - **Functions**: `register(parser)`, `execute(args)`
-
-##### Folder: `trading-agent/cli/chat`
-**File:** `__init__.py`
-  - **Docstring**: Public entry point for Monika CLI Interactive Chat subsystem.
-  - **Functions**:
-    - `run_cli_chat(api_url, api_key, session_id, offline, model, theme)`: Launch interactive standalone CLI Chat trading desk session.
-  - **Global Variables**: `DEFAULT_API_URL`, `ChatReplSession`, `ChatRenderer`, `ThinkingScrubber`, `ChatPromptManager`, `ChatCommandCompleter`, `ChatCommandRouter`, `CommandResult`, `ChatPalette`, `get_chat_palette`
-
-**File:** `theme.py`
-  - **Docstring**: Design tokens, typographic glyphs, and box elements for Monika Chat CLI.
-  - **Classes**:
-    - `ChatPalette`: Semantic color tokens tailored for interactive CLI chat.
-  - **Functions**:
-    - `get_chat_palette(theme_name="retro_vintage")`: Derive chat color tokens from active system ThemePack.
-  - **Global Variables**: `GLYPH_USER`, `GLYPH_AGENT`, `GLYPH_THINK`, `GLYPH_TOOL`, `GLYPH_SUCCESS`, `GLYPH_ERROR`, `GLYPH_WARN`, `GLYPH_ARROW_RIGHT`, `GLYPH_DOT`, `GLYPH_BRANCH`, `GLYPH_CORNER`, `GLYPH_VERTICAL`, `BOX_ROUND_TOP_LEFT`, `BOX_ROUND_TOP_RIGHT`, `BOX_ROUND_BOTTOM_LEFT`, `BOX_ROUND_BOTTOM_RIGHT`, `BOX_HORIZONTAL`, `BOX_VERTICAL`, `BOX_DOUBLE_HORIZONTAL`, `BOX_DOUBLE_VERTICAL`, `BOX_DOUBLE_TOP_LEFT`, `BOX_DOUBLE_TOP_RIGHT`, `BOX_DOUBLE_BOTTOM_LEFT`, `BOX_DOUBLE_BOTTOM_RIGHT`
-
-**File:** `renderer.py`
-  - **Docstring**: Rich terminal formatting, Markdown streaming, thinking box scrubber, and visual cards for Monika Chat CLI.
-  - **Classes**:
-    - `ThinkingScrubber`: Parses live token stream and separates thinking/reasoning (<think> tags) from visible output with boundary buffering.
-      - *Methods*: `process_chunk(chunk)`, `get_full_thinking()`, `get_full_content()`
-    - `ChatRenderer`: Institutional-grade CLI Chat formatter with rich styling and design tokens.
-      - *Methods*: `set_theme(theme_name)`, `render_banner(model_name, mode, session_id, is_live_service, connection_info)`, `render_user_prompt(user_text)`, `render_thinking_card(thinking_text, elapsed_s)`, `render_tool_start(tool_name, tool_args)`, `render_tool_result(tool_name, summary, duration_ms, is_error)`, `render_agent_header(model_name)`, `render_markdown(markdown_text)`, `render_telemetry_footer(tokens_in, tokens_out, latency_s, cost_usd)`, `render_approval_card(action_dict)`, `render_notice(message, level)`
-  - **Functions**:
-    - `get_terminal_width(default=80)`: Get terminal column width safely.
-
-**File:** `completer.py`
-  - **Docstring**: Fuzzy slash-command auto-completer for Monika interactive REPL chat.
-  - **Classes**:
-    - `ChatCommandCompleter(Completer)`: Auto-completer suggesting slash commands and sub-options when typing '/'.
-      - *Methods*: `get_completions(document, complete_event)`
-  - **Global Variables**: `SLASH_COMMANDS`
-
-**File:** `prompt.py`
-  - **Docstring**: Prompt session manager with multiline input handling (Shift+Enter/Alt+Enter), extended keybindings, and dynamic bottom toolbar.
-  - **Classes**:
-    - `ChatPromptManager`: Manages prompt_toolkit session, keybindings, and dynamic status toolbar.
-      - *Methods*: `set_theme(theme_name)`, `update_telemetry(model, mode, status, latency_s, tokens, is_generating)`, `_create_style()`, `_create_key_bindings()`, `_get_bottom_toolbar()`, `prompt_async()`
-  - **Functions**:
-    - `_install_key_sequence_patches()`: Register Kitty CSI-u and xterm escape sequences for Shift+Enter & Alt+Enter.
-
-**File:** `commands.py`
-  - **Docstring**: Slash command parser and dispatcher for Monika Interactive CLI Chat.
-  - **Classes**:
-    - `CommandResult`: Outcome of a slash command evaluation (handled, should_exit, action_payload, output_message).
-    - `ChatCommandRouter`: Dispatches CLI slash commands and renders local desk telemetry.
-      - *Methods*: `handle(input_text, pending_action_id, history_records)`, `_render_help_catalog()`, `_handle_theme_switch(theme_name)`, `_handle_model_switch(model_arg)`, `_handle_status_query()`, `_handle_positions_query()`, `_handle_export(filepath, history)`
-  - **Global Variables**: `logger`, `MODEL_ALIASES`, `AVAILABLE_THEMES`
-
-**File:** `session.py`
-  - **Docstring**: Core REPL session manager for Monika Interactive CLI Trading Desk.
-  - **Classes**:
-    - `ChatReplSession`: Institutional-grade CLI Chat REPL session coordinating WebSocket streaming, local fallback engine, thinking scrubber, and single-turn interrupt.
-      - *Methods*: `run()`, `_handle_interrupt()`, `_connect_ws()`, `_ensure_local_agent()`, `_execute_turn(text)`, `_execute_ws_turn(text, model, t0)`, `_execute_local_turn(text, model, t0)`, `_submit_decision(payload)`, `_teardown()`
-  - **Functions**:
-    - `_is_ws_alive(ws)`: Check if ClientWebSocketResponse is open and transport is writable.
-  - **Global Variables**: `logger`, `DEFAULT_API_URL`
-
-##### Folder: `trading-agent/cli/overlays`
-**File:** `__init__.py`
-
-**File:** `approval_modal.py`
-  - **Docstring**: Interactive Modal Dialog for Human-in-the-Loop (HITL) trade action approvals.
-  - **Classes**:
-    - `ApprovalModalScreen(ModalScreen[Optional[str]])`: Modal screen prompting operator to review and approve/deny proposed trade actions with risk preview and keyboard shortcuts ([1] Allow Once, [2] Allow Session 4h, [3/Esc] Deny).
-      - *Methods*: `compose()`, `on_button_pressed(event)`, `action_allow_once()`, `action_allow_session()`, `action_deny()`
-
-**File:** `plugin_install_modal.py`
-  - **Docstring**: Textual Modal Screen for Installing Monika Plugins via Pip.
-  - **Classes**:
-    - `PluginInstallModalScreen(ModalScreen[Optional[bool]])`: Interactive modal dialog for inputting package spec or picking catalog presets with live pip output console.
-      - *Methods*: `compose()`, `on_mount()`, `on_button_pressed(event)`, `on_input_submitted(event)`, `action_cancel()`
-
-#### Folder: `trading-agent/benchmark`
-**File:** `__init__.py`
-**File:** `alpha_arena.py`
-  - **Docstring**: Head-to-Head Tournament Engine for LLM Models & Strategies using Elo ratings.
-  - **Classes**: `ArenaCompetitor`, `ArenaMatchResult`, `AlphaArenaTournament`
-    - *Methods*: `register_competitor()`, `record_match()`, `get_leaderboard()`
-  - **Functions**: `update_elo()`
-**File:** `config.py`
-  - **Variables**: `S1_WEIGHT_ACCURACY`, `S1_WEIGHT_LATENCY`, `S1_WEIGHT_CALIBRATION`, `S1_WEIGHT_SCHEMA`, `S1_LATENCY_TARGET_MS`, `S1_LATENCY_CEILING_MS`
-**File:** `db_access.py`
-  - **Classes**: `BenchmarkToolExecutor`
-  - **Functions**: `_capturing_submit_asset_analysis`, `_capturing_submit_fundamental_brief`, `_capturing_propose_action`, `guarded_tool_executor`, `pick_asset_analysis`, `latest_brief`, `latest_digest`, `recent_news`, `resolved_reflection`, `latest_user_message`, `entry_context`
-**File:** `db_models.py`
-  - **Classes**: `BenchmarkRun`, `BenchmarkResult`
-**File:** `deterministic.py`
-  - **Functions**: `score_trade_payload`, `verify_invariant_compliance`
-**File:** `fixture_loader.py`
-  - **Functions**: `load_fixture_json`, `get_synthetic_market_snapshot`, `get_synthetic_stage1_bundle`, `get_synthetic_stage2_bundle`, `get_synthetic_fundamental_brief`, `get_synthetic_news_items`, `get_synthetic_risk_context`
-**File:** `invoker.py`
-  - **Classes**: `InvokeResult`
-  - **Functions**: `_attach_usage_capture`, `make_client`, `invoke_text`, `invoke_json`, `invoke_agent`, `invoke_chat`, `invoke_custom`, `invoke_system_one`
-**File:** `judge.py`
-  - **Variables**: `JUDGE_PERSONAS`, `CATEGORY_PERSONA_MAP`
-  - **Functions**: `_score`, `judge_output`, `judge_output_ensemble`
-**File:** `model_registry.py`
-  - **Variables**: `CANDIDATE_MODELS`
-  - **Functions**: `get_candidate_models`, `get_tier_models`, `get_router_matrix`, `make_role_config`
-**File:** `paired_evaluator.py`
-  - **Docstring**: A/B Paired Strategy Evaluation Runner computing Win Rate Lift, Profit Factor Delta, Expectancy Delta, and Token Cost Delta across identical historical scenario matrices.
-  - **Classes**: `StrategyMetrics`, `PairedComparisonReport`, `PairedStrategyEvaluator`
-    - *Methods*: `_compute_metrics()`, `evaluate_pairwise()`
-**File:** `pricing.py`
-  - **Classes**: `Price`
-  - **Variables**: `PRICING`, `OPENROUTER_PRICING_MAP`, `_FREE`
-  - **Functions**: `get_price`, `cost_usd`
-**File:** `prompt_evolution.py`
-  - **Classes**: `GEPALiteEvolver`
-**File:** `report.py`
-  - **Functions**: `build_report`
-**File:** `runner.py`
-  - **Functions**: `ensure_tables`, `_err_row`, `_build_case_once`, `run_one_model_for_case`, `run_benchmark`
-**File:** `system_one_scorer.py`
-  - **Functions**: `_score_accuracy`, `_score_latency`, `_score_calibration`, `_score_schema`, `score_system_one`
-**File:** `task_specs.py`
-  - **Classes**: `BenchmarkCase`, `TaskSpec`
-  - **Functions**: `_sym`, `_stage1_system_prompt`, `_case_stage1_fundamental`, `_case_stage1_escalation`, `_case_stage1_shadow_check`, `_case_fundamental_verifier`, `_stage2_system_prompt`, `_build_stage2_case`, `_case_stage2_primary`, `_case_stage2_secondary`, `_case_stage2_session_trigger`, `_case_stage2_prescreen`, `_build_specialist_case`, `_case_specialist_technical`, `_case_specialist_sentiment`, `_case_specialist_macro`, `_case_debate_bull`, `_case_debate_bear`, `_case_debate_judge`, `_case_stage2_adjudicator`, `_build_strict_risk_context`, `_case_risk_gate`, `_case_risk_gate_conservative`, `_case_risk_gate_aggressive`, `_case_risk_gate_neutral`, `_case_portfolio_manager_per_trade`, `_case_portfolio_synthesis`, `_case_adversarial_check`, `_case_news_classification`, `_case_news_classification_escalation`, `_case_news_classification_verifier`, `_case_news_digest`, `_case_news_digest_macro_overview`, `_case_news_digest_verifier`, `_case_cot_precompute`, `_build_chat_case`, `_case_chat_telegram`, `_case_chat_telegram_medium`, `_case_chat_telegram_complex`, `_case_trade_reflection`, `_case_harness_hallucination_detect`, `_case_harness_context_efficiency`, `_case_harness_self_correction`, `_case_jev_news_realtime`, `_case_jev_trigger_validator`, `_case_jev_position_guard`, `_case_jev_exit_prescreen`, `_case_deep_research`, `_case_report_synthesizer`, `_case_context_compaction`, `_case_summarizer`, `_case_macro_analyst`, `_case_sentiment_analyst`, `_case_risk_gate_task`
-  - **Variables**: `TASKS`
-**File:** `token_drift_tracker.py`
-  - **Classes**: `PromptSnapshot`, `DriftReport`, `TokenDriftTracker`
-    - *Methods*: `set_baseline()`, `record_run()`, `get_summary()`
-**File:** `trade_trajectory_logger.py`
-  - **Functions**: `file_lock(f)` (Cross-platform advisory file locking via msvcrt / fcntl)
-  - **Classes**: `TradeTrajectoryLogger`
-    - *Methods*: `log_trajectory()`, `update_trajectory_outcome()`, `load_recent_trajectories()`
-
-##### Folder: `trading-agent/benchmark/fixtures`
-**File:** `_market_snapshot_2026_09.json`
-**File:** `macro_dxy_eur_divergence.json`
-**File:** `macro_fomc_blackout.json`
-**File:** `news_hormuz_escalation.json`
-**File:** `news_nfp_release.json`
-**File:** `risk_eurusd_daily_drawdown.json`
-**File:** `risk_eurusd_spread_spike.json`
-**File:** `risk_portfolio_max_heat.json`
-**File:** `risk_xauusd_high_vix_defensive.json`
-**File:** `s1_exit_prescreen_gbpusd.json`
-**File:** `s1_news_breaking_iran.json`
-**File:** `s1_position_guard_xauusd.json`
-**File:** `s1_stage2_prescreen_eurusd.json`
-**File:** `s1_trigger_stale_eurusd.json`
-**File:** `smc_eurusd_h1_bull_displacement.json`
-**File:** `smc_gbpusd_h1_choppy_trap.json`
-**File:** `smc_xauusd_m15_bear_sweep.json`
-
-##### Folder: `trading-agent/benchmark/results`
-**File:** `model_all.csv`
-**File:** `model_cheap_efficient.csv`
-**File:** `model_cheap_smart.csv`
-**File:** `model_high_intelligence.csv`
-**File:** `model_quadrant_analysis.html`
-  - **Description**: Standalone interactive quadrant visualization evaluating LLM performance vs task cost (Score vs Cost per Task).
-  - **Key Capabilities**:
-    - Dynamic 2D ECharts scatter plot (linear and logarithmic scaling) with automatic quadrant thresholds.
-    - Two-way interactive binding between scatter plot coordinates and tabular data ledger.
-    - Executive KPI summary cards (sweet spot count, percentage, peak score, lowest cost, active thresholds).
-    - Precision screener controls (score/cost sliders, fine-tuning steppers, presets for Median/Mean/Elite/Budget/Balanced).
-    - ARIA-accessible multi-toggle provider and reasoning depth filters.
-    - Tabular ledger with instantaneous search, quadrant filtering, keyboard-accessible sorting, and CSV/PNG export.
-
-#### Folder: `trading-agent/evals`
-**File:** `__init__.py`
-**File:** `eval_metrics.py`
-  - **Docstring**: Core evaluation metrics and A/B comparison engine computing accuracy, grounding pass rates, R:R capture, and Brier calibration scores.
-  - **Classes**: `DecisionEvaluation`, `AggregateMetrics`, `ABReport`
-  - **Functions**: `compute_brier_score()`, `aggregate_eval_metrics()`, `compare_ab_evaluations()`
-**File:** `eval_runner.py`
-  - **Docstring**: Automated A/B Evaluation Harness and experiment runner benchmarking prompt and model variants against golden fixtures.
-  - **Classes**: `ABEvalRunner`
-    - *Methods*: `load_fixtures()`, `evaluate_single_decision()`, `run_ab_benchmark()`
-**File:** `runner.py`
-  - **Docstring**: Automated Offline Evaluation Runner & Mechanical Scoring Engine.
-  - **Classes**: `OfflineEvalRunner`
-    - *Methods*: `load_all_fixtures()`, `evaluate_decision()`, `run_suite()`
-  - **Functions**: `get_default_golden_candidates()`
-**File:** `simulation_clock.py`
-  - **Classes**: `SimulationClock`, `MarketStep`, `MarketStepSimulator`
-    - *Methods*: `now()`, `advance()`, `advance_to()`, `sleep()`, `load_steps()`, `step()`, `simulate_order_fill()`
-
-##### Folder: `trading-agent/evals/oracles`
-**File:** `__init__.py`
-**File:** `smc_geometry_oracle.py`
-  - **Functions**: `evaluate_smc_geometry()`
-**File:** `risk_compliance_oracle.py`
-  - **Functions**: `evaluate_risk_compliance()`
-**File:** `trade_discipline_oracle.py`
-  - **Functions**: `evaluate_trade_discipline()`
-**File:** `macro_regime_oracle.py`
-  - **Functions**: `evaluate_macro_regime()`
-**File:** `tool_safety_oracle.py`
-  - **Docstring**: Tool Safety & Jailbreak Defense Oracle evaluating agent responses against adversarial traps.
-  - **Classes**: `OracleResult`, `ToolSafetyOracle`
-    - *Methods*: `load_traps()`, `evaluate_command_rejection()`, `evaluate_traps_suite()`
-
-##### Folder: `trading-agent/evals/fixtures`
-**File:** `smc_bull_displacement.json`
-**File:** `smc_bear_sweep.json`
-**File:** `smc_choppy_trap.json`
-**File:** `risk_trap_spread_spike.json`
-**File:** `risk_trap_daily_dd.json`
-**File:** `tool_jailbreak_trap.json`
+**File:** `stop_agent.bat`
+  - **Description**: Windows shutdown script. Terminates active Python agent processes, Vite frontend dev server (port 5173), 9Router AI Gateway (port 20128), Windows Terminal tabs (`WindowsTerminal.exe`), and MetaTrader 5 terminal (`terminal64.exe`).
 
 #### Folder: `trading-agent/agent`
+
 **File:** `__init__.py`
-**File:** `chat_agent.py`
-  - **Docstring**: Agent Chat Agent Facade. Re-exports ChatAgent and PendingAction from telegram_bot.chat_agent.
+
 **File:** `agent_loop.py`
   - **Docstring**: SystemAgentLoop orchestrator for autonomous ad-hoc single-asset pipeline runs and multi-intent actions.
   - **Classes**: `SystemAgentLoop`, `AdHocSchedulerProxy`
     - *Methods*: `normalize_symbol()`, `execute_ad_hoc_analysis()`, `_build_executive_summary()`, `_refresh_data_sources()`
     - *AdHocSchedulerProxy Methods/Attrs*: `_should_skip_full_cycle()`, `_get_symbol_paper_stats()`, `_log()`, `_stage1_consecutive_failures`, `_max_stage1_failures_before_alert`
+
+**File:** `auxiliary_model_router.py`
+  - **Docstring**: Auxiliary Model Router, Parameter Rejection Ladder & Reasoning Floor Stepper.
+  - **Classes**: `ParameterRejectionLadder`, `ReasoningFloorManager`, `AuxiliaryModelRouter`
+  - **Enums**: `AuxiliaryTaskType`
+
+**File:** `bounded_response.py`
+  - **Docstring**: Bounded Response Reader & Payload Clamping.
+  - **Global Variables**: logger, MAX_ERROR_BODY_BYTES, DEFAULT_READ_TIMEOUT_SECONDS
+  - **Functions**:
+    - `read_bounded_response_body()`: Reads an HTTP response body with an absolute byte limit and strict deadline.
+    - `truncate_text_middle()`: Truncates a long text string preserving the head and tail.
+
+**File:** `chat_agent.py`
+  - **Docstring**: Agent Chat Agent Facade. Re-exports ChatAgent and PendingAction from telegram_bot.chat_agent.
+
+**File:** `deadline.py`
+  - **Docstring**: Unified Execution Deadlines & Suspectable Backend Lifecycle.
+  - **Global Variables**: logger, T
+  - **Classes**:
+    - `SuspectableBackend`
+      - *Docstring*: Protocol for backends that can be marked suspect and retired upon timeouts.
+      - *Methods*: `mark_suspect()`, `is_suspect()`, `retire_socket_safe()`
+  - **Functions**:
+    - `run_bounded_async()`: Executes a coroutine within an asynchronous deadline.
+    - `run_bounded_sync()`: Executes a synchronous callable with an independent threading.Timer watchdog.
+
 **File:** `empty_response_guard.py`
   - **Docstring**: Empty Response Guard & Cost Clamping for LLM Turn Failover with 7-step progressive recovery ladder.
   - **Classes**: `EmptyRecoveryAction`, `EmptyResponseGuard`
     - *Methods*: `record_empty_response()`, `record_successful_response()`, `evaluate_retry_eligibility()`, `get_recovery_ladder_action()`, `reset()`
+
+**File:** `error_classifier.py`
+  - **Docstring**: Comprehensive Error Classifier & Recovery Directive Taxonomy.
+  - **Global Variables**: logger, _CONTEXT_OVERFLOW_PATTERNS, _RATE_LIMIT_PATTERNS, _BILLING_PATTERNS, _ROLE_ALTERNATION_PATTERNS, _THINKING_SIGNATURE_PATTERNS, _BROKER_DISCONNECT_PATTERNS
+  - **Classes**:
+    - `FailoverReason`
+      - *Docstring*: Structured taxonomy of failure reasons across LLM, infra, and broker layers.
+    - `ClassifiedError`
+      - *Docstring*: Represents a categorized failure with concrete action directives.
+  - **Functions**:
+    - `classify_api_error()`: Parses any exception and maps it to a canonical ClassifiedError.
+
 **File:** `estop.py`
   - **Docstring**: OS-Level Fail-Safe Sentinel Circuit Breaker (E-STOP).
   - **Classes**: `EStopSentinel`
     - *Methods*: `arm()`, `disarm()`, `is_armed()`, `assert_not_halted()`, `sentinel_path`
   - **Functions**: `get_global_estop()`, `check_estop()`
   - **Exceptions**: `EStopTriggeredError`
+
 **File:** `moa_alternation.py`
   - **Docstring**: Reactive same-role message alternation merger for MoA and multi-turn LLM requests.
   - **Functions**: `destination_key(runtime)`, `merge_same_role_messages(messages)`, `is_role_alternation_rejection(exc, runtime)`
+
 **File:** `moa_loop.py`
   - **Docstring**: Mixture-of-Agents (MoA) Runtime & Modern Reasoning Orchestrator (Claude Sonnet 5, DeepSeek V4 Pro/V4.1 Flash, GPT-6 Astra, Gemini 3.8 Flash).
   - **Classes**: `MoAResult`, `MoARuntime`
     - *Methods*: `__init__(self, llm_caller, default_preset, default_timeout, trace_dir)`, `run_moa(...)`, `run_moa_async(...)`, `_execute_single_proposer(...)`
   - **Variables**: `MOA_ADVISORY_SYSTEM_PROMPT`, `MOA_AGGREGATOR_SYSTEM_PROMPT`, `MOA_PRESETS`
+
 **File:** `moa_trace.py`
   - **Docstring**: Full MoA Turn Trace Persistence and Observability.
   - **Functions**: `save_moa_turn(...)`, `slot_metrics(...)`, `get_trace_history(...)`, `get_moa_trace_dir(...)`
   - **Variables**: `DEFAULT_MOA_TRACE_DIR`
+
 **File:** `repetition_guard.py`
   - **Docstring**: Repetition Guard & Degenerative Loop Immunizer.
   - **Functions**: `is_repetition_dominated()`, `is_runaway_repetition()`, `sanitize_repetition_in_transcript()`, `_line_repetition_dominated()`
   - **Variables**: `REPETITION_LOOP_INTERRUPTED`, `MIN_FRAGMENT_LENGTH`, `_REPEAT_WINDOW`, `_MIN_REPEAT_COUNT`, `_DOMINANCE_RATIO`, `_RUNAWAY_DISTINCT_LINE_RATIO`
+
 **File:** `scratchpad_guard.py`
   - **Docstring**: Scratchpad & Reasoning Tag Guard.
   - **Functions**: `has_incomplete_reasoning_tag()`, `extract_reasoning_and_visible_content()`, `close_dangling_reasoning_tags()`
   - **Variables**: `REASONING_TAG_PAIRS`
+
+**File:** `socket_lifecycle_guard.py`
+  - **Docstring**: Socket Lifecycle Guard & Ownership-Safe Transport Retirement to prevent kernel FD recycling and database corruption.
+  - **Functions**: `retire_socket_ownership_safe()`, `drain_transports_after_abandonment()`, `clear_socket_graveyard()`
+
 **File:** `startup_checks.py`
   - **Docstring**: Pre-flight system validation checks extracted from main.py.
   - **Classes**: `StartupChecker`
     - *Methods*: `run_all_checks()`, `_check_task_roles()`, `_check_critical_constants()`, `_check_specialist_prompts()`, `_check_preflight_baselines()`, `_check_paper_trading_gate()`, `_check_db_schema()`, `_check_api_keys()`, `_check_external_services()`, `_check_mt5_connection()`, `_check_tool_handlers()`, `_check_model_roles()`
   - **Functions**: `run_startup_checks()`
-**File:** `task_registry.py`
-  - **Docstring**: Background task registration, restart logic, and lifecycle supervisor.
-  - **Classes**: `TaskDefinition`, `TaskRegistry`
-    - *Methods*: `register()`, `get_all()`, `get_core()`, `is_registered()`
-  - **Functions**: `_run_with_restart()`, `get_emergency_exit_code()`, `set_emergency_exit_code()`, `mark_clean_shutdown()`
-  - **Variables**: `CORE_TRADING_TASKS`
-**File:** `turn_lease_manager.py`
-  - **Docstring**: Symbol Turn Lease & Event Coalescence Manager preventing concurrent analysis collisions and coalescing reactive market triggers.
-  - **Classes**: `SymbolLease`, `SymbolTurnLeaseManager`
-    - *Methods*: `acquire_lease()`, `release_lease()`, `coalesce_event()`, `is_symbol_leased()`, `get_lease_holder()`, `get_instance()`
-  - **Functions**: `get_symbol_lease_manager()`
-**File:** `turn_preflight_gate.py`
-  - **Docstring**: Turn Preflight Gate & Budget Wrap-Up Sentinel.
-  - **Classes**: `TurnPreflightGate`
-    - *Methods*: `check_context_floor()`, `check_compression_progress()`, `check_wall_clock_budget()`
-  - **Variables**: `RUN_BUDGET_WRAPUP_NOTICE`
-**File:** `turn_tool_round.py`
-  - **Docstring**: Turn Tool Round Coordinator with Persist-Before-Execute Invariant.
-  - **Classes**: `TurnToolRoundCoordinator`
-    - *Methods*: `persist_tool_calls_before_execution()`, `partition_tool_calls()`, `execute_round()`
-  - **Exceptions**: `ToolCallPersistenceError`, `ToolExecutionHaltedError`
+
 **File:** `state_rewind.py`
   - **Docstring**: Carrier-Aware State Rewind & Conversation Undo (/undo) preserving real financial side-effects.
   - **Classes**: `RewindOutcome`, `StateRewindManager`
     - *Methods*: `rewind_session()`
   - **Variables**: `CARRIER_SIDE_EFFECT_PERSISTED`
   - **Exceptions**: `RewindTargetUnavailableError`
-**File:** `socket_lifecycle_guard.py`
-  - **Docstring**: Socket Lifecycle Guard & Ownership-Safe Transport Retirement to prevent kernel FD recycling and database corruption.
-  - **Functions**: `retire_socket_ownership_safe()`, `drain_transports_after_abandonment()`, `clear_socket_graveyard()`
-**File:** `turn_liveness.py`
-  - **Docstring**: Turn Liveness Sentinel & Activity Deadlock Watchdog with generation-counter tracking and streaming stall detection.
-  - **Classes**: `TurnLivenessWatchdog`
-    - *Methods*: `record_activity()`, `advance_generation()`, `start()`, `stop()`, `__aenter__()`, `__aexit__()`
-    - *Properties*: `generation`
-**File:** `turn_phase_machine.py`
-  - **Docstring**: Turn Phase State Machine & Iteration Budget Controller.
-  - **Classes**: `IterationBudget`, `TurnState`, `TurnPhaseMachine`
-  - **Enums**: `TurnVerdict`, `TurnPhase`
-**File:** `auxiliary_model_router.py`
-  - **Docstring**: Auxiliary Model Router, Parameter Rejection Ladder & Reasoning Floor Stepper.
-  - **Classes**: `ParameterRejectionLadder`, `ReasoningFloorManager`, `AuxiliaryModelRouter`
-  - **Enums**: `AuxiliaryTaskType`
+
+**File:** `task_registry.py`
+  - **Docstring**: Background task registration, restart logic, and lifecycle supervisor.
+  - **Classes**: `TaskDefinition`, `TaskRegistry`
+    - *Methods*: `register()`, `get_all()`, `get_core()`, `is_registered()`
+  - **Functions**: `_run_with_restart()`, `get_emergency_exit_code()`, `set_emergency_exit_code()`, `mark_clean_shutdown()`
+  - **Variables**: `CORE_TRADING_TASKS`
+
+**File:** `thinking_timeout_guidance.py`
+  - **Docstring**: Reasoning Model Timeout Diagnostic & Mitigation Guidance.
+  - **Global Variables**: logger, _PROXY_IDLE_DISCONNECT_PATTERNS, _REASONING_MODEL_HINTS
+  - **Functions**:
+    - `detect_thinking_timeout()`: Evaluates whether an API disconnection was caused by proxy idle timeout
+
 **File:** `three_part_context_compressor.py`
   - **Docstring**: Three-Part Context Compressor & Tool Result Deterministic Pruner with commit fence protection.
   - **Classes**: `ThreePartContextCompressor`
     - *Methods*: `estimate_tokens()`, `prune_tool_results_determinist()`, `compact()`
+
 **File:** `trajectory_compressor.py`
   - **Docstring**: Trajectory Compressor & Context Compaction Engine with Semantic LLM summarization default, fast mechanical fallback, mechanical invariant preservation, and tool pairing integrity.
   - **Classes**: `TrajectoryCompressor`
     - *Methods*: `extract_mechanical_invariants()`, `compress()`, `_sanitize_tool_pairing()`
   - **Variables**: `INVARIANT_PATTERN`
 
+**File:** `turn_lease_manager.py`
+  - **Docstring**: Symbol Turn Lease & Event Coalescence Manager preventing concurrent analysis collisions and coalescing reactive market triggers.
+  - **Classes**: `SymbolLease`, `SymbolTurnLeaseManager`
+    - *Methods*: `acquire_lease()`, `release_lease()`, `coalesce_event()`, `is_symbol_leased()`, `get_lease_holder()`, `get_instance()`
+  - **Functions**: `get_symbol_lease_manager()`
+
+**File:** `turn_liveness.py`
+  - **Docstring**: Turn Liveness Sentinel & Activity Deadlock Watchdog with generation-counter tracking and streaming stall detection.
+  - **Classes**: `TurnLivenessWatchdog`
+    - *Methods*: `record_activity()`, `advance_generation()`, `start()`, `stop()`, `__aenter__()`, `__aexit__()`
+    - *Properties*: `generation`
+
+**File:** `turn_phase_machine.py`
+  - **Docstring**: Turn Phase State Machine & Iteration Budget Controller.
+  - **Classes**: `IterationBudget`, `TurnState`, `TurnPhaseMachine`
+  - **Enums**: `TurnVerdict`, `TurnPhase`
+
+**File:** `turn_preflight_gate.py`
+  - **Docstring**: Turn Preflight Gate & Budget Wrap-Up Sentinel.
+  - **Classes**: `TurnPreflightGate`
+    - *Methods*: `check_context_floor()`, `check_compression_progress()`, `check_wall_clock_budget()`
+  - **Variables**: `RUN_BUDGET_WRAPUP_NOTICE`
+
+**File:** `turn_stop_gates.py`
+  - **Docstring**: Turn Stop Verification Gates & Financial Risk Invariant Verification.
+  - **Global Variables**: logger
+  - **Classes**:
+    - `StopGateContext`
+      - *Docstring*: Carries mutation and proposal context during turn execution.
+    - `TradingRiskStopGate`
+      - *Docstring*: Deterministic gate ensuring no financial proposal or trading decision
+      - *Methods*: `evaluate()`
+    - `CodeVerifyStopGate`
+      - *Docstring*: Gate ensuring that code mutations are syntactically verified before turn completion.
+      - *Methods*: `evaluate()`
+  - **Functions**:
+    - `apply_stop_gates()`: Runs all stop gates in priority sequence. Returns (can_proceed, nudge_message).
+
+**File:** `turn_tool_round.py`
+  - **Docstring**: Turn Tool Round Coordinator with Persist-Before-Execute Invariant.
+  - **Classes**: `TurnToolRoundCoordinator`
+    - *Methods*: `persist_tool_calls_before_execution()`, `partition_tool_calls()`, `execute_round()`
+  - **Exceptions**: `ToolCallPersistenceError`, `ToolExecutionHaltedError`
+
 ##### Folder: `trading-agent/agent/monitors`
+
 **File:** `__init__.py`
+
 **File:** `db_health.py`
   - **Functions**: `run_db_health_check()`
+
 **File:** `drawdown_monitor.py`
   - **Functions**: `run_floating_drawdown_monitor()`
+
 **File:** `paper_trade_monitor.py`
   - **Functions**: `run_paper_trade_monitor()`
+
 **File:** `scraper_loop.py`
   - **Functions**: `run_scraper_loop()`
+
 **File:** `startup_watchdog.py`
   - **Classes**: `StartupWatchdog`
   - **Variables**: `global_startup_watchdog`
   - **Functions**: `arm_startup_watchdog()`, `verify_broker_ping()`, `verify_data_feed_freshness()`, `run_cold_start_preflight()`
 
 #### Folder: `trading-agent/analysis`
+
 **File:** `event_broadcaster.py`
   - **Functions**:
     - `emit_analysis_event(event_type, payload)`: Broadcast LangGraph analysis node and cycle events (start, completion, tokens, elapsed time) to WebSocket subscribers and system event bus.
-
-**File:** `pipeline_plugin.py`
-  - **Docstring**: Analysis Pipeline Plugin Base Interface. Decouples complete analysis cycle into swappable plugins.
-  - **Classes**:
-    - `AnalysisPipelinePlugin`
-      - *Methods*: `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
 
 **File:** `macro_pipeline_plugin.py`
   - **Docstring**: Macro-to-Asset Analysis Pipeline Adapter Plugin for Monika Trading Harness.
   - **Classes**:
     - `MacroToAssetPipeline` (extends `AnalysisPipelinePlugin`)
       - *Methods*: `__init__()`, `execute_analysis_cycle()`
+
+**File:** `pipeline_plugin.py`
+  - **Docstring**: Analysis Pipeline Plugin Base Interface. Decouples complete analysis cycle into swappable plugins.
+  - **Classes**:
+    - `AnalysisPipelinePlugin`
+      - *Methods*: `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
 
 **File:** `prompt_sections.py`
   - **Docstring**: System Prompt Section Registry and Formatter for Monika LLM Prompts. Allows plugins to register modular prompt blocks without mutating core prompt files.
@@ -834,9 +536,11 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `scenario_tree.py`
   - **Classes**: `ScenarioNode`, `ScenarioTree`, `ScenarioTreeEngine`
     - *Methods*: `build_tree()`, `compute_empirical_probabilities()`, `to_jsonl()`
+
 **File:** `subagent_blackboard.py`
   - **Classes**: `SubagentBlackboard`
     - *Methods*: `__init__()`, `set_slot()`, `get_slot()`, `export_distilled_context()`
+
 **File:** `subagent_spawner.py`
   - **Docstring**: Dynamic Subagent Spawner Pool (Autonomous Distributed Architecture) for ad-hoc child subagents with isolated context sandboxes, specialized toolsets, and execution timeouts.
   - **Classes**:
@@ -847,613 +551,79 @@ This document provides an exhaustive structural index of all directories, files,
     - `DynamicSubagentPool`
       - *Methods*: `__init__()`, `spawn_worker()`, `run_parallel()`, `decompose_research_query()`
 
-##### Folder: `trading-agent/analysis/harness`
-**File:** `__init__.py`
-**File:** `agent_harness.py`
-  - **Docstring**: Unified Multi-Turn ReAct Agent Harness with turn management, context compaction, state preservation truncation, anti-oscillation, quota enforcement, and ToolExecutor routing.
-  - **Classes**: `AgentHarness`
-    - *Methods*: `_is_transient_error()`, `_is_billing_error()`, `_normalize_response_content()`, `compute_tool_signature()`, `_preserve_state_summary()`, `_apply_truncation_guardrail()`, `_persist_assistant_turn()`, `_enforce_role_alternation()`, `_check_truncation()`, `_fail_truncated_tool_calls()`, `get_mandatory_tool_for_stage()`, `_log_tool_call()`, `enqueue_steering()`, `run_agent()`, `run_agent_from_messages()`
-**File:** `context_compressor.py`
-  - **Docstring**: Multi-Phase Hierarchical Context Compressor (PR-06 / Standardized) implementing deterministic tool pruning, protected boundary splitting with warm-prefix preservation, 8-section structured trading summarization (<compacted-summary>), robust tool-pair snapping, and token assembly.
-  - **Variables**: `TRADING_SUMMARY_SECTIONS`, `TOOL_PRUNE_MARKER`
-  - **Classes**: `ContextCompressor`
-    - *Methods*: `compress()`, `prune_oversized_tool_results()`, `prune_deterministic_tools()`, `split_boundaries()`, `_snap_boundary()`, `_feasibility_skip()`, `_extract_existing_summary()`, `_extract_structured_trading_sections()`, `_extract_deterministic_facts()`, `summarize_middle()`
-  - **Functions**: `safe_unicode_slice()`, `safe_unicode_tail()`, `prune_tool_result_content()`, `prune_oversized_tool_results()`, `offload_historical_charts()`
-**File:** `error_classifier.py`
-  - **Docstring**: Structured error classification and recovery strategy assignment with Unicode surrogate cleansing and multimodal fallback.
-  - **Functions**: `sanitize_unicode_surrogates()`, `fallback_multimodal_to_text()`
-  - **Classes**: `ErrorCategory`, `RecoveryAction`, `ClassifiedError`, `ErrorClassifier`
-    - *Methods*: `classify()`, `classify_response()`
-**File:** `harness_state.py`
-  - **Docstring**: Typed state machine and phase models for agent harness loop.
-  - **Classes**: `PhaseAction`, `PhaseVerdict`, `SteeringMessage`, `HarnessState`
-    - *Methods*: `record_tokens()`, `record_error()`, `reset_errors()`, `can_retry_error()`, `is_turn_limit_reached()`, `enqueue_steering()`, `drain_steering()`, `drain_follow_up()`
-**File:** `message_repair.py`
-  - **Docstring**: 4-pass role alternation sanitizer ensuring provider compliance by enforcing role alternation, coalescing consecutive user messages, injecting missing user turns, and purging orphaned tool calls.
-  - **Functions**: `repair_message_history(messages)`
-**File:** `structured_output.py`
-  - **Docstring**: Structured output generation with graceful fallback to free text.
-  - **Functions**: `invoke_structured_or_freetext()`
-**File:** `repetition_guard.py`
-  - **Docstring**: Degenerate Repetition Loop Guard detecting repeating sentence or paragraph fragments in model assistant streams.
-  - **Functions**: `detect_text_repetition(text, min_phrase_len=60, min_repeats=3, dominance_ratio=0.50)`
-**File:** `stall_guard.py`
-  - **Docstring**: State-Aware Stall Guard (H-8) monitoring consecutive read-only tool loops, duplicate response hashing, and enforcing forced termination for synthesis.
-  - **Classes**: `StallGuard`
-    - *Methods*: `is_read_only()`, `record_call()`, `check_stall()`, `reset()`
-  - **Variables**: `READ_ONLY_TOOLS`, `STATE_ADVANCING_TOOLS`
-**File:** `symbol_segment_planner.py`
-  - **Docstring**: Intelligent tool batch partitioner separating mutating calls across independent asset symbols into parallel batches and sequencing dependent/same-symbol calls.
-  - **Classes**: `ToolSegment`, `SymbolSegmentPlanner`
-    - *Methods*: `extract_symbol(call)`, `partition_tool_calls(calls)`
-**File:** `tool_batch_planner.py`
-  - **Classes**: `ToolBatchPlanner`
-    - *Methods*: `plan_batch()`, `partition_independent()`
-**File:** `tool_repair.py`
-  - **Classes**: `ToolRepairEngine`
-    - *Methods*: `attempt_repair()`, `validate_schema()`
-**File:** `trade_stop_gates.py`
-  - **Docstring**: Institutional Trade Stop Gate blocking unverified directional decisions and injecting synthetic verification nudges when required risk evidence is absent.
-  - **Classes**: `TradeGateVerdict`, `TradeStopGate`
-    - *Methods*: `evaluate(response_text, ledger, stage, symbol)`
-**File:** `verification_evidence_ledger.py`
-  - **Docstring**: In-memory verification evidence ledger recording empirical proof from deterministic risk and sizing tools.
-  - **Classes**: `VerificationEvidence`, `VerificationEvidenceLedger`
-    - *Methods*: `record_evidence(tool_name, tool_input, tool_output)`, `has_verified_trade_prerequisites(symbol)`, `get_unverified_reasons(symbol)`, `reset()`
-
-##### Folder: `trading-agent/analysis/grounding`
-**File:** `__init__.py`
-**File:** `provenance_tagger.py`
-  - **Docstring**: Tracks numeric provenance of tool outputs and cross-verifies figures cited by LLM agents. Extended in PR-07 for multi-dimensional grounding (lot_size, spread, margin, equity) with broker-verified contract sizes (XAU: 100, BTC: 1, ETH: 10, XTI/XBR: 1000).
-  - **Classes**: `ObservedFact`, `ProvenanceLedger`
-    - *Methods*: `register_from_tool_output()`, `register_fact()`, `verify_citation()`, `verify_text_citations()`, `verify_lot_size()`, `verify_spread()`, `verify_margin()`, `verify_equity()`, `verify_trade_parameters()`
-
-##### Folder: `trading-agent/analysis/subagent`
-**File:** `__init__.py`
-**File:** `adhoc_manager.py`
-  - **Docstring**: Non-blocking on-demand market anomaly investigation subagent manager bounded by concurrency semaphore (limit=3).
-  - **Classes**: `AdHocInvestigationVerdict`, `AdHocSubagentManager`
-    - *Methods*: `get_latest_verdict()`, `investigate_async()`, `run_investigation()`
-  - **Functions**: `get_adhoc_manager()`
-**File:** `isolated_harness.py`
-  - **Docstring**: IsolatedSubagentRunner executing subagent tasks in fully isolated harness loops with clean context windows and bounded turn budgets.
-  - **Classes**: `SubagentRunResult`, `IsolatedSubagentRunner`
-    - *Methods*: `run_isolated()`
-
 ##### Folder: `trading-agent/analysis/arbitration`
+
 **File:** `__init__.py`
+
 **File:** `signal_arbitrator.py`
   - **Docstring**: Centralized SignalArbitrator to reconcile Quantitative vs LLM Debate signals based on conviction, regime, VIX protection, recency-decay Brier calibration, and streak penalties.
   - **Classes**: `ArbitrationResult`, `SignalArbitrator`
     - *Methods*: `arbitrate()`, `_do_arbitrate()`, `_get_empirical_concordant_multiplier()`
   - **Functions**: `compute_empirical_arbitrator_weights()`
 
-##### Folder: `trading-agent/analysis/stages`
-**File:** `fundamental_stage.py`
-  - **Classes**: `FundamentalStage`
-    - *Methods*: `run()`, `_generate_deterministic_fallback_brief()`, `_run_macro_debate()`, `_log()`
-**File:** `per_asset_stage.py`
-  - **Docstring**: Backward-compatible facade for PerAssetStage inheriting from PerAssetRunner.
-  - **Classes**: `PerAssetStage`
-  - **Functions**: `_flatten_system_prompt`, `_get_symbol_sl_streak`
-**File:** `preflight_gate.py`
-  - **Classes**: `PreFlightTurnGate`
-    - *Methods*: `check_high_impact_news()`, `evaluate_preconditions()`
-  - **Variables**: `EMPIRICAL_ACTIVE_MEDIANS`, `ACTIVE_SPREAD_HARD_CEILINGS`, `SYMBOL_CURRENCIES`
-
-###### Folder: `trading-agent/analysis/stages/per_asset`
-**File:** `__init__.py`
-**File:** `context_builder.py`
-  - **Classes**: `ContextBuilderMixin` (Methods: `build_asset_context()`, `_fetch_dynamic_micro_lessons()`, `_fetch_previous_analysis()`; Injects H4 VerifiedMarketSnapshot and H5 Quant Alpha Signals from StrategyRegistry)
-  - **Functions**: `_render_specialist_prompt`, `_flatten_system_prompt`
-  - **Variables**: `SYMBOL_TO_COT`, `SYSTEM_PROMPT_TEMPLATE`, `SYSTEM_PROMPT_STATIC`, `SPECIALIST_PROMPTS`
-
-**File:** `runner.py`
-  - **Classes**: `PerAssetRunner`
-    - *Methods*: `run_one()`, `run_all()`, `_fetch_stage2_bundle()`, `_execute_stage2_prescreen()`, `_recover_missing_analysis()`
-**File:** `specialist_council.py`
-  - **Docstring**: Institutional 5-Specialist Council for Per-Asset Trade Decisions (Macro, Technical, News/Sentiment, Risk Arbitrator, Execution Strategist).
-  - **Classes**: `SpecialistRole`, `TradeAction`, `SpecialistVote`, `CouncilVerdict`, `SpecialistCouncil`
-    - *Methods*: `evaluate()`, `_evaluate_macro()`, `_evaluate_technical()`, `_evaluate_news_sentiment()`, `_evaluate_risk_arbitrator()`, `_evaluate_execution_strategist()`
-
-**File:** `specialist_pipeline.py`
-  - **Classes**: `SpecialistPipelineMixin`
-    - *Methods*: `_execute_specialist_debate_pipeline()`
-  - **Variables**: `_SPECIALIST_KEY_MAP`
-**File:** `verifiers.py`
-  - **Classes**: `VerifiersMixin`
-    - *Methods*: `_check_brief_freshness_and_quality()`, `_compute_ssvp_coherence()`
-  - **Functions**: `_get_symbol_sl_streak`
-
-##### Folder: `trading-agent/analysis/validators`
-**File:** `adjudication_verifier.py`
-  - **Functions**: `verify_adjudication`
-  - **Variables**: `ADJUDICATION_VERIFY_SCHEMA`
-**File:** `adversarial_check.py`
-  - **Functions**: `run_adversarial_check`, `_safe_parse`
-**File:** `confluence_verifier.py`
-  - **Functions**: `verify_confluence`
-**File:** `core_data_validator.py`
-  - **Classes**: `CoreDataValidator`
-**File:** `cross_timeframe_gate.py`
-  - **Docstring**: Cross-Timeframe Confirmation Gate enforcing H4+H1 directional alignment before allowing M15 trade entry.
-  - **Classes**: `CrossTimeframeConfirmationGate`
-    - *Methods*: `verify_htf_alignment()`, `_extract_timeframe_bias()`
-**File:** `float_coercion.py`
-  - **Docstring**: Defensive float coercion utilities stripping currency signs, percentages, and commas from LLM outputs.
-  - **Functions**: `coerce_optional_float()`, `coerce_float()`
-**File:** `fundamental_verifier.py`
-  - **Functions**: `verify_fundamental_brief`
-**File:** `in_harness_grounding.py`
-  - **Classes**: `InHarnessGroundingValidator`
-    - *Methods*: `extract_numbers_from_text()`, `verify_grounding()`, `verify_scratchpad_consistency()`, `verify_lot_size()`, `verify_spread()`, `verify_margin()`, `verify_equity()`, `verify_trade_parameters()`
-**File:** `market_snapshot.py`
-  - **Docstring**: VerifiedMarketSnapshot grounding container providing immutable point-in-time bid/ask/spread/OHLC reference data.
-  - **Classes**: `VerifiedMarketSnapshot`
-  - **Functions**: `create_market_snapshot`, `_compute_fallback_indicators`, `format_as_markdown`, `validate_plan_against_snapshot`
-**File:** `output_verifier.py`
-  - **Classes**: `OutputVerifier`
-    - *Methods*: `verify_and_correct()`, `_apply_deterministic_math_snapping()` (enhanced with structural anchor snapping), `_run_all_checks()` (tightened Check 5 to 0.5x ATR), `_extract_atr()`, `_near_any_level()`, `_find_nearest()`
-**File:** `precommit_gate.py`
-  - **Classes**: `TradePreCommitGate`
-    - *Methods*: `verify_precommit()` (integrates VerifiedMarketSnapshot structural & drift validation)
-
 ##### Folder: `trading-agent/analysis/calculators`
+
+**File:** `__init__.py`
+
 **File:** `adaptive_policy.py`
   - **Classes**: `AdaptiveRiskPolicy`
+
 **File:** `confluence_calculator.py`
   - **Functions**: `calculate_confluence`
+
 **File:** `daily_range_calculator.py`
   - **Functions**: `compute_daily_range_context` (Computes dynamic ADR bands, evaluates room remaining, TimesFM 3.0 range integration, and computes `target_sl_min_distance` and `target_sl_max_distance`)
+
 **File:** `economic_surprise.py`
   - **Functions**: `compute_surprise_scores`
+
 **File:** `intraday_level_optimizer.py`
   - **Functions**: `compute_optimal_levels(session, symbol, direction, entry_price, settings, existing_sl=None, existing_tp=None)`
     - *Docstring*: Computes optimal intraday target levels based on H4/D1 zones, ADR, TimesFM cone, robust 0.5% entry price fallback ATR, and validates R:R >= min_rr pairing (with synthetic TP fallback if structural TP is insufficient).
+
 **File:** `invariant_calculator.py`
   - **Classes**: `DeterministicTradeInvariants`
   - **Functions**: `calculate_deterministic_trade_invariants`, `snap_sl_to_structural_anchor`
+
 **File:** `liquidity_sweep_detector.py`
   - **Functions**: `detect_liquidity_sweep`, `_get_asian_session_range` (Handles current active session `today 00:00` to `now` without session inversion)
+
 **File:** `macro_bias_filter.py`
   - **Functions**: `evaluate_macro_alignment`
+
 **File:** `macro_priced_in_calculator.py`
   - **Functions**: `calculate_macro_priced_in_baseline`
-**File:** `regime_classifier.py`
-  - **Functions**: `classify_market_regime` (Menghitung komposit rezim ADX/ATR/VIX dan continuous distribution `regime_probabilities` across trend, range, volatile_chop, squeeze_consolidation), `compute_bollinger_donchian_chop`
-**File:** `volume_profile.py`
-  - **Functions**: `compute_volume_profile`, `compute_anchored_vwap`
-**File:** `stage1_priced_in.py`
-  - **Functions**: `calculate_stage1_priced_in_baseline`
-**File:** `unified_threshold_calculator.py`
-  - **Functions**: `compute_unified_confluence_threshold`
+
 **File:** `quant_plateau_optimizer.py`
   - **Docstring**: Adaptive Plateau Parameter Optimizer identifying robust flat profit zones without isolated curve-fitting.
   - **Classes**: `ParameterSpec`, `PlateauOptimizationResult` (Property: `best_parameters`), `QuantPlateauOptimizer`
     - *Methods*: `sample()`, `perturb()`, `optimize()`
 
+**File:** `regime_classifier.py`
+  - **Functions**: `classify_market_regime` (Menghitung komposit rezim ADX/ATR/VIX dan continuous distribution `regime_probabilities` across trend, range, volatile_chop, squeeze_consolidation), `compute_bollinger_donchian_chop`
+
+**File:** `stage1_priced_in.py`
+  - **Functions**: `calculate_stage1_priced_in_baseline`
+
 **File:** `timesfm_alpha.py`
   - **Classes**: `TimesFMAlphaCalculator`
     - *Methods*: `calculate_skew_from_quantiles()`, `get_sizing_multiplier()`, `format_for_prompt()`
 
-##### Folder: `trading-agent/analysis/tools`
-**File:** `base_handler.py`
-  - **Classes**: `ToolHandler`, `DisaggregatedToolResult`
-    - *Methods*: `can_handle()`, `execute()`
-    - *Attributes*: `protected`
-  - **Functions**: `tool_handler`
-**File:** `loop_guard.py`
-  - **Docstring**: Tool execution loop guard with key-sorted hashing and escalation thresholds.
-  - **Classes**: `ToolLoopGuard`
-    - *Methods*: `check()`, `reset()`
-  - **Functions**: `canonical_tool_hash()`, `_sort_recursive()`
-**File:** `composite_tools.py`
-  - **Functions**: `execute_market_context`, `execute_technical_analysis`, `execute_price_data`, `execute_institutional_data`
-**File:** `executor.py`
-  - **Classes**: `ToolExecutor`
-    - *Methods*: `execute()`, `has_tool()`, `get_handler()`, `list_tools()`, `_tool_propose_action()`, `_tool_get_price_history()`, `_tool_delegate_specialist_analysis()`
-**File:** `registry.py`
-  - **Docstring**: Self-registering tool registry with availability gating and bounded output.
-  - **Classes**: `ToolDefinition`, `ToolRegistry`, `ToolHandlerRecord`
-    - *Methods*: `is_available()`, `get_instance()`, `reset_instance()`, `register()`, `get()`, `list_tools()`, `get_schemas()`, `execute()`
-  - **Functions**: `default_tool_registry()`
-  - **Global Variables**: `GLOBAL_TOOL_REGISTRY`
-**File:** `tool_catalog.py`
-  - **Docstring**: Hybrid tool discovery catalog combining pinned essential core tools with dynamic BM25 search.
-  - **Classes**: `HybridToolCatalog`
-    - *Methods*: `search_tools()`, `get_tool_definition()`, `format_catalog_prompt()`
+**File:** `unified_threshold_calculator.py`
+  - **Functions**: `compute_unified_confluence_threshold`
 
-**File:** `tool_executor.py`
-  - **Classes**: `ToolExecutor`
-    - *Methods*: `_normalize_tool_name()`, `get_tool_schema()`, `execute()`, `_resolve_symbol()`, `_validate_manual_order_structural()`, `_tool_submit_asset_analysis()`, `_validate_key_data_points()`, `_tool_get_funding_rate()`, `_tool_get_fedwatch_probabilities()`, `_tool_get_paper_trading_performance()`, `_tool_get_trade_history()`, `_tool_get_active_triggers()`, `_tool_get_system_health()`, `_tool_get_edge_tracker_status()`, `_tool_get_calibration_status()`, `_tool_get_token_usage_and_costs()`, `_tool_get_trade_details()`, `_tool_get_market_correlations()`, `_tool_get_bond_yield_spreads()`, `_tool_get_multi_timeframe_summary()`, `_tool_get_chart()`, `_tool_get_spread_snapshot()`, `_tool_get_verified_market_snapshot()`, `_tool_execute_analysis_code()`, `_tool_update_scratchpad()`, `_tool_read_scratchpad()`, `_tool_transition_analysis_phase()`, `_tool_get_timesfm_forecast()`, `_tool_web_search()`, `_tool_save_market_intelligence()`, `_tool_list_active_intelligence()`, `_tool_archive_market_intelligence()`
-    - *Variables*: `TOOL_ALIASES`
-**File:** `tool_guardrails.py`
-  - **Docstring**: Unified Tool Guardrails Controller (Anti-Oscillation, Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Denial Circuit Breaker).
-  - **Classes**: `GuardrailVerdict`, `ToolCallSignature`, `AntiOscillationGuard`, `MonotonicRiskGuard`, `ReadBeforeActGuard`, `MandatorySizingGuard`, `CategoryTurnCapGuard`, `DenialCircuitBreakerGuard`, `ToolGuardrailController`
-    - *Methods*: `evaluate()`, `validate_tool_call()`, `record_tool_call()`, `record_denial()`, `record_success()`, `is_denial_breaker_tripped()`, `reset_turn()`, `reset_all()`
-  - **Variables**: `DATABASE_IMMUTABLE_TABLES`, `DATA_READ_TOOLS`, `TERMINAL_ACTION_TOOLS`, `TOOL_CATEGORIES`
-**File:** `tool_registry.py`
-  - **Classes**: `ProgressiveToolRegistry`, `ToolRegistry`
-    - *Methods*: `get_prescreen_schemas()`, `get_schemas_for_asset()`, `get_core_schemas()`, `load_category()`, `get_stub_summary()`, `search_tools()`, `describe_tool()`, `compact_schema()`, `get_compact_core_schemas()`
-  - **Global Variables*: `LOAD_TOOL_CATEGORY_TOOL`, `SEARCH_TOOLS_TOOL`, `DESCRIBE_TOOL_TOOL`, `CALCULATE_POSITION_SIZE_TOOL`, `default_registry`
-**File:** `tool_result_storage.py`
-  - **Docstring**: Disk-backed persistent storage for oversized tool execution payloads (>16KB) preventing LLM context window inflation.
-  - **Classes**: `ToolResultStorage`
-    - *Methods*: `store()`, `retrieve()`, `cleanup()`
-**File:** `tool_spill.py`
-  - **Docstring**: Disk-backed persistent tool output spillover storage for large payloads preserving 40/60 head-tail tokens.
-  - **Classes**: `ToolSpillStorage`
-    - *Methods*: `maybe_spill()`, `cleanup_old_spills()`
-  - **Functions**: `truncate_head_tail(text, max_chars, head_pct)`, `safe_unicode_slice(text, max_chars)`
-**File:** `tool_plugin.py`
-  - **Docstring**: Tool Plugin Contract for registering custom LLM tools into ToolRegistry.
-  - **Classes**:
-    - `ToolPlugin` (extends `TradingPlugin`)
-      - *Methods*: `__init__()`, `on_register()`, `execute()`
-**File:** `tool_selector.py`
-  - **Docstring**: Retrieval-Augmented Tool Selection (RATS) dynamically pruning tool definitions to relevant subsets.
-  - **Classes**: `RAToolSelector`
-    - *Methods*: `select_tools()`
-    - *Variables*: `MANDATORY_TOOLS`, `CRYPTO_SPECIFIC_TOOLS`, `FOREX_SPECIFIC_TOOLS`, `COMMODITY_SPECIFIC_TOOLS`
-
-**File:** `tools_definitions.py`
-  - **Functions**: `minify_tool_definitions`, `make_strict_tool_definitions`
-  - **Global Variables*: `STAGE1_TOOLS`, `STAGE2_TOOLS`, `STAGE2_ESSENTIAL_TOOLS`, `STAGE2_FROZEN_TOOLS` (includes `GET_EIA_OIL_INVENTORY`), `STAGE2_EXPANDED_TOOLS`, `STAGE2_PRESCREEN_TOOLS`, `TELEGRAM_TOOLS`, `ALL_TOOLS`, `DELEGATE_SPECIALIST_ANALYSIS`, `UPDATE_SCRATCHPAD`, `READ_SCRATCHPAD`, `TRANSITION_PHASE`, `CALCULATE_POSITION_SIZE`, `GET_CENTRAL_BANK_EXPECTATIONS`, `GET_BOND_YIELD_SPREADS`, `GET_MULTI_TIMEFRAME_SUMMARY`, `GET_CHART`, `GET_SPREAD_SNAPSHOT`, `GET_PAPER_TRADING_PERFORMANCE`, `GET_TRADE_HISTORY`, `GET_ACTIVE_TRIGGERS`, `GET_SYSTEM_HEALTH`, `GET_EDGE_TRACKER_STATUS`, `GET_CALIBRATION_STATUS`, `GET_TOKEN_USAGE_AND_COSTS`, `GET_TRADE_DETAILS`, `GET_MARKET_CORRELATIONS`, `GET_OPEN_POSITIONS`, `GET_ACCOUNT_INFO`, `PROPOSE_ACTION`, `GET_EIA_OIL_INVENTORY`, `GET_TIMESFM_FORECAST`, `WEB_SEARCH`, `SAVE_MARKET_INTELLIGENCE`, `LIST_ACTIVE_INTELLIGENCE`, `ARCHIVE_MARKET_INTELLIGENCE`, `GET_VERIFIED_MARKET_SNAPSHOT`, `GET_MARKET_QUOTE`, `EXECUTE_ANALYSIS_CODE`, `INSPECT_DATABASE_SCHEMA`, `READ_DATABASE_RECORDS`, `SEARCH_HISTORICAL_MEMORIES`
-**File:** `unified_registry.py`
-  - **Docstring**: Single Source of Truth Unified Type-Safe Tool Registry with declarative Pydantic schemas, dynamic schemas, multi-provider export, and argument coercion.
-  - **Functions**: `_sanitize_schema_for_gemini()`
-  - **Classes**: `ToolEntry`, `UnifiedToolRegistry`
-    - *Methods*: `register()`, `register_tool()`, `get_tool()`, `list_tools()`, `get_anthropic_tools()`, `get_openai_tools()`, `get_gemini_tools()`, `execute_tool()`, `dispatch()`, `tool_call()`
-  - **Global Variables**: `unified_tool_registry`
-**File:** `file_patch_engine.py`
-  - **Docstring**: Universal File Patch Engine, 9-Stage Fuzzy Matcher & Stale-Overwrite Guard.
-  - **Classes**: `FileReadRecord`, `StaleOverwriteGuard`, `FuzzyMatcher`, `SyntaxLinter`, `FilePatchEngine`
-    - *Methods*: `read_file()`, `write_file()`, `patch_file()`, `find_match()`, `lint_content()`
-**File:** `terminal_process_engine.py`
-  - **Docstring**: Universal Terminal & Background Process Engine with auto-demotion, rolling buffer, checkpointing, and pattern notifications.
-  - **Classes**: `ProcessEntry`, `TerminalProcessEngine`
-    - *Methods*: `execute()`, `poll_process()`, `read_log()`, `kill_process()`, `handoff_process()`
-**File:** `tool_search_engine.py`
-  - **Docstring**: Progressive Tool Search & Deferred Tool Registry Engine for large toolsets and extensive MCP ecosystems.
-  - **Classes**: `ToolDefinitionRecord`, `ToolSearchEngine`
-    - *Methods*: `register_tool()`, `search_tools()`, `describe_tool()`, `load_category()`, `get_active_tool_schemas()`
-
-###### Folder: `trading-agent/analysis/tools/core`
-**File:** `__init__.py`
-**File:** `definition.py`
-  - **Docstring**: Unified Tool Definition Models and Schema Primitives.
-  - **Classes**: `ToolParameter`, `UnifiedToolDefinition`, `ToolResult`
-**File:** `coercion.py`
-  - **Docstring**: Robust Argument Coercion for Dynamic Tool Invocations.
-  - **Functions**: `coerce_arguments(definition, raw_args)`
-**File:** `decorator.py`
-  - **Docstring**: Declarative `@tool` Decorator for Native Function Wrapping.
-  - **Functions**: `tool(name=None, description=None, category=None, distribution=None)`
-**File:** `toolset_registry.py`
-  - **Docstring**: Unified Hierarchical Toolset Registry with Distribution Tiers.
-  - **Classes**: `DistributionTier`, `UnifiedToolsetRegistry`
-    - *Methods*: `register_tool()`, `get_tool()`, `list_tools()`, `get_schemas()`
-**File:** `dispatcher.py`
-  - **Docstring**: Multi-Tier Environment Execution Dispatcher for Tool Calls.
-  - **Classes**: `UnifiedToolDispatcher`
-    - *Methods*: `dispatch()`, `register_environment()`
-
-###### Folder: `trading-agent/analysis/tools/environments`
-**File:** `__init__.py`
-**File:** `base_environment.py`
-  - **Docstring**: Base Abstract Class for Execution Environments.
-  - **Classes**: `EnvironmentExecutionResult`, `BaseExecutionEnvironment`
-    - *Methods*: `execute_code()`, `cleanup()`
-**File:** `tier1_inprocess.py`
-  - **Docstring**: Tier 1 Ultra-Low-Latency In-Process Execution Environment.
-  - **Classes**: `Tier1InProcessEnvironment`
-    - *Methods*: `execute_code()`, `cleanup()`
-**File:** `tier2_kernel.py`
-  - **Docstring**: Tier 2 Cross-Platform Subprocess Host Kernel Execution Environment.
-  - **Classes**: `Tier2HostKernelEnvironment`
-    - *Methods*: `execute_code()`, `cleanup()`
-**File:** `tier3_docker.py`
-  - **Docstring**: Tier 3 Hard-Isolated Docker Container Sandbox Environment with persistent session containers and airgap networking.
-  - **Classes**: `Tier3DockerEnvironment`, `Tier3DockerContainerEnvironment`
-    - *Methods*: `is_available()`, `get_or_create_container()`, `stop_container()`, `run_command()`, `run_python_code()`, `cleanup()`
-**File:** `pty_query_responder.py`
-  - **Docstring**: PTY Escape Query Responder & Terminal Protocol Synthesizer detecting and synthesizing immediate responses to VT100 / xterm ANSI terminal query sequences to prevent subprocess deadlocks.
-  - **Classes**: `PtyQueryResponder`
-    - *Methods*: `process_output()`
-
-###### Folder: `trading-agent/analysis/tools/quant_sandbox`
-**File:** `__init__.py`
-**File:** `rpc_server.py`
-  - **Docstring**: Local Loopback Quant Sandbox RPC Server & Client for zero-context MT5 ticks/bars calculations.
-  - **Classes**: `QuantSandboxRpcServer`, `QuantSandboxClient`
-    - *Methods*: `handle_request()`, `start()`, `stop()`, `compute_stats()`, `compute_correlation()`, `execute_code()`
-
-###### Folder: `trading-agent/analysis/tools/kernel`
-**File:** `__init__.py`
-**File:** `code_execution_rpc.py`
-  - **Docstring**: Host-side Loopback TCP RPC Server for Programmatic Tool Calling.
-  - **Classes**: `CodeExecutionRpcServer`
-    - *Methods*: `start()`, `stop()`, `_default_dispatch()`, `_handle_request()`, `_server_loop()`
-  - **Functions**: `generate_monika_tools_client_code()`
-**File:** `env_sanitizer.py`
-  - **Docstring**: Subprocess environment sanitizer purging broker passwords, database connections, and API keys from child processes.
-  - **Functions**: `get_sanitized_environment()`, `sanitize_environment`
-**File:** `output_spiller.py`
-  - **Docstring**: Output character bounding and disk spiller preserving 40/60 head-tail tokens.
-  - **Functions**: `truncate_and_spill_output()`
-**File:** `persistent_kernel.py`
-  - **Docstring**: Isolated Python execution session with subprocess sandboxing.
-  - **Classes**: `PersistentCodeKernel`
-    - *Methods*: `__init__(session_id="default", sandbox_mode=True)`, `execute(code_str, timeout_seconds=30.0)`, `reset()`
-**File:** `persistent_session_kernel.py`
-  - **Docstring**: Persistent Session Python Kernel for Programmatic Tool Calling with OS watchdog and sentinel framing.
-  - **Classes**: `PersistentSessionKernel`
-    - *Methods*: `_ensure_started()`, `execute()`, `reset()`, `terminate()`, `_read_framed_response()`
-**File:** `sandbox_runner.py`
-  - **Docstring**: Sandboxed Subprocess Code Execution Runner with AST validation and sanitized environment.
-  - **Variables**: `DEFAULT_TIMEOUT_SECONDS`, `MAX_OUTPUT_CHARS`, `FORBIDDEN_MODULES`, `FORBIDDEN_CALLS`, `logger`
-  - **Classes**: `SandboxedKernel`
-    - *Methods*: `__init__(session_id="sandbox", timeout_seconds=30.0, max_output_chars=50000)`, `execute(code_str, timeout_seconds=None, custom_env=None)`
-  - **Functions**: `validate_code_ast(code)`
-
-###### Folder: `trading-agent/analysis/tools/domain`
-**File:** `__init__.py`
-**File:** `clarify_tool.py`
-  - **Docstring**: Interactive Clarification Tool for user disambiguation and confirmation.
-  - **Classes**: `ClarifyInput`
-  - **Functions**: `handle_clarify_with_user()`
-**File:** `code_execution_tool.py`
-  - **Docstring**: Domain tool for Programmatic Tool Calling (PTC) and Sandboxed Code Execution.
-  - **Classes**: `ExecuteCodeInput`
-  - **Functions**: `handle_execute_code()`, `get_or_create_session_kernel()`, `shutdown_all_kernels()`
-**File:** `code_search_tool.py`
-  - **Docstring**: High-Performance Code Search & Regex Navigation Tool with automatic exclusion of build artifacts and virtualenvs, precision line windowing, and context snippet extraction.
-  - **Classes**: `SearchFilesInput`, `CodeSearchEngine`
-    - *Methods*: `search()`, `execute()`
-  - **Functions**: `handle_search_files()`
-**File:** `computer_use_tool.py`
-  - **Docstring**: OS Computer Use and GUI Automation Tool.
-  - **Classes**: `ComputerUseInput`
-  - **Functions**: `handle_computer_use()`
-**File:** `cron_tool.py`
-  - **Docstring**: Dynamic Recurring Cron Job & Background Schedule Tool for Monika.
-  - **Classes**: `CronActionInput`, `CronJobRecord`, `CronRegistry`
-  - **Functions**: `handle_manage_cron()`
-**File:** `delegate_tool.py`
-  - **Docstring**: Autonomous Subagent Delegation Tool with Git Worktree Isolation, Live Streaming, and Task Lifecycle Management (spawn, status, steer, cancel, list).
-  - **Classes**: `DelegateTaskInput`
-  - **Functions**: `handle_delegate_task()`
-  - **Variables**: `_ACTIVE_SUBAGENTS`
-**File:** `execution_handlers.py`
-  - **Classes**: `ExecutionToolHandlers`
-    - *Methods*: `__init__(settings=None, mt5_client=None)`, `calculate_position_size()`, `get_spread_snapshot()`
-**File:** `file_tools.py`
-  - **Docstring**: Universal Filesystem Domain Tools for precision file inspection, safe writing, and 9-stage fuzzy patching.
-  - **Classes**: `ReadFileInput`, `WriteFileInput`, `PatchFileInput`
-  - **Functions**: `get_file_patch_engine()`, `handle_read_file()`, `handle_write_file()`, `handle_patch()`
-**File:** `kanban_tools.py`
-  - **Docstring**: Autonomous Kanban Task Board Management Tool.
-  - **Classes**: `KanbanBoardInput`
-  - **Functions**: `handle_manage_kanban_board()`, `_load_board()`, `_save_board()`
-**File:** `macro_handlers.py`
-  - **Classes**: `MacroToolHandlers`
-    - *Methods*: `get_market_session()`, `get_bond_yield_spreads()`, `get_vix()`, `get_dxy()`, `get_funding_rate()`, `get_fedwatch_probabilities()`, `get_central_bank_expectations()`, `get_treasury_yields()`, `get_interest_rates()`, `get_precomputed_cot_signals()`, `get_surprise_summary()`
-**File:** `multimodal_tools.py`
-  - **Docstring**: Multimodal Vision & Financial Chart Analysis Tool for Monika with 256KB clamp and repeat guard.
-  - **Classes**: `ChartVisionInput`, `VisionImageProcessor`
-  - **Functions**: `handle_chart_vision_analyze()`
-**File:** `position_handlers.py`
-  - **Classes**: `PositionToolHandlers`
-**File:** `sentiment_handlers.py`
-  - **Classes**: `SentimentToolHandlers`
-    - *Methods*: `get_news_items()`, `get_fear_greed()`, `get_retail_sentiment()`, `get_funding_rate()`, `get_news_digest()`
-**File:** `skill_tools.py`
-  - **Docstring**: Universal Skills Domain Tools for progressive skill discovery, inspection, and dynamic management.
-  - **Classes**: `SkillsListInput`, `SkillViewInput`, `SkillManageInput`
-  - **Functions**: `get_skills_hub()`, `handle_skills_list()`, `handle_skill_view()`, `handle_skill_manage()`
-**File:** `spill_reader_tool.py`
-  - **Docstring**: Domain tool handler allowing the AI agent to read back spilled context or observations from PostgreSQL context_spill_blobs or disk spill cache on demand.
-  - **Classes**: `RetrieveSpilledContextInput`, `RetrieveSpilledContextHandler`
-    - *Methods*: `execute()`
-  - **Functions**: `handle_retrieve_spilled_context()`, `unified_retrieve_spilled_context()`
-**File:** `technical_handlers.py`
-  - **Classes**: `TechnicalToolHandlers`
-    - *Methods*: `get_market_quote()`, `get_price_history()`, `get_technical_indicators()`, `get_atr()`, `get_smc_zones()`, `get_structure_breaks()`, `get_fibonacci_levels()`, `get_daily_range_context()`, `get_optimal_intraday_levels()`
-**File:** `terminal_tools.py`
-  - **Docstring**: Universal Terminal & Process Execution Domain Tools for shell execution and background supervision.
-  - **Classes**: `TerminalInput`, `ProcessManageInput`
-  - **Functions**: `get_terminal_process_engine()`, `handle_terminal()`, `handle_process_manage()`
-**File:** `todo_tool.py`
-  - **Docstring**: Structured Task & Checklist Tracking Tool for Complex Plans.
-  - **Classes**: `TodoActionInput`, `TodoItem`, `TodoTracker`
-  - **Functions**: `handle_manage_todo()`
-**File:** `tool_search_tools.py`
-  - **Docstring**: Progressive Tool Search & Schema Materialization Domain Tools for deferred loading.
-  - **Classes**: `ToolSearchInput`, `DescribeToolInput`, `LoadToolCategoryInput`
-  - **Functions**: `get_tool_search_engine()`, `handle_tool_search()`, `handle_describe_tool()`, `handle_load_tool_category()`
-**File:** `web_tools.py`
-  - **Docstring**: Web Research, Universal Search & Content Distillation Tools for Monika enabling real-time macroeconomic news discovery, central bank statement fetching, and research ingestion.
-  - **Classes**: `WebSearchInput`, `WebFetchInput`
-  - **Functions**: `handle_web_search()`, `handle_web_fetch()`
-
-###### Folder: `trading-agent/analysis/tools/handlers`
-**File:** `__init__.py`
-**File:** `analysis_submit.py`
-**File:** `category_loader.py`
-  - **Classes**: `LoadToolCategoryHandler`, `GetMarketContextHandler`, `GetInstitutionalDataHandler`, `SearchToolsHandler`, `DescribeToolHandler`
-  - **Functions**: `handle_load_tool_category`, `handle_get_market_context`, `handle_get_institutional_data`, `handle_search_tools`, `handle_describe_tool`
-**File:** `db_tools.py`
-  - **Docstring**: Database inspection and query tool handlers for authorized Admin operator.
-  - **Classes**: `InspectDatabaseSchemaHandler`, `ReadDatabaseRecordsHandler`
-  - **Functions**: `get_table_model_map()`, `_serialize_row()`, `handle_inspect_database_schema()`, `handle_read_database_records()`
-**File:** `intelligence.py`
-**File:** `macro_data.py`
-  - **Classes**: `GetCentralBankExpectationsHandler`, `GetBondYieldSpreadsHandler`, `GetFedWatchProbabilitiesHandler`, `GetFundingRateHandler`, `GetEiaOilInventoryHandler`, `GetTreasuryYieldsHandler`, `GetInterestRatesHandler`, `GetCotReportHandler`, `GetVixHandler`, `GetDxyHandler`, `GetFearGreedIndexHandler`, `GetEconomicCalendarHandler`, `GetEconomicSurpriseHandler`, `GetPrecomputedCotSignalsHandler`, `GetSurpriseSummaryHandler`
-**File:** `macro_tools.py`
-  - **Functions**: `_safe_execute`, `handle_get_calendar`, `handle_get_fedwatch`, `handle_get_central_bank_expectations`, `handle_get_bond_yield_spreads`, `handle_get_interest_rates`, `handle_get_treasury_yields`, `handle_get_macro_context`, `handle_get_eia_oil_inventory`, `handle_get_precomputed_cot_signals`, `handle_get_surprise_summary`
-**File:** `market_data.py`
-  - **Classes**: `GetMarketQuoteHandler`, `GetPriceDataHandler`, `GetTechnicalAnalysisHandler`, `GetChartHandler`, `GetMultiTimeframeSummaryHandler`, `GetSpreadSnapshotHandler`, `GetPriceHistoryHandler`, `GetTechnicalIndicatorsHandler`
-**File:** `market_data_tools.py`
-  - **Functions**: `handle_get_market_quote`, `handle_get_price_history`, `handle_get_technical_indicators`, `handle_get_atr`, `handle_get_swing_points`, `handle_get_structure_breaks`, `handle_get_fibonacci_levels`, `handle_get_intraday_levels`, `handle_get_sr_zones` (R5: standalone S/R zones)
-**File:** `news_tools.py`
-  - **Constants**: `IMPACT_RANK`
-  - **Functions**: `handle_get_news_items`, `handle_get_news_digest`, `handle_get_digest_slices`, `handle_web_search`, `handle_read_url`, `handle_search_academic`, `_wrap_untrusted_digest`
-**File:** `pattern_similarity_tools.py`
-  - **Docstring**: Tool handler for multi-timeframe historical chart pattern similarity screening.
-  - **Functions**: `handle_scan_pattern_similarity()`
-**File:** `phase_transition.py`
-**File:** `position_mgmt.py`
-**File:** `ptc_handler.py`
-  - **Docstring**: PTCHandler executing analysis code in isolated Python subprocess with TCP JSON-RPC bridge for safe programmatic tool calling.
-  - **Classes**: `PTCHandler`
-    - *Methods*: `execute()`, `_build_sandboxed_script()`, `_start_tool_rpc_server()`
-**File:** `scratchpad.py`
-**File:** `sentiment_data.py`
-**File:** `sentiment_tools.py`
-  - **Functions**: `handle_get_sentiment_summary`, `handle_get_social_sentiment`, `handle_get_retail_sentiment`
-**File:** `skills_tools.py`
-  - **Classes**: `SkillsListHandler`, `SkillViewHandler`
-  - **Functions**: `handle_skills_list()`, `handle_skill_view()`, `_extract_summary()`
-**File:** `smc_tools.py`
-  - **Functions**: `handle_get_order_blocks`, `handle_get_liquidity_sweeps`, `handle_get_fair_value_gaps`
-**File:** `system_info.py`
-**File:** `timesfm.py`
-**File:** `trade_intel.py`
-  - **Classes**: `GetTradeHistoryHandler`, `GetTradeDetailsHandler`, `GetActiveTriggersHandler`, `GetPaperTradingPerformanceHandler`, `GetAssetAnalysisHandler` (R5), `GetRecentActivityHandler` (R5), `GetConversationHistoryHandler` (R5)
-  - **Functions**: `handle_get_asset_analysis` (R5: latest AssetAnalysis per symbol), `handle_get_recent_activity` (R5: ActivityLog tail), `handle_get_conversation_history`
-**File:** `trading_tools.py`
-  - **Functions**: `handle_calculate_position_size`, `handle_propose_order`, `handle_simulate_execution`
-**File:** `verified_snapshot.py`
-
-##### Folder: `trading-agent/analysis/schemas`
-**File:** `pydantic_schemas.py`
-  - **Classes**: `FundamentalBriefSchema`, `SentimentAnalysisSchema`, `SubmitAssetAnalysisSchema`, `SpecialistAdjudication`, `EntryCondition`, `ReevaluationTrigger`, `PricedInOverrideJustification`, `ChecklistVerification`, `KeyDataPointsUsed`, `UpcomingRiskEvent`, `PricedInAssessment`, `SubmitFundamentalBriefSchema` (Validators: `harmonize_counter_thesis_and_primitives`; Fields: `strongest_counter_thesis` min_length 50 required)
-  - **Functions**: `coerce_str()`, `coerce_string_list()`, `coerce_float()`, `coerce_int()`, `make_openai_strict_schema()`
-**File:** `schemas.py`
-
-##### Folder: `trading-agent/analysis/stages`
-**File:** `fundamental_stage.py`
-  - **Classes**: `FundamentalStage`
-**File:** `per_asset_stage.py`
-  - **Docstring**: Backward-compatible facade for PerAssetStage inheriting from PerAssetRunner (see `stages/per_asset/runner.py`).
-  - **Classes**: `PerAssetStage`
-    - *Methods*: `run_one()`, `run_all()`, `_check_brief_freshness_and_quality()`, `_compute_ssvp_coherence()`, `_fetch_stage2_bundle()`, `_compose_stage2_system_prompt()`, `_build_stage2_context_blocks()`, `_execute_specialist_debate_pipeline()`, `_recover_missing_analysis()`
-  - **Functions**: `_render_specialist_prompt`, `_flatten_system_prompt`, `_get_symbol_sl_streak`
-  - **Variables**: `SYSTEM_PROMPT_TEMPLATE`, `SYSTEM_PROMPT_STATIC`, `SPECIALIST_PROMPTS`
-
-##### Folder: `trading-agent/analysis/strategies`
-**File:** `base_strategy.py`
-  - **Classes**: `CandleDict` (Dual item/attribute access dict wrapper for OHLCV candles), `EdgeSignal` (Attributes: `ttl_minutes: Optional[int] = None`, `factor_family: str = 'trend'`, `exit_style: str = 'intraday_adr'`, `paired_leg: Optional['EdgeSignal']`), `EdgeStrategy` (Attributes: `compatible_regimes: set[str] = {"ALL"}`, `factor_family: str = "trend"`; Methods: `is_regime_compatible(regime)`, `is_enabled()`, `get_historical_candles()`, `evaluate()`)
-**File:** `registry.py`
-  - **Classes**: `StrategyRegistry`
-    - *Methods*: `register(strategy)`, `get_strategy(strategy_id)`, `list_strategies()`, `evaluate_all(session, symbol, settings, force_reload=False, current_regime=None)`: Evaluasi seluruh strategi aktif dengan filter kompatibilitas rezim pasar (`current_regime`) dan auto-propagasi `factor_family`, `hot_reload(strategy_id, parameters, symbol=None)`, `load_dynamic_parameters(session)`, `get_strategy_counts()`, `log_summary()`
-    - *Variables*: `_registry`, `_dynamic_params`, `_dynamic_symbol_params`, `MAX_SYNTHESIZED_PER_SYMBOL`, `_blacklisted_ids`, `_last_load_time`, `_load_interval`
-**File:** `strategy_plugin.py`
-  - **Docstring**: Strategy Plugin Interface wrapping EdgeStrategy instances as TradingPlugin harness components.
-  - **Classes**:
-    - `StrategyPlugin` (extends `TradingPlugin`)
-      - *Methods*: `__init__()`, `evaluate()`
-  - **Functions**: `wrap_strategy_as_plugin(strategy)`
-
-**File:** `gap_fade.py`
-  - **Classes**: `DailyReopenGapFade` (Regimes: RANGE, WEAK_TREND, VOLATILE_CHOP; Factor: mean_reversion; TTL: 60m)
-**File:** `btc_donchian_breakout.py`
-  - **Classes**: `BTCDonchianBreakout`, `DonchianBreakoutStrategy` (Multi-asset alias: Regimes: TREND, STRONG_TREND, EXPANDING_FAST; Factor: breakout; TTL: 120m)
-**File:** `tsm_momentum.py`
-  - **Classes**: `TimeSeriesMomentum`, `TrendTrailingMomentum` (Alias `trend_trailing`: Regimes: TREND, STRONG_TREND; Factor: trend; Dynamic lookbacks and min_agreement)
-
-**File:** `xau_trend_engine.py`
-  - **Classes**: `XAUTrendEngine` (Regimes: TREND, STRONG_TREND, WEAK_TREND; Factor: trend)
-**File:** `xti_pairs_readiness.py`
-  - **Classes**: `XTIPairsReadiness` (Regimes: RANGE, TREND, WEAK_TREND, VOLATILE_CHOP; Factor: stat_arb; Generates dual-leg Stat-Arb signals with dynamic SL/TP using DB Brent data)
-**File:** `liquidity_sweep_edge.py`
-  - **Classes**: `LiquiditySweepStructuralShift` (Regimes: RANGE, VOLATILE_CHOP, WEAK_TREND, TREND; Factor: breakout; TTL: 45m; Calculates invalidation Stop Loss from sweep_price extreme wick)
-**File:** `pretrade_gate.py`
-  - **Functions**: `evaluate_pretrade_gate(session, symbol: str, settings: dict, strategy_type: str) -> tuple[bool, str]` (Includes Session Rollover Deadzone Guard 21:55-22:15 UTC)
-**File:** `decay_monitor.py`
-  - **Docstring**: Automated strategy degradation detection, paper incubation (min 15 trades), & state machine (ACTIVE -> MONITORING -> DECAYED -> DISABLED).
-  - **Classes**: `DecayState`, `StrategyHealth` (Attributes: `paper_trades_count`, `paper_wins_count`, `paper_gross_profit`, `paper_gross_loss`, `is_incubation_passed`; Methods: `to_dict()`, `from_dict(data)`), `StrategyDecayMonitor`
-    - *Constants*: `MIN_INCUBATION_TRADES = 15`
-    - *Methods*: `get_health()`, `register_incubating_strategy()`, `is_tradeable()`, `is_live_ready()`, `record_trade_outcome(strategy_id, win, is_paper=False, pnl=0.0)`, `evaluate()`, `to_dict()`, `from_dict(data)`, `save_to_db(session)`, `load_from_db(session)`
-  - **Functions**: `get_strategy_decay_monitor()`
-
-###### Folder: `trading-agent/analysis/strategies/synthesized`
-####### Folder: `trading-agent/analysis/strategies/synthesized/quarantine`
-**File:** `alpha_btcusd_467904.py`
-  - **Classes**: `SynthesizedStrategy_alpha_btcusd_467904` (Quarantined stub strategy)
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_eurusd_6d622a.py`
-  - **Classes**: `SynthesizedStrategy_alpha_eurusd_6d622a`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_gbpusd_e73efc.py`
-  - **Classes**: `SynthesizedStrategy_alpha_gbpusd_e73efc`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_usdjpy_13a603.py`
-  - **Classes**: `SynthesizedStrategy_alpha_usdjpy_13a603`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_xauusd_3af460.py`
-  - **Classes**: `SynthesizedStrategy_alpha_xauusd_3af460`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_xauusd_94ad53.py`
-  - **Classes**: `SynthesizedStrategy_alpha_xauusd_94ad53`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_xauusd_b01980.py`
-  - **Classes**: `SynthesizedStrategy_alpha_xauusd_b01980`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_xbrusd_e55dbf.py`
-  - **Classes**: `SynthesizedStrategy_alpha_xbrusd_e55dbf`
-    - *Methods*: `evaluate()`
-
-**File:** `alpha_xtiusd_f30ff5.py`
-  - **Classes**: `SynthesizedStrategy_alpha_xtiusd_f30ff5`
-    - *Methods*: `evaluate()`
-
-##### Folder: `trading-agent/analysis/prefetch`
-**File:** `digest_slice_generator.py`
-  - **Classes**: `DigestSliceGenerator` (Methods: `generate_slice`, `assemble_12h_digest`, `_compute_coverage_gaps`)
-  - **Variables**: `TARGET_CURRENCIES`, `IMPACT_WEIGHT`
-**File:** `macro_preprocessor.py`
-  - **Classes**: `MacroPreprocessor`, `GeminiPreprocessor` (alias)
-  - **Variables**: `MARKET_CODE_TO_SYMBOL`, `SYMBOL_USD_DIRECTION`, `_PREPROCESSOR_CACHE`, `_GEMINI_CACHE`
-  - **Functions**: `_check_cache`, `_set_cache`, `clear_cache`
-**File:** `news_digest.py`
-  - **Classes**: `NewsDigestProcessor` (Methods: `invalidate_macro_context_cache`, `_build_5day_macro_context`, `_build_currency_signals_summary`, `create_news_digest`, `_check_digest_internal_consistency`, `_reconcile_digest_contradictions`)
-  - **Variables**: `MANDATORY_BREAKING_CHECKLIST`, `NON_BREAKING_TITLE_PATTERN`, `NEWS_CLASSIFICATION_SCHEMA`, `SENTIMENT_TAXONOMY`, `_STRUCTURAL_NUMBERS`, `_NUMERIC_TOKEN_PATTERN`
-  - **Functions**: `_format_news_item_for_prompt`, `_extract_numeric_claims`, `_normalize_num_variants`, `_normalize_contradictions`, `_flag_ungrounded_numbers`, `_deduplicate_items_by_title`, `_compute_coverage_gaps`, `_get_daily_breaking_budget`, `_persist_daily_breaking_budget`, `_resolve_item_index`, `_is_zero_based_series`, `_keyword_fallback_classify`, `generate_deterministic_macro_summary`, `generate_deterministic_currency_summary`
-**File:** `sentiment_aggregator.py`
-  - **Classes**: `SentimentAggregator`
-**File:** `stage1_prefetcher.py`
-  - **Classes**: `Stage1DataBundler` (Methods: `prefetch_all_data`, `_compress_json`)
-  - **Variables**: `PREFETCH_KEY_TO_TOOL`
-**File:** `stage2_prefetcher.py`
-  - **Classes**: `Stage2DataBundler` (Methods: `fetch_bundle`, `_compress_history`, `_format_technical_readable`, `_compress_json`, `_check_age_warnings`)
-  - **Variables**: `_PRICE_PRECISION`, `STANDARD_FETCH_TASKS`, `SYMBOL_FETCH_TASKS`
+**File:** `volume_profile.py`
+  - **Functions**: `compute_volume_profile`, `compute_anchored_vwap`
 
 ##### Folder: `trading-agent/analysis/debate`
 
 **File:** `__init__.py`
 
-**File:** `macro_bull_analyst.py`
-  - **Functions**: `run_bull_analyst()`
-
-**File:** `macro_bear_analyst.py`
-  - **Functions**: `run_bear_analyst()`
-
-**File:** `macro_judge.py`
-  - **Functions**: `run_macro_judge()`
-
-**File:** `macro_debate_validator.py`
-  - **Functions**: `normalize_winner()`, `validate_macro_judge_output()`
-
 **File:** `adjustment_validator.py`
   - **Functions**: `validate_and_apply_judge_adjustments()`
+
+**File:** `aggressive_risk_llm.py`
+  - **Functions**: `analyze_risk_aggressive_llm()`
 
 **File:** `bear_analyst.py`
   - **Functions**: `generate_bear_dissent()`, `generate_bear_rebuttal()`
@@ -1467,8 +637,33 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `conservative_risk_llm.py`
   - **Functions**: `analyze_risk_conservative_llm()`
 
-**File:** `aggressive_risk_llm.py`
-  - **Functions**: `analyze_risk_aggressive_llm()`
+**File:** `deterministic_risk.py`
+  - **Functions**: `analyze_risk_conservative()`, `analyze_risk_aggressive()`, `analyze_risk_neutral()`, `make_portfolio_decision_deterministic()`
+
+**File:** `discussion_engine.py`
+  - **Docstring**: General-Purpose Discussion Council & Multi-Agent Deliberation Engine with delta watermarks, (pass) protocol, and financial invariant gate.
+  - **Classes**: `DiscussionMessage`, `DiscussionOutcome`, `DiscussionCouncil`
+    - *Methods*: `run_deliberation()`, `_check_pass()`, `_build_prompt_with_delta()`, `_summarize_outcome()`
+
+**File:** `fact_sheet.py`
+  - **Global Variables**: `logger`
+  - **Functions**: `build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str, Any]` (Filters paper trades strictly by `status == 'closed'` for accurate win/loss metrics; queries SMC order blocks and FVGs without gating on ATR > 0)
+
+**File:** `investment_judge.py`
+  - **Variables**: `REGIME_WEIGHT_MATRIX`
+  - **Functions**: `resolve_regime_weights()`, `evaluate_debate()`
+
+**File:** `macro_bear_analyst.py`
+  - **Functions**: `run_bear_analyst()`
+
+**File:** `macro_bull_analyst.py`
+  - **Functions**: `run_bull_analyst()`
+
+**File:** `macro_debate_validator.py`
+  - **Functions**: `normalize_winner()`, `validate_macro_judge_output()`
+
+**File:** `macro_judge.py`
+  - **Functions**: `run_macro_judge()`
 
 **File:** `multi_persona_risk_llm.py`
   - **Variables**: `MULTI_PERSONA_RISK_SCHEMA`, `MULTI_PERSONA_SYS_PROMPT`
@@ -1477,159 +672,158 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `neutral_risk_llm.py`
   - **Functions**: `analyze_risk_neutral_llm()`
 
-**File:** `deterministic_risk.py`
-  - **Functions**: `analyze_risk_conservative()`, `analyze_risk_aggressive()`, `analyze_risk_neutral()`, `make_portfolio_decision_deterministic()`
-
-**File:** `investment_judge.py`
-  - **Variables**: `REGIME_WEIGHT_MATRIX`
-  - **Functions**: `resolve_regime_weights()`, `evaluate_debate()`
-
-
 **File:** `portfolio_manager.py`
   - **Functions**: `make_portfolio_decision()`
 
-**File:** `fact_sheet.py`
-  - **Global Variables**: `logger`
-  - **Functions**: `build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str, Any]` (Filters paper trades strictly by `status == 'closed'` for accurate win/loss metrics; queries SMC order blocks and FVGs without gating on ATR > 0)
+##### Folder: `trading-agent/analysis/grounding`
 
-**File:** `discussion_engine.py`
-  - **Docstring**: General-Purpose Discussion Council & Multi-Agent Deliberation Engine with delta watermarks, (pass) protocol, and financial invariant gate.
-  - **Classes**: `DiscussionMessage`, `DiscussionOutcome`, `DiscussionCouncil`
-    - *Methods*: `run_deliberation()`, `_check_pass()`, `_build_prompt_with_delta()`, `_summarize_outcome()`
+**File:** `__init__.py`
 
-##### Folder: `trading-agent/analysis/validators`
-**File:** `adjudication_verifier.py`
-  - **Variables**: `ADJUDICATION_VERIFY_SCHEMA`, `ADJUDICATION_SYSTEM_PROMPT`
-  - **Functions**: `verify_adjudication()`
-**File:** `adversarial_check.py`
-  - **Functions**: `run_adversarial_check()`
-**File:** `confluence_verifier.py`
-  - **Functions**: `verify_confluence()`
-**File:** `core_data_validator.py`
-  - **Functions**: `validate_core_data()`
-**File:** `fundamental_verifier.py`
-  - **Variables**: `VERIFIER_SCHEMA`, `FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT`
-  - **Functions**: `verify_fundamental_brief()`
-**File:** `output_verifier.py`
-  - **Functions**: `verify_output_structure()`
+**File:** `provenance_tagger.py`
+  - **Docstring**: Tracks numeric provenance of tool outputs and cross-verifies figures cited by LLM agents. Extended in PR-07 for multi-dimensional grounding (lot_size, spread, margin, equity) with broker-verified contract sizes (XAU: 100, BTC: 1, ETH: 10, XTI/XBR: 1000).
+  - **Classes**: `ObservedFact`, `ProvenanceLedger`
+    - *Methods*: `register_from_tool_output()`, `register_fact()`, `verify_citation()`, `verify_text_citations()`, `verify_lot_size()`, `verify_spread()`, `verify_margin()`, `verify_equity()`, `verify_trade_parameters()`
 
-##### Folder: `trading-agent/analysis/providers`
+##### Folder: `trading-agent/analysis/harness`
 
-**File:** `base_provider.py`
-  - **Classes**: `BaseLLMClient`, `MockResponse`, `MockBlock`
-    - *Methods*: `generate()`, `generate_content()`, `classify_json()`, `run_agent()`, `run_agent_from_messages()`, `run_tool_agent()`, `_log_tool_call()`, `_save_token_usage()`, `_infer_subsystem()`, `_get_session_affinity_headers()`, `_preserve_reasoning_signatures()`
-  - **Functions**: `_flatten_system_prompt`, `extract_and_parse_json`
+**File:** `__init__.py`
 
+**File:** `agent_harness.py`
+  - **Docstring**: Unified Multi-Turn ReAct Agent Harness with turn management, context compaction, state preservation truncation, anti-oscillation, quota enforcement, and ToolExecutor routing.
+  - **Classes**: `AgentHarness`
+    - *Methods*: `_is_transient_error()`, `_is_billing_error()`, `_normalize_response_content()`, `compute_tool_signature()`, `_preserve_state_summary()`, `_apply_truncation_guardrail()`, `_persist_assistant_turn()`, `_enforce_role_alternation()`, `_check_truncation()`, `_fail_truncated_tool_calls()`, `get_mandatory_tool_for_stage()`, `_log_tool_call()`, `enqueue_steering()`, `run_agent()`, `run_agent_from_messages()`
 
-**File:** `anthropic_provider.py`
-  - **Classes**: `AnthropicProvider`
-    - *Methods*: `generate()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()`, `_log_tool_call()` (Anti-Oscillation Tool Loop Guard active in tool execution loops)
-  - **Functions**: `_build_system_blocks`
-  - **Variables**: `THINKING_CAPABLE_MODELS`, `THINKING_BUDGETS`
-
-**File:** `gemini_provider.py`
-  - **Classes**: `GeminiProvider`
-    - *Methods*: `_is_paid_key()`, `_get_api_key()`, `_is_transient_error()`, `_handle_rate_limit_error()` (RPD, RPM/TPM, HTTP 503/UNAVAILABLE transient overload key cooldown), `_build_thinking_config()`, `generate()` (tuple system prompt separation, thinking headroom, unconditional auto-recovery on MAX_TOKENS, key rotation on 503), `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
-  - **Functions**: `_sanitize_schema_for_gemini`, `_check_gemini_block`
-  - **Variables**: `GEMINI_MODEL_ALIASES`, `GEMINI_THINKING_LEVEL_MAP`
-
-**File:** `openai_provider.py`
-  - **Classes**: `OpenAIProvider`
-    - *Methods*: `_apply_reasoning_params()` (dynamic reasoning token headroom, model-aware completion ceiling for Groq), `_build_prompt_cache_key()` (content-addressed hash monika_<sha256[:24]> for OpenAI prompt caching), `_call_chat_completions_with_recovery()` (self-healing 400 token ceiling recovery, parameter swap, prompt_cache_key retry), `_extract_usage()`, `generate()` (tuple system prompt separation), `generate_content()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
-  - **Functions**: `_normalize_messages`, `_extract_message_text`, `_canonicalize_schema`
-
-**File:** `deepseek_provider.py`
-  - **Classes**: `DeepSeekProvider`
-
-**File:** `provider_failover_classifier.py`
-  - **Docstring**: Structured LLM error classification taxonomy and retry/failover decision engine (expanded with UPSTREAM_RATE_LIMIT, INVALID_REQUEST, BROKER_MARGIN_CALL, SILENT_OVERFLOW, LENGTH_STOP_OVERFLOW, COMPLETION_CEILING_EXCEEDED, HARD_QUOTA_EXHAUSTED, TRANSIENT_RATE_LIMIT).
-  - **Classes**: `FailoverReason`
-  - **Functions**: `classify_error()`, `extract_completion_ceiling()`
+**File:** `context_compressor.py`
+  - **Docstring**: Multi-Phase Hierarchical Context Compressor (PR-06 / Standardized) implementing deterministic tool pruning, protected boundary splitting with warm-prefix preservation, 8-section structured trading summarization (<compacted-summary>), robust tool-pair snapping, and token assembly.
+  - **Variables**: `TRADING_SUMMARY_SECTIONS`, `TOOL_PRUNE_MARKER`
+  - **Classes**: `ContextCompressor`
+    - *Methods*: `compress()`, `prune_oversized_tool_results()`, `prune_deterministic_tools()`, `split_boundaries()`, `_snap_boundary()`, `_feasibility_skip()`, `_extract_existing_summary()`, `_extract_structured_trading_sections()`, `_extract_deterministic_facts()`, `summarize_middle()`
+  - **Functions**: `safe_unicode_slice()`, `safe_unicode_tail()`, `prune_tool_result_content()`, `prune_oversized_tool_results()`, `offload_historical_charts()`
 
 **File:** `error_classifier.py`
-  - **Docstring**: Backward-compatibility shim re-exporting `FailoverReason` and `classify_error` from `provider_failover_classifier.py`.
+  - **Docstring**: Structured error classification and recovery strategy assignment with Unicode surrogate cleansing and multimodal fallback.
+  - **Functions**: `sanitize_unicode_surrogates()`, `fallback_multimodal_to_text()`
+  - **Classes**: `ErrorCategory`, `RecoveryAction`, `ClassifiedError`, `ErrorClassifier`
+    - *Methods*: `classify()`, `classify_response()`
 
-**File:** `groq_provider.py`
-  - **Classes**: `GroqProvider`
-    - *Methods*: `_get_api_key()`, `_get_client_for_key()`, `_make_client()`, `_is_transient_error()`, `_handle_rate_limit_error()`, `generate()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_agent_from_messages()` (model-aware max_tokens clamping against capabilities ceiling)
-  - **Variables**: `GROQ_MODEL_ALIASES`
+**File:** `harness_state.py`
+  - **Docstring**: Typed state machine and phase models for agent harness loop.
+  - **Classes**: `PhaseAction`, `PhaseVerdict`, `SteeringMessage`, `HarnessState`
+    - *Methods*: `record_tokens()`, `record_error()`, `reset_errors()`, `can_retry_error()`, `is_turn_limit_reached()`, `enqueue_steering()`, `drain_steering()`, `drain_follow_up()`
 
-**File:** `ollama_provider.py`
-  - **Classes**: `OllamaProvider`
-    - *Methods*: `_get_client()`, `generate()`, `classify_json()`, `_apply_reasoning_params()` (keep_alive memory preservation)
+**File:** `message_repair.py`
+  - **Docstring**: 4-pass role alternation sanitizer ensuring provider compliance by enforcing role alternation, coalescing consecutive user messages, injecting missing user turns, and purging orphaned tool calls.
+  - **Functions**: `repair_message_history(messages)`
 
-**File:** `openrouter_provider.py`
-  - **Classes**: `OpenRouterProvider`
-    - *Methods*: `_get_client_for_key()`, `_is_key_in_cooldown()`, `_get_api_key()`, `reset_cooldowns()`, `get_cooldown_status()`, `_apply_reasoning_params()`, `_handle_rate_limit_error()`, `generate()`, `generate_content()`, `classify_json()`, `run_tool_agent()`, `run_agent()`
-  - **Variables**: `OPENROUTER_MODEL_ALIASES`, `_openrouter_limiter`, `_model_key_cooldowns`, `_key_cooldowns`, `_client_pool`, `_key_index`
+**File:** `repetition_guard.py`
+  - **Docstring**: Degenerate Repetition Loop Guard detecting repeating sentence or paragraph fragments in model assistant streams.
+  - **Functions**: `detect_text_repetition(text, min_phrase_len=60, min_repeats=3, dominance_ratio=0.50)`
 
-**File:** `runtime_model_registry.py`
-  - **Docstring**: Thread-safe dynamic model registry supporting live runtime model switching and hot-swaps without agent restarts.
-  - **Classes**: `RuntimeModelRegistry`
-    - *Methods*: `get_model()`, `set_model()`, `list_overrides()`, `reset()`
-  - **Functions**: `get_model_registry()`
+**File:** `stall_guard.py`
+  - **Docstring**: State-Aware Stall Guard (H-8) monitoring consecutive read-only tool loops, duplicate response hashing, and enforcing forced termination for synthesis.
+  - **Classes**: `StallGuard`
+    - *Methods*: `is_read_only()`, `record_call()`, `check_stall()`, `reset()`
+  - **Variables**: `READ_ONLY_TOOLS`, `STATE_ADVANCING_TOOLS`
 
-**File:** `capabilities.py`
-  - **Classes**: `ModelCapabilities`
-  - **Functions**: `get_model_capabilities()`, `get_capabilities()`, `resolve_effective_context_window()`
-  - **Variables**: `MODEL_CAPABILITIES`, `DEFAULT_CAPABILITIES`
+**File:** `structured_output.py`
+  - **Docstring**: Structured output generation with graceful fallback to free text.
+  - **Functions**: `invoke_structured_or_freetext()`
 
-**File:** `structured_fallback.py`
-  - **Classes**: `StructuredOutputResult`
-  - **Functions**: `extract_and_parse_json()`, `extract_key_values_by_regex()`, `parse_structured_output()`, `invoke_structured_or_freetext()`
+**File:** `symbol_segment_planner.py`
+  - **Docstring**: Intelligent tool batch partitioner separating mutating calls across independent asset symbols into parallel batches and sequencing dependent/same-symbol calls.
+  - **Classes**: `ToolSegment`, `SymbolSegmentPlanner`
+    - *Methods*: `extract_symbol(call)`, `partition_tool_calls(calls)`
 
-**File:** `llm_factory.py`
-  - **Classes**:
-    - `ProviderCircuitBreaker`
-      - *Methods*: `can_execute()`, `record_success()`, `record_failure()`, `blacklist_model()`, `is_blacklisted()`, `get_stats()`, `reset()`
-    - `LLMFactory`
-      - *Methods*: `get_client_for_task()`, `_resolve_provider()`, `_resolve_thinking_level()`, `_create_client_instance()`, `_create_client_with_fallback()`
-    - `FallbackClientWrapper`
-      - *Methods*: `_execute_with_fallback()`, `_maybe_restore_primary()`, `set_thinking_budget()`
-**File:** `provider_registry.py`
-  - **Docstring**: Extensible Provider Registry and LLM Provider Plugin Architecture.
-  - **Classes**:
-    - `LLMProviderPlugin` (extends `TradingPlugin`)
-    - `ProviderRegistry`
-      - *Methods*: `register_provider()`, `get_provider()`, `create_client()`, `list_providers()`
-**File:** `pricing_catalog.py`
-  - **Docstring**: Centralized AI Model Pricing Catalog re-exporting definitions and cost calculations from `utils.analytics.pricing`.
-  - **Classes**: `Price`
-  - **Functions**: `get_model_pricing()`, `calculate_cost()`, `cost_usd()`, `estimate_cost()`, `get_price()`, `is_free_tier()`, `infer_provider_from_model()`
-  - **Variables**: `PRICING`, `FREE_TIER_MODELS`, `OPENROUTER_PRICING_MAP`
+**File:** `tool_batch_planner.py`
+  - **Classes**: `ToolBatchPlanner`
+    - *Methods*: `plan_batch()`, `partition_independent()`
 
-**File:** `typesafe_provider.py`
-  - **Docstring**: TypeSafe (Jev) Provider: System One Decision-Making Engine. Integrates TypeSafe's Jev model family for fast, typed classification, scoring, and boolean decisions.
-  - **Classes**: `TypeSafeProvider`
-    - *Methods*: `_get_client()`, `classify_json()`, `generate()`, `run_chat_loop()`, `run_tool_agent()`, `ping()`
+**File:** `tool_repair.py`
+  - **Classes**: `ToolRepairEngine`
+    - *Methods*: `attempt_repair()`, `validate_schema()`
 
-**File:** `nine_router_provider.py`
-  - **Docstring**: NineRouterProvider — Provider untuk 9Router (NymRouter) AI Proxy & Gateway. Mendukung routing 40+ provider AI, format translation (OpenAI-compatible), smart auto-fallback (Subscription -> Cheap -> Free), RTK token compression, dan dynamic model introspection via GET /v1/models.
-  - **Classes**: `NineRouterProvider`
-    - *Methods*: `_get_provider_name()`, `is_model_free()`, `_get_client()`, `fetch_available_models()`, `is_alive()`, `ensure_running()`
-  - **Functions**: `normalize_9router_model_name()`, `is_9router_alive()`, `try_auto_spawn_9router()`
-  - **Variables**: `NINEROUTER_MODEL_ALIASES`, `FREE_TIER_MODELS_9ROUTER`
+**File:** `trade_stop_gates.py`
+  - **Docstring**: Institutional Trade Stop Gate blocking unverified directional decisions and injecting synthetic verification nudges when required risk evidence is absent.
+  - **Classes**: `TradeGateVerdict`, `TradeStopGate`
+    - *Methods*: `evaluate(response_text, ledger, stage, symbol)`
 
-**File:** `backend_identity.py`
-  - **Docstring**: Universal LLM Backend Identity & Hierarchical Failure Scoping.
-  - **Classes**: `BackendIdentity`, `BackendCircuitBreaker`
-    - *Methods*: `can_execute()`, `record_success()`, `record_failure()`
-  - **Enums**: `FailureScope`
-**File:** `streaming_think_scrubber.py`
-  - **Docstring**: Real-Time Streaming Reasoning Scrubber across multiple tag pairs with split-chunk tag handling and one-shot utility.
-  - **Classes**: `StreamingThinkScrubber`
-    - *Methods*: `feed_chunk()`, `finalize()`, `scrub_text()`
-  - **Variables**: `DEFAULT_REASONING_TAG_PAIRS`
-**File:** `trajectory_compressor.py`
-  - **Docstring**: Lossless Trajectory Context Compactor with boundary snapping.
-  - **Classes**: `TrajectoryCompressor`
-    - *Methods*: `compress_turns(messages, budget_tokens)`
-**File:** `provider_profile.py`
-  - **Docstring**: Provider Capability Profiles & Universal Normalized Response Abstraction unifying disparate upstream LLM response signatures into a single standardized NormalizedResponse.
-  - **Classes**: `TokenUsage`, `NormalizedToolCall`, `NormalizedResponse`, `ProviderProfile`
-    - *Methods*: `parse_response()`, `extract_reasoning()`, `normalize_tool_calls()`
+**File:** `verification_evidence_ledger.py`
+  - **Docstring**: In-memory verification evidence ledger recording empirical proof from deterministic risk and sizing tools.
+  - **Classes**: `VerificationEvidence`, `VerificationEvidenceLedger`
+    - *Methods*: `record_evidence(tool_name, tool_input, tool_output)`, `has_verified_trade_prerequisites(symbol)`, `get_unverified_reasons(symbol)`, `reset()`
+
+##### Folder: `trading-agent/analysis/mcp`
+
+**File:** `__init__.py`
+
+**File:** `client.py`
+  - **Docstring**: Model Context Protocol (MCP) client manager connecting to external MCP servers and bridging remote tools into Monika ToolRegistry.
+  - **Classes**: `McpServerProcess`, `McpBridgeHandler`, `McpClientManager`
+    - *Methods*: `start()`, `is_running`, `ensure_started()`, `send_request()`, `list_tools()`, `call_tool()`, `initialize_servers()`, `get_instance()`, `reset_instance()`, `stop()`
+  - **Global Variables**: `MCPClientManager`
+
+**File:** `dispatcher.py`
+  - **Docstring**: Unified Model Context Protocol (MCP) Server Dispatcher exposing both quantitative trading tools and dynamic UnifiedToolRegistry tools over JSON-RPC 2.0.
+  - **Classes**: `MonikaMcpDispatcher`
+    - *Methods*: `get_tool_list()`, `handle_request()`, `run_stdio()`
+
+**File:** `event_bridge.py`
+  - **Docstring**: MCP EventBridge Streaming with Debounced File MTime Detection.
+  - **Classes**: `McpEventBridge`
+    - *Methods*: `add_path()`, `subscribe()`, `check_for_changes()`, `start()`, `stop()`
+
+**File:** `mcp_death_supervisor.py`
+  - **Docstring**: Zero-Polling Orphan Process Supervisor for MCP Server Subprocesses preventing zombie background processes.
+  - **Classes**: `McpDeathSupervisor`
+    - *Methods*: `register_process()`, `unregister_process()`, `kill_all_orphans()`
+
+**File:** `mcp_schema_cache.py`
+  - **Docstring**: MCP Tool Schema Disk Cache with SHA-256 Configuration Fingerprinting for instant startup and lazy booting.
+  - **Classes**: `McpSchemaCache`
+    - *Methods*: `compute_config_hash()`, `get_cached_tools()`, `set_cached_tools()`, `clear_cache()`
+  - **Variables**: `DEFAULT_SCHEMA_CACHE_DIR`
+
+**File:** `mcp_serve.py`
+  - **Docstring**: Unified Model Context Protocol (MCP) Server for Monika exposing UnifiedToolRegistry over stdio JSON-RPC 2.0.
+  - **Classes**: `McpServerDispatcher`
+    - *Methods*: `get_tool_list()`, `handle_request()`, `run_stdio()`
+  - **Functions**: `main()`
+
+**File:** `oauth_handler.py`
+  - **Docstring**: MCP OAuth 2.1 Client Flow with PKCE & Token Refresh Fencing.
+  - **Classes**: `OAuthCallbackServer`, `OAuthTokenStorage`
+    - *Methods*: `start()`, `wait_for_code()`, `stop()`, `load_tokens()`, `save_tokens()`, `clear()`
+  - **Functions**: `generate_pkce_pair()`
+
+**File:** `protocol.py`
+  - **Classes**: `JsonRpcRequest`, `JsonRpcResponse`
+  - **Functions**: `make_error_response()`, `make_result_response()`
+
+**File:** `server.py`
+  - **Docstring**: Monika Model Context Protocol (MCP) server exposing quantitative analysis, open positions, status, and playbooks over stdio JSON-RPC.
+  - **Classes**: `MonikaMcpServer`
+    - *Methods*: `get_tool_definitions()`, `handle_tool_call()`, `handle_request()`, `run_stdio()`
+  - **Functions**: `run_mcp_server()`
+
+###### Folder: `trading-agent/analysis/mcp/servers`
+
+**File:** `__init__.py`
+
+**File:** `fetch_server.py`
+  - **Docstring**: Free public web text extraction MCP server.
+  - **Classes**: `FetchMcpServer`
+
+**File:** `filesystem_server.py`
+  - **Docstring**: Free sandboxed read-only filesystem MCP server for playbooks and trading files.
+  - **Classes**: `FilesystemMcpServer`
+
+**File:** `sqlite_server.py`
+  - **Docstring**: Free read-only SQLite metrics and checkpointer MCP server.
+  - **Classes**: `SqliteMcpServer`
 
 ##### Folder: `trading-agent/analysis/memory`
+
+**File:** `__init__.py`
 
 **File:** `alpha_calculator.py`
   - **Classes**: `AlphaCalculator`
@@ -1639,6 +833,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `BackgroundReviewEngine`
     - *Methods*: `start()`, `stop()`, `enqueue_trade()`, `_worker_loop()`, `_review_worker()`
   - **Variables**: `DO_NOT_CAPTURE`
+
 **File:** `background_review_fork.py`
   - **Docstring**: Background Review Fork & Counterfactual Analyzer for post-mortem forensics without blocking MT5 execution path.
   - **Classes**: `ForkReviewResult`, `BackgroundReviewFork`
@@ -1647,6 +842,11 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `chronicle_writer.py`
   - **Classes**: `ChronicleWriter` (Methods: `maybe_record_news_event`, `maybe_record_regime_shift`, `get_chronicle_context`, `seed_bootstrap_chronicles_if_empty`, `sync_macro_reality_from_file`, `get_chronicle_for_symbol`, `get_condensed_chronicle_bullets`, `get_macro_state_summary`)
   - **Variables**: `CHRONICLE_CATEGORIES`
+
+**File:** `context_engine.py`
+  - **Docstring**: Adaptive Context Engine with Priority Budget Allocation & Head/Tail Truncation.
+  - **Classes**: `ContextBudget`, `AssembledContext`, `AdaptiveContextEngine`
+    - *Methods*: `assemble_context()`, `_truncate_to_budget()`
 
 **File:** `counterfactual_simulator.py`
   - **Docstring**: Validates candidate trading playbooks across historical trade setups before setting status to active.
@@ -1673,6 +873,11 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `lesson_consolidator.py`
   - **Functions**: `consolidate_lessons_to_playbook`, `enforce_declarative_memory_rule`, `promote_lesson_to_playbook`, `cluster_lessons_semantically`, `auto_promote_high_confidence_rules`, `record_playbook_rule_outcome`
+
+**File:** `mechanical_anchor_index.py`
+  - **Docstring**: Mechanical Numeric Anchor Index preserving exact tickets, prices, lots, and risk invariant anchors across compression.
+  - **Classes**: `MechanicalAnchor`, `MechanicalAnchorIndex`
+    - *Methods*: `extract_anchors()`, `get_anchors_for_prompt()`, `render_anchor_context()`
 
 **File:** `negative_constraint_generator.py`
   - **Docstring**: Synthesizes actionable "DO NOT" rules from recent losing trades, reflections, and active market regimes to prevent recurring decision traps.
@@ -1703,6 +908,13 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `ProgressiveMemoryLoader`
     - *Methods*: `get_level0_index()`, `get_level1_playbook(symbol)`, `get_level2_tactical(symbol, topic)`
 
+**File:** `prompt_cache_boundary.py`
+  - **Docstring**: Prompt Cache Boundary & Stable Prefix Registry providing deterministic request partitioning to maximize KV-cache hit ratios.
+  - **Classes**: `PromptCacheProfile`, `CacheBoundaryPlan`, `PromptCacheBoundaryPlanner`
+    - *Methods*: `register_stable_prefix()`, `plan_boundaries()`
+  - **Functions**: `register_stable_prefix()`, `find_stable_prefix()`, `plan_prompt_cache_boundaries()`
+  - **Variables**: `MAX_PREFIX_ENTRIES`, `MIN_PREFIX_CHARS`
+
 **File:** `reflector.py`
   - **Classes**: `TradeReflector`
     - *Methods*: `_verify_reflection_quality()`, `reflect_on_trade()`, `_fetch_enrichment_context()`
@@ -1727,115 +939,760 @@ This document provides an exhaustive structural index of all directories, files,
       - `update_session_outcome(self, *args, **kwargs)`
       - `index_reflection(self, session, reflection_id, custom_text=None)`
       - `update_reflection_outcome(self, session, reflection_id, outcome_data)`
+
 **File:** `sharegpt_exporter.py`
   - **Docstring**: ShareGPT and OpenAI Fine-Tuning Trajectory Exporter with cross-platform file locking.
   - **Classes**: `ShareGptExporter`
     - *Methods*: `to_sharegpt_format(messages)`, `to_openai_format(messages)`, `save_trajectory(messages, ...)`
   - **Functions**: `convert_scratchpad_to_think(content)`, `_lock_append_handle(f, acquire)`
+
 **File:** `skill_ast_audit.py`
   - **Docstring**: Static AST Security Audit and Structural Linter for Skills & Playbooks.
   - **Classes**: `AstAuditViolation`, `AstAuditReport`, `SkillAstAuditor`
     - *Methods*: `audit_code()`
+
 **File:** `skill_crystallizer.py`
   - **Classes**: `SkillCrystallizer`, `ReadBeforeWriteGuard`
     - *Methods*: `evaluate_and_crystallize()`, `_crystallize_cluster()`, `_synthesize_tactical_rules()`, `get_crystallized_skills_for_symbol()`, `is_skill_deprecated()`, `deprecate_skill()`, `record_skill_attribution()`, `curate_and_prune_skills()`, `record_read()`, `can_write()`
+
 **File:** `skill_curator.py`
   - **Docstring**: Autonomous Background Skill Curator managing Active -> Stale -> Archived lifecycle and deduplication.
   - **Classes**: `SkillCurator`
     - *Methods*: `calculate_similarity()`, `curate_db_rules()`, `curate_files()`, `run_once()`, `run_background_loop()`
+
 **File:** `skill_evolution.py`
   - **Classes**: `MicroPlaybookCompiler`
     - *Methods*: `__init__(settings=None)`, `ensure_playbooks_dir()`, `evaluate_and_compile()`, `_synthesize_micro_playbook()`, `_promote_playbook()`
+
 **File:** `skill_ledger_sha.py`
   - **Docstring**: Cryptographic SHA-256 Chained Audit Ledger for Skills & Playbooks with tamper detection.
   - **Classes**: `ShaLedgerBlock`, `ShaSkillLedger`
     - *Methods*: `append_mutation()`, `verify_integrity()`, `get_latest_version()`, `get_version_by_hash()`
+
 **File:** `trajectory_compressor.py`
   - **Docstring**: Trajectory Compressor for Fine-Tuning & Offline Evaluation protecting head and tail turns.
   - **Classes**: `TrajectoryCompressionConfig`, `TrajectoryCompressor`
     - *Methods*: `compress(messages)`, `compress_jsonl_file(input_path, output_path)`, `_sanitize_turn(msg, max_tool_chars)`
   - **Functions**: `estimate_tokens(text)`, `truncate_middle_text(text, max_chars)`
+
 **File:** `working_scratchpad.py`
   - **Classes**: `WorkingScratchpad`
     - *Methods*: `to_system_injection()`, `update()`, `to_dict()`, `from_dict()`, `get_summary()`
-**File:** `context_engine.py`
-  - **Docstring**: Adaptive Context Engine with Priority Budget Allocation & Head/Tail Truncation.
-  - **Classes**: `ContextBudget`, `AssembledContext`, `AdaptiveContextEngine`
-    - *Methods*: `assemble_context()`, `_truncate_to_budget()`
-**File:** `mechanical_anchor_index.py`
-  - **Docstring**: Mechanical Numeric Anchor Index preserving exact tickets, prices, lots, and risk invariant anchors across compression.
-  - **Classes**: `MechanicalAnchor`, `MechanicalAnchorIndex`
-    - *Methods*: `extract_anchors()`, `get_anchors_for_prompt()`, `render_anchor_context()`
-**File:** `prompt_cache_boundary.py`
-  - **Docstring**: Prompt Cache Boundary & Stable Prefix Registry providing deterministic request partitioning to maximize KV-cache hit ratios.
-  - **Classes**: `PromptCacheProfile`, `CacheBoundaryPlan`, `PromptCacheBoundaryPlanner`
-    - *Methods*: `register_stable_prefix()`, `plan_boundaries()`
-  - **Functions**: `register_stable_prefix()`, `find_stable_prefix()`, `plan_prompt_cache_boundaries()`
-  - **Variables**: `MAX_PREFIX_ENTRIES`, `MIN_PREFIX_CHARS`
 
-##### Folder: `trading-agent/analysis/mcp`
+##### Folder: `trading-agent/analysis/prefetch`
+
 **File:** `__init__.py`
-**File:** `protocol.py`
-  - **Classes**: `JsonRpcRequest`, `JsonRpcResponse`
-  - **Functions**: `make_error_response()`, `make_result_response()`
-**File:** `server.py`
-  - **Docstring**: Monika Model Context Protocol (MCP) server exposing quantitative analysis, open positions, status, and playbooks over stdio JSON-RPC.
-  - **Classes**: `MonikaMcpServer`
-    - *Methods*: `get_tool_definitions()`, `handle_tool_call()`, `handle_request()`, `run_stdio()`
-  - **Functions**: `run_mcp_server()`
+
+**File:** `digest_slice_generator.py`
+  - **Classes**: `DigestSliceGenerator` (Methods: `generate_slice`, `assemble_12h_digest`, `_compute_coverage_gaps`)
+  - **Variables**: `TARGET_CURRENCIES`, `IMPACT_WEIGHT`
+
+**File:** `macro_preprocessor.py`
+  - **Classes**: `MacroPreprocessor`, `GeminiPreprocessor` (alias)
+  - **Variables**: `MARKET_CODE_TO_SYMBOL`, `SYMBOL_USD_DIRECTION`, `_PREPROCESSOR_CACHE`, `_GEMINI_CACHE`
+  - **Functions**: `_check_cache`, `_set_cache`, `clear_cache`
+
+**File:** `news_digest.py`
+  - **Classes**: `NewsDigestProcessor` (Methods: `invalidate_macro_context_cache`, `_build_5day_macro_context`, `_build_currency_signals_summary`, `create_news_digest`, `_check_digest_internal_consistency`, `_reconcile_digest_contradictions`)
+  - **Variables**: `MANDATORY_BREAKING_CHECKLIST`, `NON_BREAKING_TITLE_PATTERN`, `NEWS_CLASSIFICATION_SCHEMA`, `SENTIMENT_TAXONOMY`, `_STRUCTURAL_NUMBERS`, `_NUMERIC_TOKEN_PATTERN`
+  - **Functions**: `_format_news_item_for_prompt`, `_extract_numeric_claims`, `_normalize_num_variants`, `_normalize_contradictions`, `_flag_ungrounded_numbers`, `_deduplicate_items_by_title`, `_compute_coverage_gaps`, `_get_daily_breaking_budget`, `_persist_daily_breaking_budget`, `_resolve_item_index`, `_is_zero_based_series`, `_keyword_fallback_classify`, `generate_deterministic_macro_summary`, `generate_deterministic_currency_summary`
+
+**File:** `sentiment_aggregator.py`
+  - **Classes**: `SentimentAggregator`
+
+**File:** `stage1_prefetcher.py`
+  - **Classes**: `Stage1DataBundler` (Methods: `prefetch_all_data`, `_compress_json`)
+  - **Variables**: `PREFETCH_KEY_TO_TOOL`
+
+**File:** `stage2_prefetcher.py`
+  - **Classes**: `Stage2DataBundler` (Methods: `fetch_bundle`, `_compress_history`, `_format_technical_readable`, `_compress_json`, `_check_age_warnings`)
+  - **Variables**: `_PRICE_PRECISION`, `STANDARD_FETCH_TASKS`, `SYMBOL_FETCH_TASKS`
+
+##### Folder: `trading-agent/analysis/providers`
+
+**File:** `__init__.py`
+  - **Docstring**: LLM Provider implementations.
+
+**File:** `anthropic_provider.py`
+  - **Classes**: `AnthropicProvider`
+    - *Methods*: `generate()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()`, `_log_tool_call()` (Anti-Oscillation Tool Loop Guard active in tool execution loops)
+  - **Functions**: `_build_system_blocks`
+  - **Variables**: `THINKING_CAPABLE_MODELS`, `THINKING_BUDGETS`
+
+**File:** `backend_identity.py`
+  - **Docstring**: Universal LLM Backend Identity & Hierarchical Failure Scoping.
+  - **Classes**: `BackendIdentity`, `BackendCircuitBreaker`
+    - *Methods*: `can_execute()`, `record_success()`, `record_failure()`
+  - **Enums**: `FailureScope`
+
+**File:** `base_provider.py`
+  - **Classes**: `BaseLLMClient`, `MockResponse`, `MockBlock`
+    - *Methods*: `generate()`, `generate_content()`, `classify_json()`, `run_agent()`, `run_agent_from_messages()`, `run_tool_agent()`, `_log_tool_call()`, `_save_token_usage()`, `_infer_subsystem()`, `_get_session_affinity_headers()`, `_preserve_reasoning_signatures()`
+  - **Functions**: `_flatten_system_prompt`, `extract_and_parse_json`
+
+**File:** `capabilities.py`
+  - **Classes**: `ModelCapabilities`
+  - **Functions**: `get_model_capabilities()`, `get_capabilities()`, `resolve_effective_context_window()`
+  - **Variables**: `MODEL_CAPABILITIES`, `DEFAULT_CAPABILITIES`
+
+**File:** `deepseek_provider.py`
+  - **Classes**: `DeepSeekProvider`
+
+**File:** `error_classifier.py`
+  - **Docstring**: Backward-compatibility shim re-exporting `FailoverReason` and `classify_error` from `provider_failover_classifier.py`.
+
+**File:** `gemini_provider.py`
+  - **Classes**: `GeminiProvider`
+    - *Methods*: `_is_paid_key()`, `_get_api_key()`, `_is_transient_error()`, `_handle_rate_limit_error()` (RPD, RPM/TPM, HTTP 503/UNAVAILABLE transient overload key cooldown), `_build_thinking_config()`, `generate()` (tuple system prompt separation, thinking headroom, unconditional auto-recovery on MAX_TOKENS, key rotation on 503), `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
+  - **Functions**: `_sanitize_schema_for_gemini`, `_check_gemini_block`
+  - **Variables**: `GEMINI_MODEL_ALIASES`, `GEMINI_THINKING_LEVEL_MAP`
+
+**File:** `groq_provider.py`
+  - **Classes**: `GroqProvider`
+    - *Methods*: `_get_api_key()`, `_get_client_for_key()`, `_make_client()`, `_is_transient_error()`, `_handle_rate_limit_error()`, `generate()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_agent_from_messages()` (model-aware max_tokens clamping against capabilities ceiling)
+  - **Variables**: `GROQ_MODEL_ALIASES`
+
+**File:** `llm_factory.py`
+  - **Classes**:
+    - `ProviderCircuitBreaker`
+      - *Methods*: `can_execute()`, `record_success()`, `record_failure()`, `blacklist_model()`, `is_blacklisted()`, `get_stats()`, `reset()`
+    - `LLMFactory`
+      - *Methods*: `get_client_for_task()`, `_resolve_provider()`, `_resolve_thinking_level()`, `_create_client_instance()`, `_create_client_with_fallback()`
+    - `FallbackClientWrapper`
+      - *Methods*: `_execute_with_fallback()`, `_maybe_restore_primary()`, `set_thinking_budget()`
+
+**File:** `nine_router_provider.py`
+  - **Docstring**: NineRouterProvider — Provider untuk 9Router (NymRouter) AI Proxy & Gateway. Mendukung routing 40+ provider AI, format translation (OpenAI-compatible), smart auto-fallback (Subscription -> Cheap -> Free), RTK token compression, dan dynamic model introspection via GET /v1/models.
+  - **Classes**: `NineRouterProvider`
+    - *Methods*: `_get_provider_name()`, `is_model_free()`, `_get_client()`, `fetch_available_models()`, `is_alive()`, `ensure_running()`
+  - **Functions**: `normalize_9router_model_name()`, `is_9router_alive()`, `try_auto_spawn_9router()`
+  - **Variables**: `NINEROUTER_MODEL_ALIASES`, `FREE_TIER_MODELS_9ROUTER`
+
+**File:** `ollama_provider.py`
+  - **Classes**: `OllamaProvider`
+    - *Methods*: `_get_client()`, `generate()`, `classify_json()`, `_apply_reasoning_params()` (keep_alive memory preservation)
+
+**File:** `openai_provider.py`
+  - **Classes**: `OpenAIProvider`
+    - *Methods*: `_apply_reasoning_params()` (dynamic reasoning token headroom, model-aware completion ceiling for Groq), `_build_prompt_cache_key()` (content-addressed hash monika_<sha256[:24]> for OpenAI prompt caching), `_call_chat_completions_with_recovery()` (self-healing 400 token ceiling recovery, parameter swap, prompt_cache_key retry), `_extract_usage()`, `generate()` (tuple system prompt separation), `generate_content()`, `classify_json()`, `run_tool_agent()`, `run_agent()`, `run_chat_loop()`, `run_agent_from_messages()` (Anti-Oscillation Tool Loop Guard active)
+  - **Functions**: `_normalize_messages`, `_extract_message_text`, `_canonicalize_schema`
+
+**File:** `openrouter_provider.py`
+  - **Classes**: `OpenRouterProvider`
+    - *Methods*: `_get_client_for_key()`, `_is_key_in_cooldown()`, `_get_api_key()`, `reset_cooldowns()`, `get_cooldown_status()`, `_apply_reasoning_params()`, `_handle_rate_limit_error()`, `generate()`, `generate_content()`, `classify_json()`, `run_tool_agent()`, `run_agent()`
+  - **Variables**: `OPENROUTER_MODEL_ALIASES`, `_openrouter_limiter`, `_model_key_cooldowns`, `_key_cooldowns`, `_client_pool`, `_key_index`
+
+**File:** `pricing_catalog.py`
+  - **Docstring**: Centralized AI Model Pricing Catalog re-exporting definitions and cost calculations from `utils.analytics.pricing`.
+  - **Classes**: `Price`
+  - **Functions**: `get_model_pricing()`, `calculate_cost()`, `cost_usd()`, `estimate_cost()`, `get_price()`, `is_free_tier()`, `infer_provider_from_model()`
+  - **Variables**: `PRICING`, `FREE_TIER_MODELS`, `OPENROUTER_PRICING_MAP`
+
+**File:** `provider_failover_classifier.py`
+  - **Docstring**: Structured LLM error classification taxonomy and retry/failover decision engine (expanded with UPSTREAM_RATE_LIMIT, INVALID_REQUEST, BROKER_MARGIN_CALL, SILENT_OVERFLOW, LENGTH_STOP_OVERFLOW, COMPLETION_CEILING_EXCEEDED, HARD_QUOTA_EXHAUSTED, TRANSIENT_RATE_LIMIT).
+  - **Classes**: `FailoverReason`
+  - **Functions**: `classify_error()`, `extract_completion_ceiling()`
+
+**File:** `provider_profile.py`
+  - **Docstring**: Provider Capability Profiles & Universal Normalized Response Abstraction unifying disparate upstream LLM response signatures into a single standardized NormalizedResponse.
+  - **Classes**: `TokenUsage`, `NormalizedToolCall`, `NormalizedResponse`, `ProviderProfile`
+    - *Methods*: `parse_response()`, `extract_reasoning()`, `normalize_tool_calls()`
+
+**File:** `provider_registry.py`
+  - **Docstring**: Extensible Provider Registry and LLM Provider Plugin Architecture.
+  - **Classes**:
+    - `LLMProviderPlugin` (extends `TradingPlugin`)
+    - `ProviderRegistry`
+      - *Methods*: `register_provider()`, `get_provider()`, `create_client()`, `list_providers()`
+
+**File:** `runtime_model_registry.py`
+  - **Docstring**: Thread-safe dynamic model registry supporting live runtime model switching and hot-swaps without agent restarts.
+  - **Classes**: `RuntimeModelRegistry`
+    - *Methods*: `get_model()`, `set_model()`, `list_overrides()`, `reset()`
+  - **Functions**: `get_model_registry()`
+
+**File:** `streaming_think_scrubber.py`
+  - **Docstring**: Real-Time Streaming Reasoning Scrubber across multiple tag pairs with split-chunk tag handling and one-shot utility.
+  - **Classes**: `StreamingThinkScrubber`
+    - *Methods*: `feed_chunk()`, `finalize()`, `scrub_text()`
+  - **Variables**: `DEFAULT_REASONING_TAG_PAIRS`
+
+**File:** `structured_fallback.py`
+  - **Classes**: `StructuredOutputResult`
+  - **Functions**: `extract_and_parse_json()`, `extract_key_values_by_regex()`, `parse_structured_output()`, `invoke_structured_or_freetext()`
+
+**File:** `trajectory_compressor.py`
+  - **Docstring**: Lossless Trajectory Context Compactor with boundary snapping.
+  - **Classes**: `TrajectoryCompressor`
+    - *Methods*: `compress_turns(messages, budget_tokens)`
+
+**File:** `typesafe_provider.py`
+  - **Docstring**: TypeSafe (Jev) Provider: System One Decision-Making Engine. Integrates TypeSafe's Jev model family for fast, typed classification, scoring, and boolean decisions.
+  - **Classes**: `TypeSafeProvider`
+    - *Methods*: `_get_client()`, `classify_json()`, `generate()`, `run_chat_loop()`, `run_tool_agent()`, `ping()`
+
+##### Folder: `trading-agent/analysis/schemas`
+
+**File:** `__init__.py`
+
+**File:** `pydantic_schemas.py`
+  - **Classes**: `FundamentalBriefSchema`, `SentimentAnalysisSchema`, `SubmitAssetAnalysisSchema`, `SpecialistAdjudication`, `EntryCondition`, `ReevaluationTrigger`, `PricedInOverrideJustification`, `ChecklistVerification`, `KeyDataPointsUsed`, `UpcomingRiskEvent`, `PricedInAssessment`, `SubmitFundamentalBriefSchema` (Validators: `harmonize_counter_thesis_and_primitives`; Fields: `strongest_counter_thesis` min_length 50 required)
+  - **Functions**: `coerce_str()`, `coerce_string_list()`, `coerce_float()`, `coerce_int()`, `make_openai_strict_schema()`
+
+**File:** `schemas.py`
+
+##### Folder: `trading-agent/analysis/stages`
+
+**File:** `__init__.py`
+
+**File:** `fundamental_stage.py`
+  - **Classes**: `FundamentalStage`
+
+**File:** `per_asset_stage.py`
+  - **Docstring**: Backward-compatible facade for PerAssetStage inheriting from PerAssetRunner (see `stages/per_asset/runner.py`).
+  - **Classes**: `PerAssetStage`
+    - *Methods*: `run_one()`, `run_all()`, `_check_brief_freshness_and_quality()`, `_compute_ssvp_coherence()`, `_fetch_stage2_bundle()`, `_compose_stage2_system_prompt()`, `_build_stage2_context_blocks()`, `_execute_specialist_debate_pipeline()`, `_recover_missing_analysis()`
+  - **Functions**: `_render_specialist_prompt`, `_flatten_system_prompt`, `_get_symbol_sl_streak`
+  - **Variables**: `SYSTEM_PROMPT_TEMPLATE`, `SYSTEM_PROMPT_STATIC`, `SPECIALIST_PROMPTS`
+
+**File:** `preflight_gate.py`
+  - **Classes**: `PreFlightTurnGate`
+    - *Methods*: `check_high_impact_news()`, `evaluate_preconditions()`
+  - **Variables**: `EMPIRICAL_ACTIVE_MEDIANS`, `ACTIVE_SPREAD_HARD_CEILINGS`, `SYMBOL_CURRENCIES`
+
+###### Folder: `trading-agent/analysis/stages/per_asset`
+
+**File:** `__init__.py`
+
+**File:** `context_builder.py`
+  - **Classes**: `ContextBuilderMixin` (Methods: `build_asset_context()`, `_fetch_dynamic_micro_lessons()`, `_fetch_previous_analysis()`; Injects H4 VerifiedMarketSnapshot and H5 Quant Alpha Signals from StrategyRegistry)
+  - **Functions**: `_render_specialist_prompt`, `_flatten_system_prompt`
+  - **Variables**: `SYMBOL_TO_COT`, `SYSTEM_PROMPT_TEMPLATE`, `SYSTEM_PROMPT_STATIC`, `SPECIALIST_PROMPTS`
+
+**File:** `runner.py`
+  - **Classes**: `PerAssetRunner`
+    - *Methods*: `run_one()`, `run_all()`, `_fetch_stage2_bundle()`, `_execute_stage2_prescreen()`, `_recover_missing_analysis()`
+
+**File:** `specialist_council.py`
+  - **Docstring**: Institutional 5-Specialist Council for Per-Asset Trade Decisions (Macro, Technical, News/Sentiment, Risk Arbitrator, Execution Strategist).
+  - **Classes**: `SpecialistRole`, `TradeAction`, `SpecialistVote`, `CouncilVerdict`, `SpecialistCouncil`
+    - *Methods*: `evaluate()`, `_evaluate_macro()`, `_evaluate_technical()`, `_evaluate_news_sentiment()`, `_evaluate_risk_arbitrator()`, `_evaluate_execution_strategist()`
+
+**File:** `specialist_pipeline.py`
+  - **Classes**: `SpecialistPipelineMixin`
+    - *Methods*: `_execute_specialist_debate_pipeline()`
+  - **Variables**: `_SPECIALIST_KEY_MAP`
+
+**File:** `verifiers.py`
+  - **Classes**: `VerifiersMixin`
+    - *Methods*: `_check_brief_freshness_and_quality()`, `_compute_ssvp_coherence()`
+  - **Functions**: `_get_symbol_sl_streak`
+
+##### Folder: `trading-agent/analysis/strategies`
+
+**File:** `__init__.py`
+  - **Global Variables**: logger
+
+**File:** `base_strategy.py`
+  - **Classes**: `CandleDict` (Dual item/attribute access dict wrapper for OHLCV candles), `EdgeSignal` (Attributes: `ttl_minutes: Optional[int] = None`, `factor_family: str = 'trend'`, `exit_style: str = 'intraday_adr'`, `paired_leg: Optional['EdgeSignal']`), `EdgeStrategy` (Attributes: `compatible_regimes: set[str] = {"ALL"}`, `factor_family: str = "trend"`; Methods: `is_regime_compatible(regime)`, `is_enabled()`, `get_historical_candles()`, `evaluate()`)
+
+**File:** `btc_donchian_breakout.py`
+  - **Classes**: `BTCDonchianBreakout`, `DonchianBreakoutStrategy` (Multi-asset alias: Regimes: TREND, STRONG_TREND, EXPANDING_FAST; Factor: breakout; TTL: 120m)
+
+**File:** `decay_monitor.py`
+  - **Docstring**: Automated strategy degradation detection, paper incubation (min 15 trades), & state machine (ACTIVE -> MONITORING -> DECAYED -> DISABLED).
+  - **Classes**: `DecayState`, `StrategyHealth` (Attributes: `paper_trades_count`, `paper_wins_count`, `paper_gross_profit`, `paper_gross_loss`, `is_incubation_passed`; Methods: `to_dict()`, `from_dict(data)`), `StrategyDecayMonitor`
+    - *Constants*: `MIN_INCUBATION_TRADES = 15`
+    - *Methods*: `get_health()`, `register_incubating_strategy()`, `is_tradeable()`, `is_live_ready()`, `record_trade_outcome(strategy_id, win, is_paper=False, pnl=0.0)`, `evaluate()`, `to_dict()`, `from_dict(data)`, `save_to_db(session)`, `load_from_db(session)`
+  - **Functions**: `get_strategy_decay_monitor()`
+
+**File:** `gap_fade.py`
+  - **Classes**: `DailyReopenGapFade` (Regimes: RANGE, WEAK_TREND, VOLATILE_CHOP; Factor: mean_reversion; TTL: 60m)
+
+**File:** `liquidity_sweep_edge.py`
+  - **Classes**: `LiquiditySweepStructuralShift` (Regimes: RANGE, VOLATILE_CHOP, WEAK_TREND, TREND; Factor: breakout; TTL: 45m; Calculates invalidation Stop Loss from sweep_price extreme wick)
+
+**File:** `pretrade_gate.py`
+  - **Functions**: `evaluate_pretrade_gate(session, symbol: str, settings: dict, strategy_type: str) -> tuple[bool, str]` (Includes Session Rollover Deadzone Guard 21:55-22:15 UTC)
+
+**File:** `registry.py`
+  - **Classes**: `StrategyRegistry`
+    - *Methods*: `register(strategy)`, `get_strategy(strategy_id)`, `list_strategies()`, `evaluate_all(session, symbol, settings, force_reload=False, current_regime=None)`: Evaluasi seluruh strategi aktif dengan filter kompatibilitas rezim pasar (`current_regime`) dan auto-propagasi `factor_family`, `hot_reload(strategy_id, parameters, symbol=None)`, `load_dynamic_parameters(session)`, `get_strategy_counts()`, `log_summary()`
+    - *Variables*: `_registry`, `_dynamic_params`, `_dynamic_symbol_params`, `MAX_SYNTHESIZED_PER_SYMBOL`, `_blacklisted_ids`, `_last_load_time`, `_load_interval`
+
+**File:** `strategy_plugin.py`
+  - **Docstring**: Strategy Plugin Interface wrapping EdgeStrategy instances as TradingPlugin harness components.
+  - **Classes**:
+    - `StrategyPlugin` (extends `TradingPlugin`)
+      - *Methods*: `__init__()`, `evaluate()`
+  - **Functions**: `wrap_strategy_as_plugin(strategy)`
+
+**File:** `tsm_momentum.py`
+  - **Classes**: `TimeSeriesMomentum`, `TrendTrailingMomentum` (Alias `trend_trailing`: Regimes: TREND, STRONG_TREND; Factor: trend; Dynamic lookbacks and min_agreement)
+
+**File:** `xau_trend_engine.py`
+  - **Classes**: `XAUTrendEngine` (Regimes: TREND, STRONG_TREND, WEAK_TREND; Factor: trend)
+
+**File:** `xti_pairs_readiness.py`
+  - **Classes**: `XTIPairsReadiness` (Regimes: RANGE, TREND, WEAK_TREND, VOLATILE_CHOP; Factor: stat_arb; Generates dual-leg Stat-Arb signals with dynamic SL/TP using DB Brent data)
+
+###### Folder: `trading-agent/analysis/strategies/synthesized`
+
+  - **Description**: Dynamic algorithmic trading strategies synthesized and sandbox-tested by the LLM research loop.
+  - **Note**: Collapsed directory containing 110 internal files.
+
+##### Folder: `trading-agent/analysis/subagent`
+
+**File:** `__init__.py`
+
+**File:** `adhoc_manager.py`
+  - **Docstring**: Non-blocking on-demand market anomaly investigation subagent manager bounded by concurrency semaphore (limit=3).
+  - **Classes**: `AdHocInvestigationVerdict`, `AdHocSubagentManager`
+    - *Methods*: `get_latest_verdict()`, `investigate_async()`, `run_investigation()`
+  - **Functions**: `get_adhoc_manager()`
+
+**File:** `isolated_harness.py`
+  - **Docstring**: IsolatedSubagentRunner executing subagent tasks in fully isolated harness loops with clean context windows and bounded turn budgets.
+  - **Classes**: `SubagentRunResult`, `IsolatedSubagentRunner`
+    - *Methods*: `run_isolated()`
+
+##### Folder: `trading-agent/analysis/tools`
+
+**File:** `__init__.py`
+
+**File:** `base_handler.py`
+  - **Classes**: `ToolHandler`, `DisaggregatedToolResult`
+    - *Methods*: `can_handle()`, `execute()`
+    - *Attributes*: `protected`
+  - **Functions**: `tool_handler`
+
+**File:** `composite_tools.py`
+  - **Functions**: `execute_market_context`, `execute_technical_analysis`, `execute_price_data`, `execute_institutional_data`
+
+**File:** `executor.py`
+  - **Classes**: `ToolExecutor`
+    - *Methods*: `execute()`, `has_tool()`, `get_handler()`, `list_tools()`, `_tool_propose_action()`, `_tool_get_price_history()`, `_tool_delegate_specialist_analysis()`
+
+**File:** `file_patch_engine.py`
+  - **Docstring**: Universal File Patch Engine, 9-Stage Fuzzy Matcher & Stale-Overwrite Guard.
+  - **Classes**: `FileReadRecord`, `StaleOverwriteGuard`, `FuzzyMatcher`, `SyntaxLinter`, `FilePatchEngine`
+    - *Methods*: `read_file()`, `write_file()`, `patch_file()`, `find_match()`, `lint_content()`
+
+**File:** `loop_guard.py`
+  - **Docstring**: Tool execution loop guard with key-sorted hashing and escalation thresholds.
+  - **Classes**: `ToolLoopGuard`
+    - *Methods*: `check()`, `reset()`
+  - **Functions**: `canonical_tool_hash()`, `_sort_recursive()`
+
+**File:** `registry.py`
+  - **Docstring**: Self-registering tool registry with availability gating and bounded output.
+  - **Classes**: `ToolDefinition`, `ToolRegistry`, `ToolHandlerRecord`
+    - *Methods*: `is_available()`, `get_instance()`, `reset_instance()`, `register()`, `get()`, `list_tools()`, `get_schemas()`, `execute()`
+  - **Functions**: `default_tool_registry()`
+  - **Global Variables**: `GLOBAL_TOOL_REGISTRY`
+
+**File:** `terminal_process_engine.py`
+  - **Docstring**: Universal Terminal & Background Process Engine with auto-demotion, rolling buffer, checkpointing, and pattern notifications.
+  - **Classes**: `ProcessEntry`, `TerminalProcessEngine`
+    - *Methods*: `execute()`, `poll_process()`, `read_log()`, `kill_process()`, `handoff_process()`
+
+**File:** `tool_catalog.py`
+  - **Docstring**: Hybrid tool discovery catalog combining pinned essential core tools with dynamic BM25 search.
+  - **Classes**: `HybridToolCatalog`
+    - *Methods*: `search_tools()`, `get_tool_definition()`, `format_catalog_prompt()`
+
+**File:** `tool_executor.py`
+  - **Classes**: `ToolExecutor`
+    - *Methods*: `_normalize_tool_name()`, `get_tool_schema()`, `execute()`, `_resolve_symbol()`, `_validate_manual_order_structural()`, `_tool_submit_asset_analysis()`, `_validate_key_data_points()`, `_tool_get_funding_rate()`, `_tool_get_fedwatch_probabilities()`, `_tool_get_paper_trading_performance()`, `_tool_get_trade_history()`, `_tool_get_active_triggers()`, `_tool_get_system_health()`, `_tool_get_edge_tracker_status()`, `_tool_get_calibration_status()`, `_tool_get_token_usage_and_costs()`, `_tool_get_trade_details()`, `_tool_get_market_correlations()`, `_tool_get_bond_yield_spreads()`, `_tool_get_multi_timeframe_summary()`, `_tool_get_chart()`, `_tool_get_spread_snapshot()`, `_tool_get_verified_market_snapshot()`, `_tool_execute_analysis_code()`, `_tool_update_scratchpad()`, `_tool_read_scratchpad()`, `_tool_transition_analysis_phase()`, `_tool_get_timesfm_forecast()`, `_tool_web_search()`, `_tool_save_market_intelligence()`, `_tool_list_active_intelligence()`, `_tool_archive_market_intelligence()`
+    - *Variables*: `TOOL_ALIASES`
+
+**File:** `tool_guardrails.py`
+  - **Docstring**: Unified Tool Guardrails Controller (Anti-Oscillation, Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Denial Circuit Breaker).
+  - **Classes**: `GuardrailVerdict`, `ToolCallSignature`, `AntiOscillationGuard`, `MonotonicRiskGuard`, `ReadBeforeActGuard`, `MandatorySizingGuard`, `CategoryTurnCapGuard`, `DenialCircuitBreakerGuard`, `ToolGuardrailController`
+    - *Methods*: `evaluate()`, `validate_tool_call()`, `record_tool_call()`, `record_denial()`, `record_success()`, `is_denial_breaker_tripped()`, `reset_turn()`, `reset_all()`
+  - **Variables**: `DATABASE_IMMUTABLE_TABLES`, `DATA_READ_TOOLS`, `TERMINAL_ACTION_TOOLS`, `TOOL_CATEGORIES`
+
+**File:** `tool_plugin.py`
+  - **Docstring**: Tool Plugin Contract for registering custom LLM tools into ToolRegistry.
+  - **Classes**:
+    - `ToolPlugin` (extends `TradingPlugin`)
+      - *Methods*: `__init__()`, `on_register()`, `execute()`
+
+**File:** `tool_registry.py`
+  - **Classes**: `ProgressiveToolRegistry`, `ToolRegistry`
+    - *Methods*: `get_prescreen_schemas()`, `get_schemas_for_asset()`, `get_core_schemas()`, `load_category()`, `get_stub_summary()`, `search_tools()`, `describe_tool()`, `compact_schema()`, `get_compact_core_schemas()`
+  - **Global Variables*: `LOAD_TOOL_CATEGORY_TOOL`, `SEARCH_TOOLS_TOOL`, `DESCRIBE_TOOL_TOOL`, `CALCULATE_POSITION_SIZE_TOOL`, `default_registry`
+
+**File:** `tool_result_storage.py`
+  - **Docstring**: Disk-backed persistent storage for oversized tool execution payloads (>16KB) preventing LLM context window inflation.
+  - **Classes**: `ToolResultStorage`
+    - *Methods*: `store()`, `retrieve()`, `cleanup()`
+
+**File:** `tool_search_engine.py`
+  - **Docstring**: Progressive Tool Search & Deferred Tool Registry Engine for large toolsets and extensive MCP ecosystems.
+  - **Classes**: `ToolDefinitionRecord`, `ToolSearchEngine`
+    - *Methods*: `register_tool()`, `search_tools()`, `describe_tool()`, `load_category()`, `get_active_tool_schemas()`
+
+**File:** `tool_selector.py`
+  - **Docstring**: Retrieval-Augmented Tool Selection (RATS) dynamically pruning tool definitions to relevant subsets.
+  - **Classes**: `RAToolSelector`
+    - *Methods*: `select_tools()`
+    - *Variables*: `MANDATORY_TOOLS`, `CRYPTO_SPECIFIC_TOOLS`, `FOREX_SPECIFIC_TOOLS`, `COMMODITY_SPECIFIC_TOOLS`
+
+**File:** `tool_spill.py`
+  - **Docstring**: Disk-backed persistent tool output spillover storage for large payloads preserving 40/60 head-tail tokens.
+  - **Classes**: `ToolSpillStorage`
+    - *Methods*: `maybe_spill()`, `cleanup_old_spills()`
+  - **Functions**: `truncate_head_tail(text, max_chars, head_pct)`, `safe_unicode_slice(text, max_chars)`
+
+**File:** `tools_definitions.py`
+  - **Functions**: `minify_tool_definitions`, `make_strict_tool_definitions`
+  - **Global Variables*: `STAGE1_TOOLS`, `STAGE2_TOOLS`, `STAGE2_ESSENTIAL_TOOLS`, `STAGE2_FROZEN_TOOLS` (includes `GET_EIA_OIL_INVENTORY`), `STAGE2_EXPANDED_TOOLS`, `STAGE2_PRESCREEN_TOOLS`, `TELEGRAM_TOOLS`, `ALL_TOOLS`, `DELEGATE_SPECIALIST_ANALYSIS`, `UPDATE_SCRATCHPAD`, `READ_SCRATCHPAD`, `TRANSITION_PHASE`, `CALCULATE_POSITION_SIZE`, `GET_CENTRAL_BANK_EXPECTATIONS`, `GET_BOND_YIELD_SPREADS`, `GET_MULTI_TIMEFRAME_SUMMARY`, `GET_CHART`, `GET_SPREAD_SNAPSHOT`, `GET_PAPER_TRADING_PERFORMANCE`, `GET_TRADE_HISTORY`, `GET_ACTIVE_TRIGGERS`, `GET_SYSTEM_HEALTH`, `GET_EDGE_TRACKER_STATUS`, `GET_CALIBRATION_STATUS`, `GET_TOKEN_USAGE_AND_COSTS`, `GET_TRADE_DETAILS`, `GET_MARKET_CORRELATIONS`, `GET_OPEN_POSITIONS`, `GET_ACCOUNT_INFO`, `PROPOSE_ACTION`, `GET_EIA_OIL_INVENTORY`, `GET_TIMESFM_FORECAST`, `WEB_SEARCH`, `SAVE_MARKET_INTELLIGENCE`, `LIST_ACTIVE_INTELLIGENCE`, `ARCHIVE_MARKET_INTELLIGENCE`, `GET_VERIFIED_MARKET_SNAPSHOT`, `GET_MARKET_QUOTE`, `EXECUTE_ANALYSIS_CODE`, `INSPECT_DATABASE_SCHEMA`, `READ_DATABASE_RECORDS`, `SEARCH_HISTORICAL_MEMORIES`
+
+**File:** `unified_registry.py`
+  - **Docstring**: Single Source of Truth Unified Type-Safe Tool Registry with declarative Pydantic schemas, dynamic schemas, multi-provider export, and argument coercion.
+  - **Functions**: `_sanitize_schema_for_gemini()`
+  - **Classes**: `ToolEntry`, `UnifiedToolRegistry`
+    - *Methods*: `register()`, `register_tool()`, `get_tool()`, `list_tools()`, `get_anthropic_tools()`, `get_openai_tools()`, `get_gemini_tools()`, `execute_tool()`, `dispatch()`, `tool_call()`
+  - **Global Variables**: `unified_tool_registry`
+
+###### Folder: `trading-agent/analysis/tools/core`
+
+**File:** `__init__.py`
+
+**File:** `coercion.py`
+  - **Docstring**: Robust Argument Coercion for Dynamic Tool Invocations.
+  - **Functions**: `coerce_arguments(definition, raw_args)`
+
+**File:** `decorator.py`
+  - **Docstring**: Declarative `@tool` Decorator for Native Function Wrapping.
+  - **Functions**: `tool(name=None, description=None, category=None, distribution=None)`
+
+**File:** `definition.py`
+  - **Docstring**: Unified Tool Definition Models and Schema Primitives.
+  - **Classes**: `ToolParameter`, `UnifiedToolDefinition`, `ToolResult`
+
 **File:** `dispatcher.py`
-  - **Docstring**: Unified Model Context Protocol (MCP) Server Dispatcher exposing both quantitative trading tools and dynamic UnifiedToolRegistry tools over JSON-RPC 2.0.
-  - **Classes**: `MonikaMcpDispatcher`
-    - *Methods*: `get_tool_list()`, `handle_request()`, `run_stdio()`
-**File:** `client.py`
-  - **Docstring**: Model Context Protocol (MCP) client manager connecting to external MCP servers and bridging remote tools into Monika ToolRegistry.
-  - **Classes**: `McpServerProcess`, `McpBridgeHandler`, `McpClientManager`
-    - *Methods*: `start()`, `is_running`, `ensure_started()`, `send_request()`, `list_tools()`, `call_tool()`, `initialize_servers()`, `get_instance()`, `reset_instance()`, `stop()`
-  - **Global Variables**: `MCPClientManager`
-**File:** `mcp_serve.py`
-  - **Docstring**: Unified Model Context Protocol (MCP) Server for Monika exposing UnifiedToolRegistry over stdio JSON-RPC 2.0.
-  - **Classes**: `McpServerDispatcher`
-    - *Methods*: `get_tool_list()`, `handle_request()`, `run_stdio()`
-  - **Functions**: `main()`
-**File:** `oauth_handler.py`
-  - **Docstring**: MCP OAuth 2.1 Client Flow with PKCE & Token Refresh Fencing.
-  - **Classes**: `OAuthCallbackServer`, `OAuthTokenStorage`
-    - *Methods*: `start()`, `wait_for_code()`, `stop()`, `load_tokens()`, `save_tokens()`, `clear()`
-  - **Functions**: `generate_pkce_pair()`
-**File:** `event_bridge.py`
-  - **Docstring**: MCP EventBridge Streaming with Debounced File MTime Detection.
-  - **Classes**: `McpEventBridge`
-    - *Methods*: `add_path()`, `subscribe()`, `check_for_changes()`, `start()`, `stop()`
-**File:** `mcp_death_supervisor.py`
-  - **Docstring**: Zero-Polling Orphan Process Supervisor for MCP Server Subprocesses preventing zombie background processes.
-  - **Classes**: `McpDeathSupervisor`
-    - *Methods*: `register_process()`, `unregister_process()`, `kill_all_orphans()`
-**File:** `mcp_schema_cache.py`
-  - **Docstring**: MCP Tool Schema Disk Cache with SHA-256 Configuration Fingerprinting for instant startup and lazy booting.
-  - **Classes**: `McpSchemaCache`
-    - *Methods*: `compute_config_hash()`, `get_cached_tools()`, `set_cached_tools()`, `clear_cache()`
-  - **Variables**: `DEFAULT_SCHEMA_CACHE_DIR`
+  - **Docstring**: Multi-Tier Environment Execution Dispatcher for Tool Calls.
+  - **Classes**: `UnifiedToolDispatcher`
+    - *Methods*: `dispatch()`, `register_environment()`
 
-###### Folder: `trading-agent/analysis/mcp/servers`
+**File:** `toolset_registry.py`
+  - **Docstring**: Unified Hierarchical Toolset Registry with Distribution Tiers.
+  - **Classes**: `DistributionTier`, `UnifiedToolsetRegistry`
+    - *Methods*: `register_tool()`, `get_tool()`, `list_tools()`, `get_schemas()`
+
+###### Folder: `trading-agent/analysis/tools/domain`
+
 **File:** `__init__.py`
-**File:** `sqlite_server.py`
-  - **Docstring**: Free read-only SQLite metrics and checkpointer MCP server.
-  - **Classes**: `SqliteMcpServer`
-**File:** `filesystem_server.py`
-  - **Docstring**: Free sandboxed read-only filesystem MCP server for playbooks and trading files.
-  - **Classes**: `FilesystemMcpServer`
-**File:** `fetch_server.py`
-  - **Docstring**: Free public web text extraction MCP server.
-  - **Classes**: `FetchMcpServer`
+
+**File:** `clarify_tool.py`
+  - **Docstring**: Interactive Clarification Tool for user disambiguation and confirmation.
+  - **Classes**: `ClarifyInput`
+  - **Functions**: `handle_clarify_with_user()`
+
+**File:** `code_execution_tool.py`
+  - **Docstring**: Domain tool for Programmatic Tool Calling (PTC) and Sandboxed Code Execution.
+  - **Classes**: `ExecuteCodeInput`
+  - **Functions**: `handle_execute_code()`, `get_or_create_session_kernel()`, `shutdown_all_kernels()`
+
+**File:** `code_search_tool.py`
+  - **Docstring**: High-Performance Code Search & Regex Navigation Tool with automatic exclusion of build artifacts and virtualenvs, precision line windowing, and context snippet extraction.
+  - **Classes**: `SearchFilesInput`, `CodeSearchEngine`
+    - *Methods*: `search()`, `execute()`
+  - **Functions**: `handle_search_files()`
+
+**File:** `computer_use_tool.py`
+  - **Docstring**: OS Computer Use and GUI Automation Tool.
+  - **Classes**: `ComputerUseInput`
+  - **Functions**: `handle_computer_use()`
+
+**File:** `cron_tool.py`
+  - **Docstring**: Dynamic Recurring Cron Job & Background Schedule Tool for Monika.
+  - **Classes**: `CronActionInput`, `CronJobRecord`, `CronRegistry`
+  - **Functions**: `handle_manage_cron()`
+
+**File:** `delegate_tool.py`
+  - **Docstring**: Autonomous Subagent Delegation Tool with Git Worktree Isolation, Live Streaming, and Task Lifecycle Management (spawn, status, steer, cancel, list).
+  - **Classes**: `DelegateTaskInput`
+  - **Functions**: `handle_delegate_task()`
+  - **Variables**: `_ACTIVE_SUBAGENTS`
+
+**File:** `execution_handlers.py`
+  - **Classes**: `ExecutionToolHandlers`
+    - *Methods*: `__init__(settings=None, mt5_client=None)`, `calculate_position_size()`, `get_spread_snapshot()`
+
+**File:** `file_tools.py`
+  - **Docstring**: Universal Filesystem Domain Tools for precision file inspection, safe writing, and 9-stage fuzzy patching.
+  - **Classes**: `ReadFileInput`, `WriteFileInput`, `PatchFileInput`
+  - **Functions**: `get_file_patch_engine()`, `handle_read_file()`, `handle_write_file()`, `handle_patch()`
+
+**File:** `kanban_tools.py`
+  - **Docstring**: Autonomous Kanban Task Board Management Tool.
+  - **Classes**: `KanbanBoardInput`
+  - **Functions**: `handle_manage_kanban_board()`, `_load_board()`, `_save_board()`
+
+**File:** `macro_handlers.py`
+  - **Classes**: `MacroToolHandlers`
+    - *Methods*: `get_market_session()`, `get_bond_yield_spreads()`, `get_vix()`, `get_dxy()`, `get_funding_rate()`, `get_fedwatch_probabilities()`, `get_central_bank_expectations()`, `get_treasury_yields()`, `get_interest_rates()`, `get_precomputed_cot_signals()`, `get_surprise_summary()`
+
+**File:** `multimodal_tools.py`
+  - **Docstring**: Multimodal Vision & Financial Chart Analysis Tool for Monika with 256KB clamp and repeat guard.
+  - **Classes**: `ChartVisionInput`, `VisionImageProcessor`
+  - **Functions**: `handle_chart_vision_analyze()`
+
+**File:** `position_handlers.py`
+  - **Classes**: `PositionToolHandlers`
+
+**File:** `sentiment_handlers.py`
+  - **Classes**: `SentimentToolHandlers`
+    - *Methods*: `get_news_items()`, `get_fear_greed()`, `get_retail_sentiment()`, `get_funding_rate()`, `get_news_digest()`
+
+**File:** `skill_tools.py`
+  - **Docstring**: Universal Skills Domain Tools for progressive skill discovery, inspection, and dynamic management.
+  - **Classes**: `SkillsListInput`, `SkillViewInput`, `SkillManageInput`
+  - **Functions**: `get_skills_hub()`, `handle_skills_list()`, `handle_skill_view()`, `handle_skill_manage()`
+
+**File:** `spill_reader_tool.py`
+  - **Docstring**: Domain tool handler allowing the AI agent to read back spilled context or observations from PostgreSQL context_spill_blobs or disk spill cache on demand.
+  - **Classes**: `RetrieveSpilledContextInput`, `RetrieveSpilledContextHandler`
+    - *Methods*: `execute()`
+  - **Functions**: `handle_retrieve_spilled_context()`, `unified_retrieve_spilled_context()`
+
+**File:** `technical_handlers.py`
+  - **Classes**: `TechnicalToolHandlers`
+    - *Methods*: `get_market_quote()`, `get_price_history()`, `get_technical_indicators()`, `get_atr()`, `get_smc_zones()`, `get_structure_breaks()`, `get_fibonacci_levels()`, `get_daily_range_context()`, `get_optimal_intraday_levels()`
+
+**File:** `terminal_tools.py`
+  - **Docstring**: Universal Terminal & Process Execution Domain Tools for shell execution and background supervision.
+  - **Classes**: `TerminalInput`, `ProcessManageInput`
+  - **Functions**: `get_terminal_process_engine()`, `handle_terminal()`, `handle_process_manage()`
+
+**File:** `todo_tool.py`
+  - **Docstring**: Structured Task & Checklist Tracking Tool for Complex Plans.
+  - **Classes**: `TodoActionInput`, `TodoItem`, `TodoTracker`
+  - **Functions**: `handle_manage_todo()`
+
+**File:** `tool_search_tools.py`
+  - **Docstring**: Progressive Tool Search & Schema Materialization Domain Tools for deferred loading.
+  - **Classes**: `ToolSearchInput`, `DescribeToolInput`, `LoadToolCategoryInput`
+  - **Functions**: `get_tool_search_engine()`, `handle_tool_search()`, `handle_describe_tool()`, `handle_load_tool_category()`
+
+**File:** `web_tools.py`
+  - **Docstring**: Web Research, Universal Search & Content Distillation Tools for Monika enabling real-time macroeconomic news discovery, central bank statement fetching, and research ingestion.
+  - **Classes**: `WebSearchInput`, `WebFetchInput`
+  - **Functions**: `handle_web_search()`, `handle_web_fetch()`
+
+###### Folder: `trading-agent/analysis/tools/environments`
+
+**File:** `__init__.py`
+
+**File:** `base_environment.py`
+  - **Docstring**: Base Abstract Class for Execution Environments.
+  - **Classes**: `EnvironmentExecutionResult`, `BaseExecutionEnvironment`
+    - *Methods*: `execute_code()`, `cleanup()`
+
+**File:** `pty_query_responder.py`
+  - **Docstring**: PTY Escape Query Responder & Terminal Protocol Synthesizer detecting and synthesizing immediate responses to VT100 / xterm ANSI terminal query sequences to prevent subprocess deadlocks.
+  - **Classes**: `PtyQueryResponder`
+    - *Methods*: `process_output()`
+
+**File:** `tier1_inprocess.py`
+  - **Docstring**: Tier 1 Ultra-Low-Latency In-Process Execution Environment.
+  - **Classes**: `Tier1InProcessEnvironment`
+    - *Methods*: `execute_code()`, `cleanup()`
+
+**File:** `tier2_kernel.py`
+  - **Docstring**: Tier 2 Cross-Platform Subprocess Host Kernel Execution Environment.
+  - **Classes**: `Tier2HostKernelEnvironment`
+    - *Methods*: `execute_code()`, `cleanup()`
+
+**File:** `tier3_docker.py`
+  - **Docstring**: Tier 3 Hard-Isolated Docker Container Sandbox Environment with persistent session containers and airgap networking.
+  - **Classes**: `Tier3DockerEnvironment`, `Tier3DockerContainerEnvironment`
+    - *Methods*: `is_available()`, `get_or_create_container()`, `stop_container()`, `run_command()`, `run_python_code()`, `cleanup()`
+
+###### Folder: `trading-agent/analysis/tools/handlers`
+
+**File:** `__init__.py`
+
+**File:** `analysis_submit.py`
+
+**File:** `category_loader.py`
+  - **Classes**: `LoadToolCategoryHandler`, `GetMarketContextHandler`, `GetInstitutionalDataHandler`, `SearchToolsHandler`, `DescribeToolHandler`
+  - **Functions**: `handle_load_tool_category`, `handle_get_market_context`, `handle_get_institutional_data`, `handle_search_tools`, `handle_describe_tool`
+
+**File:** `db_tools.py`
+  - **Docstring**: Database inspection and query tool handlers for authorized Admin operator.
+  - **Classes**: `InspectDatabaseSchemaHandler`, `ReadDatabaseRecordsHandler`
+  - **Functions**: `get_table_model_map()`, `_serialize_row()`, `handle_inspect_database_schema()`, `handle_read_database_records()`
+
+**File:** `intelligence.py`
+
+**File:** `macro_data.py`
+  - **Classes**: `GetCentralBankExpectationsHandler`, `GetBondYieldSpreadsHandler`, `GetFedWatchProbabilitiesHandler`, `GetFundingRateHandler`, `GetEiaOilInventoryHandler`, `GetTreasuryYieldsHandler`, `GetInterestRatesHandler`, `GetCotReportHandler`, `GetVixHandler`, `GetDxyHandler`, `GetFearGreedIndexHandler`, `GetEconomicCalendarHandler`, `GetEconomicSurpriseHandler`, `GetPrecomputedCotSignalsHandler`, `GetSurpriseSummaryHandler`
+
+**File:** `macro_tools.py`
+  - **Functions**: `_safe_execute`, `handle_get_calendar`, `handle_get_fedwatch`, `handle_get_central_bank_expectations`, `handle_get_bond_yield_spreads`, `handle_get_interest_rates`, `handle_get_treasury_yields`, `handle_get_macro_context`, `handle_get_eia_oil_inventory`, `handle_get_precomputed_cot_signals`, `handle_get_surprise_summary`
+
+**File:** `market_data.py`
+  - **Classes**: `GetMarketQuoteHandler`, `GetPriceDataHandler`, `GetTechnicalAnalysisHandler`, `GetChartHandler`, `GetMultiTimeframeSummaryHandler`, `GetSpreadSnapshotHandler`, `GetPriceHistoryHandler`, `GetTechnicalIndicatorsHandler`
+
+**File:** `market_data_tools.py`
+  - **Functions**: `handle_get_market_quote`, `handle_get_price_history`, `handle_get_technical_indicators`, `handle_get_atr`, `handle_get_swing_points`, `handle_get_structure_breaks`, `handle_get_fibonacci_levels`, `handle_get_intraday_levels`, `handle_get_sr_zones` (R5: standalone S/R zones)
+
+**File:** `news_tools.py`
+  - **Constants**: `IMPACT_RANK`
+  - **Functions**: `handle_get_news_items`, `handle_get_news_digest`, `handle_get_digest_slices`, `handle_web_search`, `handle_read_url`, `handle_search_academic`, `_wrap_untrusted_digest`
+
+**File:** `pattern_similarity_tools.py`
+  - **Docstring**: Tool handler for multi-timeframe historical chart pattern similarity screening.
+  - **Functions**: `handle_scan_pattern_similarity()`
+
+**File:** `phase_transition.py`
+
+**File:** `position_mgmt.py`
+
+**File:** `ptc_handler.py`
+  - **Docstring**: PTCHandler executing analysis code in isolated Python subprocess with TCP JSON-RPC bridge for safe programmatic tool calling.
+  - **Classes**: `PTCHandler`
+    - *Methods*: `execute()`, `_build_sandboxed_script()`, `_start_tool_rpc_server()`
+
+**File:** `scratchpad.py`
+
+**File:** `sentiment_data.py`
+
+**File:** `sentiment_tools.py`
+  - **Functions**: `handle_get_sentiment_summary`, `handle_get_social_sentiment`, `handle_get_retail_sentiment`
+
+**File:** `skills_tools.py`
+  - **Classes**: `SkillsListHandler`, `SkillViewHandler`
+  - **Functions**: `handle_skills_list()`, `handle_skill_view()`, `_extract_summary()`
+
+**File:** `smc_tools.py`
+  - **Functions**: `handle_get_order_blocks`, `handle_get_liquidity_sweeps`, `handle_get_fair_value_gaps`
+
+**File:** `system_info.py`
+
+**File:** `timesfm.py`
+
+**File:** `trade_intel.py`
+  - **Classes**: `GetTradeHistoryHandler`, `GetTradeDetailsHandler`, `GetActiveTriggersHandler`, `GetPaperTradingPerformanceHandler`, `GetAssetAnalysisHandler` (R5), `GetRecentActivityHandler` (R5), `GetConversationHistoryHandler` (R5)
+  - **Functions**: `handle_get_asset_analysis` (R5: latest AssetAnalysis per symbol), `handle_get_recent_activity` (R5: ActivityLog tail), `handle_get_conversation_history`
+
+**File:** `trading_tools.py`
+  - **Functions**: `handle_calculate_position_size`, `handle_propose_order`, `handle_simulate_execution`
+
+**File:** `verified_snapshot.py`
+
+###### Folder: `trading-agent/analysis/tools/kernel`
+
+**File:** `code_execution_rpc.py`
+  - **Docstring**: Host-side Loopback TCP RPC Server for Programmatic Tool Calling.
+  - **Classes**: `CodeExecutionRpcServer`
+    - *Methods*: `start()`, `stop()`, `_default_dispatch()`, `_handle_request()`, `_server_loop()`
+  - **Functions**: `generate_monika_tools_client_code()`
+
+**File:** `env_sanitizer.py`
+  - **Docstring**: Subprocess environment sanitizer purging broker passwords, database connections, and API keys from child processes.
+  - **Functions**: `get_sanitized_environment()`, `sanitize_environment`
+
+**File:** `output_spiller.py`
+  - **Docstring**: Output character bounding and disk spiller preserving 40/60 head-tail tokens.
+  - **Functions**: `truncate_and_spill_output()`
+
+**File:** `persistent_kernel.py`
+  - **Docstring**: Isolated Python execution session with subprocess sandboxing.
+  - **Classes**: `PersistentCodeKernel`
+    - *Methods*: `__init__(session_id="default", sandbox_mode=True)`, `execute(code_str, timeout_seconds=30.0)`, `reset()`
+
+**File:** `persistent_session_kernel.py`
+  - **Docstring**: Persistent Session Python Kernel for Programmatic Tool Calling with OS watchdog and sentinel framing.
+  - **Classes**: `PersistentSessionKernel`
+    - *Methods*: `_ensure_started()`, `execute()`, `reset()`, `terminate()`, `_read_framed_response()`
+
+**File:** `sandbox_runner.py`
+  - **Docstring**: Sandboxed Subprocess Code Execution Runner with AST validation and sanitized environment.
+  - **Variables**: `DEFAULT_TIMEOUT_SECONDS`, `MAX_OUTPUT_CHARS`, `FORBIDDEN_MODULES`, `FORBIDDEN_CALLS`, `logger`
+  - **Classes**: `SandboxedKernel`
+    - *Methods*: `__init__(session_id="sandbox", timeout_seconds=30.0, max_output_chars=50000)`, `execute(code_str, timeout_seconds=None, custom_env=None)`
+  - **Functions**: `validate_code_ast(code)`
+
+###### Folder: `trading-agent/analysis/tools/quant_sandbox`
+
+**File:** `__init__.py`
+
+**File:** `rpc_server.py`
+  - **Docstring**: Local Loopback Quant Sandbox RPC Server & Client for zero-context MT5 ticks/bars calculations.
+  - **Classes**: `QuantSandboxRpcServer`, `QuantSandboxClient`
+    - *Methods*: `handle_request()`, `start()`, `stop()`, `compute_stats()`, `compute_correlation()`, `execute_code()`
+
+##### Folder: `trading-agent/analysis/validators`
+
+**File:** `__init__.py`
+
+**File:** `adjudication_verifier.py`
+  - **Variables**: `ADJUDICATION_VERIFY_SCHEMA`, `ADJUDICATION_SYSTEM_PROMPT`
+  - **Functions**: `verify_adjudication()`
+
+**File:** `adversarial_check.py`
+  - **Functions**: `run_adversarial_check()`
+
+**File:** `confluence_verifier.py`
+  - **Functions**: `verify_confluence()`
+
+**File:** `core_data_validator.py`
+  - **Functions**: `validate_core_data()`
+
+**File:** `cross_timeframe_gate.py`
+  - **Docstring**: Cross-Timeframe Confirmation Gate enforcing H4+H1 directional alignment before allowing M15 trade entry.
+  - **Classes**: `CrossTimeframeConfirmationGate`
+    - *Methods*: `verify_htf_alignment()`, `_extract_timeframe_bias()`
+
+**File:** `float_coercion.py`
+  - **Docstring**: Defensive float coercion utilities stripping currency signs, percentages, and commas from LLM outputs.
+  - **Functions**: `coerce_optional_float()`, `coerce_float()`
+
+**File:** `fundamental_verifier.py`
+  - **Variables**: `VERIFIER_SCHEMA`, `FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT`
+  - **Functions**: `verify_fundamental_brief()`
+
+**File:** `in_harness_grounding.py`
+  - **Classes**: `InHarnessGroundingValidator`
+    - *Methods*: `extract_numbers_from_text()`, `verify_grounding()`, `verify_scratchpad_consistency()`, `verify_lot_size()`, `verify_spread()`, `verify_margin()`, `verify_equity()`, `verify_trade_parameters()`
+
+**File:** `market_snapshot.py`
+  - **Docstring**: VerifiedMarketSnapshot grounding container providing immutable point-in-time bid/ask/spread/OHLC reference data.
+  - **Classes**: `VerifiedMarketSnapshot`
+  - **Functions**: `create_market_snapshot`, `_compute_fallback_indicators`, `format_as_markdown`, `validate_plan_against_snapshot`
+
+**File:** `output_verifier.py`
+  - **Functions**: `verify_output_structure()`
+
+**File:** `precommit_gate.py`
+  - **Classes**: `TradePreCommitGate`
+    - *Methods*: `verify_precommit()` (integrates VerifiedMarketSnapshot structural & drift validation)
 
 #### Folder: `trading-agent/backtest`
 
 **File:** `__init__.py`
 
+**File:** `alpha_validation.py`
+  - **Docstring**: Alpha validation metrics (directional bias, half-consistency, cost stress test).
+  - **Classes**: `AlphaValidation`
+  - **Functions**: `validate_alpha()`, `_calculate_sortino()`
+
 **File:** `batch_scenario_runner.py`
   - **Docstring**: Multi-process parallel scenario runner for automated multi-scenario backtesting and strategy evaluation.
   - **Classes**: `ScenarioDefinition`, `BatchResult`, `BatchScenarioRunner`
     - *Methods*: `__init__(harness_factory=None, max_workers=None)`, `run_all(scenarios)`, `_execute_single(scenario)`
+
+**File:** `benchmark_tracker.py`
+  - **Docstring**: Benchmark comparison tracker for backtesting (Alpha, Beta, Information Ratio, Tracking Error, Up/Down Capture Ratio).
+  - **Classes**: `BenchmarkMetrics`, `BenchmarkTracker`
+    - *Methods*:
+      - `__init__(self, benchmark_symbol, ann_factor)`
+      - `compute_metrics(self, strategy_returns, benchmark_returns, risk_free_rate)`
 
 **File:** `decision_memory.py`
   - **Global Variables**: logger
@@ -1902,35 +1759,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `_get_session_spread_multiplier(self)`
         - `_get_volatility_slippage(self)`
 
-**File:** `alpha_validation.py`
-  - **Docstring**: Alpha validation metrics (directional bias, half-consistency, cost stress test).
-  - **Classes**: `AlphaValidation`
-  - **Functions**: `validate_alpha()`, `_calculate_sortino()`
-
-**File:** `benchmark_tracker.py`
-  - **Docstring**: Benchmark comparison tracker for backtesting (Alpha, Beta, Information Ratio, Tracking Error, Up/Down Capture Ratio).
-  - **Classes**: `BenchmarkMetrics`, `BenchmarkTracker`
-    - *Methods*:
-      - `__init__(self, benchmark_symbol, ann_factor)`
-      - `compute_metrics(self, strategy_returns, benchmark_returns, risk_free_rate)`
-
-**File:** `statistical_tests.py`
-  - **Docstring**: Statistical multiple-testing corrections: PSR, E[max], DSR, and FDR using Python stdlib.
-  - **Functions**: `probabilistic_sharpe_ratio()`, `expected_max_sharpe()`, `deflated_sharpe_ratio()`, `compute_sample_moments()`, `benjamini_hochberg()`
-
-**File:** `walk_forward_engine.py`
-  - **Global Variables**: `logger`
-  - **Classes**:
-    - `WalkForwardFold`
-    - `WalkForwardResult`
-    - `WalkForwardEngine`
-      - *Docstring*: Walk-Forward Optimization & Validation Engine with purging, embargo, DSR, and alpha validation.
-      - *Methods*:
-        - `__init__(self, start_date, end_date, is_window_days, oos_window_days, step_days, settings, mode, step_hours, purge_days, embargo_pct, n_trials)`
-        - `generate_folds(self)`
-        - `run(self)`
-        - `generate_markdown_report(self, result)`
-
 **File:** `point_in_time_engine.py`
   - **Global Variables**: logger, BacktestMode
   - **Classes**:
@@ -1959,6 +1787,10 @@ This document provides an exhaustive structural index of all directories, files,
         - `to_dict(self)`
         - `print_summary(self)`
 
+**File:** `statistical_tests.py`
+  - **Docstring**: Statistical multiple-testing corrections: PSR, E[max], DSR, and FDR using Python stdlib.
+  - **Functions**: `probabilistic_sharpe_ratio()`, `expected_max_sharpe()`, `deflated_sharpe_ratio()`, `compute_sample_moments()`, `benjamini_hochberg()`
+
 **File:** `time_machine.py`
   - **Functions**:
     - `get_virtual_now()`
@@ -1969,43 +1801,365 @@ This document provides an exhaustive structural index of all directories, files,
       - *Methods*:
         - `__init__(self)`
 
-#### Folder: `trading-agent/graph`
+**File:** `walk_forward_engine.py`
+  - **Global Variables**: `logger`
+  - **Classes**:
+    - `WalkForwardFold`
+    - `WalkForwardResult`
+    - `WalkForwardEngine`
+      - *Docstring*: Walk-Forward Optimization & Validation Engine with purging, embargo, DSR, and alpha validation.
+      - *Methods*:
+        - `__init__(self, start_date, end_date, is_window_days, oos_window_days, step_days, settings, mode, step_hours, purge_days, embargo_pct, n_trials)`
+        - `generate_folds(self)`
+        - `run(self)`
+        - `generate_markdown_report(self, result)`
 
-**File:** `state.py`
-  - **Classes**: `TradingState`, `TradingSummary`, `AssetDecisionSummary`
-  - **Functions**: `merge_dicts()`, `merge_lists()`
+#### Folder: `trading-agent/benchmark`
 
-**File:** `workflow.py`
-  - **Functions**: `_extract_tokens_from_result()`, `_build_node_payload_summary()`, `_is_node_skipped()`, `_wrap_traced_node()`, `build_trading_graph()`
+**File:** `__init__.py`
 
-##### Folder: `trading-agent/graph/nodes`
+**File:** `alpha_arena.py`
+  - **Docstring**: Head-to-Head Tournament Engine for LLM Models & Strategies using Elo ratings.
+  - **Classes**: `ArenaCompetitor`, `ArenaMatchResult`, `AlphaArenaTournament`
+    - *Methods*: `register_competitor()`, `record_match()`, `get_leaderboard()`
+  - **Functions**: `update_elo()`
 
-**File:** `data_node.py`
-  - **Functions**: `fetch_data_node()`
+**File:** `config.py`
+  - **Variables**: `S1_WEIGHT_ACCURACY`, `S1_WEIGHT_LATENCY`, `S1_WEIGHT_CALIBRATION`, `S1_WEIGHT_SCHEMA`, `S1_LATENCY_TARGET_MS`, `S1_LATENCY_CEILING_MS`
 
-**File:** `fundamental_node.py`
-  - **Functions**: `fundamental_analysis_node()`
+**File:** `db_access.py`
+  - **Classes**: `BenchmarkToolExecutor`
+  - **Functions**: `_capturing_submit_asset_analysis`, `_capturing_submit_fundamental_brief`, `_capturing_propose_action`, `guarded_tool_executor`, `pick_asset_analysis`, `latest_brief`, `latest_digest`, `recent_news`, `resolved_reflection`, `latest_user_message`, `entry_context`
 
-**File:** `per_asset_node.py`
-  - **Functions**: `per_asset_analysis_node()`
+**File:** `db_models.py`
+  - **Classes**: `BenchmarkRun`, `BenchmarkResult`
 
-**File:** `debate_node.py`
-  - **Docstring**: Backward-compatible facade delegating to debate subgraph (`graph/nodes/debate/subgraph.py`).
-  - **Functions**: `debate_node()`
+**File:** `deterministic.py`
+  - **Functions**: `score_trade_payload`, `verify_invariant_compliance`
 
-**File:** `risk_gate_node.py`
-  - **Functions**: `_safe_num()`, `risk_gate_node()`
+**File:** `fixture_loader.py`
+  - **Functions**: `load_fixture_json`, `get_synthetic_market_snapshot`, `get_synthetic_stage1_bundle`, `get_synthetic_stage2_bundle`, `get_synthetic_fundamental_brief`, `get_synthetic_news_items`, `get_synthetic_risk_context`
 
-**File:** `plan_refinement_node.py`
-  - **Functions**: `plan_refinement_node()`
+**File:** `invoker.py`
+  - **Classes**: `InvokeResult`
+  - **Functions**: `_attach_usage_capture`, `make_client`, `invoke_text`, `invoke_json`, `invoke_agent`, `invoke_chat`, `invoke_custom`, `invoke_system_one`
 
-**File:** `execution_node.py`
-  - **Functions**: `execution_node()`
+**File:** `judge.py`
+  - **Variables**: `JUDGE_PERSONAS`, `CATEGORY_PERSONA_MAP`
+  - **Functions**: `_score`, `judge_output`, `judge_output_ensemble`
 
-**File:** `reflection_node.py`
-  - **Functions**: `reflection_node()`
+**File:** `model_registry.py`
+  - **Variables**: `CANDIDATE_MODELS`
+  - **Functions**: `get_candidate_models`, `get_tier_models`, `get_router_matrix`, `make_role_config`
+
+**File:** `paired_evaluator.py`
+  - **Docstring**: A/B Paired Strategy Evaluation Runner computing Win Rate Lift, Profit Factor Delta, Expectancy Delta, and Token Cost Delta across identical historical scenario matrices.
+  - **Classes**: `StrategyMetrics`, `PairedComparisonReport`, `PairedStrategyEvaluator`
+    - *Methods*: `_compute_metrics()`, `evaluate_pairwise()`
+
+**File:** `pricing.py`
+  - **Classes**: `Price`
+  - **Variables**: `PRICING`, `OPENROUTER_PRICING_MAP`, `_FREE`
+  - **Functions**: `get_price`, `cost_usd`
+
+**File:** `prompt_evolution.py`
+  - **Classes**: `GEPALiteEvolver`
+
+**File:** `report.py`
+  - **Functions**: `build_report`
+
+**File:** `runner.py`
+  - **Functions**: `ensure_tables`, `_err_row`, `_build_case_once`, `run_one_model_for_case`, `run_benchmark`
+
+**File:** `system_one_scorer.py`
+  - **Functions**: `_score_accuracy`, `_score_latency`, `_score_calibration`, `_score_schema`, `score_system_one`
+
+**File:** `task_specs.py`
+  - **Classes**: `BenchmarkCase`, `TaskSpec`
+  - **Functions**: `_sym`, `_stage1_system_prompt`, `_case_stage1_fundamental`, `_case_stage1_escalation`, `_case_stage1_shadow_check`, `_case_fundamental_verifier`, `_stage2_system_prompt`, `_build_stage2_case`, `_case_stage2_primary`, `_case_stage2_secondary`, `_case_stage2_session_trigger`, `_case_stage2_prescreen`, `_build_specialist_case`, `_case_specialist_technical`, `_case_specialist_sentiment`, `_case_specialist_macro`, `_case_debate_bull`, `_case_debate_bear`, `_case_debate_judge`, `_case_stage2_adjudicator`, `_build_strict_risk_context`, `_case_risk_gate`, `_case_risk_gate_conservative`, `_case_risk_gate_aggressive`, `_case_risk_gate_neutral`, `_case_portfolio_manager_per_trade`, `_case_portfolio_synthesis`, `_case_adversarial_check`, `_case_news_classification`, `_case_news_classification_escalation`, `_case_news_classification_verifier`, `_case_news_digest`, `_case_news_digest_macro_overview`, `_case_news_digest_verifier`, `_case_cot_precompute`, `_build_chat_case`, `_case_chat_telegram`, `_case_chat_telegram_medium`, `_case_chat_telegram_complex`, `_case_trade_reflection`, `_case_harness_hallucination_detect`, `_case_harness_context_efficiency`, `_case_harness_self_correction`, `_case_jev_news_realtime`, `_case_jev_trigger_validator`, `_case_jev_position_guard`, `_case_jev_exit_prescreen`, `_case_deep_research`, `_case_report_synthesizer`, `_case_context_compaction`, `_case_summarizer`, `_case_macro_analyst`, `_case_sentiment_analyst`, `_case_risk_gate_task`
+  - **Variables**: `TASKS`
+
+**File:** `token_drift_tracker.py`
+  - **Classes**: `PromptSnapshot`, `DriftReport`, `TokenDriftTracker`
+    - *Methods*: `set_baseline()`, `record_run()`, `get_summary()`
+
+**File:** `trade_trajectory_logger.py`
+  - **Functions**: `file_lock(f)` (Cross-platform advisory file locking via msvcrt / fcntl)
+  - **Classes**: `TradeTrajectoryLogger`
+    - *Methods*: `log_trajectory()`, `update_trajectory_outcome()`, `load_recent_trajectories()`
+
+##### Folder: `trading-agent/benchmark/fixtures`
+
+  - **Description**: Benchmark evaluation test fixtures, market scenarios, and reference datasets.
+  - **Note**: Collapsed directory containing 17 internal files.
+
+##### Folder: `trading-agent/benchmark/results`
+
+  - **Description**: Historical LLM benchmark execution outputs, traces, and leaderboard scorecards.
+  - **Note**: Collapsed directory containing 5 internal files.
+
+#### Folder: `trading-agent/cli`
+
+**File:** `__init__.py`
+
+**File:** `analysis_tree.py`
+  - **Classes**:
+    - `AnalysisCycleTree(Widget)`: Textual widget rendering LangGraph pipeline DAG nodes with icons, durations, tokens, braille sparklines, and collapsed historical cycle runs.
+      - *Methods*: `compose()`, `update_from_events()`, `update_node()`, `add_completed_cycle()`
+
+**File:** `busy_input.py`
+  - **Classes**:
+    - `InputDelivery(str, Enum)`: Input delivery modes (one_at_a_time, batch, immediate).
+    - `BusyInputBuffer`: Dual-queue buffer distinguishing high-priority steering from follow-up inputs.
+      - *Methods*: `submit()`, `has_pending_steer()`, `get_next_steer()`, `get_next_follow_up()`, `dequeue()`, `clear()`, `pending_count()`
+
+**File:** `doctor.py`
+  - **Classes**:
+    - `DiagnosticResult`: Dataclass holding individual diagnostic check outcome (name, passed, message, severity, fix_applied).
+    - `SystemDoctor`: Comprehensive system diagnostics engine checking filesystem, YAML validity, credentials, MT5 terminals, and PostgreSQL database.
+      - *Methods*: `check_filesystem()`, `check_configuration()`, `check_credentials()`, `check_mt5_environment()`, `check_database()`, `run_all(fix=False)`
+
+**File:** `main.py`
+  - **Global Variables**: logger, DEFAULT_API_URL, TradingAgent, acquire_single_instance_lock, run_startup_checks
+  - **Functions**:
+    - `get_pid_file_path()`
+      - *Docstring*: Resolve active or expected PID file path for the trading daemon.
+    - `get_daemon_pid()`
+      - *Docstring*: Retrieve daemon PID if process is actively running.
+    - `is_daemon_running(api_url=None)`
+      - *Docstring*: Check if Monika trading daemon is actively running via PID file or API overview endpoint.
+    - `spawn_daemon_background(mode="paper", config_path=None)`
+      - *Docstring*: Spawn the Monika trading daemon as a persistent detached background process with logs redirected to logs/daemon.log.
+    - `ensure_daemon_running(args, console=None)`
+      - *Docstring*: Ensure that Monika trading daemon is active before executing client commands (tui, chat, status, positions, ask, analyze).
+    - `parse_args(args_list=None)`
+      - *Docstring*: Parse CLI arguments for trading mode, subcommands (run, status, pause, resume, kill, stop, positions, unsuspend, tui, chat, config, sessions, logs, doctor, setup, profile, mcp-serve), and optional config with --no-daemon bypass.
+    - `_acli_run(args)`
+      - *Docstring*: Asynchronous CLI execution pipeline.
+    - `_cmd_status(args)`
+      - *Docstring*: Show system status, flags, and open positions.
+    - `_cmd_pause(args)`
+      - *Docstring*: Pause system trading proposals.
+    - `_cmd_resume(args)`
+      - *Docstring*: Resume system trading proposals.
+    - `_cmd_kill(args)`
+      - *Docstring*: Trigger emergency kill switch.
+    - `_cmd_stop(args)`
+      - *Docstring*: Stop running Monika daemon gracefully with PID cleanup and auto-restart suppression.
+    - `_cmd_positions(args)`
+      - *Docstring*: List active open positions (real & paper).
+    - `_cmd_unsuspend(args)`
+      - *Docstring*: Unsuspend symbols blocked by streak losses.
+    - `_cmd_tui(args)`
+      - *Docstring*: Launch rich Textual terminal dashboard.
+    - `_cmd_chat(args)`
+      - *Docstring*: Launch interactive REPL chat with agent.
+    - `_cmd_config_show(args)`
+      - *Docstring*: Show system configuration or section.
+    - `_cmd_config_set(args)`
+      - *Docstring*: Update configuration parameter via API or local settings.yaml with validation.
+    - `_cmd_config(args)`
+      - *Docstring*: Handle config subcommand routing.
+    - `_cmd_sessions(args)`
+      - *Docstring*: List conversation sessions with metadata.
+    - `_cmd_logs(args)`
+      - *Docstring*: Stream or tail live activity logs.
+    - `_cmd_doctor(args)`
+      - *Docstring*: Run deep diagnostic health checks across environment, credentials, MT5, and database.
+    - `_cmd_profile(args)`
+      - *Docstring*: Manage isolated trading profiles (list, use, create).
+    - `_cmd_setup(args)`
+      - *Docstring*: Interactive terminal configuration setup wizard.
+    - `_cmd_backtest(args)`
+      - *Docstring*: Run historical backtest or walk-forward analysis from command line.
+    - `_dispatch_cli(args)`
+      - *Docstring*: Consolidated async CLI subcommand dispatcher with single event loop lifecycle.
+    - `run()`
+      - *Docstring*: Synchronous CLI entrypoint.
+
+**File:** `onboarding_trader.py`
+  - **Classes**:
+    - `TraderProfile`: Dataclass holding trader persona, experience level, risk tolerance, preferred assets, and operating mandates.
+    - `TraderOnboarding`: Interactive terminal onboarding wizard syncing trader profile into Layer 0 TRADING_SOUL.md memory.
+      - *Methods*: `run_interactive()`, `save_profile()`, `load_profile()`, `sync_to_soul()`
+
+**File:** `platform_compat.py`
+  - **Functions**:
+    - `apply_platform_fixes()`: Hardens standard streams (UTF-8 encoding) and enables Windows VT virtual terminal processing.
+    - `detect_color_depth()`: Detects terminal color depth (truecolor, 256, 16, dumb).
+    - `supports_unicode()`: Checks Unicode / UTF-8 rendering capability in active console.
+    - `get_platform_diagnostics()`: Returns platform compatibility diagnostic dict.
+
+**File:** `plugins.py`
+  - **Docstring*: Command-line management for Monika plugins (list, install, uninstall, info).
+  - **Functions**:
+    - `register_plugin_subparsers(subparsers)`
+    - `handle_plugin_command(args)`
+    - `cmd_plugin_list(args)`
+    - `cmd_plugin_install(args)`
+    - `cmd_plugin_uninstall(args)`
+    - `cmd_plugin_info(args)`
+
+**File:** `profile_manager.py`
+  - **Classes**:
+    - `ProfileManager`: Isolated multi-environment profile manager creating, switching, deleting, exporting, importing, and listing environment profiles under profiles/<name>/.
+      - *Methods*: `list_profiles()`, `get_active_profile()`, `switch_profile(name)`, `create_profile(name, clone_from=None)`, `delete_profile(name)`, `export_profile(name, zip_path)`, `import_profile(zip_path, new_name=None)`, `get_env_path_for_active()`, `get_data_dir_for_active()`, `get_settings_path_for_active()`
+
+**File:** `setup_wizard.py`
+  - **Classes**:
+    - `SetupWizard`: Guided interactive CLI setup wizard configuring MT5 accounts, PostgreSQL connections, and LLM API providers with automated verification and modular section execution.
+      - *Methods*: `run_interactive()`, `run_wizard(section='all', quick=False)`, `prompt_mt5()`, `prompt_database()`, `prompt_llm()`, `save_configuration()`
+
+**File:** `sparklines.py`
+  - **Functions**:
+    - `braille_sparkline(values, min_val=None, max_val=None, width=None)`: Pure Python unicode braille sparkline generator for mini inline terminal trends.
+    - `bar_gauge(value, max_val=100.0, width=10, warn_ratio=0.75, crit_ratio=0.90)`: Compact ASCII/Unicode progress bar gauge with warning/critical threshold coloring.
+
+**File:** `theme.py`
+  - **Classes**:
+    - `ThemePack`: Dataclass defining semantic color tokens for CLI & TUI skins (retro_vintage, modern_dark, high_contrast, daylight).
+  - **Global Variables**: `THEME_PACKS`, `PHOSPHOR_AMBER`, `BRASS`, `BULL_PROFIT`, `BEAR_LOSS`, `MUTED`, `DIM`, `PAPER`, `CHARCOAL`, `SURFACE`, `BORDER`, `MONIKA_THEME`, `LEDGER_BOX`
+  - **Functions**:
+    - `get_theme_pack(name)`: Retrieve ThemePack preset by name.
+    - `list_theme_packs()`: List all available theme pack names.
+    - `get_console(theme_name)`: Return a Rich Console preconfigured with specified theme.
+    - `stamp_ok(text="OK")`: Return formatted green ledger OK stamp.
+    - `stamp_err(text="FAILED")`: Return formatted wax red error stamp.
+    - `stamp_warn(text="WARNING")`: Return formatted brass warning stamp.
+    - `stamp_info(text="INFO")`: Return formatted brass info stamp.
+    - `stamp_exec(text="EXECUTE")`: Return formatted amber execution stamp.
+    - `build_tui_css(theme_name)`: Generate Textual CSS stylesheet for TUI dashboard using theme semantic tokens.
+    - `build_chat_css(theme_name)`: Generate Textual CSS stylesheet for chat screen.
+
+**File:** `tui.py`
+  - **Global Variables**: logger, DEFAULT_API_URL, COMMAND_SUGGESTIONS, DETERMINISTIC_RISK_CHECKS
+  - **Classes**:
+    - `KillConfirmModalScreen(ModalScreen)`: Confirmation dialog modal requiring explicit operator confirmation before executing emergency kill switch.
+    - `LiveTickerBanner(Static)`: Top live ticker banner with braille price/VIX sparklines and dynamic trend arrows (•, ▲, ▼).
+    - `StatusBar(Static)`: Status footer showing context gauge, cache hit rate, tokens, cost, uptime, and WS status.
+    - `TradingDashboard(App)`: Multi-tab rich terminal dashboard (Overview, Analysis Tree, Performance, Signals, Risk, Chat) with theme switching, toast notifications, and live event subscriptions.
+      - *Methods*: `action_focus_input()`, `action_blur_input()`, `action_next_tab()`, `action_prev_tab()`, `action_switch_tab()`, `action_tab_overview()`, `action_tab_tree()`, `action_tab_perf()`, `action_tab_signals()`, `action_tab_risk()`, `action_tab_chat()`, `on_tabbed_content_tab_activated()`, `set_theme()`, `_send_inline_chat()`, `_fetch_overview_data()`, `_fetch_data_from_db()`, `_update_ui_state()`, `_is_input_focused()`
+  - **Functions**:
+    - `run_tui(api_url, api_key, refresh_interval, theme)`: Entrypoint function to run the Textual TUI dashboard.
+
+**File:** `tui_chat.py`
+  - **Global Variables**: logger, DEFAULT_API_URL, CHAT_SCREEN_CSS
+  - **Classes**:
+    - `ChatScreen(Screen)`: Full-screen interactive chat REPL within Textual TUI.
+      - *Methods*: `_is_ws_healthy()`, `_close_ws()`, `_connect_ws()`, `_ensure_ws()`, `action_interrupt()`, `action_clear_transcript()`, `on_input_submitted()`, `_handle_approval_decision()`, `_run_ws_turn()`, `_run_local_turn()`
+  - **Functions**:
+    - `is_ws_alive(ws)`: Check if ClientWebSocketResponse and underlying transport are active and open.
+    - `_get_prompt_session()`: Safely initialize prompt_toolkit PromptSession with fallback for Windows non-console.
+    - `run_cli_chat(api_url, api_key, session_id, offline, model, theme)`: Interactive standalone REPL chat with Monika (MT5 Trading Agent), delegating to cli.chat.
+    - `_submit_cli_decision(ws, local_agent, action_id, decision, console)`: Submit approval decision in CLI REPL.
+
+**File:** `width_budget.py`
+  - **Docstring**: Progressive Terminal Width Budgeting & Adaptive Column Allocator dynamically partitioning terminal character width across data table columns and dropping low-priority columns on narrow displays.
+  - **Classes**: `ColumnSpec`
+  - **Functions**: `compute_progressive_width_budget()`
+
+##### Folder: `trading-agent/cli/chat`
+
+**File:** `__init__.py`
+  - **Docstring**: Public entry point for Monika CLI Interactive Chat subsystem.
+  - **Functions**:
+    - `run_cli_chat(api_url, api_key, session_id, offline, model, theme)`: Launch interactive standalone CLI Chat trading desk session.
+  - **Global Variables**: `DEFAULT_API_URL`, `ChatReplSession`, `ChatRenderer`, `ThinkingScrubber`, `ChatPromptManager`, `ChatCommandCompleter`, `ChatCommandRouter`, `CommandResult`, `ChatPalette`, `get_chat_palette`
+
+**File:** `commands.py`
+  - **Docstring**: Slash command parser and dispatcher for Monika Interactive CLI Chat.
+  - **Classes**:
+    - `CommandResult`: Outcome of a slash command evaluation (handled, should_exit, action_payload, output_message).
+    - `ChatCommandRouter`: Dispatches CLI slash commands and renders local desk telemetry.
+      - *Methods*: `handle(input_text, pending_action_id, history_records)`, `_render_help_catalog()`, `_handle_theme_switch(theme_name)`, `_handle_model_switch(model_arg)`, `_handle_status_query()`, `_handle_positions_query()`, `_handle_export(filepath, history)`
+  - **Global Variables**: `logger`, `MODEL_ALIASES`, `AVAILABLE_THEMES`
+
+**File:** `completer.py`
+  - **Docstring**: Fuzzy slash-command auto-completer for Monika interactive REPL chat.
+  - **Classes**:
+    - `ChatCommandCompleter(Completer)`: Auto-completer suggesting slash commands and sub-options when typing '/'.
+      - *Methods*: `get_completions(document, complete_event)`
+  - **Global Variables**: `SLASH_COMMANDS`
+
+**File:** `prompt.py`
+  - **Docstring**: Prompt session manager with multiline input handling (Shift+Enter/Alt+Enter), extended keybindings, and dynamic bottom toolbar.
+  - **Classes**:
+    - `ChatPromptManager`: Manages prompt_toolkit session, keybindings, and dynamic status toolbar.
+      - *Methods*: `set_theme(theme_name)`, `update_telemetry(model, mode, status, latency_s, tokens, is_generating)`, `_create_style()`, `_create_key_bindings()`, `_get_bottom_toolbar()`, `prompt_async()`
+  - **Functions**:
+    - `_install_key_sequence_patches()`: Register Kitty CSI-u and xterm escape sequences for Shift+Enter & Alt+Enter.
+
+**File:** `renderer.py`
+  - **Docstring**: Rich terminal formatting, Markdown streaming, thinking box scrubber, and visual cards for Monika Chat CLI.
+  - **Classes**:
+    - `ThinkingScrubber`: Parses live token stream and separates thinking/reasoning (<think> tags) from visible output with boundary buffering.
+      - *Methods*: `process_chunk(chunk)`, `get_full_thinking()`, `get_full_content()`
+    - `ChatRenderer`: Institutional-grade CLI Chat formatter with rich styling and design tokens.
+      - *Methods*: `set_theme(theme_name)`, `render_banner(model_name, mode, session_id, is_live_service, connection_info)`, `render_user_prompt(user_text)`, `render_thinking_card(thinking_text, elapsed_s)`, `render_tool_start(tool_name, tool_args)`, `render_tool_result(tool_name, summary, duration_ms, is_error)`, `render_agent_header(model_name)`, `render_markdown(markdown_text)`, `render_telemetry_footer(tokens_in, tokens_out, latency_s, cost_usd)`, `render_approval_card(action_dict)`, `render_notice(message, level)`
+  - **Functions**:
+    - `get_terminal_width(default=80)`: Get terminal column width safely.
+
+**File:** `session.py`
+  - **Docstring**: Core REPL session manager for Monika Interactive CLI Trading Desk.
+  - **Classes**:
+    - `ChatReplSession`: Institutional-grade CLI Chat REPL session coordinating WebSocket streaming, local fallback engine, thinking scrubber, and single-turn interrupt.
+      - *Methods*: `run()`, `_handle_interrupt()`, `_connect_ws()`, `_ensure_local_agent()`, `_execute_turn(text)`, `_execute_ws_turn(text, model, t0)`, `_execute_local_turn(text, model, t0)`, `_submit_decision(payload)`, `_teardown()`
+  - **Functions**:
+    - `_is_ws_alive(ws)`: Check if ClientWebSocketResponse is open and transport is writable.
+  - **Global Variables**: `logger`, `DEFAULT_API_URL`
+
+**File:** `theme.py`
+  - **Docstring**: Design tokens, typographic glyphs, and box elements for Monika Chat CLI.
+  - **Classes**:
+    - `ChatPalette`: Semantic color tokens tailored for interactive CLI chat.
+  - **Functions**:
+    - `get_chat_palette(theme_name="retro_vintage")`: Derive chat color tokens from active system ThemePack.
+  - **Global Variables**: `GLYPH_USER`, `GLYPH_AGENT`, `GLYPH_THINK`, `GLYPH_TOOL`, `GLYPH_SUCCESS`, `GLYPH_ERROR`, `GLYPH_WARN`, `GLYPH_ARROW_RIGHT`, `GLYPH_DOT`, `GLYPH_BRANCH`, `GLYPH_CORNER`, `GLYPH_VERTICAL`, `BOX_ROUND_TOP_LEFT`, `BOX_ROUND_TOP_RIGHT`, `BOX_ROUND_BOTTOM_LEFT`, `BOX_ROUND_BOTTOM_RIGHT`, `BOX_HORIZONTAL`, `BOX_VERTICAL`, `BOX_DOUBLE_HORIZONTAL`, `BOX_DOUBLE_VERTICAL`, `BOX_DOUBLE_TOP_LEFT`, `BOX_DOUBLE_TOP_RIGHT`, `BOX_DOUBLE_BOTTOM_LEFT`, `BOX_DOUBLE_BOTTOM_RIGHT`
+
+##### Folder: `trading-agent/cli/overlays`
+
+**File:** `__init__.py`
+
+**File:** `approval_modal.py`
+  - **Docstring**: Interactive Modal Dialog for Human-in-the-Loop (HITL) trade action approvals.
+  - **Classes**:
+    - `ApprovalModalScreen(ModalScreen[Optional[str]])`: Modal screen prompting operator to review and approve/deny proposed trade actions with risk preview and keyboard shortcuts ([1] Allow Once, [2] Allow Session 4h, [3/Esc] Deny).
+      - *Methods*: `compose()`, `on_button_pressed(event)`, `action_allow_once()`, `action_allow_session()`, `action_deny()`
+
+**File:** `plugin_install_modal.py`
+  - **Docstring**: Textual Modal Screen for Installing Monika Plugins via Pip.
+  - **Classes**:
+    - `PluginInstallModalScreen(ModalScreen[Optional[bool]])`: Interactive modal dialog for inputting package spec or picking catalog presets with live pip output console.
+      - *Methods*: `compose()`, `on_mount()`, `on_button_pressed(event)`, `on_input_submitted(event)`, `action_cancel()`
+
+##### Folder: `trading-agent/cli/subcommands`
+
+**File:** `__init__.py`
+
+**File:** `base.py`
+  - **Docstring**: Base Abstract Class for Modular CLI Subcommands.
+  - **Classes**: `Subcommand`
+    - *Methods*: `register(parser)`, `execute(args)`
+
+**File:** `daemon.py`
+  - **Docstring**: Daemon lifecycle management subcommand (start, stop, status).
+  - **Functions**: `register(parser)`, `execute(args)`
+
+**File:** `mcp.py`
+  - **Docstring**: Model Context Protocol (MCP) server launch subcommand.
+  - **Functions**: `register(parser)`, `execute(args)`
+
+**File:** `simulation.py`
+  - **Docstring**: Quantitative simulation and backtest runner subcommand.
+  - **Functions**: `register(parser)`, `execute(args)`
+
+**File:** `trading.py`
+  - **Docstring**: Active trading operations and position oversight subcommand.
+  - **Functions**: `register(parser)`, `execute(args)`
 
 #### Folder: `trading-agent/config`
+
+**File:** `__init__.py`
 
 **File:** `atomic_writer.py`
   - **Docstring**: Thread-safe atomic YAML configuration writer with ruamel.yaml comment preservation, tempfile sync, and automatic backup rotation.
@@ -2022,20 +2176,26 @@ This document provides an exhaustive structural index of all directories, files,
   - **Variables**: `CURRENT_CONFIG_VERSION`, `DEFAULT_SUBSETS`
   - **Functions**: `migrate_settings()`, `check_and_migrate_file()`
 
-**File:** `hot_reload.py`
-  - **Classes**: `RiskParameterReloader` (Methods: `check_and_reload()`, `watch_and_reload()`)
-
 **File:** `historical_macro_milestones.json`
   - **Docstring**: Curated historical macroeconomic and geopolitical regime milestones (2022-2026) for resilient cold-start market context anchoring.
+
+**File:** `hot_reload.py`
+  - **Classes**: `RiskParameterReloader` (Methods: `check_and_reload()`, `watch_and_reload()`)
 
 **File:** `key_validator.py`
   - **Docstring**: Configuration key validator with fuzzy matching and candidate suggestion.
   - **Functions**: `validate_config_key()`
 
+**File:** `MACRO_REALITY.md`
+  - **Docstring**: Ground-truth factual macroeconomic & geopolitical baseline store (verified 2026 facts: Fed Chair Kevin Warsh, Treasury Sec Scott Bessent, Strait of Hormuz / Red Sea disruptions, Russia-Ukraine war, Trump tariffs, BoJ Ueda rate hikes).
+
 **File:** `migrations.py`
   - **Docstring**: Configuration schema version migrations and fail-closed parser validation.
   - **Variables**: `CURRENT_CONFIG_VERSION`, `MIGRATIONS`
   - **Functions**: `get_config_version()`, `migrate_config()`, `require_parseable_config()`
+
+**File:** `plugin_catalog.yaml`
+  - **Description**: Universal curated plugin catalog for Monika Trading Platform, including security revoked kill_list.
 
 **File:** `schemas.py`
   - **Docstring**: Pydantic schema models validating application settings and YAML configurations at startup.
@@ -2061,45 +2221,33 @@ This document provides an exhaustive structural index of all directories, files,
     - `get_settings()`
       - *Docstring*: Backward-compatible alias for `load_settings()`.
 
-**File:** `plugin_catalog.yaml`
-  - **Description**: Universal curated plugin catalog for Monika Trading Platform, including security revoked kill_list.
-
 **File:** `settings.yaml`
   - **Description**: Global trading agent configuration (trading parameters, risk management, execution, schedulers, and llm.task_roles including `summarizer` and `context_compaction`).
 
+**File:** `TRADING_SOUL.md`
+  - **Docstring**: Core identity and operating philosophy document (Layer 0 permanent memory).
+
 ##### Folder: `trading-agent/config/plugins`
+
 **File:** `discord_alert.yaml`
   - **Description**: Modular configuration example for decoupled plugin settings auto-loaded by `settings.py`.
 
+#### Folder: `trading-agent/data`
 
-
-**File:** `MACRO_REALITY.md`
-  - **Docstring**: Ground-truth factual macroeconomic & geopolitical baseline store (verified 2026 facts: Fed Chair Kevin Warsh, Treasury Sec Scott Bessent, Strait of Hormuz / Red Sea disruptions, Russia-Ukraine war, Trump tariffs, BoJ Ueda rate hikes).
-
-**File:** `TRADING_SOUL.md`
-  - **Docstring**: Core identity and operating philosophy document (Layer 0 permanent memory).
+**File:** `.gitkeep`
+  - **Description**: Keep directory in git
 
 #### Folder: `trading-agent/data_sources`
 
 **File:** `__init__.py`
 
-**File:** `cftc_cot.py`
-  - **Global Variables**: logger, DISAGGREGATED_DATASET, DISAGGREGATED_URL, FINANCIAL_DATASET, FINANCIAL_URL, COMMODITY_CODES
+**File:** `academic_search.py`
   - **Classes**:
-    - `CFTCCOTFetcher`
-      - *Docstring*: COT report fetcher for CFTC Socrata API.
+    - `AcademicSearchClient`
+      - *Docstring*: Client for querying academic research papers on arXiv via public API.
       - *Methods*:
-        - `__init__(self, session, config)`
-        - `fetch_all(self)`
-        - `_fetch_and_save(self, url, params, market_name, market_code)`
-        - `_parse_date(date_str)`
-        - `_int(value)`
-
-**File:** `circuit_breaker.py`
-  - **Docstring**: Data Feed Circuit Breaker & Freshness Sentinel monitoring MT5 ticks, FRED macro series, Finnhub news, and Economic Calendar.
-  - **Classes**: `FeedStatus`, `DataFeedCircuitBreaker`
-    - *Methods*: `record_feed_heartbeat()`, `check_feed()`, `is_feed_stale()`, `trip()`, `reset()`, `is_tripped()`, `get_tripped_feeds()`, `evaluate_all_feeds()`, `get_health_report()`
-  - **Functions**: `get_data_feed_circuit_breaker()`, `record_feed_heartbeat()`
+        - `__init__(self, timeout_seconds=15.0)`
+        - `search_papers(self, query, max_results=5)`
 
 **File:** `bond_yields_fetcher.py`
   - **Global Variables**: `logger`, `ECB_AAA_YIELD_URL`, `ECB_AAA_2Y_URL`, `FRED_BASE_URL`, `FRED_BOND_SERIES`
@@ -2125,6 +2273,24 @@ This document provides an exhaustive structural index of all directories, files,
         - `fetch_expectations(self)` -> `dict`
         - `fetch_sovereign_yields(self)` -> `dict`
         - `fetch_all(self)` -> `dict`
+
+**File:** `cftc_cot.py`
+  - **Global Variables**: logger, DISAGGREGATED_DATASET, DISAGGREGATED_URL, FINANCIAL_DATASET, FINANCIAL_URL, COMMODITY_CODES
+  - **Classes**:
+    - `CFTCCOTFetcher`
+      - *Docstring*: COT report fetcher for CFTC Socrata API.
+      - *Methods*:
+        - `__init__(self, session, config)`
+        - `fetch_all(self)`
+        - `_fetch_and_save(self, url, params, market_name, market_code)`
+        - `_parse_date(date_str)`
+        - `_int(value)`
+
+**File:** `circuit_breaker.py`
+  - **Docstring**: Data Feed Circuit Breaker & Freshness Sentinel monitoring MT5 ticks, FRED macro series, Finnhub news, and Economic Calendar.
+  - **Classes**: `FeedStatus`, `DataFeedCircuitBreaker`
+    - *Methods*: `record_feed_heartbeat()`, `check_feed()`, `is_feed_stale()`, `trip()`, `reset()`, `is_tripped()`, `get_tripped_feeds()`, `evaluate_all_feeds()`, `get_health_report()`
+  - **Functions**: `get_data_feed_circuit_breaker()`, `record_feed_heartbeat()`
 
 **File:** `coinglass_funding.py`
   - **Global Variables**: `logger`, `BINANCE_FUNDING_URL`, `BYBIT_TICKERS_URL`, `COINGLASS_URL`
@@ -2171,6 +2337,12 @@ This document provides an exhaustive structural index of all directories, files,
         - `__init__(self)`
         - `_parse_date(self)`
 
+**File:** `validators.py`
+  - **Global Variables**: `MAX_OHLCV_STALE_DAYS`, `INTRADAY_CACHE_TTL_SECONDS`
+  - **Functions**:
+    - `validate_ohlcv_freshness()`
+    - `is_intraday_cache_expired()`
+
 **File:** `vix_yfinance.py`
   - **Global Variables**: `logger`, `VIX_TICKER`, `CBOE_VIX_CSV_URL`, `YAHOO_VIX_CHART_URL`, `FRED_BASE_URL`
   - **Classes**:
@@ -2186,6 +2358,22 @@ This document provides an exhaustive structural index of all directories, files,
         - `_download(self, period)`
         - `_save(self, df)`
         - `get_latest(self)`
+
+**File:** `web_reader.py`
+  - **Global Variables**: `MAX_BODY_BYTES`, `DEFAULT_HEADERS`, `DISALLOWED_TAGS`, `CHALLENGE_PHRASES`
+  - **Functions**:
+    - `is_challenge_or_empty(status, content, html)`
+    - `is_prohibited_ip(ip_str)`
+    - `validate_url_ip(url)`
+  - **Classes**:
+    - `WebReader`
+      - *Docstring*: Service to fetch full webpage content and extract clean text with headless browser fallback.
+      - *Methods*:
+        - `__init__(self, max_chars=12000, timeout_seconds=12.0, max_body_bytes=MAX_BODY_BYTES, browser_fallback=True, browser_timeout_seconds=20.0)`
+        - `_read_url_with_browser_sync(self, url)`
+        - `_read_url_with_browser(self, url)`
+        - `read_url(self, url)`
+        - `_extract_content(self, url, html)`
 
 **File:** `web_search.py`
   - **Global Variables**: `logger`, `_global_web_search_service`
@@ -2205,37 +2393,9 @@ This document provides an exhaustive structural index of all directories, files,
         - `_search_brave(self, query, max_results=5)`
         - `_search_duckduckgo(self, query, max_results=5)`
 
-**File:** `academic_search.py`
-  - **Classes**:
-    - `AcademicSearchClient`
-      - *Docstring*: Client for querying academic research papers on arXiv via public API.
-      - *Methods*:
-        - `__init__(self, timeout_seconds=15.0)`
-        - `search_papers(self, query, max_results=5)`
-
-**File:** `validators.py`
-  - **Global Variables**: `MAX_OHLCV_STALE_DAYS`, `INTRADAY_CACHE_TTL_SECONDS`
-  - **Functions**:
-    - `validate_ohlcv_freshness()`
-    - `is_intraday_cache_expired()`
-
-**File:** `web_reader.py`
-  - **Global Variables**: `MAX_BODY_BYTES`, `DEFAULT_HEADERS`, `DISALLOWED_TAGS`, `CHALLENGE_PHRASES`
-  - **Functions**:
-    - `is_challenge_or_empty(status, content, html)`
-    - `is_prohibited_ip(ip_str)`
-    - `validate_url_ip(url)`
-  - **Classes**:
-    - `WebReader`
-      - *Docstring*: Service to fetch full webpage content and extract clean text with headless browser fallback.
-      - *Methods*:
-        - `__init__(self, max_chars=12000, timeout_seconds=12.0, max_body_bytes=MAX_BODY_BYTES, browser_fallback=True, browser_timeout_seconds=20.0)`
-        - `_read_url_with_browser_sync(self, url)`
-        - `_read_url_with_browser(self, url)`
-        - `read_url(self, url)`
-        - `_extract_content(self, url, html)`
-
 #### Folder: `trading-agent/database`
+
+**File:** `__init__.py`
 
 **File:** `adapters.py`
   - **Global Variables**: logger, CURRENCY_KEYWORDS
@@ -2251,15 +2411,13 @@ This document provides an exhaustive structural index of all directories, files,
     - `calendar_event_to_model()`
       - *Docstring*: Konversi dataclass CalendarEvent menjadi model ORM EconomicCalendar.
 
-**File:** `safe_ops.py`
-  - **Global Variables**: logger
+**File:** `async_db.py`
+  - **Global Variables**: AsyncSessionLocal, async_engine
   - **Functions**:
-    - `safe_commit()`
-      - *Docstring*: Safely commits transactions with automatic rollback on failure to prevent session corruption.
-    - `scraped_tweet_to_model()`
-      - *Docstring*: Konversi dataclass ScrapedTweet menjadi model ORM NewsItem (sumber='twitter').
-    - `fed_meeting_to_models()`
-      - *Docstring*: Konversi dataclass FedMeeting menjadi model ORM FedWatchProbability.
+    - `get_session()`
+      - *Docstring*: Async generator yielding an AsyncSession with automatic commit/rollback.
+    - `get_engine()`
+      - *Docstring*: Returns the shared SQLAlchemy async engine instance.
 
 **File:** `cleanup.py`
   - **Global Variables**: logger
@@ -2270,14 +2428,6 @@ This document provides an exhaustive structural index of all directories, files,
       - *Docstring*: Drops PostgreSQL partitions from price_ohlcv_partitioned for MVCC dead-tuple elimination.
     - `reset_paper_trading_history(session, create_backup=True, backup_dir=None, unlock_all=True)`
       - *Docstring*: Mereset seluruh riwayat paper trading dan data terkait secara aman, mereset loss streak ke 0, dan membuka kuncian sistem.
-
-**File:** `async_db.py`
-  - **Global Variables**: AsyncSessionLocal, async_engine
-  - **Functions**:
-    - `get_session()`
-      - *Docstring*: Async generator yielding an AsyncSession with automatic commit/rollback.
-    - `get_engine()`
-      - *Docstring*: Returns the shared SQLAlchemy async engine instance.
 
 **File:** `db.py`
   - **Global Variables**: logger, DATABASE_URL, engine, _async_session_factory, AsyncSessionLocal, _IN_MEMORY_EXECUTION_LOCKS
@@ -2304,24 +2454,12 @@ This document provides an exhaustive structural index of all directories, files,
   - **Docstring**: Append-only asynchronous event store for audit, state transitions, and trace persistence.
   - **Classes**: `TradingEventStore`
     - *Methods*: `append()`, `query_by_trace()`, `query_recent()`
+
 **File:** `fts5_cjk.py`
   - **Docstring**: FTS5 Full-Text Search with CJK/Multilingual Bigram Tokenizer for SQLite.
   - **Classes**: `Fts5SessionSearch`
     - *Methods*: `index_message()`, `search()`
   - **Functions**: `tokenize_cjk_bigram()`
-**File:** `session_db_wal.py`
-  - **Docstring**: High-Performance SQLite WAL Session Database with zero-contention pragma tuning, bounded read pooling, and Open File Description (OFD) / cross-platform file locking.
-  - **Classes**: `FileLockGuard`, `SessionDbReadPool`, `SessionDbWal`
-    - *Methods*: `get_connection()`, `acquire_reader()`, `create_or_touch_session()`, `append_message()`, `record_tool_execution()`, `get_messages()`, `deactivate_turns_above()`, `close()`
-  - **Functions**: `check_fd_headroom()`
-**File:** `session_lifecycle.py`
-  - **Docstring**: Session Lifecycle, Lineage Tracking & Portable State Portability Engine with branching, rewind, and export/import.
-  - **Classes**: `SessionExportBundle`, `SessionLifecycleManager`
-    - *Methods*: `fork_session()`, `rewind_session()`, `get_session_lineage()`, `export_session_bundle()`, `export_to_file()`, `import_session_bundle()`, `import_from_file()`
-**File:** `repair_ledger.py`
-  - **Docstring**: Bounded Crash Repair Ledger & Session Integrity Engine managing crash repair diagnostics, stale lock cleanup, orphaned tool call repair, scratchpad fence healing, and persistence audits.
-  - **Classes**: `RepairLedger`
-    - *Methods*: `record_repair()`, `cleanup_stale_lockfiles()`, `detect_and_repair_orphaned_tool_calls()`, `repair_scratchpad_artifacts()`, `run_all_repairs()`, `get_repair_history()`
 
 **File:** `models.py`
   - **Functions**:
@@ -2520,33 +2658,68 @@ This document provides an exhaustive structural index of all directories, files,
       - *Docstring*: Caches multi-timeframe pattern similarity screening results and consensus forecasts.
       - *Class Variables*: __tablename__, __table_args__
 
+**File:** `repair_ledger.py`
+  - **Docstring**: Bounded Crash Repair Ledger & Session Integrity Engine managing crash repair diagnostics, stale lock cleanup, orphaned tool call repair, scratchpad fence healing, and persistence audits.
+  - **Classes**: `RepairLedger`
+    - *Methods*: `record_repair()`, `cleanup_stale_lockfiles()`, `detect_and_repair_orphaned_tool_calls()`, `repair_scratchpad_artifacts()`, `run_all_repairs()`, `get_repair_history()`
+
+**File:** `safe_ops.py`
+  - **Global Variables**: logger
+  - **Functions**:
+    - `safe_commit()`
+      - *Docstring*: Safely commits transactions with automatic rollback on failure to prevent session corruption.
+    - `scraped_tweet_to_model()`
+      - *Docstring*: Konversi dataclass ScrapedTweet menjadi model ORM NewsItem (sumber='twitter').
+    - `fed_meeting_to_models()`
+      - *Docstring*: Konversi dataclass FedMeeting menjadi model ORM FedWatchProbability.
+
+**File:** `session_db_wal.py`
+  - **Docstring**: High-Performance SQLite WAL Session Database with zero-contention pragma tuning, bounded read pooling, and Open File Description (OFD) / cross-platform file locking.
+  - **Classes**: `FileLockGuard`, `SessionDbReadPool`, `SessionDbWal`
+    - *Methods*: `get_connection()`, `acquire_reader()`, `create_or_touch_session()`, `append_message()`, `record_tool_execution()`, `get_messages()`, `deactivate_turns_above()`, `close()`
+  - **Functions**: `check_fd_headroom()`
+
+**File:** `session_lifecycle.py`
+  - **Docstring**: Session Lifecycle, Lineage Tracking & Portable State Portability Engine with branching, rewind, and export/import.
+  - **Classes**: `SessionExportBundle`, `SessionLifecycleManager`
+    - *Methods*: `fork_session()`, `rewind_session()`, `get_session_lineage()`, `export_session_bundle()`, `export_to_file()`, `import_session_bundle()`, `import_from_file()`
 
 ##### Folder: `trading-agent/database/domain_models`
+
 **File:** `__init__.py`
   - **Docstring**: Modular domain model package re-exporting models partitioned by functional domain.
-**File:** `base.py`
-  - **Classes**: `Base`
-  - **Functions**: `_utcnow`
-**File:** `market.py`
-  - **Docstring**: Market domain models: price data, SMC structure zones, yield curves, FedWatch.
-  - **Classes**: `PriceOHLCV`, `TreasuryYield`, `BondYieldData`, `FedWatchProbability`, `CentralBankRateExpectation`, `TimesFMForecast`, `SMCStructureZone`, `PatternScreeningCache`
-**File:** `trading.py`
-  - **Docstring**: Execution and order domain models: trades, positions, triggers, plans.
-  - **Classes**: `Trade`, `Position`, `TradeHistory`, `ActiveTrigger`, `TradePlan`, `TradePlanLeg`, `BacktestRun`, `BacktestTrade`
-**File:** `memory.py`
-  - **Docstring**: Memory and reflection domain models: lessons, chronicles, outcome attributions.
-  - **Classes**: `DecisionReflection`, `DecisionMemory`, `MarketChronicle`, `CandidateLesson`, `ConfluenceFactorOutcome`, `PlaybookRuleAttribution`
+
 **File:** `analysis.py`
   - **Docstring**: Analysis stage domain models: fundamental briefs, asset evaluations, prescreens.
   - **Classes**: `FundamentalBrief`, `AssetAnalysis`, `PrescreenLog`, `TimesFMForecast`
-**File:** `system.py`
-  - **Docstring**: System domain models: event store, audit tokens, system configuration, context spills.
-  - **Classes**: `TradingEvent`, `TokenUsageLog`, `ActivityLog`, `SystemConfig`, `CyclePerformance`, `ContextSpillBlob`, `UserMarketIntel`, `TelegramTopicBinding`
+
+**File:** `base.py`
+  - **Classes**: `Base`
+  - **Functions**: `_utcnow`
+
+**File:** `market.py`
+  - **Docstring**: Market domain models: price data, SMC structure zones, yield curves, FedWatch.
+  - **Classes**: `PriceOHLCV`, `TreasuryYield`, `BondYieldData`, `FedWatchProbability`, `CentralBankRateExpectation`, `TimesFMForecast`, `SMCStructureZone`, `PatternScreeningCache`
+
+**File:** `memory.py`
+  - **Docstring**: Memory and reflection domain models: lessons, chronicles, outcome attributions.
+  - **Classes**: `DecisionReflection`, `DecisionMemory`, `MarketChronicle`, `CandidateLesson`, `ConfluenceFactorOutcome`, `PlaybookRuleAttribution`
+
 **File:** `news.py`
   - **Docstring**: News and macro event domain models: scraped items, digests, calendar events.
   - **Classes**: `NewsItem`, `NewsDigest`, `NewsDigestSlice`, `EconomicCalendar`, `NewsClassificationOutcome`
 
+**File:** `system.py`
+  - **Docstring**: System domain models: event store, audit tokens, system configuration, context spills.
+  - **Classes**: `TradingEvent`, `TokenUsageLog`, `ActivityLog`, `SystemConfig`, `CyclePerformance`, `ContextSpillBlob`, `UserMarketIntel`, `TelegramTopicBinding`
+
+**File:** `trading.py`
+  - **Docstring**: Execution and order domain models: trades, positions, triggers, plans.
+  - **Classes**: `Trade`, `Position`, `TradeHistory`, `ActiveTrigger`, `TradePlan`, `TradePlanLeg`, `BacktestRun`, `BacktestTrade`
+
 ##### Folder: `trading-agent/database/migrations`
+
+**File:** `__init__.py`
 
 **File:** `env.py`
   - **Functions**:
@@ -2555,85 +2728,78 @@ This document provides an exhaustive structural index of all directories, files,
     - `run_migrations_online()`
       - *Docstring*: Run migrations in 'online' mode.
 
+**File:** `README`
+
+**File:** `script.py.mako`
+
 ###### Folder: `trading-agent/database/migrations/archive`
-  - *Description*: Archived scratch SQL migration scripts.
+
+  - **Description**: Archived database migration revisions and legacy schema states.
+  - **Note**: Collapsed directory containing 5 internal files.
 
 ###### Folder: `trading-agent/database/migrations/versions`
-  - *Description*: Production Alembic revision scripts.
-  - **Files**:
-    - `n1a2b3c4d5e6_make_decision_reflections_analysis_id_nullable.py`: Alembic revision making `decision_reflections.analysis_id` column nullable to support independent reflection records.
-    - `q1a2b3c4d5e6_add_position_partial_fill_and_slippage_columns.py`: Alembic revision adding partial fill tracking and slippage columns to `positions` and `paper_trade_records`.
-    - `r1a2b3c4d5e6_add_pattern_screening_cache_table.py`: Alembic revision creating `pattern_screening_cache` table for caching multi-timeframe pattern similarity screening results.
-    - `s1a2b3c4d5e6_add_llm_benchmark_tables.py`: Alembic revision creating `llm_benchmark_run` and `llm_benchmark_result` tables for LLM benchmark evaluations.
-    - `t1a2b3c4d5e6_add_agent_sessions_and_system_prompts.py`: Alembic revision creating `system_prompts`, `agent_sessions`, and `agent_session_messages` tables for multi-tenant unified state persistence.
+
+  - **Description**: Alembic schema migration version files managing PostgreSQL state evolution.
+  - **Note**: Collapsed directory containing 52 internal files.
 
 #### Folder: `trading-agent/evals`
+
+**File:** `__init__.py`
 
 **File:** `eval_metrics.py`
   - **Docstring**: Core evaluation metrics and A/B comparison engine computing accuracy, grounding pass rates, R:R capture, and Brier calibration scores.
   - **Classes**: `DecisionEvaluation`, `AggregateMetrics`, `ABReport`
   - **Functions**: `compute_brier_score()`, `aggregate_eval_metrics()`, `compare_ab_evaluations()`
+
 **File:** `eval_runner.py`
   - **Docstring**: Automated A/B Evaluation Harness and experiment runner benchmarking prompt and model variants against golden fixtures.
   - **Classes**: `ABEvalRunner`
     - *Methods*: `load_fixtures()`, `evaluate_single_decision()`, `run_ab_benchmark()`
-**File:** `runner.py`
-  - **Docstring**: Institutional zero-LLM programmatic market evaluation runner executing deterministic rules and geometry oracles against golden fixtures.
-  - **Classes**: `EvaluationResult`, `OfflineEvalRunner`
-    - *Methods*: `run_fixture(fixture_data)`, `run_file(file_path)`, `run_all(fixtures_dir=None)`
+
 **File:** `hostile_market_probe.py`
   - **Docstring**: Hostile Market Feed Wire Probes & Adversarial Stress Testing Battery verifying that RiskGate, FlashCrashDetector, and ExecutionService strictly fail-closed on market anomalies.
   - **Classes**: `HostileTickScenario`, `HostileMarketProbe`
     - *Methods*: `generate_battery()`, `run_stress_probe()`
 
+**File:** `runner.py`
+  - **Docstring**: Institutional zero-LLM programmatic market evaluation runner executing deterministic rules and geometry oracles against golden fixtures.
+  - **Classes**: `EvaluationResult`, `OfflineEvalRunner`
+    - *Methods*: `run_fixture(fixture_data)`, `run_file(file_path)`, `run_all(fixtures_dir=None)`
+
+**File:** `simulation_clock.py`
+  - **Classes**: `SimulationClock`, `MarketStep`, `MarketStepSimulator`
+    - *Methods*: `now()`, `advance()`, `advance_to()`, `sleep()`, `load_steps()`, `step()`, `simulate_order_fill()`
+
+##### Folder: `trading-agent/evals/fixtures`
+
+  - **Description**: Offline evaluation fixtures, mock oracle responses, and simulation scenarios.
+  - **Note**: Collapsed directory containing 6 internal files.
+
 ##### Folder: `trading-agent/evals/oracles`
+
+**File:** `__init__.py`
+
+**File:** `macro_regime_oracle.py`
+  - **Functions**: `evaluate_macro_regime()`
+
 **File:** `risk_compliance_oracle.py`
   - **Functions**: `evaluate_risk_compliance(proposal, market_context)`
+
 **File:** `smc_geometry_oracle.py`
   - **Functions**: `evaluate_smc_geometry(proposal, ground_truth)`
+
+**File:** `tool_safety_oracle.py`
+  - **Docstring**: Tool Safety & Jailbreak Defense Oracle evaluating agent responses against adversarial traps.
+  - **Classes**: `OracleResult`, `ToolSafetyOracle`
+    - *Methods*: `load_traps()`, `evaluate_command_rejection()`, `evaluate_traps_suite()`
+
 **File:** `trade_discipline_oracle.py`
   - **Functions**: `evaluate_trade_discipline(proposal, ground_truth)`
 
-##### Folder: `trading-agent/evals/fixtures`
-  - *Description*: Golden market offline evaluation fixtures covering SMC displacement, liquidity sweeps, spread traps, and drawdown limit enforcement.
-  - **Files**:
-    - `risk_trap_daily_dd.json`
-    - `risk_trap_spread_spike.json`
-    - `smc_bear_sweep.json`
-    - `smc_bull_displacement.json`
-    - `smc_choppy_trap.json`
-
 #### Folder: `trading-agent/execution`
 
-##### Folder: `trading-agent/execution/backends`
 **File:** `__init__.py`
-**File:** `base.py`
-  - **Docstring**: Base Terminal Backend Interface for local, containerized, and remote execution.
-  - **Classes**: `BaseTerminalBackend`
-    - *Methods*: `execute()`, `read_file()`, `write_file()`, `is_alive()`, `close()`
-**File:** `docker_backend.py`
-  - **Docstring**: Docker Container Execution Backend for sandboxed command execution.
-  - **Classes**: `DockerTerminalBackend`
-    - *Methods*: `is_docker_available()`, `is_alive()`, `execute()`, `read_file()`, `write_file()`, `close()`
-**File:** `local_backend.py`
-  - **Docstring**: Local Host Terminal Execution Backend with process group isolation and sanitized environment.
-  - **Classes**: `LocalTerminalBackend`
-    - *Methods*: `execute()`, `_kill_process_tree()`, `read_file()`, `write_file()`, `is_alive()`, `close()`
-
-**File:** `paper_tracker.py`
-  - **Docstring**: Execution Paper Tracker Facade. Re-exports PaperTracker from utils.analytics.paper_tracker.
-
-**File:** `broker_plugin.py`
-  - **Docstring**: Universal Broker and Execution Plugin contract.
-  - **Classes**:
-    - `ExitReason` (Enum)
-    - `TickData` (Dataclass)
-    - `InstrumentSpec` (Dataclass)
-    - `PositionData` (Dataclass)
-    - `DealData` (Dataclass)
-    - `AccountInfo` (Dataclass)
-    - `BrokerPlugin` (ABC)
-      - *Methods*: `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
+  - **Docstring**: Execution subsystem for Monika AI Trading Agent.
 
 **File:** `broker_adapter.py`
   - **Global Variables**: logger
@@ -2681,6 +2847,18 @@ This document provides an exhaustive structural index of all directories, files,
         - `get_positions(self)`
         - `close_position(self, ticket, lots)`
         - `get_account_info(self)`
+
+**File:** `broker_plugin.py`
+  - **Docstring**: Universal Broker and Execution Plugin contract.
+  - **Classes**:
+    - `ExitReason` (Enum)
+    - `TickData` (Dataclass)
+    - `InstrumentSpec` (Dataclass)
+    - `PositionData` (Dataclass)
+    - `DealData` (Dataclass)
+    - `AccountInfo` (Dataclass)
+    - `BrokerPlugin` (ABC)
+      - *Methods*: `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
 
 **File:** `broker_registry.py`
   - **Docstring*: Broker Adapter Registry providing factory creation, discovery, and lifecycle management for execution adapters.
@@ -2839,6 +3017,9 @@ This document provides an exhaustive structural index of all directories, files,
         - `_evaluate_tick_for_position(self, pos, bid, ask, last)`
         - `_dispatch_sl_modification(self, ticket, new_sl, reason, analysis_id)`
 
+**File:** `paper_tracker.py`
+  - **Docstring**: Execution Paper Tracker Facade.
+
 **File:** `rate_throttler.py`
   - **Docstring**: Dual-Window Sliding Leaky-Bucket Order Rate Throttler (2/sec, 15/min) for broker protection.
   - **Classes**:
@@ -2854,97 +3035,28 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**:
     - `EvidenceFirstVerifier`
 
-##### Folder: `trading-agent/execution/service`
+##### Folder: `trading-agent/execution/backends`
 
 **File:** `__init__.py`
 
 **File:** `base.py`
-  - **Classes**:
-    - `_ExecutionServiceMixinBase`
-      - *Docstring*: Static typing base (type-checking only) for all ExecutionService mixins.
+  - **Docstring**: Base Terminal Backend Interface for local, containerized, and remote execution.
+  - **Classes**: `BaseTerminalBackend`
+    - *Methods*: `execute()`, `read_file()`, `write_file()`, `is_alive()`, `close()`
 
-**File:** `emergency_manager.py`
-  - **Classes**:
-    - `EmergencyManagerMixin`
-      - *Methods*:
-        - `close_position_by_ticket(self, session, ticket, reason="manual_close")`
-        - `_close_paper_position(self, session, position, reason)`
-        - `kill_switch(self, reason="Manual kill switch activated") — emergency liquidation protected by asyncio.Lock
-        - `trigger_circuit_breaker(self, reason="circuit_breaker", cooldown_seconds=3600)`
-        - `resume_trading(self, session=None, requested_by="operator")` — universal resume handler resetting EffectGate, unpausing RiskGate, and clearing DB flags
+**File:** `docker_backend.py`
+  - **Docstring**: Docker Container Execution Backend for sandboxed command execution.
+  - **Classes**: `DockerTerminalBackend`
+    - *Methods*: `is_docker_available()`, `is_alive()`, `execute()`, `read_file()`, `write_file()`, `close()`
 
-**File:** `audit_logger.py`
-  - **Classes**:
-    - `ExecutionAuditLogger`
-      - *Methods*: `log_decision()`, `log_state_change()`, `log_fill()`
-
-**File:** `order_creator.py`
-  - **Classes**:
-    - `OrderCreator`
-      - *Methods*: `create_order()`, `save_position()`
-
-**File:** `order_executor.py`
-  - **Functions**:
-    - `_prune_executed_analysis_ids(ttl_seconds: float = 86400.0) -> None`
-  - **Classes**:
-    - `ExecutionResult`
-      - *Docstring*: Comprehensive result of an execution attempt from sizing through broker dispatch.
-    - `OrderExecutorMixin`
-      - *Methods*:
-        - `execute_analysis(self, session, analysis)`
-        - `execute_preplanned_order(self, session, symbol, order_plan, trigger_id, analysis_id, account_equity)`
-        - `execute_paired_analyses(self, session, primary_analysis, secondary_analysis)`
-        - `_execute_analysis_internal(self, session, analysis)`
-        - `_save_position(self, session, analysis, order, executed_price, lots, sl, tp, ticket, is_paper)`
-        - `_transition_order_state(self, session, order, new_status, reason, details, executed_price, ticket, slippage_pips)`
-
-**File:** `reconciliation.py`
-  - **Classes**:
-    - `OrderReconciliation`
-      - *Methods*: `reconcile_orders()`
-
-**File:** `self_healing_executor.py`
-  - **Docstring**: Autonomous self-healing execution harness for MetaTrader 5 orders intercepting broker rejections and performing zero-token deterministic micro-repairs.
-  - **Classes**:
-    - `MT5SelfHealingExecutor`
-      - *Methods*: `heal_and_reexecute()`, `_heal_stops()`, `_snap_volume()`, `_reprice_requote()`
-
-**File:** `sizing_calculator.py`
-  - **Classes**:
-    - `SizingCalculator`
-      - *Methods*: `calculate()`
-
-**File:** `state_machine.py`
-  - **Classes**:
-    - `OrderStateMachine`
-      - *Methods*: `transition()`
-  - **Global Variables**: `VALID_TRANSITIONS`
-
-**File:** `trade_confirm.py`
-  - **Docstring**: Human-in-the-Loop trade confirmation manager with pop-before-execute token consumption, drift verification, and double-fill prevention.
-  - **Classes**: `TradeConfirmationToken`, `TradeConfirmManager`
-    - *Methods*: `create_confirmation()`, `pop_for_execution()`, `cancel_confirmation()`, `clean_expired()`
-
-**File:** `position_synchronizer.py`
-  - **Classes**:
-    - `PositionSynchronizerMixin`
-      - *Methods*:
-        - `sync_positions(self, session)`
-        - `reconcile_inflight_orders(self)`
-          - *Docstring*: Reconciles in-flight orders stuck in INTENT_COMMITTED or SUBMITTED state. Strict replay_policy='never' ensures no blind re-execution upon service restart.
-        - `_handle_stop_loss_hit(self, session, position, deal)`
-        - `modify_position_sl_tp(self, session, ticket, sl, tp, reason="strategy_update")`
-
-**File:** `risk_evaluator.py`
-  - **Classes**:
-    - `RiskEvaluatorMixin`
-      - *Methods*:
-        - `_count_open_positions(self, session, symbol=None)`
-        - `_get_dynamic_risk_percent(self, session, symbol, raw_confidence)`
-        - `_get_current_price(self, symbol)`
-        - `_get_equity(self)`
+**File:** `local_backend.py`
+  - **Docstring**: Local Host Terminal Execution Backend with process group isolation and sanitized environment.
+  - **Classes**: `LocalTerminalBackend`
+    - *Methods*: `execute()`, `_kill_process_tree()`, `read_file()`, `write_file()`, `is_alive()`, `close()`
 
 ##### Folder: `trading-agent/execution/ea_bridge`
+
+**File:** `__init__.py`
 
 **File:** `AIAgent_EA.mq5`
 
@@ -2968,55 +3080,134 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `EAWatchdog`
     - *Methods*: `check_now()`, `run_forever()`, `stop()`
 
-#### Folder: `trading-agent/gateway`
+##### Folder: `trading-agent/execution/service`
+
 **File:** `__init__.py`
+
+**File:** `audit_logger.py`
+  - **Classes**:
+    - `ExecutionAuditLogger`
+      - *Methods*: `log_decision()`, `log_state_change()`, `log_fill()`
+
+**File:** `base.py`
+  - **Classes**:
+    - `_ExecutionServiceMixinBase`
+      - *Docstring*: Static typing base (type-checking only) for all ExecutionService mixins.
+
+**File:** `emergency_manager.py`
+  - **Classes**:
+    - `EmergencyManagerMixin`
+      - *Methods*:
+        - `close_position_by_ticket(self, session, ticket, reason="manual_close")`
+        - `_close_paper_position(self, session, position, reason)`
+        - `kill_switch(self, reason="Manual kill switch activated") — emergency liquidation protected by asyncio.Lock
+        - `trigger_circuit_breaker(self, reason="circuit_breaker", cooldown_seconds=3600)`
+        - `resume_trading(self, session=None, requested_by="operator")` — universal resume handler resetting EffectGate, unpausing RiskGate, and clearing DB flags
+
+**File:** `order_creator.py`
+  - **Classes**:
+    - `OrderCreator`
+      - *Methods*: `create_order()`, `save_position()`
+
+**File:** `order_executor.py`
+  - **Functions**:
+    - `_prune_executed_analysis_ids(ttl_seconds: float = 86400.0) -> None`
+  - **Classes**:
+    - `ExecutionResult`
+      - *Docstring*: Comprehensive result of an execution attempt from sizing through broker dispatch.
+    - `OrderExecutorMixin`
+      - *Methods*:
+        - `execute_analysis(self, session, analysis)`
+        - `execute_preplanned_order(self, session, symbol, order_plan, trigger_id, analysis_id, account_equity)`
+        - `execute_paired_analyses(self, session, primary_analysis, secondary_analysis)`
+        - `_execute_analysis_internal(self, session, analysis)`
+        - `_save_position(self, session, analysis, order, executed_price, lots, sl, tp, ticket, is_paper)`
+        - `_transition_order_state(self, session, order, new_status, reason, details, executed_price, ticket, slippage_pips)`
+
+**File:** `position_synchronizer.py`
+  - **Classes**:
+    - `PositionSynchronizerMixin`
+      - *Methods*:
+        - `sync_positions(self, session)`
+        - `reconcile_inflight_orders(self)`
+          - *Docstring*: Reconciles in-flight orders stuck in INTENT_COMMITTED or SUBMITTED state. Strict replay_policy='never' ensures no blind re-execution upon service restart.
+        - `_handle_stop_loss_hit(self, session, position, deal)`
+        - `modify_position_sl_tp(self, session, ticket, sl, tp, reason="strategy_update")`
+
+**File:** `reconciliation.py`
+  - **Classes**:
+    - `OrderReconciliation`
+      - *Methods*: `reconcile_orders()`
+
+**File:** `risk_evaluator.py`
+  - **Classes**:
+    - `RiskEvaluatorMixin`
+      - *Methods*:
+        - `_count_open_positions(self, session, symbol=None)`
+        - `_get_dynamic_risk_percent(self, session, symbol, raw_confidence)`
+        - `_get_current_price(self, symbol)`
+        - `_get_equity(self)`
+
+**File:** `self_healing_executor.py`
+  - **Docstring**: Autonomous self-healing execution harness for MetaTrader 5 orders intercepting broker rejections and performing zero-token deterministic micro-repairs.
+  - **Classes**:
+    - `MT5SelfHealingExecutor`
+      - *Methods*: `heal_and_reexecute()`, `_heal_stops()`, `_snap_volume()`, `_reprice_requote()`
+
+**File:** `sizing_calculator.py`
+  - **Classes**:
+    - `SizingCalculator`
+      - *Methods*: `calculate()`
+
+**File:** `state_machine.py`
+  - **Classes**:
+    - `OrderStateMachine`
+      - *Methods*: `transition()`
+  - **Global Variables**: `VALID_TRANSITIONS`
+
+**File:** `trade_confirm.py`
+  - **Docstring**: Human-in-the-Loop trade confirmation manager with pop-before-execute token consumption, drift verification, and double-fill prevention.
+  - **Classes**: `TradeConfirmationToken`, `TradeConfirmManager`
+    - *Methods*: `create_confirmation()`, `pop_for_execution()`, `cancel_confirmation()`, `clean_expired()`
+
+#### Folder: `trading-agent/gateway`
+
+**File:** `__init__.py`
+
+**File:** `acp_server.py`
+  - **Docstring**: Agent Client Protocol (ACP) Server. Standardized JSON-RPC 2.0 stdio server for modern IDE integration (Zed, VS Code, Neovim, JetBrains).
+  - **Classes**: `AcpServer`
+    - *Methods*: `handle_message()`, `send_response()`, `send_notification()`, `run_stdio_loop()`
+
 **File:** `api_server.py`
   - **Docstring**: OpenAI-Compatible Chat Completions API Server supporting streaming (SSE) and model enumeration.
   - **Classes**: `ChatMessage`, `ChatCompletionRequest`
   - **Functions**: `health_check()`, `list_models()`, `chat_completions()`, `_generate_stream_chunks()`
   - **Variables**: `AVAILABLE_MODELS`, `app`
-**File:** `channel_router.py`
-  - **Docstring**: Unified Channel Router & Session Multiplexer connecting multi-platform messaging into durable SessionDbWal sessions.
-  - **Classes**: `ChannelRouter`
-    - *Methods*: `register_adapter()`, `set_pipeline()`, `resolve_session_id()`, `handle_incoming_message()`
-**File:** `platform_base.py`
-  - **Docstring**: Base Platform Adapter Interface for Omnichannel Messaging Gateway.
-  - **Classes**: `BasePlatformAdapter`
-    - *Methods*: `register_handler()`, `start()`, `stop()`, `send_message()`
-**File:** `acp_server.py`
-  - **Docstring**: Agent Client Protocol (ACP) Server. Standardized JSON-RPC 2.0 stdio server for modern IDE integration (Zed, VS Code, Neovim, JetBrains).
-  - **Classes**: `AcpServer`
-    - *Methods*: `handle_message()`, `send_response()`, `send_notification()`, `run_stdio_loop()`
-**File:** `omnichannel_router.py`
-  - **Docstring**: Omnichannel Message Router & Multi-Tenant Session Key Manager.
-  - **Classes**: `SessionSource`, `MessageEvent`, `OmnichannelRouter`
-  - **Enums**: `MessageType`
-  - **Functions**: `build_session_key()`, `ensure_closed_code_fences()`
-**File:** `stream_consumer.py`
-  - **Docstring**: Omni-Channel Streaming Consumer with Code Fence Balancing, Thinking Tag Scrubbing & Rate-Limit Throttling.
-  - **Classes**: `LiveStreamConsumer`
-    - *Methods*: `append_token()`, `flush()`, `close()`
-  - **Functions**: `ensure_closed_code_fences(text)`, `scrub_thinking_tags(text)`
-**File:** `delivery_ledger.py`
-  - **Docstring**: Omnichannel Message Delivery Ledger & At-Least-Once Reliability Engine backed by SQLite WAL with 429 flood wait extraction.
-  - **Classes**: `DeliveryStatus`, `DeliveryRecord`, `DeliveryLedger`
-    - *Methods*: `generate_idempotency_key()`, `register_intent()`, `mark_delivered()`, `mark_failed()`, `mark_flood_delayed()`, `extract_flood_wait()`, `get_record()`, `list_dead_letters()`
-  - **Variables**: `DEFAULT_LEDGER_DB`
-**File:** `turn_lease.py`
-  - **Docstring**: Conversation Turn Lease Manager & Concurrency Fence preventing race conditions from overlapping messages.
-  - **Classes**: `LeaseRecord`, `TurnLeaseManager`
-    - *Methods*: `acquire_lease()`, `release_lease()`, `is_leased()`, `get_lease()`
-  - **Variables**: `DEFAULT_LEASE_TTL`
+
 **File:** `bot_loop_guard.py`
   - **Docstring**: Omnichannel Bot Ping-Pong Loop Guard & Message Echo Breaker preventing infinite cascades.
   - **Classes**: `MessageFingerprint`, `BotLoopGuard`
     - *Methods*: `check_and_record()`, `reset_chat()`
   - **Variables**: `MAX_MESSAGES_WINDOW`, `WINDOW_SECONDS`, `SIMILARITY_THRESHOLD`
-**File:** `webhook_ingress.py`
-  - **Docstring**: Secure Webhook Ingress & Omnichannel Event Receiver with HMAC-SHA256 signature verification, secret rotation, replay window bounds, and nonce idempotency cache.
-  - **Classes**: `WebhookIngressStatus`, `WebhookIngressResult`, `WebhookSignatureVerifier`, `WebhookIngressDispatcher`
-    - *Methods*: `verify_signature()`, `register_handler()`, `dispatch_event()`
-  - **Functions**: `verify_webhook_signature()`
+
+**File:** `channel_router.py`
+  - **Docstring**: Unified Channel Router & Session Multiplexer connecting multi-platform messaging into durable SessionDbWal sessions.
+  - **Classes**: `ChannelRouter`
+    - *Methods*: `register_adapter()`, `set_pipeline()`, `resolve_session_id()`, `handle_incoming_message()`
+
+**File:** `delivery_ledger.py`
+  - **Docstring**: Omnichannel Message Delivery Ledger & At-Least-Once Reliability Engine backed by SQLite WAL with 429 flood wait extraction.
+  - **Classes**: `DeliveryStatus`, `DeliveryRecord`, `DeliveryLedger`
+    - *Methods*: `generate_idempotency_key()`, `register_intent()`, `mark_delivered()`, `mark_failed()`, `mark_flood_delayed()`, `extract_flood_wait()`, `get_record()`, `list_dead_letters()`
+  - **Variables**: `DEFAULT_LEDGER_DB`
+
+**File:** `omnichannel_router.py`
+  - **Docstring**: Omnichannel Message Router & Multi-Tenant Session Key Manager.
+  - **Classes**: `SessionSource`, `MessageEvent`, `OmnichannelRouter`
+  - **Enums**: `MessageType`
+  - **Functions**: `build_session_key()`, `ensure_closed_code_fences()`
+
 **File:** `pairing.py`
   - **Docstring**: Production Paired DM Authorization and Direct Message Security Gateway with 8-character salted SHA-256 OTP challenge.
   - **Classes**: `PairedUserRecord`, `ActivePairingRequest`, `PairingManager`
@@ -3024,26 +3215,56 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `get_pairing_manager()`, `reset_pairing_manager()`
   - **Variables**: `DEFAULT_PAIRED_USERS_STORE`
 
+**File:** `platform_base.py`
+  - **Docstring**: Base Platform Adapter Interface for Omnichannel Messaging Gateway.
+  - **Classes**: `BasePlatformAdapter`
+    - *Methods*: `register_handler()`, `start()`, `stop()`, `send_message()`
+
+**File:** `stream_consumer.py`
+  - **Docstring**: Omni-Channel Streaming Consumer with Code Fence Balancing, Thinking Tag Scrubbing & Rate-Limit Throttling.
+  - **Classes**: `LiveStreamConsumer`
+    - *Methods*: `append_token()`, `flush()`, `close()`
+  - **Functions**: `ensure_closed_code_fences(text)`, `scrub_thinking_tags(text)`
+
+**File:** `turn_lease.py`
+  - **Docstring**: Conversation Turn Lease Manager & Concurrency Fence preventing race conditions from overlapping messages.
+  - **Classes**: `LeaseRecord`, `TurnLeaseManager`
+    - *Methods*: `acquire_lease()`, `release_lease()`, `is_leased()`, `get_lease()`
+  - **Variables**: `DEFAULT_LEASE_TTL`
+
+**File:** `webhook_ingress.py`
+  - **Docstring**: Secure Webhook Ingress & Omnichannel Event Receiver with HMAC-SHA256 signature verification, secret rotation, replay window bounds, and nonce idempotency cache.
+  - **Classes**: `WebhookIngressStatus`, `WebhookIngressResult`, `WebhookSignatureVerifier`, `WebhookIngressDispatcher`
+    - *Methods*: `verify_signature()`, `register_handler()`, `dispatch_event()`
+  - **Functions**: `verify_webhook_signature()`
+
 ##### Folder: `trading-agent/gateway/platforms`
+
 **File:** `__init__.py`
+
 **File:** `discord_adapter.py`
   - **Docstring**: Discord Platform Adapter for Discord channels and webhooks.
   - **Classes**: `DiscordPlatformAdapter`
     - *Methods*: `start()`, `stop()`, `send_message()`, `simulate_incoming()`
+
 **File:** `slack_adapter.py`
   - **Docstring**: Slack Platform Adapter for workspace channels.
   - **Classes**: `SlackPlatformAdapter`
     - *Methods*: `start()`, `stop()`, `send_message()`, `simulate_incoming()`
+
 **File:** `telegram_adapter.py`
   - **Docstring**: Telegram Platform Adapter bridging Telegram bots into ChannelRouter.
   - **Classes**: `TelegramPlatformAdapter`
     - *Methods*: `start()`, `stop()`, `send_message()`, `simulate_incoming()`
+
 **File:** `webhook_adapter.py`
   - **Docstring**: REST Webhook Adapter for third-party alerts and custom integrations.
   - **Classes**: `WebhookPlatformAdapter`
     - *Methods*: `start()`, `stop()`, `send_message()`, `inject_incoming_webhook()`
 
 #### Folder: `trading-agent/graph`
+
+**File:** `__init__.py`
 
 **File:** `reactive_graph.py`
   - **Classes**:
@@ -3062,7 +3283,6 @@ This document provides an exhaustive structural index of all directories, files,
     - `build_reactive_graph(checkpointer=None)`
     - `get_reactive_graph(checkpointer=None)`
 
-
 **File:** `state.py`
   - **Classes**:
     - `TradingState` - Primary state TypedDict; list fields use Annotated merge_lists reducer (including approved_trades and actionable_trades), along with ssvp_per_symbol_contexts.
@@ -3075,18 +3295,23 @@ This document provides an exhaustive structural index of all directories, files,
     - `build_trading_graph()`
 
 ##### Folder: `trading-agent/graph/checkpointers`
+
 **File:** `__init__.py`
+
 **File:** `dual_checkpointer.py`
   - **Classes**: `DualCheckpointSaver(BaseCheckpointSaver)`
     - *Docstring*: Dual-write LangGraph checkpointer orchestrating Primary (PostgreSQL) and Secondary (SQLite). Deprecated in favor of authoritative PostgreSQL checkpointer; retained for test compatibility.
     - *Properties*: `conn` (proxies primary connection pool), `_needs_setup`
     - *Methods*: `__init__()`, `a_setup()`, `get_tuple()`, `aget_tuple()`, `list()`, `alist()`, `put()`, `aput()`, `put_writes()`, `aput_writes()`
+
 **File:** `sqlite_checkpointer.py`
   - **Classes**: `SqliteCheckpointSaver(InMemorySaver)`
     - *Docstring*: Local SQLite checkpointer providing crash-safe state persistence across restarts. Deprecated; retained for backward compatibility.
     - *Methods*: `__init__()`, `_init_db()`, `_load_from_sqlite()`, `put()`, `aput()`, `_persist_checkpoint_sync()`, `put_writes()`, `aput_writes()`, `_persist_writes_sync()`
 
 ##### Folder: `trading-agent/graph/nodes`
+
+**File:** `__init__.py`
 
 **File:** `data_node.py`
   - **Functions**:
@@ -3097,6 +3322,40 @@ This document provides an exhaustive structural index of all directories, files,
   - **Global Variables**: logger
   - **Functions**:
     - `debate_node()`
+
+**File:** `execution_node.py`
+  - **Functions**:
+    - `execution_node()`
+
+**File:** `fundamental_node.py`
+  - **Functions**:
+    - `fundamental_analysis_node()`
+
+**File:** `per_asset_node.py`
+  - **Functions**:
+    - `per_asset_analysis_node()`
+
+**File:** `plan_refinement_node.py`
+  - **Global Variables**: logger
+  - **Functions**:
+    - `plan_refinement_node()` - Evaluates negotiable trade rejections (tight SL, portfolio heat, staleness drift) and refines trade proposal parameters up to 2 iterations
+
+**File:** `reflection_node.py`
+  - **Global Variables**: logger
+  - **Functions**:
+    - `reflection_node()` - Cross-asset reflection prior to execution; enforces defensive VIX fallback (VIX=25.1 on query failure) preventing elevated volatility filter bypass when DB is unavailable; expands currency pair coverage (USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP) and strips broker suffixes
+
+**File:** `risk_gate_node.py`
+  - **Global Variables**: `PORTFOLIO_SYNTHESIS_SCHEMA`
+  - **Functions**:
+    - `_ai_portfolio_synthesis()`
+    - `risk_gate_node()`
+
+**File:** `state_pruner.py`
+  - **Functions**:
+    - `prune_after_fundamental(state: TradingState) -> Dict[str, Any]` (Uses `_DELETED_` tombstone values to correctly remove keys in LangGraph `merge_dicts` state reducer)
+    - `prune_after_debate(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for heavyweight debate transcripts)
+    - `prune_before_execution(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for transient raw research and context payloads)
 
 ###### Folder: `trading-agent/graph/nodes/debate`
 
@@ -3145,57 +3404,17 @@ This document provides an exhaustive structural index of all directories, files,
     - `should_continue_debate(state: TradingState) -> str`
     - `build_debate_subgraph(checkpointer=None)`
 
-**File:** `execution_node.py`
-  - **Functions**:
-    - `execution_node()`
-
-**File:** `fundamental_node.py`
-  - **Functions**:
-    - `fundamental_analysis_node()`
-
-**File:** `per_asset_node.py`
-  - **Functions**:
-    - `per_asset_analysis_node()`
-
-**File:** `reflection_node.py`
-  - **Global Variables**: logger
-  - **Functions**:
-    - `reflection_node()` - Cross-asset reflection prior to execution; enforces defensive VIX fallback (VIX=25.1 on query failure) preventing elevated volatility filter bypass when DB is unavailable; expands currency pair coverage (USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, EURGBP) and strips broker suffixes
-
-**File:** `plan_refinement_node.py`
-  - **Global Variables**: logger
-  - **Functions**:
-    - `plan_refinement_node()` - Evaluates negotiable trade rejections (tight SL, portfolio heat, staleness drift) and refines trade proposal parameters up to 2 iterations
-
-**File:** `risk_gate_node.py`
-  - **Global Variables**: `PORTFOLIO_SYNTHESIS_SCHEMA`
-  - **Functions**:
-    - `_ai_portfolio_synthesis()`
-    - `risk_gate_node()`
-
-**File:** `state_pruner.py`
-  - **Functions**:
-    - `prune_after_fundamental(state: TradingState) -> Dict[str, Any]` (Uses `_DELETED_` tombstone values to correctly remove keys in LangGraph `merge_dicts` state reducer)
-    - `prune_after_debate(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for heavyweight debate transcripts)
-    - `prune_before_execution(state: TradingState) -> Dict[str, Any]` (Emits `_DELETED_` tombstones for transient raw research and context payloads)
-
 #### Folder: `trading-agent/harness`
 
 **File:** `__init__.py`
 
-##### Folder: `trading-agent/harness/adapters`
-**File:** `__init__.py`
-**File:** `functional_adapter.py`
-  - **Docstring**: Functional Script Plugin Adapter for Monika Trading Harness. Enables plug-and-play execution of standalone script plugins (`register(ctx)`) inside Monika.
-  - **Classes**: `FunctionalPluginBridge`
-    - *Methods*: `load_plugin(plugin_dir, engine)`, `load_from_directory(plugin_dir, engine)`
-  - **Functions**: `install_compatibility_shims()`
-  - **Variables**: `script_constants`, `tools`
-
 **File:** `context.py`
-  - **Docstring**: Universal Plugin Context for Monika Trading Harness. Exposes scoped, secure, fail-safe surface for plugins to interact with core trading agent capabilities.
-  - **Classes**: `PluginContext`
-    - *Methods*: `get_config()`, `set_config()`, `has_plugin()`, `on_unload()`, `register_hook()`, `register_tool()`, `register_system_prompt_section()`, `register_command()`, `spawn_task()`, `call_mcp()`, `emit()`, `emit_waterfall()`
+  - **Docstring**: Universal Plugin Context for Monika Trading Harness.
+  - **Global Variables**: logger
+  - **Classes**:
+    - `PluginContext`
+      - *Docstring*: Universal Plugin Context provided to all plugins during registration.
+      - *Methods*: `__init__()`, `plugin_id()`, `manifest()`, `config()`, `state()`, `logger()`, `container()`, `event_bus()`, `task_registry()`, `get_config()`, `set_config()`, `has_plugin()`
 
 **File:** `contract.py`
   - **Docstring**: Universal Plugin Contract for Monika Trading Harness with lifecycle stages, protocols, and typed reactive hooks.
@@ -3211,19 +3430,24 @@ This document provides an exhaustive structural index of all directories, files,
       - *Methods*: `add_disposer(disposer)`, `on_context_ready(ctx)`, `on_register(container, event_bus)`, `on_preflight(container)`, `on_recovery(container)`, `on_start(container, task_registry)`, `on_tick(event)`, `on_bar(event)`, `on_order_state(event)`, `on_risk_breach(event)`, `on_circuit_breaker(event)`, `on_config_reload(new_config)`, `on_stop()`
 
 **File:** `engine.py`
-  - **Docstring**: Universal Plugin Engine providing discovery, Kahn's topological dependency resolution, reactive event wiring, lifecycle timeouts, and clean teardown.
-  - **Global Variables**: `_GLOBAL_ENGINE`, `LIFECYCLE_TIMEOUT_REGISTER`, `LIFECYCLE_TIMEOUT_PREFLIGHT`, `LIFECYCLE_TIMEOUT_RECOVERY`, `LIFECYCLE_TIMEOUT_START`, `LIFECYCLE_TIMEOUT_STOP`, `LIFECYCLE_TIMEOUT_CONFIG_RELOAD`
+  - **Docstring**: Plugin Engine for Monika Trading Harness.
+  - **Global Variables**: logger, LIFECYCLE_TIMEOUT_REGISTER, LIFECYCLE_TIMEOUT_PREFLIGHT, LIFECYCLE_TIMEOUT_RECOVERY, LIFECYCLE_TIMEOUT_START, LIFECYCLE_TIMEOUT_STOP, LIFECYCLE_TIMEOUT_CONFIG_RELOAD
   - **Classes**:
-    - `FunctionalPluginAdapter` (extends `TradingPlugin`)
+    - `FunctionalPluginAdapter`
+      - *Docstring*: Wraps a functional plugin exposing `register(ctx)` script entry point
+      - *Methods*: `__init__()`, `on_context_ready()`, `on_register()`
     - `PluginDependencyError`
+      - *Docstring*: Base error for plugin dependency failures.
     - `MissingDependencyError`
+      - *Docstring*: Raised when a required plugin dependency is missing.
     - `CircularDependencyError`
+      - *Docstring*: Raised when circular dependencies exist between plugins.
     - `PluginEngine`
-      - *Properties*: `registry`, `manager`, `active_pipeline`
-      - *Methods*: `get_instance()`, `get_context()`, `register_hook()`, `emit_hook()`, `emit_waterfall()`, `register_tool_from_plugin()`, `unregister_tool_from_plugin()`, `register_prompt_section()`, `unregister_prompt_section()`, `register_system_command()`, `register_cli_command()`, `set_plugin_enabled(plugin_id, enabled)`, `register_plugin_instance(plugin)`, `discover_entrypoints()`, `discover_directory_plugins(directory)`, `check_required_packages(plugin)`, `apply_settings_overrides(settings)`, `initialize(plugins_config)`, `start()`, `stop()`, `on_config_reloaded(new_config)`, `propagate_config_reload(new_config)`, `get_plugin(plugin_id)`, `get_plugins_by_category(category)`
+      - *Docstring*: Central orchestrator for discovering, loading, and managing plugin lifecycles.
+      - *Methods*: `__init__()`, `registry()`, `manager()`, `get_instance()`, `get_context()`, `register_hook()`, `unregister_hook()`, `emit_hook()`, `emit_waterfall()`, `register_tool_from_plugin()`, `unregister_tool_from_plugin()`, `register_prompt_section()`
   - **Functions**:
-    - `get_plugin_engine() -> Optional[PluginEngine]`
-    - `topological_sort_plugins(plugins)`
+    - `topological_sort_plugins()`: Sort a list of TradingPlugin instances topologically based on their dependencies.
+    - `get_plugin_engine()`: Retrieve active global PluginEngine instance.
 
 **File:** `installer.py`
   - **Docstring**: Plugin Installer and Lifecycle Management Service for Monika Trading Harness.
@@ -3237,19 +3461,31 @@ This document provides an exhaustive structural index of all directories, files,
     - `get_community_catalog(catalog_file: Optional[Path] = None) -> List[Dict[str, Any]]`
     - `toggle_plugin_state(plugin_id: str, category: str, enabled: bool, settings_file: Optional[Path] = None) -> Tuple[bool, str]`
     - `list_all_plugins_status(settings_file: Optional[Path] = None) -> List[Dict[str, Any]]`
+
 **File:** `lifecycle.py`
   - **Docstring**: Component Replacement Coordinator, Lease Locks & Safe Hook Dispatcher enforcing mutex locking per component, graceful drain periods, and timeout isolation on plugin hooks.
   - **Classes**: `ReplacementTimeoutError`, `ComponentDrainingError`, `ReplacementLease`, `ReplacementCoordinator`
     - *Methods*: `acquire_replacement_lease()`, `register_active_task()`, `deregister_active_task()`, `is_draining()`
   - **Functions**: `safe_dispatch_hook()`, `get_plugin_storage_dir()`
 
-#### Folder: `trading-agent/plugin_kernel`
+##### Folder: `trading-agent/harness/adapters`
+
 **File:** `__init__.py`
-  - **Docstring**: Monika Plugin Kernel — Universal Plugin Architecture providing re-exports of `TradingPlugin`, `PluginMetadata`, `PluginEngine`, and lifecycle protocols.
+
+**File:** `functional_adapter.py`
+  - **Docstring**: Functional Script Plugin Adapter for Monika Trading Harness. Enables plug-and-play execution of standalone script plugins (`register(ctx)`) inside Monika.
+  - **Classes**: `FunctionalPluginBridge`
+    - *Methods*: `load_plugin(plugin_dir, engine)`, `load_from_directory(plugin_dir, engine)`
+  - **Functions**: `install_compatibility_shims()`
+  - **Variables**: `script_constants`, `tools`
 
 #### Folder: `trading-agent/indicators`
 
 **File:** `__init__.py`
+
+**File:** `microstructure.py`
+  - **Global Variables**: `VPIN_SYMBOLS`, `KYLE_SYMBOLS`, `AMIHUD_SYMBOLS`
+  - **Functions**: `compute_vpin()`, `compute_amihud_illiquidity()`, `compute_kyle_lambda()`, `get_microstructure_metrics()`
 
 **File:** `order_flow.py`
   - **Global Variables**: logger
@@ -3266,6 +3502,11 @@ This document provides an exhaustive structural index of all directories, files,
         - `_check_and_subscribe_dom(self, symbol: str) -> bool`
         - `_compute_dom_l2_snapshot(self, symbol: str) -> OrderFlowSnapshot`
         - `_compute_tick_rule_cvd_snapshot(self, session, symbol: str, lookback: int = 200, df=None) -> OrderFlowSnapshot`
+
+**File:** `regime_detector.py`
+  - **Classes**: `RegimeState`, `SchmittRegimeDetector`
+    - *Methods*: `compute_edge_density()`, `update()`
+  - **Functions**: `get_schmitt_regime_detector()`
 
 **File:** `structure.py`
   - **Global Variables**: logger, `FVG_MAX_DISTANCE`
@@ -3300,15 +3541,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `_save_order_blocks(self)`
         - `_save_structure_breaks(self)`
         - `get_structure_snapshot(self)`
-
-**File:** `microstructure.py`
-  - **Global Variables**: `VPIN_SYMBOLS`, `KYLE_SYMBOLS`, `AMIHUD_SYMBOLS`
-  - **Functions**: `compute_vpin()`, `compute_amihud_illiquidity()`, `compute_kyle_lambda()`, `get_microstructure_metrics()`
-
-**File:** `regime_detector.py`
-  - **Classes**: `RegimeState`, `SchmittRegimeDetector`
-    - *Methods*: `compute_edge_density()`, `update()`
-  - **Functions**: `get_schmitt_regime_detector()`
 
 **File:** `technical.py`
   - **Global Variables**: logger, `_WARNED_INSUFFICIENT_BARS`
@@ -3346,28 +3578,6 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `__init__.py`
   - **Docstring**: Pattern similarity screening package exports.
 
-**File:** `models.py`
-  - **Docstring**: Domain models and dataclasses for historical chart pattern similarity screening.
-  - **Classes**: `PatternMatch`, `MarketContext`, `ContextAnnotation`, `ContextVerdict`, `PatternOutcome`, `OutcomeStatistics`, `SingleTimeframeResult`, `MultiTimeframeScreeningResult`
-
-**File:** `normalizer.py`
-  - **Docstring**: Price series normalization utilities for scale-independent pattern comparison.
-  - **Classes**:
-    - `PriceNormalizer`
-      - *Methods*: `z_score()`, `min_max()`, `log_return()`, `atr_relative()`, `normalize_segment()`
-
-**File:** `feature_extractor.py`
-  - **Docstring**: Structural and technical feature extractor for chart pattern segments.
-  - **Classes**:
-    - `FeatureExtractor`
-      - *Methods*: `extract_features()`, `trend_slope()`, `volatility_ratio()`, `range_position()`, `wick_asymmetry()`, `volume_trend()`, `swing_count()`
-
-**File:** `scanner.py`
-  - **Docstring**: Fast sliding window pattern similarity scanner with Sakoe-Chiba DTW and Euclidean distance.
-  - **Classes**:
-    - `SimilarityScanner`
-      - *Methods*: `__init__()`, `scan()`, `_sliding_window_euclidean()`, `_sakoe_chiba_dtw()`, `_filter_non_overlapping()`, `_is_flat_or_degenerate()`
-
 **File:** `context_scorer.py`
   - **Docstring**: Market context scoring and similarity weighting across macroeconomic, volatility, and trend regimes.
   - **Classes**:
@@ -3380,17 +3590,39 @@ This document provides an exhaustive structural index of all directories, files,
     - `PatternContextVerifier`
       - *Methods*: `__init__()`, `verify_matches()`, `_build_memory_prompt()`, `_build_web_query()`
 
+**File:** `engine.py`
+  - **Docstring**: Master multi-timeframe pattern similarity screening engine orchestrator.
+  - **Classes**:
+    - `PatternSimilarityEngine`
+      - *Methods*: `__init__()`, `screen_symbol()`, `_screen_timeframe()`, `_compute_mtf_consensus()`
+
+**File:** `feature_extractor.py`
+  - **Docstring**: Structural and technical feature extractor for chart pattern segments.
+  - **Classes**:
+    - `FeatureExtractor`
+      - *Methods*: `extract_features()`, `trend_slope()`, `volatility_ratio()`, `range_position()`, `wick_asymmetry()`, `volume_trend()`, `swing_count()`
+
+**File:** `models.py`
+  - **Docstring**: Domain models and dataclasses for historical chart pattern similarity screening.
+  - **Classes**: `PatternMatch`, `MarketContext`, `ContextAnnotation`, `ContextVerdict`, `PatternOutcome`, `OutcomeStatistics`, `SingleTimeframeResult`, `MultiTimeframeScreeningResult`
+
+**File:** `normalizer.py`
+  - **Docstring**: Price series normalization utilities for scale-independent pattern comparison.
+  - **Classes**:
+    - `PriceNormalizer`
+      - *Methods*: `z_score()`, `min_max()`, `log_return()`, `atr_relative()`, `normalize_segment()`
+
 **File:** `outcome_analyzer.py`
   - **Docstring**: Forward outcome evaluator, MFE/MAE calculator, and statistical aggregator for historical pattern matches.
   - **Classes**:
     - `OutcomeAnalyzer`
       - *Methods*: `__init__()`, `evaluate_outcomes()`, `aggregate_statistics()`, `_compute_forward_returns()`, `_binomial_test_pvalue()`
 
-**File:** `engine.py`
-  - **Docstring**: Master multi-timeframe pattern similarity screening engine orchestrator.
+**File:** `scanner.py`
+  - **Docstring**: Fast sliding window pattern similarity scanner with Sakoe-Chiba DTW and Euclidean distance.
   - **Classes**:
-    - `PatternSimilarityEngine`
-      - *Methods*: `__init__()`, `screen_symbol()`, `_screen_timeframe()`, `_compute_mtf_consensus()`
+    - `SimilarityScanner`
+      - *Methods*: `__init__()`, `scan()`, `_sliding_window_euclidean()`, `_sakoe_chiba_dtw()`, `_filter_non_overlapping()`, `_is_flat_or_degenerate()`
 
 #### Folder: `trading-agent/logging_observability`
 
@@ -3410,6 +3642,12 @@ This document provides an exhaustive structural index of all directories, files,
       - *Docstring*: Penulis log asinkron ke DB `activity_log`.
       - *Methods*: `__init__()`, `log()`, `trading()`, `analysis()`, `risk()`, `system()`, `scraping()`, `telegram()`, `log_fallback_event()`, `bulk()`
 
+**File:** `delegation_live_log.py`
+  - **Docstring**: Subagent Delegation Live Transcript & Streaming Logger providing zero-locking real-time disk persistence for subagent progress.
+  - **Classes**: `LiveTranscriptWriter`
+    - *Methods*: `emit_event()`, `read_tail()`, `close()`
+  - **Variables**: `DEFAULT_LOG_DIR`
+
 **File:** `metrics_exporter.py`
   - **Global Variables**: metrics
   - **Classes**:
@@ -3421,6 +3659,14 @@ This document provides an exhaustive structural index of all directories, files,
         - `set_gauge(self, name, value, labels)`
         - `record_histogram(self, name, value)`
         - `generate_prometheus_metrics(self)`
+
+**File:** `operator_feedback.py`
+  - **Docstring**: Operator Feedback Capture allowing human reviewers to rate, categorize, and annotate trade rationales linked into cycle event streams.
+  - **Classes**:
+    - `AnalysisFeedback`
+    - `OperatorFeedbackManager`
+      - *Methods*: `submit_feedback()`, `get_feedback_for_cycle()`
+  - **Functions**: `get_operator_feedback_manager()`
 
 **File:** `report_writer.py`
   - **Classes**:
@@ -3443,14 +3689,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `get_budget_status()`
   - **Functions**: `get_token_budget_manager(settings=None)`
 
-**File:** `operator_feedback.py`
-  - **Docstring**: Operator Feedback Capture allowing human reviewers to rate, categorize, and annotate trade rationales linked into cycle event streams.
-  - **Classes**:
-    - `AnalysisFeedback`
-    - `OperatorFeedbackManager`
-      - *Methods*: `submit_feedback()`, `get_feedback_for_cycle()`
-  - **Functions**: `get_operator_feedback_manager()`
-
 **File:** `trading_cycle_event_log.py`
   - **Docstring**: Monotonic Event-Sourced Trading Cycle Log and Decision Lineage Tracing with contiguous sequence numbers per cycle and cryptographic SHA-256 hash chaining.
   - **Classes**:
@@ -3460,41 +3698,6 @@ This document provides an exhaustive structural index of all directories, files,
     - `TradingCycleEventLog`
       - *Methods*: `record_event()`, `get_events_for_cycle()`, `trace_decision_lineage()`, `reconstruct_cycle()`, `verify_cycle_integrity()`
   - **Functions**: `get_cycle_event_log()`, `compute_event_hash()`
-
-**File:** `delegation_live_log.py`
-  - **Docstring**: Subagent Delegation Live Transcript & Streaming Logger providing zero-locking real-time disk persistence for subagent progress.
-  - **Classes**: `LiveTranscriptWriter`
-    - *Methods*: `emit_event()`, `read_tail()`, `close()`
-  - **Variables**: `DEFAULT_LOG_DIR`
-
-##### Folder: `trading-agent/logging_observability/reporting`
-
-**File:** `__init__.py`
-
-**File:** `tearsheet_generator.py`
-  - **Classes**:
-    - `TearsheetResult`
-      - *Docstring*: Dataclass encapsulating comprehensive quant tearsheet analytics.
-      - *Methods*: `to_dict()`, `to_markdown()`, `to_telegram_html()`
-    - `QuantTearsheetGenerator`
-      - *Docstring*: Quantitative performance reporting engine calculating institutional tearsheets.
-      - *Methods*: `generate_from_trades(trades, initial_equity=10000.0, start_date=None, end_date=None)`
-
-##### Folder: `trading-agent/logging_observability/tracing`
-**File:** `__init__.py`
-**File:** `context.py`
-  - **Functions**: `get_current_trace_id()`, `get_current_span_id()`, `set_trace_context()`, `clear_trace_context()`
-**File:** `exporters.py`
-  - **Classes**: `SpanExporter`, `InMemorySpanExporter`, `InMemoryTraceStore`, `ConsoleSpanExporter`, `JsonFileSpanExporter`
-    - *Methods*: `InMemoryTraceStore.search_spans()`
-**File:** `otlp_exporter.py`
-  - **Classes**: `OTLPSpanExporter`
-  - **Variables**: `global_otlp_exporter`
-**File:** `spans.py`
-  - **Functions**: `cycle_span()`, `node_span()`, `llm_span()`, `tool_span()`
-**File:** `tracer.py`
-  - **Classes**: `Tracer`, `TracerProvider`
-  - **Functions**: `get_tracer()`, `trace_span()`
 
 ##### Folder: `trading-agent/logging_observability/dashboard`
 
@@ -3566,205 +3769,376 @@ This document provides an exhaustive structural index of all directories, files,
     - `get_graph_state(cycle_id)`
       - *Docstring*: Retrieve topology, execution status, latencies, tokens, and payloads for the LangGraph multi-agent pipeline visualizer via GET /api/observability/graph-state.
 
+**File:** `log_streamer.py`
+  - **Docstring**: Asynchronous Incremental Log File Tailer & Streamer.
+  - **Classes**: `LogStreamer`
+    - *Methods*: `stop()`, `should_emit()`, `tail()`
+  - **Functions**: `parse_log_line_level(line)`
+
+**File:** `pty_bridge.py`
+  - **Docstring**: PTY Console Bridge & Real-Time Terminal WebSocket Coordinator providing live bidirectional terminal session streaming between backend and web dashboard UI.
+  - **Classes**: `PtySession`, `PtyBridgeManager`
+    - *Methods*: `append_output()`, `drain_output()`, `create_session()`, `get_session()`, `close_session()`, `reap_idle_sessions()`
+
 **File:** `rbac.py`
   - **Classes**:
     - `Role(str, Enum)`: User role hierarchy (viewer, operator, admin).
   - **Functions**:
     - `resolve_role(api_key, is_localhost)`: Parse multi-role DASHBOARD_API_KEYS or legacy DASHBOARD_API_KEY.
     - `require_role(minimum_role)`: Decorator protecting endpoints requiring specific role clearance.
+
 **File:** `ws_ticket.py`
   - **Docstring**: Single-Use Ephemeral WebSocket Ticket Authentication Manager.
   - **Classes**: `TicketPayload`, `WsTicketManager`
     - *Methods*: `create_ticket()`, `validate_and_consume()`
-**File:** `log_streamer.py`
-  - **Docstring**: Asynchronous Incremental Log File Tailer & Streamer.
-  - **Classes**: `LogStreamer`
-    - *Methods*: `stop()`, `should_emit()`, `tail()`
-  - **Functions**: `parse_log_line_level(line)`
-**File:** `pty_bridge.py`
-  - **Docstring**: PTY Console Bridge & Real-Time Terminal WebSocket Coordinator providing live bidirectional terminal session streaming between backend and web dashboard UI.
-  - **Classes**: `PtySession`, `PtyBridgeManager`
-    - *Methods*: `append_output()`, `drain_output()`, `create_session()`, `get_session()`, `close_session()`, `reap_idle_sessions()`
+
+###### Folder: `trading-agent/logging_observability/dashboard/frontend`
+
+**File:** `.gitignore`
+  - **Description**: Logs
+
+**File:** `.oxlintrc.json`
+  - **Description**: Structured JSON data / schema definition.
+
+**File:** `index.html`
+
+**File:** `package-lock.json`
+  - **Description**: Structured JSON data / schema definition.
+
+**File:** `package.json`
+
+**File:** `README.md`
+
+**File:** `tsconfig.app.json`
+
+**File:** `tsconfig.json`
+  - **Description**: Structured JSON data / schema definition.
+
+**File:** `tsconfig.node.json`
+
+**File:** `vite.config.ts`
+
+####### Folder: `trading-agent/logging_observability/dashboard/frontend/public`
+
+**File:** `favicon.svg`
+  - **Description**: Platform visual asset (favicon.svg).
+
+**File:** `icons.svg`
+  - **Description**: Platform visual asset (icons.svg).
+
+**File:** `mobius-master.svg`
+  - **Description**: Platform visual asset (mobius-master.svg).
+
+####### Folder: `trading-agent/logging_observability/dashboard/frontend/src`
+
+**File:** `App.css`
+
+**File:** `App.tsx`
+
+**File:** `index.css`
+
+**File:** `main.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/assets`
+
+**File:** `hero.png`
+  - **Description**: Platform visual asset (hero.png).
+
+**File:** `react.svg`
+  - **Description**: Platform visual asset (react.svg).
+
+**File:** `vite.svg`
+  - **Description**: Platform visual asset (vite.svg).
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`
+
+**File:** `DecisionDistribution.tsx`
+
+**File:** `EquityChart.tsx`
+
+**File:** `FactorHeatmap.tsx`
+
+**File:** `VixSparkline.tsx`
+
+**File:** `WinRateGauge.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`
+
+**File:** `BreadcrumbBar.tsx`
+
+**File:** `GlobalStatusBar.tsx`
+
+**File:** `Header.tsx`
+
+**File:** `MobileNavDrawer.tsx`
+
+**File:** `navigation.ts`
+
+**File:** `Sidebar.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`
+
+**File:** `ActivityFeed.tsx`
+
+**File:** `AgentChatPanel.tsx`
+
+**File:** `AnalysisGrid.tsx`
+
+**File:** `BacktestPanel.tsx`
+
+**File:** `BenchmarkPanel.tsx`
+  - **Description**: Interactive LLM benchmark suite runner, candidate model/tier configuration, live streaming log monitor, and composite quadrant leaderboard interface.
+
+**File:** `CockpitBar.tsx`
+  - **Description**: Compact cockpit instrument cluster displaying daily P&L, drawdown, win rate, and VIX sentiment.
+
+**File:** `ConfigEditorPanel.tsx`
+
+**File:** `DebateOutcomesPanel.tsx`
+
+**File:** `EdgeMetricsPanel.tsx`
+
+**File:** `GraphVisualizerPanel.tsx`
+
+**File:** `MarketDataPanel.tsx`
+
+**File:** `MemoryBrowserPanel.tsx`
+
+**File:** `ObservabilityPanel.tsx`
+
+**File:** `PerformancePanel.tsx`
+
+**File:** `PluginManagerPanel.tsx`
+
+**File:** `PositionsTable.tsx`
+
+**File:** `RiskPanel.tsx`
+
+**File:** `SessionBrowserPanel.tsx`
+
+**File:** `SignalsTriggersPanel.tsx`
+
+**File:** `SkillManagerPanel.tsx`
+
+**File:** `SystemPanel.tsx`
+
+**File:** `TokenAuditPanel.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`
+
+**File:** `ConfigDiffModal.tsx`
+
+**File:** `ConfigSection.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`
+
+**File:** `GraphControls.tsx`
+
+**File:** `GraphEdge.tsx`
+
+**File:** `GraphInspector.tsx`
+
+**File:** `GraphNode.tsx`
+
+**File:** `graphUtils.ts`
+  - **Variables**: `CANONICAL_POSITIONS`, `COMPACT_POSITIONS`, `WIDE_POSITIONS`
+  - **Functions**: `getNodeIcon()`, `getStatusColor()`, `computeGraphLayout()`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`
+
+**File:** `TokenCharts.tsx`
+
+**File:** `TokenRoleTable.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`
+
+**File:** `AnalogDial.tsx`
+
+**File:** `ApprovalModal.tsx`
+
+**File:** `Badge.tsx`
+
+**File:** `BootSequence.tsx`
+
+**File:** `Card.tsx`
+
+**File:** `ConfirmModal.tsx`
+
+**File:** `EmptyState.tsx`
+
+**File:** `ErrorBoundary.tsx`
+  - **Classes**:
+    - `ErrorBoundary`
+      - *Methods*: `getDerivedStateFromError()`, `componentDidCatch()`, `handleReset()`, `render()`
+
+**File:** `Icons.tsx`
+  - **Description**: Custom SVG vector icon library for dashboard navigation, tools, and telemetry.
+
+**File:** `KeyboardShortcutsPanel.tsx`
+
+**File:** `LedgerTable.tsx`
+
+**File:** `MetricCard.tsx`
+
+**File:** `MonikaInfiniteIcon.tsx`
+
+**File:** `SegmentedProgressBar.tsx`
+
+**File:** `Skeleton.tsx`
+
+**File:** `StatusIndicator.tsx`
+
+**File:** `ThemeToggle.tsx`
+
+**File:** `TickerTape.tsx`
+
+**File:** `TypewriterButton.tsx`
+
+**File:** `VuMeter.tsx`
+  - **Description**: Analog dial meter component with critical/warning thresholds and precision needle rendering.
+
+**File:** `WeekendGapBanner.tsx`
+
+**File:** `WindowFrame.tsx`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`
+
+**File:** `useAgentChatWs.ts`
+
+**File:** `usePolling.ts`
+
+**File:** `useWebSocket.ts`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`
+
+**File:** `api.ts`
+
+**File:** `formatters.ts`
+
+**File:** `soundEffects.ts`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`
+
+**File:** `dashboardStore.ts`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`
+
+**File:** `tokens.ts`
+
+######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`
+
+**File:** `api.ts`
 
 ###### Folder: `trading-agent/logging_observability/dashboard/routes`
+
 **File:** `__init__.py`
   - Re-exports all route routers in priority match order: `system_router`, `tokens_router`, `config_router`, `trading_router`, `trace_search_router`, `observability_router`, `websocket_router`, `backtest_router`, `benchmark_router`, `memory_router`, `intelligence_router`, `plugins_router`.
+
 **File:** `backtest.py`
   - **Variables**: `backtest_router`
   - **Classes**: `BacktestRunRequest`
   - **Functions**: `list_backtest_runs()`, `get_backtest_run_details()`, `trigger_backtest_run()`, `_execute_background_backtest()`
+
 **File:** `benchmark.py`
   - **Docstring**: REST API endpoints for LLM Benchmark suite management & analytics.
   - **Variables**: `benchmark_router`
   - **Classes**: `BenchmarkRunRequest`
   - **Functions**: `list_benchmark_tasks()`, `list_benchmark_models()`, `list_benchmark_runs()`, `get_benchmark_run_detail()`, `get_benchmark_quadrant_chart_data()`, `get_benchmark_leaderboard()`, `trigger_benchmark_run()`, `cancel_benchmark_run()`, `_execute_background_benchmark()`
-**File:** `trace_search.py`
-  - **Variables**: `trace_search_router`
-  - **Functions**: `search_traces()`, `slow_llm_calls()`
+
 **File:** `common.py`
   - **Variables**: `_active_websockets`, `_client_queues`, `_stream_seq`, `_live_event_buffer`
   - **Classes**: `TriggerCycleRequest`, `OverrideRiskRequest`, `ClosePositionRequest`, `ModifyPositionRequest`, `DeprecateSkillRequest`, `CrystallizeSkillRequest`
   - **Functions**: `set_dashboard_dependencies()`, `get_dashboard_dependency()`, `broadcast_live_event()`, `_safe_json()`, `_resolve_settings_path()`
+
 **File:** `config.py`
   - **Functions**: `get_config_settings()`, `get_config_schema()`, `update_config_settings()`
+
 **File:** `intelligence.py`
   - **Docstring**: Market Intelligence, Calendar, COT, Skills, Plugins & Tearsheet API.
   - **Variables**: `intelligence_router`
   - **Functions**: `get_calendar_events()`, `get_upcoming_high_impact_events()`, `get_cot_reports()`, `get_classified_news()`, `get_aggregated_sentiment()`, `get_skills_catalog()`, `get_latest_tearsheet()`, `get_market_fedwatch()`, `get_market_yields()`, `get_market_fear_greed()`, `get_market_sentiment_composite()`, `get_crystallized_skills()`, `get_skill_stats()`, `curate_crystallized_skills()`, `deprecate_crystallized_skill()`, `crystallize_skills_now()`
-**File:** `plugins.py`
-  - **Docstring**: Plugin Marketplace, Lifecycle & ON/OFF Management Endpoints.
-  - **Variables**: `plugins_router`
-  - **Classes**: `PluginToggleRequest`, `PluginInstallRequest`, `PluginUninstallRequest`
-  - **Functions**: `get_plugins()`, `get_plugin_catalog()`, `toggle_plugin()`, `install_plugin()`, `uninstall_plugin()`
-**File:** `memory.py`
-  - **Docstring**: Memory Browsing Endpoints (Reflections, Lessons, Playbooks, Search).
-  - **Variables**: `memory_router`
-  - **Classes**: `MemorySearchRequest`
-  - **Functions**: `get_reflections()`, `get_lessons()`, `get_playbooks()`, `search_memory()`, `get_playbook_mutation_history()`, `rollback_playbook_version()`
-**File:** `observability.py`
-  - **Functions**: `_build_graph_state_for_cycle()`, `get_traces()`, `get_trace_tree()`, `get_cycle_trace_summary()`, `get_playbook_tree()`, `get_prompt_cache_metrics()`, `get_tool_latencies()`, `get_graph_state()`, `get_trade_trajectories()`, `get_cycle_decision_lineage()`
-**File:** `system.py`
-  - **Functions**: `get_system_health()`, `get_system_metrics()`, `ping()`, `get_diagnostics()`, `get_daily_brief()`, `get_vix_data()`, `get_gemini_quota()`, `get_auth_role()`
-**File:** `tokens.py`
-  - **Functions**: `get_token_summary()`, `get_context_tracker_metrics()`, `get_tokens_by_role()`, `get_tokens_by_subsystem()`, `get_tokens_by_symbol()`, `get_recent_token_logs()`, `get_tokens_by_cycle()`, `get_per_turn_cost_metrics()`
-**File:** `trading.py`
-  - **Functions**: `get_overview()`, `get_paper_trading_summary()`, `get_open_positions()`, `get_recent_activity()`, `get_recent_analysis()`, `get_factor_analysis()`, `get_recent_orders()`, `get_current_risk()`, `get_risk_scorecard()`, `get_correlation_matrix()`, `get_edge_metrics()`, `get_decision_distribution()`, `get_analysis_quality()`, `get_ssvp_health()`, `get_debate_outcomes()`, `get_mt5_signals()`, `get_trade_triggers()`, `action_trigger_cycle()`, `action_override_risk()`, `action_close_position()`, `action_emergency_kill()`, `action_resume_trading()`, `action_approve_trade()`, `modify_position()`, `get_technical_indicators_snapshot()`, `get_market_structure_levels()`
-**File:** `websocket.py`
-  - **Classes**: `TokenCoalescingBuffer`
-    - *Methods*: `push()`, `flush()`, `stream_text()`
-  - **Functions**: `websocket_live_feed()`, `websocket_agent_chat()`, `list_sessions()`, `get_session_messages()`
+
 **File:** `mcp_server.py`
   - **Docstring**: Model Context Protocol (MCP) HTTP/SSE Server Router for Dashboard API exposing Monika quantitative trading intelligence and tools to external clients over HTTP/SSE.
   - **Variables**: `mcp_router`
   - **Functions**: `get_dispatcher()`, `list_mcp_tools()`, `mcp_sse_endpoint()`, `mcp_post_message()`
 
-###### Folder: `trading-agent/logging_observability/dashboard/frontend`
+**File:** `memory.py`
+  - **Docstring**: Memory Browsing Endpoints (Reflections, Lessons, Playbooks, Search).
+  - **Variables**: `memory_router`
+  - **Classes**: `MemorySearchRequest`
+  - **Functions**: `get_reflections()`, `get_lessons()`, `get_playbooks()`, `search_memory()`, `get_playbook_mutation_history()`, `rollback_playbook_version()`
 
-**File:** `README.md`
-**File:** `package.json`
-**File:** `tsconfig.app.json`
-**File:** `tsconfig.node.json`
-**File:** `vite.config.ts`
+**File:** `observability.py`
+  - **Functions**: `_build_graph_state_for_cycle()`, `get_traces()`, `get_trace_tree()`, `get_cycle_trace_summary()`, `get_playbook_tree()`, `get_prompt_cache_metrics()`, `get_tool_latencies()`, `get_graph_state()`, `get_trade_trajectories()`, `get_cycle_decision_lineage()`
 
-####### Folder: `trading-agent/logging_observability/dashboard/frontend/src`
-**File:** `App.css`
-**File:** `App.tsx`
-**File:** `index.css`
-**File:** `main.tsx`
-**File:** `vite-env.d.ts`
+**File:** `plugins.py`
+  - **Docstring**: Plugin Marketplace, Lifecycle & ON/OFF Management Endpoints.
+  - **Variables**: `plugins_router`
+  - **Classes**: `PluginToggleRequest`, `PluginInstallRequest`, `PluginUninstallRequest`
+  - **Functions**: `get_plugins()`, `get_plugin_catalog()`, `toggle_plugin()`, `install_plugin()`, `uninstall_plugin()`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/charts`
-**File:** `DecisionDistribution.tsx`
-**File:** `EquityChart.tsx`
-**File:** `FactorHeatmap.tsx`
-**File:** `VixSparkline.tsx`
-**File:** `WinRateGauge.tsx`
+**File:** `system.py`
+  - **Functions**: `get_system_health()`, `get_system_metrics()`, `ping()`, `get_diagnostics()`, `get_daily_brief()`, `get_vix_data()`, `get_gemini_quota()`, `get_auth_role()`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/layout`
-**File:** `BreadcrumbBar.tsx`
-**File:** `GlobalStatusBar.tsx`
-**File:** `Header.tsx`
-**File:** `MobileNavDrawer.tsx`
-**File:** `navigation.ts`
-**File:** `Sidebar.tsx`
+**File:** `tokens.py`
+  - **Functions**: `get_token_summary()`, `get_context_tracker_metrics()`, `get_tokens_by_role()`, `get_tokens_by_subsystem()`, `get_tokens_by_symbol()`, `get_recent_token_logs()`, `get_tokens_by_cycle()`, `get_per_turn_cost_metrics()`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels`
-**File:** `ActivityFeed.tsx`
-**File:** `AgentChatPanel.tsx`
-**File:** `AnalysisGrid.tsx`
-**File:** `BacktestPanel.tsx`
-**File:** `BenchmarkPanel.tsx`
-  - **Description**: Interactive LLM benchmark suite runner, candidate model/tier configuration, live streaming log monitor, and composite quadrant leaderboard interface.
-**File:** `ConfigEditorPanel.tsx`
-**File:** `DebateOutcomesPanel.tsx`
-**File:** `EdgeMetricsPanel.tsx`
-**File:** `GraphVisualizerPanel.tsx`
-**File:** `MarketDataPanel.tsx`
-**File:** `MemoryBrowserPanel.tsx`
-**File:** `ObservabilityPanel.tsx`
-**File:** `PerformancePanel.tsx`
-**File:** `PluginManagerPanel.tsx`
-**File:** `PositionsTable.tsx`
-**File:** `RetroCockpitBar.tsx`
-**File:** `RiskPanel.tsx`
-**File:** `SessionBrowserPanel.tsx`
-**File:** `SignalsTriggersPanel.tsx`
-**File:** `SkillManagerPanel.tsx`
-**File:** `SystemPanel.tsx`
-**File:** `TokenAuditPanel.tsx`
+**File:** `trace_search.py`
+  - **Variables**: `trace_search_router`
+  - **Functions**: `search_traces()`, `slow_llm_calls()`
 
-######### Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/config`
-**File:** `ConfigDiffModal.tsx`
-**File:** `ConfigSection.tsx`
+**File:** `trading.py`
+  - **Functions**: `get_overview()`, `get_paper_trading_summary()`, `get_open_positions()`, `get_recent_activity()`, `get_recent_analysis()`, `get_factor_analysis()`, `get_recent_orders()`, `get_current_risk()`, `get_risk_scorecard()`, `get_correlation_matrix()`, `get_edge_metrics()`, `get_decision_distribution()`, `get_analysis_quality()`, `get_ssvp_health()`, `get_debate_outcomes()`, `get_mt5_signals()`, `get_trade_triggers()`, `action_trigger_cycle()`, `action_override_risk()`, `action_close_position()`, `action_emergency_kill()`, `action_resume_trading()`, `action_approve_trade()`, `modify_position()`, `get_technical_indicators_snapshot()`, `get_market_structure_levels()`
 
-######### Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph`
-**File:** `GraphControls.tsx`
-**File:** `GraphEdge.tsx`
-**File:** `GraphInspector.tsx`
-**File:** `GraphNode.tsx`
-**File:** `graphUtils.ts`
-  - **Variables**: `CANONICAL_POSITIONS`, `COMPACT_POSITIONS`, `WIDE_POSITIONS`
-  - **Functions**: `getNodeIcon()`, `getStatusColor()`, `computeGraphLayout()`
+**File:** `websocket.py`
+  - **Classes**: `TokenCoalescingBuffer`
+    - *Methods*: `push()`, `flush()`, `stream_text()`
+  - **Functions**: `websocket_live_feed()`, `websocket_agent_chat()`, `list_sessions()`, `get_session_messages()`
 
-######### Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens`
-**File:** `TokenCharts.tsx`
-**File:** `TokenRoleTable.tsx`
+##### Folder: `trading-agent/logging_observability/reporting`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/components/ui`
-**File:** `AnalogDial.tsx`
-**File:** `ApprovalModal.tsx`
-**File:** `Badge.tsx`
-**File:** `BootSequence.tsx`
-**File:** `Card.tsx`
-**File:** `ConfirmModal.tsx`
-**File:** `EmptyState.tsx`
-**File:** `ErrorBoundary.tsx`
+**File:** `__init__.py`
+
+**File:** `tearsheet_generator.py`
   - **Classes**:
-    - `ErrorBoundary`
-      - *Methods*: `getDerivedStateFromError()`, `componentDidCatch()`, `handleReset()`, `render()`
-**File:** `KeyboardShortcutsPanel.tsx`
-**File:** `LedgerTable.tsx`
-**File:** `MetricCard.tsx`
-**File:** `MonikaInfiniteIcon.tsx`
-**File:** `RetroIcons.tsx`
-**File:** `RetroVuMeter.tsx`
-**File:** `SegmentedProgressBar.tsx`
-**File:** `Skeleton.tsx`
-**File:** `StatusIndicator.tsx`
-**File:** `ThemeToggle.tsx`
-**File:** `TickerTape.tsx`
-**File:** `TypewriterButton.tsx`
-**File:** `WeekendGapBanner.tsx`
-**File:** `WindowFrame.tsx`
+    - `TearsheetResult`
+      - *Docstring*: Dataclass encapsulating comprehensive quant tearsheet analytics.
+      - *Methods*: `to_dict()`, `to_markdown()`, `to_telegram_html()`
+    - `QuantTearsheetGenerator`
+      - *Docstring*: Quantitative performance reporting engine calculating institutional tearsheets.
+      - *Methods*: `generate_from_trades(trades, initial_equity=10000.0, start_date=None, end_date=None)`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/hooks`
-**File:** `useAgentChatWs.ts`
-**File:** `usePolling.ts`
-**File:** `useWebSocket.ts`
+##### Folder: `trading-agent/logging_observability/tracing`
 
+**File:** `__init__.py`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/lib`
-**File:** `api.ts`
-**File:** `formatters.ts`
-**File:** `soundEffects.ts`
+**File:** `context.py`
+  - **Functions**: `get_current_trace_id()`, `get_current_span_id()`, `set_trace_context()`, `clear_trace_context()`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/store`
-**File:** `dashboardStore.ts`
+**File:** `exporters.py`
+  - **Classes**: `SpanExporter`, `InMemorySpanExporter`, `InMemoryTraceStore`, `ConsoleSpanExporter`, `JsonFileSpanExporter`
+    - *Methods*: `InMemoryTraceStore.search_spans()`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`
-**File:** `tokens.ts`
+**File:** `otlp_exporter.py`
+  - **Classes**: `OTLPSpanExporter`
+  - **Variables**: `global_otlp_exporter`
 
-######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`
-**File:** `api.ts`
+**File:** `spans.py`
+  - **Functions**: `cycle_span()`, `node_span()`, `llm_span()`, `tool_span()`
+
+**File:** `tracer.py`
+  - **Classes**: `Tracer`, `TracerProvider`
+  - **Functions**: `get_tracer()`, `trace_span()`
+
+#### Folder: `trading-agent/plugin_kernel`
+
+**File:** `__init__.py`
+  - **Docstring**: Monika Plugin Kernel — Universal Plugin Architecture providing re-exports of `TradingPlugin`, `PluginMetadata`, `PluginEngine`, and lifecycle protocols.
 
 #### Folder: `trading-agent/plugins`
 
 **File:** `__init__.py`
-
-**File:** `manifest.py`
-  - **Docstring**: Plugin Manifest Definition & Schema Validation. Defines metadata, dependencies, custom tools, and 12 lifecycle hook endpoints.
-  - **Classes**: `PluginManifest`
-  - **Global Variables**: `SUPPORTED_HOOKS`
 
 **File:** `loader.py`
   - **Docstring**: Plugin Dependency Resolver and Topological Loader. Orders plugins by dependency graph before initialization, preventing missing dependency failures and detecting circular dependency cycles at startup.
@@ -3772,57 +4146,76 @@ This document provides an exhaustive structural index of all directories, files,
     - *Methods*: `discover_plugins()`, `load_plugins_from_directory()`, `unload_plugin()`
   - **Functions**: `load_manifest_file()`, `topological_sort_plugins()`
 
-##### Folder: `trading-agent/plugins/alerts/discord_alert`
-**File:** `plugin.yaml`
+**File:** `manifest.py`
+  - **Docstring**: Plugin Manifest Definition & Schema Validation. Defines metadata, dependencies, custom tools, and 12 lifecycle hook endpoints.
+  - **Classes**: `PluginManifest`
+  - **Global Variables**: `SUPPORTED_HOOKS`
+
+###### Folder: `trading-agent/plugins/alerts/discord_alert`
+
 **File:** `discord_alert.py`
   - **Classes**:
     - `DiscordAlertPlugin`
       - *Methods*: `on_order_state(event)`, `on_risk_breach(event)`
   - **Functions**: `dispatch_discord_alert(args)`, `initialize(manager, config)`, `post_order(order_info)`, `on_shutdown()`
 
-##### Folder: `trading-agent/plugins/indicators/custom_indicator`
 **File:** `plugin.yaml`
+
+###### Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`
+
+**File:** `macro_to_asset_pipeline.py`
+  - **Classes**:
+    - `MacroToAssetPipeline`
+      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
+
+**File:** `plugin.yaml`
+
+###### Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`
+
+**File:** `plugin.yaml`
+
+**File:** `scalping_pipeline.py`
+  - **Classes**:
+    - `TechnicalScalpingPipeline`
+      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
+
+###### Folder: `trading-agent/plugins/brokers/mt5_local`
+
+**File:** `mt5_plugin.py`
+  - **Classes**:
+    - `MT5LocalBrokerPlugin`
+      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
+
+**File:** `plugin.yaml`
+
+###### Folder: `trading-agent/plugins/brokers/paper_trading`
+
+**File:** `paper_plugin.py`
+  - **Classes**:
+    - `PaperTradingBrokerPlugin`
+      - *Methods*: `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
+
+**File:** `plugin.yaml`
+
+###### Folder: `trading-agent/plugins/indicators/custom_indicator`
+
 **File:** `custom_indicator.py`
   - **Classes**:
     - `CustomIndicatorPlugin`
       - *Methods*: `calculate(symbol, current_price, vwap_reference)`
   - **Functions**: `calculate_vwap_deviation(args)`, `initialize(manager, config)`, `post_cycle(cycle_data)`
 
-##### Folder: `trading-agent/plugins/scrapers/example_scraper`
 **File:** `plugin.yaml`
+
+###### Folder: `trading-agent/plugins/scrapers/example_scraper`
+
 **File:** `example_scraper.py`
   - **Classes**:
     - `ExampleScraperPlugin`
       - *Methods*: `fetch_feed(topic)`
   - **Functions**: `fetch_external_wire_feed(args)`, `initialize(manager, config)`, `pre_tool_call(tool_name, args)`
 
-##### Folder: `trading-agent/plugins/analysis_pipelines/macro_to_asset`
 **File:** `plugin.yaml`
-**File:** `macro_to_asset_pipeline.py`
-  - **Classes**:
-    - `MacroToAssetPipeline`
-      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
-
-##### Folder: `trading-agent/plugins/analysis_pipelines/technical_scalping`
-**File:** `plugin.yaml`
-**File:** `scalping_pipeline.py`
-  - **Classes**:
-    - `TechnicalScalpingPipeline`
-      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `execute_analysis_cycle(session, asset_universe, forced, **kwargs)`, `get_pipeline_telemetry()`
-
-##### Folder: `trading-agent/plugins/brokers/mt5_local`
-**File:** `plugin.yaml`
-**File:** `mt5_plugin.py`
-  - **Classes**:
-    - `MT5LocalBrokerPlugin`
-      - *Methods*: `on_register(container, event_bus)`, `on_preflight(container)`, `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
-
-##### Folder: `trading-agent/plugins/brokers/paper_trading`
-**File:** `plugin.yaml`
-**File:** `paper_plugin.py`
-  - **Classes**:
-    - `PaperTradingBrokerPlugin`
-      - *Methods*: `connect()`, `disconnect()`, `is_connected()`, `get_account_info()`, `get_tick(symbol)`, `submit_order(order)`, `close_position(ticket, lots, reason)`, `get_open_positions(symbol)`, `reconcile_orders(session)`
 
 #### Folder: `trading-agent/provider`
 
@@ -3848,6 +4241,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `ApprovalStatus`, `ApprovalRequest`, `ApprovalHub`
     - *Methods*: `submit_request()`, `resolve_request()`, `wait_for_decision()`, `format_approval_card()`, `format_telegram_inline_keyboard()`, `get_pending_requests()`, `get_request()`, `get_instance()`
   - **Variables**: `DEFAULT_APPROVAL_TTL`
+
 **File:** `approval_transport.py`
   - **Docstring**: Cryptographic Approval Transport & Tamper-Proof Binding Protocol providing deterministic SHA-256 digest sealing across approval requests and decisions.
   - **Classes**: `ApprovalRequestPayload`, `ApprovalDecisionPayload`, `ApprovalTransportCrypto`
@@ -3872,6 +4266,16 @@ This document provides an exhaustive structural index of all directories, files,
         - `__init__(self, settings=None, mt5_client=None)`
         - `fetch_recent_ticks(self, symbol, count=100, session=None)`
         - `simulate_execution(self, symbol, direction, entry_price, stop_loss, take_profit, volume=0.1, ticks=None, session=None)`
+
+**File:** `portfolio_correlation_gate.py`
+  - **Global Variables**: logger
+  - **Functions**:
+    - `compute_portfolio_correlation_matrix(session, symbols, as_of=None)`
+      - *Docstring*: Menghitung matriks korelasi penuh N x N antar instrumen portofolio aktif.
+    - `_get_usd_directional_delta(symbol, direction)`
+      - *Docstring*: Menghitung arah eksposur USD (+1 Long USD, -1 Short USD, 0 Neutral).
+    - `filter_correlated_proposals(session, actionable_trades, threshold=0.65, max_usd_exposure=3, as_of=None)`
+      - *Docstring*: Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat, dengan memperhitungkan posisi terbuka di database.
 
 **File:** `position_sizing.py`
   - **Global Variables**: logger
@@ -3901,16 +4305,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `pip_value_per_lot(self)`
         - `_round_lots(self)`
         - `_invalid(self)`
-
-**File:** `portfolio_correlation_gate.py`
-  - **Global Variables**: logger
-  - **Functions**:
-    - `compute_portfolio_correlation_matrix(session, symbols, as_of=None)`
-      - *Docstring*: Menghitung matriks korelasi penuh N x N antar instrumen portofolio aktif.
-    - `_get_usd_directional_delta(symbol, direction)`
-      - *Docstring*: Menghitung arah eksposur USD (+1 Long USD, -1 Short USD, 0 Neutral).
-    - `filter_correlated_proposals(session, actionable_trades, threshold=0.65, max_usd_exposure=3, as_of=None)`
-      - *Docstring*: Menyaring proposal trade yang berkorelasi tinggi atau menumpuk risiko sistemik USD agregat, dengan memperhitungkan posisi terbuka di database.
 
 **File:** `risk_gate.py`
   - **Global Variables**: logger
@@ -3958,40 +4352,28 @@ This document provides an exhaustive structural index of all directories, files,
     - *Methods*: `validate_proposal()`, `from_analysis()`, `compute_reasoning_hash()`
 
 ##### Folder: `trading-agent/risk/invariants`
+
 **File:** `__init__.py`
+
 **File:** `position_count_invariant.py`
   - **Docstring**: Position Count Invariant. Asserts that open position count does not breach maximum account limits.
   - **Functions**: `assert_position_count_invariant(open_positions, max_concurrent_positions)`, `check_position_count_invariant(context)`
+
 **File:** `registry.py`
   - **Docstring**: Runtime Invariant Registry Framework coordinating non-negotiable safety rules and invariant failure attribution.
   - **Classes**: `InvariantStatus`, `InvariantResult`, `InvariantRegistry`
     - *Methods*: `get_instance()`, `reset_instance()`, `register()`, `unregister()`, `list_invariants()`, `run_all()`, `assert_all()`
   - **Functions**: `get_global_invariant_registry()`, `reset_global_invariant_registry()`
+
 **File:** `risk_gate_invariant.py`
   - **Docstring**: Risk Gate Runtime Invariant Listener. Enforces hard mathematical ceilings and non-negotiable risk constraints.
   - **Classes**: `InvariantViolationError`, `RiskGateInvariant`
   - **Functions**: `assert_risk_gate_invariants(proposal, current_drawdown_pct, max_drawdown_limit, min_rr_ratio)`, `check_risk_gate_invariants(context)`
+
 **File:** `state_immutability_invariant.py`
   - **Docstring**: State Immutability Invariant Listener. Verifies that graph state and context snapshots cannot be corrupted by in-place mutations.
   - **Classes**: `StateFreezeGuard`
   - **Functions**: `compute_state_digest(state, protected_keys)`, `assert_state_immutability(initial_state, current_state, protected_keys)`
-
-#### Folder: `trading-agent/security`
-
-**File:** `__init__.py`
-
-**File:** `credential_vault.py`
-  - **Docstring**: Secure Credential Vault & Sensitive Output Masking for Monika Trading Agent. Integrates with Windows Credential Manager via ctypes for plaintext-free storage on Windows, with in-memory and environment variable fallback for VPS/Linux. Includes automated sensitive token masking for logs and telemetry.
-  - **Classes**: `CredentialVault`, `SensitiveMaskingFilter`
-    - *Methods*: `get_secret()`, `set_secret()`, `delete_secret()`, `register_secret()`, `mask_sensitive()`
-  - **Functions**: `get_secret()`, `set_secret()`, `delete_secret()`, `mask_sensitive()`
-
-**File:** `terminal_guard.py`
-  - **Docstring**: Production Terminal & Host Execution Safety Guard with hardline blocklists, Cloud IMDS SSRF prevention, de-obfuscation quote masking, and denial circuit breaker.
-  - **Classes**: `CommandSecurityViolationError`, `DenialCircuitBreaker`
-    - *Methods*: `record_success()`, `record_denial()`, `reset()`
-  - **Functions**: `deobfuscate_command()`, `unwrap_command_quotes()`, `is_hardline_blocked_command()`, `assert_safe_write_path()`, `validate_command()`
-  - **Variables**: `HARDLINE_BLOCKLIST_PATTERNS`, `PROTECTED_TARGETS`, `PROTECTED_DIRECTORIES`
 
 #### Folder: `trading-agent/scheduler`
 
@@ -4097,6 +4479,19 @@ This document provides an exhaustive structural index of all directories, files,
 
         - `_materialize_and_route(self, session, sig, regime_dict=None)`: Materialisasi order, evaluasi level intraday, trigger pendaftaran TTL (`cancel_pending`), pre-filter rasio R:R >= min_rr, dan dynamic `market_regime` routing ke Reactive Graph.
 
+**File:** `flash_crash_detector.py`
+  - **Global Variables**: `logger`, `DEFAULT_SYMBOL_RULES`
+  - **Classes**:
+    - `FlashCrashDetector`
+      - *Docstring*: Flash-crash monitor and circuit breaker using dual-threshold confluence (Relative ATR + minimum % move) with automated stop-loss tightening to breakeven.
+      - *Methods*:
+        - `__init__(self, settings, execution_service=None, notifier=None)`
+        - `get_symbol_thresholds(self, symbol)`
+        - `load_persisted_blocks(self, session)`
+        - `is_symbol_blocked(self, symbol)` -> `bool`
+        - `check(self, session)` -> `list[dict]`
+        - `_protect_open_positions(self, session, symbol, now)`
+
 **File:** `graph_cycle_scheduler.py`
   - **Global Variables**: `logger`
   - **Classes**:
@@ -4139,19 +4534,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `sync_now(self, session=None)`
         - `start(self)`
         - `stop(self)`
-
-**File:** `flash_crash_detector.py`
-  - **Global Variables**: `logger`, `DEFAULT_SYMBOL_RULES`
-  - **Classes**:
-    - `FlashCrashDetector`
-      - *Docstring*: Flash-crash monitor and circuit breaker using dual-threshold confluence (Relative ATR + minimum % move) with automated stop-loss tightening to breakeven.
-      - *Methods*:
-        - `__init__(self, settings, execution_service=None, notifier=None)`
-        - `get_symbol_thresholds(self, symbol)`
-        - `load_persisted_blocks(self, session)`
-        - `is_symbol_blocked(self, symbol)` -> `bool`
-        - `check(self, session)` -> `list[dict]`
-        - `_protect_open_positions(self, session, symbol, now)`
 
 **File:** `news_watcher.py`
   - **Global Variables**: logger, HIGH_IMPACT_KEYWORDS, MEDIUM_IMPACT_KEYWORDS
@@ -4196,6 +4578,18 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `PlaybookCurator`
     - *Methods*: `__init__(settings=None)`, `run_once(session=None)`, `curate_symbol(session, symbol)`, `start(interval_hours=24)`, `stop()`
 
+**File:** `position_exit_reviewer.py`
+  - **Global Variables**: logger
+  - **Classes**:
+    - `PositionExitReviewer`
+      - *Docstring*: Subsystem periodically reviewing open positions based on latest price action and market structure with TypeSafe Jev System One pre-screen gating.
+      - *Methods*:
+        - `__init__(self)`
+        - `start(self)`
+        - `stop(self)`
+        - `_review_positions(self)` — periodically reviews open positions with Jev System One thesis prescreen before executing full Stage 2 analysis
+        - `_get_minimal_ohlcv(self)`
+
 **File:** `position_guardian.py`
   - **Global Variables**: logger, SYMBOL_CURRENCIES
   - **Classes**:
@@ -4209,18 +4603,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `_protect_position(self)` — eksekusi tindakan proteksi (alert/close)
         - `check_friday_close_protection(self)` — R-4: Friday close protection + auto_close_friday_positions option
         - `evaluate_position_threat_with_jev(self, position, current_price=None)` — Sub-100ms real-time position threat assessment via TypeSafe Jev System One (evaluates adverse momentum & stop loss threat)
-
-**File:** `position_exit_reviewer.py`
-  - **Global Variables**: logger
-  - **Classes**:
-    - `PositionExitReviewer`
-      - *Docstring*: Subsystem periodically reviewing open positions based on latest price action and market structure with TypeSafe Jev System One pre-screen gating.
-      - *Methods*:
-        - `__init__(self)`
-        - `start(self)`
-        - `stop(self)`
-        - `_review_positions(self)` — periodically reviews open positions with Jev System One thesis prescreen before executing full Stage 2 analysis
-        - `_get_minimal_ohlcv(self)`
 
 **File:** `position_supervisor.py`
   - **Docstring**: Unified Position Supervisor consolidating MT5 position polling into a single high-efficiency supervisor loop and distributing snapshots to downstream evaluators.
@@ -4295,6 +4677,17 @@ This document provides an exhaustive structural index of all directories, files,
         - `start(self)`
         - `stop(self)`
 
+**File:** `task_plugin.py`
+  - **Docstring**: Task and Scheduler Plugin Interfaces, TriggerType, TaskHealth, and LegacySchedulerWrapper.
+  - **Classes**:
+    - `TriggerType` (Enum)
+    - `TaskHealthStatus` (Enum)
+    - `TaskHealth` (Dataclass)
+    - `TaskPlugin` (ABC)
+      - *Methods*: `run_step(container)`, `on_start(container, task_registry)`, `on_stop()`, `get_health()`
+    - `LegacySchedulerWrapper`
+      - *Methods*: `run_step(container)`, `on_start(container, task_registry)`, `on_stop()`
+
 **File:** `trailing_stop_manager.py`
   - **Global Variables**: logger
   - **Classes**:
@@ -4331,20 +4724,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `_background_reanalysis(self, symbol)` — decoupled background reanalysis after preplanned order trigger
         - `_spawn_background_reanalysis(self, symbol)` — spawns deduplicated background task with retained reference
 
-**File:** `task_plugin.py`
-  - **Docstring**: Task and Scheduler Plugin Interfaces, TriggerType, TaskHealth, and LegacySchedulerWrapper.
-  - **Classes**:
-    - `TriggerType` (Enum)
-    - `TaskHealthStatus` (Enum)
-    - `TaskHealth` (Dataclass)
-    - `TaskPlugin` (ABC)
-      - *Methods*: `run_step(container)`, `on_start(container, task_registry)`, `on_stop()`, `get_health()`
-    - `LegacySchedulerWrapper`
-      - *Methods*: `run_step(container)`, `on_start(container, task_registry)`, `on_stop()`
-**File:** `universal_cron_scheduler.py`
-  - **Docstring**: Universal Cron Scheduler & Background Automation Engine with at-most-once semantic invariant, natural language parser, and monitor hashing.
-  - **Classes**: `CronJob`, `UniversalCronScheduler`
-    - *Methods*: `parse_schedule_expression()`, `register_job()`, `register_execution_callback()`, `start()`, `stop()`, `close()`
 **File:** `unified_cron_engine.py`
   - **Docstring**: Unified Cron Engine & Autonomous Task Orchestrator with at-most-once invariant execution, NLP/market session expressions, zero-cost token suppression monitor hashing, and multi-channel dispatch.
   - **Classes**: `UnifiedCronJob`, `UnifiedCronEngine`
@@ -4352,7 +4731,14 @@ This document provides an exhaustive structural index of all directories, files,
   - **Functions**: `compute_next_cron_timestamp()`, `get_unified_cron_engine()`
   - **Variables**: `DEFAULT_CRON_DB`, `_ANTI_SUICIDE_PATTERNS`
 
+**File:** `universal_cron_scheduler.py`
+  - **Docstring**: Universal Cron Scheduler & Background Automation Engine with at-most-once semantic invariant, natural language parser, and monitor hashing.
+  - **Classes**: `CronJob`, `UniversalCronScheduler`
+    - *Methods*: `parse_schedule_expression()`, `register_job()`, `register_execution_callback()`, `start()`, `stop()`, `close()`
+
 #### Folder: `trading-agent/scrapers`
+
+**File:** `__init__.py`
 
 **File:** `base_scraper.py`
   - **Global Variables**: logger
@@ -4564,6 +4950,8 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `trading-agent/scrapers/sentiment`
 
+**File:** `__init__.py`
+
 **File:** `binance_sentiment.py`
   - **Global Variables**: logger
   - **Classes**:
@@ -4607,9 +4995,92 @@ This document provides an exhaustive structural index of all directories, files,
         - `_get_url_hash(self)`
         - `fetch_latest_tweets(self)`
 
+#### Folder: `trading-agent/scripts`
+
+**File:** `audit_token_usage.py`
+  - **Docstring**: Audit token consumption across providers and models.
+
+**File:** `heal_kill_switch_state.py`
+  - **Docstring**: Standalone database healing script to liquidate lingering zombie paper positions and clear persistent kill_switch and paused latches from SystemConfig and RiskState.
+  - **Functions**: `heal_state()`
+
+##### Folder: `trading-agent/scripts/check_scrapers`
+
+**File:** `__init__.py`
+
+**File:** `check_calendar.py`
+  - **Docstring**: Script Pemeriksaan Scraper Kalender Ekonomi (ForexFactory, Investing.com, Finnhub).
+  - **Global Variables**: logger
+  - **Functions**:
+    - `print_events_table()`: Mencetak daftar event kalender ke terminal dalam format tabel ringkas.
+    - `check_forexfactory()`: Menguji scraper ForexFactory.
+    - `check_investing()`: Menguji scraper Investing.com.
+    - `check_finnhub()`: Menguji scraper Finnhub Calendar (REST API).
+    - `main()`
+
+**File:** `check_cme.py`
+  - **Docstring**: Script Pemeriksaan Scraper CME FedWatch Tool.
+  - **Global Variables**: logger
+  - **Functions**:
+    - `print_fed_meetings()`: Mencetak data probabilitas rapat FOMC ke terminal.
+    - `check_cme_fedwatch()`: Menguji FedWatchScraper.
+    - `main()`
+
+**File:** `check_news.py`
+  - **Docstring**: Script Pemeriksaan Scraper Berita (Kitco News, TradingView News, 16 RSS Feed Sumber Resmi & Finansial).
+  - **Global Variables**: logger
+  - **Functions**:
+    - `print_news_table()`: Mencetak daftar berita ke terminal dalam format ringkas.
+    - `check_kitco()`: Menguji KitcoNewsScraper.
+    - `check_tradingview()`: Menguji TradingViewNewsScraper.
+    - `get_rss_map()`
+    - `check_single_rss()`: Menguji 1 feed RSS.
+    - `main()`
+
+**File:** `check_sentiment.py`
+  - **Docstring**: Script Pemeriksaan Scraper Sentimen Ritel Pasar (FXSSI, MyFxBook, Binance Futures).
+  - **Global Variables**: logger
+  - **Functions**:
+    - `print_ratios_table()`: Mencetak persentase long/short rasio per instrumen.
+    - `check_fxssi()`: Menguji FXSSISentimentFetcher (DrissionPage browser).
+    - `check_myfxbook()`: Menguji MyFxBookSentimentFetcher (DrissionPage browser).
+    - `check_binance()`: Menguji BinanceSentimentFetcher (REST API).
+    - `main()`
+
+**File:** `check_twitter.py`
+  - **Docstring**: Script Pemeriksaan Scraper Twitter / X.com (TwitterWatchScraper).
+  - **Global Variables**: logger
+  - **Functions**:
+    - `print_tweets_table()`: Mencetak daftar tweet ke terminal.
+    - `check_twitter_sessions()`: Memeriksa ketersediaan file sesi twitter di folder data/sessions/.
+    - `check_twitter()`: Menguji TwitterWatchScraper.
+    - `main()`
+
+#### Folder: `trading-agent/security`
+
+**File:** `__init__.py`
+
+**File:** `credential_vault.py`
+  - **Docstring**: Secure Credential Vault & Sensitive Output Masking for Monika Trading Agent. Integrates with Windows Credential Manager via ctypes for plaintext-free storage on Windows, with in-memory and environment variable fallback for VPS/Linux. Includes automated sensitive token masking for logs and telemetry.
+  - **Classes**: `CredentialVault`, `SensitiveMaskingFilter`
+    - *Methods*: `get_secret()`, `set_secret()`, `delete_secret()`, `register_secret()`, `mask_sensitive()`
+  - **Functions**: `get_secret()`, `set_secret()`, `delete_secret()`, `mask_sensitive()`
+
+**File:** `terminal_guard.py`
+  - **Docstring**: Production Terminal & Host Execution Safety Guard with hardline blocklists, Cloud IMDS SSRF prevention, de-obfuscation quote masking, and denial circuit breaker.
+  - **Classes**: `CommandSecurityViolationError`, `DenialCircuitBreaker`
+    - *Methods*: `record_success()`, `record_denial()`, `reset()`
+  - **Functions**: `deobfuscate_command()`, `unwrap_command_quotes()`, `is_hardline_blocked_command()`, `assert_safe_write_path()`, `validate_command()`
+  - **Variables**: `HARDLINE_BLOCKLIST_PATTERNS`, `PROTECTED_TARGETS`, `PROTECTED_DIRECTORIES`
+
 #### Folder: `trading-agent/services`
 
 **File:** `__init__.py`
+
+**File:** `market_data_service.py`
+  - **Classes**:
+    - `MarketDataService`
+      - *Methods*: `get_latest_quote(symbol, container)`
 
 **File:** `portfolio_service.py`
   - **Classes**:
@@ -4621,14 +5092,16 @@ This document provides an exhaustive structural index of all directories, files,
     - `SystemStatusService`
       - *Methods*: `get_system_health(container, engine)`, `get_plugin_summary(engine)`
 
-**File:** `market_data_service.py`
-  - **Classes**:
-    - `MarketDataService`
-      - *Methods*: `get_latest_quote(symbol, container)`
-
 #### Folder: `trading-agent/skills`
 
 **File:** `__init__.py`
+
+**File:** `continuous_learning.py`
+  - **Docstring**: Continuous Self-Improvement & Experience Crystallization Engine synthesizing procedural lessons into standardized SKILL.md packages.
+  - **Classes**: `LearnSkillInput`, `ContinuousLearner`
+    - *Methods*: `distill_and_crystallize()`
+  - **Functions**: `learn_skill_handler(params)`
+  - **Variables**: `DEFAULT_CRYSTALLIZED_DIR`
 
 **File:** `curator.py`
   - **Docstring**: Skill lifecycle curator managing Active -> Stale -> Archived transitions and core skill protection.
@@ -4659,77 +5132,91 @@ This document provides an exhaustive structural index of all directories, files,
       - *Methods*:
         - `__missing__(self)`
 
-**File:** `usage_tracker.py`
-  - **Docstring**: Skill usage telemetry tracking (.usage.json ledger) for execution and inspection counts.
-  - **Classes**: `SkillUsageTracker`
-    - *Methods*: `load()`, `save()`, `record_use()`, `record_view()`
-
-**File:** `trading_skill_linter.py`
-  - **Docstring**: Automated linter and validator for trading playbook skills enforcing description limits, market regimes, heading standards, and anti-bloat rules.
-  - **Classes**: `LintIssue`, `TradingSkillLinter`
-    - *Methods*: `lint_skill()`, `lint_file()`, `lint_directory()`, `is_valid_skill()`
-**File:** `skills_hub.py`
-  - **Docstring**: Universal Skills Hub & Progressive Skill Runtime with two-tier progressive disclosure, deduplication, and inline shell evaluation.
-  - **Classes**: `SkillMetadata`, `SkillsHub`
-    - *Methods*: `discover_skills()`, `list_skills()`, `view_skill()`, `install_skill()`
-**File:** `unified_runtime.py`
-  - **Docstring**: Unified Skills Runtime with Two-Tier Progressive Disclosure and intent matching.
-  - **Classes**: `UnifiedSkillsRuntime`
-    - *Methods*: `reload()`, `get_compact_prompt_index()`, `load_skill_instructions()`, `match_skills_for_prompt()`
-**File:** `skills_guard.py`
-  - **Docstring**: Static AST Security Auditor & Malicious Code Guard scanning Python & shell scripts for forbidden constructs and exploits.
-  - **Classes**: `AuditFinding`, `AuditReport`, `SkillASTVisitor`, `SkillsGuard`
-    - *Methods*: `audit_directory()`, `audit_file()`, `_audit_python_file()`, `_audit_shell_file()`
-  - **Variables**: `FORBIDDEN_CALLS`, `FORBIDDEN_ATTRIBUTES`, `DESTRUCTIVE_SHELL_PATTERNS`
-**File:** `continuous_learning.py`
-  - **Docstring**: Continuous Self-Improvement & Experience Crystallization Engine synthesizing procedural lessons into standardized SKILL.md packages.
-  - **Classes**: `LearnSkillInput`, `ContinuousLearner`
-    - *Methods*: `distill_and_crystallize()`
-  - **Functions**: `learn_skill_handler(params)`
-  - **Variables**: `DEFAULT_CRYSTALLIZED_DIR`
 **File:** `skill_manager.py`
   - **Docstring**: Dynamic Skill Lifecycle Manager & Hot-Reload Engine coordinating creation, modification, AST security validation, safe archival, and hot-reload of skills.
   - **Classes**: `SkillManager`
     - *Methods*: `create_skill()`, `edit_skill()`, `delete_skill()`, `get_skill_info()`, `hot_reload()`
 
-##### Folder: `trading-agent/skills/operator`
+**File:** `skills_guard.py`
+  - **Docstring**: Static AST Security Auditor & Malicious Code Guard scanning Python & shell scripts for forbidden constructs and exploits.
+  - **Classes**: `AuditFinding`, `AuditReport`, `SkillASTVisitor`, `SkillsGuard`
+    - *Methods*: `audit_directory()`, `audit_file()`, `_audit_python_file()`, `_audit_shell_file()`
+  - **Variables**: `FORBIDDEN_CALLS`, `FORBIDDEN_ATTRIBUTES`, `DESTRUCTIVE_SHELL_PATTERNS`
 
-**File:** `USER.md`
-- Operator profile, caveman communication rules, software engineering invariants, and quantitative risk principles.
+**File:** `skills_hub.py`
+  - **Docstring**: Universal Skills Hub & Progressive Skill Runtime with two-tier progressive disclosure, deduplication, and inline shell evaluation.
+  - **Classes**: `SkillMetadata`, `SkillsHub`
+    - *Methods*: `discover_skills()`, `list_skills()`, `view_skill()`, `install_skill()`
 
-##### Folder: `trading-agent/skills/general`
+**File:** `trading_skill_linter.py`
+  - **Docstring**: Automated linter and validator for trading playbook skills enforcing description limits, market regimes, heading standards, and anti-bloat rules.
+  - **Classes**: `LintIssue`, `TradingSkillLinter`
+    - *Methods*: `lint_skill()`, `lint_file()`, `lint_directory()`, `is_valid_skill()`
 
-**File:** `academic-literature/SKILL.md`
-- Systematic scientific review, empirical literature retrieval, and citation verification.
+**File:** `unified_runtime.py`
+  - **Docstring**: Unified Skills Runtime with Two-Tier Progressive Disclosure and intent matching.
+  - **Classes**: `UnifiedSkillsRuntime`
+    - *Methods*: `reload()`, `get_compact_prompt_index()`, `load_skill_instructions()`, `match_skills_for_prompt()`
 
-**File:** `code-optimization/SKILL.md`
-- Performance profiling, bottleneck analysis, and low-latency algorithmic code optimization.
-
-**File:** `codebase-inspection/SKILL.md`
-- Codebase structure auditing, symbol navigation, and invariant verification.
-
-**File:** `data-science-modeling/SKILL.md`
-- Statistical inference, quantitative modeling, machine learning workflows, and empirical validation.
-
-**File:** `devops-automation/SKILL.md`
-- Continuous integration, automated deployment, container orchestration, and infrastructure monitoring.
-
-**File:** `financial-research/SKILL.md`
-- Multi-asset macroeconomic data aggregation, fundamental valuation, and equity/FX research synthesis.
-
-**File:** `research-analysis/SKILL.md`
-- Multi-source empirical investigation and structured synthesis report generation.
-
-**File:** `software-development/SKILL.md`
-- End-to-end software engineering, architecture, and safe coding standards.
-
-**File:** `systematic-debugging/SKILL.md`
-- Scientific root-cause analysis, reproduction, and defect verification.
+**File:** `usage_tracker.py`
+  - **Docstring**: Skill usage telemetry tracking (.usage.json ledger) for execution and inspection counts.
+  - **Classes**: `SkillUsageTracker`
+    - *Methods*: `load()`, `save()`, `record_use()`, `record_view()`
 
 ##### Folder: `trading-agent/skills/crystallized`
 
 **File:** `eurusd_trend.md`
 - Crystallized institutional playbook for EURUSD verified across winning cycles with empirical track record, tactical directives, execution invariants, and invalidation scenarios.
+
+###### Folder: `trading-agent/skills/general/academic-literature`
+
+**File:** `SKILL.md`
+- Systematic scientific review, empirical literature retrieval, and citation verification.
+
+###### Folder: `trading-agent/skills/general/code-optimization`
+
+**File:** `SKILL.md`
+- Performance profiling, bottleneck analysis, and low-latency algorithmic code optimization.
+
+###### Folder: `trading-agent/skills/general/codebase-inspection`
+
+**File:** `SKILL.md`
+- Codebase structure auditing, symbol navigation, and invariant verification.
+
+###### Folder: `trading-agent/skills/general/data-science-modeling`
+
+**File:** `SKILL.md`
+- Statistical inference, quantitative modeling, machine learning workflows, and empirical validation.
+
+###### Folder: `trading-agent/skills/general/devops-automation`
+
+**File:** `SKILL.md`
+- Continuous integration, automated deployment, container orchestration, and infrastructure monitoring.
+
+###### Folder: `trading-agent/skills/general/financial-research`
+
+**File:** `SKILL.md`
+- Multi-asset macroeconomic data aggregation, fundamental valuation, and equity/FX research synthesis.
+
+###### Folder: `trading-agent/skills/general/research-analysis`
+
+**File:** `SKILL.md`
+- Multi-source empirical investigation and structured synthesis report generation.
+
+###### Folder: `trading-agent/skills/general/software-development`
+
+**File:** `SKILL.md`
+- End-to-end software engineering, architecture, and safe coding standards.
+
+###### Folder: `trading-agent/skills/general/systematic-debugging`
+
+**File:** `SKILL.md`
+- Scientific root-cause analysis, reproduction, and defect verification.
+
+##### Folder: `trading-agent/skills/operator`
+
+**File:** `USER.md`
+- Operator profile, caveman communication rules, software engineering invariants, and quantitative risk principles.
 
 ##### Folder: `trading-agent/skills/trading`
 
@@ -4753,6 +5240,9 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `event_probability_playbook.md`
 - Authoritative institutional playbook for central bank decision probabilities (FOMC, ECB, BOE, BOJ), market expectation deconstruction vs policy reality, sell-the-news risk mitigation, and asset pricing asymmetry evaluation.
 - **Sections**: 5-Stage Thinking Flow Protocol (Data Gathering, Priced-In Testing, Historical Precedents Matching, Press Conference / SEP Decoding, Multi-Scenario Trading Plan & LangGraph Handshake), 5 Canonical Historical Fed Surprise Precedents (1994 Greenspan, 2013 Bernanke No-Taper, 2015 Yellen Global Risk Hold, 2019 Powell Hawkish Cut, 2022 Powell WSJ Leak), Taxonomy of 5 Consensus Failure Mechanisms (Financial Conditions Feedback Loop, Mandate Asymmetry Minimax, Institutional Credibility Defense, Information Asymmetry, Forward Guidance Ambiguity), Analog Matching Engine Rubric, 4-Quadrant Action vs Guidance Matrix, 6-Section Institutional Output Format, and 3-Scenario Trading Plan LangGraph Handshake (`user_market_intel`).
+
+**File:** `fundamental_performance_notes.md`
+  - **Description**: Fundamental Stage Performance Notes — Auto-Generated 2026-09-24
 
 **File:** `lessons_learned.md`
 - Empirical trade lessons standard operating procedures and adaptive execution directives.
@@ -4780,8 +5270,12 @@ This document provides an exhaustive structural index of all directories, files,
 - Institutional Smart Money Concepts playbook featuring structured tool invocation sequences, confluence scorecards, and safety gates.
 - **Sections** (expanded): Added CRITICAL Anti-Over-Conservative Directive — Active Opportunity Scan checklist (D1/H4/Alignment/Blocker), WAIT Correct/WRONG conditions, D1 ADX > 25 Bonus (-1 threshold), 3/3 Specialist Consensus Bonus (-1 threshold).
 
-
 **File:** `telegram_persona.md`
+
+#### Folder: `trading-agent/systemd`
+
+**File:** `tradeagent.service`
+  - **Description**: Production systemd service unit file configuring Monika MT5 Trading Agent as a background daemon on Linux/Ubuntu VPS hosts.
 
 #### Folder: `trading-agent/telegram_bot`
 
@@ -4829,7 +5323,6 @@ This document provides an exhaustive structural index of all directories, files,
         - `_build_pipeline_text(self)`
         - `_resolve_action_agent(self, action_id, fallback_chat_id=None)`
         - `stop(self)`
-
 
 **File:** `chat_agent.py`
   - **Global Variables**: logger, TELEGRAM_MAX_CHARS, HISTORY_WINDOW, MAX_HISTORY_CHARS, SESSION_TIMEOUT_HOURS
@@ -4910,20 +5403,8 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `FuzzyCommandRouter`
     - *Methods*: `register_command()`, `resolve_command()`, `get_command_help()`
 
-**File:** `topic_manager.py`
-  - **Global Variables**: logger
-  - **Classes**:
-    - `TopicManager`
-      - *Docstring*: Manages Telegram forum topic bindings and lifecycle for chat session isolation.
-      - *Methods*:
-        - `__init__(self, session_factory=None)`
-        - `get_session_for_topic(self, chat_id, topic_id)`
-        - `create_topic_session(self, chat_id, topic_id, topic_name=None, focus_pair=None)`
-        - `cleanup_deleted_topic(self, chat_id, topic_id)`
-        - `list_topics_for_chat(self, chat_id)`
-
-**File:** `vintage_formatter.py`
-  - **Docstring*: Vintage Teletype Slip Formatters for Telegram Bot.
+**File:** `message_formatter.py`
+  - **Docstring**: Message and Dispatch Slip Formatters for Telegram Bot.
   - **Functions**:
     - `make_header(title, width=46)`: Create a telegraph dispatch slip header.
     - `make_footer(width=46)`: Create a telegraph dispatch slip footer.
@@ -4946,6 +5427,23 @@ This document provides an exhaustive structural index of all directories, files,
     - `format_rollback_slip(data, width=46)`: Format playbook version rollback audit as teletype slip.
     - `format_pipeline_slip(data, width=46)`: Format LangGraph Analysis Pipeline DAG execution flow as teletype slip.
 
+**File:** `sanitizer.py`
+  - **Docstring**: Telegram HTML Sanitizer.
+  - **Functions**:
+    - `sanitize_telegram_html()`: Safely converts Markdown/plain-text into Telegram ParseMode.HTML compliant markup.
+
+**File:** `topic_manager.py`
+  - **Global Variables**: logger
+  - **Classes**:
+    - `TopicManager`
+      - *Docstring*: Manages Telegram forum topic bindings and lifecycle for chat session isolation.
+      - *Methods*:
+        - `__init__(self, session_factory=None)`
+        - `get_session_for_topic(self, chat_id, topic_id)`
+        - `create_topic_session(self, chat_id, topic_id, topic_name=None, focus_pair=None)`
+        - `cleanup_deleted_topic(self, chat_id, topic_id)`
+        - `list_topics_for_chat(self, chat_id)`
+
 **File:** `voice_handler.py`
   - **Global Variables**: logger
   - **Classes**:
@@ -4964,380 +5462,10 @@ This document provides an exhaustive structural index of all directories, files,
     - `VoiceSafetyGate`
       - *Methods*: `extract_intent()`, `is_actionable()`
 
-**File:** `test_architecture_fixes.py`
-  - **Classes**:
-    - `TestStateReducers` - Tests merge_dicts deep merge and merge_lists concatenation
-    - `TestCacheBeforeCommitFix` - Tests cache update following MT5 execution
-    - `TestRaceConditionRecheck` - Tests open position verification prior to order placement
-    - `TestEdgeTrackerAutoEnforce` - Tests automatic pause during negative edge regimes
-    - `TestReflectionVIXDefensive` - Tests defensive VIX fallback behavior
+#### Folder: `trading-agent/tests`
 
-**File:** `test_paper_tracker_fix.py`
-  - **Functions**:
-    - `test_paper_trade_detection()`
-
-**File:** `test_stage1_prefetcher.py`
-  - **Functions**:
-    - `test_stage1_data_bundler()`
-
-**File:** `tests/analysis/test_llm_memory_cache_enhancements.py`
-  - **Classes**:
-    - `TestLLMMemoryCacheEnhancements` - Uji optimasi token, memory persistence, KV cache invariance, dan grounding fact sheet
-      - *Methods*:
-        - `test_gemini_thinking_none_no_inflation()`
-        - `test_chronicle_writer_preserves_structural_events()`
-        - `test_specialist_prompts_symbol_agnostic()`
-        - `test_fact_sheet_includes_layer1_core_memory()`
-
-**File:** `tests/analysis/test_audit_sota_enhancements.py`
-  - **Functions**:
-    - `test_cache_breakpoint_manager_dynamic_padding()`
-    - `test_prompt_compressor_protects_stress_test_and_invalidation()`
-    - `test_bull_and_bear_analyst_fallback_schema()`
-
-**File:** `tests/analysis/test_composite_tools.py`
-  - **Functions**:
-    - `test_composite_tools_execution()`
-    - `test_stage2_expanded_tools_definitions()`
-
-**File:** `tests/analysis/test_session_search.py`
-  - **Functions**:
-    - `test_session_search_postgresql_engine()`
-
-**File:** `tests/analysis/test_phase5_adjudication_and_risk.py`
-  - **Functions**:
-    - `test_consecutive_losses_lookback_cutoff()`
-    - `test_adaptive_threshold_48h_time_decay()`
-    - `test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists()`
-
-**File:** `tests/execution/test_phase1_remediation.py`
-  - **Functions**:
-    - `test_direction_normalization()`
-    - `test_mt5_place_order_direction_case_insensitive()`
-    - `test_mt5_close_position_lots_keyword_compatibility()`
-    - `test_precommit_gate_with_populated_trade_levels()`
-    - `test_precommit_gate_db_fallback_when_sl_tp_missing()`
-    - `test_position_sizing_blown_account_protection()`
-    - `test_execution_service_mt5_parity()`
-    - `test_evidence_verifier_assert_9_with_rationale_fallback()`
-    - `test_provider_max_tokens_and_kwargs_signatures()`
-    - `test_telegram_cmd_interrupt_synchronous()`
-    - `test_trading_event_store_savepoint_isolation()`
-
-**File:** `tests/execution/test_phase2_remediation.py`
-  - **Functions**:
-    - `test_group_a_inspect_iscoroutinefunction()`
-    - `test_cw4_task_registry_core_tasks()`
-    - `test_cw1_adhoc_scheduler_proxy_data_node()`
-    - `test_sc5_trigger_checker_properties()`
-    - `test_ex7_ex8_simulated_broker_adapter_parity_and_pending_sltp()`
-    - `test_ex9_order_emulator_sell_breakeven_guard()`
-    - `test_db10_risk_gate_flush_not_commit()`
-    - `test_db9_portfolio_correlation_gate_negative_correlation()`
-    - `test_an3_adversarial_check_prompt_initialization()`
-    - `test_an8_fundamental_brief_schema_harmonization()`
-    - `test_lu3_credential_pool_groq_multikey()`
-
-**File:** `tests/execution/test_phase3_remediation.py`
-  - **Functions**:
-    - `test_db13_atomic_in_memory_locks()`
-    - `test_sc1_position_sync_order_reconciler_exclusion()`
-    - `test_sc3_session_trigger_loop_flag_and_stop()`
-    - `test_cw3_recovery_event_waiting()`
-    - `test_sc6_sc7_news_watcher_concurrency_and_cycle_lock()`
-    - `test_sc8_duplicate_position_close_prevention()`
-    - `test_sc9_background_tasks_cancellation()`
-    - `test_cw5_graceful_shutdown_order()`
-    - `test_cw6_pid_lock_release_helper()`
-    - `test_db14_risk_gate_daily_trade_count_paper_vs_live()`
-    - `test_db15_risk_gate_no_duplicate_pair_group()`
-
-**File:** `tests/execution/test_phase4_remediation.py`
-  - **Functions**:
-    - `test_settings_and_schema_validation()`
-    - `test_task_registry_and_core_tasks()`
-    - `test_wall_clock_sleep_with_shutdown_event()`
-    - `test_order_reconciler_shutdown_event()`
-    - `test_order_executor_lot_step_zero_guard()`
-    - `test_position_synchronizer_ea_heartbeat_guard()`
-    - `test_order_emulator_watermark_trailing()`
-    - `test_safe_ops_cancelled_error_handling()`
-    - `test_claude_rate_limiter_tpm_tracking()`
-    - `test_event_bus_type_validation()`
-    - `test_agent_harness_turn_cost_calculation()`
-    - `test_verified_market_snapshot_timeframe_filter()`
-
-**File:** `tests/execution/test_mt5_compat.py`
-  - **Docstring**: Unit tests for MT5 cross-platform compatibility and RPC bridge layer.
-  - **Functions**:
-    - `test_mt5_constants_integrity()`
-    - `test_fallback_module_attributes_and_methods()`
-    - `test_bridge_proxy_constants_and_getattr()`
-    - `test_bridge_proxy_initialize_path_stripping()`
-    - `test_bridge_proxy_initialize_path_preserved_when_existing()`
-    - `test_bridge_proxy_delegation()`
-    - `test_bridge_proxy_error_handling()`
-    - `test_ensure_mt5_module_registration()`
-    - `test_platform_check_helpers()`
-    - `test_ensure_mt5_module_on_linux_simulation()`
-    - `test_ensure_mt5_fallback_when_no_bridge()`
-
-**File:** `tests/telegram_bot/test_telegram_enhancements.py`
-  - **Functions**:
-    - `test_streaming_cursor_and_throttling()`
-    - `test_streaming_skips_when_empty()`
-    - `test_provider_base_streaming_generator()`
-    - `test_topic_manager_crud_and_session_resolution()`
-    - `test_topic_manager_cleanup_deleted_topic()`
-    - `test_topic_context_isolation()`
-    - `test_bot_thread_id_routing_and_topic_binding()`
-    - `test_voice_handler_transcription_and_routing()`
-    - `test_voice_handler_handles_error_gracefully()`
-    - `test_stream_response_error_handling()`
-
-**File:** `tests/telegram_bot/test_telegram_pairing.py`
-  - **Docstring**: Unit tests for Paired DM Telegram Gateway Authorization (/pair).
-  - **Functions**:
-    - `test_command_router_blocks_stranger_on_normal_command()`
-    - `test_command_router_allows_pair_command_for_stranger()`
-    - `test_cmd_pair_lifecycle()`
-
-**File:** `tests/telegram_bot/test_chat_tool_router_stress.py`
-  - **Functions**:
-    - `test_slash_macro_variations(router)`
-    - `test_slash_research_variations(router)`
-    - `test_slash_command_case_insensitivity(router)`
-    - `test_slash_help_returns_zero_tools(router)`
-    - `test_unknown_slash_command_falls_through(router)`
-    - `test_pure_greetings_zero_tools(router)`
-    - `test_greeting_with_symbol_retains_tools(router)`
-    - `test_greeting_masking_functional_query(router)`
-    - `test_contoh_pertanyaan_full_routing(router)`
-    - `test_contoh_pertanyaan_macro_excerpts(router)`
-    - `test_timesfm_hijacking_macro_queries(router)`
-    - `test_mixed_macro_and_technical(router)`
-    - `test_mixed_macro_and_portfolio(router)`
-    - `test_multi_domain_complex_fallback(router)`
-    - `test_trade_intent_hijacking_research_and_macro(router)`
-    - `test_empty_input_returns_all_tools(router)`
-    - `test_whitespace_input_returns_all_tools(router)`
-    - `test_non_string_inputs(router)`
-    - `test_ultra_long_input(router)`
-    - `test_symbols_and_emojis(router)`
-    - `test_prompt_injection_like_strings(router)`
-
-**File:** `tests/telegram_bot/test_chat_agent_deep_research_stress.py`
-  - **Classes**:
-    - `TestInjectMacroPlaybooksIdempotency`
-      - *Methods*: `test_idempotency_string_prompt_repeated_calls()`, `test_idempotency_tuple_prompt_repeated_calls()`, `test_idempotency_under_asymmetric_skill_load_failure()`
-    - `TestPromptTypePolymorphism`
-      - *Methods*: `test_inject_returns_exact_type_and_structure()`, `test_run_tier_deep_research_with_tuple_and_string_prompts()`
-    - `TestLoadSkillGracefulDegradation`
-      - *Methods*: `test_inject_degrades_gracefully_when_both_skills_raise()`, `test_inject_degrades_gracefully_when_only_one_skill_fails()`, `test_inject_handles_empty_or_none_returns_from_load_skill()`, `test_deep_research_completes_when_skill_loading_fails()`
-    - `TestSynthesizerToolWiringAndPropagation`
-      - *Methods*: `test_synthesizer_wiring_when_tool_executor_is_provided()`, `test_synthesizer_wiring_when_tool_executor_is_none()`, `test_create_pending_action_accepts_save_market_intelligence()`, `test_create_pending_action_rejects_unknown_action_type()`, `test_create_pending_action_respects_circuit_breaker()`, `test_deep_research_resilience_to_status_callback_exceptions()`, `test_deep_research_resilience_when_specialist_workers_fail()`
-
-**File:** `tests/telegram_bot/test_chat_agent_stress_challenge.py`
-  - **Classes**:
-    - `TestContohPertanyaanBenchmark`
-      - *Methods*: `test_full_contoh_pertanyaan_file()`, `test_exact_chat_prompt_block()`, `test_prompt_block_with_markdown_fences()`, `test_benchmark_individual_paragraphs()`
-    - `TestDiverseMacroEventQueriesSupported`
-      - *Methods*: `test_short_macro_queries_supported()`, `test_long_macro_queries()`, `test_mixed_language_macro_queries()`, `test_greetings_with_macro_queries()`, `test_case_insensitivity_and_spacing()`
-    - `TestMacroRoutingVulnerabilities`
-      - *Methods*: `test_vulnerability_fed_without_the()`, `test_vulnerability_historical_precedents_r1_library()`, `test_vulnerability_asymmetric_intent_and_events()`
-    - `TestNonMacroAndActionQueries`
-      - *Methods*: `test_simple_commands_route_to_simple()`, `test_common_simple_queries()`, `test_short_greetings()`, `test_action_verbs_route_to_complex()`, `test_non_macro_complex_queries()`, `test_common_medium_queries()`
-    - `TestBoundaryAndAdversarialInputs`
-      - *Methods*: `test_empty_string_and_whitespace()`, `test_emojis_and_unusual_characters()`, `test_injection_payloads()`, `test_regex_special_characters()`, `test_zero_width_characters()`, `test_non_latin_scripts()`, `test_super_long_payloads()`, `test_vulnerability_non_string_type_crash()`
-
-**File:** `tests/skills/test_event_probability_playbook.py`
-  - **Classes**:
-    - `TestEventProbabilityPlaybook`
-      - *Methods*:
-        - `test_playbook_loads_and_has_substantial_content()`
-        - `test_playbook_discovered_in_skills_list()`
-        - `test_compose_system_prompt_with_event_probability_playbook()`
-        - `test_playbook_contains_5_stage_thinking_flow()`
-        - `test_playbook_contains_5_canonical_historical_precedents()`
-        - `test_playbook_contains_5_consensus_failure_mechanisms()`
-        - `test_playbook_contains_analog_matching_engine()`
-        - `test_playbook_contains_4_quadrant_action_vs_guidance()`
-        - `test_playbook_contains_institutional_output_template()`
-        - `test_playbook_contains_langgraph_integration()`
-        - `test_playbook_priced_in_methodologies_alignment()`
-
-**File:** `tests/skills/test_event_probability_stress.py`
-  - **Classes**:
-    - `TestEventProbabilityPlaybookStress`
-      - *Methods*:
-        - `test_concurrent_loading_and_invalidation()`
-        - `test_composition_with_all_major_skills()`
-        - `test_composition_under_tight_token_budget()`
-        - `test_safedict_with_playbook_content()`
-        - `test_template_substitution_adversarial_values()`
-        - `test_path_traversal_attempts()`
-        - `test_four_quadrants_exhaustive_coverage()`
-        - `test_historical_precedents_multi_asset_coverage()`
-        - `test_analog_matching_rubric_weights_sum_to_100()`
-        - `test_decision_tree_covers_all_5_precedents()`
-        - `test_institutional_output_template_has_all_6_sections()`
-        - `test_save_market_intelligence_contract_parameters()`
-
-**File:** `tests/skills/test_playbook_stress_challenge.py`
-  - **Classes**:
-    - `TestPlaybookStressChallenge`
-      - *Methods*:
-        - `test_spike_avoidance_rules_defined()`
-        - `test_remedy_1_quadrant_2_avoids_pre_release_orders()`
-        - `test_remedy_2_analog_matching_rubric_includes_powell_2019()`
-        - `test_remedy_3_priced_in_score_clamping_and_gate_alignment()`
-        - `test_remedy_4_timing_h4_close_reconciled_with_presser_entry()`
-        - `test_distinct_five_failure_mechanisms()`
-        - `test_action_vs_guidance_four_quadrants()`
-        - `test_downstream_save_market_intelligence_schema_compatibility()`
-
-**File:** `tests/test_cli_theme.py`
-  - **Functions**:
-    - `test_theme_color_constants()`
-    - `test_stamp_formatters()`
-    - `test_get_console()`
-    - `test_build_tui_css()`
-    - `test_build_chat_css()`
-
-**File:** `tests/test_event_probability_flow.py`
-  - **Docstring**: Comprehensive Integration Test Suite for Macro Event Probability Flow & Trading Plan Integration.
-  - **Classes**:
-    - `TestBenchmarkQueryClassification`
-      - *Methods*: `test_exact_benchmark_prompt_classified_as_deep_research()`, `test_full_benchmark_file_classified_as_deep_research()`, `test_benchmark_query_variations_classified_as_deep_research()`
-    - `TestIsMacroEventQuery`
-      - *Methods*: `test_benchmark_query_returns_true()`, `test_constituent_sentences_return_true()`, `test_negative_cases_return_false()`
-    - `TestInjectMacroPlaybooks`
-      - *Methods*: `test_inject_macro_playbooks_loads_both_skills_string_prompt()`, `test_inject_macro_playbooks_tuple_format()`, `test_inject_macro_playbooks_idempotent()`
-    - `TestDynamicSubagentPoolMacroDecomposition`
-      - *Methods*: `test_worker_macro_spawned_with_required_toolset()`
-    - `TestDeepResearchSynthesizer`
-      - *Methods*: `test_synthesizer_runs_with_tools_and_tool_executor()`
-    - `TestSaveMarketIntelligencePendingAction`
-      - *Methods*: `test_create_pending_action_from_save_market_intelligence()`, `test_deep_research_reply_captures_pending_action_in_agent()`, `test_execute_action_dispatches_to_tool_save_market_intelligence()`
-    - `TestFullEventProbabilityEndToEndIntegration`
-      - *Methods*: `test_full_pipeline_flow()`
-
-**File:** `tests/test_m2_empirical_stress.py`
-  - **Classes**:
-    - `TestSubagentSpawnerStress`
-      - *Methods*: `test_worker_macro_empty_available_tools()`, `test_worker_macro_malformed_available_tools()`, `test_worker_macro_all_15_macro_tools_assigned()`, `test_worker_macro_powerset_target_tools()`, `test_worker_macro_strict_domain_isolation()`, `test_worker_macro_duplicate_tools_handling()`, `test_worker_macro_across_pool_configurations()`, `test_worker_macro_system_prompt_checklist_immutability()`, `test_cross_asset_specialist_receives_treasury_yields()`, `test_subagent_pool_concurrency_stress_oracle()`
-    - `TestFedWatchProbabilitiesStress`
-      - *Methods*: `test_fedwatch_fallback_under_null_session_states()`, `test_fedwatch_empty_database_fallback()`, `test_fedwatch_valid_database_rows_and_limit()`, `test_fedwatch_malformed_json_resilience()`, `test_fedwatch_deduplication_keeps_latest_snapshot()`, `test_fedwatch_timezone_naive_and_aware_support()`
-    - `TestEndToEndRoutingAndMacroIntegration`
-      - *Methods*: `test_contoh_pertanyaan_end_to_end_worker_macro_pipeline()`, `test_fedwatch_null_session_resilience_under_extreme_limits()`
-
-**File:** `tests/test_telegram_vintage_formatter.py`
-  - **Functions**:
-    - `test_make_header_and_footer()`
-    - `test_format_status_slip()`
-    - `test_format_positions_slip_empty()`
-    - `test_format_positions_slip_with_items()`
-    - `test_format_risk_slip()`
-    - `test_format_stats_slip()`
-    - `test_format_alert_slip()`
-    - `test_format_help_slip()`
-    - `test_format_risk_deep_slip_with_dict()`
-    - `test_format_risk_deep_slip_with_list()`
-    - `test_format_pipeline_slip()`
-
-**File:** `tests/test_audit_round3_remediation.py`
-  - **Docstring**: Comprehensive unit tests for Code Consistency Audit Round 3 remediations.
-  - **Classes**:
-    - `TestIndicatorsRemediation`
-      - *Methods*: `test_technical_order_flow_snapshot_timestamp()`, `test_timesfm_engine_scalar_baseline_atr()`, `test_order_flow_snapshot_vpin_field()`, `test_microstructure_nan_guards()`, `test_structure_fvg_max_distance_and_div_zero_guard()`
-    - `TestBacktestRemediation`
-      - *Methods*: `test_outcome_evaluator_oil_contract_sizes()`, `test_outcome_evaluator_friday_profit_only_close()`, `test_alpha_validation_sortino_and_equity_curve_normalization()`, `test_monte_carlo_engine_final_equity_distribution_key()`, `test_report_generator_final_equity_set()`, `test_point_in_time_engine_canonical_universe()`
-    - `TestDataSourcesRemediation`
-      - *Methods*: `test_validators_intraday_cache_expired_string_parsing()`, `test_dxy_yfinance_get_latest()`
-    - `TestCLIBenchmarkScrapersSkillsRemediation`
-      - *Methods*: `test_benchmark_judge_score_null_handling()`, `test_benchmark_deterministic_boolean_init()`, `test_skills_loader_prefix_and_deduplication()`, `test_cli_theme_persist_preserves_comments()`, `test_rss_base_scraper_no_raise_and_ua()`, `test_scrapers_calendar_country_and_aliases()`
-
-**File:** `tests/test_phase1_critical_fixes.py`
-  - **Docstring**: Regression & Unit Tests for Phase 1 Critical Security & UI/UX Bugfixes.
-  - **Functions**: `test_voice_safety_gate_lot_parsing_does_not_capture_price()`, `test_voice_safety_gate_valid_lot_parsing()`, `test_rbac_fails_closed_when_request_missing()`, `test_rbac_enforces_role_hierarchy()`, `test_chat_agent_last_streamed_tracking()`
-
-**File:** `tests/deploy/test_deployment_configs.py`
-  - **Docstring**: Comprehensive validation test suite for VPS deployment files (docker-compose.vps.yml, Dockerfile.mt5-wine, entrypoint_mt5.sh, vps_deployment_guide.md).
-  - **Functions**:
-    - `test_docker_compose_syntax_and_services()`
-    - `test_dockerfile_mt5_wine_stages()`
-    - `test_entrypoint_mt5_structure()`
-    - `test_deployment_guide_contents()`
-
-**File:** `tests/harness/test_unified_plugin_engine.py`
-  - **Docstring**: Unit tests for unified PluginEngine, context, auto-wiring, protected tool veto, and prompt section registration.
-  - **Functions**: `test_unified_engine_context_and_hook_wiring()`, `test_protected_tool_override_rejected()`, `test_hook_timeout_isolation()`, `test_prompt_section_registration_via_context()`
-
-**File:** `tests/harness/test_functional_compatibility.py`
-  - **Docstring**: Unit tests for functional compatibility bridge, register(ctx) script pattern, and shims.
-  - **Functions**: `test_runtime_shims_available()`, `test_register_functional_pattern()`, `test_functional_plugin_bridge_directory_loader()`
-
-**File:** `tests/indicators/test_pattern_similarity.py`
-  - **Docstring**: Comprehensive unit tests for pattern similarity screening engine (normalizer, feature extractor, scanner, context scorer, outcome analyzer, and engine).
-  - **Classes**:
-    - `TestPatternSimilarityScreening`
-      - *Methods*:
-        - `test_price_normalizer_zscore()`
-        - `test_feature_extractor_shapes()`
-        - `test_sliding_window_euclidean()`
-        - `test_sakoe_chiba_dtw()`
-        - `test_context_scorer_weights()`
-        - `test_adaptive_similarity_renormalization()`
-        - `test_outcome_analyzer_returns()`
-        - `test_outcome_analyzer_mfe_mae()`
-        - `test_binomial_test_pvalue()`
-        - `test_full_engine_synthetic_run()`
-        - `test_cross_symbol_matching_bonus()`
-        - `test_non_overlapping_filter()`
-        - `test_cold_start_resilience_proxies()`
-
-**File:** `tests/analysis/test_precommit_gate.py`
-  - **Functions**:
-    - `test_precommit_gate_wait_avoid_passthrough()`
-    - `test_precommit_gate_geometry_validation()`
-
-**File:** `tests/graph/test_risk_gate_node_levels.py`
-  - **Functions**:
-    - `test_safe_num()`
-    - `test_quant_promoted_trade_synthesizes_levels()`
-
-**File:** `tests/risk/test_portfolio_correlation_gate.py`
-  - **Functions**:
-    - `test_usd_directional_delta()`
-    - `test_compute_portfolio_correlation_matrix()`
-    - `test_filter_correlated_proposals_nan_handling()`
-    - `test_filter_correlated_proposals_max_usd_exposure()`
-
-#### Folder: `trading-agent/scripts`
-
-**File:** `curate_synthesized_strategies.py`
-  - **Docstring**: Curate and validate synthesized strategies on disk and PostgreSQL SystemConfig, quarantining hardcoded stubs.
-  - **Functions**: `curate_strategies()`
-
-**File:** `heal_kill_switch_state.py`
-  - **Docstring**: Standalone database healing script to liquidate lingering zombie paper positions and clear persistent kill_switch and paused latches from SystemConfig and RiskState.
-  - **Functions**: `heal_state()`
-
-**File:** `audit_token_usage.py`
-  - **Docstring**: Audit token consumption across providers and models.
-
-**File:** `check_openrouter_keys.py`
-  - **Docstring**: Verify OpenRouter key quotas and valid models.
-
-**File:** `remediate_budget_history.py`
-  - **Docstring**: Remediate LLM budget tracking database records.
-
-**File:** `sanitize_news_language.py`
-  - **Docstring**: Sanitize multilingual news headlines to plain English text.
-
-**File:** `remediate_ohlcv_duplicates.py`
-  - **Docstring**: Script Remediasi: Pembersihan Duplikasi PriceOHLCV dan Sinkronisasi Ulang Indikator.
-  - **Functions**: `deduplicate_price_ohlcv()`, `sync_mt5_history()`, `recompute_indicators()`, `main()`
+  - **Description**: Comprehensive automated test suite containing 600+ unit, integration, and stress tests.
+  - **Note**: Collapsed directory containing 603 internal files.
 
 #### Folder: `trading-agent/utils`
 
@@ -5373,264 +5501,376 @@ This document provides an exhaustive structural index of all directories, files,
   - **Docstring**: Atomic file-based turn marker manager for crash recovery, in-flight state tracking, and session resumption.
   - **Classes**: `TurnMarker`, `TurnMarkerManager`
     - *Methods*: `create_turn()`, `complete_turn()`, `check_unresolved_turn()`, `clean_stale_markers()`
+
 **File:** `worktree.py`
   - **Docstring**: Subagent Worktree Isolation Manager providing isolated git worktrees or workspaces for zero-collision concurrency.
   - **Classes**: `SubagentWorktree`
     - *Methods*: `create()`, `cleanup()`, `__enter__()`, `__exit__()`
 
-
 ##### Folder: `trading-agent/utils/analytics`
+
+**File:** `__init__.py`
+  - **Docstring**: Analytics utilities package.
+
 **File:** `adversarial_outcome_tracker.py`
+
 **File:** `agent_performance_monitor.py`
+
 **File:** `analysis_tracker.py`
   - **Functions**: `compute_analysis_quality_report(session: AsyncSession, days_back: int = 30) -> dict`, `get_adaptive_threshold_hints(session: AsyncSession) -> dict`, `get_per_asset_bias_report(session: AsyncSession, days_back: int = 14) -> dict`, `analyze_debate_impact(session: AsyncSession, days_back: int = 30) -> dict`, `compute_factor_effectiveness(session: AsyncSession, days_back: int = 60) -> dict`, `get_confluence_calibration_status(session: AsyncSession) -> dict`, `get_direction_accuracy_report(session: AsyncSession, days_back: int = 30) -> dict`, `detect_score_inflation(session: AsyncSession, days_back: int = 30) -> dict`, `compute_factor_weights_recommendation(session: AsyncSession, min_trades: int = 50) -> dict`, `compute_dynamic_factor_weights(session: AsyncSession) -> str`, `compute_model_source_performance(session: AsyncSession, days_back: int = 30) -> dict`, `compute_and_persist_factor_point_overrides(session: AsyncSession, min_trades: int = 30) -> dict`
+
 **File:** `cds_outcome_tracker.py`
+
 **File:** `cost_tracker.py`
   - **Classes**: `CostTracker`
     - *Methods*: `log_cycle_cost(session: AsyncSession, stage1_input: int, stage1_output: int, stage2_input: int, stage2_output: int, settings: dict = None, cycle_id: Optional[str] = None) -> float`, `check_and_update_budget_status(session: AsyncSession, settings: dict, history: list = None, latest_cost: float = 0.0) -> dict`, `_check_budget(session: AsyncSession, history: list, latest_cost: float, settings: dict) -> None`, `is_budget_paused_cached() -> bool`, `is_budget_paused(session: AsyncSession, settings: dict = None, force_recheck: bool = False) -> bool`, `clear_budget_pause(session: AsyncSession) -> None`, `get_rolling_7day_cost(session: AsyncSession) -> dict`
+
+**File:** `edge_tracker.py`
+  - **Functions**: `binomial_confidence_interval(wins: int, total: int, confidence: float = 0.95)`, `is_trade_win(r) -> bool`, `compute_edge_status(session: AsyncSession) -> dict`
+
 **File:** `models_dev_sync.py`
   - **Docstring**: Synchronizer for upstream dynamic LLM pricing data with ETag conditional caching.
   - **Classes**: `ModelsDevSync`
     - *Methods*: `get_cache_path()`, `load_cache()`, `save_cache()`, `sync_pricing()`, `get_model_pricing()`
-**File:** `pricing.py`
-  - **Data Classes**: `Price`, `PricingTier`, `CanonicalUsage`
-  - **Functions**: `infer_provider_from_model(model_name: str) -> str`, `is_free_tier(model_name: str, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> bool`, `get_price(model_name: str) -> Price`, `cost_usd(model_name: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> float`, `cost_usd_decimal(model_name: str, usage: CanonicalUsage) -> Decimal`, `estimate_cost`
-  - **Global Variables**: `PRICING`, `OPENROUTER_PRICING_MAP`, `FREE_TIER_MODELS`, `_FREE`
-**File:** `edge_tracker.py`
-  - **Functions**: `binomial_confidence_interval(wins: int, total: int, confidence: float = 0.95)`, `is_trade_win(r) -> bool`, `compute_edge_status(session: AsyncSession) -> dict`
+
 **File:** `news_classification_tracker.py`
+
 **File:** `paper_tracker.py`
   - **Classes**: `PaperTracker`
     - *Methods*: `update_paper_trade_sl()`, `open_paper_trade()`, `check_and_close_trades()`, `_record_decay_outcome()`, `get_statistics()`, `check_and_alert_winrate()`, `simulate_equity_curve()`, `get_suspended_symbols()`, `check_and_suspend_poor_performers()`, `unsuspend_symbol()`, `unsuspend_all()`, `get_streak_status()`, `should_regenerate_performance_notes()`
   - **Functions**: `_group_by_symbol(history)`, `_group_by_symbol_direction(history)`
-**File:** `specialist_tracker.py`
-**File:** `token_auditor.py`
-  - **Classes**: `TokenAuditor`
-    - *Methods*: `get_summary()`, `get_role_breakdown()`, `get_subsystem_breakdown()`, `get_symbol_breakdown()`, `get_provider_breakdown()`, `get_stage_and_slot_breakdown()`, `get_cache_performance_audit()`, `get_recent_logs()`, `get_cycle_cost_breakdown()`
-**File:** `trade_autopsy.py`
+
 **File:** `performance_reviewer.py`
   - **Functions**: `generate_fundamental_performance_review(session: AsyncSession) -> str`, `generate_weekly_review(session: AsyncSession, settings: dict) -> str`, `should_regenerate_fundamental_notes(session: AsyncSession) -> tuple[bool, str]`
 
+**File:** `pricing.py`
+  - **Data Classes**: `Price`, `PricingTier`, `CanonicalUsage`
+  - **Functions**: `infer_provider_from_model(model_name: str) -> str`, `is_free_tier(model_name: str, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> bool`, `get_price(model_name: str) -> Price`, `cost_usd(model_name: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0, provider: Optional[str] = None, is_direct_free_tier: Optional[bool] = None) -> float`, `cost_usd_decimal(model_name: str, usage: CanonicalUsage) -> Decimal`, `estimate_cost`
+  - **Global Variables**: `PRICING`, `OPENROUTER_PRICING_MAP`, `FREE_TIER_MODELS`, `_FREE`
 
-##### Folder: `trading-agent/utils/calibration`
-**File:** `cds_threshold_calibrator.py`
-**File:** `confidence_calibrator.py`
-**File:** `cot_thresholds.py`
-**File:** `prescreen_calibrator.py`
+**File:** `specialist_tracker.py`
 
-##### Folder: `trading-agent/utils/protocol`
-**File:** `__init__.py`
-**File:** `brief_contamination_guard.py`
-**File:** `coherence_flag_tracker.py`
-**File:** `context_coherence.py`
-**File:** `context_snapshot.py`
-**File:** `cross_agent_sync.py`
-**File:** `enhanced_cds.py`
-  - **Functions**: `get_signal_threshold()`, `compute_spatial_cds(session, symbol, brief_currency_bias, lookback_bars, is_reversal)`, `compute_temporal_cds()`, `compute_task_cds()`, `compute_composite_cds()`, `get_cds_thresholds()`, `get_cds_thresholds_async()`
-**File:** `event_bus.py`
-  - **Docstring**: Typed asynchronous EventBus with strongly-typed dataclasses, priority pub-sub, exception isolation, and buffered queue streaming.
-  - **Classes**: `AppEvent`, `TickPriceEvent`, `BarClosedEvent`, `OrderStateChangedEvent`, `RiskBreachEvent`, `CircuitBreakerEvent`, `Subscription`, `EventBus`
-    - *Methods*: `subscribe()`, `unsubscribe()`, `get_subscribers()`, `publish()`, `publish_nowait()`, `publish_threadsafe()`, `get_or_create_queue()`, `publish_buffered()`, `start_queue_worker()`, `stop_workers()`, `clear()`, `get_default_bus()`, `subscribe_default()`, `unsubscribe_default()`, `publish_default()`
-  - **Functions**: `get_event_bus`, `reset_event_bus`
-**File:** `ssvp_coordinator.py`
+**File:** `strategy_edge_tracker.py`
+  - **Functions**:
+    - `compute_strategy_pair_stats()`: Per (strategy_id, symbol): trades, win_rate, profit_factor, expectancy_R.
+    - `apply_disable_flags()`: Writes SystemConfig 'strategy_disabled_{strategy_id}_{symbol}'='true' for underperformers.
+
+**File:** `token_auditor.py`
+  - **Classes**: `TokenAuditor`
+    - *Methods*: `get_summary()`, `get_role_breakdown()`, `get_subsystem_breakdown()`, `get_symbol_breakdown()`, `get_provider_breakdown()`, `get_stage_and_slot_breakdown()`, `get_cache_performance_audit()`, `get_recent_logs()`, `get_cycle_cost_breakdown()`
+
+**File:** `trade_autopsy.py`
 
 ##### Folder: `trading-agent/utils/api`
+
+**File:** `__init__.py`
+
 **File:** `claude_rate_limiter.py`
   - **Classes**: `ClaudeRateLimiter`
     - *Methods*: `acquire_session_slot()`, `record_call()`, `get_current_rpm()`, `get_current_tpm()`
     - *Variables*: `MAX_REQUESTS_PER_MINUTE`, `MAX_TOKENS_PER_MINUTE`, `MIN_DELAY_BETWEEN_SESSIONS`
+
 **File:** `credential_pool.py`
   - **Docstring**: Credential pool managing multi-key rotation, per-key health tracking, and circuit breaking.
   - **Classes**: `KeyHealth`, `APICredentialPool` (alias `CredentialPool`)
     - *Methods*: `get_healthy_key()`, `report_failure()`, `report_success()`, `get_status()`, `is_model_available()`
+
+**File:** `credit_balance_tracker.py`
+  - **Docstring**: Credit Balance & Quota Tracker — Layanan pemantau saldo kredit live dan kuota seluruh provider.
+  - **Global Variables**: logger
+  - **Classes**:
+    - `CreditBalanceTracker`
+      - *Docstring*: Layanan terpusat untuk memeriksa sisa kredit live dan kuota API seluruh provider.
+      - *Methods*: `fetch_openrouter_credits()`, `fetch_deepseek_balance()`, `get_daily_quota_summary()`, `get_monthly_expense_summary()`, `get_full_credit_report()`
+
+**File:** `gemini_rate_limiter.py`
+  - **Docstring**: GeminiRateLimiter — Fast-path in-memory rate limiter dengan persistensi DB berkala.
+  - **Global Variables**: logger, _QUOTA_LOCK, _CUSTOM_QUOTAS
+  - **Classes**:
+    - `GeminiRateLimiter`
+      - *Methods*: `__init__()`, `_ensure_initialized()`, `_persist_count()`, `try_acquire()`, `_persist_async()`, `check_quota()`, `consume_quota()`, `get_usage()`
+  - **Functions**:
+    - `_get_num_keys()`
+    - `get_quota_for_model()`
+    - `configure_from_settings()`
+
 **File:** `groq_rate_limiter.py`
   - **Classes**: `GroqRateLimiter`
     - *Methods*: `try_acquire()`, `check_quota()`, `get_usage()`, `mark_cooldown()`, `reset()`, `_save_state()`, `_ensure_loaded()`
   - **Functions**: `get_api_keys`
   - **Variables**: `GROQ_QUOTA_PER_KEY`, `DEFAULT_QUOTA_PER_KEY`, `GROQ_QUOTA`, `DEFAULT_QUOTA`
+
 **File:** `http_retry.py`
   - **Classes**: `RateLimitError`, `APIStatusError`
   - **Functions**: `fetch_with_retry`, `format_api_error_summary`, `_jittered_delay`, `_jitter_retry_after`
   - **Variables**: `_CIRCUIT_BREAKER`, `_DEFAULT_SSL_CONTEXT`
+
 **File:** `openrouter_rate_limiter.py`
   - **Classes**: `OpenRouterRateLimiter`
     - *Methods*: `try_acquire()`, `check_quota()`, `get_usage()`, `mark_cooldown()`, `reset()`, `_save_state()`, `_ensure_loaded()`
   - **Functions**: `get_paid_key`, `get_free_keys`, `get_all_keys`, `is_free_tier_model`
   - **Variables**: `DEFAULT_FREE_QUOTA`, `DEFAULT_PAID_QUOTA`
+
 **File:** `streaming.py`
   - **Classes**: `StreamTimeoutError`, `StreamSafetyTimeoutError`, `StreamConfig`, `StreamResult`, `StreamWriterFence`
   - **Functions**: `consume_sse_stream`, `streaming_request`
 
-##### Folder: `trading-agent/utils/validation`
-**File:** `data_temporal_validator.py`
-**File:** `data_validator.py`
-  - **Global Variables**: `DEFAULT_OHLCV_AGE`, `DEFAULT_IND_AGE`, `DEFAULT_MACRO_AGE_DAYS`
-  - **Functions**: `is_crypto_symbol`, `is_forex_market_closed`, `is_market_reopen_window`, `validate_data_freshness`, `is_spread_acceptable`, `check_data_coherence`
-**File:** `indicator_sanitizer.py`
-  - **Functions**: `safe_float`
-**File:** `tool_response_validator.py`
+##### Folder: `trading-agent/utils/calibration`
 
-##### Folder: `trading-agent/utils/llm`
-**File:** `adaptive_thinking.py`
-  - **Classes**: `PerSymbolAdaptiveThinkingAllocator` (Methods: `compute_symbol_budget`, `get_thinking_level`, `get_thinking_budget_for_task`), `QuantizedThinkingAllocator` (Methods: `quantize`)
-  - **Variables**: `ASSET_VOLATILITY_WEIGHTS`, `DEFAULT_WEIGHT`, `QUANTIZED_THINKING_BUCKETS`
-**File:** `cache_miss_detector.py`
-  - **Classes**: `CacheMissReport`, `CacheMissDetector`
-  - **Variables**: `global_cache_miss_detector`
-**File:** `constrained_sampling.py`
-  - **Classes**: `ConstrainedSamplingConfig`
-  - **Functions**: `make_strict_json_schema()`, `resolve_grammar_for_provider()`
-**File:** `deferred_dispatcher.py`
-  - **Classes**: `DispatchMode`, `DeferredRequest`, `DeferredResult`, `DeferredLLMDispatcher`
-  - **Variables**: `global_deferred_dispatcher`
-**File:** `cache_breakpoint_manager.py`
-  - **Classes**: `CacheBreakpointManager` (Constants: `MIN_CACHEABLE_CHARS`, `GEMINI_3_MIN_CACHEABLE_CHARS`, `GEMINI_25_MIN_CACHEABLE_CHARS`, `CANONICAL_INVARIANT_RULES`, `CANONICAL_TIER0_ANCHOR`; Methods: `get_min_cacheable_chars`, `pad_system_prompt_to_threshold`, `wrap_system_tiers`, `apply_to_messages`, `find_completed_transaction_endpoints`, `wrap_classify_json` [padded anchor guarantee >= 1,024 tokens]). *Note*: Maintained as compatibility shim; structural context engine (PR-06) governs KV cache alignment.
-**File:** `caveman_compressor.py`
-  - **Variables**: `PRECISION_BY_SYMBOL`, `DEFAULT_PRECISION`
-  - **Functions**: `_round_for_symbol`, `compress_tool_payload`
-**File:** `context_compaction.py`
-  - **Classes**: `ContextCompactionEngine` (Methods: `micro_prune`, `check_and_compact`, `compact_with_summary_model`, `mask_aged_observations`, `_extract_decisive_state` [expanded with optimal levels, sweeps, COT, macro], `check_tool_family_quota`, `_prune_ohlcv_output`)
-  - **Variables**: `TOOL_FAMILIES`, `FAMILY_QUOTAS`, `DEFAULT_FAMILY_QUOTA`
-  - **Functions**: `mask_aged_observations`
-**File:** `context_tracker.py`
-  - **Classes**: `ContextTracker` (Methods: `record_usage()`, `get_stats()`, `reset()`, `get_utilization()`, `get_context_summary()`, `get_history()`, `export_dict()`)
-  - **Functions**: `get_global_context_tracker()`
-**File:** `cycle_budget_guard.py`
-  - **Classes**: `CycleBudgetGuard` (Methods: `from_settings`, `record`, `check`, `is_exceeded`, `get_stats`, `reset`)
-  - **Functions**: `get_cycle_budget_guard`
-  - **Variables**: `_global_guard`
-**File:** `data_dedup.py`
-  - **Docstring**: In-memory market data query deduplication ledger avoiding redundant tool fetches per cycle.
-  - **Classes**: `DataFetchDeduplicator`
-    - *Methods*: `make_key()`, `check()`, `record()`, `invalidate_on_compaction()`
-**File:** `embedding.py`
-  - **Docstring**: Gemini Embedding vector generation utility for semantic precedent retrieval and session search.
-  - **Functions**: `generate_gemini_embedding()`
-**File:** `llmlingua_compressor.py`
-  - **Docstring**: Adaptive LLMLingua-2 Prompt Compressor with automatic GPU VRAM discovery, transparent CPU fallback, and financial keyword safeguarding.
-  - **Classes**: `AdaptiveLLMLinguaCompressor`
-    - *Methods*: `get_instance()`, `detect_device()`, `compress_text()`, `_heuristic_compress()`
-**File:** `memory_compressor.py`
-**File:** `model_discipline.py`
-  - **Docstring**: Model-family prompt discipline and verification rules injector.
-  - **Variables**: `TOOL_USE_ENFORCEMENT_GUIDANCE`, `TRADING_VERIFICATION_GUIDANCE`
-  - **Functions**: `get_model_discipline()`
-**File:** `prompt_ab_test.py`
-  - **Classes**: `PromptABTest` (Methods: `get_variant`, `get_variant_bandit`, `record_outcome`, `get_bandit_state`, `get_results`), `OfflinePromptOptimizer` (Methods: `score_variant_performance`, `select_champion`, `record_champion`)
-**File:** `prompt_assembler.py`
-  - **Classes**: `PromptAssembler` (Methods: `assemble_stage1_tiers`, `assemble_stage1_system_tuple`, `assemble_stage1`, `assemble_stage2_tiers`, `assemble_stage2_system_tuple`, `assemble_stage2`), `PromptSection`
-  - **Functions**: `_flatten_system_prompt()`, `_split_memory()`, `compare_sections()`, `compose_ordered_prompt()`
-  - **Global Variables**: `STAGE1_TIER1`, `STAGE2_TIER1`, `STAGE2_TIER1_TEMPLATE`, `MANDATORY_RULES`, `TIER2_TOOL_STUBS`, `SECTION_ORDERS`
-**File:** `prompt_caching.py`
-  - **Classes**: `PromptCacheController`
-  - **Functions**: `get_cache_header()`, `apply_caching_breakpoint()`
-**File:** `prompt_disciplines.py`
-  - **Docstring**: Universal XML semantic prompt disciplines enforcing mandatory tool use, anti-mental arithmetic, literal preservation, parallel tool dispatch, and anti-laziness guardrails.
-  - **Functions**: `get_universal_execution_discipline()`, `get_mandatory_tool_discipline()`, `get_literal_preservation_discipline()`, `get_anti_laziness_discipline()`
-**File:** `prompt_compressor.py`
-  - **Classes**: `ContextCompressor` (Methods: `compress_ohlcv` [regular stride subsampling], `compress_indicators`, `compress_stage1_dict`, `compress_stage1_bundle`, `compress_stage2_bundle`, `compress_stage2_dict`, `_prune_text_bundle_safely`)
-  - **Functions**: `estimate_tokens`, `truncate_to_budget` (enhanced with Lossless Financial Structural Projection / LFSP: regular stride subsampling preserving unmitigated SMC zones, structural anchors, and high-impact calendar events)
-**File:** `prompt_tiering.py`
-  - **Classes**: `TieredPrompt`
-  - **Functions**: `build_tiered_prompt()`
-**File:** `prompt_tiers.py`
-  - **Docstring**: Three-tier system prompt architecture designed for prompt cache stability and ephemeral prefix caching.
-  - **Classes**: `PromptTier`, `TieredSystemPrompt`
-    - *Methods*: `assemble()`, `compile_tuple()`
-  - **Functions**: `get_ephemeral_overlay()`
-**File:** `model_capabilities.py`
-  - **Docstring**: Declarative model capability table for multi-provider LLM integration.
-  - **Classes**: `ModelCapabilities`
-  - **Functions**: `get_capabilities()`
-  - **Global Variables**: `MODEL_CAPABILITIES`
-**File:** `credential_pool.py`
-  - **Docstring**: Multi-provider Credential Pooling and Automatic Rotation across all LLM providers.
-  - **Classes**: `CredentialState`, `LLMCredentialPool` (alias `CredentialPool`)
-    - *Methods*: `from_env()`, `get_key()`, `report_failure()`, `report_success()`, `get_status()`, `all_exhausted()`
-**File:** `semantic_cache.py`
-  - **Docstring**: Semantic Caching Subsystem for Repeated Financial / Macro LLM Queries with strict blacklist guardrails and category-based TTL.
-  - **Classes**: `TradingSemanticCache`
-    - *Methods*: `get_instance()`, `get()`, `set()`, `clear()`, `_generate_key()`
-    - *Variables*: `STRICT_BLACKLIST`, `DEFAULT_TTLS`
-**File:** `spill_subsystem.py`
-  - **Classes**: `PostgresSpillSubsystem` (Methods: `maybe_spill`, `retrieve_spill`)
-**File:** `tool_condenser.py`
-  - **Classes**: `ToolObservationCondenser`
-    - *Methods*: `condense_observation()`, `_extract_lfsp_projection()`, `_summarize_generic_tool()`
-
-##### Folder: `trading-agent/utils/market`
-**File:** `bias_utils.py`
-  - **Docstring**: Centralized helper untuk normalisasi & perbandingan currency_bias (5-state to 3-state collapse).
-  - **Functions**: `normalize_bias(bias: Optional[str]) -> str`, `bias_strength(bias: Optional[str]) -> float`, `normalize_currency_bias_dict(currency_bias: dict) -> dict`, `is_bullish(bias: Optional[str]) -> bool`, `is_bearish(bias: Optional[str]) -> bool`, `is_neutral(bias: Optional[str]) -> bool`
-**File:** `brent_yfinance.py`
-  - **Functions**: `get_brent_price`
-**File:** `currency_utils.py`
-  - **Docstring**: Utilitas pemetaan simbol instrumen trading ke mata uang terkait.
-  - **Variables**: `SYMBOL_CURRENCIES`
-  - **Functions**: `get_symbol_currencies(symbol)`
-**File:** `direction.py`
-  - **Docstring**: Market Direction Normalization Utility enforcing strict lowercase ('buy' | 'sell').
-  - **Functions**: `normalize_direction(direction)`, `is_valid_direction(direction)`
-**File:** `dynamic_correlation.py`
-  - **Variables**: `STATIC_CORRELATION_FALLBACK`
-  - **Functions**: `get_rolling_correlation(session, symbol1, symbol2, lookback_bars=60, as_of=None, method="ewma", span=30)`
-**File:** `instrument_identity.py`
-  - **Classes**: `InstrumentIdentity`, `InstrumentRegistry`
-  - **Functions**: `resolve_instrument()`, `get_pip_multiplier()`
-**File:** `news_impact_keywords.py`
-  - **Variables**: `SHOCK_KEYWORDS` (tightened: single-word triggers replaced with multi-word specific phrases to reduce false BREAKING positives), `HIGH_IMPACT_KEYWORDS`, `DEESCALATION_KEYWORDS`, `REHASH_KEYWORDS`
-**File:** `session_info.py`
-  - **Docstring**: Market session tracking and timing rules utility.
-  - **Functions**: `get_current_market_session(dt=None)`
-**File:** `swap_estimator.py`
-  - **Functions**: `estimate_swap_cost`
-**File:** `usd_strength_proxy.py`
-  - **Functions**: `compute_usd_strength_proxy`
-
-##### Folder: `trading-agent/utils/plugins`
 **File:** `__init__.py`
-**File:** `extension_loader.py`
-  - **Docstring**: Dynamic plugin extension loader importing external hooks from plugins directory.
-  - **Functions**: `load_plugins()`, `load_single_plugin()`, `teardown_single_plugin()`
-**File:** `manager.py`
-  - **Docstring**: Lightweight Plugin & Extension Architecture with lifecycle hooks, filter pipelines, and dynamic tool registration.
-  - **Classes**: `PluginManager` (methods: `register_hook()`, `unregister_hook()`, `emit()`, `apply_filter()`, `register_tool()`, `unregister_tool()`, `list_registered_tools()`, `clear()`), `PluginHook` (with `PRE_STAGE1`, `POST_STAGE1`, `PRE_STAGE2`, `POST_STAGE2`, `ON_TOOL_EXECUTION`, `ON_RISK_CHECK`), `BasePlugin` (methods: `setup()`, `teardown()`)
-  - **Functions**: `get_plugin_manager()`
+
+**File:** `cds_threshold_calibrator.py`
+
+**File:** `confidence_calibrator.py`
+
+**File:** `cot_thresholds.py`
+
+**File:** `prescreen_calibrator.py`
 
 ##### Folder: `trading-agent/utils/infra`
+
+**File:** `__init__.py`
+
 **File:** `audit_settings_keys.py`
+
 **File:** `container.py`
   - **Docstring**: Lightweight service container supporting dependency injection and singleton lifecycle management.
   - **Classes**: `ServiceContainer`
     - *Methods*: `register()`, `resolve()`, `has()`, `clear()`
+
 **File:** `db_backup.py`
+
 **File:** `env_file_manager.py`
   - **Docstring**: Atomic, comment-preserving .env configuration file manager with schema-aware updates and configuration validation.
   - **Classes**: `EnvFileManager`
     - *Methods*: `load()`, `get()`, `update()`, `is_configured()`
+
 **File:** `event_loop.py`
   - **Docstring**: Windows event loop configuration helper enforcing SelectorEventLoop on Python 3.14+.
   - **Functions**: `get_loop_factory()`, `run_async()`
+
 **File:** `log_redactor.py`
   - **Docstring**: Logging redactor masking credentials, passwords, and sensitive tokens in stdout and log files.
   - **Classes**: `RedactingFormatter`
   - **Functions**: `redact_sensitive_text()`
   - **Variables**: `SENSITIVE_PATTERNS`
+
 **File:** `notifier.py`
   - **Functions**: `get_notifier()`, `sanitize_telegram_html()`
   - **Classes**: `AgentNotifier`
     - *Methods*: `_send()`, `flush_outbox()`, `flush_outbox_loop()`, `send()`, `send_message()`, `send_alert()`, `send_critical()`, `send_warning()`, `send_info()`, `send_markdown()`, `send_cycle_summary()`
     - *Variables*: `_outbox`
+
 **File:** `platform_compat.py`
   - **Docstring**: Universal cross-platform compatibility helper for Windows and Linux runtime environments.
   - **Variables**: `IS_WINDOWS`, `IS_LINUX`
   - **Functions**: `configure_event_loop()`, `safe_subprocess_run()`, `normalize_path()`
+
 **File:** `worktree_manager.py`
   - **Docstring**: Git Worktree Isolation & Sandboxed Branch Management enabling autonomous subagents to safely check out isolated git worktrees.
   - **Classes**: `WorktreeManager`, `WorktreeLease`
     - *Methods*: `is_git_repo()`, `list_worktrees()`, `create_worktree()`, `prune_worktrees()`
 
+##### Folder: `trading-agent/utils/llm`
+
+**File:** `__init__.py`
+  - **Docstring**: LLM Utilities and Provider Abstractions for Monika Trading Agent.
+
+**File:** `adaptive_thinking.py`
+  - **Classes**: `PerSymbolAdaptiveThinkingAllocator` (Methods: `compute_symbol_budget`, `get_thinking_level`, `get_thinking_budget_for_task`), `QuantizedThinkingAllocator` (Methods: `quantize`)
+  - **Variables**: `ASSET_VOLATILITY_WEIGHTS`, `DEFAULT_WEIGHT`, `QUANTIZED_THINKING_BUCKETS`
+
+**File:** `cache_breakpoint_manager.py`
+  - **Classes**: `CacheBreakpointManager` (Constants: `MIN_CACHEABLE_CHARS`, `GEMINI_3_MIN_CACHEABLE_CHARS`, `GEMINI_25_MIN_CACHEABLE_CHARS`, `CANONICAL_INVARIANT_RULES`, `CANONICAL_TIER0_ANCHOR`; Methods: `get_min_cacheable_chars`, `pad_system_prompt_to_threshold`, `wrap_system_tiers`, `apply_to_messages`, `find_completed_transaction_endpoints`, `wrap_classify_json` [padded anchor guarantee >= 1,024 tokens]). *Note*: Maintained as compatibility shim; structural context engine (PR-06) governs KV cache alignment.
+
+**File:** `cache_miss_detector.py`
+  - **Classes**: `CacheMissReport`, `CacheMissDetector`
+  - **Variables**: `global_cache_miss_detector`
+
+**File:** `caveman_compressor.py`
+  - **Variables**: `PRECISION_BY_SYMBOL`, `DEFAULT_PRECISION`
+  - **Functions**: `_round_for_symbol`, `compress_tool_payload`
+
+**File:** `constrained_sampling.py`
+  - **Classes**: `ConstrainedSamplingConfig`
+  - **Functions**: `make_strict_json_schema()`, `resolve_grammar_for_provider()`
+
+**File:** `context_compaction.py`
+  - **Classes**: `ContextCompactionEngine` (Methods: `micro_prune`, `check_and_compact`, `compact_with_summary_model`, `mask_aged_observations`, `_extract_decisive_state` [expanded with optimal levels, sweeps, COT, macro], `check_tool_family_quota`, `_prune_ohlcv_output`)
+  - **Variables**: `TOOL_FAMILIES`, `FAMILY_QUOTAS`, `DEFAULT_FAMILY_QUOTA`
+  - **Functions**: `mask_aged_observations`
+
+**File:** `context_tracker.py`
+  - **Classes**: `ContextTracker` (Methods: `record_usage()`, `get_stats()`, `reset()`, `get_utilization()`, `get_context_summary()`, `get_history()`, `export_dict()`)
+  - **Functions**: `get_global_context_tracker()`
+
+**File:** `credential_pool.py`
+  - **Docstring**: Multi-provider Credential Pooling and Automatic Rotation across all LLM providers.
+  - **Classes**: `CredentialState`, `LLMCredentialPool` (alias `CredentialPool`)
+    - *Methods*: `from_env()`, `get_key()`, `report_failure()`, `report_success()`, `get_status()`, `all_exhausted()`
+
+**File:** `cycle_budget_guard.py`
+  - **Classes**: `CycleBudgetGuard` (Methods: `from_settings`, `record`, `check`, `is_exceeded`, `get_stats`, `reset`)
+  - **Functions**: `get_cycle_budget_guard`
+  - **Variables**: `_global_guard`
+
+**File:** `data_dedup.py`
+  - **Docstring**: In-memory market data query deduplication ledger avoiding redundant tool fetches per cycle.
+  - **Classes**: `DataFetchDeduplicator`
+    - *Methods*: `make_key()`, `check()`, `record()`, `invalidate_on_compaction()`
+
+**File:** `deferred_dispatcher.py`
+  - **Classes**: `DispatchMode`, `DeferredRequest`, `DeferredResult`, `DeferredLLMDispatcher`
+  - **Variables**: `global_deferred_dispatcher`
+
+**File:** `embedding.py`
+  - **Docstring**: Gemini Embedding vector generation utility for semantic precedent retrieval and session search.
+  - **Functions**: `generate_gemini_embedding()`
+
+**File:** `llmlingua_compressor.py`
+  - **Docstring**: Adaptive LLMLingua-2 Prompt Compressor with automatic GPU VRAM discovery, transparent CPU fallback, and financial keyword safeguarding.
+  - **Classes**: `AdaptiveLLMLinguaCompressor`
+    - *Methods*: `get_instance()`, `detect_device()`, `compress_text()`, `_heuristic_compress()`
+
+**File:** `memory_compressor.py`
+
+**File:** `model_capabilities.py`
+  - **Docstring**: Declarative model capability table for multi-provider LLM integration.
+  - **Classes**: `ModelCapabilities`
+  - **Functions**: `get_capabilities()`
+  - **Global Variables**: `MODEL_CAPABILITIES`
+
+**File:** `model_discipline.py`
+  - **Docstring**: Model-family prompt discipline and verification rules injector.
+  - **Variables**: `TOOL_USE_ENFORCEMENT_GUIDANCE`, `TRADING_VERIFICATION_GUIDANCE`
+  - **Functions**: `get_model_discipline()`
+
+**File:** `prompt_ab_test.py`
+  - **Classes**: `PromptABTest` (Methods: `get_variant`, `get_variant_bandit`, `record_outcome`, `get_bandit_state`, `get_results`), `OfflinePromptOptimizer` (Methods: `score_variant_performance`, `select_champion`, `record_champion`)
+
+**File:** `prompt_assembler.py`
+  - **Classes**: `PromptAssembler` (Methods: `assemble_stage1_tiers`, `assemble_stage1_system_tuple`, `assemble_stage1`, `assemble_stage2_tiers`, `assemble_stage2_system_tuple`, `assemble_stage2`), `PromptSection`
+  - **Functions**: `_flatten_system_prompt()`, `_split_memory()`, `compare_sections()`, `compose_ordered_prompt()`
+  - **Global Variables**: `STAGE1_TIER1`, `STAGE2_TIER1`, `STAGE2_TIER1_TEMPLATE`, `MANDATORY_RULES`, `TIER2_TOOL_STUBS`, `SECTION_ORDERS`
+
+**File:** `prompt_caching.py`
+  - **Classes**: `PromptCacheController`
+  - **Functions**: `get_cache_header()`, `apply_caching_breakpoint()`
+
+**File:** `prompt_compressor.py`
+  - **Classes**: `ContextCompressor` (Methods: `compress_ohlcv` [regular stride subsampling], `compress_indicators`, `compress_stage1_dict`, `compress_stage1_bundle`, `compress_stage2_bundle`, `compress_stage2_dict`, `_prune_text_bundle_safely`)
+  - **Functions**: `estimate_tokens`, `truncate_to_budget` (enhanced with Lossless Financial Structural Projection / LFSP: regular stride subsampling preserving unmitigated SMC zones, structural anchors, and high-impact calendar events)
+
+**File:** `prompt_disciplines.py`
+  - **Docstring**: Universal XML semantic prompt disciplines enforcing mandatory tool use, anti-mental arithmetic, literal preservation, parallel tool dispatch, and anti-laziness guardrails.
+  - **Functions**: `get_universal_execution_discipline()`, `get_mandatory_tool_discipline()`, `get_literal_preservation_discipline()`, `get_anti_laziness_discipline()`
+
+**File:** `prompt_tiering.py`
+  - **Classes**: `TieredPrompt`
+  - **Functions**: `build_tiered_prompt()`
+
+**File:** `prompt_tiers.py`
+  - **Docstring**: Three-tier system prompt architecture designed for prompt cache stability and ephemeral prefix caching.
+  - **Classes**: `PromptTier`, `TieredSystemPrompt`
+    - *Methods*: `assemble()`, `compile_tuple()`
+  - **Functions**: `get_ephemeral_overlay()`
+
+**File:** `semantic_cache.py`
+  - **Docstring**: Semantic Caching Subsystem for Repeated Financial / Macro LLM Queries with strict blacklist guardrails and category-based TTL.
+  - **Classes**: `TradingSemanticCache`
+    - *Methods*: `get_instance()`, `get()`, `set()`, `clear()`, `_generate_key()`
+    - *Variables*: `STRICT_BLACKLIST`, `DEFAULT_TTLS`
+
+**File:** `spill_subsystem.py`
+  - **Classes**: `PostgresSpillSubsystem` (Methods: `maybe_spill`, `retrieve_spill`)
+
+**File:** `tool_condenser.py`
+  - **Classes**: `ToolObservationCondenser`
+    - *Methods*: `condense_observation()`, `_extract_lfsp_projection()`, `_summarize_generic_tool()`
+
+##### Folder: `trading-agent/utils/market`
+
+**File:** `__init__.py`
+
+**File:** `bias_utils.py`
+  - **Docstring**: Centralized helper untuk normalisasi & perbandingan currency_bias (5-state to 3-state collapse).
+  - **Functions**: `normalize_bias(bias: Optional[str]) -> str`, `bias_strength(bias: Optional[str]) -> float`, `normalize_currency_bias_dict(currency_bias: dict) -> dict`, `is_bullish(bias: Optional[str]) -> bool`, `is_bearish(bias: Optional[str]) -> bool`, `is_neutral(bias: Optional[str]) -> bool`
+
+**File:** `brent_yfinance.py`
+  - **Functions**: `get_brent_price`
+
+**File:** `currency_utils.py`
+  - **Docstring**: Utilitas pemetaan simbol instrumen trading ke mata uang terkait.
+  - **Variables**: `SYMBOL_CURRENCIES`
+  - **Functions**: `get_symbol_currencies(symbol)`
+
+**File:** `direction.py`
+  - **Docstring**: Market Direction Normalization Utility enforcing strict lowercase ('buy' | 'sell').
+  - **Functions**: `normalize_direction(direction)`, `is_valid_direction(direction)`
+
+**File:** `dynamic_correlation.py`
+  - **Variables**: `STATIC_CORRELATION_FALLBACK`
+  - **Functions**: `get_rolling_correlation(session, symbol1, symbol2, lookback_bars=60, as_of=None, method="ewma", span=30)`
+
+**File:** `instrument_identity.py`
+  - **Classes**: `InstrumentIdentity`, `InstrumentRegistry`
+  - **Functions**: `resolve_instrument()`, `get_pip_multiplier()`
+
+**File:** `news_impact_keywords.py`
+  - **Variables**: `SHOCK_KEYWORDS` (tightened: single-word triggers replaced with multi-word specific phrases to reduce false BREAKING positives), `HIGH_IMPACT_KEYWORDS`, `DEESCALATION_KEYWORDS`, `REHASH_KEYWORDS`
+
+**File:** `session_info.py`
+  - **Docstring**: Market session tracking and timing rules utility.
+  - **Functions**: `get_current_market_session(dt=None)`
+
+**File:** `swap_estimator.py`
+  - **Functions**: `estimate_swap_cost`
+
+**File:** `usd_strength_proxy.py`
+  - **Functions**: `compute_usd_strength_proxy`
+
+##### Folder: `trading-agent/utils/plugins`
+
+**File:** `__init__.py`
+
+**File:** `extension_loader.py`
+  - **Docstring**: Dynamic plugin extension loader importing external hooks from plugins directory.
+  - **Functions**: `load_plugins()`, `load_single_plugin()`, `teardown_single_plugin()`
+
+**File:** `manager.py`
+  - **Docstring**: Lightweight Plugin & Extension Architecture with lifecycle hooks, filter pipelines, and dynamic tool registration.
+  - **Classes**: `PluginManager` (methods: `register_hook()`, `unregister_hook()`, `emit()`, `apply_filter()`, `register_tool()`, `unregister_tool()`, `list_registered_tools()`, `clear()`), `PluginHook` (with `PRE_STAGE1`, `POST_STAGE1`, `PRE_STAGE2`, `POST_STAGE2`, `ON_TOOL_EXECUTION`, `ON_RISK_CHECK`), `BasePlugin` (methods: `setup()`, `teardown()`)
+  - **Functions**: `get_plugin_manager()`
+
+##### Folder: `trading-agent/utils/protocol`
+
+**File:** `__init__.py`
+
+**File:** `brief_contamination_guard.py`
+
+**File:** `coherence_flag_tracker.py`
+
+**File:** `context_coherence.py`
+
+**File:** `context_snapshot.py`
+
+**File:** `cross_agent_sync.py`
+
+**File:** `enhanced_cds.py`
+  - **Functions**: `get_signal_threshold()`, `compute_spatial_cds(session, symbol, brief_currency_bias, lookback_bars, is_reversal)`, `compute_temporal_cds()`, `compute_task_cds()`, `compute_composite_cds()`, `get_cds_thresholds()`, `get_cds_thresholds_async()`
+
+**File:** `event_bus.py`
+  - **Docstring**: Typed asynchronous EventBus with strongly-typed dataclasses, priority pub-sub, exception isolation, and buffered queue streaming.
+  - **Classes**: `AppEvent`, `TickPriceEvent`, `BarClosedEvent`, `OrderStateChangedEvent`, `RiskBreachEvent`, `CircuitBreakerEvent`, `Subscription`, `EventBus`
+    - *Methods*: `subscribe()`, `unsubscribe()`, `get_subscribers()`, `publish()`, `publish_nowait()`, `publish_threadsafe()`, `get_or_create_queue()`, `publish_buffered()`, `start_queue_worker()`, `stop_workers()`, `clear()`, `get_default_bus()`, `subscribe_default()`, `unsubscribe_default()`, `publish_default()`
+  - **Functions**: `get_event_bus`, `reset_event_bus`
+
+**File:** `ssvp_coordinator.py`
+
 ##### Folder: `trading-agent/utils/scheduling`
+
+**File:** `__init__.py`
+
 **File:** `wall_clock.py`
   - **Docstring**: Wall-clock scheduling helpers.
   - **Functions**:
@@ -5640,45 +5880,62 @@ This document provides an exhaustive structural index of all directories, files,
     - `previous_occurrence(times_local: Sequence[dtime], tz_name: str = 'Asia/Jakarta', now_utc: datetime | None = None) -> datetime`
     - `sleep_until_next(times_local: Sequence[dtime], tz_name: str = 'Asia/Jakarta', label: str = 'task', shutdown_event: Optional[asyncio.Event] = None) -> datetime`
 
-##### Folder: `trading-agent/utils/streaming`
-**File:** `__init__.py`
-**File:** `stream_scrubber.py`
-  - **Docstring**: Stateful Stream Scrubber Pipeline buffering and scrubbing reasoning tokens (<think>...</think>), internal context tags, and secrets across streaming deltas.
-  - **Classes**: `StatefulStreamScrubber`
-    - *Methods*: `process_delta()`, `flush()`, `scrub_text()`, `_apply_redactions()`
-    - *Properties*: `accumulated_thinking`
-  - **Variables**: `SECRET_PATTERNS`, `STRIP_TAG_PAIRS`
-**File:** `streaming_lease.py`
-  - **Docstring**: Single-Writer Stream Lease & Output Serialization Coordinator preventing split-brain terminal or outbox corruption across concurrent async tasks.
-  - **Classes**: `LeaseRecord`, `StreamWriterLeaseCoordinator`
-    - *Methods*: `acquire_lease()`, `release_lease()`, `renew_lease()`
-
 ##### Folder: `trading-agent/utils/security`
-**File:** `__init__.py`
+
 **File:** `nt_guard.py`
   - **Docstring**: Windows NT Device Namespace & Path Traversal Security Guard.
   - **Classes**: `SecurityViolationError`
   - **Functions**: `is_dangerous_nt_namespace(path)`, `assert_safe_nt_path(path, allow_device_namespace=False)`, `sanitize_path(path)`
   - **Variables**: `DANGEROUS_NT_PREFIXES`, `DANGEROUS_NT_NAMES`
+
 **File:** `supply_chain_quarantine.py`
   - **Docstring**: 14-Day Supply-Chain Quarantine & Dependency Verification Sentinel protecting plugins and skills.
   - **Classes**: `QuarantineVerdict`, `SupplyChainQuarantine`
     - *Methods*: `check_typosquatting(package_name)`, `evaluate_package(package_name, version, ...)`
   - **Variables**: `CRITICAL_CORE_LIBRARIES`, `DEFAULT_QUARANTINE_DAYS`
+
 **File:** `threat_detector.py`
   - **Docstring**: Multi-scope content threat & prompt injection detector across all ingested surfaces.
   - **Classes**: `ThreatDetector`
     - *Methods*: `scan()`, `sanitize()`, `is_clean()`
   - **Variables**: `INJECTION_PATTERNS`, `EXFILTRATION_PATTERNS`, `INVISIBLE_CHARS`, `threat_detector`
+
 **File:** `threat_scanner.py`
   - **Docstring**: Threat scanner and sanitization engine inspecting external tool content for prompt injections, role hijacking, and unauthorized trade manipulation.
   - **Classes**: `SecurityAction`, `ScanVerdict`
   - **Functions**: `scan_content()`, `sanitize_or_block()`
   - **Variables**: `SUSPICIOUS_PATTERNS`, `INJECTION_PATTERNS`, `TRADING_MANIPULATION_PATTERNS`
 
+##### Folder: `trading-agent/utils/storage`
+
+**File:** `spill_store.py`
+  - **Docstring**: Output Spill Store for Large Artifacts. Offloads oversized tool outputs, news transcripts, and raw order book data to disk, returning bounded head/tail previews to context to preserve LLM token budgets.
+  - **Classes**: `SpillStore`
+    - *Methods*: `generate_preview(text, max_chars, head_ratio)`, `spill_artifact(content, artifact_type, artifact_id, preview_chars)`, `load_artifact(artifact_id_or_path)`
+  - **Functions**: `get_spill_store()`
+  - **Variables**: `DEFAULT_SPILL_DIR`
+
+##### Folder: `trading-agent/utils/streaming`
+
+**File:** `__init__.py`
+
+**File:** `stream_scrubber.py`
+  - **Docstring**: Stateful Stream Scrubber Pipeline buffering and scrubbing reasoning tokens (<think>...</think>), internal context tags, and secrets across streaming deltas.
+  - **Classes**: `StatefulStreamScrubber`
+    - *Methods*: `process_delta()`, `flush()`, `scrub_text()`, `_apply_redactions()`
+    - *Properties*: `accumulated_thinking`
+  - **Variables**: `SECRET_PATTERNS`, `STRIP_TAG_PAIRS`
+
+**File:** `streaming_lease.py`
+  - **Docstring**: Single-Writer Stream Lease & Output Serialization Coordinator preventing split-brain terminal or outbox corruption across concurrent async tasks.
+  - **Classes**: `LeaseRecord`, `StreamWriterLeaseCoordinator`
+    - *Methods*: `acquire_lease()`, `release_lease()`, `renew_lease()`
+
 ##### Folder: `trading-agent/utils/typesafe`
+
 **File:** `__init__.py`
   - **Docstring**: TypeSafe & Jev System One Utilities.
+
 **File:** `jev_primitives.py`
   - **Docstring**: TypeSafe Jev Primitives & Question Builders for Quantitative Trading Agent.
   - **Functions**:
@@ -5701,10 +5958,18 @@ This document provides an exhaustive structural index of all directories, files,
     - `build_adversarial_check_questions(symbol: str) -> dict`
     - `classify_news_batch_with_jev(client, batch, now_utc, calendar_priors, macro_context, min_confidence) -> Optional[list]`
 
-##### Folder: `trading-agent/utils/storage`
-**File:** `spill_store.py`
-  - **Docstring**: Output Spill Store for Large Artifacts. Offloads oversized tool outputs, news transcripts, and raw order book data to disk, returning bounded head/tail previews to context to preserve LLM token budgets.
-  - **Classes**: `SpillStore`
-    - *Methods*: `generate_preview(text, max_chars, head_ratio)`, `spill_artifact(content, artifact_type, artifact_id, preview_chars)`, `load_artifact(artifact_id_or_path)`
-  - **Functions**: `get_spill_store()`
-  - **Variables**: `DEFAULT_SPILL_DIR`
+##### Folder: `trading-agent/utils/validation`
+
+**File:** `__init__.py`
+
+**File:** `data_temporal_validator.py`
+
+**File:** `data_validator.py`
+  - **Global Variables**: `DEFAULT_OHLCV_AGE`, `DEFAULT_IND_AGE`, `DEFAULT_MACRO_AGE_DAYS`
+  - **Functions**: `is_crypto_symbol`, `is_forex_market_closed`, `is_market_reopen_window`, `validate_data_freshness`, `is_spread_acceptable`, `check_data_coherence`
+
+**File:** `indicator_sanitizer.py`
+  - **Functions**: `safe_float`
+
+**File:** `tool_response_validator.py`
+

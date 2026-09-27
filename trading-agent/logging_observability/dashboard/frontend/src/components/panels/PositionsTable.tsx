@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
-import { FloppyDiskIcon } from '../ui/RetroIcons';
+import { FloppyDiskIcon } from '../ui/Icons';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';

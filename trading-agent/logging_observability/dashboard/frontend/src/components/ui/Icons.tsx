@@ -1,17 +1,17 @@
 // ==============================================================================
-// File: src/components/ui/RetroIcons.tsx
-// Description: Pure SVG Retro Vector Icons inspired by 90s OS (vintage-ui.jpg)
+// File: src/components/ui/Icons.tsx
+// Description: Custom Vector Icons for Dashboard Workspaces
 // ==============================================================================
 
 import React from 'react';
 
-export interface RetroIconProps extends React.SVGProps<SVGSVGElement> {
+export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
   className?: string;
 }
 
 /** 1. Yellow Desktop Folder with paper insert */
-export const FolderDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const FolderDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -45,7 +45,7 @@ export const FolderDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className,
 );
 
 /** 2. Retro CRT Terminal Monitor */
-export const CrtMonitorIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const CrtMonitorIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -70,7 +70,7 @@ export const CrtMonitorIcon: React.FC<RetroIconProps> = ({ size = 20, className,
 );
 
 /** 3. 3.5-inch Floppy Disk */
-export const FloppyDiskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const FloppyDiskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -99,7 +99,7 @@ export const FloppyDiskIcon: React.FC<RetroIconProps> = ({ size = 20, className,
 );
 
 /** 4. Classic Salmon Postal Mail Envelope */
-export const MailDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const MailDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -119,7 +119,7 @@ export const MailDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, .
 );
 
 /** 5. Spiral Notebook Ledger */
-export const NotebookDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const NotebookDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -144,7 +144,7 @@ export const NotebookDeskIcon: React.FC<RetroIconProps> = ({ size = 20, classNam
 );
 
 /** 6. Brass Morse Telegraph Key */
-export const TelegraphDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const TelegraphDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -170,7 +170,7 @@ export const TelegraphDeskIcon: React.FC<RetroIconProps> = ({ size = 20, classNa
 );
 
 /** 7. Bank Wax Seal Stamp */
-export const WaxSealDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const WaxSealDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -190,7 +190,7 @@ export const WaxSealDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className
 );
 
 /** 8. Meridian Globe */
-export const GlobeDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const GlobeDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -210,7 +210,7 @@ export const GlobeDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, 
 );
 
 /** 9. Retro Desktop Recycle Bin */
-export const TrashDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const TrashDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -231,7 +231,7 @@ export const TrashDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, 
 );
 
 /** 10. Typewriter Audio Toggle Switch (Speaker / Mute) */
-export const AudioToggleIcon: React.FC<RetroIconProps & { muted?: boolean }> = ({ size = 20, muted = false, className, ...props }) => (
+export const AudioToggleIcon: React.FC<IconProps & { muted?: boolean }> = ({ size = 20, muted = false, className, ...props }) => (
   <svg
     width={size}
     height={size}
@@ -260,7 +260,7 @@ export const AudioToggleIcon: React.FC<RetroIconProps & { muted?: boolean }> = (
 );
 
 /** 11. Retro Magnifying Glass / Inspection Loupe */
-export const MagnifierDeskIcon: React.FC<RetroIconProps> = ({ size = 20, className, ...props }) => (
+export const MagnifierDeskIcon: React.FC<IconProps> = ({ size = 20, className, ...props }) => (
   <svg
     width={size}
     height={size}

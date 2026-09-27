@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { RetroVuMeter } from '../ui/RetroVuMeter';
+import { VuMeter } from '../ui/VuMeter';
 import { TypewriterButton } from '../ui/TypewriterButton';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useDashboardStore } from '../../store/dashboardStore';
@@ -202,7 +202,7 @@ export const RiskPanel: React.FC = () => {
             padding: '10px 0',
           }}
         >
-          <RetroVuMeter
+          <VuMeter
             label="PORTFOLIO HEAT"
             value={totalOpenRiskPct}
             min={0}
@@ -213,7 +213,7 @@ export const RiskPanel: React.FC = () => {
             width={180}
           />
 
-          <RetroVuMeter
+          <VuMeter
             label="DAILY DRAWDOWN"
             value={dailyDrawdownPct}
             min={0}
@@ -224,7 +224,7 @@ export const RiskPanel: React.FC = () => {
             width={180}
           />
 
-          <RetroVuMeter
+          <VuMeter
             label="MARGIN USAGE"
             value={marginUsagePct}
             min={0}
@@ -235,7 +235,7 @@ export const RiskPanel: React.FC = () => {
             width={180}
           />
 
-          <RetroVuMeter
+          <VuMeter
             label="VOLATILITY (VIX)"
             value={overview?.vix ?? 15.0}
             min={10}

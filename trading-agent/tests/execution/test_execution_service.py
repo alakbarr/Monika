@@ -130,37 +130,37 @@ class TestExecutionService:
             mock_adv.return_value = {'approve': True, 'hard_block': False}
             res = await svc.execute_analysis(session, analysis)
 
-        assert res.risk_approved is True
-        assert res.executed is True
-        assert res.mt5_ticket == 67890
+            assert res.risk_approved is True
+            assert res.executed is True
+            assert res.mt5_ticket == 67890
 
-        # Case 2: Market has drifted 3% since analysis was made (price_at_analysis=1940.0 vs current=2000.0).
-        # Drift = abs(2000 - 1940) / 1940 * 100 = 3.09% > 1.0% threshold.
-        # Should be rejected with stale_entry_price.
-        analysis_stale = AssetAnalysis(
-            id=1002, symbol="XAUUSD", decision="buy",
-            stop_loss=1970, take_profit=2020,
-            invalidation_price=1970, invalidation_direction="below",
-            price_at_analysis=1940.0,
-            entry_zone='{"price": 1980.0, "order_type": "limit"}',
-            rationale="Stale analysis"
-        )
-        res_stale = await svc.execute_analysis(session, analysis_stale)
-        assert res_stale.risk_approved is False
-        assert "stale_entry_price" in res_stale.risk_checks_failed
+            # Case 2: Market has drifted 3% since analysis was made (price_at_analysis=1940.0 vs current=2000.0).
+            # Drift = abs(2000 - 1940) / 1940 * 100 = 3.09% > 1.0% threshold.
+            # Should be rejected with stale_entry_price.
+            analysis_stale = AssetAnalysis(
+                id=1002, symbol="XAUUSD", decision="buy",
+                stop_loss=1970, take_profit=2020,
+                invalidation_price=1970, invalidation_direction="below",
+                price_at_analysis=1940.0,
+                entry_zone='{"price": 1980.0, "order_type": "limit"}',
+                rationale="Stale analysis"
+            )
+            res_stale = await svc.execute_analysis(session, analysis_stale)
+            assert res_stale.risk_approved is False
+            assert "stale_entry_price" in res_stale.risk_checks_failed
 
-        # Case 3: Missing price_at_analysis (None) falls back to current_price without crashing or ZeroDivisionError
-        analysis_fallback = AssetAnalysis(
-            id=1003, symbol="XAUUSD", decision="buy",
-            stop_loss=1970, take_profit=2020,
-            invalidation_price=1970, invalidation_direction="below",
-            price_at_analysis=None,
-            entry_zone='{"price": 1980.0, "order_type": "limit"}',
-            rationale="Fallback analysis"
-        )
-        res_fallback = await svc.execute_analysis(session, analysis_fallback)
-        assert res_fallback.risk_approved is True
-        assert res_fallback.executed is True
+            # Case 3: Missing price_at_analysis (None) falls back to current_price without crashing or ZeroDivisionError
+            analysis_fallback = AssetAnalysis(
+                id=1003, symbol="XAUUSD", decision="buy",
+                stop_loss=1970, take_profit=2020,
+                invalidation_price=1970, invalidation_direction="below",
+                price_at_analysis=None,
+                entry_zone='{"price": 1980.0, "order_type": "limit"}',
+                rationale="Fallback analysis"
+            )
+            res_fallback = await svc.execute_analysis(session, analysis_fallback)
+            assert res_fallback.risk_approved is True
+            assert res_fallback.executed is True
 
 
 

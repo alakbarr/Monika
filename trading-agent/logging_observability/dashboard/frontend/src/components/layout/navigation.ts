@@ -5,7 +5,7 @@ import {
   NotebookDeskIcon,
   TelegraphDeskIcon,
   FloppyDiskIcon,
-} from '../ui/RetroIcons';
+} from '../ui/Icons';
 
 export interface WorkspaceItem {
   id: string;

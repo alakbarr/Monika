@@ -15,7 +15,7 @@ Sistem AI mengacu pada file ini untuk menyelaraskan perilaku, format komunikasi,
 
 ## 2. Prinsip Rekayasa Perangkat Lunak & Invariants
 - **Kerahasiaan Kredensial**: DILARANG KERAS membaca, mencetak, atau mengekstrak isi file `.env`.
-- **Integritas Index**: Selalu baca `INDEX.md` terlebih dahulu. Setelah modifikasi, wajib update konten manual `INDEX.md` dan `STRUKTUR.md`, lalu jalankan `python scripts/update_index_toc.py`.
+- **Integritas Index**: Selalu baca `INDEX.md` terlebih dahulu. Setelah modifikasi, wajib update konten manual `INDEX.md` dan `STRUCTURE.md`, lalu jalankan `python scripts/update_index_toc.py`.
 - **Pengujian Ketat**: Setiap perubahan kode wajib memiliki atau lulus unit test (`pytest`).
 - **Zero Data Loss**: Dilarang menimpa file kosong (0 bytes) atau menghapus file tanpa konfirmasi eksplisit.
 - **Versi**: Monika berada pada rilis pertama (`v1.0.0`). Tidak menyebut revisi internal sebagai "v2".

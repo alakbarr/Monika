@@ -25,7 +25,7 @@ from rich import box
 
 
 def test_theme_color_constants():
-    """Verify retro vintage color tokens."""
+    """Verify default theme color tokens."""
     assert PHOSPHOR_AMBER == "#E8B94A"
     assert BRASS == "#F5BD38"
     assert BULL_PROFIT == "#4CAF50"

@@ -305,7 +305,7 @@ class CommandRouter:
 
     @staticmethod
     def build_help_text() -> str:
-        from telegram_bot.vintage_formatter import format_help_slip
+        from telegram_bot.message_formatter import format_help_slip
         return format_help_slip(COMMAND_HELP)
 
     @staticmethod

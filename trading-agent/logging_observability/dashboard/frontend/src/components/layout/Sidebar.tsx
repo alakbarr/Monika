@@ -1,6 +1,6 @@
 // ==============================================================================
 // File: src/components/layout/Sidebar.tsx
-// Description: Retro OS Workspace Navigator with 5 Desktop Folders & Custom Vector Icons
+// Description: Dashboard Workspace Navigator with 5 Desktop Folders & Custom Vector Icons
 // ==============================================================================
 
 import React, { useState } from 'react';
