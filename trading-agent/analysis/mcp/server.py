@@ -143,19 +143,31 @@ class MonikaMcpServer:
             from database.models import SystemConfig, Position, PaperTradeRecord
             from sqlalchemy import select
 
-            async with get_session() as session:
-                cfgs = (await session.execute(select(SystemConfig))).scalars().all()
-                cfg_map = {c.key: c.value for c in cfgs}
-                open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-                open_paper = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
+            try:
+                async with get_session() as session:
+                    cfgs = (await session.execute(select(SystemConfig))).scalars().all()
+                    cfg_map = {c.key: c.value for c in cfgs}
+                    open_real = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                    open_paper = (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open"))).scalars().all()
 
+                    return {
+                        "kill_switch": cfg_map.get("kill_switch") == "true",
+                        "system_paused": cfg_map.get("system_paused") == "true",
+                        "auto_execute": cfg_map.get("auto_execute") == "true",
+                        "open_real_positions": len(open_real),
+                        "open_paper_positions": len(open_paper),
+                        "mode": self.settings.get("trading", {}).get("mode", "paper"),
+                    }
+            except Exception as e:
+                logger.warning(f"[MCP] DB unavailable for monika_get_status: {e}")
                 return {
-                    "kill_switch": cfg_map.get("kill_switch") == "true",
-                    "system_paused": cfg_map.get("system_paused") == "true",
-                    "auto_execute": cfg_map.get("auto_execute") == "true",
-                    "open_real_positions": len(open_real),
-                    "open_paper_positions": len(open_paper),
+                    "kill_switch": False,
+                    "system_paused": False,
+                    "auto_execute": False,
+                    "open_real_positions": 0,
+                    "open_paper_positions": 0,
                     "mode": self.settings.get("trading", {}).get("mode", "paper"),
+                    "status": "db_offline",
                 }
 
         elif tool_name == "monika_get_open_positions":

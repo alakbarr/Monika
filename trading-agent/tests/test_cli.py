@@ -973,6 +973,7 @@ def test_ensure_daemon_running_spawns_process(monkeypatch):
     from cli.main import ensure_daemon_running
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr("utils.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
     states = [False, True]
     monkeypatch.setattr("cli.main.is_daemon_running", lambda url=None: states.pop(0) if states else True)
     monkeypatch.setattr("cli.main.spawn_daemon_background", MagicMock(return_value=99999))
