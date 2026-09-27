@@ -61,9 +61,10 @@ async def handle_computer_use(
     action = params.action.lower().strip()
 
     try:
-        import pyautogui
+        import importlib
+        pyautogui = importlib.import_module("pyautogui")
         pyautogui.FAILSAFE = True
-    except ImportError:
+    except (ImportError, Exception):
         # Graceful fallback when desktop GUI libraries are not present
         if action == "screenshot":
             try:

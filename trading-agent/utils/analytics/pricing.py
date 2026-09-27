@@ -5,9 +5,12 @@ untuk kalkulasi biaya token USD seluruh model AI yang didukung.
 Mendukung model dari Anthropic, Google Gemini, OpenAI, DeepSeek, Groq, OpenRouter, dan Ollama.
 """
 
+from __future__ import annotations
+
+import logging
+import time
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
-import logging
 
 logger = logging.getLogger("TradingAgent.Pricing")
 
@@ -463,13 +466,10 @@ def cost_usd(
     clean_name = str(model_name).lower()
 
     # Tentukan apakah input_tokens sudah berstatus uncached
-    if is_already_uncached is not None:
-        uncached_input = input_tokens if is_already_uncached else max(0, input_tokens - cached_tokens)
-    elif prov == "anthropic" or "claude" in clean_name:
-        # Anthropic standard: input_tokens is already uncached
+    if is_already_uncached:
         uncached_input = input_tokens
     else:
-        # Standard OpenAI/others: subtract cached tokens if input_tokens was total
+        # Standard: subtract cached tokens if input_tokens was total
         uncached_input = max(0, input_tokens - cached_tokens)
 
     # Use Decimal for high-precision institutional accounting

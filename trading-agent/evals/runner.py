@@ -34,7 +34,8 @@ class OfflineEvalRunner:
         for json_file in sorted(self.fixtures_path.glob("*.json")):
             try:
                 data = json.loads(json_file.read_text(encoding="utf-8"))
-                fixtures.append(data)
+                if "scenario_id" in data:
+                    fixtures.append(data)
             except Exception as e:
                 logger.error(f"Failed to load fixture {json_file.name}: {e}")
         return fixtures

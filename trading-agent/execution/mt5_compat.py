@@ -332,7 +332,8 @@ class MT5BridgeProxy:
 
         # 3. Try mt5linux (legacy)
         try:
-            from mt5linux import MetaTrader5 as MT5LinuxBridge
+            import importlib
+            MT5LinuxBridge = importlib.import_module("mt5linux").MetaTrader5
             self._bridge_client = MT5LinuxBridge(host=self.host, port=self.port)
             logger.info(f"[MT5Bridge] Initialized mt5linux client -> {self.host}:{self.port}")
             return self._bridge_client
