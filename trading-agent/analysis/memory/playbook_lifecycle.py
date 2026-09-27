@@ -90,6 +90,7 @@ class PlaybookLifecycleFSM:
                     avg_rr=data.get("avg_rr", data.get("current_avg_rr", 0.0)),
                     stale_until_ts=data.get("stale_until_ts"),
                     version_hash=data.get("version_hash"),
+                    derived_from=data.get("derived_from"),
                 )
             return loaded
         except Exception as e:
@@ -119,8 +120,9 @@ class PlaybookLifecycleFSM:
         name: str,
         state: Optional[PlaybookState] = None,
         status: Optional[PlaybookState] = None,
+        derived_from: Optional[str] = None,
     ) -> PlaybookMetadata:
-        """Register a new playbook in the lifecycle system."""
+        """Register a new playbook in the lifecycle system with optional lineage tracking."""
         chosen_state = state or status or PlaybookState.CANDIDATE
         if name not in self._state:
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -129,10 +131,42 @@ class PlaybookLifecycleFSM:
                 state=chosen_state,
                 created_at=now_iso,
                 updated_at=now_iso,
+                derived_from=derived_from,
             )
             self._save_state()
-            logger.info(f"[PlaybookLifecycle] Registered '{name}' as {chosen_state.value}")
+            logger.info(f"[PlaybookLifecycle] Registered '{name}' as {chosen_state.value} (derived_from: {derived_from})")
         return self._state[name]
+
+    def validate_parent_freshness(self, parent_name: str) -> Tuple[bool, str]:
+        """
+        Validates that parent playbook exists, is active, and shows fresh evidence
+        before permitting strategy mutations or derivation.
+        """
+        parent = self._state.get(parent_name)
+        if not parent:
+            return False, f"Parent playbook '{parent_name}' does not exist in lifecycle registry."
+        if parent.state != PlaybookState.ACTIVE:
+            return False, f"Parent playbook '{parent_name}' is currently {parent.state.value} (must be ACTIVE)."
+        if parent.trades_count >= 5 and parent.win_rate < 0.50:
+            return False, f"Parent playbook '{parent_name}' win rate ({parent.win_rate:.1%}) is below 50% baseline threshold."
+        return True, f"Parent '{parent_name}' evidence is fresh and active."
+
+    def register_derived_playbook(
+        self,
+        name: str,
+        parent_name: str,
+        state: Optional[PlaybookState] = None,
+    ) -> PlaybookMetadata:
+        """
+        Registers a derived/mutated playbook, enforcing parent evidence freshness gate.
+        Raises ValueError if parent evidence has degraded.
+        """
+        is_fresh, reason = self.validate_parent_freshness(parent_name)
+        if not is_fresh:
+            logger.warning(f"[PlaybookLifecycle] Rejected derived playbook '{name}' from '{parent_name}': {reason}")
+            raise ValueError(f"Parent evidence freshness gate failed: {reason}")
+
+        return self.register_playbook(name=name, state=state, derived_from=parent_name)
 
     def get_status(self, name: str) -> Optional[PlaybookState]:
         """Get current lifecycle status of a playbook."""

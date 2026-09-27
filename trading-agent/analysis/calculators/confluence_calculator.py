@@ -573,6 +573,16 @@ async def calculate_confluence(
                (test_direction == "sell" and p_bias == "bearish"):
                 score += 1
 
+        # Quantitative Factor Zoo Consensus (+1 point)
+        if quant_signals:
+            concordant_edges = sum(
+                1 for sig in quant_signals
+                if getattr(sig, "direction", "").lower() == test_direction.lower()
+                and getattr(sig, "edge_strength", 0.0) >= 0.55
+            )
+            if concordant_edges >= 1:
+                score += 1
+
         return score, issues
 
     if direction:

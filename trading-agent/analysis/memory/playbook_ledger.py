@@ -40,6 +40,7 @@ class PlaybookMetadata:
     win_rate: float = 0.0
     stale_until_ts: Optional[float] = None
     version_hash: Optional[str] = None
+    derived_from: Optional[str] = None
     trades: List[Dict[str, Any]] = field(default_factory=list)
 
     @property

@@ -15,6 +15,7 @@ Menangani:
 import asyncio
 import functools
 import logging
+import math
 import os
 import sys
 import time
@@ -46,6 +47,57 @@ TIMEFRAME_MAP: dict[str, int] = {}
 class MT5ProfileMismatchError(RuntimeError):
     """Raised when the connected MT5 terminal login or trade mode does not match configured expectations."""
     pass
+
+
+_BROKER_SYMBOL_CACHE: dict[str, str] = {}
+
+
+def _resolve_broker_symbol(symbol: str) -> str:
+    """
+    Resolves broker-specific symbol name with prefix/suffix handling.
+    Example: EURUSD -> EURUSDm, EURUSD.pro, EURUSD.raw, EURUSD+
+    Caches results in memory for high-frequency low-latency execution.
+    """
+    clean_sym = symbol.strip().upper()
+    if clean_sym in _BROKER_SYMBOL_CACHE:
+        return _BROKER_SYMBOL_CACHE[clean_sym]
+
+    try:
+        from execution.mt5_compat import ensure_mt5_module
+        ensure_mt5_module()
+        import MetaTrader5 as _mt5
+        mt5: Any = _mt5
+        
+        # 1. Direct match check
+        info = mt5.symbol_info(clean_sym)
+        if info is not None:
+            _BROKER_SYMBOL_CACHE[clean_sym] = clean_sym
+            return clean_sym
+
+        # 2. Check known common broker suffixes
+        common_suffixes = ["m", ".pro", ".raw", "+", ".a", ".ecn", "_i", ".s"]
+        for sfx in common_suffixes:
+            candidate = f"{clean_sym}{sfx}"
+            if mt5.symbol_info(candidate) is not None:
+                logger.info(f"Resolved broker symbol: {clean_sym} -> {candidate}")
+                _BROKER_SYMBOL_CACHE[clean_sym] = candidate
+                return candidate
+
+        # 3. Query symbols_get with group wildcard
+        matches = mt5.symbols_get(group=f"*{clean_sym}*")
+        if matches:
+            for s in matches:
+                name = getattr(s, "name", "")
+                if clean_sym in name:
+                    logger.info(f"Resolved broker symbol via wildcard match: {clean_sym} -> {name}")
+                    _BROKER_SYMBOL_CACHE[clean_sym] = name
+                    return name
+    except Exception as e:
+        logger.debug(f"Broker symbol resolution fallback for {clean_sym}: {e}")
+
+    # Fallback to provided symbol
+    _BROKER_SYMBOL_CACHE[clean_sym] = clean_sym
+    return clean_sym
 
 
 def _build_timeframe_map():
@@ -1447,10 +1499,23 @@ def _place_order(
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
 
-    info = mt5.symbol_info(symbol)
+    resolved_symbol = _resolve_broker_symbol(symbol)
+    info = mt5.symbol_info(resolved_symbol)
     if info is None:
         return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Symbol {symbol} not found', 'retcode': -1}
+                'error': f'Symbol {resolved_symbol} (original: {symbol}) not found on broker terminal', 'retcode': -1}
+
+    # Strict volume floor quantization to prevent broker volume rejection
+    step = float(getattr(info, 'volume_step', 0.01) or 0.01)
+    min_vol = float(getattr(info, 'volume_min', 0.01) or 0.01)
+    max_vol = float(getattr(info, 'volume_max', 100.0) or 100.0)
+    steps = math.floor((float(volume) / step) + 1e-9)
+    if steps <= 0:
+        return {'success': False, 'ticket': None, 'price': None,
+                'error': f'Volume {volume} below minimum step {step} for {resolved_symbol}', 'retcode': -1}
+    quantized_vol = max(min_vol, min(max_vol, steps * step))
+    vol_decimals = 2 if step >= 0.01 else (3 if step >= 0.001 else 0)
+    final_volume = round(quantized_vol, vol_decimals)
 
     # Normalize SL/TP to tick size to prevent 'Invalid Stops' rejection
     def _normalize(val: float) -> float:
@@ -1458,26 +1523,26 @@ def _place_order(
         return round(round(val / info.trade_tick_size) * info.trade_tick_size, info.digits)
 
     # 1. Market Spread Safety Check
-    tick = mt5.symbol_info_tick(symbol)
+    tick = mt5.symbol_info_tick(resolved_symbol)
     if tick is None:
         return {'success': False, 'ticket': None, 'price': None,
-                'error': f'Cannot get tick for spread check on {symbol}', 'retcode': -1}
+                'error': f'Cannot get tick for spread check on {resolved_symbol}', 'retcode': -1}
 
     spread_pts = (tick.ask - tick.bid) / info.point if info.point else 0
     mult = max_spread_multiplier if max_spread_multiplier is not None else 3.0
 
     # Level 2 DOM Ladder Walk Check for large lot orders (Subsystem 5)
-    if float(volume) >= 1.0:
+    if float(final_volume) >= 1.0:
         try:
-            dom_res = _calculate_dom_vwap(symbol, direction, float(volume))
+            dom_res = _calculate_dom_vwap(resolved_symbol, direction, float(final_volume))
             if dom_res.get("has_dom") and dom_res.get("slippage_pts", 0.0) > 40.0:
                 logger.warning(
-                    f"[{symbol}] Level 2 DOM Ladder Walk: large lot {volume} expected slippage "
+                    f"[{resolved_symbol}] Level 2 DOM Ladder Walk: large lot {final_volume} expected slippage "
                     f"{dom_res['slippage_pts']:.1f} pts exceeds 40.0 pts tolerance. "
                     f"VWAP={dom_res['vwap']} vs BBO={dom_res['bbo_price']}."
                 )
         except Exception as dom_err:
-            logger.debug(f"[{symbol}] DOM VWAP check non-fatal: {dom_err}")
+            logger.debug(f"[{resolved_symbol}] DOM VWAP check non-fatal: {dom_err}")
 
     # 2. Normalize Direction & Map Action/Order Type
     direction = (direction or "").lower().strip()
@@ -1529,8 +1594,8 @@ def _place_order(
 
     request = {
         'action': action,
-        'symbol': symbol,
-        'volume': float(volume),
+        'symbol': resolved_symbol,
+        'volume': float(final_volume),
         'type': mt5_order_type,
         'price': float(order_price),
         'sl': _normalize(sl) if sl else 0.0,
@@ -1541,6 +1606,22 @@ def _place_order(
         'magic': 20250101,  # EA magic number to identify AI-placed orders
         'deviation': 20,    # Max price deviation in points for market orders
     }
+
+    # Pre-flight order_check validation
+    try:
+        check_result = mt5.order_check(request)
+        if check_result is not None:
+            check_retcode = getattr(check_result, "retcode", 0)
+            if check_retcode not in (0, 10009):
+                err_msg = f"Pre-flight order_check rejected: retcode={check_retcode} ({getattr(check_result, 'comment', '')})"
+                logger.warning(f"[{resolved_symbol}] {err_msg}")
+                return {
+                    'success': False, 'ticket': None, 'price': None,
+                    'error': err_msg,
+                    'retcode': check_retcode,
+                }
+    except Exception as chk_ex:
+        logger.debug(f"[{resolved_symbol}] order_check non-fatal: {chk_ex}")
 
     max_retries = 2
     result = None
@@ -1564,7 +1645,7 @@ def _place_order(
         transient_codes = (req_code, inv_code, off_code, 10004, 10015, 10021)
         if getattr(result, "retcode", None) in transient_codes and attempt < max_retries:
             time.sleep(0.1)  # 100ms rapid pause
-            latest_tick = mt5.symbol_info_tick(symbol)
+            latest_tick = mt5.symbol_info_tick(resolved_symbol)
             if latest_tick:
                 new_price = getattr(latest_tick, 'ask', None) if direction == 'buy' else getattr(latest_tick, 'bid', None)
                 if new_price and new_price > 0:

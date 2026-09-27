@@ -31,6 +31,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Set, Tuple
 
+from enum import Enum
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +48,14 @@ from database.models import (
 from utils.protocol.event_bus import get_event_bus, OrderStateChangedEvent
 
 logger = logging.getLogger("TradingAgent.OrderReconciler")
+
+
+class ReconciliationDeltaType(str, Enum):
+    """Formal delta classification for institutional audit & safety gating."""
+    MATCHED = "MATCHED"
+    UNKNOWN_FILL = "UNKNOWN_FILL"
+    ORPHAN_ORDER = "ORPHAN_ORDER"
+    MID_ORDER_AMBIGUOUS = "MID_ORDER_AMBIGUOUS"
 
 
 class OrderReconciler:
@@ -157,6 +166,7 @@ class OrderReconciler:
             "orders_filled": 0,
             "orders_partially_filled": 0,
             "orders_cancelled": 0,
+            "delta_classification": {k.value: 0 for k in ReconciliationDeltaType},
         }
 
         # Index terminal orders by ticket and client_order_id
@@ -483,23 +493,45 @@ class OrderReconciler:
                     order, old_st, OrderStatus.FILLED.value,
                     {"ticket": t_ticket, "price": deal_price, "source": "reconciler_deals"}
                 )
+                stats["delta_classification"][ReconciliationDeltaType.MATCHED.value] += 1
             else:
-                # Cancelled or expired externally in terminal
+                # Cancelled or expired externally in terminal, OR ambiguous in-flight
                 old_st = order.status.value
                 terminal_reason = "Order removed or cancelled externally in terminal"
                 new_state = OrderStatus.CANCELLED
 
                 # Check if MT5 order history indicates expired
+                hist_found = False
                 if self.mt5_client and hasattr(self.mt5_client, "get_order_history") and t_ticket:
                     try:
                         hist_orders = await self.mt5_client.get_order_history(t_ticket)
                         if hist_orders:
+                            hist_found = True
                             hist_state = getattr(hist_orders[0], "state", None)
                             if hist_state == 5 or str(hist_state).lower() == "expired":
                                 new_state = OrderStatus.EXPIRED
                                 terminal_reason = "Order expired externally in terminal"
                     except Exception:
                         pass
+
+                if order.status == OrderStatus.SUBMITTED and not hist_found:
+                    # In-flight order was submitted, but completely vanished without history or deals
+                    stats["delta_classification"][ReconciliationDeltaType.MID_ORDER_AMBIGUOUS.value] += 1
+                    logger.critical(
+                        f"[OrderReconciler] HALT TRIGGERED: MID_ORDER_AMBIGUOUS detected for Order {order.id} "
+                        f"({order.symbol} #{t_ticket}). Order submitted to broker but missing from all terminal feeds. "
+                        f"Arming ESTOP to preserve capital."
+                    )
+                    try:
+                        from agent.estop import arm_estop
+                        arm_estop(
+                            reason=f"MID_ORDER_AMBIGUOUS on order {order.id} ({order.symbol} #{t_ticket})",
+                            actor="OrderReconciler"
+                        )
+                    except Exception as estop_err:
+                        logger.error(f"[OrderReconciler] Failed to arm ESTOP: {estop_err}")
+                else:
+                    stats["delta_classification"][ReconciliationDeltaType.MATCHED.value] += 1
 
                 evt = order.transition_to(
                     new_state,
@@ -533,6 +565,7 @@ class OrderReconciler:
             "positions_closed": 0,
             "positions_modified": 0,
             "untracked_adopted": 0,
+            "delta_classification": {k.value: 0 for k in ReconciliationDeltaType},
         }
 
         term_positions_by_ticket: Dict[int, dict] = {}
@@ -721,6 +754,7 @@ class OrderReconciler:
                     )
                     session.add(adopted_pos)
                     stats["untracked_adopted"] += 1
+                    stats["delta_classification"][ReconciliationDeltaType.UNKNOWN_FILL.value] += 1
                     logger.warning(
                         f"[OrderReconciler] Adopted untracked terminal position #{t_ticket} "
                         f"({adopted_pos.symbol} {adopted_pos.direction} {adopted_pos.volume} lots)"

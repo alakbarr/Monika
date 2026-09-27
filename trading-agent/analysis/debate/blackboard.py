@@ -25,26 +25,47 @@ class DebateBlackboard:
         self.fact_sheet = fact_sheet or {}
         self.bull_claims: List[Dict[str, Any]] = []
         self.bear_claims: List[Dict[str, Any]] = []
+        self.falsification_triggers: List[Dict[str, Any]] = []
         self.contradictions: List[Dict[str, Any]] = []
         self.created_at = datetime.now(timezone.utc).isoformat()
 
-    def add_bull_thesis(self, thesis: str, key_levels: Optional[List[float]] = None, confidence: float = 0.5) -> None:
-        """Appends concise bull claim to blackboard."""
+    def add_bull_thesis(
+        self,
+        thesis: str,
+        key_levels: Optional[List[float]] = None,
+        confidence: float = 0.5,
+        falsification_triggers: Optional[List[str]] = None,
+    ) -> None:
+        """Appends concise bull claim and falsification criteria to blackboard."""
+        triggers = falsification_triggers or []
         self.bull_claims.append({
             "thesis": thesis[:400],
             "key_levels": key_levels or [],
             "confidence": confidence,
+            "falsification_triggers": triggers,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
+        for trig in triggers:
+            self.falsification_triggers.append({"side": "bull", "trigger": trig})
 
-    def add_bear_thesis(self, thesis: str, key_levels: Optional[List[float]] = None, confidence: float = 0.5) -> None:
-        """Appends concise bear counter-claim to blackboard."""
+    def add_bear_thesis(
+        self,
+        thesis: str,
+        key_levels: Optional[List[float]] = None,
+        confidence: float = 0.5,
+        falsification_triggers: Optional[List[str]] = None,
+    ) -> None:
+        """Appends concise bear counter-claim and falsification criteria to blackboard."""
+        triggers = falsification_triggers or []
         self.bear_claims.append({
             "thesis": thesis[:400],
             "key_levels": key_levels or [],
             "confidence": confidence,
+            "falsification_triggers": triggers,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
+        for trig in triggers:
+            self.falsification_triggers.append({"side": "bear", "trigger": trig})
 
     def extract_sparse_contradictions(self) -> List[Dict[str, Any]]:
         """
@@ -94,10 +115,16 @@ class DebateBlackboard:
         
         contradictions = self.extract_sparse_contradictions()
         
+        triggers_summary = (
+            "\n".join(f"  - [{t['side'].upper()}]: {t['trigger']}" for t in self.falsification_triggers)
+            if self.falsification_triggers else "None specified"
+        )
+        
         board = (
             f"=== S²-MAD SPARSE DEBATE BLACKBOARD [{self.symbol}] ===\n"
             f"[BULL ADVOCATE THESIS]: {latest_bull}\n"
             f"[BEAR DISSENT THESIS]: {latest_bear}\n"
+            f"[FALSIFICATION TRIGGERS]:\n{triggers_summary}\n"
             f"[KEY CONTRADICTIONS]: {json.dumps(contradictions, default=str)}\n"
             f"=== END BLACKBOARD ==="
         )
@@ -109,6 +136,7 @@ class DebateBlackboard:
             "fact_sheet": self.fact_sheet,
             "bull_claims": self.bull_claims,
             "bear_claims": self.bear_claims,
+            "falsification_triggers": self.falsification_triggers,
             "contradictions": self.contradictions,
             "created_at": self.created_at
         }

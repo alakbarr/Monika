@@ -359,7 +359,16 @@ class PaperTracker:
                 swap_enabled = self.settings.get('trading', {}).get('edge_strategy', {}).get('swap_modeling_enabled', True)
                 if swap_enabled:
                     from utils.market.swap_estimator import estimate_swap_cost
-                    swap_abs = await estimate_swap_cost(trade.symbol, trade.direction, 1.0, holding_hours)
+                    lots = getattr(trade, 'lots', None) or getattr(trade, 'volume', None) or 1.0
+                    mt5_client = getattr(self, '_mt5', None)
+                    swap_abs = await estimate_swap_cost(
+                        symbol=trade.symbol,
+                        direction=trade.direction,
+                        lots=float(lots),
+                        holding_hours=holding_hours,
+                        start_time=trade.opened_at,
+                        mt5_client=mt5_client,
+                    )
                     init_bal = float(self.settings.get('paper_trading', {}).get('initial_balance', 10000.0) or 10000.0)
                     pnl_pct += (swap_abs / max(1.0, init_bal) * 100)
 
@@ -424,6 +433,22 @@ class PaperTracker:
                             else:
                                 exit_price = trade.entry_price
                                 pnl_pct = 0
+
+                            if age_hours > 24:
+                                swap_enabled = self.settings.get('trading', {}).get('edge_strategy', {}).get('swap_modeling_enabled', True)
+                                if swap_enabled:
+                                    from utils.market.swap_estimator import estimate_swap_cost
+                                    lots = getattr(trade, 'lots', None) or getattr(trade, 'volume', None) or 1.0
+                                    swap_abs = await estimate_swap_cost(
+                                        symbol=trade.symbol,
+                                        direction=trade.direction,
+                                        lots=float(lots),
+                                        holding_hours=age_hours,
+                                        start_time=trade.opened_at,
+                                        mt5_client=getattr(self, '_mt5', None),
+                                    )
+                                    init_bal = float(self.settings.get('paper_trading', {}).get('initial_balance', 10000.0) or 10000.0)
+                                    pnl_pct += (swap_abs / max(1.0, init_bal) * 100)
                             
                             trade.status = 'closed'
                             trade.closed_at = now

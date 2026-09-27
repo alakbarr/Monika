@@ -223,6 +223,7 @@ class ThreePartContextCompressor:
 
             # 4. Atomic Reassembly & Alternation Verification
             compacted_messages = head_zone + middle_representation + tail_zone
+            compacted_messages = self._fix_tool_pairs(compacted_messages)
             new_tokens = self.estimate_tokens(compacted_messages)
             logger.info(
                 f"[ThreePartContextCompressor] Compaction complete: {total_msgs} -> {len(compacted_messages)} messages, "
@@ -230,3 +231,52 @@ class ThreePartContextCompressor:
             )
 
             return compacted_messages
+
+    @staticmethod
+    def _fix_tool_pairs(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Guarantees that every assistant tool_call has a matching tool response
+        and removes orphaned tool responses to prevent LLM API 400 Bad Request errors.
+        """
+        # 1. Collect all tool_call_ids defined in assistant messages
+        known_call_ids = set()
+        for msg in messages:
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                for tc in msg.get("tool_calls", []):
+                    tc_id = tc.get("id") or (tc.get("function", {}).get("name") if isinstance(tc, dict) else None)
+                    if tc_id:
+                        known_call_ids.add(str(tc_id))
+
+        # 2. Filter orphaned tool messages
+        filtered_messages: List[Dict[str, Any]] = []
+        fulfilled_call_ids = set()
+        for msg in messages:
+            role = msg.get("role")
+            msg_call_id = msg.get("tool_call_id")
+            if role == "tool":
+                if msg_call_id and str(msg_call_id) not in known_call_ids:
+                    logger.debug(f"[ThreePartContextCompressor] Dropped orphaned tool response {msg_call_id}")
+                    continue
+                if msg_call_id:
+                    fulfilled_call_ids.add(str(msg_call_id))
+            filtered_messages.append(dict(msg))
+
+        # 3. Insert stubs for any assistant tool_calls that lack matching tool responses
+        final_messages: List[Dict[str, Any]] = []
+        for msg in filtered_messages:
+            final_messages.append(msg)
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                for tc in msg.get("tool_calls", []):
+                    tc_id = tc.get("id")
+                    if tc_id and str(tc_id) not in fulfilled_call_ids:
+                        stub = {
+                            "role": "tool",
+                            "tool_call_id": str(tc_id),
+                            "content": "[Result pruned during context compaction]",
+                        }
+                        final_messages.append(stub)
+                        fulfilled_call_ids.add(str(tc_id))
+                        logger.debug(f"[ThreePartContextCompressor] Inserted stub for missing tool call {tc_id}")
+
+        return final_messages
+
