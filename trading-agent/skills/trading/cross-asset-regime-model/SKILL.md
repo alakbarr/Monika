@@ -1,8 +1,9 @@
 ---
-name: cross_asset_regime_model
+name: cross-asset-regime-model
 description: "Cross-asset volatility transmission, correlation shifts, and regime modeling."
-version: 1.0.0
 category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
 tags: [cross_asset, macro, regime, volatility, correlation, bonds, equities, fx]
 ---
 

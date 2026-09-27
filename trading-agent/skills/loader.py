@@ -58,29 +58,41 @@ def parse_skill_frontmatter(content: str) -> tuple[dict, str]:
 def _read_skill_raw(name: str) -> str:
     """Read raw file content without frontmatter processing."""
     clean_name = _sanitize_skill_name(name)
-    skill_path = _SKILLS_DIR / f"{clean_name}.md"
-    if not skill_path.exists():
-        playbook_path = _SKILLS_DIR / "playbooks" / f"{clean_name}.md"
-        crystallized_path = _SKILLS_DIR.parent / "crystallized" / f"{clean_name}.md"
-        alt_cryst = _SKILLS_DIR.parent / "crystallized" / f"{clean_name.removeprefix('crystallized_')}.md"
-        if playbook_path.exists():
-            skill_path = playbook_path
-        elif crystallized_path.exists():
-            skill_path = crystallized_path
-        elif alt_cryst.exists():
-            skill_path = alt_cryst
-        else:
-            raise FileNotFoundError(
-                f"Skill '{name}' not found at {skill_path}, {playbook_path}, or {crystallized_path}. "
-                f"Available skills: {list_skills()}"
-            )
+    variants = [
+        clean_name,
+        clean_name.replace("_", "-"),
+        clean_name.replace("-", "_"),
+    ]
 
     base_root = _SKILLS_DIR.parent.resolve()
-    resolved = skill_path.resolve()
-    if not resolved.is_relative_to(base_root):
-        raise ValueError(f"Directory traversal detected outside skills folder: '{name}'")
+    candidate_paths: list[Path] = []
 
-    return skill_path.read_text(encoding="utf-8")
+    for v in variants:
+        # 1. Folder-based in _SKILLS_DIR (e.g. trading/<v>/SKILL.md)
+        candidate_paths.append(_SKILLS_DIR / v / "SKILL.md")
+        # 2. Direct .md in _SKILLS_DIR
+        candidate_paths.append(_SKILLS_DIR / f"{v}.md")
+        # 3. Playbooks folder / flat
+        candidate_paths.append(_SKILLS_DIR / "playbooks" / v / "SKILL.md")
+        candidate_paths.append(_SKILLS_DIR / "playbooks" / f"{v}.md")
+        # 4. Crystallized folder / flat
+        candidate_paths.append(_SKILLS_DIR.parent / "crystallized" / v / "SKILL.md")
+        candidate_paths.append(_SKILLS_DIR.parent / "crystallized" / f"{v}.md")
+        candidate_paths.append(_SKILLS_DIR.parent / "crystallized" / f"{v.removeprefix('crystallized_')}.md")
+        # 5. General folder
+        candidate_paths.append(_SKILLS_DIR.parent / "general" / v / "SKILL.md")
+
+    for path in candidate_paths:
+        if path.exists() and path.is_file():
+            resolved = path.resolve()
+            if not resolved.is_relative_to(base_root):
+                raise ValueError(f"Directory traversal detected outside skills folder: '{name}'")
+            return path.read_text(encoding="utf-8")
+
+    raise FileNotFoundError(
+        f"Skill '{name}' not found at {_SKILLS_DIR}. "
+        f"Available skills: {list_skills()}"
+    )
 
 
 @lru_cache(maxsize=64)
@@ -159,13 +171,46 @@ def list_skills() -> list[str]:
     """List semua file skill yang terdeteksi di direktori trading/, trading/playbooks/, dan crystallized/."""
     if not _SKILLS_DIR.exists():
         return []
-    skills = [p.stem for p in _SKILLS_DIR.glob("*.md") if p.is_file()]
+    skills: list[str] = []
+
+    def _collect_skill_identifiers(p: Path) -> None:
+        if p.name == "SKILL.md":
+            folder_name = p.parent.name
+            if not folder_name.startswith(".") and not folder_name.startswith("_"):
+                skills.append(folder_name)
+                skills.append(folder_name.replace("-", "_"))
+                skills.append(folder_name.replace("_", "-"))
+        elif p.suffix == ".md" and not p.name.startswith("."):
+            stem = p.stem
+            skills.append(stem)
+            skills.append(stem.replace("-", "_"))
+            skills.append(stem.replace("_", "-"))
+
+    # 1. Trading skills directory: folder/SKILL.md and direct .md
+    for p in _SKILLS_DIR.glob("*/SKILL.md"):
+        _collect_skill_identifiers(p)
+    for p in _SKILLS_DIR.glob("*.md"):
+        if p.name != "SKILL.md":
+            _collect_skill_identifiers(p)
+
+    # 2. Playbooks directory
     playbooks_dir = _SKILLS_DIR / "playbooks"
     if playbooks_dir.exists():
-        skills.extend([p.stem for p in playbooks_dir.glob("*.md") if p.is_file()])
+        for p in playbooks_dir.glob("*/SKILL.md"):
+            _collect_skill_identifiers(p)
+        for p in playbooks_dir.glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+
+    # 3. Crystallized directory
     cryst_dir = _SKILLS_DIR.parent / "crystallized"
     if cryst_dir.exists():
-        skills.extend([p.stem for p in cryst_dir.glob("*.md") if p.is_file()])
+        for p in cryst_dir.glob("*/SKILL.md"):
+            _collect_skill_identifiers(p)
+        for p in cryst_dir.glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+
     return list(dict.fromkeys(skills))
 
 

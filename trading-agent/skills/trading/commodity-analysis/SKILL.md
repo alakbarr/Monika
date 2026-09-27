@@ -1,4 +1,11 @@
-# file: skills/commodity_analysis.md
+---
+name: commodity-analysis
+description: "WTI Crude Oil (XTIUSD) commodity analysis framework and inventory drivers."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [commodity, oil, xtiusd, eia, opec, energy, inventory]
+---
 
 # Commodity Analysis Framework — XTIUSD (WTI Crude Oil)
 

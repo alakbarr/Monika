@@ -1,4 +1,11 @@
-# file: skills/trading/event_probability_playbook.md
+---
+name: event-probability-playbook
+description: "Central bank event probability modeling and 3-scenario trading plan playbook."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [event_probability, central_banks, fomc, rate_decision, scenario_planning]
+---
 
 # Event Probability Playbook — Central Bank Decisions & Macro Expectations
 

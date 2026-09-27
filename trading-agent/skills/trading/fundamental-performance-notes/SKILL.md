@@ -1,3 +1,12 @@
+---
+name: fundamental-performance-notes
+description: "Stage 1 fundamental bias accuracy and currency performance directives."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [performance, fundamental, stage1, accuracy, brier_score, currency_bias]
+---
+
 # Fundamental Stage Performance Notes — Auto-Generated 2026-09-24
 
 ## Overall Macro Bias Accuracy (Last 30 Days)

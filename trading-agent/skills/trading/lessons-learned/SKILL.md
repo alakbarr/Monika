@@ -1,4 +1,11 @@
-# file: skills/lessons_learned.md
+---
+name: lessons-learned
+description: "Empirical trade lessons, post-SL protocols, and adaptive execution directives."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [lessons_learned, execution, post_sl, liquidity, risk_heuristics]
+---
 
 # Empirical Lessons Learned & Trade Execution Directives
 
@@ -42,4 +49,3 @@ Excessive WAIT outputs across all universe assets indicate operational friction 
 - Evaluate whether thresholds are artificially suppressed by high VIX or priced-in penalties.
 - Verify tool execution integrity and LLM response parsing.
 - Validate whether the market is in an authentic low-volatility regime.
-

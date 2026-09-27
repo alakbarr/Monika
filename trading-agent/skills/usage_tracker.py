@@ -19,6 +19,8 @@ class SkillUsageTracker:
         target = Path(skill_path).resolve()
         if target.is_dir():
             return target / ".usage.json"
+        if target.name == "SKILL.md":
+            return target.parent / ".usage.json"
         return target.parent / f"{target.stem}.usage.json"
 
     @classmethod

@@ -1,4 +1,11 @@
-# file: skills/performance_notes.md
+---
+name: performance-notes
+description: "Stage 2 execution performance review notes and threshold calibration guidance."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [performance_notes, stage2, paper_trading, calibration, execution_notes]
+---
 
 # Performance Notes — Pending First Review
 

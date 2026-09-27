@@ -921,24 +921,42 @@ Monika/
 │   │   ├── operator
 │   │   │   └── USER.md
 │   │   ├── trading
-│   │   │   ├── adjudication_framework.md
-│   │   │   ├── caveman_mode.md
-│   │   │   ├── central_banks_framework.md
-│   │   │   ├── commodity_analysis.md
-│   │   │   ├── cross_asset_regime_model.md
-│   │   │   ├── crypto_analysis.md
-│   │   │   ├── event_probability_playbook.md
-│   │   │   ├── fundamental_performance_notes.md
-│   │   │   ├── lessons_learned.md
-│   │   │   ├── liquidity_and_macro_edge.md
-│   │   │   ├── macro_analysis_framework.md
-│   │   │   ├── market_dynamics_framework.md
-│   │   │   ├── orderbook_liquidity_microstructure.md
-│   │   │   ├── performance_notes.md
-│   │   │   ├── risk_management_principles.md
-│   │   │   ├── session_timing_rules.md
-│   │   │   ├── smc_ict_playbook.md
-│   │   │   └── telegram_persona.md
+│   │   │   ├── adjudication-framework
+│   │   │   │   └── SKILL.md
+│   │   │   ├── caveman-mode
+│   │   │   │   └── SKILL.md
+│   │   │   ├── central-banks-framework
+│   │   │   │   └── SKILL.md
+│   │   │   ├── commodity-analysis
+│   │   │   │   └── SKILL.md
+│   │   │   ├── cross-asset-regime-model
+│   │   │   │   └── SKILL.md
+│   │   │   ├── crypto-analysis
+│   │   │   │   └── SKILL.md
+│   │   │   ├── event-probability-playbook
+│   │   │   │   └── SKILL.md
+│   │   │   ├── fundamental-performance-notes
+│   │   │   │   └── SKILL.md
+│   │   │   ├── lessons-learned
+│   │   │   │   └── SKILL.md
+│   │   │   ├── liquidity-and-macro-edge
+│   │   │   │   └── SKILL.md
+│   │   │   ├── macro-analysis-framework
+│   │   │   │   └── SKILL.md
+│   │   │   ├── market-dynamics-framework
+│   │   │   │   └── SKILL.md
+│   │   │   ├── orderbook-liquidity-microstructure
+│   │   │   │   └── SKILL.md
+│   │   │   ├── performance-notes
+│   │   │   │   └── SKILL.md
+│   │   │   ├── risk-management-principles
+│   │   │   │   └── SKILL.md
+│   │   │   ├── session-timing-rules
+│   │   │   │   └── SKILL.md
+│   │   │   ├── smc-ict-playbook
+│   │   │   │   └── SKILL.md
+│   │   │   └── telegram-persona
+│   │   │       └── SKILL.md
 │   │   ├── __init__.py
 │   │   ├── continuous_learning.py
 │   │   ├── curator.py

@@ -1,7 +1,12 @@
 ---
-name: caveman_mode
-description: Suppresses token consumption on non-analytical text WITHOUT degrading reasoning depth, internal thinking process, or trade decision accuracy.
+name: caveman-mode
+description: "Scope-limited token compression rules preserving full analytical depth."
+category: TRADING
+version: 1.0.0
+platforms: [windows, linux, macos]
+tags: [caveman, compression, token_efficiency, prompt_density, cot]
 ---
+
 # CAVEMAN MODE — TOKEN COMPRESSION RULES
 
 ## UNAFFECTED (MUST remain full, complete, and nuanced):
