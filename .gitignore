@@ -99,7 +99,6 @@ scripts/*
 !scripts/update_index_toc.py
 !scripts/generate_model_quadrant.py
 trading-agent/scripts/
-contoh_pertanyaan.md
 prompt_benchmark.md
 
 # AI Assistant Rules & Instructions
