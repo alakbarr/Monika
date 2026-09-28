@@ -96,6 +96,8 @@ scripts/*
 !scripts/reset_paper_trades.py
 !scripts/run_tests.bat
 !scripts/run_tests.sh
+!scripts/update_index_toc.py
+!scripts/generate_model_quadrant.py
 trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md
