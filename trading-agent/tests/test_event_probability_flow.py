@@ -23,8 +23,29 @@ from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLI
 from skills.loader import load_skill
 
 
+DEFAULT_BENCHMARK_PROMPT = (
+    "Analisis peluang kemungkinan keputusan suku bunga The Fed 16/17 September 2016 yang akan diumumkan dalam beberapajam ke depan.\n\n"
+    "Di CME Fedwatch proyeksinya 89% The Fed akan menaikkan suku bunga (HIKE), sedangkan sisanya adalah HOLD.\n\n"
+    "Tapi apakah ini (HIKE) sudah pasti akan dilakukan oleh The Fed? Apakah ada history The Fed tidak searah dengan harapan pasar? "
+    "Jika ada, apa yang menyebabkan itu? Kenapa bisa pasar salah mengartikan arah kebijakan The Fed atau justru The Fed yang memang sengaja tidak mengikuti arah keinginan pasar/sengaja mengecoh pasar? Apakah mungkin terjadi lagi saat ini?\n\n"
+    "Kemudian setelah pengumuman suku bunga, apa yang kira-kira akan dinyatakan oleh Kevin Warsh saat press conference? apakah akan lebih condong ke hawkish atau dovish? mana yang lebih mungkin terjadi?\n\n"
+    "Kumpulkan semua data yang kamu butuhkan. Lakukan analisis secara komprehensif."
+)
+
+DEFAULT_BENCHMARK_CONTENT = f"""Pertanyaan Chat:
+```
+{DEFAULT_BENCHMARK_PROMPT}
+```
+
+Thinking Flow:
+1. Deconstruct the event probability query into constituent analytical tasks: CME FedWatch implied pricing, Historical market pricing vs Fed realization divergence precedents, Economic fundamentals and monetary policy drivers, Press conference tone and forward guidance analysis.
+2. Formulate dynamic subagent research plans and gather empirical macroeconomic evidence.
+3. Synthesize probability distribution and compute risk-weighted scenario analysis.
+"""
+
+
 def _get_project_root() -> Path:
-    """Resolve project root directory containing contoh_pertanyaan.md."""
+    """Resolve project root directory containing contoh_pertanyaan.md if present."""
     # test file is at D:\Monika\trading-agent\tests\test_event_probability_flow.py
     current = Path(__file__).resolve()
     for parent in [current.parent, current.parent.parent, current.parent.parent.parent]:
@@ -35,27 +56,24 @@ def _get_project_root() -> Path:
 
 def _load_benchmark_query() -> tuple[str, str]:
     """
-    Load benchmark query from contoh_pertanyaan.md.
+    Load benchmark query from contoh_pertanyaan.md if available, or use embedded benchmark text.
     Returns:
         (exact_prompt, full_content)
     """
     root = _get_project_root()
     contoh_file = root / "contoh_pertanyaan.md"
-    assert contoh_file.exists(), f"Benchmark query file missing: {contoh_file}"
+    if contoh_file.exists():
+        full_content = contoh_file.read_text(encoding="utf-8")
+        match = re.search(r"Pertanyaan Chat:\s*```(?:\w+)?\n(.*?)\n```", full_content, re.DOTALL)
+        if match:
+            exact_prompt = match.group(1).strip()
+        else:
+            parts = full_content.split("Thinking Flow:")
+            exact_prompt = parts[0].replace("Pertanyaan Chat:", "").strip()
+        if len(exact_prompt) > 50:
+            return exact_prompt, full_content
 
-    full_content = contoh_file.read_text(encoding="utf-8")
-
-    # Extract text from the first fenced block under 'Pertanyaan Chat:'
-    match = re.search(r"Pertanyaan Chat:\s*```(?:\w+)?\n(.*?)\n```", full_content, re.DOTALL)
-    if match:
-        exact_prompt = match.group(1).strip()
-    else:
-        # Fallback to lines before 'Thinking Flow:'
-        parts = full_content.split("Thinking Flow:")
-        exact_prompt = parts[0].replace("Pertanyaan Chat:", "").strip()
-
-    assert len(exact_prompt) > 50, "Extracted benchmark prompt is unexpectedly short"
-    return exact_prompt, full_content
+    return DEFAULT_BENCHMARK_PROMPT, DEFAULT_BENCHMARK_CONTENT
 
 
 # ==============================================================================
