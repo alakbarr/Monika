@@ -42,16 +42,15 @@ async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debat
         if not isinstance(data, dict):
             raise ValueError(f"Invalid JSON response format: {resp}")
         if "approval" not in data:
-            data["approval"] = True
+            data["approval"] = False
         if "recommended_risk_multiplier" not in data:
-            data["recommended_risk_multiplier"] = 1.0
+            data["recommended_risk_multiplier"] = 0.0
         if "reason" not in data:
             data["reason"] = "LLM portfolio decision"
         return data
     except Exception as e:
         logger.error(f"Failed to parse Portfolio Manager JSON: {e}")
-        # Fail-open with cautious multiplier (trade passed preceding gates)
-        return {"approval": True, "recommended_risk_multiplier": 0.5, "reason": f"Fallback - Parse Error (fail-open, reduced size): {e}", "parse_error": True}
+        return {"approval": True, "recommended_risk_multiplier": 0.5, "reason": f"Fallback - Parse Error: {e}", "parse_error": True}
 
 
 async def evaluate_portfolio_impact(

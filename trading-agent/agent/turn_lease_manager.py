@@ -85,6 +85,17 @@ class SymbolTurnLeaseManager:
             logger.debug(f"[SymbolTurnLeaseManager] Lease on '{clean}' granted to '{holder_id}' (TTL: {ttl_seconds}s).")
             return True
 
+    async def attach_harness(self, symbol: str, holder_id: str, harness: Any) -> bool:
+        """Attach active harness to an existing unexpired lease."""
+        clean = self._normalize(symbol)
+        async with self._lock:
+            existing = self._leases.get(clean)
+            if existing and not existing.is_expired and existing.holder_id == holder_id:
+                existing.active_harness = harness
+                logger.debug(f"[SymbolTurnLeaseManager] Attached active harness to '{clean}' for '{holder_id}'.")
+                return True
+            return False
+
     async def release_lease(self, symbol: str, holder_id: str) -> bool:
         """Release active lease if held by the requesting holder."""
         clean = self._normalize(symbol)

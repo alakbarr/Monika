@@ -115,6 +115,19 @@ class Fts5SessionSearch:
                         DELETE FROM session_messages_fts WHERE row_id = old.row_id;
                     END;
                 """)
+                self.conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS trg_session_messages_fts_ai AFTER INSERT ON session_messages BEGIN
+                        INSERT INTO session_messages_fts(row_id, session_id, role, search_tokens)
+                        VALUES (new.row_id, new.session_id, new.role, substr(new.content, 1, 8192));
+                    END;
+                """)
+                self.conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS trg_session_messages_fts_au AFTER UPDATE ON session_messages BEGIN
+                        UPDATE session_messages_fts
+                        SET role = new.role, search_tokens = substr(new.content, 1, 8192)
+                        WHERE row_id = new.row_id;
+                    END;
+                """)
         except sqlite3.OperationalError as e:
             logger.warning(f"[Fts5SessionSearch] FTS5 virtual table init failed: {e}. Will rely on LIKE fallback.")
 

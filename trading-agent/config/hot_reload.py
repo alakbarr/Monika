@@ -50,12 +50,13 @@ class ConfigReloader:
 
             if new_config and isinstance(new_config, dict):
                 # Extract risk section and validate
-                risk_dict = (
-                    new_config.get("trading", {}).get("risk", {})
-                    if "trading" in new_config
-                    else new_config.get("risk", new_config)
-                )
-                if risk_dict and self.risk_gate is not None:
+                trading_sec = new_config.get("trading")
+                if isinstance(trading_sec, dict):
+                    risk_dict = trading_sec.get("risk")
+                else:
+                    risk_dict = new_config.get("risk")
+
+                if isinstance(risk_dict, dict) and risk_dict and self.risk_gate is not None:
                     try:
                         try:
                             from config.schemas import RiskConfig

@@ -178,8 +178,16 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
                 info = await self.broker_adapter.get_account_info()
             else:
                 info = await self.mt5.get_account_info()
-            if info:
-                return info.get('equity')
+            if asyncio.iscoroutine(info):
+                info = await info
+            if info and isinstance(info, dict):
+                eq = info.get('equity')
+                if asyncio.iscoroutine(eq):
+                    eq = await eq
+                try:
+                    return float(eq) if eq is not None else None
+                except (TypeError, ValueError):
+                    return None
         except Exception as e:
             logger.warning(f"Cannot get account equity: {e}")
         return None

@@ -75,8 +75,7 @@ class OutcomeLinker:
 
                 from database.safe_ops import safe_commit
                 if exit_reason != "partial_tp":
-                    reflection.status = "resolved"
-                    reflection.resolved_at = datetime.now(timezone.utc)
+                    reflection.status = "pending_reflection"
                     await safe_commit(session, label="outcome_linker_closed")
                     
                     # Update PlaybookLifecycleManager and SkillCrystallizer attribution
@@ -87,7 +86,17 @@ class OutcomeLinker:
                         if analysis and getattr(analysis, "market_regime_at_analysis", None):
                             regime = str(analysis.market_regime_at_analysis).lower()
                         playbook_name = f"{sym_clean.lower()}_{regime}_playbook"
-                        r_mult = 1.0 if won else -1.0
+                        
+                        entry = getattr(analysis, "entry_price", None) or getattr(analysis, "price_at_analysis", None) if analysis else None
+                        sl = getattr(analysis, "stop_loss", None) if analysis else None
+                        tp = getattr(analysis, "take_profit", None) if analysis else None
+                        if won:
+                            if entry and sl and tp and abs(entry - sl) > 0:
+                                r_mult = max(1.0, round(abs(tp - entry) / abs(entry - sl), 2))
+                            else:
+                                r_mult = 1.5
+                        else:
+                            r_mult = -1.0
 
                         if self.lifecycle_manager:
                             self.lifecycle_manager.record_trade_outcome(

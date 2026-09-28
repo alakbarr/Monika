@@ -58,7 +58,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Check FVG proximity
     nearest_fvg = "NONE"
     fvg_distance = float('inf')
-    if entry_price:
+    if entry_price and entry_price > 0:
         fvgs = (await session.execute(
             select(FVGZone)
             .where(FVGZone.symbol == analysis.symbol)
@@ -78,7 +78,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Check OB proximity
     nearest_ob = "NONE"
     ob_distance = float('inf')
-    if entry_price:
+    if entry_price and entry_price > 0:
         obs = (await session.execute(
             select(OrderBlock)
             .where(OrderBlock.symbol == analysis.symbol)
@@ -144,7 +144,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             )).scalars().all()
             total_trades = len(paper_trades)
             if total_trades > 0:
-                winning_trades = sum(1 for p in paper_trades if (getattr(p, 'virtual_pnl', None) or 0) > 0 or (getattr(p, 'pnl', None) or 0) > 0)
+                winning_trades = sum(1 for p in paper_trades if (getattr(p, 'pnl_pct', None) or 0) > 0 or (getattr(p, 'pnl', None) or 0) > 0 or (getattr(p, 'realized_pnl', None) or 0) > 0)
                 win_rate = winning_trades / total_trades
         except Exception:
             pass
@@ -214,9 +214,9 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         "rationale": analysis.rationale,
         "atr_14_h4": atr,
         "nearest_fvg": nearest_fvg,
-        "fvg_distance": fvg_distance,
+        "fvg_distance": round(fvg_distance, 5) if fvg_distance != float('inf') else None,
         "nearest_ob": nearest_ob,
-        "ob_distance": ob_distance,
+        "ob_distance": round(ob_distance, 5) if ob_distance != float('inf') else None,
         "currency_bias": currency_bias_str,
         "dxy_trend": dxy_trend,
         "vix": vix_val,

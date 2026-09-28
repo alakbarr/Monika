@@ -194,22 +194,30 @@ class AcpServer:
         session_id = params.get("session_id", "default")
         prompt = params.get("prompt", "")
 
+        cancel_event = threading.Event()
+        with self._lock:
+            self._active_turn_locks[session_id] = cancel_event
+
         # Acknowledge receipt of turn request
         self.send_response(req_id, result={"status": "processing", "session_id": session_id})
 
         # Run inference in separate thread
         worker = threading.Thread(
             target=self._run_prompt_worker,
-            args=(session_id, prompt),
+            args=(session_id, prompt, cancel_event),
             daemon=True,
         )
         worker.start()
 
-    def _run_prompt_worker(self, session_id: str, prompt: str) -> None:
+    def _run_prompt_worker(self, session_id: str, prompt: str, cancel_event: Optional[threading.Event] = None) -> None:
         """Executes agent loop and streams output deltas to editor."""
         try:
             # Emit turn start notification
             self.send_notification("turn_start", {"session_id": session_id})
+
+            if cancel_event and cancel_event.is_set():
+                self.send_notification("turn_complete", {"session_id": session_id, "status": "cancelled"})
+                return
 
             if self.agent_runner:
                 # Custom agent runner callback
@@ -222,18 +230,26 @@ class AcpServer:
                 )
 
             # Emit turn complete notification
-            self.send_notification("turn_complete", {"session_id": session_id, "status": "completed"})
+            status = "cancelled" if (cancel_event and cancel_event.is_set()) else "completed"
+            self.send_notification("turn_complete", {"session_id": session_id, "status": status})
         except Exception as exc:
             logger.error(f"[ACPServer] Error during prompt processing: {exc}", exc_info=True)
             self.send_notification(
                 "turn_complete",
                 {"session_id": session_id, "status": "error", "error": str(exc)},
             )
+        finally:
+            with self._lock:
+                self._active_turn_locks.pop(session_id, None)
 
     def _handle_cancel(self, req_id: Any, params: Dict[str, Any]) -> None:
         """Signals immediate turn interrupt."""
-        session_id = params.get("session_id")
+        session_id = params.get("session_id", "default")
         logger.info(f"[ACPServer] Received cancellation request for session: {session_id}")
+        with self._lock:
+            cancel_event = self._active_turn_locks.get(session_id)
+            if cancel_event:
+                cancel_event.set()
         self.send_response(req_id, result={"cancelled": True, "session_id": session_id})
 
     def _handle_client_response(self, req_id: str, result: Any, error: Optional[Dict[str, Any]]) -> None:

@@ -70,6 +70,9 @@ def coerce_value(val: Any, param: ToolParameter) -> Any:
                 return True
             if s in ("false", "0", "no", "n", "f", "off"):
                 return False
+            if param.default is not None:
+                return param.default
+            return False
         return bool(val)
 
     # Integer coercion

@@ -49,8 +49,10 @@ class TimeSeriesMomentum(EdgeStrategy):
 
         closes = list(reversed(rows))
         latest = closes[-1]
-        votes = [1 if (latest - closes[-1-lb]) > 0 else -1
-                 for lb in lookbacks if len(closes) > lb and closes[-1-lb]]
+        votes = [
+            (1 if (latest - closes[-1-lb]) > 0 else (-1 if (latest - closes[-1-lb]) < 0 else 0))
+            for lb in lookbacks if len(closes) > lb and closes[-1-lb]
+        ]
         if len(votes) < 2:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"insufficient lookback windows ({len(votes)} < 2)")
 

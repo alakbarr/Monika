@@ -62,7 +62,7 @@ class PairingManager:
 
     def __init__(self, store_path: str = DEFAULT_PAIRED_USERS_STORE):
         self.store_path = store_path
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._paired_users: Dict[str, PairedUserRecord] = {}  # key: f"{platform}:{user_id}"
         self._pending_requests: Dict[str, ActivePairingRequest] = {}  # key: f"{platform}:{user_id}"
         self._load_store()
@@ -94,8 +94,9 @@ class PairingManager:
             if store_dir:
                 os.makedirs(store_dir, exist_ok=True)
             tmp_path = f"{self.store_path}.tmp"
+            with self._lock:
+                records = [asdict(r) for r in list(self._paired_users.values())]
             with open(tmp_path, "w", encoding="utf-8") as f:
-                records = [asdict(r) for r in self._paired_users.values()]
                 json.dump(records, f, indent=2)
             os.replace(tmp_path, self.store_path)
         except Exception as exc:

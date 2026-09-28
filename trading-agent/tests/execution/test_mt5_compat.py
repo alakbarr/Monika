@@ -151,6 +151,7 @@ def test_ensure_mt5_module_registration():
     """Verify ensure_mt5_module registers module into sys.modules and allows standard import."""
     # Ensure clean state for test
     orig = sys.modules.get("MetaTrader5")
+    sys.modules.pop("MetaTrader5", None)
     try:
         mod = ensure_mt5_module()
         assert "MetaTrader5" in sys.modules
@@ -169,6 +170,8 @@ def test_ensure_mt5_module_registration():
     finally:
         if orig is not None:
             sys.modules["MetaTrader5"] = orig
+        else:
+            sys.modules.pop("MetaTrader5", None)
 
 
 def test_platform_check_helpers():

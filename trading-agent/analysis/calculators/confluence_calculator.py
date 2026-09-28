@@ -355,7 +355,8 @@ async def calculate_confluence(
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
-        test_dir = str(test_direction).lower() if test_direction else ""
+        test_direction = str(test_direction or "").strip().lower()
+        test_dir = test_direction
         if sweep_result.get('structure_confirmed') and str(sweep_result.get('valid_for_direction', '')).lower() == test_dir:
             score += 2
         

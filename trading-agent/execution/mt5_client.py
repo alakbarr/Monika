@@ -906,19 +906,20 @@ class MT5Client:
                 await asyncio.sleep(0.5)
                 open_positions = await self.get_open_positions(symbol)
                 now_ts = time.time()
+                expected_type = 'buy' if direction == 'buy' else 'sell'
                 for op in open_positions:
-                    pos_type = op.get('type', '').lower()
-                    expected_type = 'buy' if direction == 'buy' else 'sell'
-                    pos_time = op.get('time', 0)
-                    # Cek kesesuaian tipe, volume mendekati, dan timestamp dalam 10 detik terakhir
-                    if pos_type == expected_type and abs(float(op.get('volume', 0)) - float(volume)) < 0.001 and (now_ts - pos_time) < 10:
+                    pos_type = str(op.get('direction') or ('buy' if op.get('type') == 0 else 'sell' if op.get('type') == 1 else op.get('type', ''))).lower()
+                    raw_time = op.get('time', 0)
+                    pos_ts = raw_time.timestamp() if isinstance(raw_time, datetime) else float(raw_time or 0.0)
+                    # Cek kesesuaian tipe, volume mendekati, dan timestamp dalam 15 detik terakhir
+                    if pos_type == expected_type and abs(float(op.get('volume', 0.0)) - float(volume)) < 0.001 and (now_ts - pos_ts) < 15.0:
                         logger.critical(f"MT5 in-flight reconciliation SUCCESS: Found open position ticket={op.get('ticket')} for {symbol}")
                         if pending_act and hasattr(self, "pending_action_manager") and self.pending_action_manager:
                             self.pending_action_manager.commit_action(pending_act.client_order_id, broker_ticket=op.get('ticket'))
                         return {
                             'success': True,
                             'ticket': op.get('ticket'),
-                            'price': op.get('open_price'),
+                            'price': op.get('price_open') or op.get('open_price'),
                             'sl': op.get('sl'),
                             'tp': op.get('tp'),
                             'retcode': 10009,
@@ -1081,7 +1082,10 @@ class MT5Client:
         from sqlalchemy import select
 
         mt5_positions = await self.get_open_positions()
+        mt5_orders = await self.get_orders()
         mt5_tickets = {p['ticket'] for p in mt5_positions}
+        pending_tickets = {o['ticket'] for o in mt5_orders}
+        active_tickets = mt5_tickets.union(pending_tickets)
 
         synced = closed_in_db = 0
         closed_positions = []
@@ -1114,7 +1118,7 @@ class MT5Client:
             # Skip paper/dry-run positions — they don't exist in MT5
             if getattr(db_pos, 'is_paper', False):
                 continue
-            if db_pos.mt5_ticket and db_pos.mt5_ticket not in mt5_tickets:
+            if db_pos.mt5_ticket and db_pos.mt5_ticket not in active_tickets:
                 db_pos.status = 'closed'
                 db_pos.closed_at = datetime.now(timezone.utc)
                 

@@ -177,7 +177,7 @@ class _EncryptedFileVault:
             if env_key:
                 self._raw_key = env_key.encode("utf-8")
             elif self.key_path.exists():
-                self._raw_key = self.key_path.read_bytes().strip()
+                self._raw_key = self.key_path.read_bytes()
             else:
                 # Generate new 32-byte key
                 import secrets

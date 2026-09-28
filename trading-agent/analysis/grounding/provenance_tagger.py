@@ -203,7 +203,12 @@ class ProvenanceLedger:
                 contract_size = 1000.0
 
             eff_price = entry_price if (entry_price and entry_price > 0) else 1.0
-            notional = lot_size * contract_size * eff_price
+            is_usd_base = sym_u.startswith("USD") and not any(k in sym_u for k in ("BTC", "ETH", "XAU", "XTI", "XBR"))
+            if is_usd_base:
+                notional = lot_size * contract_size
+            else:
+                notional = lot_size * contract_size * eff_price
+
             max_permitted_notional = account_equity * max_leverage
 
             if notional > max_permitted_notional:
@@ -217,7 +222,11 @@ class ProvenanceLedger:
                 sl_distance = abs(entry_price - stop_loss)
                 if sl_distance > 0:
                     max_risk_usd = account_equity * (risk_pct / 100.0)
-                    risk_per_lot_usd = sl_distance * contract_size
+                    if is_usd_base and eff_price > 0:
+                        risk_per_lot_usd = (sl_distance * contract_size) / eff_price
+                    else:
+                        risk_per_lot_usd = sl_distance * contract_size
+
                     if risk_per_lot_usd > 0:
                         theoretical_lot = max_risk_usd / risk_per_lot_usd
                         if lot_size > theoretical_lot * 2.5 and lot_size > 0.05:

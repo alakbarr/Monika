@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import DecisionReflection, PaperTradeRecord, SystemConfig
+from database.models import DecisionReflection, PaperTradeRecord, SystemConfig, AssetAnalysis
 from skills.loader import invalidate_cache
 
 logger = logging.getLogger("TradingAgent.SkillCrystallizer")
@@ -78,9 +78,10 @@ class SkillCrystallizer:
         """
         crystallized = []
         try:
-            # 1. Fetch resolved reflections with positive outcome
+            # 1. Fetch resolved reflections with positive outcome, joining AssetAnalysis for true market regime
             stmt = (
-                select(DecisionReflection)
+                select(DecisionReflection, AssetAnalysis.market_regime_at_analysis)
+                .outerjoin(AssetAnalysis, DecisionReflection.analysis_id == AssetAnalysis.id)
                 .where(DecisionReflection.status == "resolved")
                 .where(DecisionReflection.outcome_pnl_usd > 0)
                 .order_by(desc(DecisionReflection.resolved_at))
@@ -90,16 +91,18 @@ class SkillCrystallizer:
                 clean_sym = symbol.strip().upper().replace("/", "")
                 stmt = stmt.where(DecisionReflection.symbol == clean_sym)
 
-            results = (await session.execute(stmt)).scalars().all()
+            results = (await session.execute(stmt)).all()
             if not results:
                 return []
 
             # 2. Group by (symbol, regime)
             clusters: Dict[str, List[DecisionReflection]] = {}
-            for r in results:
+            for row in results:
+                r = row[0]
+                regime_raw = row[1]
                 sym = (r.symbol or "UNKNOWN").upper()
-                regime = (r.reflection_text or "").split("|")[0].strip() if r.reflection_text else "TREND"
-                key = f"{sym}_{regime}".replace(" ", "_").replace("/", "_")
+                regime = (str(regime_raw).strip().upper() if regime_raw else "TREND").replace(" ", "_")
+                key = f"{sym}_{regime}".replace("/", "_")
                 clusters.setdefault(key, []).append(r)
 
             # 3. Crystallize clusters with >= min_wins successful instances

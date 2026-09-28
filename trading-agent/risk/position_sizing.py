@@ -861,14 +861,14 @@ class PositionSizer:
             import dataclasses
             spec = dataclasses.replace(DEFAULT_INSTRUMENTS[symbol])
             
-            # Update USDJPY pip value berdasarkan harga terkini dari DB
-            if symbol == "USDJPY":
+            # Update USD-base pip value berdasarkan harga terkini dari DB
+            if symbol in ("USDJPY", "USDCAD", "USDCHF"):
                 from database.models import PriceOHLCV
                 from sqlalchemy import select
                 sim_time = as_of or clock.now()
                 stmt = (
                     select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == "USDJPY")
+                    .where(PriceOHLCV.symbol == symbol)
                     .where(PriceOHLCV.timeframe == 'H4')
                 )
                 if sim_time is not None:
@@ -878,7 +878,7 @@ class PositionSizer:
                 )).scalar_one_or_none()
                 
                 if last_bar and last_bar.close > 0:
-                    dynamic_pip_value = (100_000 * 0.01) / last_bar.close
+                    dynamic_pip_value = (spec.contract_size * spec.pip_size) / last_bar.close
                     spec = dataclasses.replace(spec, pip_value_usd=round(dynamic_pip_value, 4))
             
             spec._source = "default"

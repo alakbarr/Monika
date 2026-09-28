@@ -245,11 +245,17 @@ async def batch_save_calendar(session, events: List[CalendarEvent]) -> int:
     saved = 0
     updated = 0
     now_utc = _now_utc()
+    seen_batch_keys: set[tuple] = set()
     
     for event in events:
         model = calendar_event_to_model(event)
         if not model.event_time or not model.currency or not model.event_name:
             continue
+
+        event_key = (model.currency, model.event_name, model.event_time)
+        if event_key in seen_batch_keys:
+            continue
+        seen_batch_keys.add(event_key)
         
         # Cek event serupa di rentang 30 menit (mengatasi selisih waktu antar scraper)
         time_min = model.event_time - timedelta(minutes=30)

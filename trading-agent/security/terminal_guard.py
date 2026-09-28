@@ -69,8 +69,8 @@ PROTECTED_DIRECTORIES: Set[str] = {
     ".kube",
     ".docker",
     "system32",
-    "/etc",
-    "/usr",
+    "etc",
+    "usr",
 }
 
 
@@ -198,7 +198,7 @@ def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) ->
 
     # 3. Check protected directories in path parts
     for part in target.parts:
-        if part.lower() in {d.lower() for d in PROTECTED_DIRECTORIES}:
+        if part.lower() in {d.strip("/\\").lower() for d in PROTECTED_DIRECTORIES}:
             raise SecurityViolationError(f"Access denied: Target resides in protected directory '{part}'.")
 
     return str(target)

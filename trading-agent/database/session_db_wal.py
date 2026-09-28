@@ -499,7 +499,8 @@ class SessionDbWal:
             destination.unlink()
         with FileLockGuard(self.lock_path):
             conn = self.get_connection()
-            conn.execute("VACUUM INTO ?;", (str(destination),))
+            dest_str = str(destination.resolve()).replace("'", "''")
+            conn.execute(f"VACUUM INTO '{dest_str}';")
 
     def close(self) -> None:
         """Close connection and connection pool."""

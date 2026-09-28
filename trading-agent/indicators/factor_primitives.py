@@ -60,18 +60,22 @@ def safe_div(
     if isinstance(a, pd.DataFrame) and isinstance(b, pd.DataFrame):
         a_f = _as_float(a)
         b_f = _as_float(b)
-        sign = np.sign(b_f.to_numpy(dtype=np.float64, na_value=np.nan))
-        denom_arr = b_f.to_numpy(dtype=np.float64, na_value=np.nan) + eps * sign
+        b_arr = b_f.to_numpy(dtype=np.float64, na_value=np.nan)
+        sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
+        denom_arr = b_arr + eps * sign
         denom = pd.DataFrame(denom_arr, index=b_f.index, columns=b_f.columns)
         res = a_f.div(denom)
+        res = res.where(b_f != 0.0, np.nan)
         return res.replace([np.inf, -np.inf], np.nan)
     
     if isinstance(a, pd.Series) and isinstance(b, pd.Series):
         a_f = _as_float(a)
         b_f = _as_float(b)
-        sign = np.sign(b_f.to_numpy(dtype=np.float64, na_value=np.nan))
-        denom = b_f + eps * sign
+        b_arr = b_f.to_numpy(dtype=np.float64, na_value=np.nan)
+        sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
+        denom = pd.Series(b_arr + eps * sign, index=b_f.index)
         res = a_f / denom
+        res = res.where(b_f != 0.0, np.nan)
         return res.replace([np.inf, -np.inf], np.nan)
     
     arr_a = np.asarray(a, dtype=np.float64)

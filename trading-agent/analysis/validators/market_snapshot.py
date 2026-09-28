@@ -100,15 +100,19 @@ class VerifiedMarketSnapshot:
                 name_key = ind.indicator_name.lower()
                 val = json.loads(ind.value_json) if isinstance(ind.value_json, str) else ind.value_json
                 if isinstance(val, (int, float)):
-                    snapshot[name_key] = round(float(val), 5)
+                    if name_key not in snapshot:
+                        snapshot[name_key] = round(float(val), 5)
                 elif isinstance(val, dict):
                     for subk, subv in val.items():
-                        if isinstance(subv, (int, float)):
-                            snapshot[f"{name_key}_{subk}"] = round(float(subv), 5)
-                        else:
-                            snapshot[f"{name_key}_{subk}"] = subv
+                        full_k = f"{name_key}_{subk}"
+                        if full_k not in snapshot:
+                            if isinstance(subv, (int, float)):
+                                snapshot[full_k] = round(float(subv), 5)
+                            else:
+                                snapshot[full_k] = subv
                 else:
-                    snapshot[name_key] = val
+                    if name_key not in snapshot:
+                        snapshot[name_key] = val
             except Exception:
                 pass
 

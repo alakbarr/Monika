@@ -48,7 +48,9 @@ class TradingRiskStopGate:
         if not text:
             return True, None
 
-        if context.has_unregistered_trade_proposals:
+        if context.has_unregistered_trade_proposals or (
+            cls._TRADE_INTENT_PATTERN.search(text) and not context.proposed_actions
+        ):
             return False, (
                 "Financial Safety Invariant: You have articulated a trading action without registering "
                 "it through 'propose_action' or RiskGate validation. You must formally submit "

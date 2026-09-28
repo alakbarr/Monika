@@ -1889,7 +1889,9 @@ async def _dispatch_cli(args):
             from cli.subcommands import AVAILABLE_SUBCOMMANDS
             for sc in AVAILABLE_SUBCOMMANDS:
                 if sc.name == args.command:
-                    await sc.execute(args)
+                    code = await sc.execute(args)
+                    if code is not None and isinstance(code, int) and code != 0:
+                        sys.exit(code)
                     break
         else:
             # First-run interceptor for daemon execution

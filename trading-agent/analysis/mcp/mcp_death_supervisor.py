@@ -28,6 +28,8 @@ class McpDeathSupervisor:
 
     _tracked_pids: Set[int] = set()
     _installed: bool = False
+    _previous_sigint = None
+    _previous_sigterm = None
 
     @classmethod
     def register_process(cls, pid: int) -> None:
@@ -45,25 +47,41 @@ class McpDeathSupervisor:
 
     @classmethod
     def _install_hooks_if_needed(cls) -> None:
-        """Installs atexit and signal handlers once."""
+        """Installs atexit and signal handlers once, preserving previous handlers."""
         if cls._installed:
             return
         cls._installed = True
         atexit.register(cls.kill_all_orphans)
 
-        # Register signals if running in main thread
+        # Register signals if running in main thread and chain
         try:
+            cls._previous_sigint = signal.getsignal(signal.SIGINT)
             signal.signal(signal.SIGINT, cls._signal_handler)
+        except (ValueError, AttributeError):
+            pass
+
+        try:
+            cls._previous_sigterm = signal.getsignal(signal.SIGTERM)
             signal.signal(signal.SIGTERM, cls._signal_handler)
         except (ValueError, AttributeError):
             pass
 
     @classmethod
     def _signal_handler(cls, signum, frame):
-        """Signal handler terminating all children before process exit."""
+        """Signal handler terminating all children before chaining to original handler."""
         logger.info(f"[McpDeathSupervisor] Signal {signum} received. Terminating child MCP processes...")
         cls.kill_all_orphans()
-        sys.exit(128 + signum)
+        prev = cls._previous_sigint if signum == signal.SIGINT else cls._previous_sigterm
+        if callable(prev):
+            prev(signum, frame)
+        elif prev == signal.SIG_DFL:
+            signal.signal(signum, signal.SIG_DFL)
+            if sys.platform != "win32":
+                os.kill(os.getpid(), signum)
+            else:
+                sys.exit(128 + signum)
+        else:
+            sys.exit(128 + signum)
 
     @classmethod
     def kill_all_orphans(cls) -> None:
