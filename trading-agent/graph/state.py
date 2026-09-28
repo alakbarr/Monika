@@ -1,15 +1,15 @@
 from typing import TypedDict, Annotated, List, Dict, Any, Optional, Union
 import operator
 
-def merge_dicts(a: Dict, b: Dict) -> Dict:
+def merge_dicts(a: Optional[Dict], b: Optional[Dict]) -> Dict:
     """
     Deep merge two dicts. Top-level keys from b override a,
     but nested dicts are merged recursively (not overwritten).
     This prevents data loss when nodes update the same nested key.
     Supports tombstoning: if a value in b is None or '_DELETED_', the key is removed.
     """
-    merged = a.copy()
-    for k, v in b.items():
+    merged = (a or {}).copy()
+    for k, v in (b or {}).items():
         if v == "_DELETED_":
             merged.pop(k, None)
         elif k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
@@ -176,3 +176,4 @@ class TradingState(TypedDict):
     refinement_count: int
     rejection_feedback: Optional[Dict[str, Any]]
     is_negotiable_rejection: bool
+    archived_payloads: Optional[Dict[str, Any]]

@@ -49,12 +49,13 @@ def set_emergency_exit_code(code: Optional[int]) -> None:
     global _EMERGENCY_EXIT_CODE
     _EMERGENCY_EXIT_CODE = code
     import sys
-    main_mod = sys.modules.get("main")
-    if main_mod is not None:
-        try:
-            setattr(main_mod, "_EMERGENCY_EXIT_CODE", code)
-        except Exception:
-            pass
+    for mod_name in ("main", "__main__"):
+        main_mod = sys.modules.get(mod_name)
+        if main_mod is not None:
+            try:
+                setattr(main_mod, "_EMERGENCY_EXIT_CODE", code)
+            except Exception:
+                pass
 
 
 def mark_clean_shutdown():

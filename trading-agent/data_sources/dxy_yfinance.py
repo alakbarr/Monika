@@ -85,17 +85,15 @@ class DXYFetcher:
             )
             existing_dates = set()
             try:
-                all_vals = existing_res.scalars().all()
-                if isinstance(all_vals, (list, set, tuple)):
-                    existing_dates = set(all_vals)
-            except Exception:
-                pass
-            if not existing_dates and hasattr(existing_res, "scalar_one_or_none"):
-                try:
-                    if existing_res.scalar_one_or_none() is not None:
+                if hasattr(existing_res, "scalars"):
+                    sc = existing_res.scalars()
+                    if hasattr(sc, "all") and isinstance(sc.all(), (list, tuple, set)):
+                        existing_dates = set(sc.all())
+                if not existing_dates and hasattr(existing_res, "scalar_one_or_none"):
+                    if existing_res.scalar_one_or_none():
                         existing_dates = set(all_dates)
-                except Exception:
-                    pass
+            except Exception:
+                existing_dates = set()
 
             for record_dt, close_val in candidates:
                 if record_dt in existing_dates:

@@ -136,13 +136,16 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     logger.info("[Step 2/7] Refreshing API data sources...")
     summary["data_refresh"] = await scheduler._refresh_data_sources()
 
+    # Resolve target symbols respecting weekend crypto mode
+    target_symbols = list(state.get("weekend_symbols_override") or state.get("symbols") or scheduler.asset_universe)
+
     # Step 3: MT5 price fetch
-    logger.info("[Step 3/7] Fetching MT5 price data...")
+    logger.info(f"[Step 3/7] Fetching MT5 price data for {len(target_symbols)} symbols...")
     if scheduler._mt5:
         try:
             async with get_session() as session:
                 result = await scheduler._mt5.fetch_and_save_all(
-                    session, symbols=scheduler.asset_universe,
+                    session, symbols=target_symbols,
                     timeframes=scheduler.mt5_timeframes, count=500,
                 )
                 summary["price_fetch"] = result
@@ -150,7 +153,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 # TAMBAHAN: Fetch M15 khusus untuk paper trade detection
                 m15_result = await scheduler._mt5.fetch_and_save_all(
                     session,
-                    symbols=scheduler.asset_universe,
+                    symbols=target_symbols,
                     timeframes=['M15'],
                     count=100
                 )
@@ -166,13 +169,13 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         summary["price_fetch"] = {"skipped": "no MT5 client"}
 
     # Step 4: Technical indicators
-    logger.info("[Step 4/7] Computing technical indicators...")
+    logger.info(f"[Step 4/7] Computing technical indicators for {len(target_symbols)} symbols...")
     try:
         from indicators.technical import TechnicalIndicatorCalculator
         async with get_session() as session:
             calc = TechnicalIndicatorCalculator(session, scheduler.settings.get("trading", {}))
             indicator_timeframes = [tf for tf in scheduler.mt5_timeframes if tf != 'M15']
-            ind_result = await calc.compute_all_symbols(scheduler.asset_universe, indicator_timeframes)
+            ind_result = await calc.compute_all_symbols(target_symbols, indicator_timeframes)
         summary["indicators"] = ind_result
         logger.debug(f"Indicators computed: {ind_result}")
     except Exception as e:
@@ -180,13 +183,13 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         summary["indicators"] = {"error": str(e)}
 
     # Step 5: Structure analysis
-    logger.info("[Step 5/7] Analyzing market structure (swings, SR, FVG)...")
+    logger.info(f"[Step 5/7] Analyzing market structure for {len(target_symbols)} symbols (swings, SR, FVG)...")
     try:
         from indicators.structure import MarketStructureAnalyzer
         async with get_session() as session:
             analyzer = MarketStructureAnalyzer(session, scheduler.settings)
             indicator_timeframes = [tf for tf in scheduler.mt5_timeframes if tf != 'M15']
-            struct_result = await analyzer.analyze_all(scheduler.asset_universe, indicator_timeframes)
+            struct_result = await analyzer.analyze_all(target_symbols, indicator_timeframes)
         summary["structure"] = {k: sum(v.values()) for k, v in struct_result.items()}
         logger.debug(f"Structure analysis complete: {summary['structure']}")
     except Exception as e:

@@ -1245,14 +1245,19 @@ class MT5Client:
             except asyncio.TimeoutError:
                 future.cancel()
                 fn_name = getattr(fn, "__name__", str(fn))
-                logger.error(f"MT5 timeout ({timeout}s) in {fn_name}. Terminal may be hung. Forcing reconnect.")
-                self._connected = False
                 try:
                     if hasattr(self, '_executor') and self._executor:
                         self._executor.shutdown(wait=False, cancel_futures=True)
                 except Exception:
                     pass
+                if hasattr(self, '_worker_task') and self._worker_task and not self._worker_task.done():
+                    self._worker_task.cancel()
                 self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
+                try:
+                    loop = asyncio.get_running_loop()
+                    self._worker_task = loop.create_task(self._priority_worker_loop())
+                except Exception:
+                    pass
                 raise TimeoutError(f"MT5 operation {fn_name} timed out")
         return await future
 
@@ -1652,11 +1657,13 @@ def _place_order(
         transient_codes = (req_code, inv_code, off_code, 10004, 10015, 10021)
         if getattr(result, "retcode", None) in transient_codes and attempt < max_retries:
             time.sleep(0.1)  # 100ms rapid pause
-            latest_tick = mt5.symbol_info_tick(resolved_symbol)
-            if latest_tick:
-                new_price = getattr(latest_tick, 'ask', None) if direction == 'buy' else getattr(latest_tick, 'bid', None)
-                if new_price and new_price > 0:
-                    request['price'] = float(new_price)
+            deal_action = getattr(mt5, "TRADE_ACTION_DEAL", 1)
+            if request.get('action') == deal_action or request.get('action') == 1:
+                latest_tick = mt5.symbol_info_tick(resolved_symbol)
+                if latest_tick:
+                    new_price = getattr(latest_tick, 'ask', None) if direction == 'buy' else getattr(latest_tick, 'bid', None)
+                    if new_price and new_price > 0:
+                        request['price'] = float(new_price)
             continue
         break
 

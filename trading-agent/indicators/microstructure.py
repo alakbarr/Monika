@@ -183,8 +183,8 @@ def compute_kyle_lambda(
     y_vals = price_changes.values
     x_vals = signed_volume.values
 
-    for i in range(window, len(price_changes)):
-        sl = slice(i - window, i)
+    for i in range(window - 1, len(price_changes)):
+        sl = slice(i - window + 1, i + 1)
         res.iloc[i] = _ols_slope_intercept(y_vals[sl], x_vals[sl])
 
     return res.fillna(0.0)

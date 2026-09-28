@@ -197,6 +197,7 @@ class _ToolBridge:
         try:
             request = json.dumps({{"tool": name, "args": kwargs}}) + "\\n"
             sock.sendall(request.encode("utf-8"))
+            sock.shutdown(socket.SHUT_WR)
             response = b""
             while True:
                 chunk = sock.recv(65536)
@@ -234,7 +235,9 @@ tools = _ToolBridge({rpc_port})
 
             async def handle_client(self, reader, writer):
                 try:
-                    data = await asyncio.wait_for(reader.read(1_000_000), timeout=60)
+                    data = await asyncio.wait_for(reader.readline(), timeout=60)
+                    if not data:
+                        return
                     request = json.loads(data.decode("utf-8"))
                     tool_name = request["tool"]
                     tool_args = request.get("args", {})

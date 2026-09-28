@@ -46,6 +46,7 @@ trading-agent/logs/
 .worktrees/
 .runtime/
 moa-traces/
+audit_log/
 trading-agent/data/sessions/
 trading-agent/data/sessions/browser_profile/
 dummy_test_state.json
@@ -60,6 +61,8 @@ jev_documentation/
 trading-agent/skills/trading/playbooks/.backups/
 trading-agent/skills/trading/playbooks/.curator_ledger.jsonl
 trading-agent/skills/trading/playbooks/.playbook_lifecycle.json
+trading-agent/analysis/strategies/synthesized/
+trading-agent/skills/crystallized/mt5_slippage_defense/
 
 # Database files & Backups
 *.sqlite

@@ -162,6 +162,7 @@ class FortressAdmissionValidator:
         max_age_seconds: float = MAX_PROPOSAL_AGE_SECONDS,
         require_provenance: bool = False,
         is_backtest: bool = False,
+        min_rr_ratio: float = 1.3,
     ) -> tuple[bool, List[str]]:
         """
         Validates that a proposal satisfies Financial Fortress admission rules:
@@ -203,8 +204,8 @@ class FortressAdmissionValidator:
                 reward = abs(proposal.take_profit - proposal.entry_price)
                 if risk > 0:
                     rr = reward / risk
-                    if rr < 1.3:
-                        rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< 1.3)")
+                    if rr < min_rr_ratio:
+                        rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< {min_rr_ratio})")
 
         admitted = len(rejections) == 0
         return admitted, rejections

@@ -35,7 +35,7 @@ class TradingRiskStopGate:
     """
 
     _TRADE_INTENT_PATTERN = re.compile(
-        r"\b(?:place_order|buy|sell|close_position|market order|enter long|enter short)\b",
+        r"\b(?:action:\s*['\"]?(?:buy|sell)|decision:\s*['\"]?(?:buy|sell)|place_order\b|close_position\b|execute_order\b|submitting (?:buy|sell) order|enter (?:long|short) position at \d)",
         re.IGNORECASE,
     )
 

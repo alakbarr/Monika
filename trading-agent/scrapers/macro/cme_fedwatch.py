@@ -273,10 +273,10 @@ class FedWatchScraper(BaseScraper):
                         if abs(diff) < 0.005:
                             action = "HOLD"
                         elif diff < 0:
-                            bps = round(int(abs(diff) * 100) / 25) * 25
+                            bps = int(round(abs(diff) * 100 / 25) * 25)
                             action = f"CUT {bps} bps"
                         else:
-                            bps = round(int(diff * 100) / 25) * 25
+                            bps = int(round(diff * 100 / 25) * 25)
                             action = f"HIKE {bps} bps"
                             
                         final_probs.append(FedProbability(target_range=p["target"], probability=p["prob"], action=action))

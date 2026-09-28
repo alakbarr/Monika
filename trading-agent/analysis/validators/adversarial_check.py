@@ -52,7 +52,17 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
 
         # Existing checks
         min_rr = float(settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3))
-        effective_entry = getattr(analysis, "entry_price", None) or analysis.price_at_analysis
+        effective_entry = getattr(analysis, "entry_price", None)
+        if effective_entry is None and getattr(analysis, "entry_zone", None):
+            try:
+                ez = json.loads(analysis.entry_zone) if isinstance(analysis.entry_zone, str) else analysis.entry_zone
+                if isinstance(ez, dict) and "price" in ez:
+                    effective_entry = float(ez["price"])
+            except Exception:
+                pass
+        if effective_entry is None:
+            effective_entry = analysis.price_at_analysis
+
         if analysis.stop_loss and analysis.take_profit and effective_entry:
             sl_dist = abs(effective_entry - analysis.stop_loss)
             tp_dist = abs(effective_entry - analysis.take_profit)
@@ -181,7 +191,7 @@ recommend_block=true for significant, non-fatal risk factors.
             "quality": merged.get("overall_quality", "medium"),
             "checked_at": datetime.now(timezone.utc).isoformat(),
         }))
-        await session.commit()
+        await session.flush()
         return merged
     except Exception as e:
         logger.error(f'[AdversarialCheck] {analysis.symbol}: check failed (attempt 1), retrying: {e}')

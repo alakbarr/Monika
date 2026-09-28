@@ -759,7 +759,8 @@ class IsolatedStrategyBacktestHarness:
         ann_factor = math.sqrt(252.0 * 24.0 / max(1.0, np.mean([r.bars_held for r in records]))) if records else math.sqrt(252.0)
         sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
 
-        downside_std = float(np.std([r for r in returns if r < 0.0], ddof=1)) if len(losses) > 1 else 1e-6
+        downside_var = sum(r * r for r in losses) / max(1, total_trades) if losses else 0.0
+        downside_std = math.sqrt(downside_var) if downside_var > 0 else 1e-6
         sortino_ratio = round(float((mean_ret / (downside_std + 1e-9)) * ann_factor), 2)
 
         equity = 1.0

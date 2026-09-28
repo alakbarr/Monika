@@ -105,7 +105,8 @@ def _concept_similarity(set_a: Set[str], set_b: Set[str]) -> float:
     inter = len(set_a & set_b)
     union = len(set_a | set_b)
     jaccard = float(inter / union) if union > 0 else 0.0
-    containment = float(inter / min(len(set_a), len(set_b))) if min(len(set_a), len(set_b)) > 0 else 0.0
+    min_size = min(len(set_a), len(set_b))
+    containment = float(inter / min_size) if min_size >= 5 else 0.0
     return max(jaccard, containment)
 
 

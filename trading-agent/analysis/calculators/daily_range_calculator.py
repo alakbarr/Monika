@@ -124,7 +124,7 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
     try:
         from indicators.timesfm_engine import TimesFMEngine
         engine = TimesFMEngine(settings)
-        timesfm_data = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
+        timesfm_data = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of)
     except Exception as tfm_err:
         logger.debug(f"[{symbol}] TimesFM forecast lookup failed (non-fatal): {tfm_err}")
 

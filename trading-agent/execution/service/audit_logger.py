@@ -110,6 +110,8 @@ class TradeAuditLogger:
                 await session.rollback()
             except Exception:
                 pass
+            if not auto_commit:
+                raise
             return None
 
     @staticmethod

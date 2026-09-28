@@ -682,9 +682,12 @@ async def compute_empirical_arbitrator_weights(
             has_quant_src = rec_src in ("quant", "strategy_runner", "concordant") or (ana and getattr(ana, "source_strategy_id", None) is not None)
             if has_quant_src:
                 q_conf = 0.60
-                if ana and getattr(ana, "strategy_confidence", None) is not None:
+                if ana and (getattr(ana, "strategy_confidence", None) is not None or getattr(ana, "confidence", None) is not None):
                     try:
-                        q_conf = float(ana.strategy_confidence)
+                        c_val = getattr(ana, "strategy_confidence", None)
+                        if c_val is None:
+                            c_val = getattr(ana, "confidence", None)
+                        q_conf = float(c_val)
                     except (ValueError, TypeError):
                         q_conf = 0.60
                 err_sq = (q_conf - is_win) ** 2

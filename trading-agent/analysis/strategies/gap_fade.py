@@ -6,6 +6,9 @@ from database.models import PriceOHLCV, TechnicalIndicator
 from utils.validation.indicator_sanitizer import safe_float
 import utils.clock as clock
 
+from typing import Optional
+from datetime import datetime
+
 # IMPORTANT: SESSION_OPEN_HOUR_UTC MUST be validated against the broker's actual rollover schedule.
 # MT5 brokers often use EET/EEST timezones. Adjust these UTC hours so that they match the exact
 # hour the broker considers the start of a new daily trading session (when the D1 bar rolls over).
@@ -23,8 +26,8 @@ class DailyReopenGapFade(EdgeStrategy):
     factor_family = 'mean_reversion'
     min_sample_size = 30
 
-    async def evaluate(self, session, symbol, settings) -> EdgeSignal:
-        now = clock.now()
+    async def evaluate(self, session, symbol, settings, as_of: Optional[datetime] = None) -> EdgeSignal:
+        now = as_of or clock.now()
         open_hour = SESSION_OPEN_HOUR_UTC.get(symbol)
         if open_hour is None:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"symbol {symbol} not in SESSION_OPEN_HOUR_UTC")

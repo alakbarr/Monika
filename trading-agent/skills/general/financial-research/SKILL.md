@@ -1,6 +1,6 @@
 ---
 name: financial-research
-description: Analyze prediction markets (Polymarket), DEX perps (Hyperliquid), and cross-asset correlations.
+description: Analyze prediction markets, DEX perps, and cross-asset correlations.
 category: research
 version: 1.0.0
 platforms: [windows, linux, macos]

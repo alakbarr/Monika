@@ -138,27 +138,9 @@ class CoinglasFundingFetcher:
         if self.session:
             for cfg_key in ("coinglass_funding_latest", "funding_rate_latest"):
                 try:
-                    from sqlalchemy.dialects.postgresql import insert as pg_insert
-                    stmt = pg_insert(SystemConfig).values(key=cfg_key, value=cfg_val)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=['key'],
-                        set_={'value': cfg_val}
-                    )
-                    await self.session.execute(stmt)
+                    await SystemConfig.upsert(self.session, key=cfg_key, value=cfg_val)
                     await self.session.commit()
                 except Exception as e:
-                    logger.debug(f"Funding rate pg_insert save fallback: {e}")
-                    try:
-                        await self.session.rollback()
-                    except Exception:
-                        pass
-                    existing = (await self.session.execute(
-                        select(SystemConfig).where(SystemConfig.key == cfg_key).limit(1)
-                    )).scalar_one_or_none()
-                    if existing:
-                        existing.value = cfg_val
-                    else:
-                        self.session.add(SystemConfig(key=cfg_key, value=cfg_val))
-                    await self.session.commit()
+                    logger.debug(f"Funding rate SystemConfig.upsert error for {cfg_key}: {e}")
         
         return result

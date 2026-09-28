@@ -103,6 +103,7 @@ class EIAInventoryFetcher:
 
         from database.safe_ops import safe_commit
         await safe_commit(self.session, label="EIAOil")
+        wow_str = f"{wow_change:+.2f}M" if wow_change is not None else "N/A"
         logger.info(f"EIA Oil: {result['latest_inventory_mbbl']}M bbl "
-                    f"(WoW: {wow_change:+.2f}M — {result['trend']})")
+                    f"(WoW: {wow_str} — {result['trend']})")
         return result

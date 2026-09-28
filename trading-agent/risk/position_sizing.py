@@ -866,11 +866,18 @@ class PositionSizer:
                 from database.models import PriceOHLCV
                 from sqlalchemy import select
                 sim_time = as_of or clock.now()
-                stmt = (
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol)
-                    .where(PriceOHLCV.timeframe == 'H4')
-                )
+                if symbol == "USDJPY":
+                    stmt = (
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == "USDJPY")
+                        .where(PriceOHLCV.timeframe == 'H4')
+                    )
+                else:
+                    stmt = (
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == 'H4')
+                    )
                 if sim_time is not None:
                     stmt = stmt.where(PriceOHLCV.timestamp <= sim_time)
                 last_bar = (await session.execute(
@@ -1070,10 +1077,12 @@ def get_instrument_spec(symbol: str, mt5_client=None) -> InstrumentSpec:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=1.0, contract_size=100, digits=2)
     elif "XAG" in clean_sym or "SILVER" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=0.001, pip_value_usd=5.0, contract_size=5000, digits=3)
-    elif "BTC" in clean_sym or "ETH" in clean_sym or "CRYPTO" in clean_sym or "SOL" in clean_sym:
+    elif "ETH" in clean_sym:
+        return InstrumentSpec(symbol=clean_sym, pip_size=0.1, pip_value_usd=1.0, contract_size=10, min_lot=0.01, max_lot=50.0, digits=2)
+    elif "BTC" in clean_sym or "CRYPTO" in clean_sym or "SOL" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=1.0, pip_value_usd=1.0, contract_size=1, min_lot=0.01, max_lot=10.0, digits=2)
     elif "OIL" in clean_sym or "XTI" in clean_sym or "XBR" in clean_sym or "CL" in clean_sym:
-        return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=1.0, contract_size=100, digits=2)
+        return InstrumentSpec(symbol=clean_sym, pip_size=0.01, pip_value_usd=10.0, contract_size=1000, digits=2)
     elif "US30" in clean_sym or "SPX" in clean_sym or "NAS" in clean_sym or "USTEC" in clean_sym:
         return InstrumentSpec(symbol=clean_sym, pip_size=1.0, pip_value_usd=1.0, contract_size=1, digits=2)
     elif len(clean_sym) == 6 and clean_sym.isalpha():

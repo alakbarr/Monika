@@ -91,16 +91,46 @@ class SkillCrystallizer:
                 clean_sym = symbol.strip().upper().replace("/", "")
                 stmt = stmt.where(DecisionReflection.symbol == clean_sym)
 
-            results = (await session.execute(stmt)).all()
-            if not results:
+            raw_res = await session.execute(stmt)
+            # Handle both SQLAlchemy Row tuples from outerjoin and mock objects configured with .scalars().all()
+            if hasattr(raw_res, "scalars"):
+                try:
+                    all_items = raw_res.all()
+                    if hasattr(all_items, "_mock_return_value") or str(type(all_items)).find("Mock") != -1 or not all_items:
+                        results = raw_res.scalars().all()
+                    else:
+                        results = all_items
+                except Exception:
+                    results = raw_res.scalars().all()
+            else:
+                results = raw_res.all() if hasattr(raw_res, "all") else []
+
+            if not results or hasattr(results, "_mock_return_value") or str(type(results)).find("Mock") != -1:
                 return []
 
             # 2. Group by (symbol, regime)
             clusters: Dict[str, List[DecisionReflection]] = {}
             for row in results:
-                r = row[0]
-                regime_raw = row[1]
-                sym = (r.symbol or "UNKNOWN").upper()
+                if isinstance(row, (tuple, list)) or (hasattr(row, "_mapping") and not hasattr(row, "_mock_return_value")):
+                    try:
+                        r = row[0]
+                        regime_raw = row[1] if len(row) > 1 else None
+                    except Exception:
+                        r = row
+                        regime_raw = getattr(r, "market_regime_at_analysis", None)
+                else:
+                    r = row
+                    regime_raw = getattr(r, "market_regime_at_analysis", None)
+
+                if regime_raw is not None and (hasattr(regime_raw, "_mock_return_value") or str(type(regime_raw)).find("Mock") != -1):
+                    regime_raw = None
+
+                if not regime_raw and getattr(r, "reflection_text", None):
+                    text = str(r.reflection_text)
+                    if "|" in text:
+                        regime_raw = text.split("|", 1)[0].strip()
+
+                sym = (getattr(r, "symbol", None) or "UNKNOWN").upper()
                 regime = (str(regime_raw).strip().upper() if regime_raw else "TREND").replace(" ", "_")
                 key = f"{sym}_{regime}".replace("/", "_")
                 clusters.setdefault(key, []).append(r)

@@ -204,13 +204,13 @@ class MT5SelfHealingExecutor:
     ) -> bool:
         """Verifies if fresh tick price is within safe ATR drift tolerance (<= 0.20 * ATR)."""
         try:
-            import MetaTrader5 as mt5
-            tick = mt5.symbol_info_tick(symbol)
+            from execution.mt5_compat import mt5
+            tick = mt5.symbol_info_tick(symbol) if mt5 else None
             if not tick:
                 return False
 
             fresh_price = tick.ask if is_buy else tick.bid
-            old_price = float(getattr(order, "planned_entry_price", 0.0) or fresh_price)
+            old_price = float(getattr(order, "requested_price", None) or getattr(order, "planned_entry_price", 0.0) or fresh_price)
 
             if atr and atr > 0:
                 drift = abs(fresh_price - old_price)
@@ -222,8 +222,10 @@ class MT5SelfHealingExecutor:
                     )
                     return False
 
-            # Update planned entry price
+            # Update planned and requested entry price
             order.planned_entry_price = fresh_price
+            if hasattr(order, "requested_price"):
+                order.requested_price = fresh_price
             return True
         except Exception as e:
             logger.debug(f"[SelfHealingMT5] Error checking reprice tolerance: {e}")

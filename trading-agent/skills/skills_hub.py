@@ -68,10 +68,11 @@ class SkillsHub:
     """
 
     def __init__(self, search_directories: Optional[List[str]] = None):
+        base_dir = Path(__file__).resolve().parent
         self.search_directories = search_directories or [
-            "trading-agent/skills/trading",
-            "trading-agent/skills/crystallized",
-            "trading-agent/skills/general",
+            str(base_dir / "trading"),
+            str(base_dir / "crystallized"),
+            str(base_dir / "general"),
         ]
         self._skills: Dict[str, SkillMetadata] = {}
         self._loaded_fingerprints: Set[str] = set()

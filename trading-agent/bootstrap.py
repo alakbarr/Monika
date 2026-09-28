@@ -119,6 +119,8 @@ def race_dual_stack_socket(
                 if err == 0:
                     # Winner found!
                     sock.setblocking(True)
+                    if effective_timeout is not None:
+                        sock.settimeout(effective_timeout)
                     # Close all losers
                     for loser in in_flight_socks:
                         try:

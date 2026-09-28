@@ -301,7 +301,7 @@ class MoARuntime:
 
         # 1. Parallel Proposers Fan-out
         proposer_outputs: List[Tuple[str, str, Dict[str, Any]]] = []
-        executor = ThreadPoolExecutor(max_workers=min(len(proposers), 8))
+        executor = ThreadPoolExecutor(max_workers=max(1, min(len(proposers), 8)))
         try:
             future_to_slot = {
                 executor.submit(self._execute_single_proposer, p, user_prompt, history_msgs): p

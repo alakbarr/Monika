@@ -335,7 +335,7 @@ async def calculate_confluence(
     quant_signals = []
     try:
         from analysis.strategies.registry import StrategyRegistry
-        quant_signals = await StrategyRegistry.evaluate_all(session=session, symbol=symbol, settings=settings)
+        quant_signals = await StrategyRegistry.evaluate_all(session=session, symbol=symbol, settings=settings, as_of=as_of)
     except Exception as q_err:
         logger.debug(f"Confluence quant signals check skipped: {q_err}")
 
@@ -579,8 +579,9 @@ async def calculate_confluence(
         if quant_signals:
             concordant_edges = sum(
                 1 for sig in quant_signals
-                if getattr(sig, "direction", "").lower() == test_direction.lower()
-                and getattr(sig, "edge_strength", 0.0) >= 0.55
+                if getattr(sig, "valid", True)
+                and str(getattr(sig, "direction", "")).lower() == test_direction.lower()
+                and max(float(getattr(sig, "edge_strength", 0.0) or 0.0), float(getattr(sig, "confidence", 0.0) or 0.0)) >= 0.55
             )
             if concordant_edges >= 1:
                 score += 1

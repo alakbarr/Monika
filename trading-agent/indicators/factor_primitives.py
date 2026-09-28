@@ -257,8 +257,7 @@ def ts_argmax(df: pd.DataFrame, n: int) -> pd.DataFrame:
     if HAS_BOTTLENECK and bn is not None:
         arr = df.to_numpy(dtype=np.float64)
         raw = bn.move_argmax(arr, window=n, min_count=n, axis=0)
-        corrected = (n - 1) - raw
-        return pd.DataFrame(corrected, index=df.index, columns=df.columns)
+        return pd.DataFrame(raw, index=df.index, columns=df.columns)
 
     def _argmax_last(sub: np.ndarray) -> float:
         if np.isnan(sub).all():
@@ -279,8 +278,7 @@ def ts_argmin(df: pd.DataFrame, n: int) -> pd.DataFrame:
     if HAS_BOTTLENECK and bn is not None:
         arr = df.to_numpy(dtype=np.float64)
         raw = bn.move_argmin(arr, window=n, min_count=n, axis=0)
-        corrected = (n - 1) - raw
-        return pd.DataFrame(corrected, index=df.index, columns=df.columns)
+        return pd.DataFrame(raw, index=df.index, columns=df.columns)
 
     def _argmin_last(sub: np.ndarray) -> float:
         if np.isnan(sub).all():

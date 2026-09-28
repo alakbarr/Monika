@@ -64,13 +64,15 @@ class ReadOnlyReplayCache:
 
     @staticmethod
     def _make_key(tool_name: str, kwargs: Dict[str, Any]) -> str:
-        """Generates deterministic SHA-256 hash key for tool call."""
+        """Generates deterministic SHA-256 hash key with tool prefix."""
+        t_norm = tool_name.lower().strip()
         try:
             serialized_args = json.dumps(kwargs, sort_keys=True, default=str)
         except Exception:
             serialized_args = str(sorted(kwargs.items()))
-        raw = f"{tool_name.lower().strip()}:{serialized_args}"
-        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        raw = f"{t_norm}:{serialized_args}"
+        h = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return f"{t_norm}:{h}"
 
     def get(self, tool_name: str, kwargs: Dict[str, Any]) -> Optional[Any]:
         """Retrieves cached result if present and unexpired."""
@@ -80,7 +82,7 @@ class ReadOnlyReplayCache:
             if entry is not None:
                 if not entry.is_expired:
                     self._hits += 1
-                    logger.debug(f"[ReplayCache] HIT for tool '{tool_name}' (key: {key[:8]})")
+                    logger.debug(f"[ReplayCache] HIT for tool '{tool_name}' (key: {key[:12]})")
                     return entry.result
                 else:
                     del self._cache[key]
@@ -112,11 +114,10 @@ class ReadOnlyReplayCache:
                 count = len(self._cache)
                 self._cache.clear()
             else:
-                prefix = tool_name.lower().strip()
+                prefix = f"{tool_name.lower().strip()}:"
                 keys_to_delete = [
-                    k for k, v in self._cache.items()
+                    k for k in self._cache.keys() if k.startswith(prefix)
                 ]
-                # If specific tool clearing requested
                 for k in keys_to_delete:
                     del self._cache[k]
                     count += 1

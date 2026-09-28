@@ -266,7 +266,7 @@ class RiskGate:
             ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
             ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("news_window", self._check_news_window(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'lot_size', None) if sizing else None)),
+            ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'recommended_lots', getattr(sizing, 'lot_size', None)) if sizing else None)),
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest)),
@@ -425,7 +425,12 @@ class RiskGate:
         rr = (tp_dist / sl_dist) if sl_dist > 1e-7 else 1.0
         risk_pct = float(proposal.metadata.get("risk_pct", 1.0)) if isinstance(proposal.metadata, dict) else 1.0
         risk_amount = eq * (risk_pct / 100.0)
-        pips = sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0
+        try:
+            from risk.position_sizing import get_instrument_spec
+            spec = get_instrument_spec(proposal.symbol)
+            pips = sl_dist / spec.pip_size if spec and spec.pip_size > 0 else (sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0)
+        except Exception:
+            pips = sl_dist * 100.0 if "JPY" in proposal.symbol else sl_dist * 10000.0
 
         sizing = SizingResult(
             symbol=proposal.symbol,
@@ -456,6 +461,18 @@ class RiskGate:
             is_backtest=is_backtest,
             is_paper=is_paper,
         )
+
+    async def _get_risk_state(self, session: AsyncSession) -> Optional[Any]:
+        """Fetch current RiskState from DB."""
+        if not session:
+            return None
+        try:
+            from database.models import RiskState
+            from sqlalchemy import select, desc
+            stmt = select(RiskState).order_by(desc(RiskState.updated_at)).limit(1)
+            return (await session.execute(stmt)).scalar_one_or_none()
+        except Exception:
+            return None
 
     check_proposal = evaluate_proposal
 
@@ -1469,10 +1486,10 @@ class RiskGate:
                         position_details.append(f"{pos_sym}: ~${heat_this_position:.2f} (estimated)")
             else:
                 if simulated_positions is None:
-                    return False, (
-                        f"BLOCKED: Position {pos_sym} "
-                        f"has NO stop loss. All new positions are blocked until SL is set."
-                    )
+                    fallback_pct = float(heat_cfg.get("risk_percent_per_trade", 2.0))
+                    heat_this_position = eff_equity * (fallback_pct / 100.0)
+                    position_details.append(f"{pos_sym}: ~${heat_this_position:.2f} (WARN: no SL, estimated at {fallback_pct}%)")
+                    logger.warning(f"Position {pos_sym} has no explicit SL; heat estimated at {fallback_pct}% of equity.")
                 else:
                     heat_this_position = eff_equity * (float(heat_cfg.get("risk_percent_per_trade", 1.5)) / 100.0)
             

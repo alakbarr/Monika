@@ -106,7 +106,7 @@ async def get_backtest_run_details(
                 "created_at": run.created_at.isoformat() if run.created_at else None,
             },
             "trades_count": len(trades),
-            "total_trades": len(trades),
+            "total_trades": run.total_trades if run.total_trades is not None else len(trades),
             "offset": offset,
             "limit": limit,
             "trades": [

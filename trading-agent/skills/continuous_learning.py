@@ -23,7 +23,7 @@ from analysis.tools.unified_registry import unified_tool_registry
 
 logger = logging.getLogger("TradingAgent.Skills.ContinuousLearning")
 
-DEFAULT_CRYSTALLIZED_DIR = "trading-agent/skills/crystallized"
+DEFAULT_CRYSTALLIZED_DIR = str(Path(__file__).resolve().parent / "crystallized")
 
 
 class LearnSkillInput(BaseModel):
@@ -71,7 +71,7 @@ class ContinuousLearner:
         clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", skill_name.strip().lower())
         desc_clean = description.strip()[:80]
 
-        target_dir = Path("trading-agent/skills") / category.lower() / clean_name
+        target_dir = Path(__file__).resolve().parent / category.lower() / clean_name
         target_dir.mkdir(parents=True, exist_ok=True)
         target_file = target_dir / "SKILL.md"
 

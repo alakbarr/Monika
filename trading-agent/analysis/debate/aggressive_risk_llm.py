@@ -31,5 +31,10 @@ Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered)
         return data
     except Exception as e:
         logger.error(f'Aggressive risk parse error: {e}')
-        return {'risk_profile_assessment': 'Fallback error', 'recommended_multiplier': 1.0, 'veto_trade': False}
+        return {
+            'risk_profile_assessment': 'Fallback error',
+            'recommended_multiplier': 1.0,
+            'veto_trade': False,
+            'parse_error': True,
+        }
 

@@ -217,15 +217,21 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
         # Hanya set per-symbol cooldown, TIDAK pause global
         cooldown_hours = self.settings.get('trading', {}).get('risk', {}).get('post_sl_cooldown_hours', 6)
         
-        # Cek berapa SL hits hari ini
+        # Cek berapa SL hits hari ini (live + paper)
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
         from database.models import TradeOutcome, PaperTradeRecord
         from sqlalchemy import select, func
-        today_sl_hits = (await session.execute(
+        paper_sl_hits = (await session.execute(
             select(func.count(PaperTradeRecord.id))
             .where(PaperTradeRecord.closed_at >= today_start)
             .where(PaperTradeRecord.exit_reason == 'sl_hit')
         )).scalar_one_or_none() or 0
+        live_sl_hits = (await session.execute(
+            select(func.count(TradeOutcome.id))
+            .where(TradeOutcome.closed_at >= today_start)
+            .where(TradeOutcome.exit_reason == 'sl_hit')
+        )).scalar_one_or_none() or 0
+        today_sl_hits = paper_sl_hits + live_sl_hits
         
         # Pause global jika ada 3+ SL hits dalam sehari
         max_daily_sl = self.settings.get('trading', {}).get('risk', {}).get('max_daily_sl_hits', 3)
@@ -414,6 +420,17 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         pass
 
                     if not existing_pos:
+                        order_sl = getattr(order, "stop_loss_price", None) or getattr(order, "sl", None)
+                        order_tp = getattr(order, "take_profit_price", None) or getattr(order, "tp", None)
+                        if (order_sl is None or order_tp is None) and getattr(order, "params_json", None):
+                            try:
+                                import json
+                                params = json.loads(order.params_json) if isinstance(order.params_json, str) else order.params_json
+                                order_sl = order_sl or params.get("sl") or params.get("stop_loss")
+                                order_tp = order_tp or params.get("tp") or params.get("take_profit")
+                            except Exception:
+                                pass
+
                         pos = Position(
                             order_id=order.id,
                             analysis_id=order.analysis_id,
@@ -422,8 +439,8 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                             direction=order_dir,
                             volume=order_vol,
                             entry_price=fill_price,
-                            sl=getattr(order, "sl", None),
-                            tp=getattr(order, "tp", None),
+                            sl=order_sl,
+                            tp=order_tp,
                             opened_at=datetime.now(timezone.utc),
                             status="open",
                             is_paper=False,

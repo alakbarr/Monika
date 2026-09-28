@@ -45,10 +45,22 @@ class InvariantRegistry:
         self._invariants: Dict[str, Callable[[Dict[str, Any]], InvariantResult]] = {}
 
     @classmethod
-    def get_instance(cls) -> "InvariantRegistry":
+    def get_instance(cls, with_defaults: bool = False) -> "InvariantRegistry":
         if cls._instance is None:
             cls._instance = cls()
+            if with_defaults:
+                cls._instance.register_defaults()
         return cls._instance
+
+    def register_defaults(self) -> None:
+        """Register default built-in invariants."""
+        try:
+            from .risk_gate_invariant import check_risk_gate_invariant
+            from .position_count_invariant import check_position_count_invariant
+            self.register("risk_gate_limits", check_risk_gate_invariant)
+            self.register("position_count_ceiling", check_position_count_invariant)
+        except Exception as e:
+            logger.debug(f"[InvariantRegistry] Default registration non-fatal error: {e}")
 
     @classmethod
     def reset_instance(cls) -> None:

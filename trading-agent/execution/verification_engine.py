@@ -84,8 +84,9 @@ class EvidenceFirstVerifier:
             violations.append(f"ASSERT_6: Confidence ({confidence:.2f}) is below execution floor (0.50).")
 
         # 7. Confluence Score
-        if confluence_score < 7:
-            violations.append(f"ASSERT_7: Confluence score ({confluence_score}/14) is below threshold (7).")
+        min_conf = float(signal.get("min_confluence") or getattr(self, "min_confluence", 4))
+        if confluence_score < min_conf:
+            violations.append(f"ASSERT_7: Confluence score ({confluence_score}/14) is below threshold ({min_conf}).")
 
         # 8. Priced-in Score Overheat Guard
         if priced_in_score >= 8:

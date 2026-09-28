@@ -252,18 +252,19 @@ class ClientOrderEmulator:
         last: float,
     ) -> Optional[Dict[str, Any]]:
         """Evaluasi mutasi harga tick terhadap watermark, BE, dan trailing stop."""
-        if getattr(pos, "is_modifying", False):
-            return None
+        async with self._lock:
+            if getattr(pos, "is_modifying", False):
+                return None
 
-        current_price = bid if pos.direction == "buy" else (ask if ask > 0 else bid)
-        if current_price <= 0:
-            current_price = last
-        if current_price <= 0:
-            return None
+            current_price = bid if pos.direction == "buy" else (ask if ask > 0 else bid)
+            if current_price <= 0:
+                current_price = last
+            if current_price <= 0:
+                return None
 
-        # Update high/low watermark
-        pos.high_watermark = max(pos.high_watermark, current_price)
-        pos.low_watermark = min(pos.low_watermark, current_price)
+            # Update high/low watermark
+            pos.high_watermark = max(pos.high_watermark, current_price)
+            pos.low_watermark = min(pos.low_watermark, current_price)
 
         atr = pos.atr
         if atr <= 0:
