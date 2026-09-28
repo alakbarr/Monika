@@ -739,7 +739,7 @@ class ChatAgent:
         """Stream LLM tokens via Telegram edit_message_text.
  
         Enforces prefix-stability (frame N is strict prefix of N+1).
-        Throttle edits to max 1 every 500ms to respect Telegram rate limits.
+        Throttle edits to max 1 every 1200ms to respect Telegram rate limits.
         Final message removes streaming cursor and applies full HTML sanitization.
         """
         import time
@@ -758,7 +758,7 @@ class ChatAgent:
             text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
             buffer += text_chunk
             now = time.monotonic()
-            if now - last_edit >= 0.5 and len(buffer) > 20:
+            if now - last_edit >= 1.2 and len(buffer) > 20:
                 if message:
                     try:
                         cursor_text = _sanitize_telegram_format(buffer) + " ▌"
@@ -767,7 +767,9 @@ class ChatAgent:
                             await message.edit_text(display, parse_mode="HTML")
                             last_edit = now
                     except RetryAfter as e:
-                        await asyncio.sleep(getattr(e, "retry_after", 1.0))
+                        retry_delay = float(getattr(e, "retry_after", 1.2))
+                        await asyncio.sleep(retry_delay)
+                        last_edit = time.monotonic()
                     except BadRequest:
                         pass
                     except Exception as e:

@@ -118,6 +118,7 @@ class TurnLivenessWatchdog:
                         logger.warning(msg)
                         if self.on_hang_detected:
                             self.on_hang_detected(msg)
+                        self._last_gen_advance_time = now
                 else:
                     self._last_checked_gen = self._generation_counter
 

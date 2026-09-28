@@ -277,7 +277,8 @@ class AgentHarness:
             )
             logger.debug(f"[{stage_name}][AgentHarness] Persisted pre-execute turn {turn_index} with {len(tool_calls)} tool calls.")
         except Exception as e:
-            logger.warning(f"[{stage_name}][AgentHarness] Failed to persist pre-execute turn: {e}")
+            logger.error(f"[{stage_name}][AgentHarness] Failed to persist pre-execute turn: {e}", exc_info=True)
+            raise RuntimeError(f"Audit invariant violation: Failed to persist pre-execute turn: {e}") from e
 
     @staticmethod
     def _enforce_role_alternation(messages: List[dict]) -> List[dict]:

@@ -6,7 +6,7 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Union
+from typing import Any, AsyncGenerator, Union
 
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -93,14 +93,17 @@ def get_engine():
     if engine is None:
         db_url = os.getenv("DATABASE_URL", DATABASE_URL)
         verify_safe_database_url(db_url)
-        engine = create_async_engine(
-            db_url,
-            echo=False,
-            pool_size=20,
-            max_overflow=30,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-        )
+        engine_kwargs: dict[str, Any] = {"echo": False}
+        if "postgresql" in db_url:
+            engine_kwargs.update(
+                {
+                    "pool_size": 20,
+                    "max_overflow": 30,
+                    "pool_pre_ping": True,
+                    "pool_recycle": 3600,
+                }
+            )
+        engine = create_async_engine(db_url, **engine_kwargs)
     return engine
 
 
@@ -179,32 +182,21 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
         acquired = False
         try:
             res = await session.execute(
-                text("SELECT pg_try_advisory_lock(:key)"),
+                text("SELECT pg_try_advisory_xact_lock(:key)"),
                 {"key": numeric_key}
             )
             acquired = bool(res.scalar())
             if not acquired:
-                logger.warning(f"[DB] Could not acquire PostgreSQL advisory lock {numeric_key} (concurrent transaction active).")
+                logger.warning(f"[DB] Could not acquire PostgreSQL transaction advisory lock {numeric_key} (concurrent transaction active).")
         except Exception as e:
-            logger.critical(f"[DB] PostgreSQL advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed).")
+            logger.critical(f"[DB] PostgreSQL transaction advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed).")
             acquired = False
 
         if not acquired:
             yield False
             return
 
-        try:
-            yield True
-        finally:
-            try:
-                if session.in_transaction() and not session.is_active:
-                    try:
-                        await session.rollback()
-                    except Exception:
-                        pass
-                await session.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": numeric_key})
-            except Exception as e:
-                logger.warning(f"[DB] Error releasing advisory lock {numeric_key}: {e}")
+        yield True
     else:
         lock = _IN_MEMORY_EXECUTION_LOCKS.setdefault(numeric_key, asyncio.Lock())
         async with lock:

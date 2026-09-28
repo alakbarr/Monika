@@ -390,19 +390,22 @@ class LayeredMemoryManager:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
 
     async def _get_portfolio_heat(self, session: Optional[AsyncSession]) -> str:
-        """Current open positions summary."""
+        """Current open positions summary (both live and paper)."""
         if not session:
             return "0 open positions"
         try:
-            from database.models import PaperTradeRecord
-            open_trades = (await session.execute(
-                select(PaperTradeRecord)
-                .where(PaperTradeRecord.status == 'open')
+            from database.models import PaperTradeRecord, Position
+            live_positions = (await session.execute(
+                select(Position).where(Position.status == 'open')
             )).scalars().all()
-            if not open_trades:
+            paper_trades = (await session.execute(
+                select(PaperTradeRecord).where(PaperTradeRecord.status == 'open')
+            )).scalars().all()
+
+            all_symbols = [p.symbol for p in live_positions if getattr(p, 'symbol', None)] + [t.symbol for t in paper_trades if getattr(t, 'symbol', None)]
+            if not all_symbols:
                 return "0 open positions"
-            symbols = [t.symbol for t in open_trades]
-            return f"{len(open_trades)} open: {', '.join(symbols)}"
+            return f"{len(all_symbols)} open: {', '.join(all_symbols)}"
         except Exception:
             return "0 open positions"
 

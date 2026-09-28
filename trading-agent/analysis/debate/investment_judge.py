@@ -210,10 +210,10 @@ Respond in valid JSON format conforming to the schema."""
     try:
         from analysis.debate.blackboard import DebateBlackboard
         bb = DebateBlackboard(symbol=symbol, fact_sheet=original_context)
-        b_thesis = bull_claim.get("thesis") or bull_claim.get("argument") or str(bull_claim)[:300]
-        bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0)) / 10.0)
-        br_thesis = bear_dissent.get("counter_thesis") or bear_dissent.get("argument") or str(bear_dissent)[:300]
-        bb.add_bear_thesis(br_thesis, confidence=float(bear_dissent.get("risk_severity", 5.0)) / 10.0)
+        b_thesis = bull_claim.get("thesis") or bull_claim.get("bull_thesis") or bull_claim.get("argument") or str(bull_claim)[:300]
+        bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0)
+        br_thesis = bear_dissent.get("counter_thesis") or bear_dissent.get("bear_dissent") or bear_dissent.get("bear_thesis") or bear_dissent.get("argument") or str(bear_dissent)[:300]
+        bb.add_bear_thesis(br_thesis, confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0)
         debate_payload["sparse_blackboard"] = bb.render_sparse_summary()
     except Exception as bb_err:
         logger.debug(f"DebateBlackboard injection non-fatal: {bb_err}")

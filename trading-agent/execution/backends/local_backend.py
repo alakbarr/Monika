@@ -22,6 +22,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from analysis.tools.kernel.env_sanitizer import get_sanitized_environment
 from execution.backends.base import BaseTerminalBackend
+from security.terminal_guard import assert_safe_write_path
 
 logger = logging.getLogger("TradingAgent.Execution.LocalBackend")
 
@@ -107,7 +108,8 @@ class LocalTerminalBackend(BaseTerminalBackend):
         return text
 
     def write_file(self, path: str, content: str, append: bool = False) -> bool:
-        p = Path(path)
+        safe_path = assert_safe_write_path(path)
+        p = Path(safe_path)
         p.parent.mkdir(parents=True, exist_ok=True)
         mode = "a" if append else "w"
         with open(p, mode, encoding="utf-8", errors="replace") as f:

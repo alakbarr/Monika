@@ -123,4 +123,14 @@ def _prune_unanswered_tool_calls(msgs: List[Dict[str, Any]]) -> List[Dict[str, A
                     if not (isinstance(b, dict) and b.get("type") == "tool_use" and str(b.get("id")) not in answered_tool_ids)
                 ]
 
-    return msgs
+    cleaned = []
+    for msg in msgs:
+        if msg.get("role") == "assistant":
+            content = msg.get("content")
+            has_content = bool(content.strip()) if isinstance(content, str) else bool(content)
+            has_tool_calls = bool(msg.get("tool_calls"))
+            if not has_content and not has_tool_calls:
+                continue
+        cleaned.append(msg)
+
+    return cleaned

@@ -189,6 +189,31 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         If admitted and approved, executes order.
         """
         start = clock.now()
+        from agent.estop import is_estop_active, get_estop_details
+        if is_estop_active():
+            estop_info = get_estop_details() or {}
+            reason = estop_info.get("reason", "ESTOP sentinel active")
+            logger.critical(f"[ESTOP] execute_proposal blocked for {proposal.symbol}: {reason}")
+            elapsed = (clock.now() - start).total_seconds() * 1000
+            return ExecutionResult(
+                symbol=proposal.symbol,
+                analysis_id=proposal.metadata.get("analysis_id") if hasattr(proposal, "metadata") and proposal.metadata else getattr(proposal, "id", None),
+                decision=proposal.direction.lower() if hasattr(proposal, "direction") else "hold",
+                sizing=None,
+                risk_approved=False,
+                risk_checks_passed=[],
+                risk_checks_failed=["estop_active"],
+                risk_rejection_reasons=[f"ESTOP is active: {reason}"],
+                executed=False,
+                mt5_ticket=None,
+                executed_price=None,
+                executed_lots=None,
+                mt5_error="ESTOP_ACTIVE",
+                position_id=None,
+                timestamp=start,
+                elapsed_ms=elapsed,
+            )
+
         from risk.trade_proposal import FortressAdmissionValidator
         admitted, rejections = FortressAdmissionValidator.validate_proposal(proposal)
         if not admitted:
@@ -1577,6 +1602,22 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 risk_rejection_reasons=[f"Decision is '{decision}' — no order placed"],
                 executed=False, mt5_ticket=None, executed_price=None,
                 executed_lots=None, mt5_error=None, position_id=None,
+                timestamp=start, elapsed_ms=0,
+            )
+
+        # Check ESTOP (Emergency Stop Sentinel)
+        from agent.estop import is_estop_active, get_estop_details
+        if is_estop_active():
+            estop_info = get_estop_details() or {}
+            reason = estop_info.get("reason", "ESTOP sentinel active")
+            logger.critical(f"[ESTOP] Order execution blocked for {symbol}: {reason}")
+            return ExecutionResult(
+                symbol=symbol, analysis_id=analysis.id, decision=decision,
+                sizing=None, risk_approved=False,
+                risk_checks_passed=[], risk_checks_failed=['estop_active'],
+                risk_rejection_reasons=[f"ESTOP is active: {reason}"],
+                executed=False, mt5_ticket=None, executed_price=None,
+                executed_lots=None, mt5_error="ESTOP_ACTIVE", position_id=None,
                 timestamp=start, elapsed_ms=0,
             )
 

@@ -13,12 +13,15 @@ and indicator calculations with restricted built-in globals.
 from __future__ import annotations
 
 import ast
+import asyncio
 import datetime
 import io
 import json
 import math
+import queue
 import statistics
 import sys
+import threading
 import time
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, Optional
@@ -147,14 +150,35 @@ class Tier1InProcessEnvironment(BaseExecutionEnvironment):
 
         compiled = compile(tree, filename="<tier1_sandbox>", mode="exec")
         local_scope: Dict[str, Any] = {}
+        res_queue: queue.Queue = queue.Queue()
 
-        try:
-            with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
-                exec(compiled, self._safe_globals, local_scope)
-            exit_code = 0
-        except Exception as exc:
+        def _execute_worker():
+            try:
+                with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+                    exec(compiled, self._safe_globals, local_scope)
+                res_queue.put((0, None))
+            except Exception as exc:
+                res_queue.put((1, exc))
+
+        t = threading.Thread(target=_execute_worker, daemon=True, name="tier1-sandbox-worker")
+        t.start()
+
+        loop = asyncio.get_running_loop()
+        def _wait_queue():
+            try:
+                return res_queue.get(timeout=timeout_seconds)
+            except queue.Empty:
+                return None
+
+        result = await loop.run_in_executor(None, _wait_queue)
+        if result is None:
             exit_code = 1
-            stderr_buf.write(f"{type(exc).__name__}: {str(exc)}\n")
+            stderr_buf.write(f"TimeoutError: Execution exceeded timeout of {timeout_seconds}s\n")
+        else:
+            code, exc = result
+            exit_code = code
+            if exc:
+                stderr_buf.write(f"{type(exc).__name__}: {str(exc)}\n")
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         return ExecutionOutcome(

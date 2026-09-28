@@ -130,7 +130,7 @@ async def evaluate_macro_alignment(session: AsyncSession, symbol: str, direction
         result.update(pair_macro_score=pair_score, implied_direction=implied,
                        base_score=base_d, quote_score=quote_d)
 
-    if direction and implied and implied != direction and abs(result['pair_macro_score']) >= threshold:
+    if direction and implied and implied.lower() != str(direction).lower() and abs(result['pair_macro_score']) >= threshold:
         result.update(aligned=False, strong_conflict=True)
         result['reasons'].append(f"Macro score={result['pair_macro_score']:+.2f} strongly implies "
                                   f"{implied.upper()}, opposing proposed {direction.upper()}.")

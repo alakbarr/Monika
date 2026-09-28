@@ -82,6 +82,7 @@ async def compute_optimal_levels(
     existing_sl: Optional[float] = None,
     existing_tp: Optional[float] = None,
 ) -> dict:
+    direction = str(direction or "").strip().lower()
     adr_ctx = await compute_daily_range_context(session, symbol, settings)
     if 'error' in adr_ctx:
         return {'error': adr_ctx['error']}

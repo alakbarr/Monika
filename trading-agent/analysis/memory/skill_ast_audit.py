@@ -41,6 +41,18 @@ DANGEROUS_CALLS = frozenset({
     "locals",
 })
 
+DANGEROUS_ATTR_CALLS = frozenset({
+    ("os", "system"),
+    ("os", "popen"),
+    ("os", "spawn"),
+    ("os", "spawnl"),
+    ("os", "spawnv"),
+    ("os", "kill"),
+    ("os", "killpg"),
+    ("shutil", "rmtree"),
+    ("shutil", "move"),
+})
+
 MAX_ALLOWED_CYCLOMATIC_COMPLEXITY = 25
 MAX_ALLOWED_NESTING_DEPTH = 6
 
@@ -121,6 +133,16 @@ class _ComplexityAndSecurityVisitor(ast.NodeVisitor):
                     line_number=node.lineno,
                     rule_id="SEC_002_DANGEROUS_CALL",
                     message=f"Direct invocation of hazardous builtin '{func_name}' is prohibited.",
+                    severity="critical",
+                ))
+        elif isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            mod_name = node.func.value.id
+            attr_name = node.func.attr
+            if (mod_name, attr_name) in DANGEROUS_ATTR_CALLS:
+                self.violations.append(AstAuditViolation(
+                    line_number=node.lineno,
+                    rule_id="SEC_002_DANGEROUS_CALL",
+                    message=f"Invocation of hazardous function '{mod_name}.{attr_name}' is prohibited.",
                     severity="critical",
                 ))
         self.generic_visit(node)

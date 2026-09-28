@@ -154,7 +154,36 @@ class MT5LocalBrokerPlugin(BrokerPlugin):
     async def submit_order(self, order: Any, **kwargs) -> Dict[str, Any]:
         if not self.mt5_client:
             return {"success": False, "error": "MT5 client not initialized"}
-        return await self.mt5_client.place_order(order, **kwargs)
+        if isinstance(order, dict):
+            sym = order.get("symbol", "")
+            direction = str(order.get("direction", "buy")).lower()
+            volume = float(order.get("volume", order.get("requested_volume", 0.01)) or 0.01)
+            price = order.get("price", order.get("requested_price", None))
+            sl = kwargs.pop("sl", order.get("sl", None))
+            tp = kwargs.pop("tp", order.get("tp", None))
+        elif isinstance(order, str):
+            sym = order
+            direction = str(kwargs.pop("direction", "buy")).lower()
+            volume = float(kwargs.pop("volume", 0.01) or 0.01)
+            price = kwargs.pop("price", None)
+            sl = kwargs.pop("sl", None)
+            tp = kwargs.pop("tp", None)
+        else:
+            sym = getattr(order, "symbol", "")
+            direction = str(getattr(order, "direction", "buy")).lower()
+            volume = float(getattr(order, "requested_volume", getattr(order, "volume", 0.01)) or 0.01)
+            price = getattr(order, "requested_price", getattr(order, "price", None))
+            sl = kwargs.pop("sl", getattr(order, "sl", None))
+            tp = kwargs.pop("tp", getattr(order, "tp", None))
+        return await self.mt5_client.place_order(
+            symbol=sym,
+            direction=direction,
+            volume=volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            **kwargs,
+        )
 
     async def cancel_order(self, client_order_id: str, ticket: Optional[int] = None) -> bool:
         if not self.mt5_client:

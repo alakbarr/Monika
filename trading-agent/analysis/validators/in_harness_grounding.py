@@ -55,7 +55,13 @@ class InHarnessGroundingValidator:
         if not isinstance(decision_payload, dict):
             return False, ["Payload is not a valid dictionary."], metadata
 
-        decision = str(decision_payload.get("decision", decision_payload.get("directional_bias", ""))).upper()
+        decision = str(
+            decision_payload.get("decision")
+            or decision_payload.get("direction")
+            or decision_payload.get("action")
+            or decision_payload.get("directional_bias")
+            or ""
+        ).strip().upper()
         if decision in ("WAIT", "AVOID", "NEUTRAL"):
             # Require minimal structural justification for WAIT
             rationale = str(decision_payload.get("rationale", ""))

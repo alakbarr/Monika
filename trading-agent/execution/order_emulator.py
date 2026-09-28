@@ -310,13 +310,17 @@ class ClientOrderEmulator:
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
 
         if new_sl is not None:
-            # Round new_sl to reasonable precision
-            new_sl = round(new_sl, 5)
+            # Round new_sl to instrument precision
+            digits = getattr(pos, "digits", None)
+            if digits is None:
+                sym_up = pos.symbol.upper()
+                digits = 2 if ("JPY" in sym_up or "XAU" in sym_up or "BTC" in sym_up or "ETH" in sym_up) else 5
+            new_sl = round(new_sl, digits)
             old_sl = pos.current_sl
 
             logger.info(
                 f"[ClientOrderEmulator] Adjusting #{pos.ticket} ({pos.symbol} {pos.direction.upper()}) "
-                f"SL {old_sl:.5f} -> {new_sl:.5f} ({reason})"
+                f"SL {old_sl:.{digits}f} -> {new_sl:.{digits}f} ({reason})"
             )
 
             pos.is_modifying = True
@@ -380,4 +384,9 @@ class ClientOrderEmulator:
                 logger.error(f"[ClientOrderEmulator] ExecutionService adjustment failed for #{ticket}: {e}")
                 return False
 
-        return True
+        if self.on_sl_adjustment is None and self.execution_service is None:
+            # Standalone emulator mode (simulation / paper testing without bound service)
+            return True
+
+        logger.warning(f"[ClientOrderEmulator] No execution service handler available to modify SL for #{ticket}")
+        return False

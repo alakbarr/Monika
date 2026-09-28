@@ -180,6 +180,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 row_classes = row.get("class")
                 row_class_list = row_classes if isinstance(row_classes, list) else [row_classes] if isinstance(row_classes, str) else []
                 if "calendar__row--new-day" in row_class_list:
+                    current_time_str = "12:00am"
                     # extract date
                     td_date = row.find("td", class_="calendar__date")
                     if td_date:
@@ -192,9 +193,10 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 td_time = row.find("td", class_="calendar__time")
                 if td_time:
                     t_str = td_time.get_text(strip=True)
-                    if t_str and "All Day" not in t_str and "Day" not in t_str:
-                        if "am" in t_str.lower() or "pm" in t_str.lower():
-                            current_time_str = t_str
+                    if "all day" in t_str.lower() or "day" in t_str.lower():
+                        current_time_str = "12:00am"
+                    elif t_str and ("am" in t_str.lower() or "pm" in t_str.lower()):
+                        current_time_str = t_str
                 
                 full_time_str = f"{current_date_str} {current_time_str}".strip()
 

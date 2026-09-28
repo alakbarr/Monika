@@ -266,7 +266,7 @@ class RiskGate:
             ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
             ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("news_window", self._check_news_window(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of)),
+            ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'lot_size', None) if sizing else None)),
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest)),
@@ -815,18 +815,32 @@ class RiskGate:
             return True, "backtest_spread_ok"
         try:
             from execution.mt5_client import get_mt5_client
-            client = get_mt5_client()
-            if not getattr(client, "is_connected", False):
-                return True, "client_disconnected_spread_deferred"
+            client = getattr(self, "_mt5", None)
+            if client is None:
+                try:
+                    client = get_mt5_client()
+                except Exception:
+                    client = None
+            if client is None:
+                return True, "no_client_spread_skipped"
+            is_conn = await client.is_connected() if callable(getattr(client, "is_connected", None)) else getattr(client, "is_connected", False)
+            if asyncio.iscoroutine(is_conn):
+                is_conn = await is_conn
+            if not is_conn:
+                if getattr(self, "_mt5", None) is None:
+                    return True, "client_disconnected_spread_skipped"
+                return False, "client_disconnected_spread_blocked"
             spread_info = await client.get_spread(symbol)
-            spread_pts = spread_info.get("spread_points", 0)
+            if asyncio.iscoroutine(spread_info):
+                spread_info = await spread_info
+            spread_pts = spread_info.get("spread_points", 0) if isinstance(spread_info, dict) else 0
             max_spread = float(self.settings.get("trading", {}).get("risk", {}).get("max_spread_points", {}).get(symbol, 100.0))
             if spread_pts > max_spread:
                 return False, f"Current spread {spread_pts} pts exceeds maximum allowed {max_spread} pts"
             return True, "ok"
         except Exception as e:
-            logger.debug(f"Spread check non-blocking: {e}")
-            return True, "spread_check_deferred"
+            logger.debug(f"Spread check error: {e}")
+            return False, f"spread_check_error: {e}"
 
     async def _check_weekly_drawdown(
         self, session: AsyncSession, equity: Optional[float] = None, is_backtest: bool = False, is_paper: Optional[bool] = None
@@ -1093,7 +1107,8 @@ class RiskGate:
         exempted = weekend_cfg.get("exempted_symbols", ["BTCUSD", "ETHUSD"])
         gap_hours = weekend_cfg.get("gap_protection_hours", 2)
 
-        if symbol in exempted:
+        sym_clean = symbol.upper().split(".")[0].rstrip("m").rstrip("+")
+        if sym_clean in exempted or symbol in exempted or any(ex in symbol.upper() for ex in ("BTC", "ETH")):
             return True, f"{symbol} is exempted (24/7)"
         
         now = as_of or clock.now()
@@ -1121,7 +1136,8 @@ class RiskGate:
 
     async def _check_rollover_window(self, symbol: str, as_of: Optional[datetime] = None) -> tuple[bool, str]:
         """Blokir entri saat jeda rollover harian (spread membesar). BTCUSD & ETHUSD kebal."""
-        if symbol in ("BTCUSD", "ETHUSD"):
+        sym_clean = symbol.upper().split(".")[0].rstrip("m").rstrip("+")
+        if sym_clean in ("BTCUSD", "ETHUSD") or symbol in ("BTCUSD", "ETHUSD") or any(ex in symbol.upper() for ex in ("BTC", "ETH")):
             return True, f"{symbol} exempt from rollover check"
         
         now = as_of or clock.now()
@@ -1253,6 +1269,7 @@ class RiskGate:
         simulated_positions: Optional[list] = None,
         as_of: Optional[datetime] = None,
         open_positions: Optional[list] = None,
+        volume: Optional[float] = None,
     ) -> tuple[bool, str]:
         """Pastikan trade ini tidak melewati batas korelasi paparan mata uang / heat limit menggunakan DynamicCorrelationMatrix."""
         if open_positions is None:
@@ -1275,9 +1292,10 @@ class RiskGate:
             if p_sym:
                 pos_list.append({"symbol": str(p_sym), "volume": float(p_vol), "direction": str(p_dir)})
 
+        cand_vol = float(volume) if volume is not None and float(volume) > 0 else 0.1
         if pos_list and hasattr(self, "dynamic_correlation_matrix"):
             try:
-                candidate_pos = {"symbol": symbol, "direction": direction, "volume": 0.1}
+                candidate_pos = {"symbol": symbol, "direction": direction, "volume": cand_vol}
                 all_positions = pos_list + [candidate_pos]
                 symbols = list(set([p["symbol"] for p in all_positions]))
                 corr_matrix = await self.dynamic_correlation_matrix.get_matrix(session, symbols, as_of=as_of)
@@ -1291,7 +1309,8 @@ class RiskGate:
             except Exception as exc:
                 logger.debug(f"DynamicCorrelationMatrix evaluation fallback: {exc}")
 
-        correlated_exposure = 1.0  # Base exposure for the new trade
+        max_lot = self.settings.get('trading', {}).get('risk', {}).get('max_lot_per_symbol', 1.0)
+        correlated_exposure = max(cand_vol / max(max_lot, 0.01), 0.1)  # Normalized base exposure for the new trade
         
         for pos in open_positions:
             pos_sym = getattr(pos, 'symbol', None) or (pos.get('symbol') if isinstance(pos, dict) else None)
@@ -1308,7 +1327,6 @@ class RiskGate:
                 # Volatility-adjusted exposure: Aset dengan volatilitas rendah memiliki penalty lebih kecil
                 volatility_multiplier = max(std_dev * 100, 0.1) 
                 
-                max_lot = self.settings.get('trading', {}).get('risk', {}).get('max_lot_per_symbol', 1.0)
                 normalized_exposure = (pos_vol / max(max_lot, 0.01)) * volatility_multiplier
                 
                 same_dir = direction == pos_dir
@@ -1324,7 +1342,13 @@ class RiskGate:
         return True, f"correlation_ok (exposure={correlated_exposure:.2f}/{self.correlation_limit})"
 
     async def _check_correlation(
-        self, session: AsyncSession, symbol: str, direction: str, simulated_positions: Optional[list] = None, as_of: Optional[datetime] = None
+        self,
+        session: AsyncSession,
+        symbol: str,
+        direction: str,
+        simulated_positions: Optional[list] = None,
+        as_of: Optional[datetime] = None,
+        volume: Optional[float] = None,
     ) -> tuple[bool, str]:
         """Pastikan trade ini tidak melewati batas korelasi paparan mata uang."""
         return await self.check_correlation_exposure(
@@ -1333,6 +1357,7 @@ class RiskGate:
             direction=direction,
             simulated_positions=simulated_positions,
             as_of=as_of,
+            volume=volume,
         )
 
     async def _get_dynamic_correlation(

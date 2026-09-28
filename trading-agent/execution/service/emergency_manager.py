@@ -108,7 +108,15 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
                     # Update risk state
                     if result.get('profit') is not None:
-                        equity = await self._get_equity() or db_pos.entry_price * db_pos.volume
+                        equity = await self._get_equity()
+                        if asyncio.iscoroutine(equity):
+                            equity = await equity
+                        try:
+                            equity = float(equity) if equity is not None else None
+                        except (TypeError, ValueError):
+                            equity = None
+                        if not equity or equity <= 0:
+                            equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
                         await self.gate.update_risk_state(
                             session=session,
                             pnl_delta=result['profit'],

@@ -102,7 +102,11 @@ def race_dual_stack_socket(
 
             # Wait for any socket to become writable
             timeout_poll = max(0.01, min(next_launch_time - time.monotonic() if target_idx < len(interleaved) else 0.5, deadline - time.monotonic()))
-            events = selector.select(timeout=timeout_poll)
+            if in_flight_socks:
+                events = selector.select(timeout=timeout_poll)
+            else:
+                time.sleep(timeout_poll)
+                events = []
 
             for key, mask in events:
                 sock = key.fileobj

@@ -378,7 +378,8 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
                 for bp in broker_positions:
                     bp_sym = bp.get("symbol", "")
-                    bp_type = str(bp.get("type", "")).lower()
+                    raw_type = bp.get("type")
+                    bp_type = str(bp.get("direction") or ("buy" if raw_type == 0 else "sell" if raw_type == 1 else raw_type or "")).lower()
                     bp_vol = float(bp.get("volume", 0.0))
 
                     if bp_sym == order.symbol and bp_type == order_dir and abs(bp_vol - order_vol) < 0.001:
@@ -387,7 +388,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
                 if matched_pos:
                     ticket = matched_pos.get("ticket")
-                    fill_price = float(matched_pos.get("open_price", order.requested_price or 0.0))
+                    fill_price = float(matched_pos.get("price_open") or matched_pos.get("open_price") or order.requested_price or 0.0)
                     logger.critical(
                         f"[Recovery] In-flight order {order.client_order_id} ({order.symbol}) "
                         f"MATCHED broker position ticket={ticket} price={fill_price}. Settling as FILLED."

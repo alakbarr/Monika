@@ -301,7 +301,8 @@ class MoARuntime:
 
         # 1. Parallel Proposers Fan-out
         proposer_outputs: List[Tuple[str, str, Dict[str, Any]]] = []
-        with ThreadPoolExecutor(max_workers=min(len(proposers), 8)) as executor:
+        executor = ThreadPoolExecutor(max_workers=min(len(proposers), 8))
+        try:
             future_to_slot = {
                 executor.submit(self._execute_single_proposer, p, user_prompt, history_msgs): p
                 for p in proposers
@@ -327,6 +328,8 @@ class MoARuntime:
                         error_msg = f"[timed out after {timeout_sec}s]"
                         m = slot_metrics(slot, label=label, output=error_msg, is_failed=True)
                         proposer_outputs.append((label, error_msg, m))
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         # Check success rate
         successful_proposals = [

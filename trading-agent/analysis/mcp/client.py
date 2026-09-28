@@ -45,6 +45,7 @@ class McpServerProcess:
         self._lock = asyncio.Lock()
         self._pending_futures: Dict[int, asyncio.Future] = {}
         self._listen_task: Optional[asyncio.Task] = None
+        self._stderr_task: Optional[asyncio.Task] = None
         self._post_url: str = self.url
         self._endpoint_discovered: Optional[asyncio.Event] = None
 
@@ -145,6 +146,7 @@ class McpServerProcess:
                 if self.process and self.process.pid:
                     McpDeathSupervisor.register_process(self.process.pid)
                 self._listen_task = asyncio.create_task(self._read_responses())
+                self._stderr_task = asyncio.create_task(self._drain_stderr())
 
             # Perform initialize handshake
             init_res = await self.send_request(
@@ -302,10 +304,29 @@ class McpServerProcess:
         except Exception as e:
             logger.debug(f"MCP server '{self.name}' reader stopped: {e}")
 
+    async def _drain_stderr(self):
+        """Continuously drain stderr from child process to prevent pipe buffer deadlock."""
+        if not self.process or not self.process.stderr:
+            return
+        try:
+            while True:
+                line = await self.process.stderr.readline()
+                if not line:
+                    break
+                line_str = line.decode("utf-8", errors="replace").strip()
+                if line_str:
+                    logger.debug(f"[MCP {self.name} stderr] {line_str}")
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+
     async def stop(self):
         """Cleanly terminates the server process or HTTP/SSE session."""
         if self._listen_task and not self._listen_task.done():
             self._listen_task.cancel()
+        if self._stderr_task and not self._stderr_task.done():
+            self._stderr_task.cancel()
         if self._http_session and not self._http_session.closed:
             await self._http_session.close()
             self._http_session = None

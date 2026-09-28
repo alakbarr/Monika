@@ -490,12 +490,23 @@ class PointInTimeBacktestEngine:
             analyses = (await session.execute(stmt)).scalars().all()
 
             if self.use_execution_service and self.execution_service is not None:
-
                 for analysis in analyses:
                     entry_p = analysis.price_at_analysis or analysis.entry_price
                     if not (entry_p and analysis.stop_loss and analysis.take_profit):
                         continue
-                    await self.execute_trade_parity(session, analysis)
+                    self._settle_trades_up_to(analysis.generated_at)
+                    trade = await self.execute_trade_parity(session, analysis)
+                    if trade and self._evaluator is not None:
+                        try:
+                            outcome = await self._evaluator.evaluate_trade(trade, apply_costs=True)
+                            trade.exit_time = outcome["exit_time"]
+                            trade.exit_price = outcome["exit_price"]
+                            trade.exit_reason = outcome["exit_reason"]
+                            trade.pnl_pips = outcome["pnl_pips"]
+                            trade.pnl_pct = outcome["pnl_pct"]
+                            self._unsettled_trades.append((trade, outcome))
+                        except Exception as eval_err:
+                            logger.debug(f"Replay parity trade evaluation error: {eval_err}")
                 logger.debug(f"Replay Parity Mode collected {len(self.trades)} recorded trade analyses.")
                 return
 
