@@ -13,9 +13,10 @@ async def evaluate_pretrade_gate(session, symbol: str, settings: dict, strategy_
     """
     settings = settings or {}
 
-    # 1. Microstructure: Session Rollover Deadzone Guard
+    # 1. Microstructure: Session Rollover Deadzone Guard (exempts 24/7 crypto)
     rollover_enabled = settings.get('trading', {}).get('risk', {}).get('rollover_protection_enabled', True)
-    if rollover_enabled:
+    is_crypto = symbol.upper() in ("BTCUSD", "ETHUSD") or "BTC" in symbol.upper()
+    if rollover_enabled and not is_crypto:
         now_utc = clock.now()
         cur_h = now_utc.hour
         cur_m = now_utc.minute

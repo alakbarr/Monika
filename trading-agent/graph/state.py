@@ -10,7 +10,7 @@ def merge_dicts(a: Dict, b: Dict) -> Dict:
     """
     merged = a.copy()
     for k, v in b.items():
-        if v is None or v == "_DELETED_":
+        if v == "_DELETED_":
             merged.pop(k, None)
         elif k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
             merged[k] = merge_dicts(merged[k], v)

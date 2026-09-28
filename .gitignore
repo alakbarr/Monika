@@ -44,6 +44,7 @@ trading-agent/logs/
 .agent_state/
 .freebuff/
 .worktrees/
+.runtime/
 moa-traces/
 trading-agent/data/sessions/
 trading-agent/data/sessions/browser_profile/
@@ -58,6 +59,7 @@ audit_prompt.md
 jev_documentation/
 trading-agent/skills/trading/playbooks/.backups/
 trading-agent/skills/trading/playbooks/.curator_ledger.jsonl
+trading-agent/skills/trading/playbooks/.playbook_lifecycle.json
 
 # Database files & Backups
 *.sqlite

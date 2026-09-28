@@ -41,14 +41,14 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                 if account_info:
                         raw_balance = account_info.get("balance")
                         raw_equity = account_info.get("equity")
-                        fallback_bal = float(getattr(agent, "settings", {}).get("paper_trading", {}).get("initial_balance", 10000.0))
-                        if raw_balance is not None and float(raw_balance) > 0:
+                        if raw_balance is not None:
                             balance = float(raw_balance)
                         else:
-                            logger.warning(f"Account balance missing or non-positive ({raw_balance}); falling back to initial_balance {fallback_bal}")
+                            fallback_bal = float(getattr(agent, "settings", {}).get("paper_trading", {}).get("initial_balance", 10000.0))
+                            logger.warning(f"Account balance missing; falling back to initial_balance {fallback_bal}")
                             balance = fallback_bal
 
-                        if raw_equity is not None and float(raw_equity) > 0:
+                        if raw_equity is not None:
                             equity = float(raw_equity)
                         else:
                             equity = balance
@@ -99,7 +99,18 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                             logger.debug(f"Real risk state write failed (non-fatal): {e}")
 
                         # Drawdown check with hysteresis
-                        if equity < balance and balance > 0:
+                        if balance <= 0 or equity <= 0:
+                            consecutive_breach_count += 1
+                            logger.critical(
+                                f"Account liquidation detected (balance: {balance}, equity: {equity})! "
+                                f"Breach count: {consecutive_breach_count}/{BREACH_THRESHOLD}"
+                            )
+                            if consecutive_breach_count >= BREACH_THRESHOLD:
+                                await agent.execution_service.kill_switch(
+                                    reason=f"Account balance/equity liquidated: balance={balance}, equity={equity}"
+                                )
+                                consecutive_breach_count = 0
+                        elif equity < balance and balance > 0:
                             drawdown_pct = (balance - equity) / balance * 100
                             risk_cfg = agent.settings.get("trading", {}).get("risk", {})
                             max_dd = risk_cfg.get("max_daily_drawdown_percent", 3.0)

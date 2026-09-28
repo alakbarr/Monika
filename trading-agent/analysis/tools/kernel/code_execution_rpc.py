@@ -108,8 +108,8 @@ def get_market_quote(symbol: str) -> str:
 def search_historical_memories(query: str, top_k: int = 5) -> str:
     return call_tool("search_historical_memories", query=query, top_k=top_k)
 
-def calculate_position_size(symbol: str, stop_loss_pips: float, risk_percentage: float = 1.0) -> str:
-    return call_tool("calculate_position_size", symbol=symbol, stop_loss_pips=stop_loss_pips, risk_percentage=risk_percentage)
+def calculate_position_size(symbol: str, entry_price: float = 0.0, stop_loss: float = 0.0, risk_pct: float = 1.0, **kwargs) -> str:
+    return call_tool("calculate_position_size", symbol=symbol, entry_price=entry_price, stop_loss=stop_loss, risk_pct=risk_pct, **kwargs)
 
 def read_database_records(table_name: str, limit: int = 50) -> str:
     return call_tool("read_database_records", table_name=table_name, limit=limit)

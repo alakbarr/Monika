@@ -18,7 +18,7 @@ and automatic JSONL trace logging.
 from __future__ import annotations
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 import logging
 import time
 from dataclasses import dataclass, field
@@ -306,17 +306,27 @@ class MoARuntime:
                 executor.submit(self._execute_single_proposer, p, user_prompt, history_msgs): p
                 for p in proposers
             }
-            for future in as_completed(future_to_slot, timeout=timeout_sec):
-                try:
-                    slot, output, metrics = future.result()
-                    label = slot.get("label", slot.get("model", "unknown"))
-                    proposer_outputs.append((label, output, metrics))
-                except Exception as exc:
-                    slot = future_to_slot[future]
-                    label = slot.get("label", slot.get("model", "unknown"))
-                    error_msg = f"[failed: {exc}]"
-                    m = slot_metrics(slot, label=label, output=error_msg, is_failed=True)
-                    proposer_outputs.append((label, error_msg, m))
+            try:
+                for future in as_completed(future_to_slot, timeout=timeout_sec):
+                    try:
+                        slot, output, metrics = future.result()
+                        label = slot.get("label", slot.get("model", "unknown"))
+                        proposer_outputs.append((label, output, metrics))
+                    except Exception as exc:
+                        slot = future_to_slot[future]
+                        label = slot.get("label", slot.get("model", "unknown"))
+                        error_msg = f"[failed: {exc}]"
+                        m = slot_metrics(slot, label=label, output=error_msg, is_failed=True)
+                        proposer_outputs.append((label, error_msg, m))
+            except TimeoutError:
+                logger.warning(f"[MOALoop] Proposers timed out after {timeout_sec}s. Processing completed proposals.")
+                for future, slot in future_to_slot.items():
+                    if not future.done():
+                        future.cancel()
+                        label = slot.get("label", slot.get("model", "unknown"))
+                        error_msg = f"[timed out after {timeout_sec}s]"
+                        m = slot_metrics(slot, label=label, output=error_msg, is_failed=True)
+                        proposer_outputs.append((label, error_msg, m))
 
         # Check success rate
         successful_proposals = [

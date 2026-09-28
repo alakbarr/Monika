@@ -39,13 +39,13 @@ def test_detection_method_string_generation_fits():
 
 
 def test_alembic_migration_chain():
-    """Verify the new migration connects to previous head a8d29c4e1f7b and defines upgrade/downgrade."""
+    """Verify the squashed initial migration defines initial schema and upgrade/downgrade."""
     import ast
     import os
 
     migration_path = os.path.join(
         os.path.dirname(__file__),
-        '../../database/migrations/versions/e918c7d6a5b4_expand_paper_trade_detection_method_and_exit_reason.py'
+        '../../database/migrations/versions/0001_initial_schema.py'
     )
     assert os.path.exists(migration_path), f"Migration file missing at {migration_path}"
 
@@ -66,8 +66,7 @@ def test_alembic_migration_chain():
         elif isinstance(node, ast.FunctionDef):
             functions.add(node.name)
 
-    assert globals_assigned.get('revision') == 'e918c7d6a5b4'
-    assert globals_assigned.get('down_revision') == 'a8d29c4e1f7b'
+    assert globals_assigned.get('revision') == 't1a2b3c4d5e6'
     assert 'upgrade' in functions
     assert 'downgrade' in functions
 

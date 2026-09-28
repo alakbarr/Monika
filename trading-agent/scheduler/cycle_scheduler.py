@@ -51,6 +51,7 @@ class CycleScheduler:
         self._activity_log: Optional[Any] = None
         self._running = False
         self._stop_event = asyncio.Event()
+        self._background_tasks: set[asyncio.Task] = set()
 
     @staticmethod
     def _default_times_from_interval(cycle_hours: float) -> list[str]:
@@ -196,6 +197,8 @@ class CycleScheduler:
 
     async def run_once(self, forced: bool=False) -> dict:
         raise NotImplementedError('Use GraphCycleScheduler.run_once()')
+
+    run_cycle = run_once
 
     async def _get_symbol_paper_stats(self, session: Any, symbol: str) -> dict:
         try:
@@ -899,7 +902,21 @@ class CycleScheduler:
             pending = (await session.execute(select(AssetAnalysis).where(AssetAnalysis.decision.in_(['buy', 'sell'])).where(AssetAnalysis.price_at_analysis.is_not(None)).where(AssetAnalysis.direction_correct_4h.is_(None)).where(AssetAnalysis.generated_at < now - timedelta(hours=4)))).scalars().all()
             for analysis in pending:
                 target_time_4h = analysis.generated_at + timedelta(hours=4)
-                price_4h_bar = (await session.execute(select(PriceOHLCV).where(PriceOHLCV.symbol == analysis.symbol).where(PriceOHLCV.timeframe == 'H4').where(PriceOHLCV.timestamp >= target_time_4h - timedelta(hours=2)).where(PriceOHLCV.timestamp <= target_time_4h + timedelta(hours=2)).order_by(func.abs(func.extract('epoch', PriceOHLCV.timestamp) - target_time_4h.timestamp())).limit(1))).scalar_one_or_none()
+                bars = (await session.execute(
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == analysis.symbol)
+                    .where(PriceOHLCV.timeframe == 'H4')
+                    .where(PriceOHLCV.timestamp >= target_time_4h - timedelta(hours=2))
+                    .where(PriceOHLCV.timestamp <= target_time_4h + timedelta(hours=2))
+                )).scalars().all()
+                if bars:
+                    def _time_diff(b):
+                        b_ts = b.timestamp if b.timestamp.tzinfo else b.timestamp.replace(tzinfo=timezone.utc)
+                        t_ts = target_time_4h if target_time_4h.tzinfo else target_time_4h.replace(tzinfo=timezone.utc)
+                        return abs((b_ts - t_ts).total_seconds())
+                    price_4h_bar = min(bars, key=_time_diff)
+                else:
+                    price_4h_bar = None
                 if price_4h_bar and analysis.price_at_analysis:
                     price_change = price_4h_bar.close - analysis.price_at_analysis
                     direction_correct = analysis.decision == 'buy' and price_change > 0 or (analysis.decision == 'sell' and price_change < 0)
@@ -968,8 +985,9 @@ class CycleScheduler:
             except Exception as e:
                 logger.warning(f'Backup failed (non-fatal): {e}')
             await self.run_once()
-            import asyncio
-            asyncio.create_task(self._update_analysis_ground_truth())
+            task = asyncio.create_task(self._update_analysis_ground_truth())
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
         except Exception as e:
             logger.exception(f'Unhandled exception in analysis cycle: {e}')
             async with get_session() as session:

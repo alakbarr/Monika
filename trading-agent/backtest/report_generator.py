@@ -92,10 +92,10 @@ class ReportGenerator:
             else:
                 self.run.sharpe_ratio = 0.0
 
-            # 3. Annualized Sortino Ratio (Downside semi-deviation)
-            downside_returns = [r for r in daily_returns if r < 0]
-            if downside_returns:
-                downside_std = float(np.sqrt(np.mean(np.array(downside_returns) ** 2)))
+            # 3. Annualized Sortino Ratio (Downside semi-deviation over all N periods)
+            downside_sq = [min(0.0, r) ** 2 for r in daily_returns]
+            if any(r < 0 for r in daily_returns):
+                downside_std = float(np.sqrt(np.mean(downside_sq)))
                 if downside_std > 1e-8:
                     self.sortino_ratio = round(float((mean_ret / downside_std) * np.sqrt(ann_factor)), 2)
                 else:
@@ -114,18 +114,35 @@ class ReportGenerator:
         self.expectancy_r = round((win_rate_dec * (avg_win_pct / avg_loss_pct) - loss_rate_dec), 2) if avg_loss_pct > 0 else 0.0
 
         # 5. Max Drawdown %
-        if self.equity_curve:
-            equities = [p.get("equity", initial_eq) if isinstance(p, dict) else float(p) for p in self.equity_curve]
-            peak = initial_eq
-            max_dd = 0.0
-            for eq in equities:
-                if eq > peak:
-                    peak = eq
-                dd = (peak - eq) / peak if peak > 0 else 0.0
-                if dd > max_dd:
-                    max_dd = dd
-            self.run.max_drawdown_pct = round(max_dd * 100.0, 2)
-            self.run.final_equity = round(float(equities[-1]), 2)
+        curve_to_use = [p for p in self.equity_curve] if (self.equity_curve and isinstance(self.equity_curve, list)) else []
+        if not curve_to_use and self.trades:
+            cur_eq = initial_eq
+            first_ts = self.start_date or getattr(self.trades[0], "entry_time", datetime.now(timezone.utc))
+            curve_to_use = [{"timestamp": first_ts, "equity": initial_eq}]
+            for t in sorted(self.trades, key=lambda tr: getattr(tr, "exit_time", None) or getattr(tr, "entry_time", None) or datetime.min.replace(tzinfo=timezone.utc)):
+                pnl = getattr(t, "pnl_usd", None)
+                if pnl is None:
+                    pnl = (float(getattr(t, "pnl_pct", 0.0) or 0.0) / 100.0) * initial_eq
+                cur_eq += float(pnl)
+                ts = getattr(t, "exit_time", None) or getattr(t, "entry_time", None)
+                curve_to_use.append({"timestamp": ts, "equity": cur_eq})
+
+        if curve_to_use:
+            equities = [p.get("equity", initial_eq) if isinstance(p, dict) else float(p) for p in curve_to_use if p is not None]
+            if equities:
+                peak = initial_eq
+                max_dd = 0.0
+                for eq in equities:
+                    if eq > peak:
+                        peak = eq
+                    dd = (peak - eq) / peak if peak > 0 else 0.0
+                    if dd > max_dd:
+                        max_dd = dd
+                self.run.max_drawdown_pct = round(max_dd * 100.0, 2)
+                self.run.final_equity = round(float(equities[-1]), 2)
+            else:
+                self.run.max_drawdown_pct = 0.0
+                self.run.final_equity = initial_eq
         else:
             self.run.max_drawdown_pct = 0.0
             tot_pnl = sum(getattr(t, "pnl", 0.0) or 0.0 for t in self.trades)
@@ -235,7 +252,18 @@ class ReportGenerator:
                 ts = point.get("timestamp")
                 eq = point.get("equity", current_eq)
                 if ts:
-                    dt = ts.date() if isinstance(ts, datetime) else start_dt
+                    if isinstance(ts, datetime):
+                        dt = ts.date()
+                    elif isinstance(ts, str):
+                        try:
+                            dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).date()
+                        except Exception:
+                            try:
+                                dt = datetime.strptime(ts[:10], "%Y-%m-%d").date()
+                            except Exception:
+                                dt = start_dt
+                    else:
+                        dt = start_dt
                     daily_equity[dt.isoformat()] = eq
                     current_eq = eq
 

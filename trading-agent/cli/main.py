@@ -1764,6 +1764,7 @@ def parse_args(args_list=None):
     enable_p = plugin_sub.add_parser("enable", help="Enable a plugin by ID")
     enable_p.add_argument("plugin_name", type=str, help="Plugin identifier to enable")
     disable_p = plugin_sub.add_parser("disable", help="Disable a plugin by ID")
+    disable_p.add_argument("plugin_name", type=str, help="Plugin identifier to disable")
     # Command: benchmark (LLM Model Evaluation and Leaderboards)
     bench_parser = subparsers.add_parser("benchmark", help="Evaluate LLM models, test tiers, and inspect leaderboards")
     bench_sub = bench_parser.add_subparsers(dest="bench_action", help="Benchmark actions: run, leaderboard, history, tasks, models")

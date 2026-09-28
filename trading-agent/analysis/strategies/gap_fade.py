@@ -28,7 +28,8 @@ class DailyReopenGapFade(EdgeStrategy):
         open_hour = SESSION_OPEN_HOUR_UTC.get(symbol)
         if open_hour is None:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"symbol {symbol} not in SESSION_OPEN_HOUR_UTC")
-        minutes_since_open = (now.hour - open_hour) * 60 + now.minute
+        hours_diff = (now.hour - open_hour) % 24
+        minutes_since_open = hours_diff * 60 + now.minute
         if not (0 <= minutes_since_open <= 60):
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="outside first-hour window")
 

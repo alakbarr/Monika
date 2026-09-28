@@ -171,6 +171,12 @@ sample_size: {len(trades)}
 
                     playbook_path.write_text(content, encoding="utf-8")
                     invalidate_cache()
+                    try:
+                        from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+                        lifecycle = PlaybookLifecycleManager()
+                        lifecycle.register_playbook(playbook_name, status=PlaybookStatus.ACTIVE)
+                    except Exception as lm_err:
+                        logger.warning(f"MicroPlaybookCompiler: Failed to register '{playbook_name}' in lifecycle FSM: {lm_err}")
                     logger.info(f"MicroPlaybookCompiler: Compiled & promoted '{playbook_name}.md' (hash={blob_hash[:8]}, {win_rate*100:.0f}% WR).")
 
                     # Log to activity log

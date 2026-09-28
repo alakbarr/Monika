@@ -84,6 +84,15 @@ class TurnToolRoundCoordinator:
             fingerprint = f"{name}:{raw_args}"
             if fingerprint in seen_fingerprints:
                 logger.info(f"[TurnToolRound] Deduplicating identical tool call: {name}")
+                spec = ToolCallSpec(
+                    id=call_id,
+                    name=name,
+                    arguments={},
+                    raw_arguments=str(raw_args),
+                    is_valid=False,
+                    error_message=f"Duplicate tool call '{name}' in same round; ignored to prevent redundant side effects.",
+                )
+                invalid.append(spec)
                 continue
             seen_fingerprints.add(fingerprint)
 

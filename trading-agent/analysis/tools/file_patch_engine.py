@@ -86,6 +86,12 @@ class StaleOverwriteGuard:
         Verifies if a file is safe to modify or overwrite.
         Returns (True, None) if safe, or (False, error_reason) if unsafe.
         """
+        try:
+            from security.terminal_guard import assert_safe_write_path
+            assert_safe_write_path(path)
+        except Exception as sec_exc:
+            return False, f"Safety Guard: {sec_exc}"
+
         norm_path = os.path.normpath(os.path.abspath(path))
         if not os.path.exists(norm_path):
             # Brand new file: modification is safe

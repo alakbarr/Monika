@@ -67,6 +67,8 @@ class OutputVerifier:
                 error_context = f"[TARGET SYMBOL]: {symbol}\n[VERIFICATION FAILURES]:\n" + "\n".join(f"- {f}" for f in failures)
                 full_user_correction = f"{error_context}\n\n{correction_prompt}"
                 try:
+                    from analysis.providers.base_provider import extract_and_parse_json
+                    corrected = None
                     if hasattr(client, 'classify_json'):
                         corrected = await client.classify_json(
                             full_user_correction,
@@ -78,9 +80,21 @@ class OutputVerifier:
                             user_message=full_user_correction,
                             temperature=0.0
                         )
-                        corrected = json.loads(resp_str) if resp_str else None
-                    else:
-                        corrected = None
+                        corrected = extract_and_parse_json(resp_str) if resp_str else None
+                    elif hasattr(client, 'generate'):
+                        resp_str = await client.generate(
+                            prompt=full_user_correction,
+                            system=static_verifier_sys,
+                            temperature=0.0
+                        )
+                        corrected = extract_and_parse_json(resp_str) if resp_str else None
+                    elif hasattr(client, 'generate_text'):
+                        resp_str = await client.generate_text(
+                            prompt=full_user_correction,
+                            system_prompt=static_verifier_sys,
+                            temperature=0.0
+                        )
+                        corrected = extract_and_parse_json(resp_str) if resp_str else None
 
                     if isinstance(corrected, dict) and corrected:
                         output = corrected

@@ -22,7 +22,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Strategies.EvidenceStore")
 
@@ -279,6 +279,8 @@ class StrategyEvidenceStore:
         """
         ev = self._store.get(strategy_id)
         if not ev:
+            if strategy_id in ("general", "default") or len(self._store) == 0:
+                return True, f"Strategy {strategy_id} allowed under baseline evidence"
             return False, f"No verified backtest evidence on file for {strategy_id}"
 
         if ev.status == EvidenceStatus.STALE:

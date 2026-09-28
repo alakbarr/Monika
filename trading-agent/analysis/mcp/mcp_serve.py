@@ -156,16 +156,12 @@ class McpServerDispatcher:
 
     async def run_stdio(self) -> None:
         """Run loop reading newline-delimited JSON-RPC from sys.stdin."""
-        reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(reader)
         loop = asyncio.get_running_loop()
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-
         while True:
-            line_bytes = await reader.readline()
-            if not line_bytes:
+            line_str = await loop.run_in_executor(None, sys.stdin.readline)
+            if not line_str:
                 break
-            line_str = line_bytes.decode("utf-8", errors="replace").strip()
+            line_str = line_str.strip()
             if not line_str:
                 continue
 

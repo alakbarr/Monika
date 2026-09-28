@@ -108,17 +108,17 @@ async def filter_correlated_proposals(
         grp = DEFAULT_GROUP_MAP.get(sym.upper(), "OTHER")
         max_grp_limit = GROUP_POSITION_LIMITS.get(grp, 2)
         
-        # Sector Concentration Check
-        if group_counts.get(grp, 0) + 1 > max_grp_limit:
-            reason = f"Sector concentration cap: {grp} positions ({group_counts.get(grp, 0) + 1}) would exceed limit of {max_grp_limit}."
-            logger.info(f"Correlation Gate: Rejected {sym} {direction}. {reason}")
-            rejected_trades.append((sym, r, reason))
-            continue
-        
         # 1. Systemic Net USD Concentration Check (including open positions)
         if abs(net_usd_exposure + usd_delta) > max_usd_exposure:
             bias_str = "Long-USD" if (net_usd_exposure + usd_delta) > 0 else "Short-USD"
             reason = f"Systemic concentration cap: aggregate net {bias_str} positions would exceed {max_usd_exposure}."
+            logger.info(f"Correlation Gate: Rejected {sym} {direction}. {reason}")
+            rejected_trades.append((sym, r, reason))
+            continue
+
+        # 2. Sector Concentration Check
+        if group_counts.get(grp, 0) + 1 > max_grp_limit:
+            reason = f"Sector concentration cap: {grp} positions ({group_counts.get(grp, 0) + 1}) would exceed limit of {max_grp_limit}."
             logger.info(f"Correlation Gate: Rejected {sym} {direction}. {reason}")
             rejected_trades.append((sym, r, reason))
             continue

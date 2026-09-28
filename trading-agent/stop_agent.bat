@@ -22,9 +22,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :20128 ^| findstr LISTENING')
     taskkill /F /PID %%a 2>nul
 )
 
-:: Terminate Windows Terminal if running
-echo Terminating Windows Terminal tabs...
-taskkill /F /IM WindowsTerminal.exe 2>nul
+:: Windows Terminal termination omitted to prevent killing user's unrelated terminal windows
 
 :: Terminate MT5 terminal (terminal64.exe)
 echo Checking for MetaTrader 5 terminal...

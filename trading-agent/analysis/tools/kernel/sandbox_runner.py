@@ -22,10 +22,16 @@ MAX_OUTPUT_CHARS: int = 50_000
 
 FORBIDDEN_MODULES = frozenset({
     "ctypes",
+    "importlib",
+    "multiprocessing",
+    "os",
     "pty",
     "shutil",
     "signal",
+    "socket",
     "subprocess",
+    "sys",
+    "threading",
     "webbrowser",
     "winreg",
     "_winapi",

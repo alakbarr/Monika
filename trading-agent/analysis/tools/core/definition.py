@@ -43,21 +43,35 @@ class ToolParameter:
         """Convert parameter to standard JSON Schema attribute format."""
         schema_type = "string"
         t = self.type_name.lower()
-        if "int" in t:
+        if "dict" in t or "mapping" in t or "object" in t:
+            schema_type = "object"
+        elif "list" in t or "sequence" in t or "set" in t or "array" in t:
+            schema_type = "array"
+        elif "int" in t:
             schema_type = "integer"
         elif "float" in t or "number" in t or "decimal" in t:
             schema_type = "number"
         elif "bool" in t:
             schema_type = "boolean"
-        elif "dict" in t or "mapping" in t:
-            schema_type = "object"
-        elif "list" in t or "sequence" in t or "set" in t:
-            schema_type = "array"
 
         res: Dict[str, Any] = {
             "type": schema_type,
             "description": self.description,
         }
+        if schema_type == "array":
+            item_type = "string"
+            if "int" in t:
+                item_type = "integer"
+            elif "float" in t or "number" in t:
+                item_type = "number"
+            elif "bool" in t:
+                item_type = "boolean"
+            elif "dict" in t or "object" in t:
+                item_type = "object"
+            res["items"] = {"type": item_type}
+        elif schema_type == "object":
+            res.setdefault("additionalProperties", True)
+
         if self.enum_values:
             res["enum"] = self.enum_values
         if self.default is not None:

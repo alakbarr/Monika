@@ -8,6 +8,7 @@ Adapts the standard 2-stage macro-to-asset analytical pipeline and LangGraph cyc
 as an operational AnalysisPipelinePlugin for the modular trading harness.
 """
 
+import inspect
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
@@ -58,9 +59,19 @@ class MacroToAssetPipeline(AnalysisPipelinePlugin):
         self._cycles_completed += 1
 
         proposals: List[TradeProposal] = []
-        if self.scheduler is not None and hasattr(self.scheduler, "run_cycle"):
+        if self.scheduler is not None:
             try:
-                res = await self.scheduler.run_cycle(session, forced=forced)
+                if hasattr(self.scheduler, "run_cycle"):
+                    res = await self.scheduler.run_cycle(session, forced=forced)
+                elif hasattr(self.scheduler, "run_once"):
+                    sig = inspect.signature(self.scheduler.run_once)
+                    if "session" in sig.parameters:
+                        res = await self.scheduler.run_once(session=session, forced=forced)
+                    else:
+                        res = await self.scheduler.run_once()
+                else:
+                    res = None
+
                 if isinstance(res, list):
                     for item in res:
                         if isinstance(item, TradeProposal):

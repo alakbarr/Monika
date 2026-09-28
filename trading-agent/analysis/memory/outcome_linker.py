@@ -220,6 +220,7 @@ class OutcomeLinker:
                         reflection.benchmark_return = alpha_data['benchmark_return']
                         reflection.alpha_return = alpha_data['alpha_return']
                         
+                        reflection.status = "resolved"
                         reflection.resolved_at = now
                         await session.commit()
                         

@@ -337,16 +337,12 @@ class MonikaMcpServer:
     async def run_stdio(self):
         """Runs standard I/O loop reading lines from stdin and writing JSON responses to stdout."""
         loop = asyncio.get_running_loop()
-        reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(reader)
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-
         while True:
-            line = await reader.readline()
+            line = await loop.run_in_executor(None, sys.stdin.readline)
             if not line:
                 break
 
-            line_str = line.decode("utf-8").strip()
+            line_str = line.strip()
             if not line_str:
                 continue
 

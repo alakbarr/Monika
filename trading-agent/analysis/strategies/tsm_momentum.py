@@ -51,8 +51,8 @@ class TimeSeriesMomentum(EdgeStrategy):
         latest = closes[-1]
         votes = [1 if (latest - closes[-1-lb]) > 0 else -1
                  for lb in lookbacks if len(closes) > lb and closes[-1-lb]]
-        if not votes:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no valid lookback windows")
+        if len(votes) < 2:
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"insufficient lookback windows ({len(votes)} < 2)")
 
         net, agreement = sum(votes), abs(sum(votes)) / len(votes)
         default_min_agreement = 1.0 if symbol in PURE_TSM else 0.67

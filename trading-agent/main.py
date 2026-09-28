@@ -1294,8 +1294,7 @@ class TradingAgent:
         # Initialize and launch discovered plugins via PluginEngine
         if hasattr(self, "plugin_engine") and self.plugin_engine:
             try:
-                plugin_cfg = self.settings.get("plugins", {})
-                await self.plugin_engine.initialize(plugin_cfg)
+                await self.plugin_engine.initialize(self.settings)
                 await self.plugin_engine.start()
                 await self.plugin_engine.emit_hook("on_startup", agent=self)
             except Exception as e:
@@ -1800,6 +1799,19 @@ class TradingAgent:
             except Exception as e:
                 logger.warning(f"  [WARN] EventBus stop workers error: {e}")
 
+        # Cancel and await all active agent tasks and background tasks BEFORE closing DB pool
+        all_pending_tasks = []
+        if hasattr(self, '_tasks') and self._tasks:
+            all_pending_tasks.extend([t for t in self._tasks if not t.done()])
+        if hasattr(self, '_background_tasks') and self._background_tasks:
+            all_pending_tasks.extend([t for t in self._background_tasks if not t.done() and t not in all_pending_tasks])
+
+        for t in all_pending_tasks:
+            t.cancel()
+        if all_pending_tasks:
+            await asyncio.gather(*all_pending_tasks, return_exceptions=True)
+            logger.info(f"  [OK] Cancelled {len(all_pending_tasks)} active agent and background tasks")
+
         # Close DB pool
         try:
             await close_db()
@@ -1814,15 +1826,6 @@ class TradingAgent:
                 await asyncio.wait_for(self._tg_task, timeout=5.0)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
-
-        # Cancel and await residual background tasks
-        if hasattr(self, '_background_tasks') and self._background_tasks:
-            pending_bg = [t for t in self._background_tasks if not t.done()]
-            for t in pending_bg:
-                t.cancel()
-            if pending_bg:
-                await asyncio.gather(*pending_bg, return_exceptions=True)
-                logger.info("  [OK] Residual background tasks cancelled")
 
         logger.info("Shutdown complete. Goodbye.")
         logger.info("=" * 62)

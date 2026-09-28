@@ -200,6 +200,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
                 session.add(SystemConfig(key=reg_key, value=json.dumps(record_data)))
             await session.commit()
         except Exception as db_err:
+            await session.rollback()
             logger.debug(f"[SkillCrystallizer] DB registration non-fatal error: {db_err}")
 
         return {

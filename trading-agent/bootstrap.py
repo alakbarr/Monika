@@ -166,7 +166,7 @@ def _install_happy_eyeballs() -> None:
         except Exception:
             return orig_create_connection(address, timeout, source_address, *args, **kwargs)
 
-        effective_timeout = 15.0 if timeout is _DEFAULT_TIMEOUT else timeout
+        effective_timeout = 60.0 if (timeout is _DEFAULT_TIMEOUT or timeout is None) else float(timeout)
 
         try:
             return race_dual_stack_socket(addr_info, effective_timeout=effective_timeout, source_address=source_address)

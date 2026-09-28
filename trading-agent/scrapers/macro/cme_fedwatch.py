@@ -149,9 +149,12 @@ class FedWatchScraper(BaseScraper):
                 loop = None
 
             if loop and loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    val = pool.submit(asyncio.run, _query()).result(timeout=5)
+                import threading
+                if threading.current_thread() is threading.main_thread():
+                    val = None
+                else:
+                    future = asyncio.run_coroutine_threadsafe(_query(), loop)
+                    val = future.result(timeout=5)
             else:
                 val = asyncio.run(_query())
 

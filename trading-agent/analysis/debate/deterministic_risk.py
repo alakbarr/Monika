@@ -122,7 +122,9 @@ def make_portfolio_decision_deterministic(risk_debate_states: dict) -> dict:
     ]
     veto_count = sum(1 for d in (cons, agg, neu) if d.get('veto_trade'))
     avg_multiplier = sum(multipliers) / len(multipliers)
-    approval = veto_count < 3
+    approval = veto_count < 2
+    if not approval:
+        avg_multiplier = 0.0
     reason = (
         f'Deterministic PM: avg_multiplier={avg_multiplier:.3f} '
         f'(C={multipliers[0]:.2f}, A={multipliers[1]:.2f}, N={multipliers[2]:.2f}), '

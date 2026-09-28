@@ -55,7 +55,8 @@ class TradingEventStore:
                 session.add(event)
                 await session.flush()
         except Exception as e:
-            logger.debug(f"Event flush failed: {e}")
+            logger.error(f"Event flush failed for {event_type} (corr={correlation_id}): {e}", exc_info=True)
+            return ""
 
         logger.debug(
             f"Event emitted: {event_type} (id={event_id[:8]}, "

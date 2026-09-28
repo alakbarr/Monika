@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from database.models import Base
+import benchmark.db_models
 target_metadata = Base.metadata
 
 # this is the Alembic Config object, which provides

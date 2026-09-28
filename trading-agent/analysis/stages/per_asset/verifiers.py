@@ -110,9 +110,10 @@ class VerifiersMixin:
                     f'[{symbol}] Fundamental brief is aging ({brief_age_h:.1f}h of {MAX_BRIEF_AGE_FOR_STAGE2}h preferred limit). '
                     f'Proceeding in graceful degradation mode.'
                 )
-                context_blocks.append(
+                context_blocks.append((
+                    "BRIEF_AGING_WARNING",
                     f"⚠️ NOTE: Fundamental brief is aging ({brief_age_h:.1f}h old). Rely primarily on confirmed H4 technical structure and tighten risk management."
-                )
+                ))
         elif brief_check is None:
             logger.warning(f'[{symbol}] No fundamental brief exists. Skipping Stage 2.')
             return {
