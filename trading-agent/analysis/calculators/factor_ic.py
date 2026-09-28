@@ -80,8 +80,8 @@ def compute_rolling_factor_ic(
     valid = factor.notna() & forward_returns.notna()
     res = pd.Series(np.nan, index=factor.index)
 
-    for i in range(window, len(factor)):
-        sl = slice(i - window, i)
+    for i in range(window - 1, len(factor)):
+        sl = slice(i - window + 1, i + 1)
         f_sub = factor.iloc[sl]
         r_sub = forward_returns.iloc[sl]
         sub_valid = f_sub.notna() & r_sub.notna()

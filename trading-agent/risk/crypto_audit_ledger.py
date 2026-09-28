@@ -58,10 +58,12 @@ class CryptographicAuditLedger:
     """
 
     def __init__(self, ledger_path: str | Path):
+        import threading
         self.ledger_path = Path(ledger_path)
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         self._last_record: Optional[AuditRecord] = None
         self._load_error: Optional[str] = None
+        self._lock = threading.RLock()
         try:
             self._init_or_load()
         except LedgerCorruptionError as err:
@@ -111,31 +113,32 @@ class CryptographicAuditLedger:
         Appends a new verified audit record with immediate fsync.
         Refuses to extend a broken/corrupted chain.
         """
-        if self._load_error:
-            raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {self._load_error}")
-        seq = (self._last_record.seq + 1) if self._last_record is not None else 0
-        prev_hash = self._last_record.record_hash if self._last_record is not None else GENESIS_PREV_HASH
-        ts_utc = datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            if self._load_error:
+                raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {self._load_error}")
+            seq = (self._last_record.seq + 1) if self._last_record is not None else 0
+            prev_hash = self._last_record.record_hash if self._last_record is not None else GENESIS_PREV_HASH
+            ts_utc = datetime.now(timezone.utc).isoformat()
 
-        rec_hash = self._compute_hash(seq, prev_hash, ts_utc, action, payload)
-        record = AuditRecord(
-            seq=seq,
-            prev_record_hash=prev_hash,
-            record_hash=rec_hash,
-            timestamp_utc=ts_utc,
-            action=action,
-            payload=payload,
-        )
+            rec_hash = self._compute_hash(seq, prev_hash, ts_utc, action, payload)
+            record = AuditRecord(
+                seq=seq,
+                prev_record_hash=prev_hash,
+                record_hash=rec_hash,
+                timestamp_utc=ts_utc,
+                action=action,
+                payload=payload,
+            )
 
-        # Write append-only with fsync durability
-        line = record.to_json() + "\n"
-        with open(self.ledger_path, "a", encoding="utf-8") as f:
-            f.write(line)
-            f.flush()
-            os.fsync(f.fileno())
+            # Write append-only with fsync durability
+            line = record.to_json() + "\n"
+            with open(self.ledger_path, "a", encoding="utf-8") as f:
+                f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
 
-        self._last_record = record
-        return record
+            self._last_record = record
+            return record
 
     def read_all(self) -> List[AuditRecord]:
         """Reads all records from disk."""

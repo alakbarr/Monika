@@ -51,6 +51,7 @@ class ApprovalRequest:
     expires_at: float = 0.0
     status: Union[ApprovalStatus, str] = ApprovalStatus.PENDING
     decided_by: Optional[str] = None
+    decided_at: Optional[float] = None
     decision_reason: Optional[str] = None
     symbol: str = "ALL"
     request_type: str = "trade_proposal"
@@ -362,6 +363,7 @@ class ApprovalHub:
 
         req.status = ApprovalStatus.APPROVED
         req.decided_by = operator
+        req.decided_at = now
         req.decision_reason = reason or f"Approved by {operator}."
 
         # Compute cryptographic decision digest bound to request_digest
@@ -430,6 +432,7 @@ class ApprovalHub:
 
         req.status = ApprovalStatus.REJECTED
         req.decided_by = operator
+        req.decided_at = now
         req.decision_reason = reason or f"Rejected by {operator}."
 
         if req.request_digest:
@@ -562,6 +565,7 @@ class ApprovalHub:
             return False
 
         req.decided_by = user_id
+        req.decided_at = now
         if approved:
             req.status = ApprovalStatus.APPROVED
             req.decision_reason = reason or f"Approved by operator '{user_id}'."
@@ -622,7 +626,7 @@ class ApprovalHub:
             request=req_payload,
             approved=(req.status == ApprovalStatus.APPROVED),
             decided_by=req.decided_by or "unknown",
-            decided_at=req.requested_at,
+            decided_at=req.decided_at if req.decided_at is not None else req.requested_at,
             reason=req.decision_reason,
         )
         if not req_payload.verify_integrity():

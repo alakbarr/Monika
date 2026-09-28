@@ -62,7 +62,7 @@ async def validate_and_apply_judge_adjustments(
         if d_sl <= d_entry:
             return False, f"SELL geometry violation: SL ({d_sl}) <= Entry ({d_entry})"
         if d_tp >= d_entry:
-            return False, f"SELL geometry violation: TP ({d_tp}) <= Entry ({d_entry})"
+            return False, f"SELL geometry violation: TP ({d_tp}) >= Entry ({d_entry})"
 
     try:
         rr = exact_rr_ratio(d_entry, d_sl, d_tp)

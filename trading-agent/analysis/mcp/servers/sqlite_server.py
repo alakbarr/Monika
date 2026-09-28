@@ -81,9 +81,10 @@ class SqliteMcpServer:
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         db_path = arguments.get("db_path") or self._get_default_db()
+        db_uri = Path(db_path).resolve().as_uri() + "?mode=ro"
 
         if tool_name == "sqlite_list_tables":
-            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            conn = sqlite3.connect(db_uri, uri=True)
             try:
                 cursor = conn.cursor()
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -107,7 +108,7 @@ class SqliteMcpServer:
                     raise PermissionError(f"Disallowed mutating keyword: {forbid}")
 
             limit = min(int(arguments.get("limit", 50)), 100)
-            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            conn = sqlite3.connect(db_uri, uri=True)
             try:
                 cursor = conn.cursor()
                 cursor.execute(query)

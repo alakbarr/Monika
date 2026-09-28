@@ -265,7 +265,18 @@ class PendingActionManager:
                     vol_diff = abs(float(pos.get("volume", 0.0)) - act.volume)
                     # If comment matches or type and volume match closely
                     pos_comment = pos.get("comment", "")
-                    if act.nonce in pos_comment or (pos_type == expected_type and vol_diff < 0.001 and (now - pos.get("time", 0)) < 3600):
+                    pos_time = pos.get("time", 0)
+                    if hasattr(pos_time, "timestamp"):
+                        pos_time = pos_time.timestamp()
+                    elif isinstance(pos_time, str):
+                        try:
+                            from datetime import datetime
+                            pos_time = datetime.fromisoformat(pos_time).timestamp()
+                        except Exception:
+                            pos_time = 0
+                    else:
+                        pos_time = float(pos_time or 0)
+                    if act.nonce in pos_comment or (pos_type == expected_type and vol_diff < 0.001 and (now - pos_time) < 3600):
                         self.commit_action(act.client_order_id, broker_ticket=pos.get("ticket"))
                         results.append({
                             "client_order_id": act.client_order_id,

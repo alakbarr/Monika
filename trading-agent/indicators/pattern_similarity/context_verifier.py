@@ -134,8 +134,8 @@ INSTRUCTIONS:
             similarity=match.similarity,
             hist_vix=match.context_score * 30.0,
             hist_vix_cat=match.context_label,
-            hist_dxy_trend=current_context.dxy_trend,
-            hist_asset_trend=current_context.asset_trend,
+            hist_dxy_trend=getattr(match, "dxy_trend", "Historical / Unrecorded (See Chronicle)"),
+            hist_asset_trend=getattr(match, "asset_trend", "Historical / Unrecorded"),
             recorded_chronicle=chronicle_text or "None recorded",
         )
 

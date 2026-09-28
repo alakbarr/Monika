@@ -240,7 +240,10 @@ class TimesFMEngine:
         close_series = target_df["close"].astype(float)
         current_price: float = float(close_series.iloc[-1])
         close_vals: np.ndarray = close_series.to_numpy(dtype=float)
-        returns = np.diff(np.log(close_vals))
+        if len(close_vals) < 2 or (close_vals <= 0).any():
+            returns = np.array([0.0])
+        else:
+            returns = np.diff(np.log(close_vals))
 
         # Drift & Volatilitas lokal
         vol: float = float(np.std(returns[-48:])) if len(returns) >= 48 else (float(np.std(returns)) if len(returns) > 5 else 0.005)

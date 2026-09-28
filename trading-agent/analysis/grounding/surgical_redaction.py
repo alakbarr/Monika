@@ -53,12 +53,12 @@ def redacted_release(
         val_str = str(val)
         val_int_str = str(int(val)) if val.is_integer() else None
 
-        # Build regex for word-bounded numeric match
-        pattern_str = rf"(?<![\w\.\-])\b{re.escape(val_str)}\b(?![\w\.\-])"
+        # Build regex for bounded numeric match (supporting negative numbers)
+        pattern_str = rf"(?<![\w\.\-]){re.escape(val_str)}(?![\w\.\-])"
         redacted_text = re.sub(pattern_str, placeholder, redacted_text)
 
         if val_int_str:
-            pattern_int = rf"(?<![\w\.\-])\b{re.escape(val_int_str)}\b(?![\w\.\-])"
+            pattern_int = rf"(?<![\w\.\-]){re.escape(val_int_str)}(?![\w\.\-])"
             # Avoid replacing tiny integers (e.g. 1, 2) that could be list items
             if int(val) > 10:
                 redacted_text = re.sub(pattern_int, placeholder, redacted_text)

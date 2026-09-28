@@ -12,6 +12,7 @@ from security.credential_vault import (
     mask_sensitive,
     vault,
 )
+from security import terminal_guard, prompt_injection_scanner, ssrf_guard
 
 __all__ = [
     "CredentialVault",
@@ -21,4 +22,7 @@ __all__ = [
     "delete_secret",
     "mask_sensitive",
     "vault",
+    "terminal_guard",
+    "prompt_injection_scanner",
+    "ssrf_guard",
 ]

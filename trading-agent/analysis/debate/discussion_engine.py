@@ -190,7 +190,7 @@ class DiscussionCouncil:
 
         # Check for financial trading signal
         trade_terms = ["buy", "sell", "order", "lots", "position", "take_profit", "stop_loss"]
-        has_trade_signal = any(term in consensus_text.lower() for term in trade_terms)
+        has_trade_signal = any(term in str(consensus_text or '').lower() for term in trade_terms)
 
         total_latency = (time.monotonic() - start_time) * 1000
 

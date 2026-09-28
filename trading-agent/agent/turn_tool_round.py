@@ -174,11 +174,12 @@ class TurnToolRoundCoordinator:
         # Commit the assistant turn and tool requests before any side effects execute.
         if self.persist_callback is not None:
             try:
+                all_calls = valid_calls + invalid_calls
                 persist_payload = [{
                     "role": "assistant",
                     "tool_calls": [
                         {"id": v.id, "type": "function", "function": {"name": v.name, "arguments": v.raw_arguments}}
-                        for v in valid_calls
+                        for v in all_calls
                     ],
                     "metadata": assistant_turn_metadata or {},
                 }]

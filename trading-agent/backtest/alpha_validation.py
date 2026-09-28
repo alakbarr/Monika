@@ -98,12 +98,13 @@ def validate_alpha(
     # 2. Half-Consistency Test (Sortino H1 > 0 and Sortino H2 > 0)
     pnls = []
     for t in trades:
-        pnl = getattr(t, "pnl_pct", None)
-        if pnl is None and hasattr(t, "pnl"):
-            pnl = getattr(t, "pnl", None)
-        if pnl is None and isinstance(t, dict):
-            pnl = t.get("pnl_pct", t.get("pnl", 0.0))
-        pnls.append(float(pnl or 0.0))
+        pnl_pct = getattr(t, "pnl_pct", None) if not isinstance(t, dict) else t.get("pnl_pct")
+        if pnl_pct is not None:
+            pnls.append(float(pnl_pct))
+        else:
+            pnl_usd = getattr(t, "pnl_usd", getattr(t, "pnl", 0.0)) if not isinstance(t, dict) else t.get("pnl_usd", t.get("pnl", 0.0))
+            eq_base = initial_equity if initial_equity > 0 else 10000.0
+            pnls.append((float(pnl_usd or 0.0) / eq_base) * 100.0)
 
     if equity_curve and len(equity_curve) >= 6:
         # Use equity curve return series (supports list of floats or list of dicts)
@@ -130,12 +131,18 @@ def validate_alpha(
     # 3. Cost Stress Test (Profitable under 2.0x friction)
     stress_pnls = []
     for t in trades:
-        base_pnl = getattr(t, "pnl_pct", None)
-        if base_pnl is None and hasattr(t, "pnl"):
-            base_pnl = getattr(t, "pnl", None)
-        if base_pnl is None and isinstance(t, dict):
-            base_pnl = t.get("pnl_pct", t.get("pnl", 0.0))
-        base_pnl = float(base_pnl or 0.0)
+        pnl_pct = getattr(t, "pnl_pct", None) if not isinstance(t, dict) else t.get("pnl_pct")
+        pnl_usd = getattr(t, "pnl_usd", None) if not isinstance(t, dict) else t.get("pnl_usd")
+        if pnl_usd is None and hasattr(t, "realized_pnl"):
+            pnl_usd = getattr(t, "realized_pnl", None)
+
+        if pnl_pct is not None:
+            base_pnl_usd = (float(pnl_pct) / 100.0) * initial_equity
+        elif pnl_usd is not None:
+            base_pnl_usd = float(pnl_usd)
+        else:
+            raw_pnl = getattr(t, "pnl", 0.0) if not isinstance(t, dict) else t.get("pnl", 0.0)
+            base_pnl_usd = float(raw_pnl or 0.0)
 
         # Estimate cost or commission realistically based on asset profile
         comm = getattr(t, "commission", None)
@@ -160,7 +167,6 @@ def validate_alpha(
 
         # Extra cost penalty under multiplier
         extra_cost = comm * (cost_multiplier - 1.0)
-        base_pnl_usd = (float(base_pnl or 0.0) / 100.0) * initial_equity
         stress_pnls.append(base_pnl_usd - extra_cost)
 
     stress_total = round(sum(stress_pnls), 4)

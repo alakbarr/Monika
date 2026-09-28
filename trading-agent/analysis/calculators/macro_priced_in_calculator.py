@@ -31,15 +31,23 @@ async def calculate_macro_priced_in_baseline(session: AsyncSession, as_of: Optio
     ).scalar_one_or_none()
     if fw_row and fw_row.probabilities_json:
         try:
-            probs = json.loads(fw_row.probabilities_json).get('probabilities', {})
-            max_prob = max((v.get('probability', 0) for v in probs.values() if isinstance(v, dict)), default=0)
+            raw_data = json.loads(fw_row.probabilities_json)
+            probs = raw_data.get('probabilities', raw_data) if isinstance(raw_data, dict) else {}
+            prob_values = []
+            if isinstance(probs, dict):
+                for v in probs.values():
+                    if isinstance(v, dict):
+                        prob_values.append(float(v.get('probability', 0) or 0))
+                    elif isinstance(v, (int, float)):
+                        prob_values.append(float(v))
+            max_prob = max(prob_values, default=0)
             if max_prob > 95:
                 scores['fedwatch'] = 3
             elif max_prob > 88:
                 scores['fedwatch'] = 2
             elif max_prob > 75:
                 scores['fedwatch'] = 1
-            notes.append(f'FedWatch dominant probability: {max_prob}%')
+            notes.append(f'FedWatch dominant probability: {max_prob:.1f}%')
         except Exception as e:
             logger.debug(f'FedWatch parse failed: {e}')
 

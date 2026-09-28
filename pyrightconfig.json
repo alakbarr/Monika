@@ -6,12 +6,18 @@
     "**/.pytest_cache",
     "**/venv",
     "trading-agent/venv",
+    "trading-agent/logs",
+    "trading-agent/data",
+    "trading-agent/logging_observability/dashboard/frontend",
     "**/site-packages",
+    "**/dist",
     ".git"
   ],
   "venvPath": "trading-agent",
   "venv": "venv",
   "extraPaths": ["trading-agent"],
   "typeCheckingMode": "off",
-  "reportMissingTypeStubs": false
+  "reportMissingTypeStubs": false,
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
 }

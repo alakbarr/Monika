@@ -44,7 +44,8 @@ class MT5LocalBrokerPlugin(BrokerPlugin):
         self._dry_run: bool = False
 
     async def on_register(self, container, event_bus) -> None:
-        self.mt5_client = MT5Client(settings=self.config)
+        root_settings = container.resolve("settings") if hasattr(container, "resolve") and hasattr(container, "has") and container.has("settings") else self.config
+        self.mt5_client = MT5Client(settings=root_settings)
         container.register("broker", self)
         container.register("mt5_client", self.mt5_client)
         logger.info("[MT5LocalBrokerPlugin] Registered in DI container")

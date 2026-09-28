@@ -3,7 +3,6 @@ import json
 from typing import Dict, Any, Union
 from analysis.providers.base_provider import BaseLLMClient
 from utils.llm.prompt_disciplines import get_universal_execution_discipline
-from analysis.harness.repetition_guard import detect_text_repetition
 
 logger = logging.getLogger("TradingAgent.BullAnalyst")
 

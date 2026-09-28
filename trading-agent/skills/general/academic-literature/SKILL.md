@@ -1,6 +1,6 @@
 ---
 name: academic-literature
-description: Fetch, synthesize, and extract mathematical formulations from arXiv/quantitative papers.
+description: Synthesize and extract mathematical formulations from arXiv/quant papers.
 category: research
 version: 1.0.0
 platforms: [windows, linux, macos]

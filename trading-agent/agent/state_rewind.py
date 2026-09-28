@@ -104,7 +104,8 @@ class StateRewindManager:
             WHERE session_id = ? AND turn_ordinal >= ? AND has_side_effects = 1;
         """, (session_id, target_turn_ordinal))
         row = cursor.fetchone()
-        has_financial_side_effects = bool(row and row["count"] > 0)
+        count_val = (row[0] if isinstance(row, (tuple, list)) else row["count"]) if row else 0
+        has_financial_side_effects = bool(count_val > 0)
 
         # 3. Composite Carrier Splitting: check if target message carries summary handoff
         content = target_message.get("content", "")

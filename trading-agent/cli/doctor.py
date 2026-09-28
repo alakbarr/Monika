@@ -171,7 +171,11 @@ class SystemDoctor:
                 try:
                     import subprocess
                     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                    subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, check=False)
+                    env = os.environ.copy()
+                    db_url = env.get("DATABASE_URL", "")
+                    if "+asyncpg" in db_url:
+                        env["DATABASE_URL"] = db_url.replace("postgresql+asyncpg://", "postgresql://")
+                    subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, env=env, check=False)
                 except Exception:
                     pass
         finally:

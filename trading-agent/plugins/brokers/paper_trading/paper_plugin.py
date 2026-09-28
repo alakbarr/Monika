@@ -75,10 +75,16 @@ class PaperTradingBrokerPlugin(BrokerPlugin):
 
     async def get_symbol_spec(self, symbol: str) -> InstrumentSpec:
         sym = symbol.upper()
-        if "JPY" in sym or "XAU" in sym:
-            return InstrumentSpec(symbol=sym, contract_size=100.0 if "XAU" in sym else 100000.0, pip_size=0.01)
+        if "XAU" in sym:
+            return InstrumentSpec(symbol=sym, contract_size=100.0, pip_size=0.01)
+        if "XTI" in sym or "XBR" in sym:
+            return InstrumentSpec(symbol=sym, contract_size=1000.0, pip_size=0.01)
+        if "ETH" in sym:
+            return InstrumentSpec(symbol=sym, contract_size=10.0, pip_size=0.1)
         if "BTC" in sym:
             return InstrumentSpec(symbol=sym, contract_size=1.0, pip_size=1.0)
+        if "JPY" in sym:
+            return InstrumentSpec(symbol=sym, contract_size=100000.0, pip_size=0.01)
         return InstrumentSpec(symbol=sym, contract_size=100000.0, pip_size=0.0001)
 
     async def get_open_positions(self, symbol: Optional[str] = None) -> List[PositionData]:

@@ -144,7 +144,8 @@ class TradePreCommitGate:
         # -------------------------------------------------------------
         try:
             from analysis.validators.market_snapshot import VerifiedMarketSnapshot
-            snap = await VerifiedMarketSnapshot().compute(sym, session, as_of=clock.now())
+            snap_time = eval_time or clock.now()
+            snap = await VerifiedMarketSnapshot().compute(sym, session, as_of=snap_time)
             if snap and snap.get("latest_close") is not None:
                 plan = {
                     "direction": decision,
@@ -166,8 +167,12 @@ class TradePreCommitGate:
         # 3. Crisis Regime Coherence Assertion
         # -------------------------------------------------------------
         try:
+            vix_stmt = select(VIXData)
+            if eval_time:
+                vix_date = eval_time.date() if hasattr(eval_time, "date") else eval_time
+                vix_stmt = vix_stmt.where(VIXData.date <= vix_date)
             latest_vix = (await session.execute(
-                select(VIXData).order_by(desc(VIXData.date)).limit(1)
+                vix_stmt.order_by(desc(VIXData.date)).limit(1)
             )).scalar_one_or_none()
 
             if latest_vix and latest_vix.close:
@@ -185,7 +190,7 @@ class TradePreCommitGate:
         # 4. High-Impact Event Proximity Assertion
         # -------------------------------------------------------------
         try:
-            now = clock.now()
+            now = eval_time or clock.now()
             window_start = now - timedelta(minutes=15)
             window_end = now + timedelta(minutes=15)
 

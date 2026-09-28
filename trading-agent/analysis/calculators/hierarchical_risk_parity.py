@@ -123,7 +123,8 @@ def _get_quasi_diag_order(node: _ClusterNode) -> list[int]:
 def _compute_cluster_variance(cov: np.ndarray, cluster_indices: list[int]) -> float:
     """Computes inverse-variance weighted variance of a sub-cluster."""
     sub_cov = cov[np.ix_(cluster_indices, cluster_indices)]
-    inv_diag = 1.0 / np.diag(sub_cov)
+    diag_cov = np.maximum(np.diag(sub_cov), 1e-8)
+    inv_diag = 1.0 / diag_cov
     w = inv_diag / np.sum(inv_diag)
     var = float(np.dot(w.T, np.dot(sub_cov, w)))
     return max(var, 1e-12)
