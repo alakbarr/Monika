@@ -48,11 +48,17 @@ async def test_classify_query_complexity_macro_events():
         mock_get_client.return_value = mock_client
         agent = ChatAgent(settings, 12345)
 
-        # 1. Benchmark query from contoh_pertanyaan.md
+        # 1. Benchmark query from contoh_pertanyaan.md (or fallback if file absent)
         contoh_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "contoh_pertanyaan.md")
-        assert os.path.exists(contoh_path), f"contoh_pertanyaan.md not found at {contoh_path}"
-        with open(contoh_path, "r", encoding="utf-8") as f:
-            full_content = f.read()
+        if os.path.exists(contoh_path):
+            with open(contoh_path, "r", encoding="utf-8") as f:
+                full_content = f.read()
+        else:
+            full_content = (
+                "Analisis peluang kemungkinan keputusan suku bunga The Fed 16/17 September 2016 yang akan diumumkan "
+                "dalam beberapa jam ke depan. Di CME Fedwatch proyeksinya 89% The Fed akan menaikkan suku bunga (HIKE), "
+                "sedangkan sisanya adalah HOLD. Tapi apakah ini (HIKE) sudah pasti akan dilakukan oleh The Fed?"
+            )
 
         # Extract only the question part or test full content
         res_full = await agent._classify_query_complexity(full_content)
