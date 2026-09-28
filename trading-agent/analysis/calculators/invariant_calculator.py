@@ -85,7 +85,7 @@ def compute_trade_invariants(
             try:
                 q90_val = float(q90)
                 if q90_val > curr_px:
-                    buy_tp_max = round(min(buy_tp_max, q90_val), prec)
+                    buy_tp_max = max(buy_tp_min, round(min(buy_tp_max, q90_val), prec))
             except (ValueError, TypeError):
                 pass
 
@@ -107,7 +107,7 @@ def compute_trade_invariants(
             try:
                 q10_val = float(q10)
                 if q10_val < curr_px:
-                    sell_tp_min = round(max(sell_tp_min, q10_val), prec)
+                    sell_tp_min = min(sell_tp_max, round(max(sell_tp_min, q10_val), prec))
             except (ValueError, TypeError):
                 pass
 

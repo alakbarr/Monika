@@ -28,6 +28,36 @@ def coerce_value(val: Any, param: ToolParameter) -> Any:
 
     t = param.type_name.lower()
 
+    # Dictionary / Object coercion
+    if "dict" in t or "mapping" in t:
+        if isinstance(val, dict):
+            return val
+        if isinstance(val, str):
+            trimmed = val.strip()
+            if trimmed.startswith("{") and trimmed.endswith("}"):
+                try:
+                    return json.loads(trimmed)
+                except Exception:
+                    pass
+        return val
+
+    # List / Array coercion
+    if "list" in t or "sequence" in t or "set" in t or "array" in t:
+        if isinstance(val, list):
+            return val
+        if isinstance(val, (set, tuple)):
+            return list(val)
+        if isinstance(val, str):
+            trimmed = val.strip()
+            if trimmed.startswith("[") and trimmed.endswith("]"):
+                try:
+                    return json.loads(trimmed)
+                except Exception:
+                    pass
+            # Split comma separated tokens
+            return [x.strip() for x in trimmed.split(",") if x.strip()]
+        return [val]
+
     # Boolean coercion
     if "bool" in t:
         if isinstance(val, bool):
@@ -66,36 +96,6 @@ def coerce_value(val: Any, param: ToolParameter) -> Any:
             except ValueError:
                 pass
         return val
-
-    # Dictionary / Object coercion
-    if "dict" in t or "mapping" in t:
-        if isinstance(val, dict):
-            return val
-        if isinstance(val, str):
-            trimmed = val.strip()
-            if trimmed.startswith("{") and trimmed.endswith("}"):
-                try:
-                    return json.loads(trimmed)
-                except Exception:
-                    pass
-        return val
-
-    # List / Array coercion
-    if "list" in t or "sequence" in t or "set" in t:
-        if isinstance(val, list):
-            return val
-        if isinstance(val, (set, tuple)):
-            return list(val)
-        if isinstance(val, str):
-            trimmed = val.strip()
-            if trimmed.startswith("[") and trimmed.endswith("]"):
-                try:
-                    return json.loads(trimmed)
-                except Exception:
-                    pass
-            # Split comma separated tokens
-            return [x.strip() for x in trimmed.split(",") if x.strip()]
-        return [val]
 
     # String coercion
     if "str" in t:

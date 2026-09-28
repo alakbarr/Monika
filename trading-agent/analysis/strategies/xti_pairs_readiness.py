@@ -60,13 +60,15 @@ class XTIPairsReadiness(EdgeStrategy):
 
         brent_df = pd.DataFrame(brent_rows, columns=['timestamp', 'close'])
         brent_df['timestamp'] = pd.to_datetime(brent_df['timestamp'], utc=True).dt.tz_localize(None).dt.tz_localize('UTC')
+        brent_df = brent_df.sort_values('timestamp')
         brent_series = brent_df.set_index('timestamp')['close'].resample('D').last().dropna()
-        brent = float(brent_series.iloc[-1] if not brent_series.empty else brent_df.iloc[0]['close'])
+        brent = float(brent_series.iloc[-1] if not brent_series.empty else brent_df.iloc[-1]['close'])
 
         xti_df = pd.DataFrame(xti_rows, columns=['timestamp', 'close'])
         xti_df['timestamp'] = pd.to_datetime(xti_df['timestamp'], utc=True).dt.tz_localize(None).dt.tz_localize('UTC')
+        xti_df = xti_df.sort_values('timestamp')
         xti_series = xti_df.set_index('timestamp')['close'].resample('D').last().dropna()
-        last_xti = float(xti_series.iloc[-1] if not xti_series.empty else xti_df.iloc[0]['close'])
+        last_xti = float(xti_series.iloc[-1] if not xti_series.empty else xti_df.iloc[-1]['close'])
         
         # Align series to calculate spread
         df = pd.concat([brent_series, xti_series], axis=1).dropna()

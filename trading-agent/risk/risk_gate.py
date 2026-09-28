@@ -25,7 +25,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 import math
-from typing import Optional, Any
+from typing import Optional, Any, List, Tuple, Dict
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -276,6 +276,8 @@ class RiskGate:
             ("copula_tail_risk", self._check_copula_tail_risk(session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest)),
             ("evidence_gate", self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest)),
             ("bounded_mandate", self._check_bounded_mandate(session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions)),
+            ("min_rr_ratio", self._check_min_rr_ratio(sizing)),
+            ("max_spread", self._check_max_spread(session, symbol, is_backtest=is_backtest)),
         ]
         
         if analysis is not None:
@@ -377,11 +379,18 @@ class RiskGate:
         # PR-3: Validate against registered runtime invariants
         try:
             from risk.invariants import get_global_invariant_registry
+            current_dd_pct = 0.0
+            try:
+                state = await self._get_risk_state(session)
+                if state and state.daily_drawdown_pct is not None:
+                    current_dd_pct = float(state.daily_drawdown_pct)
+            except Exception:
+                pass
             inv_ctx = {
                 "proposal": proposal,
                 "max_drawdown_limit": self.max_daily_drawdown_pct,
-                "current_drawdown_pct": 0.0,
-                "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.0)),
+                "current_drawdown_pct": current_dd_pct,
+                "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)),
             }
             inv_results = get_global_invariant_registry().run_all(inv_ctx, fail_fast=False)
             inv_failures = [r for r in inv_results if r.failed]
@@ -789,6 +798,35 @@ class RiskGate:
             return False, f"Lot size {sizing.recommended_lots} is below minimum tradeable {ABSOLUTE_MIN_LOTS}"
         
         return True, f"lot_size={sizing.recommended_lots} (valid)"
+
+    async def _check_min_rr_ratio(self, sizing: SizingResult) -> tuple[bool, str]:
+        """Validasi bahwa Risk-to-Reward ratio proposal memenuhi batas minimum (FR-4.1)."""
+        rr = getattr(sizing, "rr_ratio", None)
+        if rr is None or rr <= 0:
+            return True, "No R:R ratio specified; skipped"
+        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
+        if rr < min_rr:
+            return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
+        return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"
+
+    async def _check_max_spread(self, session: AsyncSession, symbol: str, is_backtest: bool = False) -> tuple[bool, str]:
+        """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
+        if is_backtest:
+            return True, "backtest_spread_ok"
+        try:
+            from execution.mt5_client import get_mt5_client
+            client = get_mt5_client()
+            if not getattr(client, "is_connected", False):
+                return True, "client_disconnected_spread_deferred"
+            spread_info = await client.get_spread(symbol)
+            spread_pts = spread_info.get("spread_points", 0)
+            max_spread = float(self.settings.get("trading", {}).get("risk", {}).get("max_spread_points", {}).get(symbol, 100.0))
+            if spread_pts > max_spread:
+                return False, f"Current spread {spread_pts} pts exceeds maximum allowed {max_spread} pts"
+            return True, "ok"
+        except Exception as e:
+            logger.debug(f"Spread check non-blocking: {e}")
+            return True, "spread_check_deferred"
 
     async def _check_weekly_drawdown(
         self, session: AsyncSession, equity: Optional[float] = None, is_backtest: bool = False, is_paper: Optional[bool] = None
@@ -1884,6 +1922,7 @@ class RiskGate:
                 from database.models import Position
                 from sqlalchemy import select, func
                 stmt = select(func.count(Position.id)).where(Position.status == "open")
+                res = await session.execute(stmt)
                 scalar_val = res.scalar() if hasattr(res, "scalar") else 0
                 if asyncio.iscoroutine(scalar_val):
                     scalar_val = await scalar_val

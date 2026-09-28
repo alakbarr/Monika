@@ -232,10 +232,14 @@ class TurnPhaseMachine:
         """
         try:
             loop = asyncio.get_running_loop()
-            # If already running in an async event loop, use task or direct call
-            return loop.run_until_complete(self.run_turn_async(state))
         except RuntimeError:
-            return asyncio.run(self.run_turn_async(state))
+            loop = None
+
+        if loop is not None and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, self.run_turn_async(state)).result()
+        return asyncio.run(self.run_turn_async(state))
 
     async def _run_phase_async(
         self,

@@ -304,7 +304,7 @@ def is_spread_acceptable(symbol: str, bid: float, ask: float) -> bool:
         "GBPUSD": 0.00020, # 2.0 pips
         "USDJPY": 0.015,   # 1.5 pips (0.01 per pip)
         "AUDUSD": 0.00018, # 1.8 pips
-        "BTCUSD": 5.0,     # $5
+        "BTCUSD": 30.0,    # $30 typical spread on MT5 crypto CFD
         "XTIUSD": 0.030,   # 3 cents ($3 per lot)
         "XBRUSD": 0.040,   # 4 cents ($40 per lot)
     }

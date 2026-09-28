@@ -7,7 +7,7 @@ Uses Python stdlib (math, statistics) for zero external dependencies.
 """
 import math
 import statistics
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 _NORMAL = statistics.NormalDist(0.0, 1.0)
 _EULER_MASCHERONI = 0.5772156649015328606

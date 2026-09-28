@@ -156,7 +156,16 @@ class ReplacementCoordinator:
                     if inspect.isawaitable(res):
                         await asyncio.wait_for(res, timeout=10.0)
                 elif hasattr(new_component, "on_start"):
-                    res = new_component.on_start()
+                    sig = inspect.signature(new_component.on_start)
+                    params = [p for p in sig.parameters.values() if p.default == inspect.Parameter.empty and p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
+                    if not params:
+                        res = new_component.on_start()
+                    else:
+                        ctx = getattr(new_component, "context", None)
+                        container = getattr(ctx, "container", None) if ctx else None
+                        task_registry = getattr(ctx, "task_registry", None) if ctx else None
+                        call_args = [container, task_registry][:len(params)]
+                        res = new_component.on_start(*call_args)
                     if inspect.isawaitable(res):
                         await asyncio.wait_for(res, timeout=10.0)
 

@@ -52,7 +52,7 @@ async def validate_and_apply_judge_adjustments(
     if d_entry <= 0 or d_sl <= 0 or d_tp <= 0:
         return False, 'Entry, SL, and TP must be strictly positive'
 
-    direction = str(getattr(ana, 'direction', None) or getattr(ana, 'action', None) or '').upper()
+    direction = str(getattr(ana, 'decision', None) or getattr(ana, 'direction', None) or getattr(ana, 'action', None) or '').upper()
     if direction == "BUY":
         if d_sl >= d_entry:
             return False, f"BUY geometry violation: SL ({d_sl}) >= Entry ({d_entry})"

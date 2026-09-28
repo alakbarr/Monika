@@ -287,6 +287,8 @@ class TaskRegistry:
         self._tasks[defn.name] = defn
         return defn
 
+    register_task = register
+
     def get_all(self) -> List[TaskDefinition]:
         return list(self._tasks.values())
 

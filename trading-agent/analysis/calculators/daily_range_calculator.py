@@ -119,19 +119,6 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
     move_from_open_up = max(0.0, today_high - today_open)
     move_from_open_down = max(0.0, today_open - today_low)
 
-    tp_min_pct = float(risk_cfg.get('intraday_tp_min_adr_pct', 0.5)) * scale['tp_min']
-    tp_max_pct = float(risk_cfg.get('intraday_tp_max_adr_pct', 0.8)) * scale['tp_max']
-    sl_min_pct = float(risk_cfg.get('intraday_min_sl_adr_pct', 0.10)) * scale.get('sl_min', 1.0)
-    sl_max_pct = float(risk_cfg.get('intraday_max_sl_adr_pct', 0.35)) * scale['sl_max']
-    tolerance = float(risk_cfg.get('intraday_adr_band_tolerance_pct', 0.1))
-
-    room_remaining_pct = max(0.0, 1.0 - today_range_pct_of_adr)
-
-    # Time-decay: shrink the upper TP bound as the day's typical range gets used up
-    if room_remaining_pct < 0.5:
-        decay_factor = max(0.55, room_remaining_pct / 0.5)
-        tp_max_pct = tp_min_pct + (tp_max_pct - tp_min_pct) * decay_factor
-
     # SOTA TimesFM 3.0 Predictive Volatility & Range Integration
     timesfm_data = None
     try:
@@ -157,6 +144,19 @@ async def compute_daily_range_context(session: AsyncSession, symbol: str, settin
         effective_range = adr
         tfm_range = None
         tfm_ratio = None
+
+    tp_min_pct = float(risk_cfg.get('intraday_tp_min_adr_pct', 0.5)) * scale['tp_min']
+    tp_max_pct = float(risk_cfg.get('intraday_tp_max_adr_pct', 0.8)) * scale['tp_max']
+    sl_min_pct = float(risk_cfg.get('intraday_min_sl_adr_pct', 0.10)) * scale.get('sl_min', 1.0)
+    sl_max_pct = float(risk_cfg.get('intraday_max_sl_adr_pct', 0.35)) * scale['sl_max']
+    tolerance = float(risk_cfg.get('intraday_adr_band_tolerance_pct', 0.1))
+
+    room_remaining_pct = max(0.0, 1.0 - today_range_pct_of_adr)
+
+    # Time-decay: shrink the upper TP bound as the day's typical range gets used up
+    if room_remaining_pct < 0.5:
+        decay_factor = max(0.55, room_remaining_pct / 0.5)
+        tp_max_pct = tp_min_pct + (tp_max_pct - tp_min_pct) * decay_factor
 
     target_tp_min = effective_range * tp_min_pct
     target_tp_max = max(target_tp_min * 1.05, effective_range * tp_max_pct)

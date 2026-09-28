@@ -60,6 +60,7 @@ class DXYFetcher:
             df.columns = df.columns.get_level_values(0)
 
         saved = 0
+        candidates = []
         for idx, row in df.iterrows():
             if isinstance(idx, (pd.Timestamp, datetime)):
                 record_dt = datetime(idx.year, idx.month, idx.day, tzinfo=timezone.utc)
@@ -75,15 +76,32 @@ class DXYFetcher:
 
             if close_val is None:
                 continue
+            candidates.append((record_dt, close_val))
 
-            exists = await self.session.execute(
-                select(DXYData.id).where(DXYData.date == record_dt).limit(1)
+        if candidates:
+            all_dates = [c[0] for c in candidates]
+            existing_res = await self.session.execute(
+                select(DXYData.date).where(DXYData.date.in_(all_dates))
             )
-            if exists.scalar_one_or_none() is not None:
-                continue
+            existing_dates = set()
+            try:
+                all_vals = existing_res.scalars().all()
+                if isinstance(all_vals, (list, set, tuple)):
+                    existing_dates = set(all_vals)
+            except Exception:
+                pass
+            if not existing_dates and hasattr(existing_res, "scalar_one_or_none"):
+                try:
+                    if existing_res.scalar_one_or_none() is not None:
+                        existing_dates = set(all_dates)
+                except Exception:
+                    pass
 
-            self.session.add(DXYData(date=record_dt, close=close_val))
-            saved += 1
+            for record_dt, close_val in candidates:
+                if record_dt in existing_dates:
+                    continue
+                self.session.add(DXYData(date=record_dt, close=close_val))
+                saved += 1
 
         if saved:
             from database.safe_ops import safe_commit

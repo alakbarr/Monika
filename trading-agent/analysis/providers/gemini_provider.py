@@ -409,10 +409,12 @@ class GeminiProvider(BaseLLMClient):
                     if stream_res.finish_reason == "MAX_TOKENS":
                         logger.warning(f"Gemini {self.model} output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens}, outp={outp}, think={thoughts})")
                         if self.resolved_thinking_level != "MINIMAL":
-                            logger.info(f"Gemini {self.model} attempting auto-recovery retry with thinkingLevel=MINIMAL (output truncated by token limit)...")
+                            is_v25 = "2.5" in str(self.model).lower()
+                            rec_thinking = {"thinkingBudget": 0} if is_v25 else {"thinkingLevel": "MINIMAL"}
+                            logger.info(f"Gemini {self.model} attempting auto-recovery retry with {rec_thinking} (output truncated by token limit)...")
                             recovery_payload = dict(payload)
                             recovery_payload["generationConfig"] = dict(payload["generationConfig"])
-                            recovery_payload["generationConfig"]["thinkingConfig"] = {"thinkingLevel": "MINIMAL"}
+                            recovery_payload["generationConfig"]["thinkingConfig"] = rec_thinking
                             recovery_payload["generationConfig"]["maxOutputTokens"] = 65536  # Max capacity saat recovery
                             try:
                                 rec_res = await streaming_request(
@@ -464,10 +466,12 @@ class GeminiProvider(BaseLLMClient):
                             if finish_reason == "MAX_TOKENS":
                                 logger.warning(f"Gemini {self.model} output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens}, outp={outp}, think={thoughts})")
                                 if self.resolved_thinking_level != "MINIMAL":
-                                    logger.info(f"Gemini {self.model} attempting auto-recovery retry with thinkingLevel=MINIMAL...")
+                                    is_v25 = "2.5" in str(self.model).lower()
+                                    rec_thinking = {"thinkingBudget": 0} if is_v25 else {"thinkingLevel": "MINIMAL"}
+                                    logger.info(f"Gemini {self.model} attempting auto-recovery retry with {rec_thinking}...")
                                     recovery_payload = dict(payload)
                                     recovery_payload["generationConfig"] = dict(payload["generationConfig"])
-                                    recovery_payload["generationConfig"]["thinkingConfig"] = {"thinkingLevel": "MINIMAL"}
+                                    recovery_payload["generationConfig"]["thinkingConfig"] = rec_thinking
                                     recovery_payload["generationConfig"]["maxOutputTokens"] = 65536
                                     try:
                                         rec_data = await fetch_with_retry(

@@ -164,7 +164,7 @@ def compute_kyle_lambda(
     Kyle (1985) Lambda: slope of price change on signed trade volume with OLS intercept:
     dP_t = alpha + lambda * Flow_t + e_t
     """
-    if price_changes is None or len(price_changes) < window:
+    if price_changes is None or signed_volume is None or len(price_changes) < window or len(signed_volume) < window:
         return pd.Series(dtype=float)
 
     def _ols_slope_intercept(y: np.ndarray, x: np.ndarray) -> float:

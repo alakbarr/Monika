@@ -6,6 +6,18 @@ from utils.llm.prompt_disciplines import get_universal_execution_discipline
 
 logger = logging.getLogger("TradingAgent.BearAnalyst")
 
+
+def _clean_json_str(s: str) -> str:
+    s = s.strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        s = "\n".join(lines).strip()
+    return s
+
 async def generate_bear_dissent(client: BaseLLMClient, symbol: str, original_context: dict, bull_claim: dict, fact_sheet: Union[str, Dict[str, Any]]) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
     is_long = decision in ("buy", "long")
@@ -96,7 +108,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
-            return json.loads(resp)
+            return json.loads(_clean_json_str(resp))
         except Exception as e:
             last_err = e
             logger.warning(f"Bear Analyst parse attempt {attempt+1}/2 failed: {e}")
@@ -191,7 +203,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
-            return json.loads(resp)
+            return json.loads(_clean_json_str(resp))
         except Exception as e:
             last_err = e
             logger.warning(f"Bear Analyst rebuttal parse attempt {attempt+1}/2 failed: {e}")

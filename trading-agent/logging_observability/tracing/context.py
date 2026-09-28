@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 _current_trace_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_trace_id", default=None)
 _current_span_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_span_id", default=None)
 _current_cycle_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_cycle_id", default=None)
-_trace_baggage: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("trace_baggage", default={})
+_trace_baggage: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar("trace_baggage", default=None)
 
 
 def generate_id() -> str:
@@ -49,10 +49,12 @@ def set_trace_context(trace_id: Optional[str] = None, span_id: Optional[str] = N
 
 
 def get_baggage(key: str, default: Any = None) -> Any:
-    return _trace_baggage.get().get(key, default)
+    baggage = _trace_baggage.get()
+    return baggage.get(key, default) if baggage is not None else default
 
 
 def set_baggage(key: str, value: Any):
-    baggage = dict(_trace_baggage.get())
+    current = _trace_baggage.get()
+    baggage = dict(current) if current is not None else {}
     baggage[key] = value
     _trace_baggage.set(baggage)

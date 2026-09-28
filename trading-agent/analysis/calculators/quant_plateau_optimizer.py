@@ -256,9 +256,10 @@ class QuantPlateauOptimizer:
                 best_stable = is_stable
 
         fallback_params = {p.name: p.sample() for p in self.param_space}
+        safe_score = 0.0 if math.isinf(best_score) else max(0.0, round(best_score, 3))
         return PlateauOptimizationResult(
             best_params=best_candidate or fallback_params,
-            best_plateau_score=max(0.0, round(best_score, 3)),
+            best_plateau_score=safe_score,
             center_sharpe=round(best_center_sr, 2),
             neighbor_mean_sharpe=round(best_mean_sr, 2),
             neighbor_std_sharpe=round(best_std_sr, 3),

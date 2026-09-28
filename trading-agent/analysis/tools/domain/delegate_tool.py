@@ -190,23 +190,27 @@ async def handle_delegate_task(
         )
         worker = SubagentWorker(spec)
 
+        is_success = True
         try:
             worker_res: SubagentResult = await worker.run()
-            output_content = worker_res.content if worker_res.success else (worker_res.error or "Executed with heuristic resolution.")
+            is_success = worker_res.success
+            output_content = worker_res.content if worker_res.success else (worker_res.error or "Executed with errors.")
         except Exception as w_exc:
-            logger.debug(f"[DelegateTool] SubagentWorker direct execution fallback: {w_exc}")
-            output_content = f"Direct execution completed task '{params.task}' under role '{params.role}'."
+            logger.warning(f"[DelegateTool] SubagentWorker execution failed: {w_exc}")
+            is_success = False
+            output_content = f"Failed to execute task '{params.task}' under role '{params.role}': {w_exc}"
 
         live_writer.emit_event("progress", "Analyzing directives and finalizing solution")
 
         if worktree_mgr:
             diff_summary = worktree_mgr.get_diff()
 
+        status_label = "Success" if is_success else "Failed"
         result_text = (
             f"[SUBAGENT EXECUTION COMPLETE]\n"
             f"Subagent ID: {subagent_id}\n"
             f"Role: {params.role}\n"
-            f"Status: Success\n"
+            f"Status: {status_label}\n"
             f"Worktree: {worktree_path if worktree_path else 'Shared Root'}\n"
         )
         if diff_summary.strip():

@@ -191,6 +191,21 @@ class TerminalProcessEngine:
         # Sanitize sudo if applicable
         command = rewrite_sudo_command(command)
 
+        # Validate command security
+        try:
+            from security.terminal_guard import validate_command, CommandSecurityViolationError
+            validate_command(command)
+        except CommandSecurityViolationError as sec_err:
+            logger.warning(f"[TerminalProcessEngine] Security check rejected command: {sec_err}")
+            return {
+                "success": False,
+                "error": f"Security violation: {sec_err}",
+                "session_id": session_id,
+            }
+
+        from analysis.tools.kernel.env_sanitizer import get_sanitized_environment
+        clean_env = get_sanitized_environment()
+
         # Choose shell based on platform
         shell = ["powershell.exe", "-NoProfile", "-Command"] if sys.platform == "win32" else ["/bin/bash", "-c"]
 
@@ -198,6 +213,7 @@ class TerminalProcessEngine:
             proc = subprocess.Popen(
                 shell + [command],
                 cwd=cwd,
+                env=clean_env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.PIPE,

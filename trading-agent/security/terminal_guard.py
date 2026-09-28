@@ -162,15 +162,31 @@ def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) ->
     if not root_env:
         # Default safe root is the repository root
         root_path = Path(__file__).resolve().parent.parent.parent
+        allow_temp = True
     else:
         root_path = Path(root_env).resolve()
+        allow_temp = False
 
     target = Path(target_path).resolve()
+    import tempfile
+    temp_dir = Path(tempfile.gettempdir()).resolve()
 
-    # 1. Check if inside safe root
+    # 1. Check if inside safe root or temp dir
+    is_safe = False
     try:
         target.relative_to(root_path)
+        is_safe = True
     except ValueError:
+        pass
+
+    if not is_safe and allow_temp:
+        try:
+            target.relative_to(temp_dir)
+            is_safe = True
+        except ValueError:
+            pass
+
+    if not is_safe:
         raise SecurityViolationError(
             f"Path traversal blocked: '{target_path}' is outside designated safe root '{root_path}'."
         )

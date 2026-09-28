@@ -17,8 +17,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Deque
 
 logger = logging.getLogger("TradingAgent.Memory.BackgroundReviewFork")
 
@@ -47,7 +48,7 @@ class BackgroundReviewFork:
         self.queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue(maxsize=max_queue_size)
         self._running: bool = False
         self._worker_task: Optional[asyncio.Task] = None
-        self.completed_reviews: List[ForkReviewResult] = []
+        self.completed_reviews: Deque[ForkReviewResult] = deque(maxlen=500)
 
     async def start(self) -> None:
         """Start the background fork worker loop."""

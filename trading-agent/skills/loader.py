@@ -298,10 +298,14 @@ def compose_system_prompt(*skill_names: str, separator: str = "\n\n---\n\n", max
             pass  # No performance notes yet, that's fine
 
     if template_vars:
-        for k, v in template_vars.items():
-            # Handle both double-brace {{key}} and single-brace {key} in skill files
-            composed = composed.replace(f"{{{{{k}}}}}", str(v))
-            composed = composed.replace(f"{{{k}}}", str(v))
+        import re
+        escaped_keys = [re.escape(str(k)) for k in template_vars.keys()]
+        if escaped_keys:
+            def _replace_match(m: re.Match) -> str:
+                key = m.group(1) or m.group(2)
+                return str(template_vars.get(key, m.group(0)))
+            pattern = re.compile(r"\{\{(" + "|".join(escaped_keys) + r")\}\}|\{(" + "|".join(escaped_keys) + r")\}")
+            composed = pattern.sub(_replace_match, composed)
 
     if max_tokens:
         try:

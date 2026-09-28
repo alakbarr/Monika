@@ -1598,6 +1598,22 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     paper_trades_count = int(raw_count) if raw_count is not None else 0
                 except (TypeError, ValueError):
                     paper_trades_count = 0
+
+                min_win_rate = float(self.settings.get('trading', {}).get(
+                    'graduation_min_win_rate',
+                    self.settings.get('execution', {}).get('graduation_min_win_rate', 0.55)
+                ))
+                closed_count = (await session.execute(
+                    select(func.count(PaperTradeRecord.id)).where(PaperTradeRecord.status == "closed")
+                )).scalar() or 0
+                win_count = (await session.execute(
+                    select(func.count(PaperTradeRecord.id)).where(
+                        PaperTradeRecord.status == "closed",
+                        PaperTradeRecord.pnl > 0
+                    )
+                )).scalar() or 0
+                win_rate = (float(win_count) / float(closed_count)) if closed_count > 0 else 0.0
+
                 if paper_trades_count < min_paper_trades:
                     logger.warning(
                         f"Execution REJECTED for {symbol}: Cannot execute live. "
@@ -1609,6 +1625,22 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         risk_checks_passed=[], risk_checks_failed=['insufficient_paper_trades'],
                         risk_rejection_reasons=[
                             f"Cannot execute live: Need {min_paper_trades} paper trades, currently have {paper_trades_count}."
+                        ],
+                        executed=False, mt5_ticket=None, executed_price=None,
+                        executed_lots=None, mt5_error=None, position_id=None,
+                        timestamp=start, elapsed_ms=0,
+                    )
+                elif min_paper_trades > 0 and (closed_count < min_paper_trades or win_rate < min_win_rate):
+                    logger.warning(
+                        f"Execution REJECTED for {symbol}: Cannot execute live. "
+                        f"Paper closed trades ({closed_count}) or win rate ({win_rate:.1%}) below graduation threshold (min {min_win_rate:.1%})."
+                    )
+                    return ExecutionResult(
+                        symbol=symbol, analysis_id=analysis.id, decision=decision,
+                        sizing=None, risk_approved=False,
+                        risk_checks_passed=[], risk_checks_failed=['insufficient_paper_win_rate'],
+                        risk_rejection_reasons=[
+                            f"Cannot execute live: Paper win rate {win_rate:.1%} < {min_win_rate:.1%} required across at least {min_paper_trades} closed trades (currently {closed_count})."
                         ],
                         executed=False, mt5_ticket=None, executed_price=None,
                         executed_lots=None, mt5_error=None, position_id=None,

@@ -158,7 +158,20 @@ class PreFlightTurnGate:
                         tick_ts = tick_time.timestamp()
                     else:
                         tick_ts = now_utc.timestamp()
-                    age = abs(now_utc.timestamp() - tick_ts)
+
+                    broker_offset = 0
+                    if hasattr(mt5_client, "get_broker_utc_offset_seconds"):
+                        try:
+                            res_offset = await mt5_client.get_broker_utc_offset_seconds()
+                            if isinstance(res_offset, (int, float)):
+                                broker_offset = int(res_offset)
+                        except Exception:
+                            pass
+                    elif hasattr(mt5_client, "_broker_utc_offset_seconds"):
+                        broker_offset = int(getattr(mt5_client, "_broker_utc_offset_seconds", 0) or 0)
+
+                    tick_utc_ts = tick_ts - broker_offset
+                    age = abs(now_utc.timestamp() - tick_utc_ts)
                     if age > 180 and not is_24_7:
                         reason = f"MT5 quote stale for {sym_clean} (age={age:.0f}s > 180s)."
                         logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")

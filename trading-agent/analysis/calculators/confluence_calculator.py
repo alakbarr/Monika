@@ -355,13 +355,14 @@ async def calculate_confluence(
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
-        if sweep_result.get('structure_confirmed') and sweep_result.get('valid_for_direction') == test_direction:
+        test_dir = str(test_direction).lower() if test_direction else ""
+        if sweep_result.get('structure_confirmed') and str(sweep_result.get('valid_for_direction', '')).lower() == test_dir:
             score += 2
         
         # Quant Alpha Strategy Edge Bonus
         if quant_signals:
             has_quant_concordance = any(
-                getattr(s, "valid", False) and str(getattr(s, "direction", "")).lower() == test_direction
+                getattr(s, "valid", False) and str(getattr(s, "direction", "")).lower() == test_dir
                 for s in quant_signals
             )
             if has_quant_concordance:
@@ -371,13 +372,13 @@ async def calculate_confluence(
         if rsi_val is not None:
             if 40 <= rsi_val <= 60:
                 score += 1
-            elif test_direction == 'buy' and rsi_val < 30:
+            elif test_dir == 'buy' and rsi_val < 30:
                 score += 1  # Oversold bounce setup aligned with BUY
-            elif test_direction == 'sell' and rsi_val > 70:
+            elif test_dir == 'sell' and rsi_val > 70:
                 score += 1  # Overbought reversal setup aligned with SELL
-            elif test_direction == 'buy' and rsi_val > 70:
+            elif test_dir == 'buy' and rsi_val > 70:
                 issues.append(f'RSI overbought at {rsi_val:.1f} for BUY setup — invalidates rsi_neutral factor')
-            elif test_direction == 'sell' and rsi_val < 30:
+            elif test_dir == 'sell' and rsi_val < 30:
                 issues.append(f'RSI oversold at {rsi_val:.1f} for SELL setup — invalidates rsi_neutral factor')
         
         # === MECHANICAL VERIFICATION: Session Timing ===
@@ -596,11 +597,11 @@ async def calculate_confluence(
         price_to_test = entry_price
         if not price_to_test:
             from database.models import PriceOHLCV
+            price_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol)
+            if as_of:
+                price_stmt = price_stmt.where(PriceOHLCV.timestamp <= as_of)
             last_price_row = (await session.execute(
-                select(PriceOHLCV)
-                .where(PriceOHLCV.symbol == symbol)
-                .order_by(PriceOHLCV.timestamp.desc())
-                .limit(1)
+                price_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(1)
             )).scalar_one_or_none()
             if last_price_row:
                 price_to_test = last_price_row.close

@@ -23,7 +23,7 @@
 #property strict
 
 //--- EA Parameters
-input int    HEARTBEAT_TIMEOUT_SECONDS = 600;   // 10 minutes — accommodates PC restart + MT5 reconnect
+input int    HEARTBEAT_TIMEOUT_SECONDS = 120;   // 120 seconds dead-man's switch per PRD FR-5.2
 input int    CHECK_INTERVAL_SECONDS    = 30;    // How often EA checks heartbeat & SL
 input string HEARTBEAT_FILE_PYTHON     = "ai_agent_heartbeat.txt";      // Written by Python
 input string HEARTBEAT_FILE_EA         = "ea_heartbeat.txt";            // Written by this EA

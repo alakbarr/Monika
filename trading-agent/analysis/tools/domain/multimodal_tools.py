@@ -165,7 +165,7 @@ async def handle_chart_vision_analyze(
         "original_bytes": len(raw_bytes),
         "clamped_bytes": len(clamped_bytes),
         "mime_type": mime_type,
-        "image_data_uri": f"data:{mime_type};base64,{b64_clamped[:60]}...",
+        "image_data_uri": f"data:{mime_type};base64,{b64_clamped}",
         "focus_areas": params.focus_areas,
         "status": "ready_for_multimodal_llm",
         "message": f"Chart image successfully clamped to {len(clamped_bytes)} bytes. Ready for visual inference.",

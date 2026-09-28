@@ -233,11 +233,26 @@ class McpServerProcess:
 
     async def send_notification(self, method: str, params: Optional[Dict[str, Any]] = None):
         """Sends a JSON-RPC notification (no response expected)."""
-        if not self.process or not self.process.stdin:
-            return
         payload: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}
         if params is not None:
             payload["params"] = params
+
+        if self.transport in ("sse", "http"):
+            if not self._http_session:
+                return
+            target_url = getattr(self, "_post_url", self.url)
+            headers = {"Content-Type": "application/json"}
+            if self.auth_token:
+                headers["Authorization"] = f"Bearer {self.auth_token}"
+            try:
+                async with self._http_session.post(target_url, json=payload, headers=headers) as resp:
+                    pass
+            except Exception as e:
+                logger.debug(f"Failed to send HTTP notification to '{self.name}': {e}")
+            return
+
+        if not self.process or not self.process.stdin:
+            return
         line = json.dumps(payload) + "\n"
         try:
             self.process.stdin.write(line.encode("utf-8"))

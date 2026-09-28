@@ -81,10 +81,12 @@ class CounterfactualSimulator:
             reflections = (await session.execute(ref_stmt)).scalars().all()
             simulated_trades = []
             for r in reflections:
-                pnl = float(r.outcome_pnl_usd or 0.0)
+                pnl_usd = float(r.outcome_pnl_usd or 0.0)
+                # Normalize USD to percentage points on a $10,000 baseline account
+                pnl_pct = (pnl_usd / 10000.0) * 100.0
                 simulated_trades.append({
-                    "won": pnl > 0.0,
-                    "pnl": pnl,
+                    "won": pnl_usd > 0.0,
+                    "pnl": pnl_pct,
                 })
         else:
             simulated_trades = []
@@ -113,11 +115,13 @@ class CounterfactualSimulator:
         # Subsystem 6 Counterfactual Parameter Perturbations:
         # CF Scenario 1: What if SL was 1.5x wider?
         cf_sl_pnl = sum((st["pnl"] if st["won"] else st["pnl"] * 1.5) for st in simulated_trades)
-        # CF Scenario 2: What if entry was delayed by 1 bar (slippage/friction penalty)?
-        cf_delayed_pnl = sum((st["pnl"] - 0.0010) for st in simulated_trades)
+        # CF Scenario 2: What if entry was delayed by 1 bar (slippage/friction penalty ~10 bps)?
+        avg_abs_pnl = (sum(abs(st["pnl"]) for st in simulated_trades) / sample_size) if sample_size > 0 else 0.0
+        penalty_pct = 0.0010 if avg_abs_pnl < 0.15 else 0.10
+        cf_delayed_pnl = sum((st["pnl"] - penalty_pct) for st in simulated_trades)
 
         # Candidate must remain profitable under delayed execution friction to qualify
-        qualifies = (win_rate >= min_win_rate) and (total_pnl > 0.0) and (cf_delayed_pnl >= -0.05)
+        qualifies = (win_rate >= min_win_rate) and (total_pnl > 0.0) and (cf_delayed_pnl >= 0.0)
 
         if qualifies:
             # Promote to ACTIVE

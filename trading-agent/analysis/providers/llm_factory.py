@@ -560,7 +560,10 @@ class FallbackClientWrapper(BaseLLMClient):
                 except Exception:
                     pass
 
-            client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
+            try:
+                client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name, task_role=self.task_role)
+            except TypeError:
+                client = self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
             if not client:
                 continue
             client.role = self.task_role

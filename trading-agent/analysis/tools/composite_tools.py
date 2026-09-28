@@ -67,7 +67,7 @@ async def execute_price_data(executor, symbol: str, direction: Optional[str] = N
     Fetches price history (OHLCV), ATR, and optimal intraday structural levels.
     """
     tasks = {
-        "price_history": executor.execute("get_price_history", {"symbol": symbol, "timeframe": "H4", "limit": 30}),
+        "price_history": executor.execute("get_price_history", {"symbol": symbol, "timeframe": "H4", "count": 30, "limit": 30}),
         "atr": executor.execute("get_atr", {"symbol": symbol, "timeframe": "H4"}),
     }
     if direction and entry_price:

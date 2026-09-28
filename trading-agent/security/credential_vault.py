@@ -206,11 +206,17 @@ class _EncryptedFileVault:
         if self._fernet is not None:
             return self._fernet.encrypt(data)
         
-        # Authenticated Keystream Fallback
-        keystream = hashlib.sha256(self._raw_key + b":keystream").digest()
-        cipher = bytes(b ^ keystream[i % len(keystream)] for i, b in enumerate(data))
-        tag = hmac.new(self._raw_key, cipher, hashlib.sha256).digest()
-        return tag + cipher
+        # Authenticated CTR-Mode Keystream Fallback (Random Nonce + HMAC)
+        import secrets
+        nonce = secrets.token_bytes(16)
+        keystream = bytearray()
+        counter = 0
+        while len(keystream) < len(data):
+            keystream.extend(hmac.new(self._raw_key, nonce + counter.to_bytes(4, "big"), hashlib.sha256).digest())
+            counter += 1
+        cipher = bytes(b ^ keystream[i] for i, b in enumerate(data))
+        tag = hmac.new(self._raw_key, nonce + cipher, hashlib.sha256).digest()
+        return nonce + tag + cipher
 
     def _decrypt(self, ciphertext: bytes) -> Optional[str]:
         if not ciphertext or not self._raw_key:
@@ -221,17 +227,41 @@ class _EncryptedFileVault:
             except Exception:
                 pass
         
-        # Keystream Fallback Decrypt
-        if len(ciphertext) < 32:
+        # Authenticated CTR-Mode Keystream Fallback Decrypt
+        if len(ciphertext) < 48:
+            # Check legacy 32-byte tag format
+            if len(ciphertext) >= 32:
+                legacy_tag = ciphertext[:32]
+                legacy_cipher = ciphertext[32:]
+                legacy_exp = hmac.new(self._raw_key, legacy_cipher, hashlib.sha256).digest()
+                if hmac.compare_digest(legacy_tag, legacy_exp):
+                    legacy_stream = hashlib.sha256(self._raw_key + b":keystream").digest()
+                    legacy_plain = bytes(b ^ legacy_stream[i % len(legacy_stream)] for i, b in enumerate(legacy_cipher))
+                    return legacy_plain.decode("utf-8", errors="replace")
             return None
-        tag = ciphertext[:32]
-        cipher = ciphertext[32:]
-        expected_tag = hmac.new(self._raw_key, cipher, hashlib.sha256).digest()
+
+        nonce = ciphertext[:16]
+        tag = ciphertext[16:48]
+        cipher = ciphertext[48:]
+        expected_tag = hmac.new(self._raw_key, nonce + cipher, hashlib.sha256).digest()
         if not hmac.compare_digest(tag, expected_tag):
+            # Check legacy 32-byte tag fallback
+            legacy_tag = ciphertext[:32]
+            legacy_cipher = ciphertext[32:]
+            legacy_exp = hmac.new(self._raw_key, legacy_cipher, hashlib.sha256).digest()
+            if hmac.compare_digest(legacy_tag, legacy_exp):
+                legacy_stream = hashlib.sha256(self._raw_key + b":keystream").digest()
+                legacy_plain = bytes(b ^ legacy_stream[i % len(legacy_stream)] for i, b in enumerate(legacy_cipher))
+                return legacy_plain.decode("utf-8", errors="replace")
             logger.error("Vault ciphertext authentication tag mismatch!")
             return None
-        keystream = hashlib.sha256(self._raw_key + b":keystream").digest()
-        plain = bytes(b ^ keystream[i % len(keystream)] for i, b in enumerate(cipher))
+
+        keystream = bytearray()
+        counter = 0
+        while len(keystream) < len(cipher):
+            keystream.extend(hmac.new(self._raw_key, nonce + counter.to_bytes(4, "big"), hashlib.sha256).digest())
+            counter += 1
+        plain = bytes(b ^ keystream[i] for i, b in enumerate(cipher))
         return plain.decode("utf-8", errors="replace")
 
     def load_store(self) -> Dict[str, str]:

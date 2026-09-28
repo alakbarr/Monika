@@ -177,7 +177,12 @@ class WalkForwardEngine:
                 is_res = await is_engine.run()
             is_trades = is_res if isinstance(is_res, list) else getattr(is_engine, "trades", [])
             is_run_rec = is_res if isinstance(is_res, BacktestRun) else BacktestRun(start_date=is_start, end_date=is_end, initial_equity=10000.0)
-            is_rep = ReportGenerator(run=is_run_rec, trades=is_trades, start_date=is_start, end_date=is_end)
+            is_curve = getattr(is_engine, "equity_curve", None)
+            if not isinstance(is_curve, list):
+                is_curve = getattr(is_run_rec, "equity_curve", None)
+            if not isinstance(is_curve, list):
+                is_curve = None
+            is_rep = ReportGenerator(run=is_run_rec, trades=is_trades, equity_curve=is_curve, start_date=is_start, end_date=is_end)
             is_rep.calculate_metrics()
             is_days = max(1.0, (is_end - is_start).total_seconds() / 86400.0)
             is_total_pnl = sum(float(t.pnl_pct or 0.0) for t in is_trades)
@@ -205,7 +210,12 @@ class WalkForwardEngine:
                 oos_res = await oos_engine.run()
             oos_trades = oos_res if isinstance(oos_res, list) else getattr(oos_engine, "trades", [])
             oos_run_rec = oos_res if isinstance(oos_res, BacktestRun) else BacktestRun(start_date=oos_start, end_date=oos_end, initial_equity=10000.0)
-            oos_rep = ReportGenerator(run=oos_run_rec, trades=oos_trades, start_date=oos_start, end_date=oos_end)
+            oos_curve = getattr(oos_engine, "equity_curve", None)
+            if not isinstance(oos_curve, list):
+                oos_curve = getattr(oos_run_rec, "equity_curve", None)
+            if not isinstance(oos_curve, list):
+                oos_curve = None
+            oos_rep = ReportGenerator(run=oos_run_rec, trades=oos_trades, equity_curve=oos_curve, start_date=oos_start, end_date=oos_end)
             oos_rep.calculate_metrics()
             oos_days = max(1.0, (oos_end - oos_start).total_seconds() / 86400.0)
             oos_total_pnl = sum(float(t.pnl_pct or 0.0) for t in oos_trades)

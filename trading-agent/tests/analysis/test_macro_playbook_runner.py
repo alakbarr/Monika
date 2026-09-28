@@ -105,7 +105,9 @@ async def test_compute_and_persist_deltas():
 
 @pytest.mark.asyncio
 async def test_execute_real_playbook():
-    pb_path = Path("skills/research/playbooks/premarket_london_brief.md")
+    pb_path = Path(__file__).resolve().parents[2] / "skills" / "research" / "playbooks" / "premarket_london_brief.md"
+    if not pb_path.is_file():
+        pb_path = Path("skills/research/playbooks/premarket_london_brief.md")
     assert pb_path.is_file(), "premarket_london_brief.md should exist"
 
     runner = MacroPlaybookRunner()

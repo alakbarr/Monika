@@ -289,18 +289,20 @@ class BriefContaminationGuard:
         brief_time = brief_generated_at.replace(tzinfo=timezone.utc) if brief_generated_at.tzinfo is None else brief_generated_at
 
         # Get price at brief generation time (approximate: nearest H4 bar)
-        price_at_brief = (await session.execute(
+        bars = (await session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
             .where(PriceOHLCV.timeframe == 'H4')
             .where(PriceOHLCV.timestamp <= brief_time + timedelta(hours=4))
             .where(PriceOHLCV.timestamp >= brief_time - timedelta(hours=4))
-            .order_by(func_abs(
-                _func.extract('epoch', PriceOHLCV.timestamp) - 
-                brief_time.timestamp()
-            ) if _func is not None else PriceOHLCV.timestamp.desc())
-            .limit(1)
-        )).scalar_one_or_none()
+        )).scalars().all()
+        if bars:
+            def _diff(b):
+                b_ts = b.timestamp if b.timestamp.tzinfo else b.timestamp.replace(tzinfo=timezone.utc)
+                return abs((b_ts - brief_time).total_seconds())
+            price_at_brief = min(bars, key=_diff)
+        else:
+            price_at_brief = None
 
         # Get current price
         current_price_bar = (await session.execute(

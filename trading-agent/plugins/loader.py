@@ -52,43 +52,53 @@ def topological_sort_plugins(
     Raises MissingDependencyError if a required dependency is missing.
     Raises CircularDependencyError if cycles are detected.
     """
-    name_map: Dict[str, Tuple[PluginManifest, str]] = {
-        m.name: (m, path) for m, path in plugin_entries
-    }
+    key_for_entry = lambda m: m.id or m.name
+    entry_by_key = {key_for_entry(m): (m, path) for m, path in plugin_entries}
+
+    # Lookup map allowing resolution by either ID or Name
+    lookup: Dict[str, str] = {}
+    for m, _ in plugin_entries:
+        k = key_for_entry(m)
+        lookup[k] = k
+        lookup[m.name] = k
+        if m.id:
+            lookup[m.id] = k
 
     # Graph construction: edge from dep -> dependant (dep must be loaded before dependant)
     adj: Dict[str, List[str]] = defaultdict(list)
-    in_degree: Dict[str, int] = {m.name: 0 for m, _ in plugin_entries}
+    in_degree: Dict[str, int] = {key_for_entry(m): 0 for m, _ in plugin_entries}
 
     for manifest, _ in plugin_entries:
+        m_key = key_for_entry(manifest)
         for dep in manifest.dependencies:
-            if dep not in name_map:
+            if dep not in lookup:
                 raise MissingDependencyError(
                     f"Plugin '{manifest.name}' requires missing dependency '{dep}'"
                 )
-            adj[dep].append(manifest.name)
-            in_degree[manifest.name] += 1
+            dep_key = lookup[dep]
+            adj[dep_key].append(m_key)
+            in_degree[m_key] += 1
 
     # Kahn's algorithm
     queue = deque([name for name, deg in in_degree.items() if deg == 0])
-    sorted_names: List[str] = []
+    sorted_keys: List[str] = []
 
     while queue:
         curr = queue.popleft()
-        sorted_names.append(curr)
+        sorted_keys.append(curr)
 
         for neighbor in adj[curr]:
             in_degree[neighbor] -= 1
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
-    if len(sorted_names) != len(plugin_entries):
+    if len(sorted_keys) != len(plugin_entries):
         cyclic_plugins = [name for name, deg in in_degree.items() if deg > 0]
         raise CircularDependencyError(
             f"Circular dependency detected involving plugins: {', '.join(cyclic_plugins)}"
         )
 
-    return [name_map[name] for name in sorted_names]
+    return [entry_by_key[k] for k in sorted_keys]
 
 
 class PluginLoader:

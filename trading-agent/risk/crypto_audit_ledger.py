@@ -23,7 +23,7 @@ import logging
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timezone
 
 logger = logging.getLogger("TradingAgent.Risk.AuditLedger")
@@ -109,7 +109,10 @@ class CryptographicAuditLedger:
     def append(self, action: str, payload: Dict[str, Any]) -> AuditRecord:
         """
         Appends a new verified audit record with immediate fsync.
+        Refuses to extend a broken/corrupted chain.
         """
+        if self._load_error:
+            raise LedgerCorruptionError(f"Cannot append to corrupted audit ledger: {self._load_error}")
         seq = (self._last_record.seq + 1) if self._last_record is not None else 0
         prev_hash = self._last_record.record_hash if self._last_record is not None else GENESIS_PREV_HASH
         ts_utc = datetime.now(timezone.utc).isoformat()

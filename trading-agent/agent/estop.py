@@ -41,8 +41,10 @@ def get_estop_file_path() -> Path:
     if monika_home:
         return Path(monika_home) / "ESTOP"
 
-    # Fallback to project root directory
-    project_root = Path(__file__).resolve().parent.parent.parent
+    agent_dir = Path(__file__).resolve().parent.parent
+    if (agent_dir / "ESTOP").exists():
+        return agent_dir / "ESTOP"
+    project_root = agent_dir.parent
     return project_root / "ESTOP"
 
 
@@ -51,18 +53,22 @@ def is_estop_active() -> bool:
     Checks if the emergency stop sentinel file exists.
     Fail-safe: Returns True if file exists OR if OSError occurs while probing.
     """
-    path = get_estop_file_path()
-    try:
-        stat_result = os.stat(path)
-        # If stat succeeds, file exists
-        logger.critical(f"[ESTOP] Emergency Stop Sentinel File DETECTED at {path}!")
-        return True
-    except FileNotFoundError:
-        return False
-    except OSError as e:
-        # Permission error or disk fault: fail-safe by treating as active
-        logger.critical(f"[ESTOP] OSError probing ESTOP sentinel at {path}: {e}. Failing safe (ESTOP ACTIVE).")
-        return True
+    candidate_paths = [get_estop_file_path()]
+    agent_dir = Path(__file__).resolve().parent.parent
+    if (agent_dir / "ESTOP") not in candidate_paths:
+        candidate_paths.append(agent_dir / "ESTOP")
+
+    for path in candidate_paths:
+        try:
+            stat_result = os.stat(path)
+            logger.critical(f"[ESTOP] Emergency Stop Sentinel File DETECTED at {path}!")
+            return True
+        except FileNotFoundError:
+            continue
+        except OSError as e:
+            logger.critical(f"[ESTOP] OSError probing ESTOP sentinel at {path}: {e}. Failing safe (ESTOP ACTIVE).")
+            return True
+    return False
 
 
 def get_estop_details() -> Optional[Dict[str, Any]]:

@@ -130,7 +130,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                 await session.execute(
                     delete(NewsClassificationOutcome).where(
                         NewsClassificationOutcome.news_item_id.in_(
-                            select(NewsItem.id).where(or_(NewsItem.published_at < cutoff, NewsItem.published_at.is_(None)))
+                            select(NewsItem.id).where(NewsItem.published_at < cutoff)
                         )
                     )
                 )
@@ -198,7 +198,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                 )
 
             result = await session.execute(
-                delete(model).where(or_(col < cutoff, col.is_(None)))
+                delete(model).where(col < cutoff)
             )
             deleted = getattr(result, "rowcount", 0) or 0
             if deleted > 0:

@@ -1506,9 +1506,12 @@ def _place_order(
                 'error': f'Symbol {resolved_symbol} (original: {symbol}) not found on broker terminal', 'retcode': -1}
 
     # Strict volume floor quantization to prevent broker volume rejection
-    step = float(getattr(info, 'volume_step', 0.01) or 0.01)
-    min_vol = float(getattr(info, 'volume_min', 0.01) or 0.01)
-    max_vol = float(getattr(info, 'volume_max', 100.0) or 100.0)
+    raw_step = getattr(info, 'volume_step', 0.01)
+    step = float(raw_step) if isinstance(raw_step, (int, float)) and raw_step > 0 else 0.01
+    raw_min = getattr(info, 'volume_min', 0.01)
+    min_vol = float(raw_min) if isinstance(raw_min, (int, float)) and raw_min > 0 else 0.01
+    raw_max = getattr(info, 'volume_max', 100.0)
+    max_vol = float(raw_max) if isinstance(raw_max, (int, float)) and raw_max > 0 else 100.0
     steps = math.floor((float(volume) / step) + 1e-9)
     if steps <= 0:
         return {'success': False, 'ticket': None, 'price': None,
@@ -1612,7 +1615,7 @@ def _place_order(
         check_result = mt5.order_check(request)
         if check_result is not None:
             check_retcode = getattr(check_result, "retcode", 0)
-            if check_retcode not in (0, 10009):
+            if isinstance(check_retcode, int) and check_retcode not in (0, 10009):
                 err_msg = f"Pre-flight order_check rejected: retcode={check_retcode} ({getattr(check_result, 'comment', '')})"
                 logger.warning(f"[{resolved_symbol}] {err_msg}")
                 return {

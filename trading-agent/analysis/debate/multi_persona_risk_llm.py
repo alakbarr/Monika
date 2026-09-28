@@ -97,7 +97,7 @@ async def analyze_risk_multi_persona_llm(
     except Exception as e:
         logger.error(f"Multi-persona risk batch evaluation failed ({symbol}): {e}")
         return {
-            "conservative": {"risk_profile_assessment": f"Fallback error: {e}", "recommended_multiplier": 0.5, "veto_trade": False},
-            "aggressive": {"risk_profile_assessment": f"Fallback error: {e}", "recommended_multiplier": 0.8, "veto_trade": False},
-            "neutral": {"risk_profile_assessment": f"Fallback error: {e}", "recommended_multiplier": 0.6, "veto_trade": False},
+            "conservative": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
+            "aggressive": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
+            "neutral": {"risk_profile_assessment": f"Fallback error (fail-closed): {e}", "recommended_multiplier": 0.0, "veto_trade": True},
         }

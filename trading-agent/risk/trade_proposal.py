@@ -203,8 +203,8 @@ class FortressAdmissionValidator:
                 reward = abs(proposal.take_profit - proposal.entry_price)
                 if risk > 0:
                     rr = reward / risk
-                    if rr < 0.8:
-                        rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< 0.8)")
+                    if rr < 1.3:
+                        rejections.append(f"Unacceptable Risk:Reward ratio {rr:.2f} (< 1.3)")
 
         admitted = len(rejections) == 0
         return admitted, rejections

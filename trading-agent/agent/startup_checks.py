@@ -269,7 +269,7 @@ class StartupChecker:
                     logger.info(
                         f"  [OK] Paper trades: {paper_trades} (>{min_paper_trades_live}). "
                         f"Win rate: {win_rate:.1f}%. Performance gate: "
-                        f"{'PASS' if win_rate >= self.settings.get('trading', {}).get('min_paper_win_rate_pct', 45) else 'FAIL'}"
+                        f"{'PASS' if win_rate >= self.settings.get('trading', {}).get('min_paper_win_rate_pct', 55) else 'FAIL'}"
                     )
 
                 auto_execute = self.settings.get("trading", {}).get("auto_execute", False)

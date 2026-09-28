@@ -315,28 +315,44 @@ class PersistentSessionKernel:
 
     def _read_framed_response(self, timeout: float) -> Dict[str, Any]:
         """Read sentinel frame from stdout within timeout."""
-        start_time = time.monotonic()
-        line_buf = bytearray()
+        import queue
+        import threading
 
-        while True:
-            if time.monotonic() - start_time > timeout:
-                raise TimeoutError("Kernel response wait timeout")
+        result_queue: queue.Queue[Tuple[bool, Any]] = queue.Queue()
 
-            char = self.proc.stdout.read(1)
-            if not char:
-                # Subprocess exited
-                raise RuntimeError("Kernel process exited prematurely.")
-            if char == b"\n":
-                line = line_buf.decode("utf-8", errors="replace").strip()
-                if line.startswith(self.sentinel):
-                    parts = line.split(" ", 1)
-                    if len(parts) == 2 and parts[1].isdigit():
-                        length = int(parts[1])
-                        json_bytes = self.proc.stdout.read(length)
-                        return json.loads(json_bytes.decode("utf-8"))
-                line_buf.clear()
-            else:
-                line_buf.extend(char)
+        def _reader() -> None:
+            line_buf = bytearray()
+            try:
+                while True:
+                    char = self.proc.stdout.read(1)
+                    if not char:
+                        result_queue.put((False, RuntimeError("Kernel process exited prematurely.")))
+                        return
+                    if char == b"\n":
+                        line = line_buf.decode("utf-8", errors="replace").strip()
+                        if line.startswith(self.sentinel):
+                            parts = line.split(" ", 1)
+                            if len(parts) == 2 and parts[1].isdigit():
+                                length = int(parts[1])
+                                json_bytes = self.proc.stdout.read(length)
+                                result_queue.put((True, json.loads(json_bytes.decode("utf-8"))))
+                                return
+                        line_buf.clear()
+                    else:
+                        line_buf.extend(char)
+            except Exception as e:
+                result_queue.put((False, e))
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+
+        try:
+            success, res = result_queue.get(timeout=timeout)
+            if success:
+                return res
+            raise res
+        except queue.Empty:
+            raise TimeoutError("Kernel response wait timeout")
 
     def terminate(self) -> None:
         """Kill the kernel subprocess and clean up temporary directory."""

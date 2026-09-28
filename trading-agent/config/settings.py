@@ -4,8 +4,44 @@
 
 import yaml
 import os
+import re
 import logging
 from typing import Dict, Any, Optional, Union, overload, Literal
+
+
+def _resolve_env_str(val: str) -> str:
+    """Resolve ${VAR:default} environment variable placeholders recursively."""
+    if not isinstance(val, str) or "${" not in val:
+        return val
+    curr = val
+    for _ in range(5):
+        if "${" not in curr:
+            break
+
+        def _repl(m: re.Match) -> str:
+            inner = m.group(1)
+            if ":" in inner:
+                var_name, default_val = inner.split(":", 1)
+                env_val = os.environ.get(var_name.strip())
+                return env_val if (env_val is not None and env_val != "") else _resolve_env_str(default_val)
+            return os.environ.get(inner.strip(), "")
+
+        new_val = re.sub(r"\$\{([^{}]+)\}", _repl, curr)
+        if new_val == curr:
+            break
+        curr = new_val
+    return curr
+
+
+def _resolve_env_vars(obj: Any) -> Any:
+    """Recursively interpolate environment variables in dicts, lists, and strings."""
+    if isinstance(obj, dict):
+        return {k: _resolve_env_vars(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_resolve_env_vars(item) for item in obj]
+    elif isinstance(obj, str):
+        return _resolve_env_str(obj)
+    return obj
 
 try:
     from config.schemas import (
@@ -164,6 +200,9 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
                         logger.warning(f"Failed to load plugin config {fpath}: {pe}")
 
         logger.info(f"Settings loaded from {path}")
+
+    if isinstance(settings, dict):
+        settings = _resolve_env_vars(settings)
 
     if isinstance(settings, dict) and ("trading" in settings or "paper_trading" in settings):
         trading_cfg = settings.get("trading")

@@ -224,6 +224,11 @@ class ThreePartContextCompressor:
             # 4. Atomic Reassembly & Alternation Verification
             compacted_messages = head_zone + middle_representation + tail_zone
             compacted_messages = self._fix_tool_pairs(compacted_messages)
+            try:
+                from agent.moa_alternation import merge_same_role_messages
+                compacted_messages = merge_same_role_messages(compacted_messages)
+            except ImportError:
+                pass
             new_tokens = self.estimate_tokens(compacted_messages)
             logger.info(
                 f"[ThreePartContextCompressor] Compaction complete: {total_msgs} -> {len(compacted_messages)} messages, "

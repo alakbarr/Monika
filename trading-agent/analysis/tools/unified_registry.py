@@ -11,6 +11,7 @@ Automatically translates to Anthropic, OpenAI, and Gemini tool calling formats.
 
 import asyncio
 import inspect
+import json
 import logging
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 from pydantic import BaseModel
@@ -321,7 +322,7 @@ class UnifiedToolRegistry:
 
         try:
             raw_result = await self.execute_tool(name, arguments, context=context, **kwargs)
-            result_str = str(raw_result)
+            result_str = raw_result if isinstance(raw_result, str) else str(raw_result)
         except asyncio.TimeoutError:
             result_str = f"Error: Tool '{name}' timed out after {entry.timeout_seconds}s deadline."
         except Exception as exec_err:

@@ -681,7 +681,7 @@ class PluginEngine:
         """
         Apply configuration, toggles, and slot assignments from `settings.yaml:plugins`.
         """
-        plugins_cfg = settings.get("plugins", {})
+        plugins_cfg = settings.get("plugins", settings) if "plugins" in settings else settings
         if not plugins_cfg.get("enabled", True):
             for p in self.plugins.values():
                 if not p.metadata.is_core:
@@ -743,7 +743,7 @@ class PluginEngine:
         3. Check dependencies & sort topologically
         4. Execute on_register & on_preflight
         """
-        plugins_cfg = settings.get("plugins", {})
+        plugins_cfg = settings.get("plugins", settings) if "plugins" in settings else settings
         auto_dirs = plugins_cfg.get("directories", ["trading-agent/plugins", "custom_plugins"])
 
         # 1. Discover
