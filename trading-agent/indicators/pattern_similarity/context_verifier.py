@@ -140,19 +140,40 @@ INSTRUCTIONS:
         )
 
         try:
+            from utils.typesafe.jev_primitives import build_pattern_context_questions
+            jev_q = build_pattern_context_questions(symbol=symbol, match_date_str=match_date_str)
+
             resp = await asyncio.wait_for(
                 llm_client.classify_json(
                     prompt=prompt,
                     schema=VERDICT_JSON_SCHEMA,
+                    jev_questions=jev_q,
                 ),
                 timeout=12.0,
             )
 
+            if not resp or not isinstance(resp, dict):
+                raise ValueError("Empty or invalid response from context verifier")
+
             relevance = resp.get("relevance", "medium")
-            adj = float(resp.get("adjustment_factor", 0.8))
-            reason = resp.get("verdict_reason", "Verified against historical macro memory.")
-            if resp.get("historical_context_summary"):
-                reason = f"{resp['historical_context_summary']} — {reason}"
+
+            # Handle Jev System One response mappings
+            if "adjustment_level" in resp or "_jev_model" in resp:
+                lvl = str(resp.get("adjustment_level", "standard_weight")).lower()
+                weight_map = {
+                    "full_weight": 1.0,
+                    "standard_weight": 0.8,
+                    "reduced_weight": 0.5,
+                    "minimal_weight": 0.2
+                }
+                adj = weight_map.get(lvl, 0.8)
+                is_sim = resp.get("is_macro_driver_similar", True)
+                reason = f"Jev System One macro comparability: relevance={relevance}, macro_similar={is_sim}, weight={adj}"
+            else:
+                adj = float(resp.get("adjustment_factor", 0.8))
+                reason = resp.get("verdict_reason", "Verified against historical macro memory.")
+                if resp.get("historical_context_summary"):
+                    reason = f"{resp['historical_context_summary']} — {reason}"
 
             return ContextVerdict(
                 match=match,

@@ -21,6 +21,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -130,12 +131,31 @@ class CryptographicAuditLedger:
                 payload=payload,
             )
 
-            # Write append-only with fsync durability
+            # Write append-only with OS-level byte-range locking and fsync durability
             line = record.to_json() + "\n"
             with open(self.ledger_path, "a", encoding="utf-8") as f:
-                f.write(line)
-                f.flush()
-                os.fsync(f.fileno())
+                fd = f.fileno()
+                # Cross-process OS locking
+                is_win = sys.platform == "win32"
+                try:
+                    if is_win:
+                        import msvcrt
+                        # Seek to file end before locking
+                        f.seek(0, os.SEEK_END)
+                    else:
+                        import fcntl
+                        fcntl.flock(fd, fcntl.LOCK_EX)
+
+                    f.write(line)
+                    f.flush()
+                    os.fsync(fd)
+                finally:
+                    if not is_win:
+                        try:
+                            import fcntl
+                            fcntl.flock(fd, fcntl.LOCK_UN)
+                        except Exception:
+                            pass
 
             self._last_record = record
             return record

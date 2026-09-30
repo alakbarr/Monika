@@ -9,8 +9,10 @@ warnings.filterwarnings("ignore", category=pytest.PytestDeprecationWarning, mess
 
 @pytest.hookimpl
 def pytest_asyncio_loop_factories(config, item):
-    """Customize pytest-asyncio event loop factory on Windows to use SelectorEventLoop."""
+    """Customize pytest-asyncio event loop factory on Windows to use SelectorEventLoop except for MCP/subprocess."""
     if sys.platform == "win32":
+        if "mcp" in item.nodeid or "subprocess" in item.nodeid or "terminal" in item.nodeid:
+            return {"default": asyncio.ProactorEventLoop}
         return {"default": asyncio.SelectorEventLoop}
     return {"default": asyncio.new_event_loop}
 

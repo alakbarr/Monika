@@ -252,3 +252,92 @@ class TestVIXFetcher:
             fetcher = VIXFetcher(AsyncMock())
             fetcher._download("5d")
             mock_download.assert_called_once_with("^VIX", period="5d", progress=False, auto_adjust=True, timeout=8)
+
+    @pytest.mark.asyncio
+    async def test_save_existing_via_scalars(self):
+        """Verify deduplication works with SQLAlchemy scalars().all() result."""
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        mock_result = MagicMock()
+        existing_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        mock_result.scalars.return_value.all.return_value = [existing_dt]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        df = pd.DataFrame({"Close": [20.0]}, index=[pd.Timestamp('2024-01-01')])
+
+        fetcher = VIXFetcher(mock_session)
+        res = await fetcher._save(df)
+
+        assert res == 0
+        mock_session.add.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_save_partial_existing(self):
+        """Verify that existing dates are skipped while new dates are inserted."""
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        mock_result = MagicMock()
+        existing_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        mock_result.scalars.return_value.all.return_value = [existing_dt]
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        df = pd.DataFrame({
+            "Close": [20.0, 21.5]
+        }, index=[
+            pd.Timestamp('2024-01-01'),
+            pd.Timestamp('2024-01-02')
+        ])
+
+        fetcher = VIXFetcher(mock_session)
+        res = await fetcher._save(df)
+
+        assert res == 1
+        mock_session.add.assert_called_once()
+        saved_record = mock_session.add.call_args[0][0]
+        assert saved_record.date == datetime(2024, 1, 2, tzinfo=timezone.utc)
+        assert saved_record.close == 21.5
+
+    @pytest.mark.asyncio
+    async def test_save_duplicate_in_dataframe(self):
+        """Verify that duplicate rows within the same DataFrame are deduplicated."""
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        df = pd.DataFrame({
+            "Close": [20.0, 20.5]
+        }, index=[
+            pd.Timestamp('2024-01-01'),
+            pd.Timestamp('2024-01-01')
+        ])
+
+        fetcher = VIXFetcher(mock_session)
+        res = await fetcher._save(df)
+
+        assert res == 1
+        mock_session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_save_commit_failure_returns_zero(self):
+        """Verify that when safe_commit fails, _save returns 0."""
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        df = pd.DataFrame({"Close": [20.0]}, index=[pd.Timestamp('2024-01-01')])
+
+        with patch("database.safe_ops.safe_commit", new_callable=AsyncMock) as mock_safe_commit:
+            mock_safe_commit.return_value = False
+            fetcher = VIXFetcher(mock_session)
+            res = await fetcher._save(df)
+
+            assert res == 0
+

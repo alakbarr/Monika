@@ -957,7 +957,7 @@ class MT5Client:
 
     async def modify_position(
         self,
-        ticket: int,
+        ticket: Any,
         sl: Optional[float] = None,
         tp: Optional[float] = None,
     ) -> dict:
@@ -965,20 +965,25 @@ class MT5Client:
         if not await self.ensure_connected():
             return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
         try:
-            result = await self._run(_modify_position, ticket, sl, tp, priority=PRIORITY_CRITICAL, timeout=3.0)
+            ticket_id = int(str(ticket).strip())
+        except (ValueError, TypeError):
+            logger.warning(f"Failed to parse ticket: {ticket!r}")
+            return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+        try:
+            result = await self._run(_modify_position, ticket_id, sl, tp, priority=PRIORITY_CRITICAL, timeout=3.0)
         except (TimeoutError, asyncio.TimeoutError):
-            logger.error(f"Modify position {ticket} timed out")
-            return {'success': False, 'error': f'Modify position {ticket} timed out', 'retcode': -999}
+            logger.error(f"Modify position {ticket_id} timed out")
+            return {'success': False, 'error': f'Modify position {ticket_id} timed out', 'retcode': -999}
 
         if result.get('success'):
-            logger.info(f"Position {ticket} modified: SL={sl}, TP={tp}")
+            logger.info(f"Position {ticket_id} modified: SL={sl}, TP={tp}")
         else:
-            logger.error(f"Modify {ticket} failed: {result.get('error')}")
+            logger.error(f"Modify {ticket_id} failed: {result.get('error')}")
         return result
 
     async def close_position(
         self,
-        ticket: int,
+        ticket: Any,
         volume: Optional[float] = None,
         comment: str = "AIAgent-Close",
         lots: Optional[float] = None,
@@ -986,20 +991,25 @@ class MT5Client:
         """Tutup posisi terbuka (sepenuhnya atau sebagian)."""
         if not await self.ensure_connected():
             return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
+        try:
+            ticket_id = int(str(ticket).strip())
+        except (ValueError, TypeError):
+            logger.warning(f"Failed to parse ticket: {ticket!r}")
+            return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
         eff_volume = lots if volume is None and lots is not None else volume
         try:
-            result = await self._run(_close_position, ticket, eff_volume, comment, lots=lots, priority=PRIORITY_CRITICAL, timeout=3.0)
+            result = await self._run(_close_position, ticket_id, eff_volume, comment, lots=lots, priority=PRIORITY_CRITICAL, timeout=3.0)
         except (TimeoutError, asyncio.TimeoutError):
-            logger.error(f"Close position {ticket} timed out")
-            return {'success': False, 'error': f'Close position {ticket} timed out', 'retcode': -999}
+            logger.error(f"Close position {ticket_id} timed out")
+            return {'success': False, 'error': f'Close position {ticket_id} timed out', 'retcode': -999}
 
         if result.get('success'):
             logger.info(
-                f"Position {ticket} closed @ {result.get('price')} | "
+                f"Position {ticket_id} closed @ {result.get('price')} | "
                 f"profit={result.get('profit')}"
             )
         else:
-            logger.error(f"Close {ticket} failed: {result.get('error')}")
+            logger.error(f"Close {ticket_id} failed: {result.get('error')}")
         return result
 
     async def get_open_positions(self, symbol: Optional[str] = None) -> list[dict]:
@@ -1021,22 +1031,55 @@ class MT5Client:
         if not await self.ensure_connected():
             return {'success': False, 'error': 'MT5 disconnected', 'retcode': -1}
         try:
-            ticket = int(ticket_or_id)
+            ticket = int(str(ticket_or_id).strip())
         except (ValueError, TypeError):
+            logger.warning(f"Failed to parse ticket: {ticket_or_id!r}")
             return {'success': False, 'error': f'Invalid ticket: {ticket_or_id}', 'retcode': -1}
         return await self._run(_cancel_order, ticket, priority=PRIORITY_CRITICAL, timeout=3.0)
 
-    async def get_order_history(self, ticket: int) -> list:
+    async def cancel_all_pending_orders(self) -> dict:
+        """Batalkan semua pending/resting order di MT5 untuk menenangkan buku order (Cancel-Before-Flatten)."""
+        orders = await self.get_orders()
+        canceled = 0
+        failed = 0
+        errors = []
+        for o in orders:
+            t = o.get("ticket")
+            if t:
+                res = await self.cancel_order(t)
+                if res.get("success"):
+                    canceled += 1
+                else:
+                    failed += 1
+                    errors.append(res.get("error", "Unknown error"))
+        logger.info(f"[MT5Client] Cancelled {canceled}/{len(orders)} pending orders (failed={failed})")
+        return {"total": len(orders), "canceled": canceled, "failed": failed, "errors": errors}
+
+    async def get_order_history(self, ticket: Any) -> list:
         """Ambil riwayat order dari MT5 berdasarkan ticket."""
         if not await self.ensure_connected():
             return []
-        return await self._run(_get_order_history, int(ticket), priority=PRIORITY_STANDARD) or []
+        try:
+            ticket_id = int(str(ticket).strip())
+        except (ValueError, TypeError):
+            logger.warning(f"Failed to parse ticket: {ticket!r}")
+            ticket_id = 0
+        if ticket_id == 0:
+            return []
+        return await self._run(_get_order_history, ticket_id, priority=PRIORITY_STANDARD) or []
 
-    async def get_deal_history(self, ticket: int) -> list:
+    async def get_deal_history(self, ticket: Any) -> list:
         """Ambil riwayat deal dari MT5 berdasarkan ticket posisi atau order."""
         if not await self.ensure_connected():
             return []
-        return await self._run(_get_deal_history, int(ticket), priority=PRIORITY_STANDARD) or []
+        try:
+            ticket_id = int(str(ticket).strip())
+        except (ValueError, TypeError):
+            logger.warning(f"Failed to parse ticket: {ticket!r}")
+            ticket_id = 0
+        if ticket_id == 0:
+            return []
+        return await self._run(_get_deal_history, ticket_id, priority=PRIORITY_STANDARD) or []
 
     async def close_all_positions(self, comment: str = "AIAgent-CloseAll") -> dict:
         """Tutup SEMUA posisi terbuka (dipakai oleh kill-switch) - Priority 0."""
@@ -1109,6 +1152,15 @@ class MT5Client:
                     status='open',
                 ))
                 synced += 1
+            else:
+                # Update volume/lots and status upon partial close
+                mt5_vol = float(pos.get('volume', 0.0))
+                if mt5_vol != existing.lots:
+                    logger.info(f"Position {existing.mt5_ticket} volume changed: {existing.lots} -> {mt5_vol}")
+                    existing.lots = mt5_vol
+                    if mt5_vol == 0:
+                        existing.status = 'closed'
+                        existing.closed_at = datetime.now(timezone.utc)
 
         # Mark DB-open positions that are no longer on MT5 as closed
         db_open = (await session.execute(
@@ -1687,16 +1739,22 @@ def _place_order(
     }
 
 
-def _modify_position(ticket: int, sl: Optional[float], tp: Optional[float]) -> dict:
+def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> dict:
     """Modify SL/TP on an existing open position."""
     from typing import Any
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
 
+    try:
+        ticket_id = int(str(ticket).strip())
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to parse ticket: {ticket!r}")
+        return {'success': False, 'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+
     # Get current position to preserve existing SL/TP if not being changed
-    pos = mt5.positions_get(ticket=ticket)
+    pos = mt5.positions_get(ticket=ticket_id)
     if not pos:
-        return {'success': False, 'error': f'Position {ticket} not found', 'retcode': -1}
+        return {'success': False, 'error': f'Position {ticket_id} not found', 'retcode': -1}
 
     current = pos[0]
     info = mt5.symbol_info(current.symbol)
@@ -1715,7 +1773,7 @@ def _modify_position(ticket: int, sl: Optional[float], tp: Optional[float]) -> d
     request = {
         'action': mt5.TRADE_ACTION_SLTP,
         'symbol': current.symbol,
-        'position': ticket,
+        'position': ticket_id,
         'sl': float(normalized_sl) if normalized_sl is not None else 0.0,
         'tp': float(normalized_tp) if normalized_tp is not None else 0.0,
         'magic': 20250101,
@@ -1733,7 +1791,7 @@ def _modify_position(ticket: int, sl: Optional[float], tp: Optional[float]) -> d
     }
 
 
-def _close_position(ticket: int, volume: Optional[float], comment: str, lots: Optional[float] = None) -> dict:
+def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Optional[float] = None) -> dict:
     """Close an open position (fully or partially)."""
     from typing import Any
     import MetaTrader5 as _mt5
@@ -1742,11 +1800,18 @@ def _close_position(ticket: int, volume: Optional[float], comment: str, lots: Op
     if volume is None and lots is not None:
         volume = lots
 
+    try:
+        ticket_id = int(str(ticket).strip())
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to parse ticket: {ticket!r}")
+        return {'success': False, 'price': None, 'profit': None,
+                'error': f'Invalid ticket: {ticket}', 'retcode': -1}
+
     # Fetch current position details
-    pos = mt5.positions_get(ticket=ticket)
+    pos = mt5.positions_get(ticket=ticket_id)
     if not pos:
         return {'success': False, 'price': None, 'profit': None,
-                'error': f'Position {ticket} not found', 'retcode': -1}
+                'error': f'Position {ticket_id} not found', 'retcode': -1}
 
     current = pos[0]
     close_volume = volume if volume is not None else current.volume
@@ -1787,7 +1852,7 @@ def _close_position(ticket: int, volume: Optional[float], comment: str, lots: Op
         'symbol': current.symbol,
         'volume': float(close_volume),
         'type': close_type,
-        'position': ticket,
+        'position': ticket_id,
         'price': float(close_price),
         'comment': comment[:31],
         'type_time': getattr(mt5, "ORDER_TIME_GTC", 0),
@@ -1887,15 +1952,21 @@ def _get_orders(symbol: Optional[str] = None) -> list[dict]:
     return result
 
 
-def _cancel_order(ticket: int) -> dict:
+def _cancel_order(ticket: Any) -> dict:
     """Cancel pending order by ticket in MT5."""
     from typing import Any
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
 
+    try:
+        ticket_id = int(str(ticket).strip())
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to parse ticket: {ticket!r}")
+        ticket_id = 0
+
     request = {
         "action": getattr(mt5, "TRADE_ACTION_REMOVE", 8),
-        "order": int(ticket),
+        "order": ticket_id,
     }
     result = mt5.order_send(request)
     if result is None:
@@ -1909,25 +1980,35 @@ def _cancel_order(ticket: int) -> dict:
     success = (res_retcode == done_code or res_retcode == 10009)
     return {
         "success": success,
-        "ticket": ticket,
+        "ticket": ticket_id,
         "retcode": res_retcode,
         "error": None if success else f"retcode={res_retcode} comment={getattr(result, 'comment', '')}",
     }
 
 
-def _get_deal_history(ticket: int):
+def _get_deal_history(ticket: Any):
     from typing import Any
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
-    deals = mt5.history_deals_get(position=ticket)
+    try:
+        ticket_id = int(str(ticket).strip())
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to parse ticket: {ticket!r}")
+        ticket_id = 0
+    deals = mt5.history_deals_get(position=ticket_id)
     return deals if deals else []
 
 
-def _get_order_history(ticket: int):
+def _get_order_history(ticket: Any):
     from typing import Any
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
-    orders = mt5.history_orders_get(ticket=ticket)
+    try:
+        ticket_id = int(str(ticket).strip())
+    except (ValueError, TypeError):
+        logger.warning(f"Failed to parse ticket: {ticket!r}")
+        ticket_id = 0
+    orders = mt5.history_orders_get(ticket=ticket_id)
     return orders if orders else []
 
 

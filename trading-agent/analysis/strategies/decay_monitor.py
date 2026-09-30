@@ -4,8 +4,6 @@ Prevents compounding drawdowns from decaying quantitative alphas.
 
 State transitions:
 ACTIVE -> (3 warnings) -> MONITORING -> (2 warnings) -> DECAYED -> (3 warnings) -> DISABLED
-
-Tracks rolling strategy alpha decay and weight penalties.
 """
 import inspect
 import json

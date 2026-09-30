@@ -35,7 +35,7 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
     session, symbol, settings = _get_session_and_symbol(args, ctx)
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
-    timeframe = args.get("timeframe", "H4")
+    timeframe = args.get("timeframe", "H1")
     count = int(args.get("count") or args.get("limit") or 100)
     as_csv = args.get("format") == "csv" or args.get("as_csv") is True
 

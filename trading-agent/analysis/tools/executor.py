@@ -38,6 +38,8 @@ FACTOR_POINT_MAP = {
     'fundamental_bias': 2, 'dxy_confirms': 1, 'd1_trend': 2, 'rsi_neutral': 1,
     'near_fvg': 2, 'near_order_block': 2, 'in_ote_zone': 1, 'near_sr_zone': 1,
     'cot_aligned': 1, 'vix_ok': 1, 'liquidity_sweep_confirmed': 2,
+    'microstructure_ok': 1, 'microstructure_confirmed': 1,
+    'historical_pattern_consensus': 1, 'pattern_consensus': 1,
     'session_prime': 1,       # modifier tambahan, bukan bagian base-14
     'post_event_entry': 0,    # informational tag, tidak menambah skor
 }
@@ -2043,12 +2045,15 @@ class ToolExecutor:
                     found, basis = True, f'liquidity zone {lz.type}'
                     break
         if not found:
-            round_increments = {'XAUUSD': 10.0, 'XTIUSD': 1.0, 'BTCUSD': 1000.0, 'USDJPY': 0.5}
+            round_increments = {
+                'XAUUSD': 10.0, 'XTIUSD': 1.0, 'BTCUSD': 1000.0, 'USDJPY': 0.5,
+                'EURUSD': 0.0050, 'GBPUSD': 0.0050, 'AUDUSD': 0.0050, 'USDCAD': 0.0050, 'USDCHF': 0.0050, 'NZDUSD': 0.0050
+            }
             incr = round_increments.get(symbol)
             if incr:
                 nearest = round(tp_price / incr) * incr
                 if abs(tp_price - nearest) <= tolerance:
-                    found, basis = True, f'round number {nearest}'
+                    found, basis = True, f'round number {nearest:.5f}'
 
         if not found:
             adr_info = adr_ctx or {}
@@ -2135,6 +2140,84 @@ class ToolExecutor:
         except Exception as e:
             logger.debug(f'Dynamic ATR fallback failed for {symbol}: {e}')
             return None
+
+    @staticmethod
+    def _classify_validation_errors(errs: list[str]) -> str:
+        """Classify submit_asset_analysis validation errors into GATE, FATAL, THRESHOLD, or STRUCTURAL."""
+        GATE_ERRORS = [
+            'volatility regime gate',
+            'macro bias gate',
+            'liquidity sweep',
+            'ssvp blocked',
+            'entry blocked: only',
+            'adr range remains',
+            'priced-in conflict hard blocked'
+        ]
+
+        FATAL_ERRORS = [
+            'no h4 technical indicators found',
+            'technical indicators found',
+            'stale — mt5 may be disconnected',
+            'data unavailable',
+            'symbol is required',
+            'direction must be',
+        ]
+
+        THRESHOLD_ERRORS = [
+            'confluence_score',
+            'priced_in_score',
+            'adaptive threshold',
+            'below the required threshold',
+            'score insufficient',
+            'score uplift'
+        ]
+
+        STRUCTURAL_ERRORS = [
+            'stop_loss',
+            'take_profit',
+            'tp structural mapping',
+            'structural',
+            'r:r ratio',
+            'risk-to-reward',
+            'risk is zero',
+            'sl distance',
+            'tp distance',
+            'tp too',
+            'sl too',
+            'limit entry price',
+            'entry_condition',
+            'entry_price',
+            'invalidation',
+            'invalid confluence_factors',
+            'fundamental_bias',
+            'cot_aligned',
+            'vix_ok',
+            'adjudication',
+            'specialist disagreement',
+            'reevaluation_trigger'
+        ]
+
+        for err in errs:
+            err_l = err.lower()
+            for gate in GATE_ERRORS:
+                if gate in err_l:
+                    return 'GATE'
+        for err in errs:
+            err_l = err.lower()
+            for fatal in FATAL_ERRORS:
+                if fatal in err_l:
+                    return 'FATAL'
+        for err in errs:
+            err_l = err.lower()
+            for threshold in THRESHOLD_ERRORS:
+                if threshold in err_l:
+                    return 'THRESHOLD'
+        for err in errs:
+            err_l = err.lower()
+            for structural in STRUCTURAL_ERRORS:
+                if structural in err_l:
+                    return 'STRUCTURAL'
+        return 'STRUCTURAL'
 
     async def _validate_manual_order_structural(
         self,
@@ -2333,7 +2416,8 @@ class ToolExecutor:
             valid_factors = {
                 "fundamental_bias", "dxy_confirms", "d1_trend", "rsi_neutral", 
                 "near_fvg", "near_order_block", "in_ote_zone", "near_sr_zone", 
-                "cot_aligned", "vix_ok", "post_event_entry", "session_prime", "liquidity_sweep_confirmed"
+                "cot_aligned", "vix_ok", "post_event_entry", "session_prime", "liquidity_sweep_confirmed",
+                "microstructure_ok", "microstructure_confirmed", "historical_pattern_consensus", "pattern_consensus"
             }
             invalid_factors = [f for f in factors if f not in valid_factors]
             if invalid_factors:
@@ -2623,7 +2707,7 @@ class ToolExecutor:
                             )
                             min_sl_from_atr = min(min_sl_from_atr, adr_sl_ceiling * 0.85)
 
-                    if sl_dist < min_sl_from_atr:
+                    if sl_dist < (min_sl_from_atr - 1e-6):
                         errors.append(f"SL distance ({sl_dist:.5f}) is less than required minimum ({min_sl_multiplier}x ATR_14 or ADR-adjusted floor). {('[FALLBACK ATR USED]' if _using_atr_fallback else '')} Minimum required SL distance: {min_sl_from_atr:.5f}.")
 
             # === INTRADAY RANGE (ADR) TP/SL BAND VALIDATION — HARD GATE ===
@@ -2740,35 +2824,41 @@ class ToolExecutor:
 
         elif decision == "wait":
             if not inp.get("reevaluation_trigger"):
-                errors.append("reevaluation_trigger is required for wait decision")
-            else:
-                # === WAIT QUALITY CHECK ===
-                trigger = inp.get('reevaluation_trigger', {})
-                trigger_detail = trigger.get('detail', '')
-                trigger_type = trigger.get('type', '')
-                
-                # Reject vague triggers
-                vague_phrases = [
-                    'in 6 hours', 'next cycle', 'tomorrow', 'later',
-                    're-evaluate in', 'check later', 'wait for update'
-                ]
-                is_vague = (
-                    len(trigger_detail) < 20 or
-                    any(phrase in trigger_detail.lower() for phrase in vague_phrases) and 
-                    trigger_type != 'time'
+                inp["reevaluation_trigger"] = {
+                    "type": "time",
+                    "symbol": symbol,
+                    "hours": 4,
+                    "detail": "Standard wait: re-evaluate on next 4-hour cycle"
+                }
+                reeval_trigger = inp["reevaluation_trigger"]
+
+            # === WAIT QUALITY CHECK ===
+            trigger = inp.get('reevaluation_trigger', {})
+            trigger_detail = trigger.get('detail', '')
+            trigger_type = trigger.get('type', '')
+            
+            # Reject vague triggers
+            vague_phrases = [
+                'in 6 hours', 'next cycle', 'tomorrow', 'later',
+                're-evaluate in', 'check later', 'wait for update'
+            ]
+            is_vague = (
+                len(trigger_detail) < 20 or
+                any(phrase in trigger_detail.lower() for phrase in vague_phrases) and 
+                trigger_type != 'time'
+            )
+            
+            if is_vague and trigger_type != 'time':
+                logger.warning(
+                    f'[{symbol}] Vague WAIT trigger detected: "{trigger_detail[:80]}". '
+                    f'AI should specify exact price level or event for re-evaluation.'
                 )
-                
-                if is_vague and trigger_type != 'time':
-                    logger.warning(
-                        f'[{symbol}] Vague WAIT trigger detected: "{trigger_detail[:80]}". '
-                        f'AI should specify exact price level or event for re-evaluation.'
-                    )
-                    # Don't block, but log for quality tracking
-                    rationale = rationale + (
-                        f'\n[QUALITY NOTE: Reevaluation trigger could be more specific. '
-                        f'Ideal: specific price level or named event.]'
-                    )
-                    inp['rationale'] = rationale
+                # Don't block, but log for quality tracking
+                rationale = rationale + (
+                    f'\n[QUALITY NOTE: Reevaluation trigger could be more specific. '
+                    f'Ideal: specific price level or named event.]'
+                )
+                inp['rationale'] = rationale
 
         if decision in ("buy", "sell"):
             if not inp.get("confluence_score"):
@@ -2985,11 +3075,15 @@ class ToolExecutor:
                             )
                         elif context_cds_score >= cds_warn_threshold:
                             _rationale_lower = (rationale or '').lower()
-                            _reconciled = any(kw in _rationale_lower for kw in [
+                            adj_obj = inp.get('specialist_adjudication') or {}
+                            adj_text = (str(adj_obj.get('resolution_justification', '')) + ' ' + str(adj_obj.get('conflict_reason', ''))).lower()
+                            combined_text = _rationale_lower + ' ' + adj_text
+                            _reconciled = any(kw in combined_text for kw in [
                                 'trust price action', 'trust brief', 'trust the brief',
                                 'trust macro', 'divergence', 'pre-event positioning',
                                 'ssvp', 'discrepancy', 'unresolved', 'contradicts brief',
-                                'despite brief', 'overriding brief', 'technical overrides macro'
+                                'despite brief', 'overriding brief', 'technical overrides macro',
+                                'override_macro', 'price action overrides', 'macro overrides'
                             ])
                             if not _reconciled:
                                 errors.append(
@@ -3052,45 +3146,7 @@ class ToolExecutor:
                 self.submit_attempts += 1
                 attempts = self.submit_attempts
             
-            STRUCTURAL_ERRORS = [
-                'stop_loss is required',
-                'take_profit is required', 
-                'r:r ratio',
-                'sl distance',
-                'invalid confluence_factors'
-            ]
-            
-            THRESHOLD_ERRORS = [
-                'confluence_score',
-                'priced_in_score',
-                'adaptive threshold'  
-            ]
-
-            GATE_ERRORS = [
-                'volatility regime gate',
-                'macro bias gate',
-                'liquidity sweep',
-                'ssvp blocked',
-                'entry blocked: only',
-                'adr range remains'
-            ]
-            
-            def classify_errors(errs: list[str]) -> str:
-                for err in errs:
-                    for gate in GATE_ERRORS:
-                        if gate.lower() in err.lower():
-                            return 'GATE'
-                for err in errs:
-                    for structural in STRUCTURAL_ERRORS:
-                        if structural.lower() in err.lower():
-                            return 'STRUCTURAL'
-                for err in errs:
-                    for threshold in THRESHOLD_ERRORS:
-                        if threshold.lower() in err.lower():
-                            return 'THRESHOLD'
-                return 'FATAL'
-                
-            error_class = classify_errors(errors)
+            error_class = self._classify_validation_errors(errors)
 
             if error_class == 'GATE':
                 logger.info(f"[{symbol}] Mechanical risk gate blocked entry. Gracefully forcing WAIT.")
@@ -3118,7 +3174,10 @@ class ToolExecutor:
                     }
                 errors = []
             elif error_class == 'FATAL' or attempts >= 3:
-                logger.error(f"[{symbol}] submit_asset_analysis failed validation ({error_class} or attempt {attempts}). Forcing WAIT.")
+                if error_class == 'FATAL':
+                    logger.error(f"[{symbol}] submit_asset_analysis failed validation (FATAL: {errors}). Forcing WAIT.")
+                else:
+                    logger.warning(f"[{symbol}] submit_asset_analysis failed validation after max attempts ({attempts}): {errors}. Forcing WAIT.")
                 decision = "wait"
                 confidence = 0.0
                 rationale = f"System override: Forced WAIT due to {error_class} error or max attempts reached.\n" + "\n".join(errors)
@@ -3136,12 +3195,16 @@ class ToolExecutor:
                     "status": "validation_failed",
                     "errors": errors,
                     "error_classification": error_class,
-                    "guidance": {
-                        'STRUCTURAL': 'Recalculate entry/SL/TP. Try different structural level.',
-                        'THRESHOLD': 'Score insufficient. Submit WAIT with specific trigger.',
-                        'GATE': 'Mechanical gate active. Submit WAIT.',
-                        'FATAL': 'Submit WAIT immediately. Do not retry.'
-                    }.get(error_class, ''),
+                    "guidance": (
+                        'Specialist conflict or SSVP discrepancy active: explicitly adjudicate in specialist_adjudication or rationale (e.g. "I trust price action because..."), or adjust entry/SL/TP, or submit WAIT.'
+                        if any('adjudication' in e.lower() or 'specialist disagreement' in e.lower() for e in errors)
+                        else {
+                            'STRUCTURAL': 'Recalculate entry/SL/TP. Try different structural level.',
+                            'THRESHOLD': 'Score insufficient. Submit WAIT with specific trigger.',
+                            'GATE': 'Mechanical gate active. Submit WAIT.',
+                            'FATAL': 'Submit WAIT immediately. Do not retry.'
+                        }.get(error_class, '')
+                    ),
                     "attempt": attempts
                 }
 

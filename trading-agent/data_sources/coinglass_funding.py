@@ -18,6 +18,7 @@ from utils.api.http_retry import fetch_with_retry
 logger = logging.getLogger("TradingAgent.CoinglasFunding")
 
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
+BINANCE_DAPI_URL = "https://dapi.binance.com/dapi/v1/premiumIndex"
 BYBIT_TICKERS_URL = "https://api.bybit.com/v5/market/tickers"
 COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 
@@ -28,16 +29,16 @@ class CoinglasFundingFetcher:
     async def fetch(self) -> dict:
         """
         Mengambil data funding rate BTC saat ini secara resilient dari bursa-bursa utama.
-        Hierarki: Binance Futures -> Bybit -> Coinglass -> Baseline Neutral.
+        Hierarki: Binance Futures (USDT-M / Coin-M) -> Bybit -> Coinglass -> Baseline Neutral.
         """
         rates = []
         
-        # 1. Primary Source: Binance Futures (100% free, high availability, no API key required)
+        # 1. Primary Source: Binance Futures (USDT-M dengan fallback ke Coin-M, 100% free, high availability)
         try:
             binance_data = await fetch_with_retry(
                 BINANCE_FUNDING_URL,
                 params={"symbol": "BTCUSDT"},
-                timeout=8
+                timeout=15
             )
             if binance_data and isinstance(binance_data, dict) and "lastFundingRate" in binance_data:
                 b_rate = float(binance_data.get("lastFundingRate", 0.0001))
@@ -46,6 +47,22 @@ class CoinglasFundingFetcher:
                     "rate": round(b_rate, 6),
                     "next_rate": round(b_rate, 6)
                 })
+            elif not rates:
+                # In-line fallback: Binance Coin-Margined Futures (dapi)
+                dapi_data = await fetch_with_retry(
+                    BINANCE_DAPI_URL,
+                    params={"symbol": "BTCUSD_PERP"},
+                    timeout=15
+                )
+                if dapi_data and isinstance(dapi_data, list) and len(dapi_data) > 0:
+                    item = dapi_data[0]
+                    if isinstance(item, dict) and "lastFundingRate" in item:
+                        d_rate = float(item.get("lastFundingRate", 0.0001))
+                        rates.append({
+                            "exchange": "Binance",
+                            "rate": round(d_rate, 6),
+                            "next_rate": round(d_rate, 6)
+                        })
         except Exception as b_err:
             logger.debug(f"Binance funding rate fetch non-fatal: {b_err}")
 
@@ -54,7 +71,7 @@ class CoinglasFundingFetcher:
             bybit_data = await fetch_with_retry(
                 BYBIT_TICKERS_URL,
                 params={"category": "linear", "symbol": "BTCUSDT"},
-                timeout=8
+                timeout=15
             )
             if bybit_data and isinstance(bybit_data, dict):
                 bybit_list = bybit_data.get("result", {}).get("list", [])
@@ -76,7 +93,7 @@ class CoinglasFundingFetcher:
                 cg_data = await fetch_with_retry(
                     COINGLASS_URL,
                     params={"symbol": "BTC"},
-                    timeout=8
+                    timeout=15
                 )
                 if cg_data and isinstance(cg_data, dict) and cg_data.get("code") == "0":
                     cg_items = cg_data.get("data")

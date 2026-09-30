@@ -51,10 +51,40 @@ logger = logging.getLogger("TradingAgent.ExecutionService.PositionSynchronizer")
 class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
     """Mixin untuk rekonsiliasi posisi MT5 dengan database lokal dan modifikasi SL/TP."""
 
+    async def sync_positions_from_mt5(self, session: Optional[AsyncSession] = None) -> dict:
+        """Sinkronisasi posisi dari MT5 ke DB lokal dengan dukungan partial close."""
+        if session is not None:
+            return await self.mt5.sync_positions_from_mt5(session)
+        return await self.sync_positions()
+
     async def sync_positions(self) -> dict:
         """Sinkronisasi posisi terbuka antara MT5 dan DB lokal."""
         async with get_session() as session:
             result = await self.mt5.sync_positions_from_mt5(session)
+
+            # Reconcile partial close volume / lots
+            try:
+                open_positions = await self.mt5.get_open_positions() if hasattr(self.mt5, 'get_open_positions') else []
+                mt5_by_ticket = {p.get('ticket'): p for p in open_positions if isinstance(p, dict) and 'ticket' in p}
+                db_open = (await session.execute(
+                    select(Position).where(Position.status == 'open')
+                )).scalars().all()
+                for db_pos in db_open:
+                    if getattr(db_pos, 'is_paper', False):
+                        continue
+                    if db_pos.mt5_ticket in mt5_by_ticket:
+                        raw_p = mt5_by_ticket[db_pos.mt5_ticket]
+                        class _MT5Pos:
+                            def __init__(self, p):
+                                self.volume = float(p.get('volume', 0.0) if isinstance(p, dict) else getattr(p, 'volume', 0.0))
+                        mt5_pos = _MT5Pos(raw_p)
+                        if mt5_pos.volume != db_pos.lots:
+                            db_pos.lots = mt5_pos.volume
+                            if mt5_pos.volume == 0:
+                                db_pos.status = 'closed'
+                await session.commit()
+            except Exception as e:
+                logger.warning(f"Error checking partial close volumes: {e}")
             
             if result.get("closed_positions"):
                 import MetaTrader5 as mt5

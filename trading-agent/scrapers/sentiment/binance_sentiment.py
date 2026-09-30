@@ -17,10 +17,13 @@ from utils.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.BinanceSentiment")
 
+BINANCE_FAPI_SENTIMENT_URL = "https://fapi.binance.com/futures/data/globalLongShortAccountRatio"
+BINANCE_DAPI_SENTIMENT_URL = "https://dapi.binance.com/futures/data/globalLongShortAccountRatio"
+
 class BinanceSentimentFetcher:
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.url = "https://fapi.binance.com/futures/data/globalLongShortAccountRatio"
+        self.url = BINANCE_FAPI_SENTIMENT_URL
         self.symbols = ["BTCUSDT", "ETHUSDT"]
         self.period = "1d"
         
@@ -39,8 +42,14 @@ class BinanceSentimentFetcher:
                     "limit": 1
                 }
                 
-                data = await fetch_with_retry(self.url, params=params, timeout=10)
+                data = await fetch_with_retry(self.url, params=params, timeout=15)
                 
+                # In-line fallback ke Coin-M (dapi) jika fapi gagal untuk BTCUSDT / ETHUSDT
+                if not data or not isinstance(data, list) or len(data) == 0:
+                    pair = symbol.replace("USDT", "USD")
+                    dapi_params = {"pair": pair, "period": self.period, "limit": 1}
+                    data = await fetch_with_retry(BINANCE_DAPI_SENTIMENT_URL, params=dapi_params, timeout=15)
+
                 if data and isinstance(data, list) and len(data) > 0:
                     latest = data[-1]
                     ratios[symbol] = {

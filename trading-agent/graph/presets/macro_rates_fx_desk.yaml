@@ -1,0 +1,42 @@
+# ==============================================================================
+# File: graph/presets/macro_rates_fx_desk.yaml
+# Monika Macro Rates & Foreign Exchange Swarm Preset
+# ==============================================================================
+
+desk_id: "macro_rates_fx_desk"
+desk_name: "Global Macro Rates & FX Desk"
+description: "Institutional sovereign yield curve, central bank policy, and G10 currency desk."
+target_universe: ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+default_execution_mode: "autonomous"
+
+roles:
+  - role_id: "yield_curve_strategist"
+    name: "Sovereign Yield Curve Strategist"
+    system_prompt: |
+      You are the Sovereign Yield Curve Strategist. Analyze 2Y/10Y yield curve slopes, term premiums,
+      and international 10Y yield differentials (US vs Germany, UK, Japan) to determine fundamental FX carry.
+    required_tools: ["get_treasury_yields", "get_bond_yield_spreads"]
+
+  - role_id: "central_bank_hawk_dove"
+    name: "Central Bank Policy Analyst"
+    system_prompt: |
+      You are the Central Bank Policy Analyst. Parse Fed, ECB, BoE, and BoJ statements, meeting minutes,
+      and CME FedWatch rate-cut probabilities. Quantify the relative policy divergence.
+    required_tools: ["get_fedwatch_probabilities", "get_central_bank_expectations", "get_economic_calendar"]
+
+  - role_id: "fx_carry_analyst"
+    name: "FX Carry & Momentum Specialist"
+    system_prompt: |
+      You are the FX Carry & Momentum Specialist. Evaluate real interest rate spreads, COT non-commercial
+      institutional positioning, and multi-timeframe currency trend alignment.
+    required_tools: ["get_precomputed_cot_signals", "get_dxy", "get_price_momentum"]
+
+  - role_id: "macro_pm"
+    name: "Macro Portfolio Manager"
+    system_prompt: |
+      You are the Macro Portfolio Manager. Synthesize rates, central bank stances, and momentum into
+      actionable trade proposals with asymmetric R:R. Ensure total USD net exposure stays within limits.
+    required_tools: ["get_open_positions", "get_account_info"]
+
+consensus_protocol: "pm_lead_synthesis"
+min_confidence_threshold: 0.60

@@ -225,3 +225,35 @@ def test_model_instantiation():
     )
     assert event.from_status == "pending_submit"
     assert event.to_status == "submitted"
+
+
+def test_asset_analysis_entry_price_property():
+    """Verify entry_price getter and setter on AssetAnalysis."""
+    import json
+    aa = AssetAnalysis(symbol="BTCUSD", decision="buy", confidence=0.8)
+    assert aa.entry_price is None
+
+    # Set price from None
+    aa.entry_price = 83500.0
+    assert aa.entry_price == 83500.0
+    assert json.loads(aa.entry_zone)["price"] == 83500.0
+
+    # Preserve other fields in entry_zone
+    aa.entry_zone = json.dumps({"type": "breakout", "price": 83500.0, "zone_low": 83000.0})
+    aa.entry_price = 84000.0
+    assert aa.entry_price == 84000.0
+    data = json.loads(aa.entry_zone)
+    assert data["type"] == "breakout"
+    assert data["zone_low"] == 83000.0
+    assert data["price"] == 84000.0
+
+    # Clear price with None
+    aa.entry_price = None
+    assert aa.entry_price is None
+    assert "price" not in json.loads(aa.entry_zone)
+
+    # Invalidation condition alias
+    aa.invalidation_condition = "D1 candle close below 80000"
+    assert aa.invalidation == "D1 candle close below 80000"
+    assert aa.invalidation_condition == "D1 candle close below 80000"
+

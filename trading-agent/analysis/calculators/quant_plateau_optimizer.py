@@ -15,6 +15,7 @@ Uses pure NumPy/SciPy for zero external pip dependency overhead.
 import math
 import random
 import logging
+import asyncio
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Callable, Awaitable, Union, Sequence
 import numpy as np
@@ -173,6 +174,7 @@ class QuantPlateauOptimizer:
             return res
 
         for trial_idx in range(self.n_trials):
+            await asyncio.sleep(0)
             candidate_params = self._sample_candidate(good_trials)
 
             # 1. Evaluate center parameter

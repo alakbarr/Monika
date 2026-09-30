@@ -117,54 +117,60 @@ class CycleScheduler:
         paper_wr = 0.0
         min_paper_trades = self.settings.get('trading', {}).get('min_paper_trades_before_live', 40)
         min_paper_wr = self.settings.get('trading', {}).get('min_paper_win_rate_pct', 45.0)
-        try:
-            from utils.analytics.paper_tracker import PaperTracker
-            from database.models import SystemConfig
-            from sqlalchemy import select
-            async with get_session() as perf_session:
-                tracker = PaperTracker()
-                stats = await tracker.get_statistics(perf_session)
-                paper_trades = stats.get('total_trades', 0)
-                paper_wr = stats.get('win_rate_pct', 0)
-                blocked_cfg = (await perf_session.execute(select(SystemConfig).where(SystemConfig.key == 'auto_execute_paper_blocked'))).scalar_one_or_none()
-                is_blocked = blocked_cfg and blocked_cfg.value == 'true'
-                if paper_trades < min_paper_trades:
-                    logger.info(f'[PaperGate] Accumulation phase: {paper_trades}/{min_paper_trades} trades. auto_execute allowed to accumulate paper trade data. Ensure --dry-run flag is active.')
-                    if is_blocked and blocked_cfg:
-                        blocked_cfg.value = 'false'
-                        await perf_session.commit()
-                    import sys
-                    is_dry_run = '--dry-run' in sys.argv or getattr(self, 'dry_run', False)
-                    if not is_dry_run and self.settings.get('trading', {}).get('auto_execute', False):
-                        logger.critical(f'[SAFETY WARNING] auto_execute=True and paper_trades={paper_trades} < {min_paper_trades}. No performance validation yet. Run with --dry-run until min trades are accumulated!')
-                elif paper_trades >= min_paper_trades and paper_wr < min_paper_wr:
-                    if not is_blocked:
+        for attempt in range(2):
+            try:
+                from utils.analytics.paper_tracker import PaperTracker
+                from database.models import SystemConfig
+                from sqlalchemy import select
+                async with get_session() as perf_session:
+                    tracker = PaperTracker()
+                    stats = await tracker.get_statistics(perf_session)
+                    paper_trades = stats.get('total_trades', 0)
+                    paper_wr = stats.get('win_rate_pct', 0)
+                    blocked_cfg = (await perf_session.execute(select(SystemConfig).where(SystemConfig.key == 'auto_execute_paper_blocked'))).scalar_one_or_none()
+                    is_blocked = blocked_cfg and blocked_cfg.value == 'true'
+                    if paper_trades < min_paper_trades:
+                        logger.info(f'[PaperGate] Accumulation phase: {paper_trades}/{min_paper_trades} trades. auto_execute allowed to accumulate paper trade data. Ensure --dry-run flag is active.')
+                        if is_blocked and blocked_cfg:
+                            blocked_cfg.value = 'false'
+                            await perf_session.commit()
+                        import sys
+                        is_dry_run = '--dry-run' in sys.argv or getattr(self, 'dry_run', False)
+                        if not is_dry_run and self.settings.get('trading', {}).get('auto_execute', False):
+                            logger.critical(f'[SAFETY WARNING] auto_execute=True and paper_trades={paper_trades} < {min_paper_trades}. No performance validation yet. Run with --dry-run until min trades are accumulated!')
+                    elif paper_trades >= min_paper_trades and paper_wr < min_paper_wr:
+                        if not is_blocked:
+                            if blocked_cfg:
+                                blocked_cfg.value = 'true'
+                            else:
+                                perf_session.add(SystemConfig(key='auto_execute_paper_blocked', value='true'))
+                            await perf_session.commit()
+                        result['effective_auto_execute'] = False
+                        if self.settings.get('trading', {}).get('auto_execute', False):
+                            logger.warning(f'AUTO-EXECUTE SUPPRESSED: Performance gate failed. Trades: {paper_trades}/{min_paper_trades}, WR: {paper_wr:.1f}%/{min_paper_wr}%.')
+                    elif is_blocked and paper_wr >= min_paper_wr and (paper_trades >= min_paper_trades):
                         if blocked_cfg:
-                            blocked_cfg.value = 'true'
-                        else:
-                            perf_session.add(SystemConfig(key='auto_execute_paper_blocked', value='true'))
-                        await perf_session.commit()
-                    result['effective_auto_execute'] = False
-                    if self.settings.get('trading', {}).get('auto_execute', False):
-                        logger.warning(f'AUTO-EXECUTE SUPPRESSED: Performance gate failed. Trades: {paper_trades}/{min_paper_trades}, WR: {paper_wr:.1f}%/{min_paper_wr}%.')
-                elif is_blocked and paper_wr >= min_paper_wr and (paper_trades >= min_paper_trades):
-                    if blocked_cfg:
-                        blocked_cfg.value = 'false'
-                        await perf_session.commit()
-                        logger.info('Paper performance recovered. Unblocking auto-execute.')
-                    result['effective_auto_execute'] = self.settings.get('trading', {}).get('auto_execute', False)
-                if paper_trades >= min_paper_trades:
-                    try:
-                        from utils.analytics.edge_tracker import compute_edge_status
-                        async with get_session() as edge_session:
-                            edge_status = await compute_edge_status(edge_session)
-                        if edge_status.get('status') == 'no_edge' and edge_status.get('total_trades', 0) >= 50:
-                            result['effective_auto_execute'] = False
-                            logger.critical(f"[EdgeGate] Statistical edge NOT confirmed after {edge_status['total_trades']} trades. Win rate: {edge_status['win_rate']}% (CI: {edge_status['ci_lower']}-{edge_status['ci_upper']}%). Auto-execute suppressed.")
-                    except Exception as e:
-                        logger.debug(f'Edge status check failed (non-fatal): {e}')
-        except Exception as e:
-            logger.debug(f'Paper performance gate check failed (non-fatal): {e}')
+                            blocked_cfg.value = 'false'
+                            await perf_session.commit()
+                            logger.info('Paper performance recovered. Unblocking auto-execute.')
+                        result['effective_auto_execute'] = self.settings.get('trading', {}).get('auto_execute', False)
+                    if paper_trades >= min_paper_trades:
+                        try:
+                            from utils.analytics.edge_tracker import compute_edge_status
+                            async with get_session() as edge_session:
+                                edge_status = await compute_edge_status(edge_session)
+                            if edge_status.get('status') == 'no_edge' and edge_status.get('total_trades', 0) >= 50:
+                                result['effective_auto_execute'] = False
+                                logger.critical(f"[EdgeGate] Statistical edge NOT confirmed after {edge_status['total_trades']} trades. Win rate: {edge_status['win_rate']}% (CI: {edge_status['ci_lower']}-{edge_status['ci_upper']}%). Auto-execute suppressed.")
+                        except Exception as e:
+                            logger.debug(f'Edge status check failed (non-fatal): {e}')
+                break
+            except Exception as e:
+                if attempt == 0:
+                    logger.debug(f'Paper performance gate initial session error ({e}), retrying in 1.0s...')
+                    await asyncio.sleep(1.0)
+                    continue
+                logger.debug(f'Paper performance gate check failed (non-fatal): {e}')
         if not forced:
             start = datetime.now(timezone.utc)
             weekday = start.weekday()

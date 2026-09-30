@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from analysis.tools.tool_executor import ToolExecutor
 from utils.llm.context_compaction import ContextCompactionEngine
 from analysis.harness.tool_batch_planner import ToolBatchPlanner
-from analysis.harness.tool_repair import repair_tool_name, repair_tool_arguments
+from analysis.harness.tool_repair import repair_tool_name, repair_tool_arguments, coerce_tool_arguments
 from logging_observability.tracing.spans import llm_span
 
 logger = logging.getLogger("TradingAgent.AgentHarness")
@@ -1355,15 +1355,15 @@ class AgentHarness:
                     if isinstance(res, dict):
                         tool_schema = res
                 if tool_schema and isinstance(tool_schema, dict) and tool_schema.get("input_schema"):
-
-
+                    input_schema = tool_schema["input_schema"]
+                    coerce_tool_arguments(t_input, input_schema)
                     schema_err = None
 
                     try:
                         import jsonschema  # type: ignore[import-untyped, import-not-found]
-                        jsonschema.validate(instance=t_input, schema=tool_schema["input_schema"])
+                        jsonschema.validate(instance=t_input, schema=input_schema)
                     except ImportError:
-                        req = tool_schema["input_schema"].get("required", [])
+                        req = input_schema.get("required", [])
                         missing = [r for r in req if r not in t_input]
                         if missing:
                             schema_err = f"missing required fields {missing}"
@@ -1486,7 +1486,6 @@ class AgentHarness:
                                 f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."
                             )
                             tool_calls_made += 1
-                            called_tools.add(c_name)
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
@@ -1508,7 +1507,6 @@ class AgentHarness:
                                 f"BLOCKED: No passing verification evidence in ledger."
                             )
                             tool_calls_made += 1
-                            called_tools.add(c_name)
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
@@ -1543,7 +1541,6 @@ class AgentHarness:
                                 f"BLOCKED: Parameter integrity check failed: {integrity_err}"
                             )
                             tool_calls_made += 1
-                            called_tools.add(c_name)
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,

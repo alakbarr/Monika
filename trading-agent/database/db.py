@@ -97,10 +97,14 @@ def get_engine():
         if "postgresql" in db_url:
             engine_kwargs.update(
                 {
-                    "pool_size": 20,
-                    "max_overflow": 30,
+                    "pool_size": 25,
+                    "max_overflow": 35,
+                    "pool_timeout": 60.0,
                     "pool_pre_ping": True,
-                    "pool_recycle": 3600,
+                    "pool_recycle": 1800,
+                    "connect_args": {
+                        "timeout": 30.0,
+                    },
                 }
             )
         engine = create_async_engine(db_url, **engine_kwargs)

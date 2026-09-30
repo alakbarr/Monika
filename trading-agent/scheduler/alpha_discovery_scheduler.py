@@ -649,6 +649,17 @@ class AlphaDiscoveryScheduler:
             except asyncio.TimeoutError:
                 logger.debug("AlphaDiscoveryScheduler: Recovery wait timed out (120s), proceeding.")
 
+        startup_delay = float(self.settings.get("alpha_discovery", {}).get("startup_delay_seconds", 60.0)) if isinstance(self.settings, dict) else 60.0
+        if startup_delay > 0:
+            logger.info(f"AlphaDiscoveryScheduler: Waiting {startup_delay:.0f}s before first discovery cycle...")
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=startup_delay)
+                return
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                return
+
         while self._running:
             try:
                 await self.run_discovery_cycle()

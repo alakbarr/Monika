@@ -77,7 +77,18 @@ class ChatToolRouter:
         re.IGNORECASE
     )
 
+    WORKSPACE_PATTERNS = re.compile(
+        r'\b(obsidian|notion|google|gdrive|drive|gsheet|gsheets|gdoc|gdocs|catatan|jurnal|journal|note|notes|excel|spreadsheet|sheet|sheets|csv|xlsx|xls|dokumen|doc|docx|vault|tulis|baca\s*file|simpan\s*ke|folder|direktori|directory|file)\b',
+        re.IGNORECASE
+    )
+
     COMMAND_PATTERNS = {
+        re.compile(r'^/(note|notes|catatan|jurnal|journal|excel|sheet|doc|workspace|file|drive|gdrive|gsheet)\b', re.IGNORECASE): [
+            "mcp_filesystem_workspace_fs_read_file", "mcp_filesystem_workspace_fs_write_file",
+            "mcp_filesystem_workspace_fs_list_directory", "mcp_filesystem_workspace_fs_search_files",
+            "mcp_excel_tabular_excel_read_sheet", "mcp_excel_tabular_excel_append_row",
+            "mcp_excel_tabular_excel_list_sheets", "mcp_excel_tabular_excel_create_sheet"
+        ],
         re.compile(r'^/(database|db|schema|tables|tabel)\b', re.IGNORECASE): [
             "inspect_database_schema", "read_database_records", "propose_action"
         ],
@@ -241,8 +252,11 @@ class ChatToolRouter:
             return []
         q_vec = {t: v / q_norm for t, v in q_tfidf.items()}
 
+        has_workspace_intent = bool(self.WORKSPACE_PATTERNS.search(query))
         scores: Dict[str, float] = {}
         for name, doc_vec in self._semantic_index.items():
+            if name.startswith("mcp_") and not has_workspace_intent:
+                continue
             sim = 0.0
             for tok, q_val in q_vec.items():
                 if tok in doc_vec:
@@ -258,6 +272,18 @@ class ChatToolRouter:
         sorted_tools = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [t[0] for t in sorted_tools[:top_k]]
 
+
+    def update_tools(self, tools: List[Dict[str, Any]]):
+        """Update or add new tools (e.g. dynamically loaded MCP tools) to the router."""
+        changed = False
+        for t in tools:
+            name = t.get("name")
+            if name and name not in self.tool_map:
+                self.all_tools.append(t)
+                self.tool_map[name] = t
+                changed = True
+        if changed:
+            self._semantic_index = self._build_semantic_index()
 
     def _get_tools_by_names(self, names: List[str]) -> List[Dict[str, Any]]:
         result = []
@@ -302,12 +328,43 @@ class ChatToolRouter:
                 or bool(self.SENTIMENT_PATTERNS.search(q_clean))
                 or bool(self.REPORT_PATTERNS.search(q_clean))
                 or bool(self.TIMESFM_PATTERNS.search(q_clean))
+                or bool(self.WORKSPACE_PATTERNS.search(q_clean))
             )
             if not has_functional_intent:
                 logger.info("ChatToolRouter: Selected ZERO-TOOL mode for conversational query")
                 return []
 
-        # 3. Research & Ad-Hoc Market Intelligence Intent (Diprioritaskan sebelum Trade Intent)
+        # 3. Workspace & Second-Brain Intent (Obsidian, Excel, Notion, Files)
+        if self.WORKSPACE_PATTERNS.search(q_clean):
+            workspace_tool_names = [
+                "mcp_filesystem_workspace_fs_read_file",
+                "mcp_filesystem_workspace_fs_write_file",
+                "mcp_filesystem_workspace_fs_list_directory",
+                "mcp_filesystem_workspace_fs_search_files",
+                "mcp_excel_tabular_excel_read_sheet",
+                "mcp_excel_tabular_excel_append_row",
+                "mcp_excel_tabular_excel_list_sheets",
+                "mcp_excel_tabular_excel_create_sheet",
+                "mcp_local_market_fs_fs_read_file",
+                "mcp_local_market_fs_fs_write_file",
+            ]
+            for t_name in self.tool_map:
+                if t_name.startswith("mcp_") and any(k in t_name for k in ("workspace", "fs", "excel", "notion", "file", "google", "sheets", "docs")):
+                    if t_name not in workspace_tool_names:
+                        workspace_tool_names.append(t_name)
+
+            if self.TRADE_KEYWORDS.search(q_clean) or self.PORTFOLIO_PATTERNS.search(q_clean) or self.SYMBOL_PATTERNS.search(q_clean):
+                workspace_tool_names.extend([
+                    "get_account_info", "get_open_positions", "get_trade_history",
+                    "get_trade_details", "propose_action"
+                ])
+
+            selected = self._get_tools_by_names(workspace_tool_names)
+            if selected:
+                logger.info(f"ChatToolRouter: Selected WORKSPACE intent ({len(selected)} tools)")
+                return selected
+
+        # 4. Research & Ad-Hoc Market Intelligence Intent (Diprioritaskan sebelum Trade Intent)
         if self.RESEARCH_PATTERNS.search(q_clean):
             research_tool_names = [
                 "web_search", "get_economic_calendar", "get_news_items",
@@ -352,8 +409,9 @@ class ChatToolRouter:
         has_tech = bool(self.TECHNICAL_PATTERNS.search(q_clean)) or (has_symbol and not (has_sentiment or has_report or has_macro or has_portfolio))
         has_system = bool(self.SYSTEM_PATTERNS.search(q_clean))
         has_database = bool(self.DATABASE_PATTERNS.search(q_clean))
+        has_workspace = bool(self.WORKSPACE_PATTERNS.search(q_clean))
 
-        domain_count = sum([has_sentiment, has_report, has_portfolio, has_macro, has_tech, has_system, has_database])
+        domain_count = sum([has_sentiment, has_report, has_portfolio, has_macro, has_tech, has_system, has_database, has_workspace])
 
         # 6. Jika pertanyaan mencakup >=3 domain sekaligus, gunakan fallback full tools (fail-safe)
         if domain_count >= 3:
@@ -365,6 +423,11 @@ class ChatToolRouter:
 
         # 8. Domain Spesifik Regex Matching
         selected_names = set()
+
+        if has_workspace:
+            for t_name in self.tool_map:
+                if t_name.startswith("mcp_") and any(k in t_name for k in ("workspace", "fs", "excel", "notion", "file")):
+                    selected_names.add(t_name)
 
         if has_database:
             selected_names.update([

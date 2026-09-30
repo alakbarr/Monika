@@ -223,3 +223,68 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
         assert round(rr_ratio, 2) == 2.50
 
 
+def test_invalidation_direction_schema_no_ambiguity():
+    """Verify invalidation_direction schema does not contain type: [string, null] alongside enum."""
+    from analysis.schemas.schemas import get_tool_schema
+    from analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
+
+    schema = get_tool_schema(SubmitAssetAnalysisSchema)
+    inv = schema["properties"]["invalidation_direction"]
+    assert inv["type"] == "string"
+    assert inv["enum"] == ["above", "below"]
+
+
+def test_reevaluation_trigger_auto_fallback_buy_and_wait():
+    """Verify SubmitAssetAnalysisSchema auto-fills reevaluation_trigger if omitted."""
+    payload_buy = {
+        "symbol": "EURUSD",
+        "decision": "buy",
+        "confidence": 0.8,
+        "rationale": "Strong rejection at H4 FVG",
+        "entry_condition": {"type": "market", "detail": "Market entry"},
+        "stop_loss": 1.0800,
+        "take_profit": 1.0950,
+        "invalidation": "Thesis invalid below 1.0790",
+        "invalidation_price": 1.0790,
+        "invalidation_direction": "below",
+        "confluence_score": 8,
+        "priced_in_score": 3,
+    }
+    validated_buy = SubmitAssetAnalysisSchema.model_validate(payload_buy)
+    assert validated_buy.reevaluation_trigger is not None
+    assert validated_buy.reevaluation_trigger.price == 1.0790
+
+    payload_wait = {
+        "symbol": "EURUSD",
+        "decision": "wait",
+        "confidence": 0.5,
+        "rationale": "Waiting for confirmation",
+        "invalidation": "Invalid above 1.1000",
+    }
+    validated_wait = SubmitAssetAnalysisSchema.model_validate(payload_wait)
+    assert validated_wait.reevaluation_trigger is not None
+    assert validated_wait.reevaluation_trigger.type == "time"
+
+
+def test_confluence_factors_microstructure_and_pattern_recognized():
+    """Verify microstructure and pattern confluence factors are accepted."""
+    from analysis.tools.executor import FACTOR_POINT_MAP
+    from analysis.harness.tool_repair import coerce_tool_arguments
+
+    assert "microstructure_ok" in FACTOR_POINT_MAP
+    assert "historical_pattern_consensus" in FACTOR_POINT_MAP
+
+    pdef = {
+        "properties": {
+            "confluence_factors": {"type": "array"}
+        }
+    }
+    repaired = coerce_tool_arguments(
+        {"confluence_factors": ["order_flow", "pattern_similarity"]},
+        pdef
+    )
+    assert "microstructure_ok" in repaired["confluence_factors"]
+    assert "historical_pattern_consensus" in repaired["confluence_factors"]
+
+
+

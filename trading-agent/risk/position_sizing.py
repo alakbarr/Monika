@@ -472,11 +472,19 @@ class PositionSizer:
 
         # Volatility-Budget Parity Sizing (Enhancement 10)
         vol_parity_cfg = self.settings.get("trading", {}).get("risk", {}).get("volatility_parity", {})
-        if vol_parity_cfg.get("enabled", False) and entry_price > 0 and sl_distance_price > 0:
+        avg_atr = kwargs.get("avg_atr") or kwargs.get("atr")
+        if avg_atr is not None:
+            avg_atr = max(1e-6, float(avg_atr))  # prevent division by zero on flat readings
+
+        if vol_parity_cfg.get("enabled", False) and entry_price > 0 and (sl_distance_price > 0 or avg_atr is not None):
             target_usd = float(d_risk_amount_usd)
             if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
                 value_per_unit = spec.pip_value_per_lot / spec.pip_size
-                desired_lot = target_usd / (sl_distance_price * value_per_unit)
+                effective_dist = sl_distance_price if sl_distance_price > 0 else avg_atr
+                if avg_atr is not None and effective_dist == avg_atr:
+                    avg_atr = max(1e-6, avg_atr)  # prevent division by zero on flat readings
+                    effective_dist = avg_atr
+                desired_lot = target_usd / (effective_dist * value_per_unit)
                 if desired_lot < spec.min_lot:
                     rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
                     recommended_lots = 0.0
@@ -732,6 +740,29 @@ class PositionSizer:
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
             rejections.append(f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}")
+
+        # Volatility-Budget Parity Sizing (Enhancement 10)
+        vol_parity_cfg = self.settings.get("trading", {}).get("risk", {}).get("volatility_parity", {})
+        avg_atr = kwargs.get("avg_atr") or kwargs.get("atr")
+        if avg_atr is not None:
+            avg_atr = max(1e-6, float(avg_atr))  # prevent division by zero on flat readings
+
+        if vol_parity_cfg.get("enabled", False) and entry_price > 0 and (sl_distance_price > 0 or avg_atr is not None):
+            target_usd = float(d_risk_amount_usd)
+            if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
+                value_per_unit = spec.pip_value_per_lot / spec.pip_size
+                effective_dist = sl_distance_price if sl_distance_price > 0 else avg_atr
+                if avg_atr is not None and effective_dist == avg_atr:
+                    avg_atr = max(1e-6, avg_atr)  # prevent division by zero on flat readings
+                    effective_dist = avg_atr
+                desired_lot = target_usd / (effective_dist * value_per_unit)
+                if desired_lot < spec.min_lot:
+                    rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
+                    recommended_lots = 0.0
+                else:
+                    recommended_lots = self._round_lots(desired_lot, spec.lot_step)
+                    if spec.max_lot > 0:
+                        recommended_lots = min(spec.max_lot, recommended_lots)
         
         # TAMBAHKAN: cap to configured max lot and spec max lot
         max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")
@@ -969,6 +1000,32 @@ class PositionSizer:
         rounded = (d_steps * d_step).quantize(Decimal(10) ** -decimals, rounding=ROUND_FLOOR)
         return float(rounded)
 
+    def calculate_by_atr(
+        self,
+        symbol: str,
+        account_equity: float,
+        avg_atr: float,
+        risk_percent: Optional[float] = None,
+        atr_multiplier: float = 1.5,
+    ) -> float:
+        """
+        Kalkulasi ukuran lot berbasis volatilitas ATR dengan guard pembagian nol.
+        """
+        avg_atr = max(1e-6, float(avg_atr))  # prevent division by zero on flat readings
+        spec = self._get_instrument_spec(symbol)
+        risk_pct = risk_percent if risk_percent is not None else self.risk_percent
+        risk_usd = account_equity * (risk_pct / 100.0)
+        sl_distance = avg_atr * atr_multiplier
+        if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
+            value_per_unit = spec.pip_value_per_lot / spec.pip_size
+            denom = sl_distance * value_per_unit
+            if denom > 0:
+                lots = self._round_lots(risk_usd / denom, spec.lot_step)
+                if spec.max_lot > 0:
+                    lots = min(spec.max_lot, lots)
+                return max(spec.min_lot, lots)
+        return spec.min_lot
+
     @staticmethod
     def _invalid(
         symbol, direction, entry, sl, tp,
@@ -1000,6 +1057,11 @@ async def calculate_lot_size(
     **kwargs
 ) -> dict:
     """Helper fungsi publik untuk perhitungan lot size deterministik."""
+    avg_atr = kwargs.get("avg_atr") or kwargs.get("atr")
+    if avg_atr is not None:
+        avg_atr = max(1e-6, float(avg_atr))  # prevent division by zero on flat readings
+        kwargs["avg_atr"] = avg_atr
+
     if direction is None:
         direction = "buy" if stop_loss < entry_price else "sell"
 

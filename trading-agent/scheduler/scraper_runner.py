@@ -445,10 +445,15 @@ class ScraperRunner:
                 # Reset failure count only on actual data fetch
                 if news_items and rss_name in self._consecutive_failures:
                     del self._consecutive_failures[rss_name]
+            except asyncio.TimeoutError:
+                self._consecutive_failures[rss_name] = self._consecutive_failures.get(rss_name, 0) + 1
+                count = self._consecutive_failures[rss_name]
+                logger.warning(f"RSS {name} timed out after 30s (consecutive: {count})")
             except Exception as e:
                 self._consecutive_failures[rss_name] = self._consecutive_failures.get(rss_name, 0) + 1
                 count = self._consecutive_failures[rss_name]
-                logger.error(f"RSS {name} failed (consecutive: {count}): {e}")
+                err_msg = str(e) if str(e) else type(e).__name__
+                logger.error(f"RSS {name} failed (consecutive: {count}): {err_msg}")
                 if count == self.failure_alert_threshold:
                     try:
                         from utils.infra.notifier import AgentNotifier
@@ -456,7 +461,7 @@ class ScraperRunner:
                         await notifier.send_warning(
                             f"⚠️ <b>RSS Scraper Alert</b>\n"
                             f"RSS <code>{name}</code> failed {count} times consecutively.\n"
-                            f"Error: {str(e)[:200]}"
+                            f"Error: {err_msg[:200]}"
                         )
                     except Exception:
                         pass

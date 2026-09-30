@@ -61,6 +61,37 @@ class Stage1DataBundler:
             "prediction_market": self.executor.execute("get_prediction_market_odds", {}),
         }
 
+        # Extra parallel zero-browser real-time feeds
+        async def _fetch_crypto_depth():
+            from data_sources.crypto_orderbook_depth import CryptoOrderbookDepth
+            snap = await CryptoOrderbookDepth.fetch_snapshot("BTCUSD")
+            return {
+                "exchange": snap.exchange,
+                "spread_bps": snap.spread_bps,
+                "imbalance_score": snap.imbalance_score,
+                "bid_liq_usd": snap.bid_liquidity_usd,
+                "ask_liq_usd": snap.ask_liquidity_usd,
+                "slippage": snap.slippage_estimates,
+            } if snap else {"error": "L2 depth unavailable"}
+
+        async def _fetch_sovereign_spreads():
+            from data_sources.sovereign_yield_spreads import SovereignYieldSpreads
+            return await SovereignYieldSpreads.get_spreads()
+
+        async def _fetch_gold_radar():
+            from data_sources.gold_physical_radar import GoldPhysicalRadar
+            radar = await GoldPhysicalRadar.fetch_radar()
+            return {
+                "flow_bias": radar.institutional_flow_bias,
+                "gld_change_pct": radar.gld_1d_change_pct,
+                "conviction": radar.xau_sentiment_conviction,
+                "summary": radar.summary,
+            }
+
+        tasks["crypto_l2_depth"] = _fetch_crypto_depth()
+        tasks["sovereign_yield_spreads"] = _fetch_sovereign_spreads()
+        tasks["gold_physical_radar"] = _fetch_gold_radar()
+
         # Execute tasks sequentially to prevent AsyncSession concurrency issues
         bundled_data = {}
         for key, coro in tasks.items():

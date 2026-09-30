@@ -578,3 +578,76 @@ class TestNewsDigestProcessor:
             assert digest is not None
             assert "### CONSISTENCY CHECK (belum terselesaikan — perlakukan dengan hati-hati)" in digest
             assert "USD is Bullish  vs  [USD Nuances] USD is Bearish" in digest
+
+    @pytest.mark.asyncio
+    async def test_verify_high_medium_boundary_string_index(self):
+        """Verify _verify_high_medium_boundary tolerates string index responses without TypeError."""
+        processor = NewsDigestProcessor({})
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        item1 = NewsItem(id=1, title="Fed's Bullard Opinion on Inflation", summary="General opinion", impact="HIGH")
+        item2 = NewsItem(id=2, title="Germany Model Broken", summary="Long term structural", impact="HIGH")
+        item3 = NewsItem(id=3, title="US Nonfarm Payrolls Beat", summary="Strong jobs", impact="MEDIUM")
+        items = [item1, item2, item3]
+
+        # LLM returns string indices ("1", "2")
+        processor._classification_verifier.classify_json = AsyncMock(return_value=[
+            {"index": "1", "target_impact": "MEDIUM", "reason": "routine opinion only"},
+            {"index": "2.", "target_impact": "MEDIUM", "reason": "structural without catalyst"},
+            {"index": "3", "target_impact": "HIGH", "reason": "major market mover"}
+        ])
+
+        await processor._verify_high_medium_boundary(mock_session, items)
+
+        assert item1.impact == "MEDIUM"
+        assert item2.impact == "MEDIUM"
+        assert item3.impact == "HIGH"
+        assert mock_session.commit.called
+
+    @pytest.mark.asyncio
+    async def test_classify_unscored_news_all_omitted_micro_retry_recovery(self):
+        """Verify that if all items in a batch are omitted in the first pass, micro-retry recovers them."""
+        processor = NewsDigestProcessor({})
+        processor._classification_escalation.classify_json = AsyncMock(return_value=[])
+        processor._classification_verifier.classify_json = AsyncMock(return_value=[])
+        processor._verifier.classify_json = AsyncMock(return_value={})
+
+        item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
+        item2 = NewsItem(id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates")
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+
+        called = False
+        def mock_execute_side_effect(*args, **kwargs):
+            nonlocal called
+            query_str = str(args[0])
+            m_res = MagicMock()
+            if "news_item" in query_str.lower() and not called:
+                called = True
+                m_res.scalars().all.return_value = [item1, item2]
+            else:
+                m_res.scalars().all.return_value = []
+            return m_res
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
+
+        # Pass 1 returns scalar unindexed dict -> wrapped as [dict], omitted during validation.
+        # Micro-retry recovers both omitted items.
+        mock_classifier = AsyncMock(side_effect=[
+            {"impact": "LOW"},  # pass 1: scalar output
+            [
+                {"index": 1, "news_id": 10, "impact": "HIGH", "confidence": 0.9, "surprise_magnitude": "none", "currencies": ["USD"], "sentiments": ["NEUTRAL"], "key_data_point": ""},
+                {"index": 2, "news_id": 20, "impact": "LOW", "confidence": 0.85, "surprise_magnitude": "none", "currencies": ["EUR"], "sentiments": ["NEUTRAL"], "key_data_point": ""}
+            ]  # micro-retry pass
+        ])
+        processor._flash_lite.classify_json = mock_classifier
+        processor._classifier = processor._flash_lite
+
+        count = await processor.classify_unscored_news(mock_session)
+        assert count == 2
+        assert item1.impact == "HIGH"
+        assert item2.impact == "LOW"
+
+

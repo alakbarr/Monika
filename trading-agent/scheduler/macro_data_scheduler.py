@@ -35,7 +35,7 @@ class MacroDataScheduler:
             cls._global_sync_lock = asyncio.Lock()
         return cls._global_sync_lock
 
-    def __init__(self, settings: dict):
+    def __init__(self, settings: dict, recovery_event: Optional[asyncio.Event] = None):
         self.settings = settings
         sched_cfg = settings.get("trading", {}).get("schedule", {})
         self.interval_minutes: float = float(sched_cfg.get("macro_data_refresh_minutes", 30))
@@ -44,6 +44,7 @@ class MacroDataScheduler:
         self._sync_lock = self._get_global_lock()
         self._last_refresh_time: Optional[datetime] = None
         self._last_results: Dict[str, Any] = {}
+        self.recovery_event = recovery_event
 
     async def refresh_macro_data(self) -> Dict[str, Any]:
         """
@@ -224,14 +225,24 @@ class MacroDataScheduler:
         interval_secs = max(60.0, self.interval_minutes * 60.0)
         logger.info(f"MacroDataScheduler: Started with interval={self.interval_minutes} minutes ({interval_secs}s).")
 
-        # Initial refresh on startup (brief delay to allow DB/network stabilization)
-        try:
-            await asyncio.wait_for(self._stop_event.wait(), timeout=5)
-            return
-        except asyncio.TimeoutError:
-            pass
-        except asyncio.CancelledError:
-            return
+        # Initial refresh on startup (tunggu startup recovery jika ada, agar tidak bersaing CPU/network dengan bootstrap)
+        if self.recovery_event:
+            logger.info("MacroDataScheduler: Waiting for recovery event before initial ingestion...")
+            try:
+                await asyncio.wait_for(self.recovery_event.wait(), timeout=180.0)
+                logger.info("MacroDataScheduler: Recovery complete, proceeding with initial ingestion.")
+            except asyncio.TimeoutError:
+                logger.warning("MacroDataScheduler: Recovery event timed out (180s), proceeding anyway.")
+            except asyncio.CancelledError:
+                return
+        else:
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=5)
+                return
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                return
 
         try:
             await self.refresh_macro_data()

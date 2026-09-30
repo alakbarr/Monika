@@ -275,3 +275,30 @@ class TestTechnicalIndicatorCalculator:
         assert df is not None
         # Harus terdeduplikasi menjadi 2 bar (1 bar per tanggal unik: 25 Sep & 26 Sep)
         assert len(df) == 2
+
+    @pytest.mark.asyncio
+    async def test_compute_all_and_save_bounded_to_recent_bars(self, calc):
+        """Verifikasi bahwa _compute_all dan _save hanya memproses dan menyimpan maksimal 100 bar terkini."""
+        # 300 bar sintetis
+        dates = pd.date_range("2024-01-01", periods=300, freq="1h", tz="UTC")
+        df = pd.DataFrame({
+            "open": [100.0] * 300,
+            "high": [105.0] * 300,
+            "low": [95.0] * 300,
+            "close": [102.0] * 300,
+            "volume": [1000.0] * 300,
+        }, index=dates)
+
+        # _compute_all harus membatasi hasil ke 100 bar terakhir
+        inds = calc._compute_all(df)
+        assert len(inds) == 100
+        assert max(inds.keys()) == dates[-1].to_pydatetime()
+        assert min(inds.keys()) == dates[-100].to_pydatetime()
+
+        # _save harus membatasi ke maksimal 100 timestamp
+        calc.session.execute = AsyncMock()
+        calc.session.add = MagicMock()
+        saved = await calc._save("EURUSD", "H1", inds)
+        assert saved > 0
+        assert calc.session.add.call_count == saved
+

@@ -33,7 +33,7 @@ def _inline_refs(schema, defs=None):
                 resolved_non_null = _inline_refs(non_null_schema, defs)
                 if isinstance(resolved_non_null, dict):
                     merged.update(resolved_non_null)
-                if "type" in merged:
+                if "enum" not in merged and "type" in merged:
                     if isinstance(merged["type"], str):
                         merged["type"] = [merged["type"], "null"]
                     elif isinstance(merged["type"], list) and "null" not in merged["type"]:

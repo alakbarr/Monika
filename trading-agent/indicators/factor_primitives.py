@@ -47,6 +47,39 @@ def _as_float(df: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
     return df.astype(np.float64)
 
 
+from enum import Enum
+
+class Market(str, Enum):
+    """Market identifier used by vwap for market-specific conventions."""
+    EQUITY_US = "equity_us"
+    EQUITY_CN = "equity_cn"
+    EQUITY_HK = "equity_hk"
+    EQUITY_IN = "equity_in"
+    EQUITY_KR = "equity_kr"
+    CRYPTO = "crypto"
+    FOREX = "forex"
+    COMMODITIES = "commodities"
+
+
+def vwap(panel: Any, market: Any = None) -> pd.DataFrame | pd.Series:
+    """Market-aware VWAP-equivalent reference price."""
+    if isinstance(panel, pd.DataFrame):
+        if "vwap" in panel.columns:
+            return panel["vwap"]
+        return (panel["high"] + panel["low"] + panel["close"] + panel.get("open", panel["close"])) / 4.0
+    if isinstance(panel, dict):
+        if "vwap" in panel:
+            return panel["vwap"]
+        h = panel.get("high")
+        l = panel.get("low")
+        c = panel.get("close")
+        o = panel.get("open", c)
+        if h is not None and l is not None and c is not None:
+            return (h + l + c + o) / 4.0
+        return c
+    return panel
+
+
 def safe_div(
     a: pd.DataFrame | pd.Series | np.ndarray | float,
     b: pd.DataFrame | pd.Series | np.ndarray | float,
@@ -54,33 +87,33 @@ def safe_div(
 ) -> pd.DataFrame | pd.Series | np.ndarray | float:
     """
     Division with zero/NaN guards: a / (b + eps * sign(b)).
-    
     If b is exactly 0.0 or NaN, the result is strictly NaN (never +/- inf or silent 0).
     """
-    if isinstance(a, pd.DataFrame) and isinstance(b, pd.DataFrame):
-        a_f = _as_float(a)
-        b_f = _as_float(b)
-        b_arr = b_f.to_numpy(dtype=np.float64, na_value=np.nan)
+    if isinstance(a, pd.DataFrame) or isinstance(b, pd.DataFrame):
+        df_target = a if isinstance(a, pd.DataFrame) else b
+        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(a, (pd.DataFrame, pd.Series)) else np.asarray(a, dtype=np.float64)
+        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(b, (pd.DataFrame, pd.Series)) else np.asarray(b, dtype=np.float64)
         sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
-        denom_arr = b_arr + eps * sign
-        denom = pd.DataFrame(denom_arr, index=b_f.index, columns=b_f.columns)
-        res = a_f.div(denom)
-        res = res.where(b_f != 0.0, np.nan)
-        return res.replace([np.inf, -np.inf], np.nan)
-    
-    if isinstance(a, pd.Series) and isinstance(b, pd.Series):
-        a_f = _as_float(a)
-        b_f = _as_float(b)
-        b_arr = b_f.to_numpy(dtype=np.float64, na_value=np.nan)
+        denom = b_arr + eps * sign
+        with np.errstate(divide="ignore", invalid="ignore"):
+            res_arr = np.where(b_arr == 0.0, np.nan, a_arr / denom)
+        res_arr = np.where(np.isinf(res_arr), np.nan, res_arr)
+        return pd.DataFrame(res_arr, index=df_target.index, columns=df_target.columns)
+
+    if isinstance(a, pd.Series) or isinstance(b, pd.Series):
+        s_target = a if isinstance(a, pd.Series) else b
+        a_arr = a.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(a, pd.Series) else np.asarray(a, dtype=np.float64)
+        b_arr = b.to_numpy(dtype=np.float64, na_value=np.nan) if isinstance(b, pd.Series) else np.asarray(b, dtype=np.float64)
         sign = np.where(b_arr == 0.0, 1.0, np.sign(b_arr))
-        denom = pd.Series(b_arr + eps * sign, index=b_f.index)
-        res = a_f / denom
-        res = res.where(b_f != 0.0, np.nan)
-        return res.replace([np.inf, -np.inf], np.nan)
-    
+        denom = b_arr + eps * sign
+        with np.errstate(divide="ignore", invalid="ignore"):
+            res_arr = np.where(b_arr == 0.0, np.nan, a_arr / denom)
+        res_arr = np.where(np.isinf(res_arr), np.nan, res_arr)
+        return pd.Series(res_arr, index=s_target.index, name=getattr(s_target, "name", None))
+
     arr_a = np.asarray(a, dtype=np.float64)
     arr_b = np.asarray(b, dtype=np.float64)
-    sign = np.sign(arr_b)
+    sign = np.where(arr_b == 0.0, 1.0, np.sign(arr_b))
     denom = arr_b + eps * sign
     with np.errstate(divide="ignore", invalid="ignore"):
         res = np.where(arr_b == 0.0, np.nan, arr_a / denom)
@@ -90,32 +123,58 @@ def safe_div(
     return res
 
 
-def rank(df: pd.DataFrame) -> pd.DataFrame:
+def rank(df: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
     """
-    Cross-sectional percentile rank across columns (axis=1, average ties).
+    Percentile rank across columns (axis=1 for multi-asset DataFrame cross-section, axis=0 for Series or single-asset DataFrame).
     Returns values in range (0.0, 1.0]. NaN values are strictly preserved.
     """
+    if isinstance(df, pd.Series):
+        return df.rank(axis=0, method="average", pct=True, na_option="keep")
+    if isinstance(df, pd.DataFrame) and df.shape[1] == 1:
+        return df.rank(axis=0, method="average", pct=True, na_option="keep")
     return df.rank(axis=1, method="average", pct=True, na_option="keep")
 
 
-def zscore(df: pd.DataFrame) -> pd.DataFrame:
+def zscore(df: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
     """
-    Cross-sectional z-score per row (axis=1, sample standard deviation ddof=1).
-    Rows with zero variance or all NaNs become NaN (never silent 0).
+    Z-score per observation (axis=1 for multi-asset DataFrame cross-section, axis=0 for Series or single-asset DataFrame, ddof=1).
+    Observations with zero variance or all NaNs become NaN (never silent 0).
     """
     df_f = _as_float(df)
+    if isinstance(df_f, pd.Series):
+        mean = df_f.mean(skipna=True)
+        std = df_f.std(ddof=1, skipna=True)
+        if std == 0 or np.isnan(std):
+            return pd.Series(np.nan, index=df_f.index, dtype=float, name=df_f.name)
+        res = (df_f - mean) / std
+        return res.replace([np.inf, -np.inf], np.nan)
+    if isinstance(df_f, pd.DataFrame) and df_f.shape[1] == 1:
+        mean = df_f.mean(axis=0, skipna=True)
+        std = df_f.std(axis=0, ddof=1, skipna=True)
+        res = df_f.sub(mean, axis=1).div(std.where(std > 0), axis=1)
+        return res.replace([np.inf, -np.inf], np.nan)
     mean = df_f.mean(axis=1, skipna=True)
     std = df_f.std(axis=1, ddof=1, skipna=True)
     res = df_f.sub(mean, axis=0).div(std.where(std > 0), axis=0)
     return res.replace([np.inf, -np.inf], np.nan)
 
 
-def scale(df: pd.DataFrame, a: float = 1.0) -> pd.DataFrame:
+def scale(df: pd.DataFrame | pd.Series, a: float = 1.0) -> pd.DataFrame | pd.Series:
     """
-    L1 normalization across row so sum of absolute values equals a.
-    Rows with sum == 0 or all NaN become NaN.
+    L1 normalization so sum of absolute values equals a.
+    Zero sum or all NaN become NaN.
     """
     df_f = _as_float(df)
+    if isinstance(df_f, pd.Series):
+        abs_sum = df_f.abs().sum(skipna=True)
+        if abs_sum == 0 or np.isnan(abs_sum):
+            return pd.Series(np.nan, index=df_f.index, dtype=float, name=df_f.name)
+        res = (df_f * a) / abs_sum
+        return res.replace([np.inf, -np.inf], np.nan)
+    if isinstance(df_f, pd.DataFrame) and df_f.shape[1] == 1:
+        abs_sum = df_f.abs().sum(axis=0, skipna=True)
+        abs_sum = abs_sum.where(abs_sum > 0)
+        return df_f.mul(a).div(abs_sum, axis=1)
     abs_sum = df_f.abs().sum(axis=1, skipna=True)
     abs_sum = abs_sum.where(abs_sum > 0)
     return df_f.mul(a).div(abs_sum, axis=0)
@@ -143,16 +202,20 @@ def signed_power(df: pd.DataFrame | pd.Series, p: float) -> pd.DataFrame | pd.Se
     return np.sign(arr) * np.power(np.abs(arr), p)
 
 
-def ts_rank(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_rank(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """
     Rolling time-series rank (percentile in [0, 1]) within an n-bar lookback window.
-    Warmup rows (first n-1 rows per column) return NaN.
+    Warmup rows (first n-1 rows) return NaN.
     Vectorized using numpy sliding_window_view for high throughput.
     """
     if n < 1:
         raise ValueError(f"ts_rank window must be >= 1, got {n}")
 
-    arr = df.to_numpy(dtype=np.float64)
+    is_series = isinstance(df, pd.Series)
+    s_name = df.name if is_series else None
+    input_df = df.to_frame() if is_series else df
+
+    arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
     if T < n:
         def _last_rank(sub: np.ndarray) -> float:
@@ -167,7 +230,8 @@ def ts_rank(df: pd.DataFrame, n: int) -> pd.DataFrame:
             less = (valid < last).sum()
             eq = (valid == last).sum()
             return float((less + 0.5 * (eq + 1)) / valid.size)
-        return df.rolling(window=n, min_periods=n).apply(_last_rank, raw=True)
+        res = input_df.rolling(window=n, min_periods=n).apply(_last_rank, raw=True)
+        return res.iloc[:, 0].rename(s_name) if is_series else res
 
     windows = sliding_window_view(arr, window_shape=n, axis=0)  # (T-n+1, C, n)
     last_vals = windows[:, :, -1]
@@ -187,77 +251,101 @@ def ts_rank(df: pd.DataFrame, n: int) -> pd.DataFrame:
 
     result = np.full((T, C), np.nan)
     result[n - 1 :] = pct
-    return pd.DataFrame(result, index=df.index, columns=df.columns)
+    res_df = pd.DataFrame(result, index=input_df.index, columns=input_df.columns)
+    return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
 
-def ts_corr(x: pd.DataFrame, y: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_corr(x: pd.DataFrame | pd.Series, y: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """
-    Rolling Pearson correlation per column with min_periods=n.
+    Rolling Pearson correlation with min_periods=n.
     Constant series in window return NaN (no silent zero).
     """
     if n < 2:
         raise ValueError(f"ts_corr window must be >= 2, got {n}")
-    x_f = _as_float(x)
-    y_f = _as_float(y)
+    if isinstance(x, pd.Series) and isinstance(y, pd.Series):
+        corr = x.astype(float).rolling(window=n, min_periods=n).corr(y.astype(float))
+        return corr.replace([np.inf, -np.inf], np.nan)
+
+    x_df = x.to_frame() if isinstance(x, pd.Series) else x
+    y_df = y.to_frame() if isinstance(y, pd.Series) else y
+    x_f = _as_float(x_df)
+    y_f = _as_float(y_df)
     cols = x_f.columns.union(y_f.columns)
     xa = x_f.reindex(columns=cols)
     ya = y_f.reindex(columns=cols)
     corr = xa.rolling(window=n, min_periods=n).corr(ya)
-    return corr.replace([np.inf, -np.inf], np.nan)
+    res = corr.replace([np.inf, -np.inf], np.nan)
+    if isinstance(x, pd.Series) and isinstance(y, pd.Series):
+        return res.iloc[:, 0]
+    return res
 
 
-def ts_cov(x: pd.DataFrame, y: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Rolling sample covariance per column with min_periods=n."""
+def ts_cov(x: pd.DataFrame | pd.Series, y: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
+    """Rolling sample covariance with min_periods=n."""
     if n < 2:
         raise ValueError(f"ts_cov window must be >= 2, got {n}")
-    x_f = _as_float(x)
-    y_f = _as_float(y)
+    if isinstance(x, pd.Series) and isinstance(y, pd.Series):
+        cov = x.astype(float).rolling(window=n, min_periods=n).cov(y.astype(float))
+        return cov.replace([np.inf, -np.inf], np.nan)
+
+    x_df = x.to_frame() if isinstance(x, pd.Series) else x
+    y_df = y.to_frame() if isinstance(y, pd.Series) else y
+    x_f = _as_float(x_df)
+    y_f = _as_float(y_df)
     cols = x_f.columns.union(y_f.columns)
     xa = x_f.reindex(columns=cols)
     ya = y_f.reindex(columns=cols)
     cov = xa.rolling(window=n, min_periods=n).cov(ya)
-    return cov.replace([np.inf, -np.inf], np.nan)
+    res = cov.replace([np.inf, -np.inf], np.nan)
+    if isinstance(x, pd.Series) and isinstance(y, pd.Series):
+        return res.iloc[:, 0]
+    return res
 
 
-def ts_mean(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_mean(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """Rolling arithmetic mean with strict warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_mean window must be >= 1, got {n}")
     return df.rolling(window=n, min_periods=n).mean()
 
 
-def ts_std(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_std(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """Rolling sample standard deviation (ddof=1) with warmup -> NaN."""
     if n < 2:
         raise ValueError(f"ts_std window must be >= 2, got {n}")
     return df.rolling(window=n, min_periods=n).std(ddof=1)
 
 
-def ts_max(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Rolling maximum per column with warmup -> NaN."""
+def ts_max(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
+    """Rolling maximum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_max window must be >= 1, got {n}")
     return df.rolling(window=n, min_periods=n).max()
 
 
-def ts_min(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Rolling minimum per column with warmup -> NaN."""
+def ts_min(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
+    """Rolling minimum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_min window must be >= 1, got {n}")
     return df.rolling(window=n, min_periods=n).min()
 
 
-def ts_argmax(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_argmax(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """
     Rolling argmax returning 0-based index into the n-bar window.
     Warmup -> NaN. Uses Bottleneck move_argmax if available, else numpy sliding window.
     """
     if n < 1:
         raise ValueError(f"ts_argmax window must be >= 1, got {n}")
+    is_series = isinstance(df, pd.Series)
+    s_name = df.name if is_series else None
+    input_df = df.to_frame() if is_series else df
+
     if HAS_BOTTLENECK and bn is not None:
-        arr = df.to_numpy(dtype=np.float64)
+        arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmax(arr, window=n, min_count=n, axis=0)
-        return pd.DataFrame(raw, index=df.index, columns=df.columns)
+        res_df = pd.DataFrame(raw, index=input_df.index, columns=input_df.columns)
+        return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
     def _argmax_last(sub: np.ndarray) -> float:
         if np.isnan(sub).all():
@@ -265,20 +353,26 @@ def ts_argmax(df: pd.DataFrame, n: int) -> pd.DataFrame:
         filled = np.where(np.isnan(sub), -np.inf, sub)
         return float(np.argmax(filled))
 
-    return df.rolling(window=n, min_periods=n).apply(_argmax_last, raw=True)
+    res_df = input_df.rolling(window=n, min_periods=n).apply(_argmax_last, raw=True)
+    return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
 
-def ts_argmin(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def ts_argmin(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """
     Rolling argmin returning 0-based index into the n-bar window.
     Warmup -> NaN. Uses Bottleneck move_argmin if available, else numpy sliding window.
     """
     if n < 1:
         raise ValueError(f"ts_argmin window must be >= 1, got {n}")
+    is_series = isinstance(df, pd.Series)
+    s_name = df.name if is_series else None
+    input_df = df.to_frame() if is_series else df
+
     if HAS_BOTTLENECK and bn is not None:
-        arr = df.to_numpy(dtype=np.float64)
+        arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmin(arr, window=n, min_count=n, axis=0)
-        return pd.DataFrame(raw, index=df.index, columns=df.columns)
+        res_df = pd.DataFrame(raw, index=input_df.index, columns=input_df.columns)
+        return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
     def _argmin_last(sub: np.ndarray) -> float:
         if np.isnan(sub).all():
@@ -286,10 +380,11 @@ def ts_argmin(df: pd.DataFrame, n: int) -> pd.DataFrame:
         filled = np.where(np.isnan(sub), np.inf, sub)
         return float(np.argmin(filled))
 
-    return df.rolling(window=n, min_periods=n).apply(_argmin_last, raw=True)
+    res_df = input_df.rolling(window=n, min_periods=n).apply(_argmin_last, raw=True)
+    return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
 
-def decay_linear(df: pd.DataFrame, n: int) -> pd.DataFrame:
+def decay_linear(df: pd.DataFrame | pd.Series, n: int) -> pd.DataFrame | pd.Series:
     """
     Linear decay-weighted moving average with weights n, n-1, ..., 1 normalized.
     Vectorized using sliding_window_view and tensor contraction einsum.
@@ -300,14 +395,19 @@ def decay_linear(df: pd.DataFrame, n: int) -> pd.DataFrame:
     weights = np.arange(1, n + 1, dtype=np.float64)
     weights /= weights.sum()
 
-    arr = df.to_numpy(dtype=np.float64)
+    is_series = isinstance(df, pd.Series)
+    s_name = df.name if is_series else None
+    input_df = df.to_frame() if is_series else df
+
+    arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
     if T < n:
         def _apply(sub: np.ndarray) -> float:
             if np.isnan(sub).any():
                 return np.nan
             return float(np.dot(sub, weights))
-        return df.rolling(window=n, min_periods=n).apply(_apply, raw=True)
+        res_df = input_df.rolling(window=n, min_periods=n).apply(_apply, raw=True)
+        return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
     windows = sliding_window_view(arr, window_shape=n, axis=0)  # (T-n+1, C, n)
     nan_mask = np.isnan(windows).any(axis=2)
@@ -316,10 +416,11 @@ def decay_linear(df: pd.DataFrame, n: int) -> pd.DataFrame:
 
     result = np.full((T, C), np.nan)
     result[n - 1 :] = np.where(nan_mask, np.nan, dot)
-    return pd.DataFrame(result, index=df.index, columns=df.columns)
+    res_df = pd.DataFrame(result, index=input_df.index, columns=input_df.columns)
+    return res_df.iloc[:, 0].rename(s_name) if is_series else res_df
 
 
-def observed_over(*inputs: tuple[pd.DataFrame, int]) -> pd.DataFrame:
+def observed_over(*inputs: tuple[pd.DataFrame | pd.Series, int]) -> pd.DataFrame | pd.Series:
     """
     Mask indicating cells where every input has complete historical observations
     over its declared lookback reach.

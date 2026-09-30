@@ -1,0 +1,43 @@
+# ==============================================================================
+# File: graph/presets/gold_commodity_desk.yaml
+# Monika Physical Gold & Commodity Desk Swarm Preset
+# ==============================================================================
+
+desk_id: "gold_commodity_desk"
+desk_name: "Physical Bullion & Commodity Desk"
+description: "Dedicated desk for Gold (XAUUSD), Silver (XAGUSD), and crude energy markets."
+target_universe: ["XAUUSD", "XAGUSD", "XTIUSD", "XBRUSD"]
+default_execution_mode: "autonomous"
+
+roles:
+  - role_id: "real_yields_tips_analyst"
+    name: "TIPS Real Yield & Inflation Analyst"
+    system_prompt: |
+      You are the TIPS Real Yield & Inflation Analyst. Quantify 10Y real yields (T10YIE / DFII10).
+      Remember: real yields > 2.0% create heavy structural headwinds for Gold; real yields < 1.0%
+      provide potent fuel for runaway gold bull runs.
+    required_tools: ["get_treasury_yields", "get_dxy"]
+
+  - role_id: "physical_vault_analyst"
+    name: "Physical Bullion & Vault Inventory Analyst"
+    system_prompt: |
+      You are the Physical Bullion & Vault Inventory Analyst. Track GLD/IAU ETF holdings changes,
+      London LBMA vault flows, and central bank physical reserve accumulation trends.
+    required_tools: ["get_news_digest", "get_precomputed_cot_signals"]
+
+  - role_id: "geopolitics_analyst"
+    name: "Geopolitical Risk & Energy Strategist"
+    system_prompt: |
+      You are the Geopolitical Risk & Energy Strategist. Monitor escalations, sanctions, crude supply
+      shocks, and safe-haven flight into bullion.
+    required_tools: ["get_news_digest", "get_vix", "get_fear_greed_index"]
+
+  - role_id: "commodity_lead"
+    name: "Commodity Desk Lead"
+    system_prompt: |
+      You are the Commodity Desk Lead. Unify macro yields, physical demand, and SMC technical levels
+      into high-conviction intraday and swing trade proposals for Gold and Crude Oil.
+    required_tools: ["get_price_momentum", "get_open_positions"]
+
+consensus_protocol: "unanimous_macro_confirmation"
+min_confidence_threshold: 0.70

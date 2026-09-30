@@ -179,8 +179,8 @@ class ChatAgent:
         # Tier 4 (Deep Research): untuk ad-hoc deep research dan market intelligence
         self._client_research = get_client_for_task("deep_research", settings)
 
-        # Client for quick intent tier routing
-        self._client_intent = self._client_lite
+        # Client for quick intent tier routing (Jev System One sub-100ms)
+        self._client_intent = get_client_for_task("jev_telegram_intent", settings)
 
         # Backward compatibility aliases
         self._gemini_lite = self._client_lite
@@ -257,6 +257,26 @@ class ChatAgent:
             return res
 
         executor.execute = _wrapped_exec
+
+    async def _ensure_mcp_tools_synced(self):
+        """Ensure active MCP servers are initialized and bridged tools are added to _tool_router."""
+        if getattr(self, "_mcp_synced", False):
+            return
+        try:
+            from analysis.mcp.client import McpClientManager
+            from analysis.tools.unified_registry import unified_tool_registry
+            mgr = McpClientManager.get_instance(self.settings)
+            await mgr.initialize_servers()
+            mcp_tool_defs = []
+            for name, entry in unified_tool_registry._tools.items():
+                if name.startswith("mcp_"):
+                    mcp_tool_defs.append(entry.get_anthropic_schema())
+            if mcp_tool_defs:
+                self._tool_router.update_tools(mcp_tool_defs)
+            self._mcp_synced = True
+            logger.info(f"[ChatAgent] Synchronized {len(mcp_tool_defs)} MCP tools into ChatToolRouter.")
+        except Exception as e:
+            logger.warning(f"[ChatAgent] MCP tools sync non-fatal error: {e}")
 
     def is_symbol_session_approved(self, symbol: str) -> bool:
         """Periksa apakah simbol memiliki izin approval aktif pada level sesi."""
@@ -821,6 +841,9 @@ class ChatAgent:
         self._last_turn_streamed = False
         import re
         from analysis.tools.tool_executor import ToolExecutor
+
+        # Synchronize active MCP tools into ChatToolRouter
+        await self._ensure_mcp_tools_synced()
         
         # Tentukan model
         preference = self._detect_model_preference(user_message)
@@ -1459,7 +1482,7 @@ class ChatAgent:
                 )
 
             if result.executed:
-                return (
+                msg = (
                     f"✅ Order placed!\n"
                     f"Symbol: {result.symbol}\n"
                     f"Direction: {result.decision.upper()}\n"
@@ -1467,6 +1490,26 @@ class ChatAgent:
                     f"Price: {result.executed_price}\n"
                     f"Ticket: {result.mt5_ticket}"
                 )
+                try:
+                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    j_res = record_trade_to_workspace(self.settings, {
+                        "symbol": result.symbol,
+                        "action": result.decision.upper(),
+                        "volume": result.executed_lots,
+                        "price": result.executed_price,
+                        "ticket": result.mt5_ticket,
+                        "stop_loss": params.get("stop_loss"),
+                        "take_profit": params.get("take_profit"),
+                        "thesis": params.get("rationale", "Executed via Telegram confirmation"),
+                        "status": "OPEN",
+                    })
+                    if j_res.get("obsidian_path"):
+                        msg += f"\n📝 Obsidian: `{j_res['obsidian_path']}`"
+                    if j_res.get("excel_path"):
+                        msg += f"\n📊 Spreadsheet: `{j_res['excel_path']}`"
+                except Exception as je:
+                    logger.debug(f"[WorkspaceJournal] auto-journal failed: {je}")
+                return msg
             else:
                 reasons = "; ".join(result.risk_rejection_reasons) or result.mt5_error or "Unknown"
                 return f"❌ Order blocked: {reasons}"
@@ -1483,7 +1526,25 @@ class ChatAgent:
                 ticket, requested_by="telegram_user", reason=params.get("reason", "")
             )
             if result.get("success"):
-                return f"[OK] Position #{ticket} closed. Profit: {result.get('profit', 'N/A')}"
+                msg = f"[OK] Position #{ticket} closed. Profit: {result.get('profit', 'N/A')}"
+                try:
+                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    j_res = record_trade_to_workspace(self.settings, {
+                        "symbol": params.get("symbol", "POSITION"),
+                        "action": "CLOSE",
+                        "ticket": ticket,
+                        "exit_price": result.get("price"),
+                        "profit": result.get("profit"),
+                        "status": "CLOSED",
+                        "thesis": params.get("reason", "Manual close via Telegram"),
+                    })
+                    if j_res.get("obsidian_path"):
+                        msg += f"\n📝 Obsidian: `{j_res['obsidian_path']}`"
+                    if j_res.get("excel_path"):
+                        msg += f"\n📊 Spreadsheet: `{j_res['excel_path']}`"
+                except Exception as je:
+                    logger.debug(f"[WorkspaceJournal] auto-journal failed: {je}")
+                return msg
             return f"[ERROR] Close failed: {result.get('error')}"
 
         elif action.action_type == "close_paper_trade":
@@ -1529,7 +1590,23 @@ class ChatAgent:
                 tracker = PaperTracker(self.settings)
                 await tracker._close_linked_position(session, trade)
                 await session.commit()
-                return f"[OK] Paper trade #{trade.id} ({trade.symbol}) closed manually @ {exit_p:.5f}. Realized PnL: {pnl_pct:+.2f}%"
+                msg = f"[OK] Paper trade #{trade.id} ({trade.symbol}) closed manually @ {exit_p:.5f}. Realized PnL: {pnl_pct:+.2f}%"
+                try:
+                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    record_trade_to_workspace(self.settings, {
+                        "symbol": trade.symbol,
+                        "action": f"CLOSE_{trade.direction.upper()}",
+                        "ticket": f"PAPER-{trade.id}",
+                        "volume": getattr(trade, 'lots', 0.01),
+                        "entry_price": trade.entry_price,
+                        "price": exit_p,
+                        "pnl_pct": pnl_pct,
+                        "status": "CLOSED",
+                        "thesis": f"Paper trade closed manually. Realized PnL: {pnl_pct:+.2f}%",
+                    })
+                except Exception as je:
+                    logger.debug(f"[WorkspaceJournal] paper auto-journal failed: {je}")
+                return msg
 
         elif action.action_type == "modify_paper_sl_tp":
             from database.models import PaperTradeRecord
@@ -1845,6 +1922,12 @@ class ChatAgent:
             "- When asked about past trade rationale/decisions, you MUST call get_asset_analysis or get_fundamental_brief to fetch the ORIGINAL recorded rationale before answering. Never reconstruct from generic memory.",
             "- When asked about PnL, paper trading performance, trade history, active triggers, open positions, account balance, win rate, or statistical edge, you MUST call the appropriate tool (get_paper_trading_performance, get_trade_history, get_open_positions, get_account_info, get_active_triggers, get_edge_tracker_status) before answering. Never guess numbers or claim that tools are unavailable.",
             "- If a tool returns an error or empty data, state transparently to the user that data is unavailable. Never guess numbers.",
+            "",
+            "## Workspace & Second-Brain Integration (Obsidian, Excel, Notion)",
+            "- You have direct MCP tool access to user files, notes, and spreadsheets across local drives.",
+            "- To inspect or read Obsidian notes, markdown documents, or trading plans: use 'mcp_filesystem_workspace_fs_read_file' or search notes via 'mcp_filesystem_workspace_fs_search_files'.",
+            "- To create or update notes and trading journals in Obsidian: use 'mcp_filesystem_workspace_fs_write_file'. Format entries with YAML frontmatter compatible with Obsidian Dataview.",
+            "- To inspect, read, or append to Excel (.xlsx) and CSV spreadsheets: use 'mcp_excel_tabular_excel_read_sheet', 'mcp_excel_tabular_excel_append_row', 'mcp_excel_tabular_excel_list_sheets'.",
             "",
             "Language Reminder: Reason internally in English, present final response to operator in Bahasa Indonesia.",
         ]

@@ -203,5 +203,23 @@ class TestPositionSizing:
         # 1% of 50000 = $500 risk
         assert res.risk_amount_usd == 500.0
 
+    def test_calculate_by_atr_epsilon_floor(self, settings):
+        sizer = PositionSizer(settings)
+        # Test with zero ATR -> should not raise ZeroDivisionError
+        lot_zero_atr = sizer.calculate_by_atr(
+            symbol="EURUSD",
+            account_equity=10000.0,
+            avg_atr=0.0,
+        )
+        assert lot_zero_atr >= 0.01
+
+        # Test with extremely flat ATR (e.g. 1e-9)
+        lot_flat_atr = sizer.calculate_by_atr(
+            symbol="EURUSD",
+            account_equity=10000.0,
+            avg_atr=1e-9,
+        )
+        assert lot_flat_atr >= 0.01
+
 
 

@@ -52,9 +52,10 @@ async def test_aggressive_risk_llm_empty_response_fallback(mock_client):
     
     result = await analyze_risk_aggressive_llm(mock_client, "GBPUSD", {})
     assert isinstance(result, dict)
-    assert result["veto_trade"] is False
-    assert result["recommended_multiplier"] == 1.0
-    assert result["risk_profile_assessment"] == "Fallback error"
+    assert result["veto_trade"] is True
+    assert result["recommended_multiplier"] == 0.0
+    assert result["parse_error"] is True
+    assert "Fail-closed" in result["reasoning"]
 
 
 @pytest.mark.asyncio
@@ -63,9 +64,10 @@ async def test_aggressive_risk_llm_invalid_format_fallback(mock_client):
     
     result = await analyze_risk_aggressive_llm(mock_client, "GBPUSD", {})
     assert isinstance(result, dict)
-    assert result["veto_trade"] is False
-    assert result["recommended_multiplier"] == 1.0
-    assert result["risk_profile_assessment"] == "Fallback error"
+    assert result["veto_trade"] is True
+    assert result["recommended_multiplier"] == 0.0
+    assert result["parse_error"] is True
+    assert "Fail-closed" in result["reasoning"]
 
 
 @pytest.mark.asyncio
@@ -89,9 +91,10 @@ async def test_conservative_risk_llm_fallback_on_exception(mock_client):
     
     result = await analyze_risk_conservative_llm(mock_client, "XAUUSD", {})
     assert isinstance(result, dict)
-    assert result["veto_trade"] is False
-    assert result["recommended_multiplier"] == 0.5
-    assert result["risk_profile_assessment"] == "Fallback error"
+    assert result["veto_trade"] is True
+    assert result["recommended_multiplier"] == 0.0
+    assert result["parse_error"] is True
+    assert "Fail-closed" in result["reasoning"]
 
 
 @pytest.mark.asyncio
@@ -115,9 +118,10 @@ async def test_neutral_risk_llm_empty_fallback(mock_client):
     
     result = await analyze_risk_neutral_llm(mock_client, "USDJPY", {})
     assert isinstance(result, dict)
-    assert result["veto_trade"] is False
-    assert result["recommended_multiplier"] == 1.0
-    assert result["risk_profile_assessment"] == "Fallback error"
+    assert result["veto_trade"] is True
+    assert result["recommended_multiplier"] == 0.0
+    assert result["parse_error"] is True
+    assert "Fail-closed" in result["reasoning"]
 
 
 @pytest.mark.asyncio

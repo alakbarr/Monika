@@ -73,6 +73,8 @@ class InvariantRegistry:
         check_fn: Callable[[Dict[str, Any]], InvariantResult],
     ) -> None:
         """Register an invariant evaluation callable."""
+        if name in self._invariants:
+            logger.warning(f"Invariant '{name}' already registered, overwriting")
         self._invariants[name] = check_fn
         logger.debug(f"[InvariantRegistry] Registered invariant: '{name}'")
 

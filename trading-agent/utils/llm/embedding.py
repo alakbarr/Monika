@@ -1,6 +1,6 @@
 """
 Gemini Embedding Generation Service.
-Generates dense vector embeddings using Google Gemini Embedding API (text-embedding-004 / Gemini Embedding 2).
+Generates dense vector embeddings using Google Gemini Embedding API (Gemini Embedding 2: gemini-embedding-2).
 """
 import logging
 import os
@@ -10,16 +10,22 @@ from utils.api.http_retry import fetch_with_retry
 logger = logging.getLogger("TradingAgent.Embedding")
 
 GEMINI_EMBEDDING_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2"
+LEGACY_MODEL_MIGRATIONS = {
+    "text-embedding-004": "gemini-embedding-2",
+    "gemini-embedding-2-preview": "gemini-embedding-2",
+}
 
 async def generate_gemini_embedding(
     text: str,
-    model: str = "text-embedding-004",
+    model: str = DEFAULT_EMBEDDING_MODEL,
     settings: Optional[dict] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    output_dimensionality: Optional[int] = 768,
 ) -> Optional[List[float]]:
     """
-    Generate dense vector embedding using Gemini Embedding API.
-    Returns list of floats (typically 768 dimensions for text-embedding-004), or None if unavailable.
+    Generate dense vector embedding using Gemini Embedding API (Gemini Embedding 2).
+    Returns list of floats (typically 768 dimensions with output_dimensionality=768), or None if unavailable.
     """
     if not text or not text.strip():
         return None
@@ -40,8 +46,17 @@ async def generate_gemini_embedding(
         logger.debug("[Embedding] No Gemini API key available for embedding.")
         return None
 
-    # Strip model prefix if passed like models/text-embedding-004
-    clean_model = model.split("/")[-1]
+    target_model = model or (settings and settings.get("embedding_model")) or os.getenv("GEMINI_EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
+
+    # Strip model prefix if passed like models/gemini-embedding-001
+    clean_model = target_model.split("/")[-1]
+
+    # Auto-migrate deprecated/retired models (e.g. text-embedding-004 -> gemini-embedding-001)
+    if clean_model in LEGACY_MODEL_MIGRATIONS:
+        migrated_model = LEGACY_MODEL_MIGRATIONS[clean_model]
+        logger.debug(f"[Embedding] Migrating deprecated model '{clean_model}' to '{migrated_model}'")
+        clean_model = migrated_model
+
     url = f"{GEMINI_EMBEDDING_BASE_URL}/{clean_model}:embedContent?key={resolved_key}"
 
     # Truncate text to reasonable length (e.g. 8000 chars)
@@ -50,6 +65,9 @@ async def generate_gemini_embedding(
             "parts": [{"text": text[:8000].strip()}]
         }
     }
+    effective_dim = output_dimensionality if output_dimensionality is not None else (settings and settings.get("embedding_dimensions"))
+    if effective_dim is not None:
+        payload["outputDimensionality"] = int(effective_dim)
 
     try:
         data = await fetch_with_retry(

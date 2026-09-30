@@ -566,10 +566,38 @@ class AssetAnalysis(Base):
             pass
         return None
 
+    @entry_price.setter
+    def entry_price(self, value: Optional[float]) -> None:
+        """Set harga entry ke dalam field entry_zone JSON secara aman."""
+        import json
+        ez = {}
+        if self.entry_zone:
+            if isinstance(self.entry_zone, dict):
+                ez = dict(self.entry_zone)
+            else:
+                try:
+                    loaded = json.loads(self.entry_zone)
+                    if isinstance(loaded, dict):
+                        ez = loaded
+                except Exception:
+                    ez = {}
+        if value is None:
+            ez.pop("price", None)
+        else:
+            try:
+                ez["price"] = float(value)
+            except (ValueError, TypeError):
+                pass
+        self.entry_zone = json.dumps(ez)
+
     @property
     def invalidation_condition(self) -> Optional[str]:
         """Alias property untuk invalidation text."""
         return self.invalidation
+
+    @invalidation_condition.setter
+    def invalidation_condition(self, value: Optional[str]) -> None:
+        self.invalidation = value
 
     __table_args__ = (
         Index('idx_analysis_sym_date', 'symbol', 'generated_at'),
@@ -878,6 +906,14 @@ class Position(Base):
 
     # Relationship
     order = relationship("Order", backref="positions", lazy="noload")
+
+    @property
+    def lots(self) -> float:
+        return self.volume
+
+    @lots.setter
+    def lots(self, val: float):
+        self.volume = float(val)
 
     # Transient runtime attributes (set dynamically by MT5 client / execution service)
     _mt5_close_reason: Optional[int] = None

@@ -18,7 +18,7 @@ import json
 import logging
 import secrets
 import time
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional, Callable, Awaitable
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -129,8 +129,49 @@ async def _generate_stream_chunks(
     yield "data: [DONE]\n\n"
 
 
+_agent_runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]] = None
+_agent_instance: Optional[Any] = None
+
+
+def set_agent_runner(runner: Optional[Callable[[str, str, Dict[str, Any]], Awaitable[str]]]) -> None:
+    """Inject a custom agent execution pipeline or mock runner."""
+    global _agent_runner
+    _agent_runner = runner
+
+
+def get_default_chat_agent():
+    """Lazily load and cache the default ChatAgent instance."""
+    global _agent_instance
+    if _agent_instance is None:
+        from config.settings import load_settings
+        from telegram_bot.chat_agent import ChatAgent
+        settings = load_settings()
+        _agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
+    return _agent_instance
+
+
+async def execute_query(session_id: str, user_text: str, metadata: Dict[str, Any]) -> str:
+    """Dispatches query to registered runner or ChatAgent, with graceful fallback."""
+    if _agent_runner is not None:
+        return await _agent_runner(session_id, user_text, metadata)
+
+    try:
+        agent = get_default_chat_agent()
+        reply, pending = await agent.handle(user_message=user_text, session_id=session_id)
+        if pending:
+            action_desc = getattr(pending, "description", None) or f"{getattr(pending, 'direction', '')} {getattr(pending, 'symbol', '')}"
+            reply += f"\n\n[Action Proposed]: {action_desc}"
+        return reply
+    except Exception as e:
+        logger.warning(f"[ApiServer] Fallback to system status response (ChatAgent error: {e})")
+        return (
+            f"Monika Trading Intelligence: Processed query '{user_text[:60]}'. "
+            f"Two-Plane Fortress invariants active. All quantitative parameters nominal."
+        )
+
+
 @app.post("/v1/chat/completions")
-async def chat_completions(req: ChatCompletionRequest):
+async def chat_completions(req: ChatCompletionRequest, request: Request):
     """
     OpenAI-compatible Chat Completions endpoint.
     Supports both standard JSON and Server-Sent Events (SSE) streaming.
@@ -147,14 +188,33 @@ async def chat_completions(req: ChatCompletionRequest):
             last_user_msg = str(m.content)
             break
 
-    # Synthesize intelligent assistant response based on message
-    response_text = (
-        f"Monika Trading Intelligence: Processed query '{last_user_msg[:60]}'. "
-        "Two-Plane Fortress invariants active. All quantitative parameters nominal."
-    )
+    if not last_user_msg.strip():
+        raise HTTPException(status_code=400, detail="No user message found in messages array.")
+
+    session_id = request.headers.get("X-Session-ID") or "api_client"
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    metadata = {
+        "model": req.model,
+        "temperature": req.temperature,
+        "max_tokens": req.max_tokens,
+        "ip": client_ip,
+    }
+
+    # Map model parameter preference to ChatAgent tier prefix if specified
+    clean_user_msg = last_user_msg
+    model_lower = (req.model or "").lower()
+    if not clean_user_msg.startswith("/"):
+        if any(k in model_lower for k in ["haiku", "flash", "lite"]):
+            clean_user_msg = f"/fast {clean_user_msg}"
+        elif any(k in model_lower for k in ["claude", "sonnet", "opus"]):
+            clean_user_msg = f"/analyze {clean_user_msg}"
+        elif any(k in model_lower for k in ["deepseek", "qwen"]):
+            clean_user_msg = f"/medium {clean_user_msg}"
+
+    response_text = await execute_query(session_id, clean_user_msg, metadata)
 
     if req.stream:
-        # Split into small chunks for simulated streaming
+        # Split into words for streaming output chunks
         words = response_text.split(" ")
         chunks = [w + " " for w in words]
         return StreamingResponse(

@@ -17,12 +17,49 @@ APPLY THESE RULES:
 Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered), 'recommended_multiplier', 'veto_trade'."""
     user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
     try:
-        resp = await client.generate_content(system_prompt=sys_prompt, user_message=user_msg, temperature=0.1, response_schema=RISK_SCHEMA)
+        from utils.typesafe.jev_primitives import build_risk_gate_aggressive_questions
+        direction = strict_context.get("direction") or strict_context.get("decision", "buy")
+        jev_q = build_risk_gate_aggressive_questions(symbol, direction=direction)
+
+        resp = await client.generate_content(
+            system_prompt=sys_prompt,
+            user_message=user_msg,
+            temperature=0.1,
+            response_schema=RISK_SCHEMA,
+            jev_questions=jev_q
+        )
         if not resp:
             raise ValueError("Empty response from LLM")
         data = extract_and_parse_json(resp) if isinstance(resp, str) else (resp if isinstance(resp, dict) else None)
         if not isinstance(data, dict):
             raise ValueError(f"Invalid JSON response format: {resp}")
+
+        # If evaluated via Jev System One, map typed fields to expected schema
+        if "reward_asymmetry" in data or "_jev_model" in data or "recommended_multiplier_bucket" in data:
+            veto = bool(data.get("veto_trade", False))
+            bucket = str(data.get("recommended_multiplier_bucket", "STANDARD")).upper()
+            asym = data.get("reward_asymmetry", 2)
+
+            if veto:
+                mult = 0.0
+            elif bucket == "MAXIMUM":
+                mult = 2.0
+            elif bucket == "AGGRESSIVE":
+                mult = 1.5
+            elif bucket == "STANDARD":
+                mult = 1.0
+            elif bucket == "REDUCED":
+                mult = 0.75
+            else:
+                mult = 1.0
+
+            data["veto_trade"] = veto
+            data["recommended_multiplier"] = mult
+            if not data.get("risk_profile_assessment") or data.get("risk_profile_assessment") in ("YES", "NO"):
+                data["risk_profile_assessment"] = (
+                    f"Jev Aggressive Evaluation: veto={veto}, asymmetry={asym}, mult={mult}"
+                )
+
         if 'veto_trade' not in data:
             data['veto_trade'] = False
         mult = data.get('recommended_multiplier')
@@ -30,11 +67,12 @@ Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered)
             logger.warning(f"[RiskDebate][Aggressive][{symbol}] LLM recommended_multiplier={mult} di luar rentang aritmetika terdokumentasi [0.75, 2.0]. Diteruskan (akan di-clamp), tapi mengindikasikan model salah menghitung formula preskriptif.")
         return data
     except Exception as e:
-        logger.error(f'Aggressive risk parse error: {e}')
+        logger.error(f"Risk LLM failed: {e}")
         return {
-            'risk_profile_assessment': 'Fallback error',
-            'recommended_multiplier': 1.0,
-            'veto_trade': False,
-            'parse_error': True,
+            "veto_trade": True,
+            "recommended_multiplier": 0.0,
+            "reasoning": f"Fail-closed: {e}",
+            "risk_profile_assessment": f"Fail-closed: {e}",
+            "parse_error": True,
         }
 

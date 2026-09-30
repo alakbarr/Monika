@@ -137,3 +137,17 @@ class TestBaseScraper:
         cmd = mock_subproc.call_args[0][0]
         assert cmd == ["taskkill", "/F", "/T", "/PID", "8888"]
 
+    @patch("scrapers.base_scraper.kill_process_tree")
+    @patch("psutil.process_iter")
+    def test_cleanup_stale_profile_processes(self, mock_proc_iter, mock_kill, tmp_path):
+        fake_proc = MagicMock()
+        fake_proc.pid = 7777
+        fake_proc.info = {
+            "name": "chrome.exe",
+            "cmdline": ["chrome.exe", f"--user-data-dir={tmp_path}"]
+        }
+        mock_proc_iter.return_value = [fake_proc]
+
+        BaseScraper._cleanup_stale_profile_locks(tmp_path)
+        mock_kill.assert_called_once_with(7777)
+

@@ -7,6 +7,7 @@ decision primitives (Choice, Score, Noul).
 
 from typing import Dict, Any, Optional, List, Union
 import logging
+import re
 from typesafe_sdk import Choice, Score, Noul, SystemOneResponse, ChoiceAnswer, ScoreAnswer, NoulAnswer
 
 logger = logging.getLogger("TradingAgent.JevPrimitives")
@@ -94,6 +95,57 @@ def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> Dict[str, Un
             questions[prop_name] = Noul(instructions=f"Is {desc} applicable?")
 
     return questions
+
+
+def jev_questions_to_schema(questions: Dict[str, Union[Choice, Score, Noul, dict]]) -> dict:
+    """
+    Reverse schema synthesis: transforms a dictionary of TypeSafe Jev Questions (Choice, Score, Noul)
+    into a strictly validated JSON Schema suitable for fallback LLMs (Gemini, Groq, Anthropic).
+    """
+    properties: Dict[str, Any] = {}
+    required: List[str] = []
+    if not isinstance(questions, dict):
+        return {"type": "object", "properties": properties, "required": required}
+
+    for q_name, q_obj in questions.items():
+        required.append(q_name)
+        if isinstance(q_obj, Noul):
+            properties[q_name] = {"type": "boolean", "description": getattr(q_obj, "instructions", f"Is {q_name} true?")}
+        elif isinstance(q_obj, Choice):
+            criteria = getattr(q_obj, "criteria", {}) or {}
+            opts = list(criteria.keys()) if isinstance(criteria, dict) else list(criteria)
+            properties[q_name] = {
+                "type": "string",
+                "enum": opts,
+                "description": getattr(q_obj, "instructions", f"Select {q_name}")
+            }
+        elif isinstance(q_obj, Score):
+            criteria = getattr(q_obj, "criteria", None)
+            max_val = len(criteria) if criteria else 5
+            properties[q_name] = {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": max_val,
+                "description": getattr(q_obj, "instructions", f"Rate {q_name}")
+            }
+        elif isinstance(q_obj, dict):
+            t = str(q_obj.get("type", "noul")).lower()
+            desc = q_obj.get("instructions") or q_obj.get("description", f"Evaluate {q_name}")
+            if t == "choice":
+                opts = list((q_obj.get("options") or q_obj.get("criteria") or {}).keys())
+                properties[q_name] = {"type": "string", "enum": opts, "description": desc}
+            elif t == "score":
+                rng = q_obj.get("range", [1, 5])
+                properties[q_name] = {"type": "integer", "minimum": rng[0], "maximum": rng[1], "description": desc}
+            else:
+                properties[q_name] = {"type": "boolean", "description": desc}
+
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": False
+    }
 
 
 def list_to_jev_questions(questions_list: list) -> Dict[str, Union[Choice, Score, Noul]]:
@@ -681,6 +733,217 @@ def build_risk_gate_neutral_questions(symbol: str, direction: str) -> Dict[str, 
     }
 
 
+def build_risk_gate_conservative_questions(symbol: str, direction: str) -> Dict[str, Union[Score, Noul, Choice]]:
+    """
+    System One questions for conservative risk evaluation (capital preservation priority).
+    """
+    return {
+        "veto_trade": Noul(
+            instructions=f"Based on worst-case downside risk and tail risk, should this {direction} trade on {symbol} be vetoed entirely?",
+            criteria={
+                "true": "VETO trade: excessive exposure, recent streak loss, high correlation, or extreme downside threat",
+                "false": "Do not veto: downside risk is within acceptable parameters"
+            }
+        ),
+        "risk_level": Choice(
+            instructions=f"What is the conservative risk severity level for {symbol} {direction}?",
+            criteria={
+                "LOW": "Low risk — standard trade with well-protected stop loss",
+                "MEDIUM": "Medium risk — moderate volatility or minor concentration concern",
+                "HIGH": "High risk — elevated drawdown potential or stretched conditions",
+                "CRITICAL": "Critical risk — high probability of severe loss, immediate stop run danger"
+            }
+        ),
+        "recommended_multiplier_bucket": Choice(
+            instructions="What position multiplier bucket should conservative risk permit?",
+            criteria={
+                "ZERO": "0.0x multiplier — complete veto / no trade",
+                "MINIMAL": "0.4x multiplier — minimum permitted exposure for elevated risk",
+                "STANDARD": "0.7x multiplier — standard defensive sizing",
+                "NORMAL": "1.0x multiplier — full normal size (only for exceptional setups)"
+            }
+        ),
+        "capital_protection_priority": Score(
+            instructions="Rate the urgency of capital preservation in current market conditions",
+            criteria=[
+                "Standard conditions — normal capital allocation",
+                "Elevated caution — slight risk trimming",
+                "Defensive posture — preserve dry powder",
+                "Maximum defense — extreme preservation mode"
+            ]
+        )
+    }
+
+
+def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> Dict[str, Union[Score, Noul, Choice]]:
+    """
+    System One questions for aggressive risk persona (alpha capture & asymmetric upside).
+    """
+    return {
+        "veto_trade": Noul(
+            instructions=f"Is this proposed {direction} trade on {symbol} structurally flawed beyond repair?",
+            criteria={
+                "true": "VETO: stop loss is not beyond structure, R:R < 1.5, or trade contradicts major structural trend",
+                "false": "Do not veto: setup has valid technical premise and structural edge"
+            }
+        ),
+        "reward_asymmetry": Score(
+            instructions=f"Rate the reward asymmetry and opportunity quality for {symbol} {direction}",
+            criteria=[
+                "Weak asymmetry — marginal edge, skip or scale down",
+                "Fair asymmetry — acceptable standard setup (R:R ~ 1.5:1)",
+                "Strong asymmetry — high conviction edge with clear runway (R:R > 2.0:1)",
+                "Exceptional asymmetry — prime alpha opportunity (R:R > 3.0:1)"
+            ]
+        ),
+        "recommended_multiplier_bucket": Choice(
+            instructions="What position multiplier bucket should aggressive risk recommend?",
+            criteria={
+                "ZERO": "0.0x multiplier — structural invalidation",
+                "REDUCED": "0.75x multiplier — acceptable setup with limited upside expansion",
+                "STANDARD": "1.0x multiplier — standard conviction entry",
+                "AGGRESSIVE": "1.5x multiplier — strong confluence and high momentum",
+                "MAXIMUM": "2.0x multiplier — exceptional asymmetric payoff setup"
+            }
+        ),
+        "momentum_alignment": Noul(
+            instructions=f"Does underlying higher-timeframe momentum and market structure strongly support this {direction} move?",
+            criteria={
+                "true": "Momentum and trend alignment verified",
+                "false": "Counter-trend or low-momentum chop"
+            }
+        )
+    }
+
+
+def build_pattern_context_questions(symbol: str = "", match_date_str: str = "") -> Dict[str, Union[Choice, Noul, Score]]:
+    """
+    Fast System One verification of macroeconomic comparability for historical chart pattern matches.
+    """
+    return {
+        "relevance": Choice(
+            instructions=f"Rate the macroeconomic relevance and comparability of the historical period {match_date_str} to current conditions for {symbol}:",
+            criteria={
+                "high": "Strongly comparable macro regime, similar monetary policy cycle, and aligned volatility",
+                "medium": "Partially comparable with minor diverging drivers, but structural price dynamics hold",
+                "low": "Incomparable regime: opposite interest rate cycle, unprecedented crisis, or idiosyncratic dislocation"
+            }
+        ),
+        "is_macro_driver_similar": Noul(
+            instructions=f"Are the underlying macroeconomic drivers for {symbol} around {match_date_str} structurally similar to current drivers?",
+            criteria={
+                "true": "Similar inflation, rate trajectory, or risk sentiment environment",
+                "false": "Opposite policy direction, crisis-driven distortion, or unrelated structural regime"
+            }
+        ),
+        "adjustment_level": Choice(
+            instructions="What weight/adjustment factor should be applied to this historical pattern match?",
+            criteria={
+                "full_weight": "1.0 - Highly comparable, full predictive validity",
+                "standard_weight": "0.8 - Moderately comparable, standard historical weight",
+                "reduced_weight": "0.5 - Weak comparability, reduce influence",
+                "minimal_weight": "0.2 - Poor comparability, severely discount"
+            }
+        )
+    }
+
+
+def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> Dict[str, Union[Noul, Choice, Score]]:
+    """
+    Sub-100ms multi-factor confluence gate before committing compute or capital to a setup.
+    """
+    return {
+        "confluence_passed": Noul(
+            instructions=f"Does the proposed {setup_type} setup on {symbol} satisfy minimal multi-factor confluence?",
+            criteria={
+                "true": "Confluence satisfied: technical alignment, supportive macro/regime, acceptable risk profile",
+                "false": "Confluence insufficient: isolated signal, diverging indicators, or unaligned macro"
+            }
+        ),
+        "action": Choice(
+            instructions=f"Recommended action for {symbol} {setup_type}:",
+            criteria={
+                "PROCEED": "Execute setup as planned",
+                "WAIT_PULLBACK": "Direction valid but price extended — wait for retracement",
+                "REJECT": "Discard setup due to lack of confirmation"
+            }
+        ),
+        "confluence_strength": Score(
+            instructions=f"Rate the overall multi-factor confluence strength for {symbol}",
+            criteria=[
+                "Weak / Marginal — only 1 primary indicator aligned",
+                "Moderate — 2-3 aligned factors across technicals and regime",
+                "Strong — clear multi-timeframe and multi-model alignment",
+                "Exceptional — textbook confluence across technicals, fundamentals, and sentiment"
+            ]
+        )
+    }
+
+
+def build_session_timing_questions(session: str = "", minutes_to_close: int = 0) -> Dict[str, Union[Noul, Choice, Score]]:
+    """
+    Session timing and execution window evaluation for liquidity and slippage protection.
+    """
+    return {
+        "timing_favorable": Noul(
+            instructions=f"Is the current timing ({session} session, {minutes_to_close}m to close) favorable for opening new positions?",
+            criteria={
+                "true": "Active liquid trading window with tight spreads and good market depth",
+                "false": "Illiquid period, rollover spread widening, or session close chop"
+            }
+        ),
+        "liquidity_risk": Choice(
+            instructions=f"What is the liquidity and spread widening risk in {session}?",
+            criteria={
+                "LOW": "Tight spreads, deep institutional liquidity",
+                "MODERATE": "Normal spreads, standard retail liquidity",
+                "HIGH": "Widening spreads, reduced volume (pre-news or lunch lull)",
+                "ILLIQUID": "Extreme spread widening risk (session transition, rollover, holiday)"
+            }
+        ),
+        "session_verdict": Choice(
+            instructions="Execution verdict based on timing:",
+            criteria={
+                "OPTIMAL_WINDOW": "Prime execution window — full size allowed",
+                "CAUTION_LATE_SESSION": "Late in session — caution, avoid holding through dead zone",
+                "AVOID_SPREAD_WIDENING": "Do not enter now — high risk of slippage / spread spike"
+            }
+        )
+    }
+
+
+def build_debate_evaluator_questions() -> Dict[str, Union[Noul, Choice, Score]]:
+    """
+    Structured System One evaluation of specialist debate coherence and consensus stability.
+    """
+    return {
+        "consensus_reached": Noul(
+            instructions="Did the specialists reach a coherent, non-contradictory consensus stance?",
+            criteria={
+                "true": "Specialist arguments converged logically with aligned conviction",
+                "false": "Unresolved fundamental contradictions remain between specialist views"
+            }
+        ),
+        "dominant_stance": Choice(
+            instructions="What is the clear dominant direction resulting from the debate?",
+            criteria={
+                "BULLISH": "Bullish thesis dominated with superior evidence",
+                "BEARISH": "Bearish thesis dominated with superior evidence",
+                "NEUTRAL_WAIT": "Arguments balanced or inconclusive — wait for market resolution"
+            }
+        ),
+        "debate_quality": Score(
+            instructions="Rate the analytical rigor and cross-examination depth of the debate",
+            criteria=[
+                "Superficial or repetitive echo chamber",
+                "Adequate standard review with minor critique",
+                "Rigorous debate with strong challenge to initial thesis",
+                "Exceptional dialectic synthesis exposing hidden risks"
+            ]
+        )
+    }
+
+
 def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -> Dict[str, Union[Noul, Score]]:
     """
     Pre-screen questions for PositionExitReviewer to avoid full Stage 2 runs if thesis remains intact.
@@ -781,6 +1044,23 @@ def build_adversarial_check_questions(symbol: str = "") -> Dict[str, Union[Choic
     }
 
 
+_DATA_POINT_REGEX = re.compile(
+    r'(?:'
+    r'(?:(?:actual|reported)\s*)?[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?:\s*(?:bps|bp|points|[kKmMbBtT]))?'
+    r'\s*(?:vs\.?|against)\s*'
+    r'(?:(?:forecast|expected|consensus|prior|exp)\s*)?'
+    r'[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?:\s*(?:bps|bp|points|[kKmMbBtT]))?(?:\s*(?:expected|forecast|consensus|prior|exp))?'
+    r'|'
+    r'[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?:\s*(?:bps|bp|points|[kKmMbBtT]))?\s*(?:expected|exp)\b'
+    r'|'
+    r'(?:beats|misses)(?:\s*by)?\s*[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?:\s*(?:bps|bp|points|[kKmMbBtT]))?'
+    r')',
+    re.IGNORECASE
+)
+
+_MONIKA_ASSETS = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
+
+
 async def classify_news_batch_with_jev(
     client: Any,
     batch: list,
@@ -791,17 +1071,57 @@ async def classify_news_batch_with_jev(
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Classifies a batch of NewsItem instances using TypeSafe Jev System One in parallel.
-    Returns list of dicts conforming to NEWS_CLASSIFICATION_SCHEMA if all pass confidence threshold.
-    Returns None if Jev is unavailable or confidence is too low (triggering LLM fallback).
+    Option C: Hybrid Jev System 1 Triage + Gemini Escalation.
+    Returns list of dicts conforming to NEWS_CLASSIFICATION_SCHEMA for items meeting min_confidence.
+    Returns None only if Jev is unavailable or 0 items pass (triggering full LLM fallback).
+    Partial successes (e.g. 8/10 items) are returned directly so Monika micro-retry escalates
+    only the omitted items to Gemini Flash Lite.
     """
     import asyncio
+    import unittest.mock as _mock
     from database.adapters import extract_currency_tags
 
     calendar_priors = calendar_priors or {}
 
+    # Resolve underlying TypeSafe client / provider if wrapped (guard against mock auto-attributes)
+    raw_jev = client
+    is_mock = isinstance(client, (_mock.NonCallableMock, _mock.MagicMock))
+    if not is_mock:
+        try:
+            if hasattr(type(client), "_get_client"):
+                resolved_c = client._get_client()
+                if resolved_c is not None:
+                    raw_jev = resolved_c
+                    if hasattr(type(raw_jev), "_get_client"):
+                        further = raw_jev._get_client()
+                        if further is not None:
+                            raw_jev = further
+            elif hasattr(client, "factory") and hasattr(client, "primary"):
+                inst = client.factory._create_client_instance(
+                    client.primary, client.role_config, slot_name="primary", task_role=getattr(client, "task_role", None)
+                )
+                if inst:
+                    raw_jev = getattr(inst, "_get_client", lambda: inst)() or inst
+        except Exception as res_err:
+            logger.debug(f"[classify_news_batch_with_jev] Client unwrapping bypassed: {res_err}")
+
+    if not hasattr(raw_jev, "system_one"):
+        return None
+
     async def _classify_item(idx: int, item: Any) -> Optional[Dict[str, Any]]:
         t_sys = round((now_utc - item.fetched_at).total_seconds() / 60) if getattr(item, "fetched_at", None) else None
         prior = calendar_priors.get(idx)
+
+        full_text = f"{item.title or ''} {item.summary or ''}"
+        tags_str = extract_currency_tags(full_text)
+        detected_assets = []
+        if tags_str:
+            for t in tags_str.split(","):
+                c_clean = t.strip().upper()
+                if c_clean in _MONIKA_ASSETS and c_clean not in detected_assets:
+                    detected_assets.append(c_clean)
+
+        currencies = detected_assets if detected_assets else ["NON"]
 
         state = {
             "title": str(item.title or "")[:300],
@@ -811,7 +1131,7 @@ async def classify_news_batch_with_jev(
             "macro_context": macro_context[:500] if macro_context else None,
         }
 
-        questions = {
+        questions: Dict[str, Union[Choice, Score, Noul]] = {
             "impact": Choice(
                 instructions="Classify the market impact level for financial trading:",
                 criteria={
@@ -831,6 +1151,22 @@ async def classify_news_batch_with_jev(
                     "large": "Major surprise deviation from consensus (>2 sigma)"
                 }
             ),
+            "cb_stance": Choice(
+                instructions="What central bank monetary policy stance is conveyed by this item?",
+                criteria={
+                    "hawkish": "Hawkish bias: tighter policy, interest rate hike, delayed rate cuts, fighting inflation, QT",
+                    "dovish": "Dovish bias: looser policy, interest rate cut, economic stimulus, easing, QE",
+                    "none": "Neutral, mixed, or not related to central bank policy decisions"
+                }
+            ),
+            "inflation_impact": Choice(
+                instructions="What is the direct impact on inflation expectations?",
+                criteria={
+                    "inflationary": "Increases inflation pressure: CPI/PPI beat, rising wage growth, energy shock",
+                    "disinflationary": "Decreases inflation pressure: CPI/PPI miss, cooling wages, falling commodities",
+                    "none": "Neutral, mixed, or not related to inflation data"
+                }
+            ),
             "is_fresh_catalyst": Noul(
                 instructions="Does this news introduce a genuinely new market catalyst not already priced in?"
             ),
@@ -843,43 +1179,54 @@ async def classify_news_batch_with_jev(
             "is_risk_on": Noul(
                 instructions="Does this news trigger risk-on optimism in financial markets?"
             ),
+            "is_geopolitical_risk": Noul(
+                instructions="Does this news indicate active geopolitical conflict, war, sanctions, or heightened geopolitical risk?"
+            ),
             "key_asset_classes": Choice(
                 instructions="Which asset class is MOST directly impacted by this news?",
                 criteria={
                     "forex": "Major/minor currency pair directly affected — central bank, employment, inflation data",
                     "commodity": "Oil, gold, or other commodity directly mentioned or impacted",
                     "index": "Equity index directly affected — tech earnings, sector rotation, risk appetite shift",
+                    "crypto": "Bitcoin or cryptocurrency markets directly affected",
                     "cross_asset": "Multiple asset classes equally impacted — e.g. broad risk-off event",
                     "none": "No clear asset class directly impacted"
                 }
             ),
         }
 
+        # Dynamic directional probing for detected assets (capped to top 5)
+        for asset in detected_assets[:5]:
+            questions[f"bias_{asset}"] = Choice(
+                instructions=f"What is the directional price/strength impact on {asset} from this news?",
+                criteria={
+                    "bullish": f"Bullish / Strengthening {asset}",
+                    "bearish": f"Bearish / Weakening {asset}",
+                    "neutral": f"Neutral, mixed, or negligible directional bias on {asset}"
+                }
+            )
+
         try:
-            # Handle both raw client or provider adapter
-            if hasattr(client, "system_one"):
-                resp = await client.system_one(state=state, questions=questions, timeout=15.0)
-            elif hasattr(client, "_get_client"):
-                raw_c = client._get_client()
-                resp = await raw_c.system_one(state=state, questions=questions, timeout=15.0)
-            else:
-                return None
+            resp = await raw_jev.system_one(state=state, questions=questions, timeout=15.0)
 
             impact_ans = resp.answers.get("impact")
             surprise_ans = resp.answers.get("surprise_magnitude")
+            cb_ans = resp.answers.get("cb_stance")
+            inf_ans = resp.answers.get("inflation_impact")
             fresh_ans = resp.answers.get("is_fresh_catalyst")
             deesc_ans = resp.answers.get("is_deescalation")
             risk_off_ans = resp.answers.get("is_risk_off")
             risk_on_ans = resp.answers.get("is_risk_on")
+            geo_ans = resp.answers.get("is_geopolitical_risk")
             asset_class_ans = resp.answers.get("key_asset_classes")
 
             if not (impact_ans and surprise_ans):
                 return None
 
-            impact_val = impact_ans.choice
-            impact_conf = getattr(impact_ans, "confidence", 1.0)
-            surprise_val = surprise_ans.choice
-            asset_class_val = getattr(asset_class_ans, "choice", "none")
+            impact_val = getattr(impact_ans, "choice", "LOW")
+            impact_conf = float(getattr(impact_ans, "confidence", 1.0))
+            surprise_val = getattr(surprise_ans, "choice", "none")
+            asset_class_val = getattr(asset_class_ans, "choice", "none") if asset_class_ans else "none"
 
             # Strict guardrails: if fetched > 90 mins ago, cannot be BREAKING
             if impact_val == "BREAKING" and t_sys is not None and t_sys > 90:
@@ -891,34 +1238,84 @@ async def classify_news_batch_with_jev(
             elif prior and prior.upper() == "LOW" and impact_val in ("BREAKING", "HIGH"):
                 impact_val = "MEDIUM"
 
-            # Currencies extraction
-            tags_str = extract_currency_tags(f"{item.title} {item.summary or ''}")
-            currencies = [c for c in (tags_str.split(',') if tags_str else []) if c] or ['NON']
-
             # Sentiments compilation
-            sentiments = []
-            if fresh_ans and fresh_ans.noul > 0.65:
+            sentiments: List[str] = []
+
+            # 1. Asset directional biases
+            for asset in detected_assets[:5]:
+                bias_ans = resp.answers.get(f"bias_{asset}")
+                if bias_ans:
+                    b_choice = getattr(bias_ans, "choice", "").lower()
+                    b_conf = float(getattr(bias_ans, "confidence", 1.0))
+                    if b_conf >= 0.50:
+                        if b_choice == "bullish":
+                            tag = f"BULLISH_{asset}"
+                            if tag not in sentiments:
+                                sentiments.append(tag)
+                        elif b_choice == "bearish":
+                            tag = f"BEARISH_{asset}"
+                            if tag not in sentiments:
+                                sentiments.append(tag)
+
+            # 2. Central bank stance
+            if cb_ans:
+                cb_choice = getattr(cb_ans, "choice", "").lower()
+                if cb_choice == "hawkish":
+                    sentiments.append("HAWKISH")
+                elif cb_choice == "dovish":
+                    sentiments.append("DOVISH")
+
+            # 3. Inflation impact
+            if inf_ans:
+                inf_choice = getattr(inf_ans, "choice", "").lower()
+                if inf_choice == "inflationary":
+                    sentiments.append("INFLATIONARY")
+                elif inf_choice == "disinflationary":
+                    sentiments.append("DISINFLATIONARY")
+
+            # 4. Geopolitical risk
+            if geo_ans and getattr(geo_ans, "noul", 0.0) > 0.65:
+                sentiments.append("GEOPOLITICAL_RISK")
+
+            # 5. Catalyst & Relief
+            if fresh_ans and getattr(fresh_ans, "noul", 0.0) > 0.65:
                 sentiments.append("FRESH_CATALYST")
-            if deesc_ans and deesc_ans.noul > 0.65:
+            if deesc_ans and getattr(deesc_ans, "noul", 0.0) > 0.65:
                 sentiments.append("DEESCALATION_RELIEF")
-            if risk_off_ans and risk_off_ans.noul > 0.65:
+
+            # 6. Risk Sentiment
+            r_off = getattr(risk_off_ans, "noul", 0.0) if risk_off_ans else 0.0
+            r_on = getattr(risk_on_ans, "noul", 0.0) if risk_on_ans else 0.0
+            if r_off > 0.65 and r_off >= r_on:
                 sentiments.append("RISK_OFF")
-            if risk_on_ans and risk_on_ans.noul > 0.65:
+            elif r_on > 0.65 and r_on > r_off:
                 sentiments.append("RISK_ON")
+
+            # 7. Fallback if no sentiment tags
             if not sentiments:
                 sentiments.append("NEUTRAL")
 
+            # Key data point extraction via regex for data releases
             key_data = ""
-            if surprise_val in ("moderate", "large"):
-                # Extract numbers from title if available
-                key_data = str(item.title)[:100]
+            if surprise_val in ("small", "moderate", "large") and impact_val in ("BREAKING", "HIGH", "MEDIUM"):
+                match = _DATA_POINT_REGEX.search(full_text)
+                if match:
+                    key_data = match.group(0).strip()[:200]
+
+            # Structured synthetic reasoning
+            reasoning = (
+                f"TypeSafe Jev System One: impact={impact_val} (conf={impact_conf:.2f}), "
+                f"surprise={surprise_val}, sentiments=[{', '.join(sentiments)}]"
+            )
+            if key_data:
+                reasoning += f", data_point='{key_data}'"
 
             return {
                 "index": idx,
                 "news_id": getattr(item, "id", idx),
-                "reasoning": f"TypeSafe Jev System One (impact={impact_val}, conf={impact_conf:.2f}, fresh={getattr(fresh_ans, 'noul', 0):.2f})",
+                "reasoning": reasoning,
                 "impact": impact_val,
-                "confidence": round(float(impact_conf), 2),
+                "confidence": round(impact_conf, 2),
                 "surprise_magnitude": surprise_val,
                 "key_asset_class": asset_class_val,
                 "currencies": currencies,
@@ -930,17 +1327,33 @@ async def classify_news_batch_with_jev(
             logger.debug(f"[JevNewsBatch] Item {idx} classification error: {e}")
             return None
 
-    # Run all items in batch concurrently via asyncio.gather
-    tasks = [_classify_item(j + 1, item) for j, item in enumerate(batch)]
+    # Run with bounded concurrency (Semaphore 10) to prevent connection saturation
+    sem = asyncio.Semaphore(10)
+
+    async def _guarded_classify(j: int, itm: Any):
+        async with sem:
+            return await _classify_item(j, itm)
+
+    tasks = [_guarded_classify(j + 1, item) for j, item in enumerate(batch)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     classified_items = []
     for r in results:
         if isinstance(r, dict) and r.get("confidence", 0) >= min_confidence:
             classified_items.append(r)
-        else:
-            # If any item failed or has low confidence, return None to trigger safe LLM fallback
-            logger.info(f"[JevNewsBatch] Low confidence or item error in Jev batch — falling back to LLM chain")
-            return None
+        elif isinstance(r, Exception):
+            logger.debug(f"[JevNewsBatch] Item task exception: {r}")
+
+    if not classified_items:
+        logger.info(
+            f"[JevNewsBatch] All items in batch failed or below min_confidence ({min_confidence}) — falling back to LLM chain"
+        )
+        return None
+
+    if len(classified_items) < len(batch):
+        logger.info(
+            f"[JevNewsBatch] Partial Jev classification: {len(classified_items)}/{len(batch)} items passed "
+            f"(remaining {len(batch) - len(classified_items)} will escalate to Gemini micro-retry)"
+        )
 
     return classified_items

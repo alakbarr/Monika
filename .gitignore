@@ -4,6 +4,8 @@
 !.env.example
 *.pem
 *.key
+*credentials*.json
+!*credentials*.json.example
 
 # Python Virtual Environments & Packages
 venv/

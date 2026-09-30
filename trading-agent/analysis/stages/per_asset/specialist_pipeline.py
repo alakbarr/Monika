@@ -93,12 +93,14 @@ class SpecialistPipelineMixin:
             sent_client = get_client_for_task('specialist_sentiment', self.settings)
             macro_client = get_client_for_task('specialist_macro', self.settings)
 
-            # Cap domain specialist reasoning tokens to prevent excessive token burn
+            # Cap domain specialist reasoning tokens and tag symbol for context isolation
             for sc in (tech_client, sent_client, macro_client):
-                if hasattr(sc, 'set_thinking_budget'):
-                    sc.set_thinking_budget(1024)
-                elif hasattr(sc, 'thinking_budget'):
-                    sc.thinking_budget = 1024
+                if sc:
+                    sc.symbol = symbol
+                    if hasattr(sc, 'set_thinking_budget'):
+                        sc.set_thinking_budget(1024)
+                    elif hasattr(sc, 'thinking_budget'):
+                        sc.thinking_budget = 1024
 
             # SOTA Memory Link: Ensure active structural macro events are present for domain specialists
             if isinstance(raw_bundle_data, dict) and 'market_chronicle' not in raw_bundle_data:

@@ -5,6 +5,7 @@ Intercepts broker rejections (stops_level violation, requotes, volume snapping)
 and performs zero-token deterministic micro-repairs without dropping trades.
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -18,6 +19,9 @@ class MT5SelfHealingExecutor:
     """
 
     MAX_HEALING_ATTEMPTS: int = 3
+    BACKOFF_CAP: float = 30.0
+    INITIAL_DELAY: float = 1.0
+    GLOBAL_TIMEOUT: float = 60.0
 
     def __init__(self, broker_adapter: Any, mt5_client: Optional[Any] = None):
         self.broker_adapter = broker_adapter
@@ -48,80 +52,97 @@ class MT5SelfHealingExecutor:
         direction = (decision or getattr(order, "order_type", "buy")).lower()
         is_buy = "buy" in direction
 
-        for attempt in range(1, self.MAX_HEALING_ATTEMPTS + 1):
-            retcode = mt5_result.get("retcode", -1)
-            err_msg = str(mt5_result.get("error", "")).lower()
+        BACKOFF_CAP = self.BACKOFF_CAP
+        initial_delay = self.INITIAL_DELAY
+        global_timeout = self.GLOBAL_TIMEOUT
 
-            logger.info(
-                f"[SelfHealingMT5] Attempt {attempt}/{self.MAX_HEALING_ATTEMPTS} for {symbol}: "
-                f"Retcode={retcode}, Error='{err_msg}'"
-            )
+        async def _healing_retry_loop() -> Dict[str, Any]:
+            nonlocal current_sl, current_tp, curr_volume, mt5_result
+            for attempt in range(1, self.MAX_HEALING_ATTEMPTS + 1):
+                if attempt > 1:
+                    delay = min(BACKOFF_CAP, initial_delay * (2 ** attempt))
+                    logger.info(f"[SelfHealingMT5] Exponential backoff delay {delay}s for attempt {attempt}")
+                    await asyncio.sleep(delay)
 
-            # ── 1. Retcode 10016: TRADE_RETCODE_INVALID_STOPS ──
-            if retcode == 10016 or "invalid stops" in err_msg or "stops" in err_msg:
-                healed_stops = await self._heal_stops(symbol, current_sl, current_tp, is_buy)
-                if healed_stops:
-                    new_sl, new_tp = healed_stops
-                    logger.warning(
-                        f"[SelfHealingMT5] {symbol} Stop levels healed: "
-                        f"SL: {current_sl} -> {new_sl}, TP: {current_tp} -> {new_tp}"
-                    )
-                    current_sl, current_tp = new_sl, new_tp
-                    mt5_result = await self.broker_adapter.submit_order(
-                        order=order,
-                        sl=current_sl,
-                        tp=current_tp,
-                        comment=f"{comment[:24]}|heal_sl",
-                        max_spread_multiplier=max_spread_multiplier,
-                    )
-                    if mt5_result.get("success"):
-                        logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after stops repair!")
-                        return mt5_result
-                    continue
+                retcode = mt5_result.get("retcode", -1)
+                err_msg = str(mt5_result.get("error", "")).lower()
 
-            # ── 2. Retcode 10014: TRADE_RETCODE_INVALID_VOLUME ──
-            if retcode == 10014 or "invalid volume" in err_msg or "volume" in err_msg:
-                snapped_vol = await self._snap_volume(symbol, curr_volume)
-                if snapped_vol and snapped_vol != curr_volume:
-                    logger.warning(
-                        f"[SelfHealingMT5] {symbol} Volume healed: {curr_volume} -> {snapped_vol}"
-                    )
-                    curr_volume = snapped_vol
-                    order.requested_volume = curr_volume
-                    mt5_result = await self.broker_adapter.submit_order(
-                        order=order,
-                        sl=current_sl,
-                        tp=current_tp,
-                        comment=f"{comment[:24]}|heal_vol",
-                        max_spread_multiplier=max_spread_multiplier,
-                    )
-                    if mt5_result.get("success"):
-                        logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after volume repair!")
-                        return mt5_result
-                    continue
+                logger.info(
+                    f"[SelfHealingMT5] Attempt {attempt}/{self.MAX_HEALING_ATTEMPTS} for {symbol}: "
+                    f"Retcode={retcode}, Error='{err_msg}'"
+                )
 
-            # ── 3. Retcode 10004 / 10015: REQUOTE or INVALID_PRICE ──
-            if retcode in (10004, 10015, 10021) or "requote" in err_msg or "price" in err_msg:
-                can_reprice = await self._check_reprice_tolerance(symbol, order, is_buy, atr)
-                if can_reprice:
-                    logger.warning(f"[SelfHealingMT5] {symbol} Re-pricing order within ATR tolerance buffer...")
-                    mt5_result = await self.broker_adapter.submit_order(
-                        order=order,
-                        sl=current_sl,
-                        tp=current_tp,
-                        comment=f"{comment[:24]}|heal_prc",
-                        max_spread_multiplier=max_spread_multiplier,
-                    )
-                    if mt5_result.get("success"):
-                        logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after re-pricing!")
-                        return mt5_result
-                    continue
+                # ── 1. Retcode 10016: TRADE_RETCODE_INVALID_STOPS ──
+                if retcode == 10016 or "invalid stops" in err_msg or "stops" in err_msg:
+                    healed_stops = await self._heal_stops(symbol, current_sl, current_tp, is_buy)
+                    if healed_stops:
+                        new_sl, new_tp = healed_stops
+                        logger.warning(
+                            f"[SelfHealingMT5] {symbol} Stop levels healed: "
+                            f"SL: {current_sl} -> {new_sl}, TP: {current_tp} -> {new_tp}"
+                        )
+                        current_sl, current_tp = new_sl, new_tp
+                        mt5_result = await self.broker_adapter.submit_order(
+                            order=order,
+                            sl=current_sl,
+                            tp=current_tp,
+                            comment=f"{comment[:24]}|heal_sl",
+                            max_spread_multiplier=max_spread_multiplier,
+                        )
+                        if mt5_result.get("success"):
+                            logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after stops repair!")
+                            return mt5_result
+                        continue
 
-            # Non-recoverable error (e.g. 10019 NO_MONEY, 10027 AUTOTRADING_DISABLED)
-            logger.error(f"[SelfHealingMT5] {symbol} Encountered non-recoverable error ({retcode}): {err_msg}")
-            break
+                # ── 2. Retcode 10014: TRADE_RETCODE_INVALID_VOLUME ──
+                if retcode == 10014 or "invalid volume" in err_msg or "volume" in err_msg:
+                    snapped_vol = await self._snap_volume(symbol, curr_volume)
+                    if snapped_vol and snapped_vol != curr_volume:
+                        logger.warning(
+                            f"[SelfHealingMT5] {symbol} Volume healed: {curr_volume} -> {snapped_vol}"
+                        )
+                        curr_volume = snapped_vol
+                        order.requested_volume = curr_volume
+                        mt5_result = await self.broker_adapter.submit_order(
+                            order=order,
+                            sl=current_sl,
+                            tp=current_tp,
+                            comment=f"{comment[:24]}|heal_vol",
+                            max_spread_multiplier=max_spread_multiplier,
+                        )
+                        if mt5_result.get("success"):
+                            logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after volume repair!")
+                            return mt5_result
+                        continue
 
-        return mt5_result
+                # ── 3. Retcode 10004 / 10015: REQUOTE or INVALID_PRICE ──
+                if retcode in (10004, 10015, 10021) or "requote" in err_msg or "price" in err_msg:
+                    can_reprice = await self._check_reprice_tolerance(symbol, order, is_buy, atr)
+                    if can_reprice:
+                        logger.warning(f"[SelfHealingMT5] {symbol} Re-pricing order within ATR tolerance buffer...")
+                        mt5_result = await self.broker_adapter.submit_order(
+                            order=order,
+                            sl=current_sl,
+                            tp=current_tp,
+                            comment=f"{comment[:24]}|heal_prc",
+                            max_spread_multiplier=max_spread_multiplier,
+                        )
+                        if mt5_result.get("success"):
+                            logger.info(f"[SelfHealingMT5] {symbol} Order successfully FILLED after re-pricing!")
+                            return mt5_result
+                        continue
+
+                # Non-recoverable error (e.g. 10019 NO_MONEY, 10027 AUTOTRADING_DISABLED)
+                logger.error(f"[SelfHealingMT5] {symbol} Encountered non-recoverable error ({retcode}): {err_msg}")
+                break
+
+            return mt5_result
+
+        try:
+            return await asyncio.wait_for(_healing_retry_loop(), timeout=global_timeout)
+        except (asyncio.TimeoutError, TimeoutError):
+            logger.error(f"[SelfHealingMT5] Healing loop timed out after {global_timeout}s for {symbol}")
+            return mt5_result
 
     async def _heal_stops(
         self, symbol: str, sl: Optional[float], tp: Optional[float], is_buy: bool

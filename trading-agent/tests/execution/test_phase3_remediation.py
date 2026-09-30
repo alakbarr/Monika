@@ -130,6 +130,45 @@ async def test_cw3_recovery_event_waiting():
             pass
 
 
+@pytest.mark.asyncio
+async def test_post_restart_recovery_sets_event_before_market_warmup():
+    """Verify that _post_restart_recovery sets _recovery_complete immediately after position sync."""
+    from main import TradingAgent
+    agent = TradingAgent.__new__(TradingAgent)
+    agent.settings = {"environment": "test", "trading": {"schedule": {"catch_up_missed_cycles": False}}}
+    agent._recovery_complete = asyncio.Event()
+    agent.execution_service = MagicMock()
+    agent.execution_service.broker_adapter = None
+    agent.execution_service._restore_executed_ids_from_db = AsyncMock()
+    agent.execution_service.sync_positions = AsyncMock()
+    agent.execution_service.reconcile_inflight_orders = AsyncMock(return_value={"total": 0})
+    agent.mt5_client = MagicMock()
+    agent.mt5_client.is_connected = AsyncMock(return_value=True)
+    agent.position_guardian = None
+    agent.telegram_bot = None
+    agent.cycle_scheduler = None
+
+    event_was_set_before_warmup_done = False
+
+    async def slow_sync():
+        nonlocal event_was_set_before_warmup_done
+        event_was_set_before_warmup_done = agent._recovery_complete.is_set()
+        await asyncio.sleep(0.01)
+        return {"status": "success"}
+
+    agent.market_data_scheduler = MagicMock()
+    agent.market_data_scheduler.sync_now = AsyncMock(side_effect=slow_sync)
+
+    with patch("database.db.get_session") as mock_sess:
+        mock_sess.return_value.__aenter__.return_value = AsyncMock()
+        with patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm:
+            mock_dm.return_value.load_from_db = AsyncMock()
+            await agent._post_restart_recovery()
+
+    assert event_was_set_before_warmup_done is True
+    assert agent._recovery_complete.is_set() is True
+
+
 # ------------------------------------------------------------------------------
 # 5. SC-6 & SC-7: NewsWatcher Concurrency Guard & Cycle Lock
 # ------------------------------------------------------------------------------

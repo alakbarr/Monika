@@ -325,7 +325,7 @@ class TradingAgent:
         from execution.health_check import FlakeTolerantHealthChecker
         self.mt5_health_checker = FlakeTolerantHealthChecker(self.mt5_client, ttl_seconds=30.0, grace_seconds=60.0)
         self.market_data_scheduler = MarketDataScheduler(self.settings, mt5_client=self.mt5_client, event_bus=self.event_bus)
-        self.macro_data_scheduler = MacroDataScheduler(self.settings)
+        self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=self._recovery_complete)
 
         exec_cfg = self.settings.get("execution", {})
         adapter_type = exec_cfg.get("adapter_type", "live")
@@ -862,6 +862,9 @@ class TradingAgent:
                         )
                 except Exception:
                     pass
+                # Unblock position monitors to operate in degraded mode immediately
+                self._recovery_complete.set()
+                logger.warning("[Recovery] Degraded mode active: _recovery_complete event set.")
             else:
                 self._mt5_degraded = False
                 # 1. Sync positions
@@ -898,12 +901,27 @@ class TradingAgent:
                     except Exception as e:
                         logger.error(f'[Recovery] Friday protection check failed: {e}')
 
+                # Signal to position guards and schedulers (TriggerChecker, PositionExitReviewer,
+                # TrailingStopManager, OrderReconciler, PositionGuardian) that positions are reconciled.
+                self._recovery_complete.set()
+                logger.info("[Recovery] Position sync and order reconciliation complete: _recovery_complete event set.")
+
                 # 1c. Initial Market Data Synchronization & Indicator Warmup
                 if self.market_data_scheduler:
+                    warmup_timeout = float(
+                        self.settings.get("trading", {}).get("schedule", {}).get("warmup_timeout_seconds", 360.0)
+                    )
                     try:
                         logger.info("[Recovery] Running initial market data synchronization and indicator warmup...")
-                        await self.market_data_scheduler.sync_now()
+                        await asyncio.wait_for(
+                            asyncio.shield(self.market_data_scheduler.sync_now()),
+                            timeout=warmup_timeout,
+                        )
                         logger.info("[Recovery] Initial market data warmup complete.")
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            f"[Recovery] Initial market data warmup timed out ({int(warmup_timeout)}s, non-fatal) — proceeding in background."
+                        )
                     except Exception as e:
                         logger.warning(f"[Recovery] Initial market data sync failed (non-fatal): {e}")
 
@@ -916,9 +934,9 @@ class TradingAgent:
                 except Exception as decay_err:
                     logger.debug(f"[Recovery] Failed to restore StrategyDecayMonitor state: {decay_err}")
             
-            # Signal to cycle scheduler & fast runners that recovery is complete
+            # Ensure recovery complete flag is set (idempotent)
             self._recovery_complete.set()
-            logger.info("[Recovery] Position sync and market data warmup done: _recovery_complete event set.")
+            logger.info("[Recovery] Startup data warmup done: _recovery_complete event verified.")
 
             _recovery_cycle_dispatched = False
             from database.db import get_session
@@ -1057,9 +1075,9 @@ class TradingAgent:
                 logger.error(f'[Recovery] News digest recovery failed: {e}')
             
             # 3. Send recovery notification
-            try:
-                await asyncio.sleep(30)  # Wait for Telegram bot to be ready
-                if self.telegram_bot:
+            if self.telegram_bot:
+                try:
+                    await asyncio.sleep(30)  # Wait for Telegram bot to be ready
                     open_pos_count = 0
                     try:
                         if self.execution_service and getattr(self.execution_service, 'mt5', None):
@@ -1075,8 +1093,8 @@ class TradingAgent:
                         f"EA dead-man's switch: Reset\n\n"
                         f"Use /status to verify all systems."
                     )
-            except Exception as e:
-                logger.debug(f"Recovery notification failed: {e}")
+                except Exception as e:
+                    logger.debug(f"Recovery notification failed: {e}")
         finally:
             logger.info("[Recovery] Post-restart recovery complete")
             # Signal to cycle scheduler that startup recovery is complete.

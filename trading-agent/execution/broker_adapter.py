@@ -44,14 +44,23 @@ def _get_pip_size(symbol: str) -> float:
 def _get_contract_size(symbol: str) -> float:
     """Determine standard contract lot size based on instrument type."""
     sym = (symbol or "").upper()
+    try:
+        from risk.position_sizing import DEFAULT_INSTRUMENTS
+        clean = sym.replace("/", "").replace(".", "").replace("-", "")
+        for k, spec in DEFAULT_INSTRUMENTS.items():
+            if k in clean or clean in k:
+                return float(spec.contract_size)
+    except Exception:
+        pass
+
     if "XAU" in sym or "GOLD" in sym:
         return 100.0  # 100 troy oz per lot
-    if "BTC" in sym or "ETH" in sym:
+    if "ETH" in sym:
+        return 10.0   # 10 ETH per lot (DEFAULT_INSTRUMENTS)
+    if "BTC" in sym:
         return 1.0    # 1 coin per lot
-    if any(k in sym for k in ("XTI", "WTI")):
-        return 100.0  # 100 barrels per lot
-    if any(k in sym for k in ("USO", "OIL", "BRENT", "XBR", "UKOIL")):
-        return 1000.0 # 1,000 barrels per lot
+    if any(k in sym for k in ("XTI", "WTI", "USO", "OIL", "BRENT", "XBR", "UKOIL")):
+        return 1000.0 # 1,000 barrels per lot (DEFAULT_INSTRUMENTS: XTI=1000, XBR=1000)
     return 100000.0   # 100,000 units standard FX lot
 
 

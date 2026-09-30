@@ -407,12 +407,6 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                         ana.confidence = r["confidence"]
                         ana.risk_multiplier = r["risk_multiplier"]
                         if r.get("entry_price") is not None:
-                            try:
-                                ez = json.loads(ana.entry_zone) if ana.entry_zone else {}
-                            except Exception:
-                                ez = {}
-                            ez["price"] = r["entry_price"]
-                            ana.entry_zone = json.dumps(ez)
                             ana.entry_price = r["entry_price"]
                         if r.get("stop_loss") is not None:
                             ana.stop_loss = r["stop_loss"]

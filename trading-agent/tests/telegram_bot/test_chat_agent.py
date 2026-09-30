@@ -11,11 +11,12 @@ class TestChatAgent:
         agent = ChatAgent(settings, 123)
         assert agent.user_id == 123
         assert agent.settings == settings
-        assert mock_get_client.call_count == 4
+        assert mock_get_client.call_count == 5
         mock_get_client.assert_any_call("chat_telegram", settings)
         mock_get_client.assert_any_call("chat_telegram_medium", settings)
         mock_get_client.assert_any_call("chat_telegram_complex", settings)
         mock_get_client.assert_any_call("deep_research", settings)
+        mock_get_client.assert_any_call("jev_telegram_intent", settings)
 
     def test_pending_action_expiry(self):
         action = PendingAction("123", "test", {}, "desc")
