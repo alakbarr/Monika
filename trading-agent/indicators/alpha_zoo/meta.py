@@ -24,6 +24,9 @@ AlphaCategory = Literal[
     "liquidity",
     "trend",
     "structural",
+    "fundamental",
+    "risk_premia",
+    "microstructure",
 ]
 
 AlphaDirection = Literal[

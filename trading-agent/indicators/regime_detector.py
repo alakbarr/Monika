@@ -1,7 +1,5 @@
 """
 Schmitt-Trigger Regime Detector: Stateful hysteresis-based market regime classification.
-Eliminates regime classification whipsaw at boundary crossings.
-Source: Vibe-Trading backtest/regime.py
 """
 from enum import Enum
 import logging

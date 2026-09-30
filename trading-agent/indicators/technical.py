@@ -41,7 +41,6 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     """
     Yang-Zhang (2000) historical volatility estimator.
     Handles overnight jump risk and open-to-close drift, ~14x more efficient than close-to-close.
-    Source: AlphaMaster model_core/features.py, Vibe-Trading
     """
     if len(df) < window + 1:
         return pd.Series(index=df.index, dtype=float)
@@ -227,7 +226,7 @@ class TechnicalIndicatorCalculator:
 
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
         """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
-        fetch_limit = 2500 if timeframe.upper() in ("D1", "H4") else 1000
+        fetch_limit = 1000 if timeframe.upper() in ("D1", "H4") else 500
         result = await self.session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
@@ -334,11 +333,14 @@ class TechnicalIndicatorCalculator:
         low    = cast(pd.Series, df["low"])
         volume = cast(pd.Series, df["volume"])
 
+        # Target timestamps to format and store: last 100 bars (earlier bars serve as calculation warmup)
+        target_index = df.index[-100:] if len(df) > 100 else df.index
+
         # ---- Moving Averages ----
         for period in self.ma_periods:
             sma = ta.trend.sma_indicator(close, window=period, fillna=False)
             ema = ta.trend.ema_indicator(close, window=period, fillna=False)
-            for ts in df.index:
+            for ts in target_index:
                 sma_v = sma.get(ts)
                 ema_v = ema.get(ts)
                 if sma_v is not None and pd.notna(sma_v):
@@ -348,7 +350,7 @@ class TechnicalIndicatorCalculator:
 
         # ---- RSI ----
         rsi_series = ta.momentum.rsi(close, window=self.rsi_period, fillna=False)
-        for ts in df.index:
+        for ts in target_index:
             v = rsi_series.get(ts)
             if v is not None and pd.notna(v):
                 add(ts, f"RSI_{self.rsi_period}", round(float(v), 2))
@@ -365,7 +367,7 @@ class TechnicalIndicatorCalculator:
         signal_line = macd_obj.macd_signal()
         hist        = macd_obj.macd_diff()
 
-        for ts in df.index:
+        for ts in target_index:
             m = macd_line.get(ts)
             s = signal_line.get(ts)
             h = hist.get(ts)
@@ -389,7 +391,7 @@ class TechnicalIndicatorCalculator:
         bb_pct    = bb_obj.bollinger_pband()
         bb_width  = bb_obj.bollinger_wband()
 
-        for ts in df.index:
+        for ts in target_index:
             u = bb_upper.get(ts)
             m = bb_mid.get(ts)
             l = bb_lower.get(ts)
@@ -417,7 +419,7 @@ class TechnicalIndicatorCalculator:
         stoch_k = stoch_obj.stoch()
         stoch_d_series = stoch_obj.stoch_signal()
 
-        for ts in df.index:
+        for ts in target_index:
             k = stoch_k.get(ts)
             d = stoch_d_series.get(ts)
             if k is not None and pd.notna(k):
@@ -430,7 +432,7 @@ class TechnicalIndicatorCalculator:
         try:
             if volume is not None and len(volume) > 0 and (volume > 0).any():
                 obv_series = ta.volume.on_balance_volume(close, volume, fillna=False)
-                for ts in df.index:
+                for ts in target_index:
                     v = obv_series.get(ts)
                     if v is not None and pd.notna(v):
                         add(ts, "OBV", round(float(v), 2))
@@ -440,7 +442,7 @@ class TechnicalIndicatorCalculator:
         # ---- ATR (Average True Range) ----
         try:
             atr_series = ta.volatility.average_true_range(high, low, close, window=self.atr_period, fillna=False)
-            for ts in df.index:
+            for ts in target_index:
                 v = atr_series.get(ts)
                 if v is not None and pd.notna(v):
                     add(ts, f"ATR_{self.atr_period}", round(float(v), 5))
@@ -453,7 +455,7 @@ class TechnicalIndicatorCalculator:
             adx_series = adx_indicator.adx()
             adx_pos = adx_indicator.adx_pos()   # +DI
             adx_neg = adx_indicator.adx_neg()   # -DI
-            for ts in df.index:
+            for ts in target_index:
                 v = adx_series.get(ts)
                 if v is not None and pd.notna(v):
                     pos = adx_pos.get(ts)
@@ -471,7 +473,7 @@ class TechnicalIndicatorCalculator:
         # ---- Yang-Zhang Historical Volatility ----
         try:
             yz_series = compute_yang_zhang_volatility(df, window=20)
-            for ts in df.index:
+            for ts in target_index:
                 v = yz_series.get(ts)
                 if v is not None and pd.notna(v):
                     add(ts, "YANG_ZHANG_VOL_20", round(float(v), 6))
@@ -481,7 +483,7 @@ class TechnicalIndicatorCalculator:
         # ---- AC1 (Lag-1 Return Autocorrelation) ----
         try:
             ac1_series = compute_lag1_autocorrelation(close, window=20)
-            for ts in df.index:
+            for ts in target_index:
                 v = ac1_series.get(ts)
                 if v is not None and pd.notna(v):
                     add(ts, "AC1_20", round(float(v), 4))
@@ -508,6 +510,10 @@ class TechnicalIndicatorCalculator:
         if not timestamps:
             return 0
 
+        # Simpan maksimal 100 bar terkini untuk efisiensi runtime
+        if len(timestamps) > 100:
+            timestamps = timestamps[-100:]
+
         await self.session.execute(
             delete(TechnicalIndicator)
             .where(TechnicalIndicator.symbol == symbol)
@@ -516,8 +522,8 @@ class TechnicalIndicatorCalculator:
         )
 
         saved = 0
-        for ts, entries in indicators.items():
-            for entry in entries:
+        for ts in timestamps:
+            for entry in indicators.get(ts, []):
                 self.session.add(TechnicalIndicator(
                     symbol=symbol,
                     timeframe=timeframe,

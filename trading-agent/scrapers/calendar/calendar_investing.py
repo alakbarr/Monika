@@ -227,9 +227,19 @@ class InvestingCalendarScraper(BaseScraper):
             except Exception:
                 pass
 
-    def fetch_events(self, fast_mode: bool = False, time_filter: Optional[str] = None) -> List[CalendarEvent]:
+    _cached_events: List[CalendarEvent] = []
+    _last_cache_time: float = 0.0
+    CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
+
+    def fetch_events(self, fast_mode: bool = True, time_filter: Optional[str] = None, force_refresh: bool = False) -> List[CalendarEvent]:
+        # Check in-memory cache first to avoid launching browser unnecessarily
+        now_ts = time.time()
+        if not force_refresh and self._cached_events and (now_ts - self._last_cache_time < self.CACHE_TTL_SECONDS):
+            logger.info(f"Returning {len(self._cached_events)} Investing.com calendar events from in-memory cache (age: {(now_ts - self._last_cache_time)/60:.1f}m)")
+            return self._cached_events
+
         if not self.page:
-            return []
+            return self._fallback_forexfactory()
         page_obj: Any = self.page
         page_obj.set.window.size(1920, 1080)
         wait_selector = 'xpath://button[contains(., "This Week") or contains(., "Today") or contains(., "This week")] | //table | //div[@id="economicCalendarData"]'
@@ -240,8 +250,8 @@ class InvestingCalendarScraper(BaseScraper):
         success = self.navigate_with_fallback(self.target_url, wait_selector, timeout=25)
         if not success or getattr(self, 'is_closed', False):
             if not success:
-                logger.error(f"Failed to load {self.target_url}")
-            return []
+                logger.warning(f"Failed to load {self.target_url}, falling back to ForexFactory backup feed.")
+            return self._fallback_forexfactory()
             
         try:
             pop_up_close = page_obj.ele('css:[data-test="sign-up-dialog-close-button"]', timeout=1.5)
@@ -252,15 +262,33 @@ class InvestingCalendarScraper(BaseScraper):
             pass
 
         if fast_mode:
-            # Active Polling Mode
+            # Active Polling Mode (Directly extract table DOM without slow human scrolling)
             table_ele = self._find_calendar_table()
             if not table_ele:
-                logger.warning("Could not find table element in fast_mode")
-                return []
+                logger.warning("Could not find table element in fast_mode, falling back to ForexFactory backup feed.")
+                return self._fallback_forexfactory()
                 
             table_html = table_ele.inner_html
             soup = BeautifulSoup(table_html, "html.parser")
-            return self._parse_table_html(soup, all_events_dict)
+            events = self._parse_table_html(soup, all_events_dict)
+            if events:
+                InvestingCalendarScraper._cached_events = events
+                InvestingCalendarScraper._last_cache_time = time.time()
+                return events
+            return self._fallback_forexfactory()
+
+    def _fallback_forexfactory(self) -> List[CalendarEvent]:
+        """Secondary seamless failover if Investing.com is unreachable or throttled."""
+        try:
+            from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+            ff = ForexFactoryCalendarScraper(headless=True)
+            events = getattr(ff, "fetch_feed_events", getattr(ff, "fetch_events_from_feed", None))()
+            if events:
+                logger.info(f"Failover successful: retrieved {len(events)} events from ForexFactory JSON backup feed.")
+                return events
+        except Exception as e:
+            logger.error(f"Secondary ForexFactory calendar failover error: {e}")
+        return []
 
         # Normal Mode: jika time_filter diberikan gunakan filter tersebut, jika tidak gunakan default This Week & Next Week
         time_filters = [time_filter] if time_filter else ["This Week", "Next Week"]

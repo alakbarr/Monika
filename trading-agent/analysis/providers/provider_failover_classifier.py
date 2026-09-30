@@ -200,7 +200,7 @@ _OVERFLOW_PATTERNS = re.compile(
     r"request.?too.?large|413|max_tokens_exceeded",
     re.IGNORECASE,
 )
-_AUTH_PATTERNS = re.compile(r"401|unauthorized|invalid.?api.?key|invalid.?x-api-key|authentication", re.IGNORECASE)
+_AUTH_PATTERNS = re.compile(r"401|unauthorized|invalid.?api.?key|invalid.?x-api-key|authentication|api.?key.?(?:not.?set|missing|not.?configured|uninitialized)", re.IGNORECASE)
 _BILLING_PATTERNS = re.compile(r"402|insufficient.?quota|billing|credit|payment.?required", re.IGNORECASE)
 _UPSTREAM_RATE_PATTERNS = re.compile(r"upstream.?(?:429|rate|service|error)|openrouter.?(?:upstream|provider.?rate)", re.IGNORECASE)
 _RATE_PATTERNS = re.compile(r"429|rate.?limit|too.?many.?requests|resource.?exhausted", re.IGNORECASE)

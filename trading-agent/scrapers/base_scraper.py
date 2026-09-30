@@ -100,12 +100,41 @@ class BaseScraper:
                 return path
         return None
 
-    @staticmethod
-    def _cleanup_stale_profile_locks(profile_dir: Path) -> None:
-        """Membersihkan file lock sisa crash agar sesi browser berikutnya tidak gagal start."""
+    @classmethod
+    def _kill_stale_profile_processes(cls, profile_dir: Path) -> None:
+        """Membersihkan proses browser zombie yang masih mengunci direktori profil."""
+        try:
+            import psutil
+            target = str(profile_dir.resolve()).lower()
+            current_pid = os.getpid()
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    if proc.pid == current_pid:
+                        continue
+                    pname = (proc.info.get('name') or '').lower()
+                    if not any(b in pname for b in ('chrome', 'edge', 'msedge', 'chromium')):
+                        continue
+                    cmdline = proc.info.get('cmdline') or []
+                    cmd_str = " ".join(cmdline).lower()
+                    if target in cmd_str or target.replace('\\', '/') in cmd_str:
+                        logger.warning(f"Found stale browser process (PID {proc.pid}) locking profile {profile_dir.name}. Terminating...")
+                        kill_process_tree(proc.pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+                except Exception:
+                    continue
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"Error checking stale profile processes: {e}")
+
+    @classmethod
+    def _cleanup_stale_profile_locks(cls, profile_dir: Path) -> None:
+        """Membersihkan file lock dan proses browser sisa crash agar sesi browser berikutnya tidak gagal start."""
         if not profile_dir.exists():
             return
-        lock_names = ["LOCK", "SingletonLock", "SingletonSocket", "SingletonCookie"]
+        cls._kill_stale_profile_processes(profile_dir)
+        lock_names = ["LOCK", "SingletonLock", "SingletonSocket", "SingletonCookie", "lockfile"]
         for target_dir in [profile_dir, profile_dir / "Default"]:
             if target_dir.exists():
                 for name in lock_names:

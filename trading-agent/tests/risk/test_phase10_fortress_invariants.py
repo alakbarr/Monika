@@ -224,3 +224,18 @@ class BreakoutAlpha:
 """
     clean_report = auditor.audit_code(clean_strategy)
     assert clean_report.is_clean is True
+
+
+def test_invariant_registry_duplicate_warning(caplog):
+    import logging
+    from risk.invariants.registry import InvariantRegistry, InvariantResult, InvariantStatus
+
+    registry = InvariantRegistry()
+    dummy1 = lambda ctx: InvariantResult("test_inv", InvariantStatus.PASS)
+    dummy2 = lambda ctx: InvariantResult("test_inv", InvariantStatus.FAIL)
+
+    registry.register("test_inv", dummy1)
+    with caplog.at_level(logging.WARNING):
+        registry.register("test_inv", dummy2)
+    assert "already registered, overwriting" in caplog.text
+    assert registry.list_invariants() == ["test_inv"]

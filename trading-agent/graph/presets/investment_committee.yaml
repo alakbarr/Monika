@@ -1,0 +1,44 @@
+# ==============================================================================
+# File: graph/presets/investment_committee.yaml
+# Monika Investment Committee & Dialectical Debate Council Swarm Preset
+# ==============================================================================
+
+desk_id: "investment_committee"
+desk_name: "Investment Committee & War Room"
+description: "Dialectical bull-bear arbitration council and collegiate governance board."
+target_universe: ["ALL"]
+default_execution_mode: "arbitrated_consensus"
+
+roles:
+  - role_id: "bull_specialist"
+    name: "Senior Bull Advocate"
+    system_prompt: |
+      You are the Senior Bull Advocate. Present the strongest, most coherent evidence-backed case
+      for long exposure. Highlight orderblock mitigation, liquidity sweeps, momentum continuation,
+      and macro tailwinds.
+    required_tools: ["get_price_momentum", "get_economic_calendar"]
+
+  - role_id: "bear_specialist"
+    name: "Senior Bear Advocate"
+    system_prompt: |
+      You are the Senior Bear Advocate. Rigorously cross-examine every assumption. Identify liquidity traps,
+      exhaustion patterns, premium/discount imbalance, negative divergence, and upcoming high-impact news risks.
+    required_tools: ["get_price_momentum", "get_economic_calendar", "get_news_digest"]
+
+  - role_id: "collegiate_risk_board"
+    name: "Collegiate Risk Board"
+    system_prompt: |
+      You are the Collegiate Risk Board. Evaluate multi-asset correlation clustering, drawdown capacity,
+      extreme value tail risk (EVT), and ensure trade proposals strictly comply with RiskGate rules.
+    required_tools: ["get_risk_state", "get_open_positions"]
+
+  - role_id: "investment_judge"
+    name: "Chief Investment Judge"
+    system_prompt: |
+      You are the Chief Investment Judge. Impartially arbitrate between the Bull and Bear advocates.
+      Synthesize their dialectical debate, compute final execution conviction [0.0 - 1.0], and calibrate
+      entry, stop-loss, and take-profit targets.
+    required_tools: ["get_account_info"]
+
+consensus_protocol: "judicial_arbitration"
+min_confidence_threshold: 0.65

@@ -288,3 +288,40 @@ async def test_order_emulator_trailing_activates_breakeven():
     assert "trailing_stop" in res[0]["reason"]
     assert pos.trailing_activated is True
     assert pos.breakeven_activated is True
+
+
+def test_evaluate_pending_order_gap_slippage():
+    from types import SimpleNamespace
+    from execution.order_emulator import evaluate_pending_order, PendingOrder
+
+    # 1. Buy stop with gap up
+    order_buy_stop = PendingOrder(ticket=1, symbol="EURUSD", type="buy_stop", price=1.0850)
+    bar_gap_up = SimpleNamespace(open=1.0870, high=1.0890, low=1.0860, close=1.0880)
+    res = evaluate_pending_order(order_buy_stop, bar_gap_up)
+    assert res is not None
+    assert res["triggered"] is True
+    assert res["fill_price"] == 1.0870  # gap slippage
+    assert res["gap_slippage"] is True
+
+    # 2. Buy stop without gap
+    bar_normal = SimpleNamespace(open=1.0840, high=1.0860, low=1.0830, close=1.0855)
+    res_normal = evaluate_pending_order(order_buy_stop, bar_normal)
+    assert res_normal is not None
+    assert res_normal["fill_price"] == 1.0850  # order price
+    assert res_normal["gap_slippage"] is False
+
+    # 3. Sell stop with gap down
+    order_sell_stop = PendingOrder(ticket=2, symbol="EURUSD", type="sell_stop", price=1.0800)
+    bar_gap_down = SimpleNamespace(open=1.0780, high=1.0790, low=1.0760, close=1.0770)
+    res_sell = evaluate_pending_order(order_sell_stop, bar_gap_down)
+    assert res_sell is not None
+    assert res_sell["triggered"] is True
+    assert res_sell["fill_price"] == 1.0780  # gap slippage
+    assert res_sell["gap_slippage"] is True
+
+    # 4. Sell stop without gap
+    bar_sell_normal = SimpleNamespace(open=1.0810, high=1.0820, low=1.0790, close=1.0795)
+    res_sell_normal = evaluate_pending_order(order_sell_stop, bar_sell_normal)
+    assert res_sell_normal is not None
+    assert res_sell_normal["fill_price"] == 1.0800  # order price
+    assert res_sell_normal["gap_slippage"] is False

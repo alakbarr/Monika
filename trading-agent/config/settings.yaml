@@ -230,6 +230,7 @@ trading:
     price_fetch_minutes: 2
     scraper_stagger_seconds: 10
     max_news_reruns_per_day: 8
+    warmup_timeout_seconds: 360
     timezone: Asia/Jakarta
     cycle_times_local:
     - 07:00
@@ -973,6 +974,30 @@ llm:
       rate_limits:
         rpm: 1200
         tps: 250000
+    jaredpalmer/kev-4b:
+      provider: typesafe
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      rate_limits:
+        rpm: 600
+        tps: 150000
+    kev-4b:
+      provider: typesafe
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+    openrouter/typesafe/jev-latest:
+      provider: typesafe
+      context_window: 64000
+      supports_tool_calling: false
+      supports_caching: false
+      cost_tier: free
+      rate_limits:
+        rpm: 600
+        tps: 150000
     fable-5:
       provider: openrouter
       context_window: 200000
@@ -1615,9 +1640,10 @@ llm:
   task_roles:
     stage1_shadow_check:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1738,9 +1764,10 @@ llm:
       temperature: 0.0
     stage2_prescreen:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1814,50 +1841,45 @@ llm:
       max_cost_per_call: 0.15
       temperature: 0.0
     risk_gate_conservative:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 1024
       temperature: 0.0
     risk_gate_aggressive:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 1024
       temperature: 0.0
     risk_gate_neutral:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1951,9 +1973,10 @@ llm:
       temperature: 0.0
     adversarial_check:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: low
         gemini: minimal
@@ -1968,9 +1991,10 @@ llm:
     news_classification:
       batch_size: 10
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -1984,32 +2008,37 @@ llm:
       temperature: 0.0
     jev_news_realtime:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: openrouter/free
       max_tokens: 1024
       temperature: 0.0
     jev_trigger_validator:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: openrouter/free
       max_tokens: 1024
       temperature: 0.0
     jev_position_guard:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: openrouter/free
       max_tokens: 1024
       temperature: 0.0
     jev_telegram_intent:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: openrouter/free
       max_tokens: 1024
       temperature: 0.0
     jev_exit_prescreen:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: openrouter/free
       max_tokens: 1024
       temperature: 0.0
     news_classification_escalation:
@@ -2034,9 +2063,10 @@ llm:
       temperature: 0.0
     news_classification_verifier:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -2089,30 +2119,28 @@ llm:
       max_tokens: 6144
       temperature: 0.2
     news_digest_verifier:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
-        gemini: minimal
+        gemini: none
         openai: none
         deepseek: none
         groq: none
         openrouter: none
         ollama: none
         openai_compatible: none
-      max_tokens: 3072
+      max_tokens: 1024
       temperature: 0.0
     fundamental_verifier:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -2226,9 +2254,10 @@ llm:
       temperature: 0.0
     stage2_adjudicator:
       primary: jev-latest
-      fallback_1: gemini-3.5-flash-lite
-      fallback_2: gemini-3.1-flash-lite
-      fallback_3: openrouter/free
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: medium
         gemini: medium
@@ -2405,14 +2434,11 @@ llm:
       max_tokens: 4096
       temperature: 0.2
     pattern_context_verifier:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
       thinking:
         anthropic: none
         gemini: none
@@ -2422,7 +2448,58 @@ llm:
         openrouter: none
         ollama: none
         openai_compatible: none
-      max_tokens: 1024
+      max_tokens: 512
+      temperature: 0.0
+    jev_confluence_gate:
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 512
+      temperature: 0.0
+    jev_session_timing_gate:
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 512
+      temperature: 0.0
+    jev_debate_evaluator:
+      primary: jev-latest
+      fallback_1: jaredpalmer/kev-4b
+      fallback_2: gemini-3.5-flash-lite
+      fallback_3: gemini-3.1-flash-lite
+      fallback_4: openrouter/free
+      thinking:
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+      max_tokens: 512
       temperature: 0.0
 
 pattern_similarity:
@@ -2504,6 +2581,20 @@ ui:
   theme: "retro_vintage"
   steer_mode: "one-at-a-time"
 
+workspace:
+  obsidian:
+    enabled: true
+    vault_path: "${OBSIDIAN_VAULT_PATH:}" # Obsidian Vault directory path (e.g. D:/ObsidianVault)
+    journal_folder: "Trading/Journal"     # Subfolder within vault for trade logs
+  excel:
+    enabled: true
+    journal_path: "${EXCEL_JOURNAL_PATH:}" # Excel/CSV spreadsheet path (e.g. D:/ObsidianVault/Trading/journal.xlsx)
+    sheet_name: ""                        # Blank for monthly tabs (e.g. 2026-09)
+  google:
+    enabled: true
+    folder_id: "${GOOGLE_DRIVE_FOLDER_ID:15PKGN6q0UUab-2dc8AcAXMTG8L5jMRnd}"
+    user_email: "${GOOGLE_USER_EMAIL:asaifulakbarw@gmail.com}"
+
 mcp:
   enabled: true
   client:
@@ -2530,6 +2621,37 @@ mcp:
         command: "python"
         args: ["-m", "analysis.mcp.servers.fetch_server"]
         description: "Lightweight public web content text extractor"
+
+      # --- WORKSPACE & SECOND-BRAIN MCP SERVERS ---
+      filesystem_workspace:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.filesystem_server"]
+        description: "Direct read/write access to Obsidian notes, markdown documents, and local filesystem"
+
+      excel_tabular:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.excel_server"]
+        description: "Direct inspection, reading, and appending of Excel (.xlsx) and CSV spreadsheets"
+
+      notion_workspace:
+        enabled: false
+        transport: "stdio"
+        command: "npx"
+        args: ["-y", "@modelcontextprotocol/server-notion"]
+        env:
+          NOTION_API_KEY: "${NOTION_API_KEY}"
+        description: "Notion workspace integration (enable when NOTION_API_KEY is set in .env)"
+
+      google_workspace:
+        enabled: true
+        transport: "stdio"
+        command: "python"
+        args: ["-m", "analysis.mcp.servers.google_sheets_server"]
+        description: "Google Sheets and Google Docs integration via Service Account in Google Drive"
 
       # --- PAID / PROPRIETARY MCP SERVERS (Ready-to-fill config blocks) ---
       # brave_search:
@@ -2661,6 +2783,8 @@ benchmark:
         - "stage1_shadow_check"
       models:
         - "typesafe:jev-latest"
+        - "typesafe:jaredpalmer/kev-4b"
+        - "openrouter:typesafe/jev-latest"
         - "gemini:gemini-3.5-flash-lite"
         - "openrouter:google/gemma-4-26b-a4b-it:free"
     cheap_efficient:

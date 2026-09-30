@@ -302,6 +302,17 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             paper_closed_count = 0
             live_closed_count = 0
 
+            # 0. CANCEL-BEFORE-FLATTEN INVARIANT:
+            # Quiesce the orderbook by canceling all pending/resting orders FIRST.
+            # Prevents resting limit/stop orders from getting filled post-liquidation.
+            logger.info("Executing Cancel-Before-Flatten: canceling all resting pending orders...")
+            if hasattr(self, "mt5") and hasattr(self.mt5, "cancel_all_pending_orders"):
+                try:
+                    cancel_res = await self.mt5.cancel_all_pending_orders()
+                    logger.info(f"Cancel-Before-Flatten result: {cancel_res}")
+                except Exception as ce:
+                    logger.error(f"Error canceling pending orders during kill switch: {ce}")
+
             for attempt in range(max_retries):
                 # 1. Broker terminal liquidation
                 if adapter and hasattr(adapter, "close_all_positions"):

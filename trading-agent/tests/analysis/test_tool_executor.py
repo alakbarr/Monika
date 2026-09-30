@@ -214,6 +214,35 @@ class TestToolExecutor:
         assert res["status"] == "validation_failed"
         assert len(res["errors"]) > 0
 
+    def test_classify_validation_errors_comprehensive(self):
+        # 1. Structural error (the exact error that occurred for EURUSD)
+        eurusd_err = [
+            "TP STRUCTURAL MAPPING FAIL: take_profit=1.12804 is not within 0.00082 (0.4x ATR) of any known SR/FVG/OB target."
+        ]
+        assert ToolExecutor._classify_validation_errors(eurusd_err) == "STRUCTURAL"
+
+        # 2. Other structural and parameter errors
+        assert ToolExecutor._classify_validation_errors(["stop_loss MUST be greater than 0."]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["TP too close for intraday-range strategy: distance=0.00100 < minimum band 0.00200"]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["SL too wide for intraday-range strategy: distance=0.00500 > maximum allowed 0.00350"]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["R:R ratio 0.95 is below minimum 1.3 required for positive expected value."]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["Risk-to-Reward ratio 1.10 is below minimum required 1.30"]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["SSVP ADJUDICATION REQUIRED: CDS is 0.35. You must explicitly acknowledge and adjudicate..."]) == "STRUCTURAL"
+        assert ToolExecutor._classify_validation_errors(["SPECIALIST DISAGREEMENT UNRESOLVED: You MUST explicitly fill the 'specialist_adjudication' field"]) == "STRUCTURAL"
+
+        # 3. Gate errors
+        assert ToolExecutor._classify_validation_errors(["VOLATILITY REGIME GATE: Bollinger chop detected — no confirmed breakout. Submit WAIT."]) == "GATE"
+        assert ToolExecutor._classify_validation_errors(["ENTRY BLOCKED: only 15% of today's typical ADR range remains"]) == "GATE"
+        assert ToolExecutor._classify_validation_errors(["SSVP BLOCKED: Context Discrepancy Score (0.70) >= 0.65. You MUST submit a 'wait' decision"]) == "GATE"
+
+        # 4. Fatal errors (market data missing / disconnected)
+        assert ToolExecutor._classify_validation_errors(["No H4 technical indicators found for EURUSD. Submit WAIT instead."]) == "FATAL"
+        assert ToolExecutor._classify_validation_errors(["H4 technical indicators for EURUSD are 6.0h old (limit: 5.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected."]) == "FATAL"
+        assert ToolExecutor._classify_validation_errors(["ATR_14 data unavailable for EURUSD/H4 and 30-day average fallback also failed."]) == "FATAL"
+
+        # 5. Threshold errors
+        assert ToolExecutor._classify_validation_errors(["confluence_score 5 is below the required threshold 7"]) == "THRESHOLD"
+
     @pytest.mark.asyncio
     @patch('analysis.calculators.confluence_calculator.calculate_confluence', new_callable=AsyncMock)
     async def test_submit_asset_analysis_success(self, mock_calc_conf):

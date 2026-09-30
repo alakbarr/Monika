@@ -48,6 +48,58 @@ class TrackedPosition:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class PendingOrder:
+    """Representasi pending order untuk evaluasi emulator."""
+    ticket: int
+    symbol: str
+    type: str  # 'buy_stop', 'sell_stop', 'buy_limit', 'sell_limit'
+    price: float
+    volume: float = 0.01
+    sl: Optional[float] = None
+    tp: Optional[float] = None
+    status: str = "pending"
+
+
+def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
+    """
+    Evaluasi apakah pending order terpicu oleh bar harga dengan gap slippage handling.
+    """
+    order_type = getattr(order, "type", "")
+    order_price = getattr(order, "price", 0.0)
+    bar_open = getattr(bar, "open", 0.0)
+    bar_high = getattr(bar, "high", bar_open)
+    bar_low = getattr(bar, "low", bar_open)
+
+    triggered = False
+    if order_type == 'buy_stop':
+        triggered = bar_high >= order_price
+    elif order_type == 'sell_stop':
+        triggered = bar_low <= order_price
+    elif order_type == 'buy_limit':
+        triggered = bar_low <= order_price
+    elif order_type == 'sell_limit':
+        triggered = bar_high >= order_price
+
+    if not triggered:
+        return None
+
+    # If price gaps past the trigger level, use the gap-adjusted price
+    if order.type == 'buy_stop' and bar.open > order.price:
+        fill_price = bar.open  # slippage due to gap
+    elif order.type == 'sell_stop' and bar.open < order.price:
+        fill_price = bar.open
+    else:
+        fill_price = order.price
+
+    return {
+        "triggered": True,
+        "fill_price": fill_price,
+        "order": order,
+        "gap_slippage": fill_price != order.price,
+    }
+
+
 class ClientOrderEmulator:
     """
     Sub-second event-driven client-side order emulator for Trailing Stop & Breakeven.
@@ -78,6 +130,8 @@ class ClientOrderEmulator:
 
         if self.event_bus is not None:
             self.subscribe(self.event_bus)
+
+    evaluate_pending_order = staticmethod(evaluate_pending_order)
 
     def subscribe(self, event_bus: EventBus) -> None:
         """Berlangganan ke TickPriceEvent dengan priority 1."""

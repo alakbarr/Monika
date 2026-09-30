@@ -9,5 +9,5 @@ class BojRssScraper(RssBaseScraper):
     def __init__(self):
         super().__init__(
             source_name="boj_official",
-            feed_url="https://www.boj.or.jp/en/announcements/rss/news_rss.xml",
+            feed_url="https://www.boj.or.jp/en/rss/whatsnew.xml",
         )

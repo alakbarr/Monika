@@ -1,10 +1,11 @@
 # ==============================================================================
 # File: analysis/mcp/servers/filesystem_server.py
-# Description: Free Built-in Sandboxed Filesystem MCP Server (Read-only)
-# Exposes safe sandboxed read-only access to playbooks and markdown logs.
+# Description: Global Workspace & Playbook Filesystem MCP Server
+# Provides read/write access to user notes (Obsidian), markdown docs, and playbooks.
 # ==============================================================================
 
 import sys
+import os
 import json
 import asyncio
 from pathlib import Path
@@ -21,15 +22,103 @@ from analysis.mcp.protocol import (
 
 
 class FilesystemMcpServer:
-    """Safe read-only MCP Server for inspecting trading playbooks and logs."""
+    """Safe high-performance MCP Server for Obsidian vaults, documents, and playbooks."""
 
     def __init__(self):
-        self.name = "sandboxed-filesystem-server"
-        self.version = "1.0.0"
+        self.name = "workspace-filesystem-server"
+        self.version = "2.0.0"
         self.root_dir = Path(__file__).resolve().parent.parent.parent.parent
 
     def get_tool_definitions(self) -> List[Dict[str, Any]]:
         return [
+            {
+                "name": "fs_read_file",
+                "description": "Read the text content of a file (e.g. Obsidian markdown note, text document, config).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Full path or relative path to the file.",
+                        },
+                        "max_chars": {
+                            "type": "integer",
+                            "description": "Maximum characters to read (default: 50000).",
+                        },
+                    },
+                    "required": ["path"],
+                },
+            },
+            {
+                "name": "fs_write_file",
+                "description": "Create, overwrite, or append content to a file (creates parent folders automatically).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the target file.",
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Text content to write or append.",
+                        },
+                        "append": {
+                            "type": "boolean",
+                            "description": "If true, append to existing file instead of overwriting (default: false).",
+                        },
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+            {
+                "name": "fs_list_directory",
+                "description": "List files and subdirectories in a folder (e.g. Obsidian vault or project folder).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the directory.",
+                        },
+                        "recursive": {
+                            "type": "boolean",
+                            "description": "If true, scan subdirectories recursively (default: false).",
+                        },
+                        "max_items": {
+                            "type": "integer",
+                            "description": "Maximum number of items to return (default: 100).",
+                        },
+                    },
+                    "required": ["path"],
+                },
+            },
+            {
+                "name": "fs_search_files",
+                "description": "Search for files by name pattern or text content within a directory.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "directory": {
+                            "type": "string",
+                            "description": "Directory path to search in.",
+                        },
+                        "pattern": {
+                            "type": "string",
+                            "description": "Filename pattern (e.g. '*.md') or substring to match.",
+                        },
+                        "containing_text": {
+                            "type": "string",
+                            "description": "Optional text to search inside file contents.",
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Maximum search matches to return (default: 30).",
+                        },
+                    },
+                    "required": ["directory"],
+                },
+            },
             {
                 "name": "fs_list_playbooks",
                 "description": "List all markdown playbook files in skills/trading directory.",
@@ -54,6 +143,10 @@ class FilesystemMcpServer:
                 },
             },
         ]
+
+    def _resolve_path(self, raw_path: str) -> Path:
+        p = Path(os.path.expandvars(os.path.expanduser(raw_path))).resolve()
+        return p
 
     def _resolve_safe_path(self, filename: str) -> Path:
         clean = Path(filename).name
@@ -83,7 +176,97 @@ class FilesystemMcpServer:
         return target
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
-        if tool_name == "fs_list_playbooks":
+        if tool_name == "fs_read_file":
+            raw_path = arguments.get("path", "").strip()
+            if not raw_path:
+                raise ValueError("'path' is required")
+            p = self._resolve_path(raw_path)
+            if not p.exists():
+                raise FileNotFoundError(f"File not found: {p}")
+            if p.is_dir():
+                raise IsADirectoryError(f"Target is a directory: {p}")
+            max_chars = int(arguments.get("max_chars", 50000))
+            content = p.read_text(encoding="utf-8", errors="replace")
+            return {
+                "path": str(p),
+                "total_chars": len(content),
+                "content": content[:max_chars],
+                "truncated": len(content) > max_chars,
+            }
+
+        elif tool_name == "fs_write_file":
+            raw_path = arguments.get("path", "").strip()
+            if not raw_path:
+                raise ValueError("'path' is required")
+            content = arguments.get("content", "")
+            append = bool(arguments.get("append", False))
+            p = self._resolve_path(raw_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            mode = "a" if append else "w"
+            with open(p, mode, encoding="utf-8") as f:
+                f.write(content)
+            return {
+                "status": "success",
+                "path": str(p),
+                "mode": "appended" if append else "written",
+                "bytes_written": len(content.encode("utf-8")),
+            }
+
+        elif tool_name == "fs_list_directory":
+            raw_path = arguments.get("path", "").strip()
+            if not raw_path:
+                raise ValueError("'path' is required")
+            p = self._resolve_path(raw_path)
+            if not p.exists():
+                raise FileNotFoundError(f"Directory not found: {p}")
+            if not p.is_dir():
+                raise NotADirectoryError(f"Target is not a directory: {p}")
+            recursive = bool(arguments.get("recursive", False))
+            max_items = min(int(arguments.get("max_items", 100)), 500)
+            items = []
+            iterator = p.rglob("*") if recursive else p.iterdir()
+            for child in iterator:
+                try:
+                    is_dir = child.is_dir()
+                    items.append({
+                        "name": child.name,
+                        "path": str(child),
+                        "type": "directory" if is_dir else "file",
+                        "size": child.stat().st_size if not is_dir else 0,
+                    })
+                    if len(items) >= max_items:
+                        break
+                except Exception:
+                    continue
+            return {"directory": str(p), "count": len(items), "items": items}
+
+        elif tool_name == "fs_search_files":
+            raw_dir = arguments.get("directory", "").strip()
+            if not raw_dir:
+                raise ValueError("'directory' is required")
+            p = self._resolve_path(raw_dir)
+            if not p.exists() or not p.is_dir():
+                raise NotADirectoryError(f"Invalid directory: {p}")
+            pattern = arguments.get("pattern", "*") or "*"
+            containing = arguments.get("containing_text", "")
+            max_results = min(int(arguments.get("max_results", 30)), 100)
+            matches = []
+            for child in p.rglob(pattern):
+                if not child.is_file():
+                    continue
+                if containing:
+                    try:
+                        text = child.read_text(encoding="utf-8", errors="ignore")
+                        if containing.lower() not in text.lower():
+                            continue
+                    except Exception:
+                        continue
+                matches.append({"name": child.name, "path": str(child), "size": child.stat().st_size})
+                if len(matches) >= max_results:
+                    break
+            return {"directory": str(p), "match_count": len(matches), "matches": matches}
+
+        elif tool_name == "fs_list_playbooks":
             skills_dir = self.root_dir / "skills" / "trading"
             files = []
             for d in skills_dir.glob("*/SKILL.md"):
@@ -137,7 +320,7 @@ class FilesystemMcpServer:
                 res = self.handle_tool_call(t_name, args)
                 return make_result_response(
                     req_id,
-                    {"content": [{"type": "text", "text": json.dumps(res, indent=2)}]},
+                    {"content": [{"type": "text", "text": json.dumps(res, indent=2, default=str)}]},
                 )
             except Exception as e:
                 return make_result_response(

@@ -4,8 +4,6 @@ Prevents compounding drawdowns from decaying quantitative alphas.
 
 State transitions:
 ACTIVE -> (3 warnings) -> MONITORING -> (2 warnings) -> DECAYED -> (3 warnings) -> DISABLED
-
-Source: Vibe-Trading src/strategy_store/decay.py
 """
 import inspect
 import json

@@ -155,7 +155,7 @@ class AnthropicProvider(BaseLLMClient):
     async def generate(self, prompt: str, system: str = "", temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[str]:
         """Single-turn text generation dengan retry otomatis untuk transient errors & dukungan reasoning penuh."""
         if not self.client:
-            return None
+            raise ValueError("ANTHROPIC_API_KEY is not set (invalid api key). Claude client uninitialized.")
             
         use_thinking = self.thinking_level is not None and str(self.thinking_level).lower() != 'none'
         ADAPTIVE_MODELS = ['sonnet-5', 'opus-5', 'opus-4-7', 'opus-4-8', 'sonnet-4-6', 'opus-4-6', 'adaptive']
@@ -268,7 +268,7 @@ class AnthropicProvider(BaseLLMClient):
     async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[dict]:
         """Menghasilkan output JSON valid."""
         if not self.client:
-            return None
+            raise ValueError("ANTHROPIC_API_KEY is not set (invalid api key). Claude client uninitialized.")
         eff_tokens = max_tokens if max_tokens is not None else self.max_tokens
         eff_temp = temperature if temperature is not None else self.default_temperature
         if schema:
@@ -520,7 +520,7 @@ class AnthropicProvider(BaseLLMClient):
         tool_executor=None,
     ) -> dict:
         if not self.client:
-            return {"success": False, "reply": "Claude API not initialized.", "error": "Not initialized"}
+            raise ValueError("ANTHROPIC_API_KEY is not set (invalid api key). Claude client uninitialized.")
         
         from database.db import get_session
         async with get_session() as session:

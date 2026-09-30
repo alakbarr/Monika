@@ -8,8 +8,10 @@ import asyncio
 import json
 import logging
 import os
+import shutil
 import sys
 import urllib.parse
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 import aiohttp
@@ -135,13 +137,19 @@ class McpServerProcess:
                 )
             else:
                 # Default stdio
-                cmd = [self.command] + self.args
+                resolved_cmd = shutil.which(self.command) or self.command
+                cmd = [resolved_cmd] + self.args
+                base_dir = str(Path(__file__).resolve().parent.parent.parent)
+                env = dict(self.env)
+                cur_pythonpath = env.get("PYTHONPATH", "")
+                env["PYTHONPATH"] = f"{base_dir}{os.pathsep}{cur_pythonpath}".rstrip(os.pathsep) if cur_pythonpath else base_dir
                 self.process = await asyncio.create_subprocess_exec(
                     *cmd,
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
-                    env=self.env,
+                    env=env,
+                    cwd=base_dir,
                 )
                 if self.process and self.process.pid:
                     McpDeathSupervisor.register_process(self.process.pid)

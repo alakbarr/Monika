@@ -1477,6 +1477,17 @@ class StrategySynthesisScheduler:
             except asyncio.TimeoutError:
                 logger.debug("StrategySynthesisScheduler: Recovery wait timed out (120s), proceeding.")
 
+        startup_delay = float(self.settings.get("strategy_synthesis", {}).get("startup_delay_seconds", 90.0)) if isinstance(self.settings, dict) else 90.0
+        if startup_delay > 0:
+            logger.info(f"StrategySynthesisScheduler: Waiting {startup_delay:.0f}s before first synthesis cycle...")
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=startup_delay)
+                return
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                return
+
         while self._running:
             try:
                 await self.run_synthesis_cycle()

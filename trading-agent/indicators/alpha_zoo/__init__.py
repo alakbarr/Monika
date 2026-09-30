@@ -16,6 +16,9 @@ from indicators.alpha_zoo.registry import FactorRegistry, RegistryError, load_al
 # Auto-register standard formulations
 import indicators.alpha_zoo.qlib158  # noqa: F401
 import indicators.alpha_zoo.alpha101  # noqa: F401
+import indicators.alpha_zoo.academic_factors  # noqa: F401
+import indicators.alpha_zoo.microstructure_factors  # noqa: F401
+import indicators.alpha_zoo.fundamental_factors  # noqa: F401
 
 __all__ = [
     "AlphaCategory",
@@ -25,3 +28,4 @@ __all__ = [
     "RegistryError",
     "load_alpha_meta_from_py",
 ]
+

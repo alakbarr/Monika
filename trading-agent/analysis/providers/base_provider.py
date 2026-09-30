@@ -714,6 +714,8 @@ class BaseLLMClient(ABC):
             resolved_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
             resolved_subsystem = subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
             resolved_symbol = symbol or getattr(self, "symbol", None)
+            if not resolved_symbol and task_name and task_name.startswith("per_asset_"):
+                resolved_symbol = task_name[len("per_asset_"):]
             resolved_cycle_id = cycle_id or getattr(self, "cycle_id", None)
 
             provider_name = getattr(self, "provider_name", None)
@@ -742,11 +744,13 @@ class BaseLLMClient(ABC):
             # Track cache miss diagnostics (Pi pattern)
             try:
                 from utils.llm.cache_miss_detector import global_cache_miss_detector
+                c_key = f"{resolved_subsystem or 'subsystem'}:{resolved_role or task_name or 'role'}:{resolved_symbol or 'global'}"
                 global_cache_miss_detector.check(
                     cached_tokens=cached_tokens,
                     cache_creation_tokens=cache_creation_tokens,
                     model=model_name,
                     input_tokens=input_tokens,
+                    context_key=c_key,
                 )
             except Exception:
                 pass

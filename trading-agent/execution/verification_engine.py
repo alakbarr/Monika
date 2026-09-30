@@ -5,6 +5,8 @@ Enforces strict zero-trust validation before and after every order execution.
 Principle: NEVER assume an analysis or order execution succeeded without verifiable evidence.
 """
 
+import hashlib
+import json
 import logging
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime, timezone
@@ -24,6 +26,29 @@ class EvidenceFirstVerifier:
         self.minimum_sl_pips = float(risk_cfg.get("minimum_sl_pips", 5.0) or 5.0)
         self.max_slippage = float(risk_cfg.get("max_slippage_pips", 3.0) or 3.0)
 
+    def record_evidence(
+        self,
+        decision_payload: Dict[str, Any],
+        session: Optional[AsyncSession] = None,
+        extra_metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Records verifiable evidence for a trading decision including SHA256 payload hash.
+        """
+        payload_json = json.dumps(decision_payload, sort_keys=True, default=str)
+        payload_hash = hashlib.sha256(payload_json.encode()).hexdigest()
+
+        evidence_record = {
+            "payload_hash": payload_hash,
+            "decision_payload": decision_payload,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "symbol": decision_payload.get("symbol"),
+            "decision": decision_payload.get("decision") or decision_payload.get("action"),
+            "metadata": extra_metadata or {},
+        }
+        logger.info(f"Evidence recorded for {evidence_record.get('symbol')}: hash={payload_hash}")
+        return evidence_record
+
     async def pre_trade_assertions(
         self,
         signal: Dict[str, Any],
@@ -37,6 +62,11 @@ class EvidenceFirstVerifier:
 
         if not signal or not isinstance(signal, dict):
             return False, ["ASSERT_0: Signal payload is empty or invalid."]
+
+        # Record verifiable evidence SHA256 hash of decision payload
+        payload_json = json.dumps(signal, sort_keys=True, default=str)
+        payload_hash = hashlib.sha256(payload_json.encode()).hexdigest()
+        signal["payload_hash"] = payload_hash
 
         symbol = signal.get("symbol", "")
         decision = (signal.get("decision") or signal.get("action") or "").upper()
@@ -96,7 +126,6 @@ class EvidenceFirstVerifier:
         evidence = signal.get("key_evidence") or signal.get("confluence_factors_json") or []
         if isinstance(evidence, str):
             try:
-                import json
                 evidence = json.loads(evidence)
             except Exception:
                 evidence = [s.strip() for s in evidence.split("\n") if s.strip()]

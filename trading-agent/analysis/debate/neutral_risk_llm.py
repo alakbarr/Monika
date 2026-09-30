@@ -65,11 +65,12 @@ Return JSON with 'risk_profile_assessment' (show the multiplier arithmetic expli
             logger.warning(f"[RiskDebate][Neutral][{symbol}] LLM recommended_multiplier={mult} di luar rentang aritmetika terdokumentasi [0.4, 1.5]. Diteruskan (akan di-clamp), tapi mengindikasikan model salah menghitung formula preskriptif.")
         return data
     except Exception as e:
-        logger.error(f'Neutral risk parse error: {e}')
+        logger.error(f"Risk LLM failed: {e}")
         return {
-            'risk_profile_assessment': 'Fallback error',
-            'recommended_multiplier': 1.0,
-            'veto_trade': False,
-            'parse_error': True,
+            "veto_trade": True,
+            "recommended_multiplier": 0.0,
+            "reasoning": f"Fail-closed: {e}",
+            "risk_profile_assessment": f"Fail-closed: {e}",
+            "parse_error": True,
         }
 

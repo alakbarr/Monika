@@ -33,6 +33,11 @@ except Exception as e:
     logger.debug(f"xti_pairs_readiness not loaded: {e}")
 
 try:
+    import analysis.strategies.tri_convergent_alpha
+except Exception as e:
+    logger.debug(f"tri_convergent_alpha not loaded: {e}")
+
+try:
     from analysis.strategies.registry import StrategyRegistry
     StrategyRegistry.log_summary()
 except Exception as e:

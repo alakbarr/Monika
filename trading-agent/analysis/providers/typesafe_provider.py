@@ -43,8 +43,15 @@ class TypeSafeProvider(BaseLLMClient):
         confidence_threshold: float = 0.70,
         **kwargs: Any
     ):
+        # Normalize model aliases
+        clean_model = model
+        if clean_model.startswith("openrouter/"):
+            clean_model = clean_model[len("openrouter/"):]
+        if clean_model.lower() in ("kev", "kev-4b"):
+            clean_model = "jaredpalmer/kev-4b"
+
         super().__init__(
-            model=model,
+            model=clean_model,
             max_tokens=max_tokens,
             max_tool_turns=max_tool_turns,
             thinking_level=thinking_level,
@@ -52,8 +59,23 @@ class TypeSafeProvider(BaseLLMClient):
             temperature=temperature,
             **kwargs
         )
-        self.api_key = api_key or os.getenv("TYPESAFE_API_KEY")
-        self.base_url = base_url or os.getenv("TYPESAFE_BASE_URL", "https://api.typesafe.ai")
+
+        # Base URL resolution
+        if base_url:
+            self.base_url = base_url
+        elif "openrouter" in (model or "").lower() or "kev" in (model or "").lower():
+            self.base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api")
+        else:
+            self.base_url = os.getenv("TYPESAFE_BASE_URL", "https://api.typesafe.ai")
+
+        # API Key resolution
+        if api_key:
+            self.api_key = api_key
+        elif "openrouter.ai" in self.base_url:
+            self.api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("TYPESAFE_API_KEY")
+        else:
+            self.api_key = os.getenv("TYPESAFE_API_KEY")
+
         self.confidence_threshold = confidence_threshold
         self._client = None
 
@@ -61,14 +83,36 @@ class TypeSafeProvider(BaseLLMClient):
         """Lazy initialization of AsyncTypeSafeClient."""
         if self._client is None:
             from typesafe_sdk import AsyncTypeSafeClient
-            resolved_key = self.api_key or os.getenv("TYPESAFE_API_KEY")
+            resolved_key = self.api_key
             if not resolved_key:
-                raise ValueError("TYPESAFE_API_KEY not configured in environment or settings")
+                if "openrouter.ai" in (self.base_url or ""):
+                    resolved_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("TYPESAFE_API_KEY")
+                else:
+                    resolved_key = os.getenv("TYPESAFE_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            if not resolved_key:
+                err_env = "OPENROUTER_API_KEY" if "openrouter.ai" in (self.base_url or "") else "TYPESAFE_API_KEY"
+                raise ValueError(f"{err_env} not configured in environment or settings")
             self._client = AsyncTypeSafeClient(
                 api_key=resolved_key,
                 base_url=self.base_url
             )
         return self._client
+
+    async def system_one(
+        self,
+        state: Any,
+        questions: dict,
+        timeout: float = 15.0,
+        **kwargs: Any
+    ) -> Any:
+        """Direct pass-through to underlying AsyncTypeSafeClient.system_one."""
+        client = self._get_client()
+        return await client.system_one(
+            state=state,
+            questions=questions,
+            model=kwargs.get("model", self.model),
+            timeout=timeout
+        )
 
     async def classify_json(
         self,
@@ -93,6 +137,12 @@ class TypeSafeProvider(BaseLLMClient):
         elif not jev_questions:
             if not schema:
                 logger.warning(f"[{self.model}] Neither jev_questions nor schema provided to classify_json")
+                return None
+            if schema.get("type") == "array":
+                logger.debug(
+                    f"[{self.model}] TypeSafe Jev does not support array schemas directly in classify_json. "
+                    f"Returning None to trigger failover to next LLM fallback."
+                )
                 return None
             jev_questions = schema_to_jev_questions(schema, base_prompt=prompt)
 

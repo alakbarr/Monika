@@ -142,10 +142,21 @@ async def fetch_with_retry(
     Returns: JSON dict, text string, atau None jika gagal.
     """
     effective_timeout = timeout_seconds if timeout_seconds is not None else (kwargs.get("timeout_sec") or timeout)
-    timeout_obj = aiohttp.ClientTimeout(total=effective_timeout)
+    conn_timeout = min(10.0, float(effective_timeout) * 0.5) if effective_timeout else 10.0
+    timeout_obj = aiohttp.ClientTimeout(total=effective_timeout, connect=conn_timeout, sock_connect=conn_timeout)
     effective_ssl = ssl if ssl is not None else kwargs.get("ssl", _DEFAULT_SSL_CONTEXT)
     domain = url.split('/')[2] if '//' in url else url
     safe_url = _sanitize_url(url)
+    
+    # Injeksi default headers jika tidak ada User-Agent untuk mencegah WAF throttling/blocking
+    req_headers = dict(headers) if headers else {}
+    if "User-Agent" not in req_headers:
+        req_headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    if "Accept" not in req_headers:
+        req_headers["Accept"] = "*/*"
+
+    proxy = kwargs.get("proxy") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("ALL_PROXY")
+
     if use_circuit_breaker and domain in _CIRCUIT_BREAKER and time.time() < _CIRCUIT_BREAKER[domain]:
         logger.warning(f"Circuit breaker OPEN for {domain}, skipping {safe_url}")
         if return_error_info:
@@ -155,7 +166,7 @@ async def fetch_with_retry(
     for attempt in range(max_retries):
         try:
             async with aiohttp.ClientSession(timeout=timeout_obj) as http:
-                async with http.request(method, url, params=params, headers=headers, json=json, ssl=effective_ssl) as resp:
+                async with http.request(method, url, params=params, headers=req_headers, json=json, ssl=effective_ssl, proxy=proxy) as resp:
                     raw_ra = resp.headers.get("Retry-After") or resp.headers.get("retry-after")
                     parsed_retry_after: Optional[float] = None
                     if raw_ra:

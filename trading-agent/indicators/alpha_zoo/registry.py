@@ -119,18 +119,33 @@ class FactorRegistry:
         """
         fn, meta = cls.get(name)
 
-        # 1. Verify required columns
+        # 1. Synthesize turnover/amount and vwap if standard OHLCV columns exist
+        df_eval = df.copy(deep=False)
+        if "amount" not in df_eval.columns and "close" in df_eval.columns and "volume" in df_eval.columns:
+            df_eval["amount"] = df_eval["close"] * df_eval["volume"]
+        if "vwap" not in df_eval.columns and "high" in df_eval.columns and "low" in df_eval.columns and "close" in df_eval.columns:
+            df_eval["vwap"] = (
+                df_eval["high"] + df_eval["low"] + df_eval["close"] + df_eval.get("open", df_eval["close"])
+            ) / 4.0
+
+        # 2. Verify required columns
         for col in meta.columns_required:
-            if col not in df.columns:
+            if col not in df_eval.columns:
                 raise RegistryError(
-                    f"Factor '{name}' requires column '{col}', but input columns are: {list(df.columns)}"
+                    f"Factor '{name}' requires column '{col}', but input columns are: {list(df_eval.columns)}"
                 )
 
-        # 2. Compute factor
+        # 3. Compute factor:
+        # Wrap into single-asset 2D column dictionary panel for universal formula compatibility
+        # (guarantees .columns compatibility with WorldQuant, GTJA 191, Qlib, and Academic alphas).
+        panel_dict = {c: pd.DataFrame({"asset": df_eval[c]}) for c in df_eval.columns}
         try:
-            res = fn(df)
-        except Exception as err:
-            raise RegistryError(f"Error computing factor '{name}': {err}") from err
+            res = fn(panel_dict)
+        except Exception:
+            try:
+                res = fn(df_eval)
+            except Exception as err:
+                raise RegistryError(f"Error computing factor '{name}': {err}") from err
 
         if isinstance(res, pd.DataFrame):
             if res.shape[1] == 1:
@@ -181,6 +196,72 @@ class FactorRegistry:
 
         return pd.DataFrame(results, index=df.index)
 
+    @classmethod
+    def load_zoo_factors(cls, factors_dir: Optional[Path | str] = None) -> int:
+        """
+        Dynamically discovers and registers all 462 quantitative alpha factor
+        definitions from the indicators/alpha_zoo/factors directory.
+        """
+        if factors_dir is None:
+            factors_dir = Path(__file__).resolve().parent / "factors"
+        else:
+            factors_dir = Path(factors_dir)
+
+        if not factors_dir.exists():
+            return 0
+
+        loaded_count = 0
+        import importlib.util
+        for py_path in factors_dir.rglob("*.py"):
+            if py_path.name.startswith("__"):
+                continue
+            try:
+                mod_name = f"indicators.alpha_zoo.factors.{py_path.parent.name}.{py_path.stem}"
+                spec = importlib.util.spec_from_file_location(mod_name, py_path)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    if hasattr(mod, "__alpha_meta__") and hasattr(mod, "compute"):
+                        meta_dict = getattr(mod, "__alpha_meta__")
+                        fn = getattr(mod, "compute")
+                        factor_id = meta_dict.get("id", py_path.stem)
+                        category = meta_dict.get("theme", ["momentum"])[0] if meta_dict.get("theme") else "momentum"
+                        if category == "reversal":
+                            category = "mean_reversion"
+                        elif category not in ("momentum", "mean_reversion", "volatility", "volume", "liquidity", "trend", "structural", "fundamental", "risk_premia", "microstructure"):
+                            category = "momentum"
+
+                        meta = AlphaMeta(
+                            name=factor_id,
+                            category=category,
+                            lookback=int(meta_dict.get("min_warmup_bars", 5) or 5),
+                            columns_required=meta_dict.get("columns_required", ["close"]),
+                            min_warmup_bars=int(meta_dict.get("min_warmup_bars", 5) or 5),
+                            decay_horizon=int(meta_dict.get("decay_horizon", 5) or 5),
+                            direction="positive_bullish",
+                            formula_latex=str(meta_dict.get("formula_latex", "")),
+                            description=str(meta_dict.get("notes") or f"{factor_id} quantitative alpha factor"),
+                        )
+                        # Register primary ID
+                        cls.register_manual(meta.name, fn, meta)
+                        # Register convenient aliases
+                        if py_path.stem != meta.name:
+                            cls.register_manual(py_path.stem, fn, meta)
+                        parent_pkg = py_path.parent.name
+                        if parent_pkg == "microsoft_qlib_158":
+                            cls.register_manual(f"qlib_{py_path.stem}", fn, meta)
+                        elif parent_pkg == "academic":
+                            cls.register_manual(f"academic_{py_path.stem}", fn, meta)
+                        elif parent_pkg == "guotai_junan_191":
+                            cls.register_manual(f"gtja_{factor_id}", fn, meta)
+                        elif parent_pkg == "fundamental":
+                            cls.register_manual(f"fundamental_{py_path.stem}", fn, meta)
+                        loaded_count += 1
+            except Exception:
+                pass
+        return loaded_count
+
 
 AlphaZooRegistry = FactorRegistry
+
 

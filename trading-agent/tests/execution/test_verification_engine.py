@@ -72,3 +72,19 @@ async def test_post_execution_reconciliation_mock():
     report = await verifier.post_execution_reconciliation(order_result, mt5_client=None)
     assert report["verified"] is True
     assert report["ticket"] == 987654
+
+
+def test_record_evidence_payload_hash():
+    import hashlib, json
+    verifier = EvidenceFirstVerifier()
+    decision_payload = {
+        "symbol": "EURUSD",
+        "decision": "BUY",
+        "entry_price": 1.0850,
+        "stop_loss": 1.0820,
+        "take_profit": 1.0920,
+    }
+    rec = verifier.record_evidence(decision_payload)
+    assert "payload_hash" in rec
+    expected_hash = hashlib.sha256(json.dumps(decision_payload, sort_keys=True, default=str).encode()).hexdigest()
+    assert rec["payload_hash"] == expected_hash

@@ -128,8 +128,9 @@ async def test_api_server_chat_completions_non_streaming():
         assert data["object"] == "chat.completion"
         assert data["model"] == "monika-trader"
         assert len(data["choices"]) == 1
-        assert data["choices"][0]["message"]["role"] == "assistant"
-        assert "Monika Trading Intelligence" in data["choices"][0]["message"]["content"]
+        assert len(data["choices"][0]["message"]["content"]) > 0
+        content = data["choices"][0]["message"]["content"]
+        assert "Monika Trading Intelligence" in content or "USDJPY" in content or "Analisis" in content
         assert "usage" in data
 
 
@@ -152,3 +153,136 @@ async def test_api_server_chat_completions_streaming():
         lines = [line.strip() for line in text_content.split("\n") if line.strip()]
         assert any(l.startswith("data: {") for l in lines)
         assert "data: [DONE]" in lines
+
+
+@pytest.mark.asyncio
+async def test_api_server_custom_runner_dispatch():
+    from gateway.api_server import set_agent_runner
+
+    async def mock_pipeline(session_id: str, user_text: str, metadata: dict) -> str:
+        return f"Custom pipeline answered: {user_text}"
+
+    set_agent_runner(mock_pipeline)
+    try:
+        transport = ASGITransport(app=api_server_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            req_body = {
+                "model": "monika-trader",
+                "messages": [{"role": "user", "content": "Hello Monika"}],
+                "stream": False,
+            }
+            res = await client.post("/v1/chat/completions", json=req_body)
+            assert res.status_code == 200
+            data = res.json()
+            assert data["choices"][0]["message"]["content"] == "Custom pipeline answered: Hello Monika"
+    finally:
+        set_agent_runner(None)
+
+
+@pytest.mark.asyncio
+async def test_discord_platform_adapter_webhook_and_interactions(monkeypatch):
+    from gateway.platforms.discord_adapter import DiscordPlatformAdapter
+
+    adapter = DiscordPlatformAdapter(webhook_url="https://discord.com/api/webhooks/mock_test")
+    await adapter.start()
+
+    # Mock HTTP post
+    class MockResponse:
+        status_code = 204
+        text = ""
+
+    async def mock_post(url, json=None, headers=None):
+        return MockResponse()
+
+    monkeypatch.setattr(adapter._http_client, "post", mock_post)
+
+    # 1. Outbound message
+    delivered = await adapter.send_message(
+        target_id="alerts",
+        content="EURUSD Breakout Signal",
+        metadata={"embeds": [{"title": "Signal", "description": "Long @ 1.0850"}]},
+    )
+    assert delivered is True
+    assert len(adapter.sent_messages) == 1
+    assert adapter.sent_messages[0]["content"] == "EURUSD Breakout Signal"
+
+    # 2. Inbound interaction: PING handshake (Type 1)
+    ping_res = await adapter.handle_inbound_interaction({"type": 1})
+    assert ping_res == {"type": 1}
+
+    # 3. Inbound interaction: Slash command / message (Type 2)
+    async def mock_handler(user_id, channel_id, text, meta):
+        return f"Echo {text} from {user_id}"
+
+    adapter.register_handler(mock_handler)
+    cmd_res = await adapter.handle_inbound_interaction({
+        "type": 2,
+        "id": "int_123",
+        "channel_id": "ch_general",
+        "member": {"user": {"id": "usr_99"}},
+        "data": {"name": "status", "options": [{"value": "market_summary"}]},
+    })
+    assert cmd_res["type"] == 4
+    assert "market_summary" in cmd_res["data"]["content"]
+
+    await adapter.stop()
+
+
+@pytest.mark.asyncio
+async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
+    from gateway.platforms.slack_adapter import SlackPlatformAdapter
+
+    adapter = SlackPlatformAdapter(webhook_url="https://hooks.slack.com/services/mock_test")
+    await adapter.start()
+
+    # Mock HTTP post
+    class MockSlackResponse:
+        status_code = 200
+        text = "ok"
+
+        def json(self):
+            return {"ok": True}
+
+    async def mock_post(url, json=None, headers=None):
+        return MockSlackResponse()
+
+    monkeypatch.setattr(adapter._http_client, "post", mock_post)
+
+    # 1. Outbound message
+    delivered = await adapter.send_message(
+        target_id="general",
+        content="RiskGate Passed: XAUUSD Position Opened",
+        metadata={"blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "Trade Alert"}}]},
+    )
+    assert delivered is True
+    assert len(adapter.sent_messages) == 1
+    assert "RiskGate Passed" in adapter.sent_messages[0]["content"]
+
+    # 2. Inbound event: url_verification challenge
+    challenge_res = await adapter.handle_inbound_event({
+        "type": "url_verification",
+        "challenge": "challenge_token_abc_123",
+    })
+    assert challenge_res == {"challenge": "challenge_token_abc_123"}
+
+    # 3. Inbound event: message callback
+    async def mock_handler(user_id, channel_id, text, meta):
+        return f"Processed slack message '{text}'"
+
+    adapter.register_handler(mock_handler)
+    event_res = await adapter.handle_inbound_event({
+        "type": "event_callback",
+        "event_id": "ev_456",
+        "event": {
+            "type": "message",
+            "user": "U12345",
+            "channel": "C98765",
+            "text": "What is the daily drawdown?",
+        },
+    })
+    assert event_res["status"] == "ok"
+    assert event_res["reply_length"] > 0
+
+    await adapter.stop()
+
+

@@ -369,5 +369,34 @@ def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
     jsonschema.validate(instance=payload, schema=inlined)
 
 
+def test_reevaluation_trigger_and_entry_condition_xml_and_string_coercion():
+    from analysis.schemas.pydantic_schemas import ReevaluationTrigger, EntryCondition, SubmitAssetAnalysisSchema
 
+    # 1. XML parameter string in ReevaluationTrigger
+    xml_trig = '<parameter name="type">\nprice_level</parameter>\n<parameter name="detail">Wait until price breaks above 2450</parameter>'
+    t1 = ReevaluationTrigger.model_validate(xml_trig)
+    assert t1.type == "price_level"
+    assert t1.price == 2450.0
+    assert t1.direction == "above"
 
+    # 2. Plain string in EntryCondition
+    e1 = EntryCondition.model_validate("Wait for pullback to 1.0850")
+    assert e1.type == "market"
+    assert e1.detail == "Wait for pullback to 1.0850"
+
+    # 3. SubmitAssetAnalysisSchema with XML trigger and string key news
+    payload = {
+        "symbol": "AUDUSD",
+        "decision": "wait",
+        "confidence": 0.65,
+        "rationale": "Clear calendar, waiting for price structure breakout at lower levels.",
+        "invalidation": "Thesis invalid if AUDUSD closes above 0.6700",
+        "reevaluation_trigger": '<parameter name="type">\nprice_level',
+        "key_news_events_considered": "No major news in last 6 hours. Economic calendar clear for AUD/USD."
+    }
+    schema = SubmitAssetAnalysisSchema.model_validate(payload)
+    assert schema.symbol == "AUDUSD"
+    assert schema.decision == "wait"
+    assert schema.reevaluation_trigger is not None
+    assert schema.reevaluation_trigger.type == "time"
+    assert schema.key_news_events_considered == ["No major news in last 6 hours. Economic calendar clear for AUD/USD."]

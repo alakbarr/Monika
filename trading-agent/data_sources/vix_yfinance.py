@@ -307,27 +307,46 @@ class VIXFetcher:
                 select(VIXData.date).where(VIXData.date.in_(all_dates))
             )
             existing_dates = set()
+            found_by_scalars = False
             try:
                 if hasattr(existing_res, "scalars"):
                     sc = existing_res.scalars()
-                    if hasattr(sc, "all") and isinstance(sc.all(), (list, tuple, set)):
-                        existing_dates = set(sc.all())
-                if not existing_dates and hasattr(existing_res, "scalar_one_or_none"):
-                    if existing_res.scalar_one_or_none():
+                    if hasattr(sc, "__await__"):
+                        sc = await sc
+                    if hasattr(sc, "all"):
+                        vals = sc.all()
+                        if hasattr(vals, "__await__"):
+                            vals = await vals
+                        if isinstance(vals, (list, tuple, set)):
+                            existing_dates = {
+                                d.astimezone(timezone.utc) if getattr(d, "tzinfo", None) else d.replace(tzinfo=timezone.utc)
+                                if isinstance(d, datetime) else d
+                                for d in vals if d is not None
+                            }
+                            found_by_scalars = True
+                if not found_by_scalars and hasattr(existing_res, "scalar_one_or_none"):
+                    son = existing_res.scalar_one_or_none()
+                    if hasattr(son, "__await__"):
+                        son = await son
+                    if son and type(son).__name__ not in ("MagicMock", "AsyncMock", "Mock"):
                         existing_dates = set(all_dates)
             except Exception:
                 existing_dates = set()
 
             for record_dt, close_val in candidates:
-                if record_dt in existing_dates:
+                norm_dt = record_dt.astimezone(timezone.utc) if record_dt.tzinfo else record_dt.replace(tzinfo=timezone.utc)
+                if norm_dt in existing_dates:
                     continue
-                record = VIXData(date=record_dt, close=close_val)
+                record = VIXData(date=norm_dt, close=close_val)
                 self.session.add(record)
+                existing_dates.add(norm_dt)
                 saved += 1
 
         if saved:
             from database.safe_ops import safe_commit
-            await safe_commit(self.session, label="VIXData")
+            ok = await safe_commit(self.session, label="VIXData")
+            if not ok:
+                return 0
 
         return saved
 

@@ -9,6 +9,7 @@ Decouples LLM client creation from hardcoded if/elif chains into dynamic provide
 
 from abc import ABC, abstractmethod
 import logging
+import os
 from typing import Dict, Any, Optional, List, Callable
 
 from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
@@ -208,14 +209,33 @@ def _register_builtins():
     def _create_typesafe(model_name, settings, role_config, task_role="default", **kwargs):
         from analysis.providers.typesafe_provider import TypeSafeProvider
         provider_config = kwargs.get("provider_config", {})
-        base_url = provider_config.get("base_url", "https://api.typesafe.ai")
+        m_lower = model_name.lower()
+        is_openrouter = (
+            model_name.startswith("openrouter/")
+            or "kev" in m_lower
+            or (model_name.startswith("typesafe/") and "openrouter" in m_lower)
+            or provider_config.get("use_openrouter", False)
+        )
+        if is_openrouter:
+            default_base = "https://openrouter.ai/api"
+            default_key = os.getenv("OPENROUTER_API_KEY")
+            clean_model = model_name.replace("openrouter/", "")
+            if clean_model.lower() in ("kev", "kev-4b"):
+                clean_model = "jaredpalmer/kev-4b"
+        else:
+            default_base = "https://api.typesafe.ai"
+            default_key = os.getenv("TYPESAFE_API_KEY")
+            clean_model = model_name
+
+        base_url = provider_config.get("base_url") or default_base
         confidence_thresh = float(role_config.get("confidence_threshold", 0.70))
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
-        key_kwargs = {"api_key": kwargs.get("api_key")} if kwargs.get("api_key") else {}
+        resolved_key = kwargs.get("api_key") or default_key
+        key_kwargs = {"api_key": resolved_key} if resolved_key else {}
         return TypeSafeProvider(
-            model=model_name,
+            model=clean_model,
             max_tokens=max_tokens,
             max_tool_turns=max_tool_turns,
             thinking_level="none",

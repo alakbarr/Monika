@@ -181,12 +181,54 @@ class EntryCondition(BaseModel):
     price: Optional[float] = Field(None, description="Specific price level (null for 'market').")
     detail: str = Field(..., description="Detailed entry condition description.")
 
+    @model_validator(mode='before')
+    @classmethod
+    def coerce_entry_condition(cls, data: Any) -> Any:
+        if isinstance(data, str):
+            s = data.strip()
+            from analysis.harness.tool_repair import _parse_xml_parameters
+            xml_dict = _parse_xml_parameters(s)
+            if xml_dict:
+                data = xml_dict
+                if "detail" not in data or not data.get("detail"):
+                    data["detail"] = s
+                if "type" not in data or not data.get("type"):
+                    data["type"] = "market"
+            else:
+                data = {"type": "market", "detail": s}
+        if isinstance(data, dict):
+            if "detail" not in data or not data.get("detail"):
+                data["detail"] = str(data.get("price") or data.get("type") or "Market entry")
+            if "type" not in data or not data.get("type"):
+                data["type"] = "market"
+        return data
+
 class ReevaluationTrigger(BaseModel):
     type: Literal["price_level", "indicator", "time", "news"]
     detail: str = Field(..., description="Specific trigger condition.")
     price: Optional[float] = Field(None, description="Required if type is 'price_level'. The target price.")
     direction: Optional[Literal["above", "below"]] = Field(None, description="Required if type is 'price_level'.")
     symbol: Optional[str] = Field(None, description="Optional. The symbol this trigger applies to. Defaults to current asset.")
+
+    @model_validator(mode='before')
+    @classmethod
+    def coerce_reevaluation_trigger(cls, data: Any) -> Any:
+        if isinstance(data, str):
+            s = data.strip()
+            from analysis.harness.tool_repair import _parse_xml_parameters
+            xml_dict = _parse_xml_parameters(s)
+            if xml_dict:
+                data = xml_dict
+                if "detail" not in data or not data.get("detail"):
+                    data["detail"] = s
+            else:
+                data = {"type": "time", "detail": s}
+        if isinstance(data, dict):
+            if "detail" not in data or not data.get("detail"):
+                data["detail"] = str(data.get("price") or data.get("type") or "Re-evaluate")
+            if "type" not in data or not data.get("type"):
+                data["type"] = "time"
+        return data
 
     @model_validator(mode='after')
     def validate_and_extract_price_level(self) -> 'ReevaluationTrigger':
@@ -443,7 +485,7 @@ class SubmitAssetAnalysisSchema(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in this decision (0.0 to 1.0).")
     rationale: str = Field(..., description="Concise reasoning for the decision. Must be auditable by a human. Include key confluence factors.")
     
-    specialist_adjudication: Optional[SpecialistAdjudication] = Field(None, description="Structured conflict resolution if SMC setup diverges from Stage 1 Fundamental Brief macro bias.")
+    specialist_adjudication: Optional[SpecialistAdjudication] = Field(None, description="Structured conflict resolution. MANDATORY if technical, sentiment, and macro specialists disagree on direction, or if SMC setup diverges from Stage 1 Fundamental Brief macro bias. Must include conflict_detected=true, resolution_path, and resolution_justification.")
     
     entry_condition: Optional[EntryCondition] = Field(None, description="Entry condition. Required if decision is 'buy' or 'sell'.")
     priced_in_override_justification: Optional[PricedInOverrideJustification] = Field(None, description="ONLY fill if you are overriding a priced_in_score >= 8 guard. Must provide: override_reason (string), why_stage1_wrong (string), post_event_evidence (string). If null, standard rules apply.")
@@ -506,7 +548,7 @@ class SubmitAssetAnalysisSchema(BaseModel):
     
     priced_in_score: Optional[int] = Field(None, ge=1, le=10, description="REQUIRED for buy/sell decisions: Asset-specific priced-in score (1-10 scale). Sum of applicable sub-scores: FedWatch (0-3) + COT extreme positioning (0-3) + price run-up vs ATR from get_price_momentum (0-3) + news saturation (0-1). 1=not priced in, 10=fully priced in. Score >= 8 with major event within 12h: MANDATORY WAIT. Score 5-7: increase confluence threshold +2, reduce lot size 30-50%. Score <= 4: standard thresholds apply.")
     confluence_score: Optional[int] = Field(None, description="REQUIRED for buy/sell decisions: Total confluence score (integer 0-14) based on SMC/ICT framework.")
-    confluence_factors: Optional[List[str]] = Field(None, description="REQUIRED for buy/sell: List of confluence factor IDs that are ACTIVE (scoring points) for this setup. Use these exact IDs: \"fundamental_bias\", \"dxy_confirms\", \"d1_trend\", \"rsi_neutral\", \"near_fvg\", \"near_order_block\", \"in_ote_zone\", \"near_sr_zone\", \"cot_aligned\", \"vix_ok\", \"post_event_entry\", \"session_prime\", \"liquidity_sweep_confirmed\". Example: [\"fundamental_bias\", \"d1_trend\", \"near_fvg\", \"near_order_block\"]")
+    confluence_factors: Optional[List[str]] = Field(None, description="REQUIRED for buy/sell: List of confluence factor IDs that are ACTIVE (scoring points) for this setup. Use these exact IDs: \"fundamental_bias\", \"dxy_confirms\", \"d1_trend\", \"rsi_neutral\", \"near_fvg\", \"near_order_block\", \"in_ote_zone\", \"near_sr_zone\", \"cot_aligned\", \"vix_ok\", \"post_event_entry\", \"session_prime\", \"liquidity_sweep_confirmed\", \"microstructure_ok\", \"historical_pattern_consensus\". Example: [\"fundamental_bias\", \"d1_trend\", \"near_fvg\", \"near_order_block\"]")
     
     key_news_events_considered: Optional[List[str]] = Field(None, description="Optional list of news events considered in this analysis (e.g. ['US CPI 3.1%', 'FOMC Rate Decision']). Must be a list of plain strings.")
     news_impact_assessment: Optional[str] = Field(None, description="Optional assessment of how the news impacts the setup.")
@@ -528,6 +570,41 @@ class SubmitAssetAnalysisSchema(BaseModel):
         # 2. Normalisasi string symbol
         if data.get('symbol') and isinstance(data['symbol'], str):
             data['symbol'] = data['symbol'].strip().upper().replace('/', '')
+
+        # 3. Auto-populate fallback reevaluation_trigger if missing
+        decision = str(data.get('decision') or '').lower()
+        if not data.get('reevaluation_trigger'):
+            sym = data.get('symbol', '')
+            if decision in ('buy', 'sell'):
+                inv_price = data.get('invalidation_price') or data.get('stop_loss')
+                if inv_price is not None:
+                    data['reevaluation_trigger'] = {
+                        'type': 'price_level',
+                        'symbol': sym,
+                        'price': float(inv_price),
+                        'detail': f"Auto re-evaluate thesis if price reaches invalidation/SL level {inv_price}"
+                    }
+                else:
+                    data['reevaluation_trigger'] = {
+                        'type': 'time',
+                        'symbol': sym,
+                        'hours': 4,
+                        'detail': "Auto re-evaluate position on 4-hour cycle or upon structural shift"
+                    }
+            elif decision == 'wait':
+                data['reevaluation_trigger'] = {
+                    'type': 'time',
+                    'symbol': sym,
+                    'hours': 4,
+                    'detail': "Standard wait: re-evaluate on next 4-hour cycle or when key level is tested"
+                }
+
+        # 4. Auto-populate fallback invalidation if missing for avoid/wait
+        if not data.get('invalidation'):
+            if decision == 'avoid':
+                data['invalidation'] = "Not applicable: asset avoided this cycle."
+            elif decision == 'wait':
+                data['invalidation'] = f"Wait thesis invalid if {data.get('symbol', 'asset')} structure breaks or upon 4h cycle timeout."
             
         return data
 

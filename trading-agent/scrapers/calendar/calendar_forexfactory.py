@@ -142,6 +142,8 @@ class ForexFactoryCalendarScraper(BaseScraper):
         logger.info(f"ForexFactory (FairEconomy feed): Fetched {len(events)} events (events with actual: {sum(1 for e in events if e.actual)}).")
         return events
 
+    fetch_events_from_feed = fetch_feed_events
+
     def fetch_events(self, prefer_feed: bool = True, max_cache_age: int = 3600, ignore_cache: bool = False) -> List[CalendarEvent]:
         # 1. Coba ambil dari feed resmi FairEconomy JSON jika diaktifkan (sangat cepat & anti-block)
         if prefer_feed:

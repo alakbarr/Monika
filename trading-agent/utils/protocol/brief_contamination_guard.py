@@ -343,7 +343,8 @@ def _build_warning_context(symbol: str, cds: float, breakdown: dict) -> str:
         f"\\n⚠️ [SSVP WARNING — {symbol}] Context Divergence Score={cds:.2f} "
         f"(dominant: {dominant}). "
         f"Minor inconsistency detected between data sources. "
-        f"Apply normal analysis but note in rationale which source you weight more."
+        f"Apply normal analysis. If submitting BUY/SELL, your rationale MUST explicitly state which source you trust "
+        f"(e.g. 'I trust price action because...' or 'I trust the brief because...')."
     )
 
 

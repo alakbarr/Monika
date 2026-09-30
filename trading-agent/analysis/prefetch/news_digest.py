@@ -92,7 +92,7 @@ _NUMERIC_TOKEN_PATTERN = _re.compile(
     r'[+\-±~><$€£¥₣₩₹]*'
     r'\d+(?:,\d{3})*(?:\.\d+)?%?'
     r'(?:\s*(?:'
-    r'trillions?|tril|兆|tn|'
+    r'trillions?|tril|\u5146|tn|'
     r'billions?|bil|blns?|bns?|'
     r'millions?|mlns?|mios?|mm|mn|'
     r'thousands?|thou|kilo|'
@@ -101,7 +101,7 @@ _NUMERIC_TOKEN_PATTERN = _re.compile(
     r'pips?|points?|pts?|'
     r'years?|yrs?|months?|weeks?|days?|hours?|hrs?|'
     r'[xX]|sigma|'
-    r'[kKmMbBtT]|億'
+    r'[kKmMbBtT]|\u5104'
     r'))?'
     r'(?![A-Za-z0-9_])',
     _re.IGNORECASE
@@ -171,18 +171,18 @@ def _normalize_num_variants(n_str: str) -> set[float]:
         s = _re.sub(r'\s*(?:percentage\s*points?|percent|percentage|pct|pp|%)$', '', s).strip()
     elif _re.search(r'\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$', s):
         s = _re.sub(r'\s*(?:pips?|points?|pts?|years?|yrs?|months?|weeks?|days?|hours?|hrs?|sigma|[xX])$', '', s).strip()
-    elif _re.search(r'\s*(?:trillions?|tril|兆|tn|t)$', s):
+    elif _re.search(r'\s*(?:trillions?|tril|\u5146|tn|t)$', s):
         mult = 1_000_000_000_000.0
-        s = _re.sub(r'\s*(?:trillions?|tril|兆|tn|t)$', '', s).strip()
+        s = _re.sub(r'\s*(?:trillions?|tril|\u5146|tn|t)$', '', s).strip()
     elif _re.search(r'\s*(?:billions?|bil|blns?|bns?|b)$', s):
         mult = 1_000_000_000.0
         s = _re.sub(r'\s*(?:billions?|bil|blns?|bns?|b)$', '', s).strip()
     elif _re.search(r'\s*(?:millions?|mlns?|mios?|mm|mn|m)$', s):
         mult = 1_000_000.0
         s = _re.sub(r'\s*(?:millions?|mlns?|mios?|mm|mn|m)$', '', s).strip()
-    elif _re.search(r'\s*億$', s):
+    elif _re.search(r'\s*\u5104$', s):
         mult = 100_000_000.0
-        s = _re.sub(r'\s*億$', '', s).strip()
+        s = _re.sub(r'\s*\u5104$', '', s).strip()
     elif _re.search(r'\s*(?:thousands?|thou|kilo|k)$', s):
         mult = 1_000.0
         s = _re.sub(r'\s*(?:thousands?|thou|kilo|k)$', '', s).strip()
@@ -267,7 +267,7 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
 
         # Check structural whitelist ONLY for unscaled base numbers (e.g. 1..10, years, horizons)
         # Scaled financial claims like $2B, 25bps, or 5.0% must be grounded in source text!
-        has_multiplier = bool(_re.search(r'(?:[0-9]+(?:\.[0-9]+)?\s*(?:[kmb兆億]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct)|(?:\$|€|£|¥)\s*[0-9]+|\b(?:usd|eur|gbp)\b)', tok_lower))
+        has_multiplier = bool(_re.search(r'(?:[0-9]+(?:\.[0-9]+)?\s*(?:[kmb\u5146\u5104]|thousand|million|billion|trillion|mio|bln|bn|tn|bps|bp|%|percent|pct)|(?:\$|€|£|¥)\s*[0-9]+|\b(?:usd|eur|gbp)\b)', tok_lower))
         if not has_multiplier and any(v in _STRUCTURAL_NUMBERS for v in tok_variants):
             continue
 
@@ -792,9 +792,12 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
         zero-tolerance requirement for this stage."""
         IMPACT_RANK = {'NONE': 0, 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'BREAKING': 4}
         candidates = []
+        is_zb = _is_zero_based_series(validated_result, len(batch))
         for item_result in validated_result:
-            idx = item_result.get('index', 0) - 1
-            if not 0 <= idx < len(batch):
+            if not isinstance(item_result, dict):
+                continue
+            idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
+            if idx is None:
                 continue
             news_item = batch[idx]
             current_impact = item_result.get('impact', 'MEDIUM')
@@ -859,11 +862,10 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
                         matched_item = n_item
                         break
             if not matched_item:
-                idx = r.get('index', 0)
-                if 1 <= idx <= len(candidates):
-                    matched_item = candidates[idx - 1][1]
-                elif 0 <= idx < len(candidates):
-                    matched_item = candidates[idx][1]
+                cand_items = [c[1] for c in candidates]
+                idx = _resolve_item_index(r, cand_items)
+                if idx is not None:
+                    matched_item = cand_items[idx]
             if matched_item:
                 corrected[matched_item.id] = r
         return corrected
@@ -914,11 +916,10 @@ Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
                         matched_item = n_item
                         break
             if not matched_item:
-                idx = r.get('index', 0)
-                if 1 <= idx <= len(low_conf_items):
-                    matched_item = low_conf_items[idx - 1][1]
-                elif 0 <= idx < len(low_conf_items):
-                    matched_item = low_conf_items[idx][1]
+                low_items = [n_item for _, n_item in low_conf_items]
+                idx = _resolve_item_index(r, low_items)
+                if idx is not None:
+                    matched_item = low_items[idx]
             if matched_item:
                 corrected[matched_item.id] = r
                 logger.info(f"[NewsClassification] Escalation resolved '{matched_item.title[:50]}': "
@@ -1058,11 +1059,12 @@ Respond JSON array of objects:
                     result = result.get('items') or result.get('verdicts') or result.get('results') or [result]
                 if not isinstance(result, list):
                     continue
+                is_zb = _is_zero_based_series(result, len(chunk))
                 for v in result:
                     if not isinstance(v, dict):
                         continue
-                    idx = v.get('index', 0) - 1
-                    if not 0 <= idx < len(chunk):
+                    idx = _resolve_item_index(v, chunk, is_zero_based=is_zb)
+                    if idx is None:
                         continue
                     item = chunk[idx]
                     old_impact = item.impact
@@ -1352,10 +1354,10 @@ Return ONLY valid JSON matching schema."""
                     now_utc=now_utc,
                     calendar_priors=calendar_priors,
                     macro_context=macro_5d_context,
-                    min_confidence=0.30
+                    min_confidence=0.60
                 )
                 if result:
-                    logger.info(f"[NewsClassification] Classified {len(batch)} items via TypeSafe Jev in sub-100ms parallel pass")
+                    logger.info(f"[NewsClassification] Classified {len(result)}/{len(batch)} items via TypeSafe Jev in sub-100ms parallel pass")
             except Exception as e:
                 logger.debug(f"[NewsClassification] Jev fast path bypassed: {e}")
                 result = None
@@ -1386,10 +1388,15 @@ Return ONLY valid JSON matching schema."""
             validated_result = await self._validate_classification_batch(session, result, batch, now_utc, seen_breaking_titles, global_breaking_budget, calendar_priors)
             
             # --- Targeted Micro-Retry & Keyword Recovery for Missing Items ---
-            processed_indices = {r.get('index', 0) - 1 for r in (validated_result or [])}
+            is_zb = _is_zero_based_series(validated_result, len(batch))
+            processed_indices = {
+                _resolve_item_index(r, batch, is_zero_based=is_zb)
+                for r in (validated_result or [])
+                if isinstance(r, dict)
+            } - {None}
             missing_batch_items = [(idx, item) for idx, item in enumerate(batch) if idx not in processed_indices]
             
-            if missing_batch_items and len(missing_batch_items) < len(batch):
+            if missing_batch_items:
                 logger.info(f"[NewsClassification] Micro-retrying {len(missing_batch_items)} omitted items in batch...")
                 retry_lines = []
                 for sub_i, (orig_idx, m_item) in enumerate(missing_batch_items):
@@ -1433,16 +1440,20 @@ Return ONLY valid JSON matching schema."""
             # --- NEW: eskalasi item low-confidence HIGH/BREAKING sebelum diterapkan ---
             low_conf_candidates = []
             for item_result in validated_result or []:
+                if not isinstance(item_result, dict):
+                    continue
                 dc = item_result.get('_confidence_downgrade', '')
                 if dc.startswith('BREAKING->') or dc.startswith('HIGH->') or item_result.get('confidence', 1.0) < 0.6:
-                    idx = item_result.get('index', 0) - 1
-                    if 0 <= idx < len(batch):
+                    idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
+                    if idx is not None:
                         low_conf_candidates.append((item_result, batch[idx]))
             if low_conf_candidates:
                 corrections = await self._escalate_low_confidence_items(session, low_conf_candidates, now_utc)
                 for item_result in validated_result:
-                    idx = item_result.get('index', 0) - 1
-                    if 0 <= idx < len(batch):
+                    if not isinstance(item_result, dict):
+                        continue
+                    idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
+                    if idx is not None:
                         news_item = batch[idx]
                         if news_item.id in corrections:
                             fixed = corrections[news_item.id]
@@ -1460,8 +1471,10 @@ Return ONLY valid JSON matching schema."""
             if under_class_candidates:
                 corrections = await self._reverify_candidates(session, under_class_candidates, now_utc)
                 for item_result in validated_result:
-                    idx = item_result.get('index', 0) - 1
-                    if 0 <= idx < len(batch):
+                    if not isinstance(item_result, dict):
+                        continue
+                    idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
+                    if idx is not None:
                         news_item = batch[idx]
                         if news_item.id in corrections:
                             fixed = corrections[news_item.id]
@@ -1478,8 +1491,10 @@ Return ONLY valid JSON matching schema."""
             if validated_result:
                 processed_indices = set()
                 for item_result in validated_result:
-                    idx = item_result.get('index', 0) - 1
-                    if 0 <= idx < len(batch) and idx not in processed_indices:
+                    if not isinstance(item_result, dict):
+                        continue
+                    idx = _resolve_item_index(item_result, batch, is_zero_based=is_zb)
+                    if idx is not None and idx not in processed_indices:
                         processed_indices.add(idx)
                         news_item = batch[idx]
                         
@@ -1571,11 +1586,12 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                         if isinstance(verify_result, dict):
                             verify_result = verify_result.get('items') or verify_result.get('verdicts') or verify_result.get('results') or [verify_result]
                         if isinstance(verify_result, list):
+                            is_zb = _is_zero_based_series(verify_result, len(b_chunk))
                             for v in verify_result:
                                 if not isinstance(v, dict):
                                     continue
-                                idx = v.get('index', 0) - 1
-                                if 0 <= idx < len(b_chunk):
+                                idx = _resolve_item_index(v, b_chunk, is_zero_based=is_zb)
+                                if idx is not None:
                                     verdict = v.get('verdict')
                                     if verdict == 'DOWNGRADE_TO_HIGH':
                                         b_chunk[idx].impact = 'HIGH'

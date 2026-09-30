@@ -49,7 +49,7 @@ class CacheBreakpointManager:
 4. MULTI-TIMEFRAME CONFLUENCE HIERARCHY (D1 / H4 / LTF):
    - Higher Timeframe (Daily - D1): Establishes the macro directional bias, structural order flow, major liquidity pools, and fundamental trend compass. The higher timeframe is the supreme directional authority.
    - Intermediate Timeframe (4-Hour - H4): Establishes the execution market structure, internal breaks (BOS/ChoCH), primary unmitigated Order Blocks, Fair Value Gaps, and ATR 14 baseline volatility.
-   - Lower Timeframe (1-Hour / 15-Minute - H1/M15): Used strictly for precision entry refinement, monitoring liquidity sweeps into HTF/ITF POIs, and minimizing Stop Loss distance without violating the 1.0x ATR buffer.
+   - Lower Timeframe (1-Hour / 15-Minute - H1/M15): Used strictly for precision entry refinement, monitoring liquidity sweeps into HTF/ITF POIs, and minimizing Stop Loss distance without violating the 1.0x ATR buffer. (Note: SMC zones and structure breaks are calculated on H1, H4, D1; use H1 for structure tools and M15 for get_price_history).
    - Trend Alignment Invariant: Never initiate a lower-timeframe entry that directly opposes the dominant D1/H4 market structure without explicit evidence of a major liquidity sweep and confirmed multi-timeframe Change of Character.
 
 5. VOLATILITY REGIMES & VIX GOVERNANCE MATRIX:

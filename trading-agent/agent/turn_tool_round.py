@@ -199,29 +199,48 @@ class TurnToolRoundCoordinator:
                     halt_reason=f"Persist-Before-Execute exception: {str(e)}",
                 )
 
-        # 3. Execute valid calls safely
-        for call in valid_calls:
+        # 3. Parallel Read-Tool Batching vs Serial Side-Effect Execution
+        # Read-only tools (get_*, fetch_*, calc_*) are safely executed concurrently in parallel via asyncio.gather.
+        # Side-effecting tools (order execution, trade proposals, state mutations) remain strictly sequential.
+        def _is_mutation_tool(name: str) -> bool:
+            lower = name.lower()
+            return any(k in lower for k in ("order", "trade", "execute", "cancel", "modify", "close", "kill", "proposal", "set_", "submit"))
+
+        read_calls = [c for c in valid_calls if not _is_mutation_tool(c.name)]
+        mutation_calls = [c for c in valid_calls if _is_mutation_tool(c.name)]
+
+        # Execute all read-only tools in parallel
+        async def _exec_single(call: ToolCallSpec) -> Dict[str, Any]:
             try:
                 logger.info(f"[TurnToolRound] Executing tool: {call.name} (call_id={call.id})")
                 res = await tool_executor_fn(call.name, call.arguments)
-                
-                # Format output as string JSON if not string
                 content_str = res if isinstance(res, str) else json.dumps(res, default=str)
-                tool_results.append({
+                return {
                     "role": "tool",
                     "tool_call_id": call.id,
                     "name": call.name,
                     "content": content_str,
                     "is_error": False,
-                })
+                }
             except Exception as e:
                 logger.error(f"[TurnToolRound] Error executing tool {call.name}: {e}", exc_info=True)
-                tool_results.append({
+                return {
                     "role": "tool",
                     "tool_call_id": call.id,
                     "name": call.name,
                     "content": json.dumps({"error": f"Tool execution failed: {str(e)}"}),
                     "is_error": True,
-                })
+                }
+
+        # 3a. Parallel execution for read tools
+        if read_calls:
+            logger.debug(f"[TurnToolRound] Batching {len(read_calls)} read-only tools in parallel...")
+            read_results = await asyncio.gather(*[_exec_single(c) for c in read_calls])
+            tool_results.extend(read_results)
+
+        # 3b. Strict serial execution for mutation tools
+        for mut_call in mutation_calls:
+            mut_result = await _exec_single(mut_call)
+            tool_results.append(mut_result)
 
         return ToolRoundVerdict(action="continue", tool_results=tool_results)

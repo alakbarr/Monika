@@ -626,8 +626,12 @@ class IsolatedStrategyBacktestHarness:
                 i += 1
                 continue
 
-            # Directional execution price with realistic broker friction
-            base_price = float(current_bar.close)
+            # Standardized next-bar-open fill semantics (Zero lookahead)
+            # Signal formed on close of bar i is filled at open of bar i+1
+            if i + 1 >= len(primary_candles):
+                break
+            next_bar = primary_candles[i + 1]
+            base_price = float(next_bar.open)
             if sig.direction == "buy":
                 entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost
             else:
@@ -940,6 +944,8 @@ class IsolatedStrategyBacktestHarness:
 
         i = 15
         while i < len(candles) - 2:
+            if i % 25 == 0:
+                await asyncio.sleep(0)
             current_bar = candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
             h1_slice = candles[: i + 1]
@@ -972,7 +978,11 @@ class IsolatedStrategyBacktestHarness:
                 i += 1
                 continue
 
-            base_price = float(current_bar.close)
+            # Standardized next-bar-open fill semantics (Zero lookahead)
+            if i + 1 >= len(primary_candles):
+                break
+            next_bar = primary_candles[i + 1]
+            base_price = float(next_bar.open)
             entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost if sig.direction == "buy" else base_price - (self.spread_cost / 2.0) - self.slippage_cost
             atr = self._calculate_atr(h1_slice, period=14)
 

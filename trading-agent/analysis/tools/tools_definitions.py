@@ -318,6 +318,7 @@ GET_PRICE_HISTORY = _tool(
         "timeframe": {
             "type": "string",
             "enum": ["M15", "H1", "H4", "D1"],
+            "default": "H1",
             "description": "Timeframe for the OHLCV data. Default: 'H1'.",
         },
         "limit": {
@@ -325,7 +326,7 @@ GET_PRICE_HISTORY = _tool(
             "description": "Number of candles to return (most recent). Default: 50, max: 200.",
         },
     },
-    required=["symbol", "timeframe"],
+    required=["symbol"],
 )
 
 GET_TECHNICAL_INDICATORS = _tool(
@@ -344,10 +345,11 @@ GET_TECHNICAL_INDICATORS = _tool(
         "timeframe": {
             "type": "string",
             "enum": ["M15", "H1", "H4", "D1"],
+            "default": "H1",
             "description": "Timeframe for the indicators. Default: 'H1'.",
         },
     },
-    required=["symbol", "timeframe"],
+    required=["symbol"],
 )
 
 GET_ATR = _tool(
@@ -360,9 +362,14 @@ GET_ATR = _tool(
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
-        "timeframe": {"type": "string", "enum": ["M15", "H1", "H4", "D1"]},
+        "timeframe": {
+            "type": "string",
+            "enum": ["M15", "H1", "H4", "D1"],
+            "default": "H1",
+            "description": "Timeframe for ATR calculation. Default: 'H1'.",
+        },
     },
-    required=["symbol", "timeframe"],
+    required=["symbol"],
 )
 
 GET_MULTI_TIMEFRAME_SUMMARY = _tool(
@@ -591,10 +598,11 @@ SUBMIT_ASSET_ANALYSIS = _tool(
         "Submit your completed per-asset analysis decision. "
         "Call this ONCE per asset after you have reviewed all relevant data. "
         "IMPORTANT RULES:\n"
-        "- If decision is 'buy' or 'sell': entry_condition, stop_loss, take_profit, reevaluation_trigger, confluence_score, priced_in_score, invalidation_price, AND invalidation_direction are ALL REQUIRED.\n"
-        "- confluence_score: Total SMC/ICT confluence score (integer). confluence_factors: list of active factor IDs.\n"
-        "- priced_in_score: 1-10 scale. invalidation_price + invalidation_direction ('above' or 'below'): specific price level that breaks your thesis.\n"
-        "- If decision is 'wait': reevaluation_trigger is REQUIRED.\n"
+        "- If decision is 'buy' or 'sell': entry_condition, stop_loss, take_profit, confluence_score, priced_in_score, invalidation_price, AND invalidation_direction ('above' or 'below') are REQUIRED. R:R must be >= 1.3.\n"
+        "- confluence_factors: only use exact active IDs: 'fundamental_bias', 'dxy_confirms', 'd1_trend', 'rsi_neutral', 'near_fvg', 'near_order_block', 'in_ote_zone', 'near_sr_zone', 'cot_aligned', 'vix_ok', 'liquidity_sweep_confirmed', 'session_prime', 'microstructure_ok', 'historical_pattern_consensus'.\n"
+        "- If SSVP warning or macro divergence active: rationale MUST explicitly state 'I trust price action because...' or 'I trust the brief because...'.\n"
+        "- If specialists disagree on direction: 'specialist_adjudication' is REQUIRED.\n"
+        "- If decision is 'wait': reevaluation_trigger is required (auto-defaults to 4h time review if omitted).\n"
         "- If decision is 'avoid': only rationale is required.\n"
         "The backend will validate these rules and reject incomplete submissions."
     ),

@@ -1,0 +1,48 @@
+
+"""GTJA Alpha #79.
+
+Formula: SMA(MAX(CLOSE-DELAY(CLOSE,1),0),12,1)/SMA(ABS(CLOSE-DELAY(CLOSE,1)),12,1)*100
+Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 79."""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+
+from indicators.factor_primitives import (
+    decay_linear,
+    delta,
+    rank,
+    safe_div,
+    signed_power,
+    ts_argmax,
+    ts_argmin,
+    ts_corr,
+    ts_cov,
+    ts_max,
+    ts_mean,
+    ts_min,
+    ts_rank,
+    ts_std,
+)
+
+__alpha_meta__ = {
+    "id": "gtja191_079",
+    "theme": ['momentum'],
+    "formula_latex": 'SMA(MAX(CLOSE-DELAY(CLOSE,1),0),12,1)/SMA(ABS(CLOSE-DELAY(CLOSE,1)),12,1)*100',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 12,
+    "min_warmup_bars": 13,
+    "notes": 'RSI-12.',
+}
+
+def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
+    c = panel["close"]
+    diff = c - c.shift(1)
+    u = diff.clip(lower=0).ewm(alpha=1.0 / 12.0, adjust=False).mean()
+    a = diff.abs().ewm(alpha=1.0 / 12.0, adjust=False).mean()
+    return safe_div(u, a) * 100.0

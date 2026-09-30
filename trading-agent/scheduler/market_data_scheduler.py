@@ -231,15 +231,16 @@ class MarketDataScheduler:
 
             return report
 
-        try:
-            if session is not None:
-                return await _run_bootstrap(session)
-            else:
-                async with get_session() as sess:
-                    return await _run_bootstrap(sess)
-        except Exception as e:
-            logger.error(f"[DeepHistory] Bootstrap failed: {e}")
-            return {"error": str(e)}
+        async with self._sync_lock:
+            try:
+                if session is not None:
+                    return await _run_bootstrap(session)
+                else:
+                    async with get_session() as sess:
+                        return await _run_bootstrap(sess)
+            except Exception as e:
+                logger.error(f"[DeepHistory] Bootstrap failed: {e}")
+                return {"error": str(e)}
 
     async def start(self) -> None:
         """Loop latar belakang untuk sinkronisasi berkala data pasar."""

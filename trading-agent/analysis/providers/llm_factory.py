@@ -6,13 +6,15 @@ claude_client.py dan gemini_client.py SUDAH DIHAPUS.
 """
 
 import logging
+import json
 import copy
 import asyncio
 import inspect
+import os
+import time
 from typing import Optional, Any, Dict
 from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 from utils.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
-import time
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
 
@@ -203,11 +205,13 @@ class LLMFactory:
         ):
             return "9router"
 
+        # System One Decision Models (TypeSafe Jev, Kev, NanoJev) — direct or routed via OpenRouter
+        if "jev" in name or "typesafe" in name or "kev" in name or "nanojev" in name:
+            return "typesafe"
+
         # Guess provider
         if "openrouter" in name or "ox-alpha" in name or name.startswith("stealth/"):
             return "openrouter"
-        if "jev" in name or "typesafe" in name:
-            return "typesafe"
         if "glm" in name or "kimi" in name or "minimax" in name or "mimo" in name or "muse" in name:
             return "openrouter"
         if name.startswith("groq"):
@@ -329,6 +333,28 @@ class LLMFactory:
             prefix, remainder = model_name.split(":", 1)
             if prefix.lower() in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
                 clean_model_name = remainder
+
+        # Routing adjustments for System One models via OpenRouter (e.g. jaredpalmer/kev-4b or openrouter/typesafe/jev-latest)
+        if provider_name == "typesafe":
+            m_lower = model_name.lower()
+            is_openrouter_route = (
+                model_name.startswith("openrouter/")
+                or "kev" in m_lower
+                or (model_name.startswith("typesafe/") and "openrouter" in m_lower)
+                or provider_config.get("use_openrouter", False)
+            )
+            if is_openrouter_route:
+                if cred_pool:
+                    pooled_key = cred_pool.get_key("openrouter") or pooled_key
+                if not pooled_key:
+                    pooled_key = os.getenv("OPENROUTER_API_KEY")
+                provider_config = dict(provider_config)
+                provider_config["base_url"] = provider_config.get("base_url") or "https://openrouter.ai/api"
+                provider_config["use_openrouter"] = True
+                if clean_model_name.startswith("openrouter/"):
+                    clean_model_name = clean_model_name[len("openrouter/"):]
+                if clean_model_name.lower() in ("kev", "kev-4b"):
+                    clean_model_name = "jaredpalmer/kev-4b"
 
         from analysis.providers.provider_registry import ProviderRegistry
         client = ProviderRegistry.create_client(
@@ -525,6 +551,17 @@ class FallbackClientWrapper(BaseLLMClient):
                 continue
 
             provider = self.factory._resolve_provider(model)
+
+            # TypeSafe / Jev models are System One decision engines and do not support top-level array schemas in classify_json
+            if provider == "typesafe" and method_name == "classify_json" and not kwargs.get("jev_questions"):
+                sch = kwargs.get("schema") or (args[2] if len(args) > 2 and isinstance(args[2], dict) else None)
+                if isinstance(sch, dict) and sch.get("type") == "array":
+                    logger.debug(
+                        f"[{self.task_role}] Skipping {slot_name} '{model}' — "
+                        f"TypeSafe Jev does not support array schemas in classify_json"
+                    )
+                    continue
+
             if not ProviderCircuitBreaker.is_provider_available(provider):
                 logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — provider '{provider}' circuit is OPEN")
                 continue
@@ -583,7 +620,8 @@ class FallbackClientWrapper(BaseLLMClient):
                 try:
                     method = getattr(client, method_name, None)
                     if not callable(method):
-                        raise AttributeError(f"Client {client} does not implement callable method '{method_name}'")
+                        logger.debug(f"Client {client} does not implement callable method '{method_name}'")
+                        break
                     # Safely clone mutable message lists / dicts while preserving unpicklable session objects
                     safe_args = [_safe_clone(a) for a in args]
                     safe_kwargs = {k: _safe_clone(v) for k, v in kwargs.items()}
@@ -608,6 +646,29 @@ class FallbackClientWrapper(BaseLLMClient):
                             safe_kwargs["messages"] = preserve_fn(safe_kwargs["messages"], target_prov)
                         elif safe_args and isinstance(safe_args[0], list):
                             safe_args[0] = preserve_fn(safe_args[0], target_prov)
+
+                    # Adapt Jev-specific arguments if falling back to generative LLM provider
+                    if provider != "typesafe":
+                        jev_q = safe_kwargs.get("jev_questions")
+                        if jev_q:
+                            from utils.typesafe.jev_primitives import jev_questions_to_schema
+                            if method_name == "classify_json" and not safe_kwargs.get("schema"):
+                                safe_kwargs["schema"] = jev_questions_to_schema(jev_q)
+                            elif method_name == "generate_content" and not safe_kwargs.get("response_schema"):
+                                safe_kwargs["response_schema"] = jev_questions_to_schema(jev_q)
+
+                        # If user prompt is empty but structured state is provided, synthesize state prompt
+                        if "state" in safe_kwargs:
+                            st_val = safe_kwargs.get("state")
+                            st_str = json.dumps(st_val, indent=2) if isinstance(st_val, (dict, list)) else str(st_val)
+                            if method_name == "classify_json":
+                                if safe_args and (safe_args[0] == "" or safe_args[0] is None):
+                                    safe_args[0] = f"Evaluate the following state context:\n{st_str}"
+                                elif not safe_args and safe_kwargs.get("prompt") in ("", None):
+                                    safe_kwargs["prompt"] = f"Evaluate the following state context:\n{st_str}"
+                            elif method_name == "generate_content":
+                                if safe_kwargs.get("user_message") in ("", None):
+                                    safe_kwargs["user_message"] = f"Evaluate the following state context:\n{st_str}"
 
                     # ── Hook Interception: pre_llm_call & prompt section injection ──
                     try:
@@ -663,6 +724,13 @@ class FallbackClientWrapper(BaseLLMClient):
                     if result is None and method_name in ["generate", "classify_json", "generate_content"]:
                         logger.warning(f"Model {model} ({slot_name}) returned None in {method_name}")
                         break
+
+                    # Normalize metadata when fallback generative LLM answers a Jev-intended task
+                    if provider != "typesafe" and isinstance(result, dict):
+                        result.setdefault("_confidence", 0.85)
+                        result.setdefault("_is_fallback", True)
+                        if "_is_high_confidence" not in result:
+                            result["_is_high_confidence"] = True
                         
                     self.model = model
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
@@ -914,7 +982,7 @@ class FallbackClientWrapper(BaseLLMClient):
         logger.error(f"All fallback models failed for {method_name}. Last error: {last_error}")
         
         # Return sensible defaults on complete failure
-        if method_name in ["generate", "generate_content", "classify_json"]:
+        if method_name in ["generate", "generate_content", "classify_json", "system_one"]:
             return None
         elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
             res = {
@@ -940,6 +1008,14 @@ class FallbackClientWrapper(BaseLLMClient):
         
         raise Exception(f"All fallback models failed. Last error: {last_error}")
 
+    def _get_client(self, slot_name: str = "primary") -> Optional[BaseLLMClient]:
+        """Returns client instance for specified slot (defaults to active primary)."""
+        model = self.primary if slot_name == "primary" else (self.fallbacks[0] if self.fallbacks else self.primary)
+        try:
+            return self.factory._create_client_instance(model, self.role_config, slot_name=slot_name, task_role=self.task_role)
+        except TypeError:
+            return self.factory._create_client_instance(model, self.role_config, slot_name=slot_name)
+
     async def generate(self, prompt: str, system: str = "", temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs) -> Optional[str]:
         call_kwargs = dict(system=system, temperature=temperature, **kwargs)
         if max_tokens is not None:
@@ -958,6 +1034,9 @@ class FallbackClientWrapper(BaseLLMClient):
         if max_tokens is not None:
             call_kwargs["max_tokens"] = max_tokens
         return await self._execute_with_fallback("classify_json", prompt, **call_kwargs)
+
+    async def system_one(self, state: Any, questions: dict, timeout: float = 15.0, **kwargs: Any) -> Any:
+        return await self._execute_with_fallback("system_one", state=state, questions=questions, timeout=timeout, **kwargs)
         
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: str, **kwargs) -> MockResponse:
         return await self._execute_with_fallback("run_tool_agent", messages, tools, system_prompt, **kwargs)
