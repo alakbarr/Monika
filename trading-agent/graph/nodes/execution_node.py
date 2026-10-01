@@ -68,7 +68,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                     logger.error('MT5 returned zero or null equity. Auto-execute BLOCKED this cycle.')
                     try:
                         from utils.infra.notifier import AgentNotifier
-                        await AgentNotifier().send_warning('⚠️ <b>Auto-Execute BLOCKED</b>\nMT5 could not verify account equity.')
+                        await AgentNotifier().send_warning('[PERINGATAN] <b>Auto-Execute BLOCKED</b>\nMT5 could not verify account equity.')
                     except Exception: pass
                     summary['execution'] = {'status': 'blocked_no_equity_data', 'count': 0}
                     return {"summary": summary}

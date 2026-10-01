@@ -325,7 +325,7 @@ def test_ultra_long_input(router):
 
 def test_symbols_and_emojis(router):
     """Queries with emojis and punctuation should route cleanly."""
-    query = "🚀🔥 Bagaimana probabilitas The Fed menaikkan suku bunga? 📊💰"
+    query = " Bagaimana probabilitas The Fed menaikkan suku bunga? [LAPORAN][SALDO]"
     tools = router.route_tools_for_query(query)
     tool_names = {t["name"] for t in tools}
     assert "get_fedwatch_probabilities" in tool_names

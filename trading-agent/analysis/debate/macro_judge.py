@@ -21,8 +21,8 @@ JUDGE_SCHEMA = {
         },
         "winner": {
             "type": "string",
-            "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "US_EXCEPTIONALISM", "STAGFLATION", "TIE", "BULL", "BEAR"],
-            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' (or BULL) means risk-on/weak dollar won. 'RISK_OFF_USD_BULL' (or BEAR) means risk-off/strong dollar won. 'US_EXCEPTIONALISM' means both USD and US risk assets are bullish. 'STAGFLATION' means risk assets and USD are both struggling. 'TIE' if balanced."
+            "enum": ["RISK_ON_USD_BEAR", "RISK_OFF_USD_BULL", "US_EXCEPTIONALISM", "STAGFLATION", "TIE"],
+            "description": "Winner of the debate. 'RISK_ON_USD_BEAR' means risk-on / weak dollar thesis won. 'RISK_OFF_USD_BULL' means risk-off / strong dollar thesis won. 'US_EXCEPTIONALISM' means both USD and US risk assets are bullish. 'STAGFLATION' means risk assets and USD are both struggling. 'TIE' if balanced."
         },
         "dxy_bias": {
             "type": "string",

@@ -5,8 +5,7 @@ timezone: "UTC"
 target_symbols: ["XAUUSD", "EURUSD", "GBPUSD", "XTIUSD"]
 data_capabilities:
   - cot_signals
-  - prediction_market
-  - interest_rates
+  - cot_report
   - bond_yield_spreads
 ---
 
@@ -18,13 +17,12 @@ data_capabilities:
 
 ## 2. Smart Money Flow Integration
 - Confirm whether institutional futures positioning aligns with underlying interest rate differentials.
-- Check prediction market sentiment stability across upcoming monthly cycles.
+- Check multi-timeframe positioning momentum across commercial and speculative participants.
 
 ## 3. Weekly Structural Bias
 - Define directional macro biases for the subsequent trading week.
 
-## Verdict:
-- XAUUSD: HOT_BULLISH - Managed Money commercial net long positions at 12-month highs.
-- EURUSD: NEUTRAL - Speculative positioning neutral with minor institutional trimming.
-- GBPUSD: HOT_BULLISH - Net long non-commercial accumulation continuing for 3rd week.
-- XTIUSD: HOT_BEARISH - Heavy producer short hedging expanding against crude futures.
+## Verdict Format
+*Verdicts are generated dynamically by MacroPlaybookRunner at runtime based on live market data.*
+*Each verdict line MUST follow: `- {SYMBOL}: {BIAS} - {justification with concrete data points}`*
+*Allowed biases: HOT_BULLISH, BULLISH, NEUTRAL, BEARISH, HOT_BEARISH, RISK_OFF*

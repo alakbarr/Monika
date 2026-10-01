@@ -5,7 +5,7 @@ from analysis.memory.skill_crystallizer import SkillCrystallizer
 
 @pytest.mark.asyncio
 async def test_skill_crystallizer_cluster():
-    crystallizer = SkillCrystallizer()
+    crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 2}})
     
     mock_session = AsyncMock()
     mock_r1 = MagicMock()

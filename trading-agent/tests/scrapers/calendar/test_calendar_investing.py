@@ -10,6 +10,7 @@ class TestInvestingCalendarScraper:
         
         scraper = InvestingCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=False)
+        scraper._fallback_forexfactory = MagicMock(return_value=[])
         
         events = scraper.fetch_events()
         assert events == []
@@ -22,6 +23,7 @@ class TestInvestingCalendarScraper:
         
         scraper = InvestingCalendarScraper()
         scraper.navigate_with_fallback = MagicMock(return_value=True)
+        scraper._fallback_forexfactory = MagicMock(return_value=[])
         
         mock_page.ele.return_value = None # Table not found
         

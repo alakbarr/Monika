@@ -572,10 +572,10 @@ class RiskGate:
                 f'priced_in_score is None for {analysis.symbol}. '
                 f'Priced-in assessment not completed. Blocking execution.')
         
-        if analysis.priced_in_score >= 9:
-            return (False,
-                f'priced_in_score={analysis.priced_in_score} >= 9 for {analysis.symbol}. '
-                f'Event fully priced in — high sell-the-news reversal risk.')
+        if analysis.priced_in_score >= 8:
+            return (False, 
+                f'priced_in_score={analysis.priced_in_score} >= 8 for {analysis.symbol}. '
+                f'Event fully priced in (score >= 8) — high sell-the-news reversal risk.')
         
         min_confluence = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
         if session and getattr(analysis, 'symbol', None):
@@ -725,6 +725,16 @@ class RiskGate:
         )).scalars().all()
         for cfg in pause_configs:
             if cfg and cfg.value and cfg.value.split(':', 1)[0].strip().lower() == 'true':
+                val_parts = cfg.value.split('|unpause_at:', 1)
+                if len(val_parts) > 1 and cfg.key == 'manual_trading_paused':
+                    try:
+                        exp_dt = datetime.fromisoformat(val_parts[1].strip())
+                        if clock.now() >= exp_dt:
+                            cfg.value = 'false'
+                            await session.commit()
+                            continue
+                    except Exception:
+                        pass
                 reason = cfg.value.split(':', 1)[1] if ':' in cfg.value else f'kill switch active ({cfg.key})'
                 return False, f"Trading is blocked by {cfg.key}: {reason}"
 
@@ -737,6 +747,19 @@ class RiskGate:
         )).scalar_one_or_none()
 
         if state and state.trading_paused:
+            unpause_time = getattr(state, "unpause_at", None)
+            if isinstance(unpause_time, datetime) and clock.now() >= unpause_time:
+                state.trading_paused = False
+                state.unpause_at = None
+                state.reason = None
+                cfg = (await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == 'manual_trading_paused')
+                )).scalar_one_or_none()
+                if cfg:
+                    cfg.value = 'false'
+                await session.commit()
+                logger.info("Timed trading pause expired, automatically resumed.")
+                return True, "ok"
             return False, f"Trading is manually paused: {state.reason or 'no reason given'}"
         return True, "ok"
 
@@ -1593,7 +1616,7 @@ class RiskGate:
             try:
                 from utils.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
-                await notifier.send_critical(f"🛑 <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
+                await notifier.send_critical(f"[STOP] <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
             except Exception as e:
                 logger.error(f"Failed to notify auto-pause: {e}")
 
@@ -1605,33 +1628,43 @@ class RiskGate:
         )
 
     async def pause_trading(
-        self, session: AsyncSession, reason: str
+        self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None
     ) -> None:
-        """Pause sistem trading secara manual."""
+        """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
         from database.models import SystemConfig
+        from datetime import timedelta
         today_start = get_trading_day_start(self.settings)
         state = (await session.execute(
             select(RiskState).where(RiskState.date >= today_start).limit(1)
         )).scalar_one_or_none()
 
+        now = clock.now()
+        unpause_at = (now + timedelta(hours=duration_hours)) if duration_hours and duration_hours > 0 else None
+
         if state is None:
-            state = RiskState(date=clock.now(), daily_pnl=0, current_drawdown=0)
+            state = RiskState(date=now, daily_pnl=0, current_drawdown=0)
             session.add(state)
 
         state.trading_paused = True
         state.reason = reason
+        state.unpause_at = unpause_at
 
         # Persist across midnight rollover via SystemConfig
+        cfg_val = f"true:{reason}"
+        if unpause_at:
+            cfg_val += f"|unpause_at:{unpause_at.isoformat()}"
+
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == 'manual_trading_paused')
         )).scalar_one_or_none()
         if cfg:
-            cfg.value = f"true:{reason}"
+            cfg.value = cfg_val
         else:
-            session.add(SystemConfig(key='manual_trading_paused', value=f"true:{reason}"))
+            session.add(SystemConfig(key='manual_trading_paused', value=cfg_val))
 
         await session.commit()
-        logger.warning(f"Trading manually PAUSED: {reason}")
+        unpause_info = f" (auto-unpause at {unpause_at.strftime('%Y-%m-%d %H:%M UTC')})" if unpause_at else ""
+        logger.warning(f"Trading manually PAUSED: {reason}{unpause_info}")
 
     async def _check_edge_status_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:
@@ -1665,6 +1698,7 @@ class RiskGate:
         if state:
             state.trading_paused = False
             state.reason = None
+            state.unpause_at = None
 
         for key in ('manual_trading_paused', 'kill_switch', 'trading_paused', 'system_paused'):
             cfg = (await session.execute(
@@ -2064,7 +2098,12 @@ class RiskGate:
 async def get_current_risk_state(session: Optional[AsyncSession] = None, settings: Optional[dict] = None) -> dict:
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
-        return {"status": "unavailable", "message": "No active DB session"}
+        try:
+            from database.db import get_session
+            async with get_session() as sess:
+                return await get_current_risk_state(session=sess, settings=settings)
+        except Exception:
+            return {"status": "unavailable", "message": "No active DB session"}
     today_start = get_daily_risk_cutoff(clock.now(), (settings or {}).get("trading", {}).get("risk", {}))
     exec_res = await session.execute(
         select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
@@ -2090,11 +2129,25 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     pos_count = pos_count or 0
     max_dd = float((settings or {}).get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0))
 
+    # Fetch live equity from MT5 or fallback to paper trading initial balance
+    live_equity = 0.0
+    try:
+        from execution.mt5_client import get_mt5_client
+        client = get_mt5_client(settings)
+        if client:
+            acc = await client.get_account_info()
+            if acc and acc.get("equity"):
+                live_equity = float(acc["equity"])
+    except Exception:
+        pass
+    if live_equity <= 0:
+        live_equity = float((settings or {}).get("paper_trading", {}).get("initial_balance", 10000.0))
+
     if risk_row:
         return {
             "date": risk_row.date.isoformat() if risk_row.date else None,
-            "starting_equity": 0.0,
-            "current_equity": 0.0,
+            "starting_equity": live_equity,
+            "current_equity": live_equity,
             "current_drawdown_pct": risk_row.current_drawdown,
             "max_drawdown_limit_pct": max_dd,
             "is_trading_paused": risk_row.trading_paused,
@@ -2104,7 +2157,10 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
         }
     return {
         "status": "normal",
+        "starting_equity": live_equity,
+        "current_equity": live_equity,
         "current_drawdown_pct": 0.0,
+        "max_drawdown_limit_pct": max_dd,
         "is_trading_paused": False,
         "open_positions_count": pos_count,
     }

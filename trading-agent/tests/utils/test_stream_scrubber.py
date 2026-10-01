@@ -68,3 +68,12 @@ def test_scrubber_unmatched_trailing_less_than():
     chunks = ["Spread is < 1.5 pips."]
     emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
     assert emitted == "Spread is < 1.5 pips."
+
+
+def test_scrubber_emoji_and_emoticon_stripping():
+    scrubber = StatefulStreamScrubber(strip_emojis=True)
+    chunks = ["Signal: BUY EURUSD ", "target hit :) ", "profit confirmed."]
+    emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
+    assert ":)" not in emitted
+    assert emitted == "Signal: BUY EURUSD target hit profit confirmed."
+

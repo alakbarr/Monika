@@ -278,7 +278,7 @@ class KillConfirmModalScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Container(id="kill_dialog"):
-            yield Label("🚨 EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
+            yield Label("[DARURAT] EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
             yield Label("Are you sure you want to trigger the KILL SWITCH?\nThis will close all open positions and halt trading.", id="kill_msg")
             with Horizontal(id="kill_buttons"):
                 yield Button("CONFIRM [Y]", variant="error", id="btn_confirm")
@@ -373,7 +373,7 @@ class TradingDashboard(App):
         self._start_time = time.time()
         self._seen_activity_ids: set[Any] = set()
         self._seen_analysis_ids: set[Any] = set()
-        self._ws_status = "🟡 Disconnected"
+        self._ws_status = "[WASPADA] Disconnected"
         self._ws_task: Optional[asyncio.Task] = None
         self._quotes: Dict[str, float] = {}
         self._cached_tokens: int = 0
@@ -860,7 +860,7 @@ class TradingDashboard(App):
 
         try:
             det_log = self.query_one("#analysis_detail_log", RichLog)
-            det_log.write(f"[bold green]✔ Steer Dispatched ({mode}):[/] {msg}")
+            det_log.write(f"[bold green][OK] Steer Dispatched ({mode}):[/] {msg}")
         except Exception:
             pass
         activity_log.write(f"[bold {PHOSPHOR_AMBER}]⟳ Mid-stream steer injected into cycle:[/] {msg}")
@@ -1421,16 +1421,16 @@ class TradingDashboard(App):
 
         while True:
             try:
-                self._ws_status = "🟡 Connecting..."
+                self._ws_status = "[WASPADA] Connecting..."
                 self._refresh_status_bar()
 
                 async with aiohttp.ClientSession() as session:
                     async with session.ws_connect(ws_url) as ws:
-                        self._ws_status = "🟢 Live (WS)"
+                        self._ws_status = "[AKTIF] Live (WS)"
                         self._refresh_status_bar()
 
                         activity_log = self.query_one("#activity_log", RichLog)
-                        activity_log.write(f"[bold {BULL_PROFIT}]✔ WebSocket connected to live market stream.[/]")
+                        activity_log.write(f"[bold {BULL_PROFIT}][OK] WebSocket connected to live market stream.[/]")
 
                         async for msg in ws:
                             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -1445,7 +1445,7 @@ class TradingDashboard(App):
                 break
             except Exception as e:
                 logger.debug(f"[TUI WS] Connection error: {e}")
-                self._ws_status = "🔴 Offline (Polling)"
+                self._ws_status = "[KRITIS] Offline (Polling)"
                 self._refresh_status_bar()
                 await asyncio.sleep(3)
 
@@ -1490,7 +1490,7 @@ class TradingDashboard(App):
             vol = payload.get("volume", 0.0)
             act_id = f"ws_trade_{time.time()}"
             self._seen_activity_ids.add(act_id)
-            activity_log.write(f"[bold {BULL_PROFIT}]🎉 Trade Approved:[/] {sym} {vol} lots.")
+            activity_log.write(f"[bold {BULL_PROFIT}] Trade Approved:[/] {sym} {vol} lots.")
             await self.refresh_data()
 
         # -----------------------------------------------------------------------
@@ -1536,7 +1536,7 @@ class TradingDashboard(App):
                 tree = self.query_one("#cycle_tree", AnalysisCycleTree)
                 tree.update_step(step, status="completed", duration_s=dur_s, input_tokens=inp, output_tokens=out, token_history=tok_hist)
                 det_log = self.query_one("#analysis_detail_log", RichLog)
-                det_log.write(f"[green]✔ Stage Completed:[/] {step} ({dur_s:.1f}s, ↑{inp} ↓{out} tokens)")
+                det_log.write(f"[green][OK] Stage Completed:[/] {step} ({dur_s:.1f}s, ↑{inp} ↓{out} tokens)")
             except Exception:
                 pass
 
@@ -1554,7 +1554,7 @@ class TradingDashboard(App):
                 tree = self.query_one("#cycle_tree", AnalysisCycleTree)
                 tree.complete_cycle(decision=decision, outcome_details=details)
                 det_log = self.query_one("#analysis_detail_log", RichLog)
-                det_log.write(f"[bold green]🏁 CYCLE COMPLETED:[/] Decision = [bold]{decision}[/] ({details})")
+                det_log.write(f"[bold green] CYCLE COMPLETED:[/] Decision = [bold]{decision}[/] ({details})")
             except Exception:
                 pass
 
@@ -1581,7 +1581,7 @@ class TradingDashboard(App):
         if self._is_input_focused():
             return
         activity_log = self.query_one("#activity_log", RichLog)
-        activity_log.write("[bold yellow]⏸ Pausing system trading...[/]")
+        activity_log.write("[bold yellow][DIJEDA] Pausing system trading...[/]")
         from cli.main import _cmd_pause
 
         class DummyArgs:
@@ -1603,7 +1603,7 @@ class TradingDashboard(App):
     async def _execute_kill(self) -> None:
         """Execute emergency kill switch after confirmation."""
         activity_log = self.query_one("#activity_log", RichLog)
-        activity_log.write("[bold red]🚨 TRIGGERING EMERGENCY KILL SWITCH...[/]")
+        activity_log.write("[bold red][DARURAT] TRIGGERING EMERGENCY KILL SWITCH...[/]")
         from cli.main import _cmd_kill
 
         class DummyArgs:
@@ -1627,13 +1627,13 @@ class TradingDashboard(App):
             inline_log.write(f"[bold {PHOSPHOR_AMBER}]Monika:[/] {reply_text}\n")
             if pending:
                 inline_log.write(
-                    f"\n[bold yellow]⚠️ APPROVAL REQUIRED:[/] {pending.description}\n"
+                    f"\n[bold yellow][PERINGATAN] APPROVAL REQUIRED:[/] {pending.description}\n"
                     f"[dim]Press 'c' to enter interactive console and approve/reject.[/]\n"
                 )
         except Exception as e:
             try:
                 inline_log = self.query_one("#inline_chat_log", RichLog)
-                inline_log.write(f"[bold red]❌ Chat Error:[/] {e}\n")
+                inline_log.write(f"[bold red][GAGAL] Chat Error:[/] {e}\n")
             except Exception:
                 pass
 
@@ -1650,7 +1650,7 @@ class TradingDashboard(App):
         if self._is_input_focused():
             return
         activity_log = self.query_one("#activity_log", RichLog)
-        activity_log.write("[cyan]🔄 Refreshing dashboard data...[/]")
+        activity_log.write("[cyan][SYNC] Refreshing dashboard data...[/]")
         await self.refresh_data()
 
     async def action_focus_input(self) -> None:
@@ -1675,7 +1675,7 @@ class TradingDashboard(App):
     async def action_interrupt(self) -> None:
         """Abort or interrupt active agent operations."""
         activity_log = self.query_one("#activity_log", RichLog)
-        activity_log.write("[bold red]⛔ Interruption triggered.[/]")
+        activity_log.write("[bold red] Interruption triggered.[/]")
         self.busy_buffer.submit("INTERRUPT", InputDelivery.INTERRUPT)
         self._refresh_status_bar()
 
@@ -1740,7 +1740,7 @@ class TradingDashboard(App):
             if len(parts) > 1:
                 target_theme = parts[1].lower()
                 if self.set_theme(target_theme):
-                    activity_log.write(f"[bold {PHOSPHOR_AMBER}]🎨 Active theme set to:[/] {target_theme}")
+                    activity_log.write(f"[bold {PHOSPHOR_AMBER}] Active theme set to:[/] {target_theme}")
                 else:
                     activity_log.write(f"[yellow]Unknown theme '{target_theme}'. Options: {list(THEMES.keys())}[/]")
             else:
@@ -1773,7 +1773,7 @@ class TradingDashboard(App):
                 import yaml
 
                 preview = yaml.dump(cfg, default_flow_style=False, sort_keys=False)[:600]
-                activity_log.write(f"[bold cyan]⚙ Config ({section_arg or 'all'}):[/]\n{preview}")
+                activity_log.write(f"[bold cyan] Config ({section_arg or 'all'}):[/]\n{preview}")
             except Exception as e:
                 activity_log.write(f"[red]Failed reading config: {e}[/]")
         elif cmd == "sessions":
@@ -1796,13 +1796,13 @@ class TradingDashboard(App):
                     ).all()
                     if rows:
                         sess_info = ", ".join(f"{r.telegram_user_id} ({r.cnt} msgs)" for r in rows)
-                        activity_log.write(f"[bold cyan]👥 Active Sessions:[/] {sess_info}")
+                        activity_log.write(f"[bold cyan] Active Sessions:[/] {sess_info}")
                     else:
                         activity_log.write("[dim]No active conversation sessions recorded.[/]")
             except Exception as e:
                 activity_log.write(f"[yellow]Sessions lookup: {e}[/]")
         elif cmd == "logs":
-            activity_log.write("[cyan]📜 Triggered activity log refresh...[/]")
+            activity_log.write("[cyan] Triggered activity log refresh...[/]")
             await self.refresh_data()
         elif cmd in ("plugin", "plugins"):
             if len(parts) > 1 and parts[1].lower() == "install":
@@ -1812,9 +1812,9 @@ class TradingDashboard(App):
                     activity_log.write(f"[bold cyan]Installing plugin via pip:[/] {pkg}...")
                     success, out = await asyncio.to_thread(run_pip_install, pkg)
                     if success:
-                        activity_log.write(f"[bold green]✓ Successfully installed {pkg}[/]")
+                        activity_log.write(f"[bold green] Successfully installed {pkg}[/]")
                     else:
-                        activity_log.write(f"[bold red]✗ Failed to install {pkg}: {out}[/]")
+                        activity_log.write(f"[bold red] Failed to install {pkg}: {out}[/]")
                     await self.refresh_plugins_table()
                 else:
                     self.action_install_plugin()

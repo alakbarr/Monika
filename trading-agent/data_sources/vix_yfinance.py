@@ -369,6 +369,48 @@ class VIXFetcher:
             return None
         return {"date": row.date, "close": row.close}
 
+    async def fetch_market_asset(self, ticker: str, period: str = "1mo") -> Optional[pd.DataFrame]:
+        """Fetch daily historical price series for market tickers like QQQ, ^GSPC, ^TNX, BTC-USD."""
+        range_map = {"1d": "1d", "5d": "5d", "10d": "10d", "1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y"}
+        range_param = range_map.get(period, "1mo")
+        import urllib.parse
+        encoded_ticker = urllib.parse.quote(ticker)
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range={range_param}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+        }
+        try:
+            res = await fetch_with_retry(url, headers=headers, timeout=8, max_retries=2, base_delay=0.5, response_type="json")
+            if res and isinstance(res, dict):
+                results = res.get("chart", {}).get("result")
+                if results and isinstance(results, list):
+                    result_data = results[0]
+                    timestamps = result_data.get("timestamp", [])
+                    indicators = result_data.get("indicators", {}).get("quote", [{}])[0]
+                    closes = indicators.get("close", [])
+                    records = []
+                    for ts, close_val in zip(timestamps, closes):
+                        if close_val is not None:
+                            records.append({
+                                "Date": pd.to_datetime(ts, unit="s", utc=True),
+                                "Close": float(close_val),
+                            })
+                    if records:
+                        df = pd.DataFrame(records)
+                        df.set_index("Date", inplace=True)
+                        return df
+        except Exception as e:
+            logger.debug(f"Direct fetch failed for {ticker}: {e}")
+
+        try:
+            def _dl():
+                return yf.download(ticker, period=period, progress=False, auto_adjust=True, timeout=8)
+            return await asyncio.wait_for(asyncio.to_thread(_dl), timeout=10.0)
+        except Exception as e:
+            logger.warning(f"Fallback yfinance fetch failed for {ticker}: {e}")
+            return None
+
 
 # ---------------------------------------------------------------------------
 # Quick standalone test

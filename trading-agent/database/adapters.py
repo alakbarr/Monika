@@ -167,10 +167,17 @@ def fed_meeting_to_models(meeting: FedMeeting) -> List[FedWatchProbability]:
     """
     probs_dict = {}
     for prob in meeting.probabilities:
-        probs_dict[prob.target_range] = {
+        item = {
             'probability': prob.probability,
             'action': prob.action,
         }
+        if getattr(prob, 'prior_1d', None) is not None:
+            item['prior_1d'] = prob.prior_1d
+        if getattr(prob, 'prior_1w', None) is not None:
+            item['prior_1w'] = prob.prior_1w
+        if getattr(prob, 'prior_1m', None) is not None:
+            item['prior_1m'] = prob.prior_1m
+        probs_dict[prob.target_range] = item
     
     model = FedWatchProbability(
         meeting_date=meeting.meeting_date,

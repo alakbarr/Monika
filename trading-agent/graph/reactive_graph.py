@@ -178,8 +178,13 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
             conf = float(ana.confidence or r.get("confidence", 0.0))
             confluence = int(ana.confluence_score or 0)
 
+            # Per-trade confidence threshold override (e.g. forced via operator or proposal)
+            conf_override = r.get("confidence_override") or (r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None)
+            if conf_override is not None:
+                effective_min_conf = float(conf_override)
+                effective_min_confluence = min_confluence
             # Edge strategies or preplanned orders may have custom thresholds
-            if r.get("source_strategy_id") or r.get("is_preplanned"):
+            elif r.get("source_strategy_id") or r.get("is_preplanned"):
                 effective_min_conf = min_confidence - 0.05
                 effective_min_confluence = max(4, min_confluence - 3)
             else:

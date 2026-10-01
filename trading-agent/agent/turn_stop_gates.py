@@ -43,9 +43,9 @@ class TradingRiskStopGate:
     def evaluate(cls, text: str, context: StopGateContext) -> Tuple[bool, Optional[str]]:
         """
         Evaluates whether the final response discusses placing trades without
-        registering a formal pending proposal.
+        registering a formal pending proposal, and verifies proposal parameter integrity.
         """
-        if not text:
+        if not text and not context.proposed_actions:
             return True, None
 
         if context.has_unregistered_trade_proposals or (
@@ -56,6 +56,33 @@ class TradingRiskStopGate:
                 "it through 'propose_action' or RiskGate validation. You must formally submit "
                 "the action proposal before concluding this turn."
             )
+
+        if context.proposed_actions:
+            for act in context.proposed_actions:
+                if isinstance(act, dict) and act.get("action") in ("buy", "sell"):
+                    entry = act.get("entry_price") or act.get("price")
+                    sl = act.get("sl") or act.get("stop_loss")
+                    tp = act.get("tp") or act.get("take_profit")
+                    if entry is not None and sl is not None:
+                        try:
+                            e_val, sl_val = float(entry), float(sl)
+                            if abs(e_val - sl_val) <= 1e-6:
+                                return False, (
+                                    f"Financial Safety Invariant: Proposed action on {act.get('symbol')} "
+                                    "has invalid SL distance (0 or equal to entry price)."
+                                )
+                            if act.get("action") == "buy" and sl_val >= e_val:
+                                return False, (
+                                    f"Financial Safety Invariant: BUY proposal on {act.get('symbol')} "
+                                    f"has SL ({sl_val}) above or at entry ({e_val})."
+                                )
+                            if act.get("action") == "sell" and sl_val <= e_val:
+                                return False, (
+                                    f"Financial Safety Invariant: SELL proposal on {act.get('symbol')} "
+                                    f"has SL ({sl_val}) below or at entry ({e_val})."
+                                )
+                        except (ValueError, TypeError):
+                            pass
 
         return True, None
 

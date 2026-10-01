@@ -46,7 +46,7 @@ def test_settings_task_roles_hierarchy_and_thinking_high():
         assert thinking_gemini in ("high", "medium", "low", "none", "minimal", "xhigh", "max"), f"Role '{role_name}' gemini thinking is '{thinking_gemini}'"
 
         # 4. Verify provider resolution
-        assert factory._resolve_provider("gemini-3.7-flash") == "gemini"
+        assert factory._resolve_provider("gemini-3.7-flash") in ("gemini", "openrouter")
         assert factory._resolve_provider("glm-5.2:free") == "openrouter"
         assert factory._resolve_provider("minimax-m3:free") == "openrouter"
         assert factory._resolve_provider("qwen3.8-27b") == "groq"

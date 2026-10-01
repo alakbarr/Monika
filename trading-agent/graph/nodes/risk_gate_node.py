@@ -414,6 +414,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             ana.take_profit = r["take_profit"]
                         if r.get("decision_source"):
                             ana.decision_source = r["decision_source"]
+                        if r.get("arbitration_reason"):
+                            ana.arbitration_reason = r["arbitration_reason"]
                         if r.get("source_strategy_id"):
                             ana.source_strategy_id = r["source_strategy_id"]
                         await session.commit()
@@ -681,6 +683,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     if ana and hasattr(ana, "rationale") and not hasattr(ana.rationale, "_mock_name"):
                         reasoning_text = str(ana.rationale or "")
 
+                    conf_override = r.get("confidence_override") or (r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None)
+
                     try:
                         proposal = TradeProposal.from_analysis(
                             symbol=sym,
@@ -690,6 +694,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             take_profit=tp,
                             lot_size=float(r.get("lot_size", 0.01) or 0.01),
                             confluence_score=conf,
+                            confidence_override=conf_override,
                             reasoning_text=reasoning_text,
                             provenance_verified=True,
                             account_equity=equity,
@@ -807,7 +812,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                 if not ana: continue
                     
                 msg = (
-                    f"📊 <b>Trade Proposal — {sym}</b>\n\n"
+                    f"[LAPORAN] <b>Trade Proposal — {sym}</b>\n\n"
                     f"Decision: <b>{decision}</b>\n"
                     f"Confidence: {confidence:.0%}\n"
                     f"Entry: {ana.entry_zone or 'market'}\n"

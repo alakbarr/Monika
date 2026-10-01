@@ -86,3 +86,11 @@ pytest-asyncio>=0.23.0
 # Google Workspace Integration
 gspread>=6.2.0
 google-auth>=2.30.0
+
+# Document & Report Generation (Word, Excel, PowerPoint, PDF, Parquet, Plotly)
+python-docx>=1.1.0
+python-pptx>=0.6.23
+openpyxl>=3.1.5
+weasyprint>=61.0
+pyarrow>=15.0.0
+plotly>=5.20.0

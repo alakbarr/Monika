@@ -68,16 +68,62 @@ async def _get_asian_session_range(session: AsyncSession, symbol: str, settings:
     return {'session_start': session_start, 'session_end': session_end,
             'high': max(b.high for b in bars), 'low': min(b.low for b in bars)}
 
-async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None) -> dict:
-    result = {'symbol': symbol, 'sweep_detected': False, 'sweep_direction': None,
+async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None, timeframe: str = "H1", mode: str = "auto") -> dict:
+    result = {'symbol': symbol, 'timeframe': timeframe, 'sweep_detected': False, 'sweep_direction': None,
               'structure_confirmed': False, 'valid_for_direction': None, 'reasons': []}
     cfg = settings.get('trading', {}).get('edge_strategy', {}).get('liquidity_sweep', {})
     if not cfg.get('enabled', True):
         result['reasons'].append('disabled_in_settings'); return result
 
-    asian = await _get_asian_session_range(session, symbol, settings, as_of=as_of)
+    asian = None
+    if timeframe == "H1" and mode != "swing_sweep":
+        asian = await _get_asian_session_range(session, symbol, settings, as_of=as_of)
+
     if not asian:
-        result['reasons'].append('insufficient_H1_history_fail_open'); return result
+        # Swing High / Swing Low sweep fallback for arbitrary timeframes (e.g. H4, D1, M15)
+        bars_stmt = (
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+            .where(PriceOHLCV.timestamp <= (as_of or clock.now()))
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(30)
+        )
+        recent_bars = list(reversed((await session.execute(bars_stmt)).scalars().all()))
+        if len(recent_bars) < 10:
+            result['reasons'].append(f'insufficient_{timeframe}_history'); return result
+
+        # Look at recent 15 bars swing vs latest 3 bars
+        lookback_bars = recent_bars[:-3]
+        test_bars = recent_bars[-3:]
+        ref_high = max(b.high for b in lookback_bars)
+        ref_low = min(b.low for b in lookback_bars)
+
+        sweep_bar, sweep_direction = None, None
+        for bar in test_bars:
+            if bar.high > ref_high and bar.close < ref_high:
+                sweep_bar, sweep_direction = bar, 'sell_side'
+                break
+            if bar.low < ref_low and bar.close > ref_low:
+                sweep_bar, sweep_direction = bar, 'buy_side'
+                break
+
+        if sweep_bar is None:
+            result['reasons'].append('no_swing_sweep_detected')
+            result['reference_high'], result['reference_low'] = ref_high, ref_low
+            return result
+
+        sweep_price = sweep_bar.high if sweep_direction == 'sell_side' else sweep_bar.low
+        result.update(
+            sweep_detected=True,
+            sweep_direction=sweep_direction,
+            sweep_time=sweep_bar.timestamp.isoformat() if hasattr(sweep_bar.timestamp, "isoformat") else str(sweep_bar.timestamp),
+            sweep_price=sweep_price,
+            reference_high=ref_high,
+            reference_low=ref_low,
+            structure_confirmed=True,
+            valid_for_direction='sell' if sweep_direction == 'sell_side' else 'buy',
+        )
+        return result
 
     post_bars_stmt = (
         select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H1')

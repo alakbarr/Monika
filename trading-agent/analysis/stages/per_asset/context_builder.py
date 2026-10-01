@@ -150,12 +150,14 @@ CONFIDENCE ANCHORS (mandatory reference, do not guess):
 GROUNDING REQUIREMENT: key_evidence MUST contain concrete numbers (exact price, ATR levels, percentages, or TimesFM quantile bounds) from provided data — not generic statements without figures. If TimesFM data is present, proposed target levels must respect the Q10-Q90 statistical envelope.""",
 
     'sentiment': """ROLE: SENTIMENT_ANALYST
-DOMAIN: Positioning, retail sentiment, news sentiment ONLY.
+DOMAIN: Positioning, retail sentiment, funding rates, news sentiment ONLY.
 TARGET: Analyze the specific target asset and currency pair provided in the user data context.
-DATA: cot_report, retail_sentiment, news_items. IGNORE charts/macro rates.
+DATA: cot_report, retail_sentiment, fxssi_sentiment, binance_sentiment, fear_greed_index, funding_rate, eia_inventory, news_items. IGNORE charts/macro rates.
+
+NOTE FOR CRYPTO & COMMODITIES: For assets without weekly CFTC COT (e.g. BTCUSD, XTIUSD), derive positioning conviction from Perpetual Funding Rates, ETF Net Inflows, Fear & Greed Index, or EIA Oil Inventory.
 
 DECISION PROTOCOL:
-Step 1: Parse COT commercial/institutional net positioning and bias.
+Step 1: Parse COT commercial/institutional net positioning and bias (or Funding Rates & ETF flows for Crypto, EIA inventory for Oil).
 Step 2: Parse retail long/short percentage for contrarian signal.
 Step 3: Determine directional_bias and confidence score.
 Step 4: Output valid JSON immediately. Do not debate chart levels.
@@ -169,7 +171,7 @@ OUTPUT JSON:
 - invalidation_condition: "Fails if [cond]"
 - analysis: max 3 sentences.
 
-GROUNDING REQUIREMENT: cot_net_position and retail_positioning MUST contain exact numbers from raw data, not qualitative descriptions without figures.""",
+GROUNDING REQUIREMENT: cot_net_position and retail_positioning MUST contain exact numbers from raw data (or funding rate bps / inventory barrels if COT unavailable), not qualitative descriptions without figures.""",
 
     'macro': """ROLE: MACRO_ANALYST
 DOMAIN: Rates, DXY, economic surprises ONLY.
@@ -177,10 +179,10 @@ TARGET: Analyze the specific target asset and currency pair provided in the user
 DATA: fundamental_brief, dxy, economic_calendar. IGNORE charts/COT.
 
 DECISION PROTOCOL:
-Step 1: Evaluate quote currency driver (DXY level, US 10Y Yield trend, and Fed monetary policy trajectory).
+Step 1: Evaluate quote currency driver (DXY level, US 10Y Yield trend, and Fed monetary policy trajectory, including post-news FedWatch repricing shift).
 Step 2: Evaluate base currency driver (Central bank mandate stance: Fed/ECB/BoE/BoJ/RBA, rate differential vs quote, and key mandate data).
 Step 3: Compare central bank policy divergence and currency attractiveness differential -> Assign directional_bias (BULLISH/BEARISH/NEUTRAL).
-Step 4: Extract 3-5 concrete numerical data points for key_evidence (rate spreads, yields, confidence scores).
+Step 4: Extract 3-5 concrete numerical data points for key_evidence (rate spreads, yields, FedWatch repricing delta %, confidence scores).
 Step 5: Output valid JSON immediately. Do not re-deliberate or speculate on chart patterns.
 
 OUTPUT JSON:
@@ -199,7 +201,7 @@ MACRO UNCERTAINTY ANCHORS:
 - MEDIUM: brief 2-4h old with currency_confidence 0.5-0.7.
 - LOW: brief <2h old with currency_confidence >0.7.
 
-GROUNDING REQUIREMENT: base_currency_bias and quote_currency_bias MUST cite numerical currency_confidence from Stage 1 brief and relative central bank policy divergence, not just directional labels."""
+GROUNDING REQUIREMENT: base_currency_bias and quote_currency_bias MUST cite numerical currency_confidence from Stage 1 brief and relative central bank policy divergence (including post-release FedWatch repricing delta if available), not just directional labels."""
 }
 
 
@@ -227,12 +229,12 @@ class ContextBuilderMixin:
             bundle_success = False
 
         tool_order_guidance = (
-            "DATA BASELINE TERSEDIA di blok [PRE-FETCHED DATA]. "
-            "Gunakan penalaran hipotesis-deduktif (maksimal 2-3 iterative turns) untuk memvalidasi atau memfalsifikasi setup. "
-            "Panggil targeted tools (get_smc_zones, get_structure_breaks, get_price_history) untuk verifikasi teknikal sebelum submit_asset_analysis. "
-            "Turn 1 dilarang langsung submit WAIT tanpa inspeksi teknikal."
+            "BASELINE DATA AVAILABLE in [PRE-FETCHED DATA] block. "
+            "Employ hypothetico-deductive reasoning (maximum 2-3 iterative turns) to validate or falsify the proposed setup. "
+            "Invoke targeted tools (get_smc_zones, get_structure_breaks, get_price_history) for technical verification before submit_asset_analysis. "
+            "Turn 1 immediate WAIT submissions without technical inspection are strictly prohibited."
             if bundle_success else
-            "PHASE 0-3: WAJIB panggil tool sesuai urutan berikut sebelum menilai confluence:\n"
+            "PHASE 0-3: MANDATORY tool execution sequence prior to confluence scoring:\n"
             "0. get_open_positions() + get_risk_state()\n"
             "1. get_market_session\n"
             "2. get_fundamental_brief\n"
@@ -259,7 +261,7 @@ class ContextBuilderMixin:
         tool_order_guidance: str,
         detected_regime: Optional[str] = None,
     ) -> tuple[tuple[str, str] | str, Optional[dict]]:
-        """Menyusun system prompt: utamakan file skill, fallback ke template inline."""
+        """Compose system prompt: prioritize skill files, fallback to inline template."""
         _min_rr_val = self.settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3)
         soul_prefix: str = ""
         if _compose_skill is not None and callable(_compose_skill):
@@ -326,8 +328,8 @@ class ContextBuilderMixin:
                     logger.debug(f"Dynamic micro-playbook assembly non-fatal for {symbol}: {d_err}")
 
                 dynamic_system_prompt = (
-                    f"\n\n=== CURRENT ANALYSIS TARGET (berubah setiap panggilan — gunakan nilai ini, "
-                    f"BUKAN nilai contoh apa pun di atas) ===\n"
+                    f"\n\n=== CURRENT ANALYSIS TARGET (Updated per invocation — use these exact values, "
+                    f"NOT template examples) ===\n"
                     f"Symbol: {symbol}\n"
                     f"COT Code: {cot_code or 'N/A'}\n"
                     f"Effective Confluence Threshold: {effective_threshold}/14\n"
@@ -347,7 +349,7 @@ class ContextBuilderMixin:
                 logger.error(f"CRITICAL: Skill compose failed for {symbol}: {skill_err}")
                 try:
                     from utils.infra.notifier import AgentNotifier
-                    asyncio.create_task(AgentNotifier().send_critical(f"🚨 <b>Skill Load Failure (ABORT)</b>\nStage 2 skill composition failed for {symbol}: {skill_err}\nExecution aborted for safety."))
+                    asyncio.create_task(AgentNotifier().send_critical(f"[DARURAT] <b>Skill Load Failure (ABORT)</b>\nStage 2 skill composition failed for {symbol}: {skill_err}\nExecution aborted for safety."))
                 except Exception:
                     pass
                 failure_policy = self.settings.get('trading', {}).get('on_skill_load_failure', 'abort')
@@ -432,11 +434,11 @@ class ContextBuilderMixin:
                     if age_days < expires_days:
                         infl_threshold = infl_data.get('threshold', 7)
                         infl_note = (
-                            f'\n🚨 SCORE INFLATION CORRECTION AKTIF (berlaku {expires_days - age_days} hari lagi):\n'
-                            f'Sistem mendeteksi score inflation pada siklus sebelumnya.\n'
-                            f'MINIMUM CONFLUENCE SCORE YANG DITERIMA SISTEM: {infl_threshold}/14\n'
-                            f'Score di bawah {infl_threshold} akan OTOMATIS DITOLAK oleh sistem saat submission.\n'
-                            f'Hanya submit BUY/SELL jika score Anda benar-benar ≥ {infl_threshold}. Jika tidak, submit WAIT.'
+                            f'\n[EMERGENCY] SCORE INFLATION CORRECTION ACTIVE (Valid for next {expires_days - age_days} days):\n'
+                            f'System detected historical score inflation in recent cycles.\n'
+                            f'MINIMUM CONFLUENCE SCORE REQUIRED FOR ENTRY: {infl_threshold}/14\n'
+                            f'Scores below {infl_threshold} will be AUTOMATICALLY REJECTED upon submission.\n'
+                            f'Submit BUY/SELL only if your verified score is strictly >= {infl_threshold}. Otherwise, submit WAIT.'
                         )
                         adaptive_note = (adaptive_note or '') + infl_note
         except Exception as e:
@@ -460,12 +462,12 @@ class ContextBuilderMixin:
                     if recent_news:
                         logger.warning(f'[{symbol}] Post-Event Staleness: {len(recent_news)} news items arrived after brief generation. Injecting STALENESS WARNING.')
                         staleness_warning = (
-                            f"🚨 POST-EVENT STALENESS WARNING:\n"
+                            f"[EMERGENCY] POST-EVENT STALENESS WARNING:\n"
                             f"Fundamental Brief was generated {b_age_h:.1f}h ago.\n"
-                            f"Since then, {len(recent_news)} new news items have been fetched.\n"
-                            f"The macro bias in the brief may NOT reflect these recent events.\n"
-                            f"MANDATORY: You must call get_news_items(hours_back=3) to verify if "
-                            f"the recent news contradicts the brief's bias before submitting BUY/SELL."
+                            f"Since then, {len(recent_news)} new news items have arrived.\n"
+                            f"The macro bias in the brief may NOT reflect these recent catalysts.\n"
+                            f"MANDATORY: You must call get_news_items(hours_back=3) to verify whether "
+                            f"recent news contradicts the brief's bias before submitting BUY/SELL."
                         )
                         context_blocks.append(('STALENESS WARNING', staleness_warning))
 
@@ -482,19 +484,19 @@ class ContextBuilderMixin:
                 if vix_val >= float(vix_thresholds.get('defensive', 30)):
                     # FIX: default sebelumnya 25 (salah) — seharusnya ikut settings.yaml defensive: 30
                     vix_context = (
-                        f'⚠️ HIGH VOLATILITY ENVIRONMENT: VIX={vix_val:.1f} '
-                        f'(≥{vix_thresholds.get("defensive", 30)} = Defensive threshold)\n'
+                        f'[WARNING] HIGH VOLATILITY ENVIRONMENT: VIX={vix_val:.1f} '
+                        f'(>= {vix_thresholds.get("defensive", 30)} = Defensive threshold)\n'
                         f'MANDATORY: Increase your effective confluence threshold by +2.\n'
-                        f'Only submit BUY/SELL with extraordinary confluence. '
-                        f'Prefer WAIT in high-VIX environments.'
+                        f'Submit BUY/SELL only under extraordinary high-probability confluence. '
+                        f'Prefer WAIT in elevated volatility environments.'
                     )
                     context_blocks.append(('VIX CONTEXT', vix_context))
                 elif vix_val >= float(vix_thresholds.get('caution', 25)):
                     # Caution zone (25-30): informational warning, NO threshold increase
                     vix_context = (
-                        f'⚠️ ELEVATED VOLATILITY: VIX={vix_val:.1f} '
+                        f'[WARNING] ELEVATED VOLATILITY: VIX={vix_val:.1f} '
                         f'(Caution zone {vix_thresholds.get("caution", 25)}-{vix_thresholds.get("defensive", 30)}). '
-                        f'Standard confluence thresholds apply. Consider reducing position size 20-30%.'
+                        f'Standard confluence thresholds apply. Consider reducing position size by 20-30%.'
                     )
                     context_blocks.append(('VIX CONTEXT', vix_context))
         except Exception as e:
@@ -503,9 +505,9 @@ class ContextBuilderMixin:
         weekday = _get_clock().now().weekday()
         if weekday in (5, 6) and symbol in self.always_open_assets:
             weekend_override_note = (
-                "⚠️ WEEKEND TRADING MODE ACTIVE:\n"
+                "[WARNING] WEEKEND TRADING MODE ACTIVE:\n"
                 "- Liquidity is reduced (typically 30-50% of weekday volume)\n"
-                "- Spread is wider than normal (factor 1.5-3x)\n"
+                "- Spreads are wider than normal (factor 1.5-3x)\n"
                 "- Gap risk exists when forex/commodity markets reopen Sunday ~21:00 UTC\n"
                 "- MANDATORY: Minimum confluence score for BUY/SELL = 10/14 (increased from 7)\n"
                 "- MANDATORY: Do NOT enter new BTC positions within 4 hours of Sunday 21:00 UTC\n"
@@ -522,26 +524,44 @@ class ContextBuilderMixin:
         if prev_context:
             context_blocks.append(('PREVIOUS ANALYSIS', prev_context))
 
+        # Tier 3 Layered & Dynamic Memory with Deduplication
         try:
             from analysis.memory.layered_memory import LayeredMemoryManager
             mem_mgr = LayeredMemoryManager(self.settings)
             active_regime = await mem_mgr._detect_regime(session)
             core_mem = await mem_mgr.get_core_memory(session)
-            if core_mem:
-                context_blocks.append(('LAYER 1 CORE MEMORY (Portfolio Heat, Active Regime, Playbook Lessons)', core_mem))
             symbol_mem = await mem_mgr.get_symbol_memory(session, symbol, regime=active_regime)
-            if symbol_mem:
-                context_blocks.append(('SYMBOL EPISODIC MEMORY', symbol_mem))
-        except Exception as e:
-            logger.debug(f'[{symbol}] Layered memory fetch failed (non-fatal): {e}')
-
-        # Tier 3 Dynamic Micro-Lessons (Empirical Learnings from PostgreSQL candidate_lessons)
-        try:
             dynamic_lessons = await self._fetch_dynamic_micro_lessons(session, symbol)
+
+            # Deduplicate text lines across memory sources
+            seen_lines = set()
+            unified_mem_parts = []
+            
+            def _append_deduped(header: str, content: str):
+                if not content or not content.strip():
+                    return
+                unique_lines = []
+                for line in content.splitlines():
+                    cleaned = line.strip().lower()
+                    if len(cleaned) > 15 and cleaned in seen_lines:
+                        continue
+                    if len(cleaned) > 15:
+                        seen_lines.add(cleaned)
+                    unique_lines.append(line)
+                if unique_lines:
+                    unified_mem_parts.append(f"### {header}\n" + "\n".join(unique_lines))
+
+            if core_mem:
+                _append_deduped("Core Market Regimes & Rules", core_mem)
+            if symbol_mem:
+                _append_deduped(f"{symbol} Episodic Memory", symbol_mem)
             if dynamic_lessons:
-                context_blocks.append(('EMPIRICAL DYNAMIC MICRO-LESSONS (Post-Trade Vetted)', dynamic_lessons))
+                _append_deduped("Empirical Vetted Lessons", dynamic_lessons)
+
+            if unified_mem_parts:
+                context_blocks.append(('LAYERED AI MEMORY & EMPIRICAL LESSONS', "\n\n".join(unified_mem_parts)))
         except Exception as e:
-            logger.debug(f'[{symbol}] Dynamic micro-lessons fetch failed (non-fatal): {e}')
+            logger.debug(f'[{symbol}] Layered memory fetch/dedup failed (non-fatal): {e}')
 
         # H4: Deterministic Ground-Truth Snapshot
         try:
@@ -669,18 +689,18 @@ class ContextBuilderMixin:
                 
                 if paper_trade:
                     if paper_trade.status == 'closed':
-                        outcome_icon = '✅' if paper_trade.exit_reason == 'tp_hit' else '❌'
+                        outcome_icon = '[OK]' if paper_trade.exit_reason == 'tp_hit' else '[GAGAL]'
                         pnl = paper_trade.pnl_pct or 0
                         hold = paper_trade.holding_hours or 0
                         line += f" → {outcome_icon} {paper_trade.exit_reason} ({pnl:+.2f}% in {hold:.1f}h)"
                     elif paper_trade.status == 'open':
-                        line += f" → 🔄 Trade still open @ {paper_trade.entry_price}"
+                        line += f" → [SYNC] Trade still open @ {paper_trade.entry_price}"
                 elif prev.decision in ('buy', 'sell'):
-                    line += f" → ⏭️ Not executed (blocked by risk gate or analysis not actionable)"
+                    line += f" →  Not executed (blocked by risk gate or analysis not actionable)"
             
             # Add direction accuracy if we have it
             if prev.direction_correct_4h is not None:
-                accuracy_icon = '✅' if prev.direction_correct_4h else '❌'
+                accuracy_icon = '[OK]' if prev.direction_correct_4h else '[GAGAL]'
                 line += f" | 4H direction {accuracy_icon}"
             
             lines.append(line)
@@ -697,7 +717,7 @@ class ContextBuilderMixin:
         if len(closed_trades) >= 2:
             all_sl = all(t.exit_reason == 'sl_hit' for t in closed_trades)
             if all_sl:
-                lines.append(f'\n⚠️ SYSTEMATIC ALERT: Last {len(closed_trades)} executed trades on {symbol} all hit SL.')
+                lines.append(f'\n[PERINGATAN] SYSTEMATIC ALERT: Last {len(closed_trades)} executed trades on {symbol} all hit SL.')
                 lines.append('MANDATORY: Identify root cause before entering again. Check: (1) Was D1 trend wrong? (2) Was SL too tight? (3) Was entry chasing instead of waiting for pullback?')
         
         lines.append('Consider whether the market context has materially changed since these analyses.')
@@ -720,12 +740,12 @@ class ContextBuilderMixin:
             flagged = bias_report.get("flagged_combinations", {})
             for key, data in flagged.items():
                 if key.startswith(symbol + "_"):
-                    note += f"\n\n🛑 SYSTEMATIC BIAS DETECTED: {data['recommendation']} (Win rate: {data['win_rate']}% over {data['trades']} trades)."
+                    note += f"\n\n[STOP] SYSTEMATIC BIAS DETECTED: {data['recommendation']} (Win rate: {data['win_rate']}% over {data['trades']} trades)."
         except Exception:
             pass
 
         note += (
-            f"\n\n⚠️ MANDATORY THRESHOLD: "
+            f"\n\n[PERINGATAN] MANDATORY THRESHOLD: "
             f"Only submit BUY/SELL if confluence score ≥ {final_threshold}/14. "
             f"Otherwise submit WAIT. This is NOT optional. "
             f"Reasoning: {reasoning}"
@@ -808,10 +828,10 @@ class ContextBuilderMixin:
                     lines.append(f"Paper trades (last 30d): {trades} trades | Win rate: {wr:.0f}% | Total P&L: {pnl:.2f}%")
                     
                     if wr < 35 and trades >= 5:
-                        lines.append(f"⚠️ PERFORMANCE ALERT: Win rate {wr:.0f}% is below breakeven threshold (33%).")
+                        lines.append(f"[PERINGATAN] PERFORMANCE ALERT: Win rate {wr:.0f}% is below breakeven threshold (33%).")
                         lines.append(f"You MUST identify what has been systematically wrong. Consider WAIT unless exceptional setup (10+/14).")
                     elif wr < 45 and trades >= 5:
-                        lines.append(f"🟡 Moderate performance. Apply standard threshold but be selective.")
+                        lines.append(f"[WASPADA] Moderate performance. Apply standard threshold but be selective.")
             
             # NEW: Check consecutive losses for this symbol
             from database.models import PaperTradeRecord
@@ -840,7 +860,7 @@ class ContextBuilderMixin:
                     except Exception:
                         pass
                     lines.append('')
-                    lines.append(f'🛑 CONSECUTIVE LOSS ALERT: Last {consecutive_losses} {symbol} trades all hit SL.')
+                    lines.append(f'[STOP] CONSECUTIVE LOSS ALERT: Last {consecutive_losses} {symbol} trades all hit SL.')
                     lines.append(f'• Automatic Risk Mitigation: Position sizing scaled down by -{scale_pct}%.')
                     lines.append(f'• Mandatory Requirement: Require confluence score >= 8/14.')
                     lines.append(f'• Reflection Objective: Identify specifically what invalidation mechanism failed in recent trades before entering.')
@@ -851,7 +871,7 @@ class ContextBuilderMixin:
             for key, data in flagged.items():
                 if key.startswith(symbol + "_"):
                     direction = key.split("_")[1]
-                    lines.append(f"🛑 SYSTEMATIC BIAS DETECTED: {direction.upper()} trades on {symbol} have only {data['win_rate']:.0f}% WR over {data['trades']} trades.")
+                    lines.append(f"[STOP] SYSTEMATIC BIAS DETECTED: {direction.upper()} trades on {symbol} have only {data['win_rate']:.0f}% WR over {data['trades']} trades.")
                     lines.append(f"MANDATORY: Reduce confidence in any {direction.upper()} setup for {symbol} until bias is resolved.")
             
             if lines:
@@ -884,6 +904,13 @@ class ContextBuilderMixin:
                 "check currency_bias['BTC'] for crypto-specific bias. "
                 "If key not present, derive BTC bias from: (1) risk_sentiment (risk-on = BTC bullish), "
                 "(2) USD direction (inverse correlation), (3) Fear & Greed Index, (4) ETF flow news."
+            )
+        elif symbol == 'XAUUSD':
+            special_notes = (
+                "\nSPECIAL NOTE FOR XAUUSD: When reading get_fundamental_brief(), "
+                "inspect real_yield_context and fedwatch_shift_summary / fedwatch_repricing_delta_pct. "
+                "Post-news dovish repricing (-hike/lower real yield) provides bullish fuel for Gold, "
+                "whereas hawkish repricing (+hike/higher real yield) creates severe bearish headwind."
             )
 
         msg = f"""Analyze {symbol} and provide a trading decision for the current cycle.{special_notes}

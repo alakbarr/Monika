@@ -156,13 +156,40 @@ class SystemDoctor:
             self._record("MT5", "MT5_ACCOUNT", "FAIL", "MT5_ACCOUNT environment variable is missing.")
 
     async def check_database_migrations(self) -> None:
-        """Verify database connectivity and schema tables."""
+        """Verify database connectivity, active DBA transaction locks, and schema migrations."""
         try:
             from database.db import init_db, get_session, close_db
             await init_db()
             async with get_session() as session:
                 from sqlalchemy import text
                 await session.execute(text("SELECT 1"))
+
+                # Check for active blocking locks in PostgreSQL
+                try:
+                    lock_res = await session.execute(text("""
+                        SELECT pid, usename, pg_blocking_pids(pid) AS blocked_by, query
+                        FROM pg_stat_activity
+                        WHERE cardinality(pg_blocking_pids(pid)) > 0;
+                    """))
+                    blocked_rows = lock_res.fetchall()
+                    if blocked_rows:
+                        self._record("Database", "PostgreSQL-Locks", "WARN", f"Detected {len(blocked_rows)} blocked transaction(s) in PostgreSQL.")
+                    else:
+                        self._record("Database", "PostgreSQL-Locks", "OK", "No deadlocks or blocked transactions detected.")
+                except Exception:
+                    pass
+
+                # Check Alembic version table
+                try:
+                    alembic_res = await session.execute(text("SELECT version_num FROM alembic_version;"))
+                    ver = alembic_res.scalar_one_or_none()
+                    if ver:
+                        self._record("Database", "Alembic-Version", "OK", f"Current migration head revision: {ver}")
+                    else:
+                        self._record("Database", "Alembic-Version", "WARN", "alembic_version table is empty.")
+                except Exception:
+                    self._record("Database", "Alembic-Version", "WARN", "alembic_version table not initialized.")
+
             self._record("Database", "PostgreSQL", "OK", "Database connection successful (SELECT 1 passed).")
         except Exception as e:
             self._record("Database", "PostgreSQL", "FAIL", f"Database connection failed: {str(e)[:150]}")
@@ -229,6 +256,19 @@ class SystemDoctor:
             except Exception as e:
                 self._record("DatabaseWAL", f"wal:{db_file.name}", "WARN", f"WAL check error: {e}")
 
+    async def check_redis(self, settings: dict) -> None:
+        """Verify Redis cache connectivity if configured or using localhost."""
+        redis_cfg = settings.get("redis", {}) if isinstance(settings, dict) else {}
+        redis_url = os.getenv("REDIS_URL") or redis_cfg.get("url") or "redis://localhost:6379/0"
+        try:
+            import redis.asyncio as aioredis
+            client = aioredis.from_url(redis_url, socket_connect_timeout=1.0)
+            await client.ping()
+            await client.aclose()
+            self._record("Cache", "Redis", "OK", f"Redis connection verified ({redis_url}).")
+        except Exception as e:
+            self._record("Cache", "Redis", "WARN", f"Redis offline or unreachable ({str(e)[:70]}). Local in-memory cache active.")
+
     async def run_diagnostics(self) -> List[DiagnosticItem]:
         """Runs the entire unified battery of doctor checks."""
         from config.settings import load_all_config
@@ -248,6 +288,7 @@ class SystemDoctor:
         if self.live_probes:
             await asyncio.gather(
                 self.check_database_migrations(),
+                self.check_redis(settings),
                 self.check_startup_checker_suite(settings),
                 return_exceptions=True
             )

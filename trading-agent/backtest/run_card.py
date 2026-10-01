@@ -144,14 +144,14 @@ class RunCard:
 ## 3. Quantitative Performance Citations
 | Metric | Value | Baseline Target | Status |
 | :--- | :--- | :--- | :--- |
-| **Sharpe Ratio** | `{m.sharpe_ratio:.2f}` | >= 1.50 | {'✅ PASS' if m.sharpe_ratio >= 1.5 else '⚠️ LOW'} |
-| **Sortino Ratio** | `{m.sortino_ratio:.2f}` | >= 2.00 | {'✅ PASS' if m.sortino_ratio >= 2.0 else '⚠️ LOW'} |
-| **Calmar Ratio** | `{m.calmar_ratio:.2f}` | >= 2.00 | {'✅ PASS' if m.calmar_ratio >= 2.0 else '⚠️ LOW'} |
-| **Max Drawdown** | `{m.max_drawdown_pct:.2f}%` | <= 10.0% | {'✅ PASS' if m.max_drawdown_pct <= 10.0 else '❌ BREACH'} |
-| **Total Return** | `{m.total_return_pct:.2f}%` | > 0.0% | {'✅ PROFIT' if m.total_return_pct > 0 else '❌ LOSS'} |
-| **Win Rate** | `{m.win_rate_pct:.1f}%` | >= 50.0% | {'✅ PASS' if m.win_rate_pct >= 50.0 else '⚠️ LOW'} |
-| **Profit Factor** | `{m.profit_factor:.2f}` | >= 1.50 | {'✅ PASS' if m.profit_factor >= 1.5 else '⚠️ LOW'} |
-| **Total Trades** | `{m.total_trades}` | >= 30 | {'✅ STAT_SIG' if m.total_trades >= 30 else '⚠️ FEW'} |
+| **Sharpe Ratio** | `{m.sharpe_ratio:.2f}` | >= 1.50 | {'[OK] PASS' if m.sharpe_ratio >= 1.5 else '[PERINGATAN] LOW'} |
+| **Sortino Ratio** | `{m.sortino_ratio:.2f}` | >= 2.00 | {'[OK] PASS' if m.sortino_ratio >= 2.0 else '[PERINGATAN] LOW'} |
+| **Calmar Ratio** | `{m.calmar_ratio:.2f}` | >= 2.00 | {'[OK] PASS' if m.calmar_ratio >= 2.0 else '[PERINGATAN] LOW'} |
+| **Max Drawdown** | `{m.max_drawdown_pct:.2f}%` | <= 10.0% | {'[OK] PASS' if m.max_drawdown_pct <= 10.0 else '[GAGAL] BREACH'} |
+| **Total Return** | `{m.total_return_pct:.2f}%` | > 0.0% | {'[OK] PROFIT' if m.total_return_pct > 0 else '[GAGAL] LOSS'} |
+| **Win Rate** | `{m.win_rate_pct:.1f}%` | >= 50.0% | {'[OK] PASS' if m.win_rate_pct >= 50.0 else '[PERINGATAN] LOW'} |
+| **Profit Factor** | `{m.profit_factor:.2f}` | >= 1.50 | {'[OK] PASS' if m.profit_factor >= 1.5 else '[PERINGATAN] LOW'} |
+| **Total Trades** | `{m.total_trades}` | >= 30 | {'[OK] STAT_SIG' if m.total_trades >= 30 else '[PERINGATAN] FEW'} |
 | **VaR 95%** | `{m.var_95_pct:.2f}%` | - | Validated |
 | **CVaR / Expected Shortfall 95%** | `{m.cvar_95_pct:.2f}%` | - | Validated |
 

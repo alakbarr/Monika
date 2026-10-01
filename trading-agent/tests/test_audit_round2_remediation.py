@@ -46,9 +46,9 @@ class DummyExecutionService(EmergencyManagerMixin):
 
 class TestBrokerAdapterRemediation:
     def test_xti_contract_size_distinction(self):
-        """XTIUSD (WTI Crude) must have 100 contract size, distinct from Brent (1000)."""
-        assert _get_contract_size("XTIUSD") == 100.0
-        assert _get_contract_size("WTI") == 100.0
+        """XTIUSD (WTI Crude) and XBRUSD (Brent) standard contract size is 1000 barrels per lot."""
+        assert _get_contract_size("XTIUSD") == 1000.0
+        assert _get_contract_size("WTI") == 1000.0
         assert _get_contract_size("XBRUSD") == 1000.0
         assert _get_contract_size("BRENT") == 1000.0
 

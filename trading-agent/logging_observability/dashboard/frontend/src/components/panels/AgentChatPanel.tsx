@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Badge } from '../ui/Badge';
+import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { TypewriterButton } from '../ui/TypewriterButton';
 import { ApprovalModal, type TradeApprovalRequest } from '../ui/ApprovalModal';
 import { useDashboardStore } from '../../store/dashboardStore';
@@ -314,7 +315,6 @@ export const AgentChatPanel: React.FC = () => {
                 fontFamily: 'var(--font-precision)',
                 fontSize: 'var(--text-body-sm)',
                 lineHeight: '1.6',
-                whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 ...(msg.role === 'system'
                   ? {
@@ -325,10 +325,7 @@ export const AgentChatPanel: React.FC = () => {
                   : {}),
               }}
             >
-              {msg.text}
-              {msg.isStreaming && (
-                <span className="typewriter-cursor" style={{ marginLeft: '4px' }} />
-              )}
+              <MarkdownRenderer content={msg.text} isStreaming={msg.isStreaming} />
 
               {/* HITL 3-Tier Approval Slip */}
               {msg.pendingAction && (

@@ -159,6 +159,8 @@ class SkillCrystallizer:
         symbol = first.symbol
         avg_conf = sum(float(r.confidence or 0.0) for r in reflections) / len(reflections)
         total_pnl = sum(float(r.outcome_pnl_usd or 0.0) for r in reflections)
+        sample_size = len(reflections)
+        reliability_status = "High-Conviction Institutional Setup" if sample_size >= 10 else "Early-Stage Pattern (Low Sample Size)"
 
         # Synthesize tactical rules via LLM reasoning synthesis or clean semantic extraction
         rules_body = await self._synthesize_tactical_rules(reflections, symbol or "ASSET", cluster_key)
@@ -168,9 +170,9 @@ class SkillCrystallizer:
 
         skill_content = f"""---
 name: crystallized_{cluster_key.lower()}
-description: Institutional playbook for {symbol} verified across {len(reflections)} winning cycles.
+description: Playbook for {symbol} verified across {sample_size} winning cycles.
 symbol: {symbol}
-win_count: {len(reflections)}
+win_count: {sample_size}
 avg_confidence: {avg_conf:.2f}
 total_pnl_usd: {total_pnl:.2f}
 status: active
@@ -180,12 +182,12 @@ last_crystallized_at: {datetime.now(timezone.utc).isoformat()}
 # Crystallized Strategy: {symbol} ({cluster_key})
 
 ## Empirical Setup Verification
-This skill was autonomously crystallized by the Closed-Loop Learning engine based on {len(reflections)} profitable trading resolutions.
+This skill was autonomously crystallized by the Closed-Loop Learning engine based on {sample_size} profitable trading resolutions.
 
 ## Empirical Track Record
-- Reliability Status: High-Conviction Institutional Setup
-- Sample Size: {len(reflections)} verified winning trades
-- Baseline Conviction: {avg_conf:.0%}
+- Reliability Status: {reliability_status}
+- Sample Size: {sample_size} verified winning trades
+- Baseline Conviction: {avg_conf:.0%} (n={sample_size})
 
 ## Core Tactical Directives
 {rules_body}

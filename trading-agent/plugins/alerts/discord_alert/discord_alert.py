@@ -18,15 +18,39 @@ from harness.contract import (
 
 def dispatch_discord_alert(args: Dict[str, Any]) -> Dict[str, Any]:
     """Dispatches formatted message payload to configured webhook channel."""
+    import os
+    import json
+    import urllib.request
+
     channel = str(args.get("channel", "trading-alerts"))
     message = str(args.get("message", "Test alert notification"))
     level = str(args.get("level", "INFO")).upper()
-    return {
+    webhook_url = args.get("webhook_url") or os.getenv("DISCORD_WEBHOOK_URL")
+
+    result = {
         "status": "dispatched",
         "channel": channel,
         "level": level,
         "message_preview": message[:80],
     }
+
+    if webhook_url:
+        try:
+            payload = json.dumps({
+                "content": f"**[{level}]** {message}"
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=payload,
+                headers={"Content-Type": "application/json", "User-Agent": "Monika-TradingAgent/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10.0) as resp:
+                result["http_status"] = resp.status
+        except Exception as e:
+            result["status"] = "failed"
+            result["error"] = str(e)
+
+    return result
 
 
 class DiscordAlertPlugin(TradingPlugin):
@@ -44,6 +68,7 @@ class DiscordAlertPlugin(TradingPlugin):
         order_ref = event.order_id or event.symbol
         dispatch_discord_alert({
             "channel": self.config.get("channel", "trading-alerts"),
+            "webhook_url": self.config.get("webhook_url"),
             "message": f"Order {order_ref} transition: {event.old_state} -> {event.new_state}",
             "level": "INFO",
         })
@@ -51,6 +76,7 @@ class DiscordAlertPlugin(TradingPlugin):
     async def on_risk_breach(self, event: RiskBreachEvent) -> None:
         dispatch_discord_alert({
             "channel": self.config.get("channel", "trading-alerts"),
+            "webhook_url": self.config.get("webhook_url"),
             "message": f"RISK BREACH: {event.breach_type} on {event.symbol} (severity={event.severity})",
             "level": "WARNING" if event.severity == "warning" else "ERROR",
         })

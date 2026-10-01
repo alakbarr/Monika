@@ -67,6 +67,8 @@ class WalkForwardEngine:
         purge_days: int = 4,
         embargo_pct: float = 0.01,
         n_trials: Optional[int] = None,
+        symbols: Optional[List[str]] = None,
+        strategies: Optional[List[str]] = None,
     ):
         self.start_date = start_date.replace(tzinfo=timezone.utc) if start_date.tzinfo is None else start_date
         self.end_date = end_date.replace(tzinfo=timezone.utc) if end_date.tzinfo is None else end_date
@@ -79,6 +81,8 @@ class WalkForwardEngine:
         self.purge_days = max(0, purge_days)
         self.embargo_pct = max(0.0, embargo_pct)
         self.n_trials = n_trials
+        self.symbols = [s.upper() for s in symbols] if symbols else None
+        self.strategies = strategies
 
     def generate_folds(self) -> List[Tuple[datetime, datetime, datetime, datetime]]:
         """
@@ -169,7 +173,9 @@ class WalkForwardEngine:
                 end_date=is_end,
                 mode=cast(BacktestMode, self.mode),
                 step_hours=self.step_hours,
-                settings=self.settings
+                settings=self.settings,
+                symbols=self.symbols,
+                strategies=self.strategies,
             )
             if hasattr(is_engine, "run_simulation") and callable(is_engine.run_simulation):
                 is_res = await is_engine.run_simulation()
@@ -202,7 +208,9 @@ class WalkForwardEngine:
                 end_date=oos_end,
                 mode=cast(BacktestMode, self.mode),
                 step_hours=self.step_hours,
-                settings=self.settings
+                settings=self.settings,
+                symbols=self.symbols,
+                strategies=self.strategies,
             )
             if hasattr(oos_engine, "run_simulation") and callable(oos_engine.run_simulation):
                 oos_res = await oos_engine.run_simulation()

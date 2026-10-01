@@ -273,7 +273,7 @@ class CycleScheduler:
             positions_at_risk = [p for p in open_positions if p.symbol not in exempted_symbols]
             if not positions_at_risk:
                 return {'positions_checked': 0}
-            msg_lines = [f'🌙 <b>Weekend Gap Alert — Friday {hour}:00 UTC</b>\n', f'Open positions exposed to weekend gap risk:\n']
+            msg_lines = [f' <b>Weekend Gap Alert — Friday {hour}:00 UTC</b>\n', f'Open positions exposed to weekend gap risk:\n']
             for p in positions_at_risk:
                 msg_lines.append(f'• {p.symbol} {p.direction.upper()} {p.volume}L @ {p.entry_price} | ticket={p.mt5_ticket}')
             if strategy == 'close_positions':
@@ -561,7 +561,7 @@ class CycleScheduler:
                     logger.debug(f"Could not load closed paper trades for weekly tearsheet: {paper_err}")
                     all_paper = []
                 
-            msg = '📊 *WEEKLY EDGE ASSESSMENT*\n\n'
+            msg = '[LAPORAN] *WEEKLY EDGE ASSESSMENT*\n\n'
             msg += f"• *Win Rate (Paper):* {stats.get('win_rate_pct', 0)}% (Total: {stats.get('total_trades', 0)})\n"
             try:
                 from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
@@ -581,7 +581,7 @@ class CycleScheduler:
                 msg += f"• *Coherence Override Impact*: {coherence_impact.get('recommendation', '')}\n"
             msg += "\n"
             if edge_data['status'] != 'insufficient_data':
-                status_emoji = {'positive_edge': '🟢', 'uncertain': '🟡', 'no_edge': '🔴'}.get(edge_data['status'], '⚪')
+                status_emoji = {'positive_edge': '[AKTIF]', 'uncertain': '[WASPADA]', 'no_edge': '[KRITIS]'}.get(edge_data['status'], '[NONAKTIF]')
                 msg += f'*Edge Analysis ({status_emoji})*\n'
                 msg += f"Z-Score: {edge_data['z_score']} (CI: {edge_data['ci_lower']}-{edge_data['ci_upper']}%)\n"
                 msg += f"{edge_data['action']}\n\n"
@@ -590,7 +590,7 @@ class CycleScheduler:
             for factor, data in top_factors:
                 msg += f"- {factor.upper()}: {data.get('win_rate', 0)}% WR\n"
             if spec_qual.get('alerts'):
-                msg += '\n\n🚨 *SPECIALIST ALERTS*\n'
+                msg += '\n\n[DARURAT] *SPECIALIST ALERTS*\n'
                 for alert in spec_qual['alerts']:
                     msg += f"- {alert}\n"
             
@@ -605,7 +605,7 @@ class CycleScheduler:
                 )
                 summary = await client.generate_text(prompt, system_prompt="You are the Chief Risk Officer for an institutional trading desk.")
                 if summary and summary.strip():
-                    msg = f"📊 *WEEKLY EDGE ASSESSMENT*\n\n*Executive Synthesis:*\n{summary.strip()}\n\n" + msg[len("📊 *WEEKLY EDGE ASSESSMENT*\n\n"):]
+                    msg = f"[LAPORAN] *WEEKLY EDGE ASSESSMENT*\n\n*Executive Synthesis:*\n{summary.strip()}\n\n" + msg[len("[LAPORAN] *WEEKLY EDGE ASSESSMENT*\n\n"):]
             except Exception as llm_err:
                 logger.debug(f"LLM weekly edge assessment synthesis fallback to raw: {llm_err}")
 
@@ -662,7 +662,7 @@ class CycleScheduler:
                 skip_rate = sum((c.assets_skipped or 0 for c in cycles_24h)) / total_assets * 100 if total_assets > 0 else 0.0
                 recent_analyses = (await session.execute(select(AssetAnalysis).where(AssetAnalysis.decision.in_(['buy', 'sell'])).order_by(AssetAnalysis.generated_at.desc()).limit(3))).scalars().all()
                 
-                lines = [f"📊 <b>Daily Report — {now.strftime('%d %b %Y %H:%M UTC')}</b>\n", f'<b>❤️ System Health: {health_score}/10</b>', f'<b>📈 Trending WR (7d): {wr_7d:.1f}%</b> ({len(paper_7d)} trades)', f'<b>⏭️ Haiku Skip Rate: {skip_rate:.1f}%</b>\n', f"<b>Yesterday's Live Trades ({len(closed_today)} closed):</b>", f"  P&L: ${total_pnl:+.2f}", f'  Win rate: {len(wins)}/{max(len(closed_today), 1)} ({len(wins) / max(len(closed_today), 1) * 100:.0f}%)\n', f'<b>Top 3 Recent Setups:</b>']
+                lines = [f"[LAPORAN] <b>Daily Report — {now.strftime('%d %b %Y %H:%M UTC')}</b>\n", f'<b> System Health: {health_score}/10</b>', f'<b> Trending WR (7d): {wr_7d:.1f}%</b> ({len(paper_7d)} trades)', f'<b> Haiku Skip Rate: {skip_rate:.1f}%</b>\n', f"<b>Yesterday's Live Trades ({len(closed_today)} closed):</b>", f"  P&L: ${total_pnl:+.2f}", f'  Win rate: {len(wins)}/{max(len(closed_today), 1)} ({len(wins) / max(len(closed_today), 1) * 100:.0f}%)\n', f'<b>Top 3 Recent Setups:</b>']
                 for a in recent_analyses:
                     lines.append(f"  • {a.symbol}: {a.decision.upper()} (Conf: {getattr(a, 'confidence', 0):.0%})")
                 if not recent_analyses:
@@ -675,7 +675,7 @@ class CycleScheduler:
                     if not calib.get('insufficient_data'):
                         rec = calib.get('recommendation', 'MAINTAIN')
                         if rec != 'MAINTAIN':
-                            lines.insert(1, f"⚠️ <b>Calibration Alert:</b> threshold {calib['current_threshold']} → {calib['optimal_threshold_from_data']} ({rec})\n")
+                            lines.insert(1, f"[PERINGATAN] <b>Calibration Alert:</b> threshold {calib['current_threshold']} → {calib['optimal_threshold_from_data']} ({rec})\n")
                 except Exception:
                     pass
                 
@@ -693,19 +693,19 @@ class CycleScheduler:
                     vix_pause = vix_thresholds.get('pause', 30)
                     vix_defensive = vix_thresholds.get('defensive', 25)
                     if vix.close >= vix_pause:
-                        vix_status = f'🔴 {vix.close:.2f} — TRADING BLOCKED (>{vix_pause})'
+                        vix_status = f'[KRITIS] {vix.close:.2f} — TRADING BLOCKED (>{vix_pause})'
                     elif vix.close >= vix_defensive:
-                        vix_status = f'🟡 {vix.close:.2f} — Defensive mode (>{vix_defensive}, 50% risk)'
+                        vix_status = f'[WASPADA] {vix.close:.2f} — Defensive mode (>{vix_defensive}, 50% risk)'
                     else:
-                        vix_status = f'🟢 {vix.close:.2f} — Normal'
+                        vix_status = f'[AKTIF] {vix.close:.2f} — Normal'
                     lines.append(f'\n<b>VIX:</b> {vix_status}')
                 
                 try:
                     stats = paper_stats
                     if stats.get('total_trades', 0) >= 3:
                         wr = stats.get('win_rate_pct', 0)
-                        wr_emoji = '🔴' if wr < 35 else '🟡' if wr < 50 else '🟢'
-                        lines.append(f"\n<b>📊 Paper Trading (All-Time {stats['total_trades']} trades):</b>\n  Win rate: {wr_emoji} {wr:.1f}% | Avg P&L: {stats.get('avg_pnl_pct', 0):.3f}%\n  Total PnL: {stats.get('total_pnl_pct', 0):+.3f}%")
+                        wr_emoji = '[KRITIS]' if wr < 35 else '[WASPADA]' if wr < 50 else '[AKTIF]'
+                        lines.append(f"\n<b>[LAPORAN] Paper Trading (All-Time {stats['total_trades']} trades):</b>\n  Win rate: {wr_emoji} {wr:.1f}% | Avg P&L: {stats.get('avg_pnl_pct', 0):.3f}%\n  Total PnL: {stats.get('total_pnl_pct', 0):+.3f}%")
                         by_sym = stats.get('by_symbol', {})
                         worst_symbols = sorted([(s, d) for s, d in by_sym.items() if d.get('trades', 0) >= 3], key=lambda x: x[1].get('win_rate', 50))[:3]
                         if worst_symbols:
@@ -720,7 +720,7 @@ class CycleScheduler:
                     if paper_7d and len(paper_7d) >= 3:
                         ts_res = QuantTearsheetGenerator.generate_from_trades(paper_7d)
                         lines.append(
-                            f"\n<b>📈 Quant Tearsheet (7d):</b>\n"
+                            f"\n<b> Quant Tearsheet (7d):</b>\n"
                             f"  Sharpe: <code>{ts_res.annualized_sharpe:.2f}</code> | Sortino: <code>{ts_res.annualized_sortino:.2f}</code>\n"
                             f"  Max DD: <code>{ts_res.max_drawdown_pct:.2f}%</code> | Profit Factor: <code>{ts_res.profit_factor:.2f}</code>\n"
                             f"  Expectancy: <code>{ts_res.expectancy_r:+.2f}R</code> (${ts_res.expectancy_usd:+.2f})"
@@ -738,7 +738,7 @@ class CycleScheduler:
                             sym_total = data.get('total', data.get('trades', 0))
                             sym_wr = data.get('win_rate', 100)
                             if sym_total >= 3 and sym_wr < 35:
-                                lines.append(f"  ⚠️ {sym}: {sym_wr:.0f}% WR — below breakeven!")
+                                lines.append(f"  [PERINGATAN] {sym}: {sym_wr:.0f}% WR — below breakeven!")
                 except Exception as e:
                     logger.warning(f'Analysis quality report failed: {e}')
                 
@@ -750,7 +750,7 @@ class CycleScheduler:
                         lines.append(f"\n<b>Prescreen Skip Quality (7d):</b>")
                         lines.append(f"  False Skip Rate: {false_skip_rate:.1f}%")
                         if false_skip_rate > 35:
-                            lines.append(f"  ⚠️ HIGH FALSE SKIP RATE detected! Local ADX/VIX gates will be auto-disabled to prevent missing good setups.")
+                            lines.append(f"  [PERINGATAN] HIGH FALSE SKIP RATE detected! Local ADX/VIX gates will be auto-disabled to prevent missing good setups.")
                 except Exception as e:
                     logger.warning(f'Prescreen skip quality check failed: {e}')
                 
@@ -762,12 +762,12 @@ class CycleScheduler:
                         drift = inflation_data.get('drift', 0)
                         first_avg = inflation_data.get('first_half_avg_score', 0)
                         second_avg = inflation_data.get('second_half_avg_score', 0)
-                        lines.append(f'\n<b>⚠️ Score Drift Detected:</b>')
+                        lines.append(f'\n<b>[PERINGATAN] Score Drift Detected:</b>')
                         lines.append(f'  Confluence scores: {first_avg:.1f} (first half) → {second_avg:.1f} (second half)')
                         if direction == 'INFLATING':
-                            lines.append(f'  📈 INFLATING +{drift:.2f}: Model may be lowering standards. Review recent BUY/SELL rationale quality. Consider raising auto_execute_min_confluence by 1-2 temporarily.')
+                            lines.append(f'   INFLATING +{drift:.2f}: Model may be lowering standards. Review recent BUY/SELL rationale quality. Consider raising auto_execute_min_confluence by 1-2 temporarily.')
                         elif direction == 'DEFLATING':
-                            lines.append(f'  📉 DEFLATING {drift:.2f}: Model may be overly conservative. Review whether valid setups are being skipped.')
+                            lines.append(f'  [GRAFIK] DEFLATING {drift:.2f}: Model may be overly conservative. Review whether valid setups are being skipped.')
                         
                         if direction == 'INFLATING' and drift > 2.0:
                             from database.models import SystemConfig
@@ -785,7 +785,7 @@ class CycleScheduler:
                 except Exception as e:
                     logger.debug(f'Score inflation check in daily report failed (non-fatal): {e}')
                 
-                lines.append(f"\n<b>🖥️ System Health:</b>")
+                lines.append(f"\n<b> System Health:</b>")
                 try:
                     from utils.scheduling.wall_clock import parse_time_list, next_occurrence
                     times = parse_time_list(self.cycle_times_local)
@@ -800,9 +800,9 @@ class CycleScheduler:
                     from database.models import PriceOHLCV
                     paper_m15_count = (await session.execute(select(func.count(PriceOHLCV.id)).where(PriceOHLCV.timeframe == 'M15').where(PriceOHLCV.timestamp >= now - timedelta(hours=24)))).scalar_one_or_none() or 0
                     if paper_m15_count == 0:
-                        lines.append('  ⚠️ M15: No data (paper trade detection using H4 fallback)')
+                        lines.append('  [PERINGATAN] M15: No data (paper trade detection using H4 fallback)')
                     else:
-                        lines.append(f'  ✅ M15: {paper_m15_count} bars (last 24h) - accurate paper trade detection active')
+                        lines.append(f'  [OK] M15: {paper_m15_count} bars (last 24h) - accurate paper trade detection active')
                 except Exception as e:
                     logger.debug(f'Failed to check M15 data freshness: {e}')
                 
@@ -826,7 +826,7 @@ class CycleScheduler:
                         lines.append(f"  Overall: {stage1_acc.get('overall', 0):.1f}% ({stage1_acc.get('total_checked', 0)} checks)")
                         lines.append(f"  Status: {stage1_acc.get('interpretation', 'N/A')}")
                         for currency, data in stage1_acc.get('by_currency', {}).items():
-                            flag = '⚠️' if data['accuracy'] < 50 else '✅'
+                            flag = '[PERINGATAN]' if data['accuracy'] < 50 else '[OK]'
                             lines.append(f"  {flag} {currency}: {data['accuracy']:.0f}% ({data['total']} checks)")
                 except Exception as e:
                     logger.debug(f'Agent performance report failed: {e}')
@@ -839,7 +839,7 @@ class CycleScheduler:
                         lines.append(f"\n<b>Model Source Performance (7d):</b>")
                         for source, data in model_perf['by_source'].items():
                             win_rate = data.get('win_rate', 0)
-                            flag = '⚠️' if win_rate < 35 else '🟢' if win_rate >= 50 else '🟡'
+                            flag = '[PERINGATAN]' if win_rate < 35 else '[AKTIF]' if win_rate >= 50 else '[WASPADA]'
                             lines.append(f"  {flag} {source}: {win_rate:.0f}% WR ({data['wins']}/{data['total_closed']} closed)")
                 except Exception as e:
                     logger.debug(f'Model source performance report failed: {e}')

@@ -33,6 +33,7 @@ class TradeProposal(BaseModel):
     take_profit: float = Field(default=0.0)
     lot_size: float = Field(default=0.0)
     confluence_score: float = Field(default=50.0, ge=0.0, le=100.0)
+    confidence_override: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     reasoning_hash: str = Field(default="")
     provenance_verified: bool = Field(default=False)
     account_equity: Optional[float] = None
@@ -119,6 +120,7 @@ class TradeProposal(BaseModel):
         take_profit: float = 0.0,
         lot_size: float = 0.0,
         confluence_score: float = 50.0,
+        confidence_override: Optional[float] = None,
         reasoning_text: str = "",
         provenance_verified: bool = False,
         account_equity: Optional[float] = None,
@@ -137,6 +139,7 @@ class TradeProposal(BaseModel):
             take_profit=take_profit,
             lot_size=lot_size,
             confluence_score=confluence_score,
+            confidence_override=confidence_override,
             reasoning_hash=r_hash,
             provenance_verified=provenance_verified,
             account_equity=account_equity,

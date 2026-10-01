@@ -176,7 +176,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
             try:
                 from utils.infra.notifier import AgentNotifier
                 await AgentNotifier().send_warning(
-                    f'⚠️ <b>Analysis Errors</b>\n'
+                    f'[PERINGATAN] <b>Analysis Errors</b>\n'
                     f'{len(unexpected_errors)} symbols had unexpected errors:\n'
                     + '\n'.join([f"• {e['symbol']}: {e['error'][:80]}" 
                                 for e in unexpected_errors[:3]])
@@ -255,7 +255,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
                 try:
                     from utils.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
-                        f'⚠️ <b>Context Version Split</b>\n{split_warning}\n'
+                        f'[PERINGATAN] <b>Context Version Split</b>\n{split_warning}\n'
                         f'Actionable trades this cycle: {[sym for sym, _ in actionable]}\n'
                         f'Recommend manual review before execution.'
                     )

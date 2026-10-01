@@ -113,9 +113,9 @@ class TearsheetResult:
 
     def to_telegram_html(self) -> str:
         """Generates compact, high-impact Telegram HTML brief."""
-        badge = "🟢 PROFITABLE" if self.total_net_pnl >= 0 else "🔴 DRAWDOWN"
+        badge = "[AKTIF] PROFITABLE" if self.total_net_pnl >= 0 else "[KRITIS] DRAWDOWN"
         lines = [
-            f"📊 <b>Executive Quant Tearsheet ({badge})</b>\n",
+            f"[LAPORAN] <b>Executive Quant Tearsheet ({badge})</b>\n",
             f"<b>Equity:</b> <code>${self.final_equity:,.2f}</code> ({self.total_return_pct:+.2f}% | CAGR: <code>{self.cagr_pct:+.2f}%</code>)",
             f"<b>Net PnL:</b> <code>${self.total_net_pnl:+,.2f}</code>",
             f"<b>Sharpe:</b> <code>{self.annualized_sharpe:.2f}</code> | <b>Sortino:</b> <code>{self.annualized_sortino:.2f}</code>",
@@ -130,6 +130,156 @@ class TearsheetResult:
             for sym, data in list(sorted(self.by_symbol.items(), key=lambda x: x[1].get("net_pnl", 0), reverse=True))[:4]:
                 lines.append(f"• <b>{sym}</b>: {data.get('trades')} trades, WR: {data.get('win_rate_pct', 0):.0f}%, PnL: <code>${data.get('net_pnl', 0):+,.2f}</code>")
         return "\n".join(lines)
+
+    def to_standalone_html(self, title: str = "Monika Institutional Quant Tearsheet") -> str:
+        """Generates a standalone, print/PDF-optimized institutional HTML tearsheet."""
+        badge_color = "#10b981" if self.total_net_pnl >= 0 else "#ef4444"
+        badge_text = "PROFITABLE" if self.total_net_pnl >= 0 else "DRAWDOWN"
+
+        # SVG Equity curve generator if points available
+        svg_chart = ""
+        if len(self.equity_curve) >= 2:
+            pts = []
+            eqs = [p.get("equity", self.initial_equity) for p in self.equity_curve]
+            min_e, max_e = min(eqs), max(eqs)
+            diff = max_e - min_e if max_e > min_e else 1.0
+            w, h = 760, 220
+            pad_x, pad_y = 40, 20
+            for idx, e in enumerate(eqs):
+                x = pad_x + (idx / (len(eqs) - 1)) * (w - 2 * pad_x)
+                y = h - pad_y - ((e - min_e) / diff) * (h - 2 * pad_y)
+                pts.append(f"{x:.1f},{y:.1f}")
+            poly_pts = " ".join(pts)
+            svg_chart = f"""
+            <div style="background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+              <h3 style="color: #94a3b8; font-size: 13px; text-transform: uppercase; margin: 0 0 12px 0;">Compounded Equity Curve</h3>
+              <svg viewBox="0 0 {w} {h}" style="width: 100%; height: auto; overflow: visible;">
+                <polyline fill="none" stroke="{badge_color}" stroke-width="2.5" stroke-linecap="round" points="{poly_pts}"/>
+              </svg>
+            </div>
+            """
+
+        rows_asset = ""
+        if self.by_symbol:
+            for sym, data in sorted(self.by_symbol.items(), key=lambda x: x[1].get("net_pnl", 0), reverse=True):
+                cnt = data.get("trades", 0)
+                wr = data.get("win_rate_pct", 0.0)
+                pnl = data.get("net_pnl", 0.0)
+                p_col = "#10b981" if pnl >= 0 else "#ef4444"
+                rows_asset += f"<tr><td><b>{sym}</b></td><td>{cnt}</td><td>{wr:.1f}%</td><td style='color:{p_col}; font-weight:600;'>${pnl:+,.2f}</td></tr>"
+
+        asset_table = f"""
+        <div class="card">
+          <h2>Asset Performance Breakdown</h2>
+          <table>
+            <thead><tr><th>Asset</th><th>Trades</th><th>Win Rate</th><th>Net P&amp;L</th></tr></thead>
+            <tbody>{rows_asset}</tbody>
+          </table>
+        </div>
+        """ if rows_asset else ""
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<style>
+  @page {{ size: A4; margin: 15mm; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }}
+  .container {{ max-width: 900px; margin: 0 auto; }}
+  .header {{ display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #334155; padding-bottom: 12px; margin-bottom: 20px; }}
+  .badge {{ background: {badge_color}; color: #ffffff; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; letter-spacing: 0.05em; }}
+  .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }}
+  .stat-card {{ background: #1e293b; padding: 14px; border-radius: 8px; border-left: 4px solid {badge_color}; }}
+  .stat-label {{ color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }}
+  .stat-val {{ font-size: 20px; font-weight: 700; }}
+  .card {{ background: #1e293b; padding: 18px; border-radius: 8px; margin-bottom: 20px; page-break-inside: avoid; }}
+  h2 {{ font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #cbd5e1; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 6px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+  th, td {{ padding: 8px 10px; text-align: left; }}
+  th {{ color: #94a3b8; font-weight: 600; border-bottom: 1px solid #334155; }}
+  tr:nth-child(even) {{ background: rgba(255,255,255,0.02); }}
+  @media print {{
+    body {{ background: #ffffff !important; color: #000000 !important; padding: 0; }}
+    .stat-card, .card {{ background: #f8fafc !important; border: 1px solid #e2e8f0 !important; color: #000000 !important; }}
+    th, td {{ color: #000000 !important; border-color: #cbd5e1 !important; }}
+    .stat-label {{ color: #64748b !important; }}
+  }}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1 style="margin: 0; font-size: 22px;">{title}</h1>
+      <span style="font-size: 12px; color: #94a3b8;">Generated: {self.generated_at} UTC</span>
+    </div>
+    <span class="badge">{badge_text}</span>
+  </div>
+
+  <div class="grid">
+    <div class="stat-card">
+      <div class="stat-label">Final Equity</div>
+      <div class="stat-val">${self.final_equity:,.2f}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Return</div>
+      <div class="stat-val" style="color:{badge_color};">{self.total_return_pct:+.2f}%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Sharpe Ratio</div>
+      <div class="stat-val">{self.annualized_sharpe:.2f}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Drawdown</div>
+      <div class="stat-val" style="color:#ef4444;">{self.max_drawdown_pct:.2f}%</div>
+    </div>
+  </div>
+
+  {svg_chart}
+
+  <div class="card">
+    <h2>1. Executive Return &amp; Risk Metrics</h2>
+    <table>
+      <tbody>
+        <tr><td><b>Initial Equity</b></td><td>${self.initial_equity:,.2f}</td><td><b>Annualized Return</b></td><td>{self.annualized_return_pct:+.2f}%</td></tr>
+        <tr><td><b>Total Net P&amp;L</b></td><td>${self.total_net_pnl:+,.2f}</td><td><b>CAGR</b></td><td>{self.cagr_pct:+.2f}%</td></tr>
+        <tr><td><b>Sortino Ratio</b></td><td>{self.annualized_sortino:.2f}</td><td><b>Calmar Ratio</b></td><td>{self.calmar_ratio:.2f}</td></tr>
+        <tr><td><b>Gain-to-Pain</b></td><td>{self.gain_to_pain_ratio:.2f}</td><td><b>VaR (95%)</b></td><td>{self.var_95_pct:.2f}%</td></tr>
+        <tr><td><b>Tail Risk (CVaR 95%)</b></td><td>{self.cvar_95_pct:.2f}%</td><td><b>Daily Volatility (Std)</b></td><td>{self.daily_std_pct:.2f}%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>2. Trade Expectancy &amp; Payoff Profile</h2>
+    <table>
+      <tbody>
+        <tr><td><b>Total Trades</b></td><td>{self.total_trades}</td><td><b>Win Rate</b></td><td>{self.win_rate_pct:.2f}% ({self.winning_trades}W / {self.losing_trades}L)</td></tr>
+        <tr><td><b>Profit Factor</b></td><td>{self.profit_factor:.2f}</td><td><b>Expectancy (R)</b></td><td>{self.expectancy_r:+.2f} R</td></tr>
+        <tr><td><b>Payoff Ratio</b></td><td>{self.payoff_ratio:.2f}</td><td><b>Expectancy ($)</b></td><td>${self.expectancy_usd:+,.2f}</td></tr>
+        <tr><td><b>Best Trade</b></td><td>{self.best_trade_pct:+.2f}%</td><td><b>Worst Trade</b></td><td>{self.worst_trade_pct:+.2f}%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  {asset_table}
+</div>
+</body>
+</html>"""
+
+    def export_report(self, filepath: Optional[str] = None) -> str:
+        """Saves standalone HTML report to disk for viewing or browser print-to-PDF."""
+        import os
+        if not filepath:
+            os.makedirs("reports", exist_ok=True)
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            filepath = os.path.join("reports", f"tearsheet_{ts}.html")
+        html_content = self.to_standalone_html()
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        return filepath
 
 
 class QuantTearsheetGenerator:

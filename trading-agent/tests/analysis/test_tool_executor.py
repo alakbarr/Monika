@@ -911,9 +911,9 @@ class TestToolExecutor:
         mock_session.execute = AsyncMock(return_value=mock_res)
 
         res_6h = await executor._tool_get_fundamental_brief({})
-        assert "🚨 CRITICAL" not in res_6h["staleness_warning"]
+        assert "[DARURAT] CRITICAL" not in res_6h["staleness_warning"]
         assert "MANDATORY WAIT" not in res_6h["staleness_warning"]
-        assert "⚠️ STALE" not in res_6h["staleness_warning"]
+        assert "[PERINGATAN] STALE" not in res_6h["staleness_warning"]
         assert res_6h["is_stale"] is False
 
         # 2. 13 hours old brief (exceeds 12.0h critical threshold)
@@ -926,7 +926,7 @@ class TestToolExecutor:
         mock_res.scalar_one_or_none.return_value = brief_13h
 
         res_13h = await executor._tool_get_fundamental_brief({})
-        assert "🚨 CRITICAL" in res_13h["staleness_warning"]
+        assert "[DARURAT] CRITICAL" in res_13h["staleness_warning"]
         assert "MANDATORY WAIT" in res_13h["staleness_warning"]
         assert res_13h["is_stale"] is True
 
@@ -945,8 +945,8 @@ class TestToolExecutor:
         )
         mock_res.scalar_one_or_none.return_value = brief_10_5h
         res_10_5h = await executor_prod._tool_get_fundamental_brief({})
-        assert "⚠️ STALE" in res_10_5h["staleness_warning"]
-        assert "🚨 CRITICAL" not in res_10_5h["staleness_warning"]
+        assert "[PERINGATAN] STALE" in res_10_5h["staleness_warning"]
+        assert "[DARURAT] CRITICAL" not in res_10_5h["staleness_warning"]
         assert res_10_5h["is_stale"] is False
 
     @pytest.mark.asyncio

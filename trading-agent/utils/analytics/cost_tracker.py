@@ -38,8 +38,9 @@ class CostTracker:
         s = settings or {}
         task_roles = s.get("llm", {}).get("task_roles", {})
         analysis_cfg = s.get("analysis", {}) or s.get("claude", {})
-        stage1_model = task_roles.get("stage1_fundamental", {}).get("primary") or analysis_cfg.get("fundamental_model", "claude-sonnet-5")
-        stage2_model = task_roles.get("stage2_per_asset_primary", {}).get("primary") or analysis_cfg.get("model", "claude-sonnet-5")
+        def_model = s.get("llm", {}).get("default_model", "")
+        stage1_model = task_roles.get("stage1_fundamental", {}).get("primary") or analysis_cfg.get("fundamental_model") or def_model
+        stage2_model = task_roles.get("stage2_per_asset_primary", {}).get("primary") or analysis_cfg.get("model") or def_model
 
         calculated_cost: Optional[float] = None
 
@@ -240,7 +241,7 @@ class CostTracker:
             alerts.append(f"Daily dollar spend limit reached: ${daily_cost_usd:.2f} >= ${daily_budget_usd:.2f}")
 
         if alerts and (usage_pct < 95 and not is_daily_budget_exceeded):
-            msg = "⚠️ <b>DAILY API LIMIT WARNING</b>\n" + "\n".join(alerts)
+            msg = "[PERINGATAN] <b>DAILY API LIMIT WARNING</b>\n" + "\n".join(alerts)
             try:
                 notifier = AgentNotifier()
                 await notifier.send_critical(msg)
@@ -249,7 +250,7 @@ class CostTracker:
 
         if usage_pct >= 95:
             msg = (
-                f"💸 <b>API BUDGET EXCEEDED</b>\n"
+                f" <b>API BUDGET EXCEEDED</b>\n"
                 f"MTD cost: ${mtd_cost:.4f} — budget: ${budget_usd:.2f} ({usage_pct:.1f}%)\n"
                 f"Pausing AI API calls until budget is acknowledged.\n"
                 f"Set <code>cost_tracking.monthly_budget_usd</code> higher or restart to resume."
@@ -278,7 +279,7 @@ class CostTracker:
             if is_daily_budget_exceeded and not (usage_pct >= 95):
                 try:
                     notifier = AgentNotifier()
-                    await notifier.send_critical(f"🛑 <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). System paused.")
+                    await notifier.send_critical(f"[STOP] <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). System paused.")
                 except Exception:
                     pass
         else:
@@ -292,7 +293,7 @@ class CostTracker:
 
         if 80 <= usage_pct < 95:
             msg = (
-                f"⚠️ <b>API Budget Warning</b>\n"
+                f"[PERINGATAN] <b>API Budget Warning</b>\n"
                 f"MTD cost: ${mtd_cost:.4f} — {usage_pct:.1f}% of ${budget_usd:.2f} budget used.\n"
                 f"At current pace, budget may be exceeded before month end."
             )

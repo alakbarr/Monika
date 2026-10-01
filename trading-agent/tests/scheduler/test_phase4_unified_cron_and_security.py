@@ -185,13 +185,13 @@ def test_pairing_manager_lifecycle(temp_pairing_file):
     # Invalid code attempt
     success, reason = mgr.verify_pairing_code("telegram", "user_999", "WRONG-CODE")
     assert not success
-    assert "remaining" in reason
+    assert "remaining" in reason.lower() or "tersisa" in reason.lower()
     assert not mgr.is_user_paired("telegram", "user_999")
 
     # Valid code attempt
     success, ok_msg = mgr.verify_pairing_code("telegram", "user_999", otp_code)
     assert success
-    assert "Pairing successful" in ok_msg
+    assert "pairing successful" in ok_msg.lower() or "berhasil" in ok_msg.lower()
 
     # User is now paired and persisted
     assert mgr.is_user_paired("telegram", "user_999")

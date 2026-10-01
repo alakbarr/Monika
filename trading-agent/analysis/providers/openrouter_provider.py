@@ -34,6 +34,7 @@ OPENROUTER_MODEL_ALIASES = {
     "opus-4.6": "anthropic/claude-opus-4.6",
     "claude-opus-4.5": "anthropic/claude-opus-4.5",
     "opus-4.5": "anthropic/claude-opus-4.5",
+    "claude-sonnet-5.5": "anthropic/claude-sonnet-5.5",
     "claude-sonnet-5": "anthropic/claude-sonnet-5",
     "sonnet-5": "anthropic/claude-sonnet-5",
     "claude-sonnet-4.6": "anthropic/claude-sonnet-4.6",
@@ -50,10 +51,13 @@ OPENROUTER_MODEL_ALIASES = {
     # --- DeepSeek ---
     "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
     "deepseek-v4-pro-0813": "deepseek/deepseek-v4-pro-0813",
+    "deepseek-v4.1-flash": "deepseek/deepseek-v4.1-flash",
     "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
     "deepseek-v4-flash-0731": "deepseek/deepseek-v4-flash-0731",
 
     # --- GLM / Zhipu (z-ai) ---
+    "glm-5.3-flash": "z-ai/glm-5.3-flash",
+    "z-ai/glm-5.3-flash": "z-ai/glm-5.3-flash",
     "glm-5.3": "z-ai/glm-5.3",
     "glm-5.2": "z-ai/glm-5.2",
     "glm-5.2:free": "z-ai/glm-5.2:free",
@@ -72,7 +76,10 @@ OPENROUTER_MODEL_ALIASES = {
     # --- Google Pro/Preview (OpenRouter routing) ---
     "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
     "gemini-2.5-pro": "google/gemini-2.5-pro",
+    "gemini-3.8-flash": "google/gemini-3.8-flash",
+    "google/gemini-3.8-flash": "google/gemini-3.8-flash",
     "gemini-3.7-flash": "google/gemini-3.7-flash",
+    "google/gemini-3.7-flash": "google/gemini-3.7-flash",
     "gemini-3.6-flash": "google/gemini-3.6-flash",
     "gemini-3.5-flash": "google/gemini-3.5-flash",
     "gemini-3.5-flash-lite": "google/gemini-3.5-flash-lite",
@@ -80,6 +87,8 @@ OPENROUTER_MODEL_ALIASES = {
     "gemini-3.0-flash-preview": "google/gemini-3.0-flash-preview",
 
     # --- Meta ---
+    "muse-spark-1.3": "meta-llama/muse-spark-1.3",
+    "meta/muse-spark-1.3": "meta-llama/muse-spark-1.3",
     "muse-spark-1.2": "meta-llama/muse-spark-1.2",
     "meta/muse-spark-1.2": "meta-llama/muse-spark-1.2",
 
@@ -94,6 +103,14 @@ OPENROUTER_MODEL_ALIASES = {
     "moonshot/kimi-k3": "moonshot/kimi-k3",
 
     # --- OpenAI ---
+    "gpt-6.1-sol": "openai/gpt-6.1-sol",
+    "gpt-6-sol": "openai/gpt-6-sol",
+    "gpt-6-luna": "openai/gpt-6-luna",
+    "gpt-6-luna-xhigh": "openai/gpt-6-luna",
+    "gpt-6-luna-max": "openai/gpt-6-luna",
+    "gpt-5.6-luna-xhigh": "openai/gpt-5.6-luna",
+    "gpt-5.6-luna-max": "openai/gpt-5.6-luna",
+    "gpt-5.6-sol-high": "openai/gpt-5.6-sol",
     "gpt-5.6-sol": "openai/gpt-5.6-sol",
     "gpt-5.6-terra": "openai/gpt-5.6-terra",
     "gpt-5.6-luna": "openai/gpt-5.6-luna",
@@ -110,12 +127,20 @@ OPENROUTER_MODEL_ALIASES = {
     "qwen3.8-27b": "qwen/qwen3.8-27b",
     "qwen3.6-27b": "qwen/qwen3.6-27b",
 
+    # --- StepFun ---
+    "step-5-preview": "stepfun/step-5-preview",
+    "stepfun/step-5-preview": "stepfun/step-5-preview",
+
     # --- XAI ---
     "grok-4.6": "x-ai/grok-4.6",
     "grok-4.5": "x-ai/grok-4.5",
     "grok-4.3": "x-ai/grok-4.3",
 
     # --- Xiaomi ---
+    "mimo-v2.6-pro": "xiaomi/mimo-v2.6-pro",
+    "mimo-v2.6-flash": "xiaomi/mimo-v2.6-flash",
+    "xiaomi/mimo-v2.6-pro": "xiaomi/mimo-v2.6-pro",
+    "xiaomi/mimo-v2.6-flash": "xiaomi/mimo-v2.6-flash",
     "mimo-v2.5-pro": "xiaomi/mimo-v2.5-pro",
     "mimo-v2.5": "xiaomi/mimo-v2.5",
 

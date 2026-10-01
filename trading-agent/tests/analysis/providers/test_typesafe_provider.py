@@ -743,8 +743,15 @@ def test_openrouter_kev_and_jev_provider_initialization(monkeypatch):
 
 def test_llm_factory_and_registry_openrouter_routing(monkeypatch):
     """Test LLMFactory and ProviderRegistry properly route Kev and OpenRouter Jev to typesafe provider."""
+    monkeypatch.delenv("OPENROUTER_API_KEYS", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEYS", raising=False)
     monkeypatch.setenv("TYPESAFE_API_KEY", "typesafe_secret_123")
     monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter_secret_456")
+
+    from utils.api.credential_pool import get_credential_pool
+    pool = get_credential_pool()
+    pool._pools.clear()
+    pool._initialize_from_env()
 
     from analysis.providers.llm_factory import LLMFactory
 

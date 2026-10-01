@@ -494,7 +494,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
 class Utf8Strategy(EdgeStrategy):
-    \"\"\"Docstring with unicode quotes “smart”, dashes — and symbols • € 📈\"\"\"
+    \"\"\"Docstring with unicode quotes “smart”, dashes — and symbols • € \"\"\"
     strategy_id = "utf8_strategy_1"
     applicable_symbols = {"EURUSD"}
 

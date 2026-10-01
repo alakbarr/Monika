@@ -21,6 +21,7 @@ from gateway.platforms.webhook_adapter import WebhookPlatformAdapter
 from gateway.platforms.discord_adapter import DiscordPlatformAdapter
 from gateway.platforms.telegram_adapter import TelegramPlatformAdapter
 from gateway.api_server import app as api_server_app
+from unittest.mock import MagicMock, AsyncMock, patch
 
 
 # ==============================================================================
@@ -113,46 +114,52 @@ async def test_api_server_health_and_models():
 @pytest.mark.asyncio
 async def test_api_server_chat_completions_non_streaming():
     transport = ASGITransport(app=api_server_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        req_body = {
-            "model": "monika-trader",
-            "messages": [
-                {"role": "system", "content": "You are Monika AI trading system."},
-                {"role": "user", "content": "Analyze USDJPY liquidity levels."},
-            ],
-            "stream": False,
-        }
-        res = await client.post("/v1/chat/completions", json=req_body)
-        assert res.status_code == 200
-        data = res.json()
-        assert data["object"] == "chat.completion"
-        assert data["model"] == "monika-trader"
-        assert len(data["choices"]) == 1
-        assert len(data["choices"][0]["message"]["content"]) > 0
-        content = data["choices"][0]["message"]["content"]
-        assert "Monika Trading Intelligence" in content or "USDJPY" in content or "Analisis" in content
-        assert "usage" in data
+    mock_agent = MagicMock()
+    mock_agent.handle = AsyncMock(return_value=("Monika Trading Intelligence: USDJPY Analisis complete.", None))
+    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            req_body = {
+                "model": "monika-trader",
+                "messages": [
+                    {"role": "system", "content": "You are Monika AI trading system."},
+                    {"role": "user", "content": "Analyze USDJPY liquidity levels."},
+                ],
+                "stream": False,
+            }
+            res = await client.post("/v1/chat/completions", json=req_body)
+            assert res.status_code == 200
+            data = res.json()
+            assert data["object"] == "chat.completion"
+            assert data["model"] == "monika-trader"
+            assert len(data["choices"]) == 1
+            assert len(data["choices"][0]["message"]["content"]) > 0
+            content = data["choices"][0]["message"]["content"]
+            assert "Monika Trading Intelligence" in content or "USDJPY" in content or "Analisis" in content
+            assert "usage" in data
 
 
 @pytest.mark.asyncio
 async def test_api_server_chat_completions_streaming():
     transport = ASGITransport(app=api_server_app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        req_body = {
-            "model": "monika-trader",
-            "messages": [
-                {"role": "user", "content": "Stream market overview."},
-            ],
-            "stream": True,
-        }
-        res = await client.post("/v1/chat/completions", json=req_body)
-        assert res.status_code == 200
-        assert "text/event-stream" in res.headers["content-type"]
+    mock_agent = MagicMock()
+    mock_agent.handle = AsyncMock(return_value=("Monika Trading Intelligence: Streamed market overview.", None))
+    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            req_body = {
+                "model": "monika-trader",
+                "messages": [
+                    {"role": "user", "content": "Stream market overview."},
+                ],
+                "stream": True,
+            }
+            res = await client.post("/v1/chat/completions", json=req_body)
+            assert res.status_code == 200
+            assert "text/event-stream" in res.headers["content-type"]
 
-        text_content = res.text
-        lines = [line.strip() for line in text_content.split("\n") if line.strip()]
-        assert any(l.startswith("data: {") for l in lines)
-        assert "data: [DONE]" in lines
+            text_content = res.text
+            lines = [line.strip() for line in text_content.split("\n") if line.strip()]
+            assert any(l.startswith("data: {") for l in lines)
+            assert "data: [DONE]" in lines
 
 
 @pytest.mark.asyncio

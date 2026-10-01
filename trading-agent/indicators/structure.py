@@ -53,6 +53,7 @@ class OrderBlockData:
     price_low: float
     formed_at: datetime
     mitigated_at: Optional[datetime] = None
+    has_confluent_fvg: bool = False
 
 
 @dataclass

@@ -126,15 +126,15 @@ async def test_signal_arbitrator_direction_none():
 
 def test_telegram_chunk_preserves_emojis_and_html():
     """Memverifikasi TelegramBot._chunk_text tidak menghapus emoji alert dan tidak merusak HTML."""
-    alert_text = "🚨 *EMERGENCY ALERT* ⚠️\nPosition liquidated: XAUUSD ✅ Loss: $0.00 📊"
+    alert_text = "[DARURAT] *EMERGENCY ALERT* [PERINGATAN]\nPosition liquidated: XAUUSD [OK] Loss: $0.00 [LAPORAN]"
     
     # Notifikasi sistem default sanitize_format=False -> emoji WAJIB utuh
     chunks = TelegramBot._chunk_text(alert_text, max_len=4000, sanitize_format=False)
     assert len(chunks) == 1
-    assert "🚨" in chunks[0]
-    assert "⚠️" in chunks[0]
-    assert "✅" in chunks[0]
-    assert "📊" in chunks[0]
+    assert "[DARURAT]" in chunks[0]
+    assert "[PERINGATAN]" in chunks[0]
+    assert "[OK]" in chunks[0]
+    assert "[LAPORAN]" in chunks[0]
 
     # Tearsheet HTML is_html=True -> tidak boleh menambahkan markdown balancing tags
     html_text = "<b>Monthly Summary</b>\n<tr><td>Return</td><td>+15%</td></tr>"

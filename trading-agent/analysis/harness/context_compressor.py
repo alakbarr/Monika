@@ -560,12 +560,8 @@ class ContextCompressor:
                 client = get_client_for_task("summarizer", self.settings or {})
             except Exception:
                 try:
-                    from analysis.providers.gemini_provider import GeminiProvider
-                    client = GeminiProvider(
-                        model="gemini-3.5-flash-lite",
-                        thinking_level="none",
-                        settings=self.settings,
-                    )
+                    from analysis.providers.llm_factory import get_client_for_task
+                    client = get_client_for_task("context_compaction", self.settings or {})
                 except Exception:
                     client = None
 

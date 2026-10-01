@@ -39,15 +39,27 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
     count = int(args.get("count") or args.get("limit") or 100)
     as_csv = args.get("format") == "csv" or args.get("as_csv") is True
 
+    as_of_arg = args.get("as_of") or args.get("end_time") or args.get("before")
+    as_of_dt = None
+    if as_of_arg:
+        try:
+            import dateutil.parser as dparser
+            as_of_dt = dparser.parse(str(as_of_arg).strip())
+            if as_of_dt.tzinfo is None:
+                as_of_dt = as_of_dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            as_of_dt = None
+
     rates = None
-    try:
-        from execution.mt5_client import get_mt5_client
-        client = get_mt5_client()
-        rates = await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
-        if rates and not as_csv:
-            return rates
-    except Exception as e:
-        logger.debug(f"[{symbol}] MT5 get_rates unavailable: {e}")
+    if not as_of_dt:
+        try:
+            from execution.mt5_client import get_mt5_client
+            client = get_mt5_client()
+            rates = await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
+            if rates and not as_csv:
+                return rates
+        except Exception as e:
+            logger.debug(f"[{symbol}] MT5 get_rates unavailable: {e}")
 
     if as_csv and rates:
         lines = ["time,O,H,L,C,V"]
@@ -57,11 +69,11 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
         return "\n".join(lines)
 
     if session:
+        query = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+        if as_of_dt:
+            query = query.where(PriceOHLCV.timestamp <= as_of_dt)
         rows = (await session.execute(
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
-            .order_by(PriceOHLCV.timestamp.desc())
-            .limit(count)
+            query.order_by(PriceOHLCV.timestamp.desc()).limit(count)
         )).scalars().all()
         if as_csv:
             lines = ["time,O,H,L,C,V"]
@@ -89,10 +101,118 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
             from indicators.technical import TechnicalIndicatorCalculator
             calc = TechnicalIndicatorCalculator(session, settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
-            return {"symbol": symbol, "timeframe": timeframe, "indicators": snapshot or {}}
+            if not snapshot:
+                try:
+                    await calc.compute_and_save(symbol, timeframe)
+                    snapshot = await calc.get_snapshot(symbol, timeframe)
+                except Exception as comp_err:
+                    logger.debug(f"[{symbol}] On-the-fly indicator computation failed: {comp_err}")
+
+            rsi_divergence = None
+            macd_divergence = None
+            try:
+                from indicators.technical import detect_rsi_divergence, detect_macd_divergence
+                df = await calc._load_ohlcv(symbol, timeframe)
+                if df is not None and len(df) >= 20:
+                    import ta
+                    rsi_s = ta.momentum.rsi(df["close"], window=14)
+                    rsi_divergence = detect_rsi_divergence(df["high"], df["low"], df["close"], rsi_s)
+                    macd_obj = ta.trend.MACD(df["close"])
+                    macd_divergence = detect_macd_divergence(df["high"], df["low"], df["close"], macd_obj.macd(), macd_obj.macd_diff())
+            except Exception as div_err:
+                logger.debug(f"[{symbol}] Divergence calculation notice: {div_err}")
+
+            res = {"symbol": symbol, "timeframe": timeframe, "indicators": snapshot or {}}
+            if rsi_divergence:
+                res["rsi_divergence"] = rsi_divergence
+            if macd_divergence:
+                res["macd_divergence"] = macd_divergence
+            return res
         except Exception as e:
             logger.debug(f"[{symbol}] Technical indicator snapshot calculation error: {e}")
     return {"symbol": symbol, "timeframe": timeframe, "indicators": {}, "status": "no_session"}
+
+
+async def handle_get_synthetic_cross_rate(args: dict, **ctx) -> dict:
+    """
+    Computes synthetic cross-rates, spread, and estimated volatility for cross pairs
+    (e.g., GBPJPY = GBPUSD * USDJPY, EURGBP = EURUSD / GBPUSD, EURJPY = EURUSD * USDJPY).
+    """
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    cross_symbol = str(symbol or args.get("cross_symbol") or "").upper().replace("/", "").strip()
+    if not cross_symbol:
+        return {"error": "Missing required cross_symbol parameter"}
+
+    try:
+        from execution.mt5_client import get_mt5_client
+        client = get_mt5_client()
+        live_tick = await client.get_tick(cross_symbol)
+        if live_tick and live_tick.get("bid"):
+            return {
+                "symbol": cross_symbol,
+                "is_synthetic": False,
+                "bid": live_tick.get("bid"),
+                "ask": live_tick.get("ask"),
+                "spread_pips": round((live_tick.get("ask", 0) - live_tick.get("bid", 0)) * (100 if "JPY" in cross_symbol else 10000), 2),
+                "source": "live_broker_tick"
+            }
+    except Exception:
+        pass
+
+    # Synthetic triangular calculations
+    try:
+        from execution.mt5_client import get_mt5_client
+        client = get_mt5_client()
+        eurusd = await client.get_tick("EURUSD")
+        gbpusd = await client.get_tick("GBPUSD")
+        usdjpy = await client.get_tick("USDJPY")
+        audusd = await client.get_tick("AUDUSD")
+
+        eur_price = (eurusd.get("bid", 1.0850) + eurusd.get("ask", 1.0850)) / 2 if eurusd else 1.0850
+        gbp_price = (gbpusd.get("bid", 1.2950) + gbpusd.get("ask", 1.2950)) / 2 if gbpusd else 1.2950
+        jpy_price = (usdjpy.get("bid", 152.00) + usdjpy.get("ask", 152.00)) / 2 if usdjpy else 152.00
+        aud_price = (audusd.get("bid", 0.6550) + audusd.get("ask", 0.6550)) / 2 if audusd else 0.6550
+
+        synth_rate = None
+        formula = ""
+        if cross_symbol in ("GBPJPY", "GBP_JPY"):
+            synth_rate = gbp_price * jpy_price
+            formula = "GBPUSD * USDJPY"
+        elif cross_symbol in ("EURJPY", "EUR_JPY"):
+            synth_rate = eur_price * jpy_price
+            formula = "EURUSD * USDJPY"
+        elif cross_symbol in ("AUDJPY", "AUD_JPY"):
+            synth_rate = aud_price * jpy_price
+            formula = "AUDUSD * USDJPY"
+        elif cross_symbol in ("EURGBP", "EUR_GBP"):
+            synth_rate = eur_price / gbp_price
+            formula = "EURUSD / GBPUSD"
+        elif cross_symbol in ("EURAUD", "EUR_AUD"):
+            synth_rate = eur_price / aud_price
+            formula = "EURUSD / AUDUSD"
+        elif cross_symbol in ("GBPAUD", "GBP_AUD"):
+            synth_rate = gbp_price / aud_price
+            formula = "GBPUSD / AUDUSD"
+
+        if synth_rate is not None:
+            return {
+                "symbol": cross_symbol,
+                "is_synthetic": True,
+                "synthetic_rate": round(synth_rate, 5 if "JPY" not in cross_symbol else 3),
+                "formula": formula,
+                "components": {
+                    "eurusd": eur_price,
+                    "gbpusd": gbp_price,
+                    "usdjpy": jpy_price,
+                    "audusd": aud_price,
+                },
+                "status": "success"
+            }
+    except Exception as e:
+        logger.debug(f"Synthetic calculation error: {e}")
+
+    return {"symbol": cross_symbol, "status": "unavailable", "message": f"Could not synthesize cross-rate for {cross_symbol}"}
+
 
 
 async def handle_get_atr(args: dict, **ctx) -> dict:
@@ -186,7 +306,9 @@ async def handle_get_structure_breaks(args: dict, **ctx) -> dict:
         "breaks": [
             {
                 "type": b.type,
-                "broken_price": getattr(b, "broken_price", None),
+                "direction": getattr(b, "direction", None),
+                "price": getattr(b, "price", getattr(b, "broken_price", None)),
+                "broken_price": getattr(b, "price", getattr(b, "broken_price", None)),
                 "formed_at": b.formed_at.isoformat() if hasattr(b.formed_at, "isoformat") else str(b.formed_at),
             }
             for b in breaks
@@ -249,8 +371,28 @@ async def handle_get_smc_zones(args: dict, **ctx) -> dict:
             {"price_high": r.price_high, "price_low": r.price_low, "strength": r.strength}
             for r in sr_rows
         ],
-        "order_blocks": len(ob_rows),
-        "fvg_zones": len(fvg_rows),
+        "order_blocks": [
+            {
+                "price_high": r.price_high,
+                "price_low": r.price_low,
+                "direction": getattr(r, "direction", "bullish"),
+                "mitigated": bool(getattr(r, "mitigated_at", None)),
+                "formed_at": r.formed_at.isoformat() if hasattr(r.formed_at, "isoformat") else str(r.formed_at),
+            }
+            for r in ob_rows
+        ],
+        "fvg_zones": [
+            {
+                "gap_high": r.gap_high,
+                "gap_low": r.gap_low,
+                "direction": getattr(r, "direction", "bullish"),
+                "mitigated": bool(getattr(r, "mitigated_at", None)),
+                "formed_at": r.formed_at.isoformat() if hasattr(r.formed_at, "isoformat") else str(r.formed_at),
+            }
+            for r in fvg_rows
+        ],
+        "total_order_blocks": len(ob_rows),
+        "total_fvg_zones": len(fvg_rows),
     }
 
 
@@ -340,20 +482,61 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
         }
         retracement_zone = f"Golden zone (OTE): {round(high - diff * 0.786, 5)} - {round(high - diff * 0.618, 5)}"
 
+    # Calculate current price zone mapping (Premium vs Discount vs OTE)
+    current_price = None
+    if args.get("current_price"):
+        try:
+            current_price = float(args["current_price"])
+        except Exception:
+            pass
+    if current_price is None and session:
+        try:
+            from database.models import PriceOHLCV
+            latest_bar = (await session.execute(
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol)
+                .order_by(desc(PriceOHLCV.timestamp))
+                .limit(1)
+            )).scalar_one_or_none()
+            if latest_bar:
+                current_price = float(latest_bar.close)
+        except Exception:
+            pass
+
+    eq_price = round(low + diff * 0.5, 5)
+    ote_min = round(low + diff * 0.618, 5) if trend == "bullish" else round(high - diff * 0.786, 5)
+    ote_max = round(low + diff * 0.786, 5) if trend == "bullish" else round(high - diff * 0.618, 5)
+
+    current_zone = "UNKNOWN"
+    in_ote_zone = False
+    if current_price is not None:
+        if current_price > eq_price:
+            current_zone = "PREMIUM"
+        elif current_price < eq_price:
+            current_zone = "DISCOUNT"
+        else:
+            current_zone = "EQUILIBRIUM"
+        in_ote_zone = bool(min(ote_min, ote_max) <= current_price <= max(ote_min, ote_max))
+
     return {
         "symbol": symbol,
         "timeframe": timeframe,
         "trend_context": trend,
         "coherent_pair": coherent,
+        "current_price": current_price,
+        "equilibrium_price": eq_price,
+        "current_zone": current_zone,
+        "in_ote_zone": in_ote_zone,
+        "ote_bounds": [min(ote_min, ote_max), max(ote_min, ote_max)],
         "swing_high": {"price": high, "timestamp": swing_high.timestamp.isoformat() if hasattr(swing_high.timestamp, "isoformat") else str(swing_high.timestamp)},
         "swing_low": {"price": low, "timestamp": swing_low.timestamp.isoformat() if hasattr(swing_low.timestamp, "isoformat") else str(swing_low.timestamp)},
         "move_size": round(diff, 5),
         "fib_levels": {k: round(v, 5) for k, v in levels.items()},
         "optimal_trade_entry_zone": retracement_zone,
         "interpretation": (
-            f"Draw Fibonacci from {trend} move. "
-            f"{'Coherent swing pair used.' if coherent else 'WARNING: Fallback to independent swings — check manually.'} "
-            f"Entry in 0.618-0.786 zone (OTE) offers highest-probability reversal."
+            f"Dealing Range: {low} - {high}. Equilibrium: {eq_price}. "
+            f"Current market is in {current_zone} zone. "
+            f"{'Price is actively inside the Optimal Trade Entry (OTE) 0.618-0.786 zone.' if in_ote_zone else 'Price is outside OTE zone.'}"
         )
     }
 
@@ -383,12 +566,83 @@ async def handle_get_daily_range_context(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "status": "no_session"}
 
+    lookback_days = args.get("lookback_days") or args.get("lookback")
+    lookback_val = int(lookback_days) if lookback_days is not None else None
+
     try:
         from analysis.calculators.daily_range_calculator import compute_daily_range_context
-        return await compute_daily_range_context(session, symbol, settings)
+        return await compute_daily_range_context(session, symbol, settings, lookback_days=lookback_val)
     except Exception as e:
         logger.debug(f"[{symbol}] Daily range context fallback: {e}")
         return {"symbol": symbol, "status": "available", "adr_context": {}}
+
+
+async def handle_export_historical_data_csv(args: dict, **ctx) -> dict:
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        return {"error": "Missing required parameter 'symbol'"}
+    timeframe = str(args.get("timeframe", "H1")).upper()
+    days_back = int(args.get("days_back", 30))
+    limit = int(args.get("limit", 5000))
+
+    from database.models import PriceOHLCV
+    from datetime import timedelta
+    import os
+    import csv
+
+    since = clock.now() - timedelta(days=days_back)
+    rows = []
+    if session:
+        rows = list((await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol)
+            .where(PriceOHLCV.timeframe == timeframe)
+            .where(PriceOHLCV.timestamp >= since)
+            .order_by(PriceOHLCV.timestamp.asc())
+            .limit(limit)
+        )).scalars().all())
+
+    # Fallback to MT5 fetch if DB has insufficient data
+    if len(rows) < 10:
+        try:
+            from execution.mt5_client import get_mt5_client
+            client = get_mt5_client(settings)
+            if client:
+                mt5_candles = await client.get_historical_candles(symbol, timeframe, count=min(limit, 5000))
+                if mt5_candles:
+                    rows = mt5_candles
+        except Exception:
+            pass
+
+    if not rows:
+        return {"error": f"No historical data available for {symbol} ({timeframe}) in the last {days_back} days."}
+
+    export_dir = os.path.join(os.getcwd(), "data", "exports")
+    os.makedirs(export_dir, exist_ok=True)
+    clean_sym = symbol.replace("/", "")
+    filename = args.get("output_filename") or f"{clean_sym}_{timeframe}_{days_back}d.csv"
+    filepath = os.path.join(export_dir, filename)
+
+    with open(filepath, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["timestamp", "open", "high", "low", "close", "volume"])
+        for r in rows:
+            if isinstance(r, dict):
+                ts = r.get("time") or r.get("timestamp")
+                writer.writerow([ts, r.get("open"), r.get("high"), r.get("low"), r.get("close"), r.get("volume", 0)])
+            else:
+                ts = r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp)
+                writer.writerow([ts, r.open, r.high, r.low, r.close, r.volume])
+
+    return {
+        "status": "success",
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "rows_exported": len(rows),
+        "file_path": filepath,
+        "days_back": days_back,
+        "message": f"Exported {len(rows)} candles to {filepath}",
+    }
 
 
 async def handle_get_price_momentum(args: dict, **ctx) -> dict:
@@ -554,7 +808,14 @@ async def handle_get_multi_timeframe_summary(args: dict, **ctx) -> dict:
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
 
-    timeframes = ["H1", "H4", "D1"]
+    raw_tfs = args.get("timeframes") or args.get("timeframe")
+    if isinstance(raw_tfs, str):
+        timeframes = [t.strip().upper() for t in raw_tfs.split(",") if t.strip()]
+    elif isinstance(raw_tfs, list):
+        timeframes = [str(t).strip().upper() for t in raw_tfs if str(t).strip()]
+    else:
+        timeframes = ["M15", "H1", "H4", "D1"]
+
     mtf_data = {}
 
     if session:
@@ -730,6 +991,13 @@ async def handle_get_spread_snapshot(args: dict, **ctx) -> dict:
 
     from risk.position_sizing import DEFAULT_INSTRUMENTS
 
+    mt5_client = None
+    try:
+        from execution.mt5_client import get_mt5_client
+        mt5_client = get_mt5_client(settings)
+    except Exception:
+        pass
+
     spreads = {}
     for sym in symbols:
         clean_sym = sym.strip().upper().replace('/', '')
@@ -757,14 +1025,36 @@ async def handle_get_spread_snapshot(args: dict, **ctx) -> dict:
 
         current_spread_pips = typical_spread_pips
         status = "normal"
+        last_price = latest_bar.close if latest_bar else None
+        last_updated = latest_bar.timestamp.isoformat() if latest_bar and hasattr(latest_bar.timestamp, "isoformat") else (str(latest_bar.timestamp) if latest_bar else None)
+
+        if mt5_client and hasattr(mt5_client, "get_current_price"):
+            try:
+                tick = await mt5_client.get_current_price(clean_sym)
+                if tick and tick.get("bid") is not None and tick.get("ask") is not None:
+                    bid = float(tick["bid"])
+                    ask = float(tick["ask"])
+                    diff = ask - bid
+                    if pip_size > 0:
+                        current_spread_pips = round(diff / pip_size, 1)
+                    else:
+                        current_spread_pips = round(diff, 1)
+                    last_price = round((bid + ask) / 2, 5)
+                    last_updated = clock.now().isoformat()
+                    if current_spread_pips > typical_spread_pips * 2.0:
+                        status = "elevated"
+                    elif current_spread_pips > typical_spread_pips * 3.5:
+                        status = "extreme"
+            except Exception as tick_err:
+                logger.debug(f"[{clean_sym}] Failed to fetch live tick spread: {tick_err}")
 
         spreads[clean_sym] = {
             "current_spread_pips": current_spread_pips,
             "typical_spread_pips": typical_spread_pips,
             "spread_status": status,
             "pip_size": pip_size,
-            "last_price": latest_bar.close if latest_bar else None,
-            "last_updated": latest_bar.timestamp.isoformat() if latest_bar and hasattr(latest_bar.timestamp, "isoformat") else (str(latest_bar.timestamp) if latest_bar else None),
+            "last_price": last_price,
+            "last_updated": last_updated,
         }
 
     return {
@@ -892,6 +1182,118 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
     }
 
 
+async def handle_detect_candlestick_patterns(args: dict, **ctx) -> dict:
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        return {"error": "Missing required parameter 'symbol'"}
+    timeframe = str(args.get("timeframe", "H1")).upper()
+    lookback = int(args.get("lookback", 10))
+
+    candles = []
+    if session:
+        rows = (await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(lookback + 5)
+        )).scalars().all()
+        candles = [
+            {
+                "time": r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp),
+                "open": r.open, "high": r.high, "low": r.low, "close": r.close, "volume": r.volume
+            }
+            for r in reversed(rows)
+        ]
+
+    from indicators.candlestick_patterns import detect_candlestick_patterns
+    res = detect_candlestick_patterns(candles, lookback=lookback)
+    res["symbol"] = symbol
+    res["timeframe"] = timeframe
+    return res
+
+
+async def handle_plot_price_chart(args: dict, **ctx) -> dict:
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        return {"error": "Missing required parameter 'symbol'"}
+    timeframe = str(args.get("timeframe", "H1")).upper()
+    candles_count = int(args.get("candles", 80))
+    overlay_smc = args.get("overlay_smc", True)
+
+    if not session:
+        return {"error": "Database session required for plot_price_chart"}
+
+    rows = (await session.execute(
+        select(PriceOHLCV)
+        .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+        .order_by(PriceOHLCV.timestamp.desc())
+        .limit(candles_count)
+    )).scalars().all()
+
+    if not rows or len(rows) < 5:
+        return {"error": f"Insufficient price history for {symbol} ({timeframe})"}
+
+    ohlcv_data = [
+        {
+            "timestamp": r.timestamp,
+            "open": r.open,
+            "high": r.high,
+            "low": r.low,
+            "close": r.close,
+            "volume": r.volume or 0,
+        }
+        for r in reversed(rows)
+    ]
+
+    fvg_list = []
+    swing_points = []
+    if overlay_smc:
+        try:
+            from database.models import FVGZone, SwingPoint
+            fvgs = (await session.execute(
+                select(FVGZone)
+                .where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe, FVGZone.filled_at.is_(None))
+                .order_by(FVGZone.formed_at.desc())
+                .limit(5)
+            )).scalars().all()
+            fvg_list = [{"top": f.gap_high, "bottom": f.gap_low, "type": f.direction} for f in fvgs]
+
+            swings = (await session.execute(
+                select(SwingPoint)
+                .where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe)
+                .order_by(SwingPoint.timestamp.desc())
+                .limit(10)
+            )).scalars().all()
+            swing_points = [{"price": s.price, "type": s.type, "time": s.timestamp} for s in swings]
+        except Exception as e:
+            logger.debug(f"Failed fetching SMC overlays for chart: {e}")
+
+    from utils.chart_generator import generate_smc_candlestick_chart
+    try:
+        buf, saved_path = generate_smc_candlestick_chart(
+            ohlcv_data, symbol=symbol, timeframe=timeframe, fvg_list=fvg_list, swing_points=swing_points, save_to_disk=True
+        )
+        chart_id = f"chart_{symbol}_{timeframe}_{int(clock.now().timestamp())}"
+        executor = ctx.get("executor")
+        if executor and hasattr(executor, "_pending_charts"):
+            executor._pending_charts[chart_id] = buf
+
+        return {
+            "status": "success",
+            "chart_id": chart_id,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "candles_rendered": len(rows),
+            "file_path": saved_path,
+            "fvg_boxes_rendered": len(fvg_list),
+            "swing_markers_rendered": len(swing_points),
+            "message": f"SMC chart rendered successfully and saved to {saved_path}",
+        }
+    except Exception as e:
+        logger.error(f"Error plotting SMC chart for {symbol}: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
 def register_market_data_tools():
     registry = ToolRegistry.get_instance()
     tools = [
@@ -916,6 +1318,22 @@ def register_market_data_tools():
             description="Generate candlestick chart image for visualization.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "candles": {"type": "integer"}}},
             handler=handle_get_chart,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="plot_price_chart",
+            description="Plot and save a dark-theme candlestick chart with SMC overlays (Fair Value Gap boxes & Swing Pivots).",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "candles": {"type": "integer"}, "overlay_smc": {"type": "boolean"}}},
+            handler=handle_plot_price_chart,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="detect_candlestick_patterns",
+            description="Detect classical candlestick patterns (Pin Bar/Hammer, Bullish/Bearish Engulfing, Doji, Morning/Evening Star).",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "lookback": {"type": "integer"}}},
+            handler=handle_detect_candlestick_patterns,
             toolset="market_data",
             requires_db=True,
         ),
@@ -1003,7 +1421,7 @@ def register_market_data_tools():
         ToolDefinition(
             name="get_daily_range_context",
             description="Fetch Average Daily Range (ADR) and current session range usage percentage.",
-            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "lookback_days": {"type": "integer"}}},
             handler=handle_get_daily_range_context,
             toolset="market_data",
             requires_db=True,
@@ -1013,6 +1431,29 @@ def register_market_data_tools():
             description="Fetch momentum indicators including RSI and MACD.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}}},
             handler=handle_get_price_momentum,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="export_historical_data_csv",
+            description="Export historical OHLCV candle data to CSV format on disk.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "days_back": {"type": "integer"}, "output_filename": {"type": "string"}}},
+            handler=handle_export_historical_data_csv,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_synthetic_cross_rate",
+            description="Calculate synthetic cross-rate, spread, and synthetic ATR from USD-based majors for non-universe pairs (e.g. GBPJPY, EURGBP, EURJPY, AUDJPY, EURAUD, GBPAUD).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "pair": {"type": "string", "description": "Cross pair to synthesize (e.g. GBPJPY, EURGBP, EURJPY, AUDJPY)"},
+                    "timeframe": {"type": "string", "description": "Timeframe for ATR calculation (e.g. H1, H4, D1)"},
+                },
+                "required": ["pair"],
+            },
+            handler=handle_get_synthetic_cross_rate,
             toolset="market_data",
             requires_db=True,
         ),

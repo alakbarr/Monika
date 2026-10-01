@@ -256,10 +256,22 @@ class FedWatchScraper(BaseScraper):
                             target_range = texts[0].replace(" (Current)", "")
                             prob_str = texts[1].replace(",", ".").replace("%", "")
                             
+                            def _parse_pct(val_str):
+                                try:
+                                    return float(val_str.replace(",", ".").replace("%", "").strip())
+                                except (ValueError, TypeError, AttributeError):
+                                    return None
+
                             try:
                                 prob_val = float(prob_str)
                                 if prob_val > 0:
-                                    probs_raw.append({"target": target_range, "prob": prob_val})
+                                    probs_raw.append({
+                                        "target": target_range,
+                                        "prob": prob_val,
+                                        "prior_1d": _parse_pct(texts[2]) if len(texts) > 2 else None,
+                                        "prior_1w": _parse_pct(texts[3]) if len(texts) > 3 else None,
+                                        "prior_1m": _parse_pct(texts[4]) if len(texts) > 4 else None,
+                                    })
                             except ValueError:
                                 pass
                                 
@@ -279,7 +291,14 @@ class FedWatchScraper(BaseScraper):
                             bps = int(round(diff * 100 / 25) * 25)
                             action = f"HIKE {bps} bps"
                             
-                        final_probs.append(FedProbability(target_range=p["target"], probability=p["prob"], action=action))
+                        final_probs.append(FedProbability(
+                            target_range=p["target"],
+                            probability=p["prob"],
+                            action=action,
+                            prior_1d=p.get("prior_1d"),
+                            prior_1w=p.get("prior_1w"),
+                            prior_1m=p.get("prior_1m"),
+                        ))
                         
                     if final_probs:
                         top = sorted(final_probs, key=lambda x: x.probability, reverse=True)[0]

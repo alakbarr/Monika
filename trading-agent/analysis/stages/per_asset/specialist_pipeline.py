@@ -39,8 +39,9 @@ class SpecialistPipelineMixin:
                       'get_fibonacci_levels_H4', 'get_liquidity_sweep_context', 'get_volume_profile_context',
                       'get_volatility_regime_H4', 'market_regime', 'structure_breaks_D1', 'smc_zones_D1',
                       'timesfm_forecast', 'market_chronicle', 'recent_lessons', 'pattern_similarity'],
-        'sentiment': ['cot_report', 'retail_sentiment', 'fxssi_sentiment', 'fear_greed_index', 'funding_rate', 'recent_news',
-                      'market_chronicle', 'recent_lessons', 'market_regime', 'user_market_intel'],
+        'sentiment': ['cot_report', 'cot_signals', 'retail_sentiment', 'fxssi_sentiment', 'binance_sentiment', 'myfxbook_sentiment',
+                      'fear_greed_index', 'funding_rate', 'crypto_funding_rates', 'etf_flows', 'eia_inventory', 'oil_inventory',
+                      'recent_news', 'market_chronicle', 'recent_lessons', 'market_regime', 'user_market_intel'],
         'macro': ['get_fundamental_brief', 'get_dxy', 'get_economic_calendar', 'get_market_session',
                   'get_macro_bias_score', 'priced_in_subscores', 'recent_news', 'market_chronicle', 'recent_lessons', 'user_market_intel',
                   'interest_rates', 'get_interest_rates', 'fedwatch_probabilities', 'get_fedwatch_probabilities',
@@ -307,7 +308,7 @@ class SpecialistPipelineMixin:
             chronic_notice = ''
             if chronic_names:
                 chronic_notice = (
-                    f"\n🚫 SPECIALIST TIDAK DAPAT DIPERCAYA (akurasi historis <40% dari 20+ trade): "
+                    f"\n SPECIALIST TIDAK DAPAT DIPERCAYA (akurasi historis <40% dari 20+ trade): "
                     f"{', '.join(chronic_names)}. ABAIKAN arah/klaim dari specialist ini sepenuhnya dalam "
                     f"sintesis — jangan biarkan pendapat mereka mempengaruhi keputusan akhir, treat their "
                     f"report as if it were not provided.\n"

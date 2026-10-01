@@ -292,3 +292,146 @@ class WebhookIngressRouter:
             message=f"Processed successfully by {len(all_handlers)} handlers.",
             data={"handler_results": results, "payload": payload},
         )
+
+
+def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
+    """
+    Normalizes a TradingView Pine Script webhook alert payload into Monika's standard trade_signal structure.
+    
+    Handles:
+      - Raw JSON string, bytes, or parsed dict
+      - Key-value plain text alert payloads (e.g., 'ticker=EURUSD\\naction=buy')
+      - Prefix stripping for exchange symbols (e.g., 'OANDA:EURUSD', 'FX:EURUSD' -> 'EURUSD')
+      - Direction mapping ('buy', 'long', 'entry_long' -> 'BUY'; 'sell', 'short', 'entry_short' -> 'SELL')
+      - Numeric extraction for price, volume/contracts, SL, and TP
+    """
+    data: dict[str, Any] = {}
+    if isinstance(raw_data, bytes):
+        raw_str = raw_data.decode("utf-8", errors="replace").strip()
+    elif isinstance(raw_data, str):
+        raw_str = raw_data.strip()
+    elif isinstance(raw_data, dict):
+        raw_str = ""
+        data = dict(raw_data)
+    else:
+        raw_str = str(raw_data)
+
+    if raw_str:
+        try:
+            parsed = json.loads(raw_str)
+            if isinstance(parsed, dict):
+                data = parsed
+            else:
+                data = {"message": str(parsed)}
+        except Exception:
+            # Fallback: parse lines formatted as key=value or key: value
+            data = {}
+            for line in raw_str.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    data[k.strip().lower()] = v.strip()
+                elif ":" in line:
+                    k, v = line.split(":", 1)
+                    data[k.strip().lower()] = v.strip()
+                else:
+                    data.setdefault("comment_lines", []).append(line)
+            if "comment_lines" in data:
+                data["comment"] = " ".join(data.pop("comment_lines"))
+
+    # Helper to retrieve case-insensitive keys
+    def _get_val(*keys: str, default: Any = None) -> Any:
+        for k in keys:
+            for dk, dv in data.items():
+                if dk.lower() == k.lower() and dv is not None:
+                    return dv
+        return default
+
+    # 1. Symbol extraction & normalization
+    raw_symbol = str(_get_val("ticker", "symbol", "pair", "instrument", default="EURUSD")).strip()
+    if ":" in raw_symbol:
+        # Strip exchange prefix: 'OANDA:EURUSD' -> 'EURUSD'
+        raw_symbol = raw_symbol.split(":", 1)[1]
+    symbol = raw_symbol.upper()
+
+    # 2. Direction normalization
+    raw_dir = str(_get_val("action", "order", "side", "signal", "direction", default="BUY")).strip().lower()
+    if any(b in raw_dir for b in ["buy", "long"]):
+        direction = "BUY"
+    elif any(s in raw_dir for s in ["sell", "short"]):
+        direction = "SELL"
+    else:
+        direction = "BUY"
+
+    # 3. Volume normalization
+    raw_vol = _get_val("volume", "contracts", "lots", "qty", "amount", "order_contracts", default=0.01)
+    try:
+        volume = float(raw_vol)
+        if volume <= 0:
+            volume = 0.01
+    except (ValueError, TypeError):
+        volume = 0.01
+
+    # 4. Price normalization
+    raw_price = _get_val("price", "entry_price", "close", default=None)
+    price = None
+    if raw_price is not None:
+        try:
+            price = float(raw_price)
+        except (ValueError, TypeError):
+            price = None
+
+    # 5. Stop Loss & Take Profit
+    raw_sl = _get_val("sl", "stop_loss", "stop", default=None)
+    sl = None
+    if raw_sl is not None:
+        try:
+            sl = float(raw_sl)
+        except (ValueError, TypeError):
+            sl = None
+
+    raw_tp = _get_val("tp", "take_profit", "target", default=None)
+    tp = None
+    if raw_tp is not None:
+        try:
+            tp = float(raw_tp)
+        except (ValueError, TypeError):
+            tp = None
+
+    # 6. Metadata
+    strategy = str(_get_val("strategy", "strat", default="TradingView Alert")).strip()
+    comment = str(_get_val("comment", "message", "msg", default=f"TV:{strategy}")).strip()
+    passphrase = str(_get_val("passphrase", "secret", "token", "key", default="")).strip()
+
+    now = time.time()
+    event_id = f"tv_{symbol.lower()}_{int(now)}"
+
+    return {
+        "event_type": "trade_signal",
+        "event_id": event_id,
+        "source": "tradingview",
+        "symbol": symbol,
+        "direction": direction,
+        "volume": volume,
+        "price": price,
+        "sl": sl,
+        "tp": tp,
+        "strategy": strategy,
+        "comment": comment,
+        "passphrase": passphrase,
+        "timestamp": now,
+        "raw_payload": data,
+    }
+
+
+_default_webhook_router: Optional[WebhookIngressRouter] = None
+
+
+def get_webhook_router() -> WebhookIngressRouter:
+    """Singleton getter for the global WebhookIngressRouter."""
+    global _default_webhook_router
+    if _default_webhook_router is None:
+        _default_webhook_router = WebhookIngressRouter(enforce_signature=False, enforce_timestamp=False)
+    return _default_webhook_router

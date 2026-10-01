@@ -55,8 +55,11 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         ticket: int,
         requested_by: str = "system",
         reason: str = "",
+        volume: Optional[float] = None,
+        lots: Optional[float] = None,
     ) -> dict:
-        """Menutup posisi spesifik berdasarkan tiket MT5."""
+        """Menutup posisi spesifik berdasarkan tiket MT5 (penuh atau sebagian)."""
+        close_lots = volume if volume is not None else lots
         if not hasattr(self, "_ticket_locks"):
             self._ticket_locks = {}
 
@@ -82,16 +85,18 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     logger.info(f"Position {ticket} is already marked closed in DB.")
                     return {"success": True, "already_closed": True, "ticket": ticket}
                 if db_pos and getattr(db_pos, 'is_paper', False):
-                    return await self._close_paper_position(session, db_pos, requested_by, reason)
+                    return await self._close_paper_position(session, db_pos, requested_by, reason, volume=close_lots)
 
-            logger.info(f"Closing position {ticket} (requested_by={requested_by}, reason={reason})")
+            logger.info(f"Closing position {ticket} (requested_by={requested_by}, reason={reason}, volume={close_lots})")
             if hasattr(self, 'broker_adapter') and self.broker_adapter:
-                result = await self.broker_adapter.close_position(ticket=ticket)
+                result = await self.broker_adapter.close_position(ticket=ticket, lots=close_lots)
                 if result.get('profit') is None and result.get('pnl') is not None:
                     result['profit'] = result['pnl']
             else:
                 result = await self.mt5.close_position(
                     ticket=ticket,
+                    volume=close_lots,
+                    lots=close_lots,
                     comment=f"Close:{requested_by}"[:31],
                 )
 
@@ -102,9 +107,15 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 )).scalar_one_or_none()
 
                 if db_pos and result.get('success'):
-                    db_pos.status = 'closed'
-                    db_pos.closed_at = datetime.now(timezone.utc)
-                    db_pos.pnl = result.get('profit')
+                    is_partial = False
+                    if close_lots is not None and db_pos.volume and db_pos.volume > (float(close_lots) + 1e-4):
+                        is_partial = True
+                        db_pos.volume = round(float(db_pos.volume) - float(close_lots), 4)
+                        db_pos.pnl = (db_pos.pnl or 0.0) + (result.get('profit') or 0.0)
+                    else:
+                        db_pos.status = 'closed'
+                        db_pos.closed_at = datetime.now(timezone.utc)
+                        db_pos.pnl = (db_pos.pnl or 0.0) + (result.get('profit') or 0.0)
 
                     # Update risk state
                     if result.get('profit') is not None:
@@ -123,7 +134,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                             equity=equity,
                         )
                         
-                    if db_pos.analysis_id:
+                    if db_pos.analysis_id and not is_partial:
                         try:
                             from analysis.memory.outcome_linker import OutcomeLinker
                             holding_hours = 0.0
@@ -145,9 +156,9 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
                 # Log to orders_log
                 session.add(OrderLog(
-                    action='close',
+                    action='close' if not (close_lots and db_pos and db_pos.status != 'closed') else 'partial_close',
                     symbol=db_pos.symbol if db_pos else 'UNKNOWN',
-                    params_json=json.dumps({'ticket': ticket, 'reason': reason}),
+                    params_json=json.dumps({'ticket': ticket, 'reason': reason, 'volume': close_lots}),
                     requested_by=requested_by,
                     approved_by='execution_service',
                     result=json.dumps(result),
@@ -158,7 +169,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     category='trading',
                     description=(
                         f"Position {ticket} closed: profit={result.get('profit')} "
-                        f"| reason={reason} | requested_by={requested_by}"
+                        f"| reason={reason} | requested_by={requested_by} | volume={close_lots}"
                     ),
                     related_id=ticket,
                     actor='execution_service',
@@ -166,7 +177,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 await session.commit()
 
             if result.get('success'):
-                logger.info(f"Position {ticket} closed: profit={result.get('profit')}")
+                logger.info(f"Position {ticket} closed: profit={result.get('profit')} volume={close_lots}")
             else:
                 logger.error(f"Close position {ticket} failed: {result.get('error')}")
 
@@ -175,7 +186,8 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
     async def _close_paper_position(
         self, session: AsyncSession, db_pos: Position,
-        requested_by: str, reason: str
+        requested_by: str, reason: str,
+        volume: Optional[float] = None,
     ) -> dict:
         """Paper positions have no real MT5 counterpart — close synthetically.
         Repairs PositionGuardian / TrailingStopManager / PositionExitReviewer
@@ -207,10 +219,15 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             )).scalar_one_or_none()
             exit_price = last_bar.close if last_bar else db_pos.entry_price
         now = clock.now()
-        db_pos.status = 'closed'
-        db_pos.closed_at = now
+        is_partial = False
+        if volume is not None and db_pos.volume and db_pos.volume > (float(volume) + 1e-4):
+            is_partial = True
+            db_pos.volume = round(float(db_pos.volume) - float(volume), 4)
+        else:
+            db_pos.status = 'closed'
+            db_pos.closed_at = now
 
-        if db_pos.analysis_id:
+        if db_pos.analysis_id and not is_partial:
             paper = (await session.execute(
                 select(PaperTradeRecord)
                 .where(PaperTradeRecord.analysis_id == db_pos.analysis_id)
@@ -259,7 +276,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         try:
             from utils.infra.notifier import AgentNotifier
             await AgentNotifier().send_critical(
-                f"⚡ <b>CIRCUIT BREAKER ACTIVATED</b>\n"
+                f" <b>CIRCUIT BREAKER ACTIVATED</b>\n"
                 f"<b>Reason:</b> {reason}\n"
                 f"<b>Cooldown:</b> {cooldown_seconds}s\n"
                 f"Trading proposals paused."
@@ -461,7 +478,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     try:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_critical(
-                            f"🚨 KILL SWITCH INCOMPLETE\n"
+                            f"[DARURAT] KILL SWITCH INCOMPLETE\n"
                             f"{len(agent_positions)} posisi masih terbuka!\n"
                             f"Tutup manual segera: {[p['ticket'] for p in agent_positions]}"
                         )
@@ -476,7 +493,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 from utils.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
                 await notifier.send_critical(
-                    f"🛑 <b>KILL SWITCH COMPLETE</b>\n"
+                    f"[STOP] <b>KILL SWITCH COMPLETE</b>\n"
                     f"Closed: {total_closed}/{total_cnt} (live={live_closed_count}, paper={paper_closed_count})\n"
                     f"Reason: {reason}"
                 )
@@ -524,5 +541,70 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
         logger.info(f"[ExecutionService] Trading successfully resumed by {requested_by}.")
         return {"success": True, "message": f"Trading resumed by {requested_by}."}
+
+    async def close_positions_batch(
+        self,
+        filter_type: str = "all",
+        requested_by: str = "user_chat",
+        reason: str = "Batch close positions",
+    ) -> dict:
+        """
+        Menutup posisi secara batch dengan filter ('all', 'profit_only', 'loss_only').
+        Berbeda dari kill_switch: TIDAK mem-pause trading daemon dan TIDAK memicu emergency lockout.
+        """
+        closed_tickets = []
+        failed_tickets = []
+        errors = []
+
+        # 1. Ambil posisi live broker jika ada
+        live_positions = []
+        adapter = getattr(self, "broker_adapter", None)
+        if adapter and hasattr(adapter, "get_open_positions"):
+            live_positions = await adapter.get_open_positions()
+        elif hasattr(self, "mt5") and hasattr(self.mt5, "get_open_positions"):
+            live_positions = await self.mt5.get_open_positions()
+
+        for pos in live_positions:
+            ticket = pos.get("ticket")
+            profit = float(pos.get("profit", 0.0) or 0.0)
+            if filter_type == "profit_only" and profit <= 0:
+                continue
+            if filter_type == "loss_only" and profit >= 0:
+                continue
+            res = await self.close_position_by_ticket(ticket=ticket, requested_by=requested_by, reason=reason)
+            if res.get("success"):
+                closed_tickets.append(ticket)
+            else:
+                failed_tickets.append(ticket)
+                if res.get("error"):
+                    errors.append(f"Ticket {ticket}: {res['error']}")
+
+        # 2. Ambil posisi paper DB jika ada
+        async with get_session() as session:
+            paper_query = select(Position).where(Position.status == "open")
+            db_positions = (await session.execute(paper_query)).scalars().all()
+            for db_pos in db_positions:
+                if getattr(db_pos, "is_paper", False):
+                    pnl = float(db_pos.pnl or 0.0)
+                    if filter_type == "profit_only" and pnl <= 0:
+                        continue
+                    if filter_type == "loss_only" and pnl >= 0:
+                        continue
+                    res = await self._close_paper_position(session, db_pos, requested_by=requested_by, reason=reason)
+                    if res.get("success"):
+                        closed_tickets.append(f"paper_{db_pos.id}")
+                    else:
+                        failed_tickets.append(f"paper_{db_pos.id}")
+
+        return {
+            "success": len(failed_tickets) == 0,
+            "filter": filter_type,
+            "closed_count": len(closed_tickets),
+            "failed_count": len(failed_tickets),
+            "closed_tickets": closed_tickets,
+            "failed_tickets": failed_tickets,
+            "errors": errors,
+        }
+
 
 

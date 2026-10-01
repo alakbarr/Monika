@@ -51,7 +51,7 @@ async def run_eval():
     print(f"\nAccuracy: {correct}/{total} = {correct/total*100:.1f}%")
     print(f"Confusion matrix: {confusion}")
     if correct / total < 0.85:
-        print("⚠️ ACCURACY BELOW 85% THRESHOLD — review prompt/few-shot examples before deploying changes.")
+        print("[PERINGATAN] ACCURACY BELOW 85% THRESHOLD — review prompt/few-shot examples before deploying changes.")
 
 if __name__ == '__main__':
     import sys

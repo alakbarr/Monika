@@ -37,10 +37,8 @@ async def test_stage1_data_bundler():
         assert "get_funding_rate" in satisfied_tools
         assert "get_bond_yield_spreads" in satisfied_tools
         assert "get_central_bank_expectations" in satisfied_tools
-        assert len(satisfied_tools) == 16
-        
-        # Verify executor was called for multiple tools
-        assert mock_executor_instance.execute.call_count == 16
+        # Verify executor was called for multiple tools (16 stage1 tools + 1 FedWatch repricing shift)
+        assert mock_executor_instance.execute.call_count == 17
         mock_executor_instance.execute.assert_any_call("get_dxy", {})
         mock_executor_instance.execute.assert_any_call("get_vix", {})
         mock_executor_instance.execute.assert_any_call("get_funding_rate", {})

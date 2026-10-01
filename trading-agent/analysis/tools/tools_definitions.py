@@ -54,9 +54,13 @@ GET_ECONOMIC_CALENDAR = _tool(
         "Fetch upcoming and recent economic events from the calendar. "
         "Returns event name, currency, impact level, actual/forecast/previous values, "
         "and scheduled time. Use this to understand what macro events are upcoming or "
-        "what data was just released."
+        "what data was just released. Use 'event_name' to search for specific releases (e.g. 'PCE', 'CPI', 'NFP')."
     ),
     properties={
+        "event_name": {
+            "type": "string",
+            "description": "Optional keyword or event name to search (e.g. 'PCE', 'CPI', 'Nonfarm Payrolls', 'GDP').",
+        },
         "impact_filter": {
             "type": "string",
             "enum": ["all", "high", "medium", "high_and_medium"],
@@ -72,7 +76,26 @@ GET_ECONOMIC_CALENDAR = _tool(
         },
         "hours_behind": {
             "type": "integer",
-            "description": "How many hours behind to look for recent events. Default: 24.",
+            "description": "How many hours behind to look for recent events. Default: 24 (expands to 168 if event_name is specified).",
+        },
+    },
+    required=[],
+)
+
+GET_WEEKLY_MACRO_SUMMARY = _tool(
+    name="get_weekly_macro_summary",
+    description=(
+        "Generate a comprehensive weekly macroeconomic summary covering key high-impact events for the upcoming week, "
+        "DXY trend, VIX regime, FedWatch rate probabilities, US Treasury yields, and monetary policy outlook."
+    ),
+    properties={
+        "currencies": {
+            "type": "string",
+            "description": "Optional comma-separated currencies to prioritize (e.g. 'USD,EUR,GBP,JPY'). Default: all major currencies.",
+        },
+        "days_ahead": {
+            "type": "integer",
+            "description": "Lookahead horizon in days. Default: 7.",
         },
     },
     required=[],
@@ -96,9 +119,13 @@ GET_NEWS_ITEMS = _tool(
     description=(
         "Fetch recent news items from all sources (TradingView, Kitco, RSS feeds, Twitter). "
         "Use this to understand current market sentiment and fundamental drivers. "
-        "Filter by currency to focus on relevant news."
+        "Filter by currency or search by specific keyword (e.g. 'gold', 'oil', 'rate hike', 'fomc')."
     ),
     properties={
+        "query": {
+            "type": "string",
+            "description": "Optional search keyword or topic (e.g. 'gold', 'emas', 'oil', 'Powell', 'PCE', 'inflation').",
+        },
         "limit": {
             "type": "integer",
             "description": "Number of news items to return. Default: 30, max: 100.",
@@ -109,7 +136,7 @@ GET_NEWS_ITEMS = _tool(
         },
         "hours_back": {
             "type": "integer",
-            "description": "Only return news from the last N hours. Default: 24.",
+            "description": "Only return news from the last N hours. Default: 24 (or 168 if query is specified).",
         },
         "source_filter": {
             "type": "string",
@@ -170,6 +197,8 @@ GET_FEDWATCH_PROBABILITIES = _tool(
     description=(
         "Fetch CME FedWatch probabilities for upcoming Fed meeting decisions "
         "(hold, cut 25bp, cut 50bp, hike 25bp, etc.). "
+        "Supports temporal comparison before and after news/events via 'event_time' or 'compare_hours_ago', "
+        "as well as specific meeting filtering via 'meeting_date' and full historical trajectory via 'include_history'. "
         "Use this to gauge market expectations AND to assess DEGREE OF PRICED-IN for Fed policy changes. "
         "PRICED-IN INTERPRETATION (use dominant outcome probability): "
         "priced_in_degree > 0.90 = Fully Priced In (score 9-10) → very high sell-the-news risk. "
@@ -180,6 +209,22 @@ GET_FEDWATCH_PROBABILITIES = _tool(
         "ALSO CHECK: rapid probability shift (e.g., 40% → 87% in 2 weeks) = aggressive market repricing → add +1 to score."
     ),
     properties={
+        "meeting_date": {
+            "type": "string",
+            "description": "Optional specific meeting date filter (e.g. '28 Oct26', '9 Dec26', 'Oct 2026').",
+        },
+        "compare_hours_ago": {
+            "type": "number",
+            "description": "Compare current probabilities with snapshot from N hours ago (e.g. 2, 4, 12, 24). Automatically computes deltas and shift summary.",
+        },
+        "event_time": {
+            "type": "string",
+            "description": "ISO timestamp of a news or economic release (e.g. '2026-09-30T12:30:00Z'). Automatically compares pre-event vs post-event probabilities.",
+        },
+        "include_history": {
+            "type": "boolean",
+            "description": "Whether to include historical trajectory list of past probability snapshots.",
+        },
         "limit": {
             "type": "integer",
             "description": "Number of upcoming meetings to return. Default: 3.",
@@ -193,13 +238,24 @@ GET_CENTRAL_BANK_EXPECTATIONS = _tool(
     description=(
         "Fetch market-implied rate decision expectations (probabilities of Rate Hike, Hold, Rate Cut) "
         "and scheduled meeting dates across major central banks (FED, ECB, BOE, BOJ, RBA). "
-        "Also provides degree of priced-in score (1-10) and policy bias. "
-        "Use this for comparing central bank policy trajectories and forecasting currency strength divergence."
+        "Also provides degree of priced-in score (1-10), policy bias, and temporal before/after comparison."
     ),
     properties={
         "bank": {
             "type": "string",
             "description": "Optional central bank code: FED, ECB, BOE, BOJ, RBA. Omit to return all 5 banks.",
+        },
+        "compare_hours_ago": {
+            "type": "number",
+            "description": "Compare expectations with snapshot from N hours ago.",
+        },
+        "event_time": {
+            "type": "string",
+            "description": "ISO timestamp to compare pre-event vs post-event rate expectations.",
+        },
+        "include_history": {
+            "type": "boolean",
+            "description": "Whether to return historical expectation snapshots.",
         },
     },
     required=[],
@@ -217,7 +273,6 @@ GET_COT_REPORT = _tool(
         "GBP/USD (096742): leveraged_net > +80K or < -80K = extreme. "
         "JPY (097741): leveraged_net > +60K or < -80K = extreme. "
         "AUD (232741): leveraged_net > +60K or < -60K = extreme. "
-        "Extreme positioning = trade is overcrowded = driver is largely priced in = high reversal risk on disappointment. "
         "Available markets: gold (088691), euro_fx (099741), british_pound (096742), "
         "japanese_yen (097741), australian_dollar (232741)."
     ),
@@ -226,6 +281,10 @@ GET_COT_REPORT = _tool(
             "type": "array",
             "items": {"type": "string"},
             "description": "List of market codes to fetch. E.g. ['088691', '099741']. Leave empty for all configured markets.",
+        },
+        "weeks_back": {
+            "type": "integer",
+            "description": "Number of weekly reports to fetch (1-12) to observe historical institutional positioning trends. Default: 1.",
         },
     },
     required=[],
@@ -317,13 +376,20 @@ GET_PRICE_HISTORY = _tool(
         },
         "timeframe": {
             "type": "string",
-            "enum": ["M15", "H1", "H4", "D1"],
+            "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"],
             "default": "H1",
             "description": "Timeframe for the OHLCV data. Default: 'H1'.",
         },
         "limit": {
             "type": "integer",
             "description": "Number of candles to return (most recent). Default: 50, max: 200.",
+        },
+        "as_of": {
+            "type": "string",
+            "description": (
+                "Optional ISO timestamp (e.g. '2026-09-30T12:30:00Z' or '2026-09-30 12:30:00') "
+                "to fetch historical price bars ending at or before that moment."
+            ),
         },
     },
     required=["symbol"],
@@ -344,7 +410,7 @@ GET_TECHNICAL_INDICATORS = _tool(
         },
         "timeframe": {
             "type": "string",
-            "enum": ["M15", "H1", "H4", "D1"],
+            "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"],
             "default": "H1",
             "description": "Timeframe for the indicators. Default: 'H1'.",
         },
@@ -364,7 +430,7 @@ GET_ATR = _tool(
         "symbol": {"type": "string", "description": "Trading symbol."},
         "timeframe": {
             "type": "string",
-            "enum": ["M15", "H1", "H4", "D1"],
+            "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"],
             "default": "H1",
             "description": "Timeframe for ATR calculation. Default: 'H1'.",
         },
@@ -376,12 +442,17 @@ GET_MULTI_TIMEFRAME_SUMMARY = _tool(
     name="get_multi_timeframe_summary",
     description=(
         "Composite multi-timeframe analysis: returns technical indicators, swing points, "
-        "structure breaks (BOS/ChoCH), and ADX market regime across H1, H4, and D1 in a single unified call. "
+        "structure breaks (BOS/ChoCH), and ADX market regime across multiple timeframes (default: M15, H1, H4, D1) in a single unified call. "
         "Saves 6+ round-trips compared to calling each tool individually per timeframe. "
         "Use this FIRST to get a complete multi-timeframe perspective before drilling down."
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol (e.g. 'XAUUSD', 'EURUSD')."},
+        "timeframes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of timeframes (e.g. ['M15', 'H1', 'H4', 'D1']). Default: ['M15', 'H1', 'H4', 'D1']."
+        },
     },
     required=["symbol"],
 )
@@ -423,7 +494,7 @@ GET_SWING_POINTS = _tool(
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
         "limit": {"type": "integer", "description": "Number of most recent swing points per type. Default: 10."},
     },
     required=["symbol", "timeframe"],
@@ -438,7 +509,7 @@ GET_SR_ZONES = _tool(
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
         "min_strength": {"type": "integer", "description": "Minimum number of touches to include. Default: 2."},
     },
     required=["symbol", "timeframe"],
@@ -454,7 +525,7 @@ GET_LIQUIDITY_ZONES = _tool(
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
     },
     required=["symbol", "timeframe"],
 )
@@ -468,7 +539,7 @@ GET_FVG_ZONES = _tool(
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
         "filled": {
             "type": "boolean",
             "description": "If false (default), only return unfilled FVGs. If true, include filled ones.",
@@ -485,8 +556,10 @@ GET_ORDER_BLOCKS = _tool(
         "Unmitigated OBs often act as strong support/resistance where institutional orders are placed."
     ),
     properties={
-        "symbol": {"type": "string"},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "symbol": {"type": "string", "description": "Trading symbol."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
+        "days": {"type": "integer", "description": "Maximum age of order blocks in days (default: 14)."},
+        "limit": {"type": "integer", "description": "Maximum number of blocks to return (default: 10)."},
     },
     required=["symbol", "timeframe"],
 )
@@ -530,7 +603,74 @@ GET_STRUCTURE_BREAKS = _tool(
     ),
     properties={
         "symbol": {"type": "string"},
-        "timeframe": {"type": "string", "enum": ["H1", "H4", "D1"]},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
+    },
+    required=["symbol", "timeframe"],
+)
+
+GET_INDUCEMENTS = _tool(
+    name="get_inducements",
+    description=(
+        "Detect Inducement (IDM) price level and validation status based on SMC rules. "
+        "In bullish trend, IDM is the first internal swing low after a new high. "
+        "When price sweeps IDM, the high is confirmed and valid order blocks below can be safely traded."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"], "description": "Timeframe to evaluate (default: 'M15')."},
+        "trend": {"type": "string", "enum": ["bullish", "bearish"], "description": "Current directional trend bias."},
+    },
+    required=["symbol"],
+)
+
+GET_BREAKER_BLOCKS = _tool(
+    name="get_breaker_blocks",
+    description=(
+        "Detect Breaker Blocks: failed order blocks that were aggressively broken through with strong momentum, "
+        "inverting their polarity (failed bullish OB becomes resistance; failed bearish OB becomes support)."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
+    },
+    required=["symbol", "timeframe"],
+)
+
+GET_JUDAS_SWING = _tool(
+    name="get_judas_swing",
+    description=(
+        "Detect London Open (08:00 UTC) Judas Swing false breakout trap. "
+        "Identifies false expansions that engineer liquidity above/below Asian range extremes before aggressive reversal."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'GBPUSD', 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1"], "description": "Timeframe for microstructure (default: 'M15')."},
+    },
+    required=["symbol"],
+)
+
+GET_EQUAL_HIGHS_LOWS = _tool(
+    name="get_equal_highs_lows",
+    description=(
+        "Detect engineered liquidity pools formed by Equal Highs (EQH / Buy-Side Liquidity) "
+        "or Equal Lows (EQL / Sell-Side Liquidity) within tight tolerance pips."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"]},
+        "tolerance_pips": {"type": "number", "description": "Price clustering tolerance in pips (default: 3.0)."},
+    },
+    required=["symbol", "timeframe"],
+)
+
+GET_WICK_TO_WICK_FVG = _tool(
+    name="get_wick_to_wick_fvg",
+    description=(
+        "Detect shadow / wick-to-wick Fair Value Gaps where long overlapping wicks form an imbalance on HTF."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol."},
+        "timeframe": {"type": "string", "enum": ["M15", "H1", "H4", "D1"]},
     },
     required=["symbol", "timeframe"],
 )
@@ -658,17 +798,88 @@ GET_OPEN_POSITIONS = _tool(
     required=[],
 )
 
+GET_PENDING_ORDERS = _tool(
+    name="get_pending_orders",
+    description="Fetch active pending limit/stop orders from MT5 broker terminal with tickets, order types, prices, SL/TP, and volume.",
+    properties={
+        "symbol": {
+            "type": "string",
+            "description": "Optional: filter by symbol (e.g. 'EURUSD', 'XAUUSD'). Leave empty for all pending orders.",
+        },
+    },
+    required=[],
+)
+
+GET_PORTFOLIO_EXPOSURE = _tool(
+    name="get_portfolio_exposure",
+    description="Fetch portfolio-wide exposure metrics: gross/net lots, long vs short distribution, per-symbol breakdown, and aggregate unrealized PnL.",
+    properties={
+        "mode": {
+            "type": "string",
+            "enum": ["all", "live", "paper"],
+            "description": "Filter by trading mode: 'paper', 'live', or 'all'. Default: 'all'.",
+        },
+    },
+    required=[],
+)
+
+GET_SWAP_RATES = _tool(
+    name="get_swap_rates",
+    description="Fetch overnight rollover swap rates (long and short) for trading symbols, including Wednesday 3x rollover info.",
+    properties={
+        "symbol": {
+            "type": "string",
+            "description": "Optional: trading symbol (e.g. 'XAUUSD', 'EURUSD'). If omitted, returns all tracked symbol swap rates.",
+        },
+    },
+    required=[],
+)
+
+RUN_MONTE_CARLO_SIMULATION = _tool(
+    name="run_monte_carlo_simulation",
+    description="Run institutional Monte Carlo simulation (bootstrap / permutation) on closed trade returns to calculate VaR 95% Drawdown, Probability of Ruin, and final equity distributions.",
+    properties={
+        "num_simulations": {
+            "type": "integer",
+            "description": "Number of simulation iterations (default: 1000).",
+        },
+        "mode": {
+            "type": "string",
+            "enum": ["permutation", "bootstrap", "block_bootstrap"],
+            "description": "Simulation mode (default: 'permutation').",
+        },
+        "initial_equity": {
+            "type": "number",
+            "description": "Initial account equity for simulation baseline (default: 10000.0).",
+        },
+        "symbol": {
+            "type": "string",
+            "description": "Optional: filter simulation trades by symbol.",
+        },
+    },
+    required=[],
+)
+
 GET_PAPER_TRADING_PERFORMANCE = _tool(
     name="get_paper_trading_performance",
     description=(
-        "Fetch comprehensive paper trading performance metrics and PnL statistics from PaperTracker. "
-        "Returns: total_trades, wins, losses, win_rate_pct, total_pnl_pct, avg_pnl_pct, "
-        "expectancy_per_trade_R, has_positive_edge, by_symbol breakdown, and simulated equity curve."
+        "Fetch comprehensive trading performance metrics and PnL statistics. "
+        "Returns: total_trades, wins, losses, win_rate_pct, total_pnl, profit_factor, avg_pnl, "
+        "expectancy_per_trade_R, has_positive_edge, by_symbol breakdown, and trade history."
     ),
     properties={
+        "mode": {
+            "type": "string",
+            "enum": ["paper", "live", "all"],
+            "description": "Trading performance mode: 'paper' for simulated tracker, 'live' for MT5 broker positions, or 'all'. Default: 'paper'.",
+        },
         "days_back": {
             "type": "integer",
             "description": "Optional: number of days back to calculate statistics (e.g. 7 for past week, 30 for past month). Leave empty for all-time.",
+        },
+        "symbol": {
+            "type": "string",
+            "description": "Optional: filter by symbol (e.g. 'EURUSD', 'XAUUSD').",
         },
     },
     required=[],
@@ -914,7 +1125,7 @@ PROPOSE_ACTION = _tool(
     description=(
         "Propose an action that requires human confirmation before execution. "
         "This sends a Telegram message with inline Yes/Cancel buttons. "
-        "Use for: closing a live/paper position, pausing/resuming trading, modifying SL/TP, cancelling pending triggers, or proposing database mutations. "
+        "Use for: closing a live/paper position, closing all open positions (kill switch), pausing/resuming trading, modifying SL/TP, cancelling pending MT5 orders, cancelling pending triggers, or proposing database mutations. "
         "NEVER for: opening arbitrary unanalyzed positions (that's the analysis pipeline's job)."
     ),
     properties={
@@ -922,11 +1133,13 @@ PROPOSE_ACTION = _tool(
             "type": "string",
             "enum": [
                 "close_position",
+                "close_all_positions",
                 "close_paper_trade",
                 "pause_trading",
                 "resume_trading",
                 "modify_sl_tp",
                 "modify_paper_sl_tp",
+                "cancel_order",
                 "cancel_trigger",
                 "save_market_intelligence",
                 "db_mutation",
@@ -935,7 +1148,7 @@ PROPOSE_ACTION = _tool(
         },
         "params": {
             "type": "object",
-            "description": "Action parameters. For close_position: {ticket}. For close_paper_trade: {paper_trade_id or symbol}. For modify_sl_tp/modify_paper_sl_tp: {ticket or paper_trade_id, sl, tp}. For cancel_trigger: {trigger_id}. For save_market_intelligence: {title, summary, intel_type, affected_symbols, directive, target_cycle}. For db_mutation: {table_name: str, operation: 'insert'|'update'|'delete', target_id: Optional[str|int], data: Optional[dict], reason: str}.",
+            "description": "Action parameters. For close_position: {ticket, volume (optional float for partial close)}. For close_all_positions: {reason (optional)}. For close_paper_trade: {paper_trade_id or symbol, volume (optional)}. For modify_sl_tp/modify_paper_sl_tp: {ticket or paper_trade_id, sl, tp}. For cancel_order: {ticket (integer MT5 order ticket), symbol (optional)}. For cancel_trigger: {trigger_id}. For save_market_intelligence: {title, summary, intel_type, affected_symbols, directive, target_cycle}. For db_mutation: {table_name: str, operation: 'insert'|'update'|'delete', target_id: Optional[str|int], data: Optional[dict], reason: str}.",
         },
         "reason": {
             "type": "string",
@@ -1352,7 +1565,7 @@ GET_VOLUME_PROFILE_CONTEXT = _tool(name='get_volume_profile_context',
     properties={'symbol': {'type': 'string'}}, required=['symbol'])
 
 GET_VOLATILITY_REGIME = _tool(name='get_volatility_regime',
-    description='Bollinger-width percentile + Donchian breakout check. chop_block=True blocks new buy/sell entries mechanically unless a breakout is confirmed.',
+    description='Analyze market volatility regime, expanding or contracting volatility width (Bollinger-width percentile + Donchian breakout check). chop_block=True blocks new buy/sell entries mechanically unless a breakout is confirmed.',
     properties={'symbol': {'type': 'string'}, 'timeframe': {'type': 'string', 'enum': ['H1', 'H4', 'D1']}},
     required=['symbol'])
 
@@ -1644,6 +1857,7 @@ TELEGRAM_TOOLS: list[dict] = [
     GET_MARKET_SESSION,
     GET_FUNDAMENTAL_BRIEF,
     GET_ECONOMIC_CALENDAR,
+    GET_WEEKLY_MACRO_SUMMARY,
     GET_INTEREST_RATES,
     GET_TREASURY_YIELDS,
     GET_FEDWATCH_PROBABILITIES,
@@ -1665,6 +1879,11 @@ TELEGRAM_TOOLS: list[dict] = [
     GET_SWING_POINTS,
     GET_STRUCTURE_BREAKS,
     GET_SMC_ZONES,
+    GET_FVG_ZONES,
+    GET_ORDER_BLOCKS,
+    GET_SR_ZONES,
+    GET_LIQUIDITY_ZONES,
+    GET_VOLUME_PROFILE_CONTEXT,
     GET_FIBONACCI_LEVELS,
     GET_DXY,
     GET_PRICE_MOMENTUM,
@@ -1687,6 +1906,9 @@ TELEGRAM_TOOLS: list[dict] = [
     GET_ASSET_ANALYSIS,
     GET_ACCOUNT_INFO,
     GET_OPEN_POSITIONS,
+    GET_PENDING_ORDERS,
+    GET_PORTFOLIO_EXPOSURE,
+    GET_SWAP_RATES,
     GET_ACTIVE_TRIGGERS,
     GET_TRADE_DETAILS,
     
@@ -1695,6 +1917,7 @@ TELEGRAM_TOOLS: list[dict] = [
     GET_EDGE_TRACKER_STATUS,
     GET_CALIBRATION_STATUS,
     GET_MARKET_CORRELATIONS,
+    RUN_MONTE_CARLO_SIMULATION,
     
     # === SYSTEM HEALTH, AUDIT & RISK ===
     GET_SYSTEM_HEALTH,
@@ -1715,9 +1938,46 @@ TELEGRAM_TOOLS: list[dict] = [
     INSPECT_DATABASE_SCHEMA,
     READ_DATABASE_RECORDS,
 
+    # === SIZING & SMC CONTEXT ===
+    CALCULATE_POSITION_SIZE,
+    GET_LIQUIDITY_SWEEP_CONTEXT,
+    SCAN_PATTERN_SIMILARITY,
+
     # === EKSEKUSI ===
     PROPOSE_ACTION,
 ]
+
+CALCULATE_MARGIN = _tool(
+    name="calculate_margin",
+    description=(
+        "Calculates exact broker margin requirement in USD for a specified lot size and symbol. "
+        "Accounts for leverage, broker contract size, and current market price."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading instrument (e.g. 'XAUUSD', 'EURUSD')"},
+        "lot_size": {"type": "number", "description": "Lot size volume (e.g. 0.5, 1.0)"},
+        "action": {"type": "string", "enum": ["buy", "sell"], "description": "Trade action (default 'buy')"},
+        "price": {"type": "number", "description": "Current price (optional)"}
+    },
+    required=["symbol", "lot_size"]
+)
+TELEGRAM_TOOLS.append(CALCULATE_MARGIN)
+
+CREATE_PRICE_ALERT = _tool(
+    name="create_price_alert",
+    description=(
+        "Creates an ad-hoc price alert trigger that notifies the operator via Telegram when market price "
+        "crosses a specific level (break above / break below)."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading instrument (e.g. 'EURUSD', 'XAUUSD')"},
+        "price_level": {"type": "number", "description": "Price level target to trigger alert"},
+        "condition": {"type": "string", "enum": ["above", "below"], "description": "Trigger when price goes above or below level"},
+        "note": {"type": "string", "description": "Optional memo or description for the alert"}
+    },
+    required=["symbol", "price_level", "condition"]
+)
+TELEGRAM_TOOLS.append(CREATE_PRICE_ALERT)
 
 # Deterministic Ground-Truth Market Snapshot (H-7 / Anti-Hallucination)
 GET_VERIFIED_MARKET_SNAPSHOT = _tool(
@@ -1870,15 +2130,135 @@ SKILL_VIEW_TOOL = _tool(
     required=["skill_name"],
 )
 
-TELEGRAM_TOOLS.extend([SKILLS_LIST_TOOL, SKILL_VIEW_TOOL])
+CREATE_SKILL_TOOL = _tool(
+    name="create_skill",
+    description=(
+        "Create, author, and register a new persistent trading skill or playbook markdown file in the system. "
+        "Use when user asks to create a new skill, save an identified edge/pattern into a playbook, or distill learnings into a reusable skill."
+    ),
+    properties={
+        "skill_name": {
+            "type": "string",
+            "description": "Identifier for the skill (e.g. 'gold_london_sweep_playbook', 'orderblock_reversal').",
+        },
+        "content": {
+            "type": "string",
+            "description": "Complete markdown instructions, entry/exit criteria, and rules for the skill.",
+        },
+        "category": {
+            "type": "string",
+            "description": "Category for the skill: 'trading', 'tactical', 'macro', 'technical', 'discipline'. Default: 'trading'.",
+        },
+        "description": {
+            "type": "string",
+            "description": "Short 1-sentence description or summary of the skill.",
+        },
+    },
+    required=["skill_name", "content"],
+)
+
+TELEGRAM_TOOLS.extend([SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, CREATE_SKILL_TOOL])
 if SKILLS_LIST_TOOL not in STAGE1_TOOLS:
     STAGE1_TOOLS.append(SKILLS_LIST_TOOL)
 if SKILL_VIEW_TOOL not in STAGE1_TOOLS:
     STAGE1_TOOLS.append(SKILL_VIEW_TOOL)
+if CREATE_SKILL_TOOL not in STAGE1_TOOLS:
+    STAGE1_TOOLS.append(CREATE_SKILL_TOOL)
 if SKILLS_LIST_TOOL not in STAGE2_ESSENTIAL_TOOLS:
     STAGE2_ESSENTIAL_TOOLS.append(SKILLS_LIST_TOOL)
 if SKILL_VIEW_TOOL not in STAGE2_ESSENTIAL_TOOLS:
     STAGE2_ESSENTIAL_TOOLS.append(SKILL_VIEW_TOOL)
+if CREATE_SKILL_TOOL not in STAGE2_ESSENTIAL_TOOLS:
+    STAGE2_ESSENTIAL_TOOLS.append(CREATE_SKILL_TOOL)
+
+RUN_TRADE_COUNTERFACTUAL = _tool(
+    name="run_trade_counterfactual",
+    description=(
+        "Run a counterfactual replay on a specific historical trade setup or ticket to evaluate what would have happened "
+        "if stop loss or take profit were wider/narrower (e.g. SL +10 pips). "
+        "Use when user asks 'what if SL was wider', 'counterfactual analysis for trade #X', or post-trade what-if scenarios."
+    ),
+    properties={
+        "trade_id": {
+            "type": "integer",
+            "description": "Ticket ID or Database ID of the trade/position to replay.",
+        },
+        "sl_pips_delta": {
+            "type": "number",
+            "description": "Additional pips added to Stop Loss distance (positive means wider SL, e.g. 10.0 for 10 pips wider). Default: 0.0.",
+        },
+        "tp_pips_delta": {
+            "type": "number",
+            "description": "Additional pips added to Take Profit distance (positive means wider TP, e.g. 20.0). Default: 0.0.",
+        },
+    },
+    required=["trade_id"],
+)
+
+TELEGRAM_TOOLS.append(RUN_TRADE_COUNTERFACTUAL)
+
+GET_DEBATE_STATISTICS = _tool(
+    name="get_debate_statistics",
+    description=(
+        "Retrieve aggregated debate outcome metrics across historical analyses (e.g. Bull vs Bear wins in last 30 days). "
+        "Use when user asks 'how many times bull won vs bear', 'debate statistics', or outcome ratios."
+    ),
+    properties={
+        "days": {
+            "type": "integer",
+            "description": "Number of days back to aggregate debate outcomes (default: 30).",
+        },
+    },
+    required=[],
+)
+
+GET_REJECTION_HISTORY = _tool(
+    name="get_rejection_history",
+    description=(
+        "Retrieve historical orders and trade proposals that were blocked or rejected by RiskGate or preflight checks. "
+        "Use when user asks for rejected orders history, why trades were blocked in the past, or risk veto logs."
+    ),
+    properties={
+        "symbol": {
+            "type": "string",
+            "description": "Optional symbol filter (e.g. 'USDJPY', 'XAUUSD').",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Maximum records to return (default: 20).",
+        },
+    },
+    required=[],
+)
+
+GET_MARKET_CHRONICLE = _tool(
+    name="get_market_chronicle",
+    description=(
+        "Retrieve market chronicle entries and structural macro milestones (e.g. historical central bank shifts, tariffs, geopolitical events) "
+        "by month/year or category. Use when user asks for 'trading chronicle', 'market chronicle for September', or long-term macro timeline."
+    ),
+    properties={
+        "month": {
+            "type": "string",
+            "description": "Optional month name or number (e.g. 'September', '9', 'Januari').",
+        },
+        "year": {
+            "type": "integer",
+            "description": "Optional calendar year (e.g. 2026).",
+        },
+        "category": {
+            "type": "string",
+            "description": "Optional category filter: 'policy_change', 'geopolitical', 'data_shock', 'regime_shift', 'institutional'.",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Maximum number of chronicles to retrieve (default: 20).",
+        },
+    },
+    required=[],
+)
+
+TELEGRAM_TOOLS.extend([GET_DEBATE_STATISTICS, GET_REJECTION_HISTORY, GET_MARKET_CHRONICLE])
 
 SEARCH_HISTORICAL_MEMORIES = _tool(
     name="search_historical_memories",
@@ -1906,8 +2286,413 @@ SEARCH_HISTORICAL_MEMORIES = _tool(
 
 TELEGRAM_TOOLS.append(SEARCH_HISTORICAL_MEMORIES)
 
+MANAGE_CRON = _tool(
+    name="manage_cron",
+    description=(
+        "Schedules, lists, or removes dynamic recurring cron tasks or reminders. "
+        "Use when the operator asks to schedule a recurring scan, report, or reminder."
+    ),
+    properties={
+        "action": {"type": "string", "enum": ["add", "list", "remove", "clear"], "description": "Action to perform"},
+        "name": {"type": "string", "description": "Unique identifier name for the cron job."},
+        "cron_expression": {"type": "string", "description": "Standard 5-part cron expression (e.g. '0 9 * * 1-5', '*/30 * * * *')."},
+        "instruction": {"type": "string", "description": "The command, prompt, or instruction to execute on schedule."},
+        "description": {"type": "string", "description": "Optional memo/description."},
+    },
+    required=["action"],
+)
+TELEGRAM_TOOLS.append(MANAGE_CRON)
+
+QUERY_SIGNAL_PERFORMANCE = _tool(
+    name="query_signal_performance",
+    description=(
+        "Query trade signals joined with execution outcomes with flexible filters. "
+        "Allows finding signals by confidence threshold (e.g. confidence > 0.8), outcome ('win'/'loss'), symbol, and time range."
+    ),
+    properties={
+        "min_confidence": {"type": "number", "description": "Minimum AI signal confidence (0.0 - 1.0). Default: 0.0."},
+        "max_confidence": {"type": "number", "description": "Maximum AI signal confidence. Default: 1.0."},
+        "outcome": {"type": "string", "enum": ["all", "win", "loss"], "description": "Filter by outcome: 'win' (positive pnl), 'loss' (negative pnl), or 'all'."},
+        "symbol": {"type": "string", "description": "Optional symbol filter (e.g. 'EURUSD')."},
+        "days_back": {"type": "integer", "description": "Lookback window in days (default: 30)."},
+        "limit": {"type": "integer", "description": "Maximum records to return (default: 20)."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(QUERY_SIGNAL_PERFORMANCE)
+
+GET_LATEST_RISK_VERDICT = _tool(
+    name="get_latest_risk_verdict",
+    description=(
+        "Retrieve recent RiskGate trade rejection reasons, failed check criteria, and risk audit logs for a symbol or account."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'XAUUSD', 'EURUSD')."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(GET_LATEST_RISK_VERDICT)
+
+EXPORT_DEBATE_TRANSCRIPTS = _tool(
+    name="export_debate_transcripts",
+    description=(
+        "Export specialist Bull vs Bear adversarial debate theses, dissent arguments, and judge verdicts to JSON."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Optional symbol to filter debate records."},
+        "days_back": {"type": "integer", "description": "Lookback days for debates (default: 30)."},
+        "limit": {"type": "integer", "description": "Maximum debate records to export (default: 100)."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(EXPORT_DEBATE_TRANSCRIPTS)
+
+TRIGGER_LEARNING_CYCLE = _tool(
+    name="trigger_learning_cycle",
+    description=(
+        "Trigger the system self-reflection and learning loop: reviews recent closed trades, identifies error patterns, "
+        "synthesizes negative constraints, and updates institutional playbooks."
+    ),
+    properties={
+        "days_back": {"type": "integer", "description": "Lookback days for reflection (default: 7)."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(TRIGGER_LEARNING_CYCLE)
+
+RUN_SYSTEM_DOCTOR_CHECK = _tool(
+    name="run_system_doctor_check",
+    description=(
+        "Run comprehensive system doctor diagnostic check verifying directories, API keys, MT5 terminal bridge, database tables, and scrapers."
+    ),
+    properties={},
+    required=[],
+)
+TELEGRAM_TOOLS.append(RUN_SYSTEM_DOCTOR_CHECK)
+
+SET_TRAILING_STOP = _tool(
+    name="set_trailing_stop",
+    description=(
+        "Set or update trailing stop and breakeven configurations for active positions (either by ticket, symbol, or all profitable positions)."
+    ),
+    properties={
+        "ticket": {"type": "integer", "description": "Optional MT5 ticket number for specific position."},
+        "symbol": {"type": "string", "description": "Optional symbol filter (e.g. 'EURUSD')."},
+        "trailing_pips": {"type": "number", "description": "Static trailing stop distance in pips (e.g. 20.0)."},
+        "breakeven_pips": {"type": "number", "description": "Profit threshold in pips to move SL to breakeven (e.g. 15.0)."},
+        "trail_atr_multiple": {"type": "number", "description": "Dynamic ATR multiple for trailing stop (e.g. 1.5)."},
+        "only_profit": {"type": "boolean", "description": "If true, applies only to currently profitable positions (default: false)."},
+        "disabled": {"type": "boolean", "description": "Set true to disable trailing stop on target positions."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(SET_TRAILING_STOP)
+
+EXPORT_HISTORICAL_DATA_CSV = _tool(
+    name="export_historical_data_csv",
+    description=(
+        "Export historical OHLCV candle data to a CSV file on disk for external backtesting and quant research."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading pair symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "description": "Candle timeframe ('M15', 'H1', 'H4', 'D1'). Default: 'H1'."},
+        "days_back": {"type": "integer", "description": "Number of days of historical data to export (default: 30)."},
+        "output_filename": {"type": "string", "description": "Optional custom filename for the CSV."},
+    },
+    required=["symbol"],
+)
+TELEGRAM_TOOLS.append(EXPORT_HISTORICAL_DATA_CSV)
+
+TRIGGER_MARKET_SCAN = _tool(
+    name="trigger_market_scan",
+    description=(
+        "Trigger ad-hoc market opportunity scan across symbols and return top ranked trade recommendations based on current market regime and macro conditions."
+    ),
+    properties={
+        "symbols": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of symbols to scan. Defaults to active asset universe.",
+        },
+        "force": {"type": "boolean", "description": "Force fresh scan even if cached brief exists."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(TRIGGER_MARKET_SCAN)
+
+RUN_STRATEGY_BACKTEST = _tool(
+    name="run_strategy_backtest",
+    description=(
+        "Run isolated point-in-time strategy backtest on historical OHLCV data. "
+        "Returns: total trades, win rate %, profit factor, Sharpe ratio, Sortino ratio, max drawdown %, and sample trade list."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Symbol to test (e.g. 'EURUSD', 'XAUUSD', 'BTCUSD')."},
+        "timeframe": {"type": "string", "description": "Timeframe ('H1', 'H4', 'M15'). Default: 'H1'."},
+        "strategy": {"type": "string", "description": "Strategy name (e.g. 'smc_fvg', 'btc_donchian_breakout', 'gap_fade', 'xau_trend', 'tsm_momentum', 'tri_convergent')."},
+        "days_back": {"type": "integer", "description": "Lookback historical window in days (default: 90)."},
+    },
+    required=["symbol"],
+)
+TELEGRAM_TOOLS.append(RUN_STRATEGY_BACKTEST)
+
+GET_PNL_SUMMARY = _tool(
+    name="get_pnl_summary",
+    description=(
+        "Retrieve aggregated profit/loss summary for real and paper trades across horizons: "
+        "today, this week (Monday to now), this month, and all-time. "
+        "Includes total PnL ($), trade counts, win rate %, and win/loss breakdown."
+    ),
+    properties={
+        "horizons": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of horizons to query (e.g. ['today', 'this_week', 'this_month']). Defaults to all.",
+        },
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(GET_PNL_SUMMARY)
+
+PLOT_PRICE_CHART = _tool(
+    name="plot_price_chart",
+    description=(
+        "Plot a high-resolution dark-theme candlestick chart with SMC overlays (Fair Value Gap boxes & Swing Pivots). "
+        "Saves the resulting PNG image to disk and delivers it directly to the user's interface."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading asset symbol (e.g. 'XAUUSD', 'EURUSD')."},
+        "timeframe": {"type": "string", "description": "Candle timeframe ('M5', 'M15', 'H1', 'H4', 'D1'). Default: 'H1'."},
+        "candles": {"type": "integer", "description": "Number of recent candles to plot (default: 80)."},
+        "overlay_smc": {"type": "boolean", "description": "Whether to render FVG boxes and swing pivot markers (default: true)."},
+    },
+    required=["symbol"],
+)
+TELEGRAM_TOOLS.append(PLOT_PRICE_CHART)
+
+DETECT_CANDLESTICK_PATTERNS = _tool(
+    name="detect_candlestick_patterns",
+    description=(
+        "Detect classical price action candlestick patterns: Pin Bar / Hammer, Shooting Star, "
+        "Bullish/Bearish Engulfing, Doji (Dragonfly/Gravestone), Morning Star, Evening Star."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading asset symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "description": "Candle timeframe ('M15', 'H1', 'H4'). Default: 'H1'."},
+        "lookback": {"type": "integer", "description": "Number of recent candles to analyze (default: 10)."},
+    },
+    required=["symbol"],
+)
+TELEGRAM_TOOLS.append(DETECT_CANDLESTICK_PATTERNS)
+
+RUN_ADHOC_SYMBOL_DEBATE = _tool(
+    name="run_adhoc_symbol_debate",
+    description=(
+        "Trigger an ad-hoc Multi-Agent Debate session (Bull Specialist vs Bear Specialist vs Investment Judge) "
+        "for a specific symbol to evaluate conflicting structural, fundamental, and quantitative evidence."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "The asset symbol to debate (e.g. 'XAUUSD', 'EURUSD', 'BTCUSD')."},
+    },
+    required=["symbol"],
+)
+TELEGRAM_TOOLS.append(RUN_ADHOC_SYMBOL_DEBATE)
+
+RUN_HOSTILE_STRESS_TEST = _tool(
+    name="run_hostile_stress_test",
+    description=(
+        "Run Hostile Market Feed Wire Probes and RiskGate adversarial stress testing battery "
+        "(flash crashes, spread blowouts, crossed book, stale feeds, zero-liquidity) to verify fail-closed protection."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading asset symbol to probe (default: 'EURUSD')."},
+    },
+    required=[],
+)
+TELEGRAM_TOOLS.append(RUN_HOSTILE_STRESS_TEST)
+
+RUN_ANALYTICAL_QUERY = _tool(
+    name="run_analytical_query",
+    description=(
+        "Execute safe, parameterized analytical aggregation query on historical trade performance, "
+        "regime expectancy, holding times, session win-rates, MAE/MFE distribution, and slippage. "
+        "Use this for post-mortems, institutional performance auditing, and statistical breakdowns."
+    ),
+    properties={
+        "metric": {
+            "type": "string",
+            "enum": ["win_rate", "profit_factor", "sharpe_ratio", "expectancy_usd", "mae_mfe_distribution", "holding_time", "rejection_summary", "slippage_summary", "overview"],
+            "description": "Metric to calculate (default: 'overview').",
+        },
+        "group_by": {
+            "type": "string",
+            "enum": ["session", "market_regime", "symbol", "decision_source", "risk_reward_bucket", "none"],
+            "description": "Grouping dimension (e.g. 'session', 'market_regime').",
+        },
+        "days_back": {
+            "type": "integer",
+            "description": "Lookback window in days (default: 90).",
+        },
+        "symbol": {
+            "type": "string",
+            "description": "Optional symbol filter (e.g. 'XAUUSD', 'EURUSD').",
+        },
+        "min_rr": {
+            "type": "number",
+            "description": "Optional minimum risk-to-reward ratio filter (e.g. 2.0, 2.5).",
+        },
+    },
+    required=["metric"],
+)
+TELEGRAM_TOOLS.append(RUN_ANALYTICAL_QUERY)
+
+EXPORT_TRADES_TO_EXCEL = _tool(
+    name="export_trades_to_excel",
+    description="Export completed trade history, holding durations, commissions, and PnL to formatted Excel (.xlsx) file.",
+    properties={
+        "limit": {"type": "integer", "description": "Maximum number of recent trades to export (default: 200)."},
+        "filename": {"type": "string", "description": "Optional output Excel filename (default: trades_export_<timestamp>.xlsx)."},
+    },
+    required=[],
+)
+
+GENERATE_DOCX_REPORT = _tool(
+    name="generate_docx_report",
+    description="Generate institutional Word (.docx) performance report with quantitative tables, risk metrics, and LLM narrative.",
+    properties={
+        "title": {"type": "string", "description": "Report title header."},
+        "narrative": {"type": "string", "description": "Comprehensive LLM executive narrative synthesis."},
+        "filename": {"type": "string", "description": "Optional output filename."},
+    },
+    required=[],
+)
+
+GENERATE_PPTX_DECK = _tool(
+    name="generate_pptx_deck",
+    description="Generate PowerPoint (.pptx) presentation pitch deck covering multi-agent trading performance and architecture.",
+    properties={
+        "title": {"type": "string", "description": "Title of presentation deck."},
+        "subtitle": {"type": "string", "description": "Subtitle on title slide."},
+        "filename": {"type": "string", "description": "Optional output filename."},
+    },
+    required=[],
+)
+
+GENERATE_TEARSHEET_REPORT = _tool(
+    name="generate_tearsheet_report",
+    description="Generate institutional HTML / PDF performance tearsheet from trading record database.",
+    properties={
+        "format": {"type": "string", "enum": ["html", "pdf"], "description": "Output format ('html' or 'pdf')."},
+        "title": {"type": "string", "description": "Title header for tearsheet."},
+    },
+    required=[],
+)
+
+EXPORT_DATASET_FILE = _tool(
+    name="export_dataset_file",
+    description="Export database records (paper_trades, asset_analyses, chronicle) to CSV or Apache Parquet file for quantitative analysis.",
+    properties={
+        "table_name": {"type": "string", "enum": ["paper_trades", "asset_analyses", "chronicle"], "description": "Target database table."},
+        "format": {"type": "string", "enum": ["csv", "parquet"], "description": "File format ('csv' or 'parquet')."},
+    },
+    required=["table_name"],
+)
+
+CANCEL_STALE_PENDING_ORDERS = _tool(
+    name="cancel_stale_pending_orders",
+    description="Cancel resting MT5 pending orders older than max_age_hours.",
+    properties={
+        "max_age_hours": {"type": "number", "description": "Cancel pending orders older than this age in hours (default: 4.0)."},
+    },
+    required=[],
+)
+
+CLOSE_POSITIONS_BATCH = _tool(
+    name="close_positions_batch",
+    description="Close open positions filtered by profit, loss, or all without triggering emergency daemon pause.",
+    properties={
+        "filter_type": {"type": "string", "enum": ["profit_only", "loss_only", "all"], "description": "Filter criteria for closing positions."},
+        "reason": {"type": "string", "description": "Reason for batch closing positions."},
+    },
+    required=["filter_type"],
+)
+
+RUN_WALK_FORWARD_ANALYSIS = _tool(
+    name="run_walk_forward_analysis",
+    description="Run Walk-Forward Analysis (WFA) on trading strategy to evaluate out-of-sample statistical robustness.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading asset symbol (e.g. 'EURUSD', 'BTCUSD')."},
+        "strategy": {"type": "string", "description": "Strategy name to backtest."},
+        "n_folds": {"type": "integer", "description": "Number of walk-forward rolling folds (default: 4)."},
+    },
+    required=["symbol"],
+)
+
+RUN_PARAMETER_PLATEAU_OPTIMIZATION = _tool(
+    name="run_parameter_plateau_optimization",
+    description="Run Parameter Flat Plateau Optimization to find robust, curve-fitting-resistant parameter regions.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading asset symbol (e.g. 'EURUSD')."},
+        "n_trials": {"type": "integer", "description": "Number of optimization trials (default: 25)."},
+    },
+    required=["symbol"],
+)
+
+GET_MACRO_PRICED_IN_SCORE = _tool(
+    name="get_macro_priced_in_score",
+    description="Calculate macroeconomic priced-in score and saturation analysis using COT percentiles, retail sentiment, FedWatch probabilities, and ATR run-ups.",
+    properties={
+        "symbol": {"type": "string", "description": "Currency pair or asset (e.g. 'EURUSD', 'USDJPY', 'XAUUSD')."},
+        "cot_percentile": {"type": "number", "description": "COT positioning percentile (0-100)."},
+        "retail_sentiment": {"type": "number", "description": "Retail long percentage (0-100)."},
+        "fedwatch_dominant_prob": {"type": "number", "description": "Dominant rate outcome probability (0-100)."},
+        "eurusd_run_up_vs_atr": {"type": "number", "description": "Recent move extension relative to ATR."},
+        "fedwatch_repricing_delta": {"type": "number", "description": "FedWatch shift percentage delta."},
+    },
+    required=["symbol"],
+)
+
+GET_SYNTHETIC_CROSS_RATE = _tool(
+    name="get_synthetic_cross_rate",
+    description="Calculate synthetic cross-rate, spread, and synthetic ATR from USD-based majors for non-universe pairs (e.g. GBPJPY, EURGBP, EURJPY, AUDJPY, EURAUD, GBPAUD).",
+    properties={
+        "pair": {"type": "string", "description": "Cross pair to synthesize (e.g. 'GBPJPY', 'EURGBP', 'EURJPY', 'AUDJPY')."},
+        "timeframe": {"type": "string", "description": "Timeframe for ATR calculation (e.g. 'H1', 'H4', 'D1')."},
+    },
+    required=["pair"],
+)
+
+NEW_OFFICE_AND_QUANT_TOOLS = [
+    EXPORT_TRADES_TO_EXCEL,
+    GENERATE_DOCX_REPORT,
+    GENERATE_PPTX_DECK,
+    GENERATE_TEARSHEET_REPORT,
+    EXPORT_DATASET_FILE,
+    CANCEL_STALE_PENDING_ORDERS,
+    CLOSE_POSITIONS_BATCH,
+    RUN_WALK_FORWARD_ANALYSIS,
+    RUN_PARAMETER_PLATEAU_OPTIMIZATION,
+    GET_MACRO_PRICED_IN_SCORE,
+    GET_SYNTHETIC_CROSS_RATE,
+]
+
+for smc_tool in [GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG]:
+    if smc_tool not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(smc_tool)
+
+if EXECUTE_ANALYSIS_CODE not in TELEGRAM_TOOLS:
+    TELEGRAM_TOOLS.append(EXECUTE_ANALYSIS_CODE)
+if TRIGGER_MARKET_SCAN not in TELEGRAM_TOOLS:
+    TELEGRAM_TOOLS.append(TRIGGER_MARKET_SCAN)
+if GET_PNL_SUMMARY not in TELEGRAM_TOOLS:
+    TELEGRAM_TOOLS.append(GET_PNL_SUMMARY)
+
+for t in NEW_OFFICE_AND_QUANT_TOOLS:
+    if t not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(t)
+
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, SEARCH_HISTORICAL_MEMORIES]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + NEW_OFFICE_AND_QUANT_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, SEARCH_HISTORICAL_MEMORIES, MANAGE_CRON, QUERY_SIGNAL_PERFORMANCE, GET_LATEST_RISK_VERDICT, EXPORT_DEBATE_TRANSCRIPTS, TRIGGER_LEARNING_CYCLE, RUN_SYSTEM_DOCTOR_CHECK, SET_TRAILING_STOP, EXPORT_HISTORICAL_DATA_CSV, TRIGGER_MARKET_SCAN, RUN_STRATEGY_BACKTEST, GET_PNL_SUMMARY, PLOT_PRICE_CHART, DETECT_CANDLESTICK_PATTERNS, RUN_ADHOC_SYMBOL_DEBATE, RUN_HOSTILE_STRESS_TEST, RUN_ANALYTICAL_QUERY, GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG]}.values())
 
 
 

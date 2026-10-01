@@ -1,33 +1,41 @@
 ---
 name: software-development
-description: End-to-end software engineering, architecture, and safe coding standards.
-category: GENERAL
-version: 1.0.0
-platforms:
-  - windows
-  - linux
-  - macos
+description: "Surgical software engineering, safe refactoring, and quality invariants for Monika."
+category: general
+version: 1.1.0
+consumers: [chat_agent, human_reference]
+platforms: [windows, linux, macos]
+tags: [software_engineering, architecture, testing, refactoring, invariants]
 ---
 
-# Software Development Skill
+# Software Development Skill & Engineering Standards
 
-Provides rigorous guidelines for building, refactoring, and maintaining production-grade software systems.
+## 1. Pre-Edit Mandatory Checklist
+Before making any file modifications:
+1. **Read-Before-Write**: Always read the target file completely using `view_file` or `read_file` to understand surrounding context and existing imports.
+2. **Identify Callers**: Search for all call-sites across the codebase to ensure interface changes do not break downstream consumers.
+3. **Locate Test Fixtures**: Find corresponding test files in `tests/` to prepare validation assertions.
+4. **Stale Overwrite Protection**: Never overwrite a file without inspecting its latest disk state.
 
-## Core Directives
+## 2. Surgical Precision & Minimal Blast Radius
+- **Surgical Edits**: Restrict changes strictly to the narrowest responsible layer. Never perform indiscriminate multi-file refactors when a localized patch solves the issue.
+- **Backward Compatibility**: Preserve existing function signatures and dataclass/Pydantic schemas where external modules depend on them.
+- **Type Annotations**: All new functions and methods MUST include complete Python 3.10+ type hints (`typing.Optional`, `typing.Union`, `list[str]`, `dict[str, Any]`).
 
-1. **Understand System Architecture First**:
-   - Inspect existing architectural diagrams and index files before introducing structural changes.
-   - Respect established design patterns (e.g. dependency injection, decoupled event bus, repository pattern).
+## 3. Post-Edit Mandatory Verification Checklist
+After modifying any Python source file:
+- [ ] Run targeted unit test:
+  ```bash
+  pytest tests/path/to/test_modified_module.py -v
+  ```
+- [ ] Run full test suite regression check:
+  ```bash
+  pytest tests/ -x -q
+  ```
+- [ ] Ensure zero new lint or import syntax warnings.
 
-2. **Surgical Precision & Minimal Blast Radius**:
-   - Limit modifications strictly to files directly relevant to the task.
-   - Avoid indiscriminate mass refactors across unrelated modules.
-   - Always run in-process syntax checks and automated unit tests after editing.
-
-3. **Stale Overwrite Protection**:
-   - Never overwrite a file without inspecting its latest disk state.
-   - Use fuzzy patching with multi-stage fallbacks to ensure target context matches reality.
-
-4. **Backward Compatibility & Invariants**:
-   - Do not break existing public API contracts, database schemas, or serialized wire formats.
-   - Ensure deprecations are handled gracefully with fallbacks.
+## 4. Prohibited Anti-Patterns
+- ❌ Blind file overwriting without reading existing content.
+- ❌ Modifying database schemas without an accompanying Alembic migration script.
+- ❌ Introducing new third-party dependencies without verifying Python standard library alternatives.
+- ❌ Leaving empty exception handlers (`except Exception: pass`) without logging.

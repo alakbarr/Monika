@@ -63,6 +63,12 @@ class DiscordPlatformAdapter(BasePlatformAdapter):
         If bot_token is configured, delivers via Discord REST API to channel.
         Always records in self.sent_messages for audit, telemetry, and testing.
         """
+        try:
+            from telegram_bot.sanitizer import strip_emojis_and_emoticons
+            content = strip_emojis_and_emoticons(content)
+        except Exception:
+            pass
+
         record = {
             "channel_id": target_id,
             "content": content,

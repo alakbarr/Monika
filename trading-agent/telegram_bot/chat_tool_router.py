@@ -17,10 +17,24 @@ class ChatToolRouter:
     """Routes Telegram queries to a precise tool subset."""
 
     TRADE_KEYWORDS = re.compile(
-        r'\b(buy|sell|beli|jual|close|(?:buka|membuka)\s+(?:posisi|order|trade)|(?:tutup|menutup)\s+(?:semua\s+)?(?:posisi|order|trade)|pasang|order(?!\s*book)|eksekusi|lot|sl|tp|stop\s*loss|take\s*profit)\b',
+        r'\b(buy|sell|beli|jual|close|(?:buka|membuka)\s+(?:posisi|order|trade)|(?:tutup|menutup)\s+(?:semua\s+)?(?:posisi|order|trade)|pasang|order(?!\s*book)|eksekusi|lot|sl|tp|stop\s*loss|take\s*profit|sizing|lot\s*size|hitung\s*lot|margin|alert|price\s*alert|trailing|trailing\s*stop|trigger\s*order|price\s*trigger)\b',
         re.IGNORECASE
     )
 
+    DIAGNOSTIC_PATTERNS = re.compile(
+        r'\b(kenapa|mengapa|alasan|kok|investigasi|audit)\b.*\b(sl|stop\s*loss|loss|rugi|gak\s*buka|gak\s*open|tolak|reject|gagal|kalah|kena)\b|\b(kenapa\s+(?:bot|agent|monika)\s+(?:gak|tidak|belum)\s+(?:buka|open|trading))\b',
+        re.IGNORECASE
+    )
+
+    CONDITIONAL_ANALYSIS_PATTERNS = re.compile(
+        r'\b(aman(?:\s*gak|\s*tidak|\s*kah)?|bisa\s+(?:buy|sell|beli|jual)|boleh\s+(?:buy|sell)|bagus(?:\s*gak|\s*an)?|apakah\s+(?:buy|sell|bagus)|rekomendasi|setup\s*(?:terbaik|bagus|hari\s*ini)|market\s*scan|peluang)\b',
+        re.IGNORECASE
+    )
+
+    SCRIPTING_PATTERNS = re.compile(
+        r'\b(script|python|hitung|korelasi.*rolling|sandbox|code|kode|rumus|hurst|kelly|plateau|divergence|custom\s*indicator|otomatisasi|automation|tulis\s+kode|buatkan\s+script)\b',
+        re.IGNORECASE
+    )
 
     GREETING_PATTERNS = re.compile(
         r'^(halo|hai|hi|hello|hey|selamat\s+(pagi|siang|sore|malam)|assalamualaikum|tes|test|ping|p|siapa\s+kamu|terima\s*kasih|makasih|thanks|thank\s*you)\b',
@@ -28,17 +42,17 @@ class ChatToolRouter:
     )
 
     PORTFOLIO_PATTERNS = re.compile(
-        r'\b(posisi|position|saldo|balance|equity|pnl|profit|rugi|loss|untung|margin|kinerja|performance|paper|history|riwayat|trigger|drawdown)\b',
+        r'\b(posisi|position|saldo|balance|equity|pnl|profit|rugi|loss|untung|margin|kinerja|performance|paper|history|riwayat|trigger|drawdown|korelasi|correlation|akun|kondisi\s*akun|minggu\s*ini|hari\s*ini|rekap|floating|unrealized)\b',
         re.IGNORECASE
     )
 
     MACRO_PATTERNS = re.compile(
-        r'\b(makro|macro|fundamental|berita|news|fomc|cpi|nfp|fed|fedwatch|kalender|calendar|dxy|dollar|vix|yield|treasury|suku\s*bunga|interest\s*rate|cot|sesi|session|eia|inventory|cadangan\s*minyak|dot\s*plot|sep|rate\s*cut|rate\s*hike|inflasi|inflation|pce|gdp|ppi|pengangguran|unemployment|payroll|hawkish|dovish|press\s*conference|konferensi\s*pers|bank\s*sentral|central\s*bank|kebijakan\s*moneter|monetary\s*policy)\b',
+        r'\b(makro|macro|fundamental|berita|news|fomc|cpi|nfp|fed|fedwatch|kalender|calendar|dxy|dollar|vix|yield|treasury|suku\s*bunga|interest\s*rate|cot|sesi|session|eia|inventory|cadangan\s*minyak|dot\s*plot|sep|rate\s*cut|rate\s*hike|inflasi|inflation|pce|gdp|ppi|pengangguran|unemployment|payroll|hawkish|dovish|press\s*conference|konferensi\s*pers|bank\s*sentral|central\s*bank|kebijakan\s*moneter|monetary\s*policy|market|pasar|kondisi\s*pasar|situasi\s*pasar|keadaan\s*pasar)\b',
         re.IGNORECASE
     )
 
     TECHNICAL_PATTERNS = re.compile(
-        r'\b(chart|grafik|teknikal|technical|indikator|indicator|rsi|macd|ema|sma|smc|ict|fvg|order\s*block|ob|swing|support|resistance|bos|choch|fibonacci|fibo|adr|range|level|regime|trend|momentum|harga|price|candle|analisis|setup|sinyal|signal)\b',
+        r'\b(chart|grafik|teknikal|technical|indikator|indicator|rsi|macd|ema|sma|smc|ict|fvg|order\s*block|ob|swing|support|resistance|bos|choch|fibonacci|fibo|adr|range|level|regime|trend|momentum|harga|price|quote|rate|spread|candle|analisis|setup|sinyal|signal|sweep|liquidity\s*sweep|pattern|pattern\s*similarity|pola)\b',
         re.IGNORECASE
     )
 
@@ -48,12 +62,32 @@ class ChatToolRouter:
     )
 
     SYSTEM_PATTERNS = re.compile(
-        r'\b(status|health|server|token|biaya|cost|usage|log|aktivitas|activity|audit|koneksi|uptime)\b',
+        r'\b(status|health|server|token|biaya|cost|usage|log|aktivitas|activity|audit|koneksi|uptime|risk|resiko|circuit\s*breaker|doctor|diagnostik|cron)\b',
         re.IGNORECASE
     )
 
     RESEARCH_PATTERNS = re.compile(
-        r'\b(deep-research|deep\s*research|riset\s*mendalam|investigasi|konsensus|whisper|saturasi|ekspektasi|skenario|intel|intelijen|pre-event|breaking|geopolitik|event\s*makro|macro\s*event|probabilitas\s*event|event\s*probability|web[- ]?search|search|cari|browsing)\b|^\s*/research\b',
+        r'\b(deep-research|deep\s*research|riset\s*mendalam|investigasi|konsensus|whisper|saturasi|ekspektasi|skenario|intel|intelijen|pre-event|breaking|geopolitik|event\s*makro|macro\s*event|probabilitas\s*event|event\s*probability|web[- ]?search|search|cari|browsing|paper|akademik|academic|arxiv)\b|^\s*/research\b',
+        re.IGNORECASE
+    )
+
+    INTEL_PATTERNS = re.compile(
+        r'\b(ingat(?:kan)?\s+bahwa|catat\s+bahwa|simpan\s+(?:info|intel|informasi|catatan)|intelijen\s+pasar|market\s+intel)\b',
+        re.IGNORECASE
+    )
+
+    SKILL_PATTERNS = re.compile(
+        r'\b(buat\s+skill|tambah\s+skill|create\s+skill|generate\s+skill|bikin\s+skill|skill\s+baru|skill|plugin)\b',
+        re.IGNORECASE
+    )
+
+    LEARNING_PATTERNS = re.compile(
+        r'\b(belajar|learn|learning|refleksi|reflection|evaluasi|eval|negative\s*constraint|lesson|crystalliz(?:e|er)|kesalahan)\b',
+        re.IGNORECASE
+    )
+
+    BACKTEST_PATTERNS = re.compile(
+        r'\b(backtest|simulasi|monte\s*carlo|walk[- ]?forward|wfa|forward\s*test|harness|arena|plateau|curve[- ]?fitting|overfitting|optimasi\s*parameter)\b',
         re.IGNORECASE
     )
 
@@ -68,12 +102,12 @@ class ChatToolRouter:
     )
 
     REPORT_PATTERNS = re.compile(
-        r'\b(tearsheet|laporan|report|kinerja|performance|equity\s*curve|drawdown|stats|statistik|sharpe|sortino|expectancy)\b',
+        r'\b(tearsheet|laporan|report|kinerja|performance|equity\s*curve|drawdown|stats|statistik|sharpe|sortino|expectancy|excel|xlsx|docx|word|pptx|powerpoint|slide|deck|presentasi|pitch|pdf|export.*data|export.*transaksi|parquet)\b',
         re.IGNORECASE
     )
 
     DATABASE_PATTERNS = re.compile(
-        r'\b(database|db|tabel|table|schema|skema|kolom|record|records|baris|row|rows|query|select|insert|update|delete|mutasi|mutation)\b',
+        r'\b(database|db|tabel|table|schema|skema|kolom|record|records|baris|row|rows|query|select|insert|update|delete|mutasi|mutation|debate\s*transcripts?)\b',
         re.IGNORECASE
     )
 
@@ -116,7 +150,7 @@ class ChatToolRouter:
             "get_market_session", "get_fundamental_brief", "get_economic_calendar",
             "get_news_items", "get_news_digest", "get_vix", "get_dxy",
             "get_cot_report", "get_bond_yield_spreads", "get_spread_snapshot",
-            "get_fedwatch_probabilities", "get_treasury_yields", "get_interest_rates",
+            "get_fedwatch_probabilities", "get_central_bank_expectations", "get_treasury_yields", "get_interest_rates",
             "get_eia_oil_inventory",
             "web_search", "save_market_intelligence", "list_active_intelligence"
         ],
@@ -126,7 +160,7 @@ class ChatToolRouter:
             "get_retail_sentiment", "get_price_momentum", "get_price_history",
             "get_smc_zones", "save_market_intelligence", "list_active_intelligence",
             "archive_market_intelligence", "propose_action",
-            "get_fedwatch_probabilities", "get_treasury_yields", "get_interest_rates",
+            "get_fedwatch_probabilities", "get_central_bank_expectations", "get_treasury_yields", "get_interest_rates",
             "get_eia_oil_inventory"
         ],
         re.compile(r'^/(forecast|timesfm|proyeksi)\b', re.IGNORECASE): [
@@ -329,12 +363,34 @@ class ChatToolRouter:
                 or bool(self.REPORT_PATTERNS.search(q_clean))
                 or bool(self.TIMESFM_PATTERNS.search(q_clean))
                 or bool(self.WORKSPACE_PATTERNS.search(q_clean))
+                or bool(self.INTEL_PATTERNS.search(q_clean))
+                or bool(self.SKILL_PATTERNS.search(q_clean))
             )
             if not has_functional_intent:
                 logger.info("ChatToolRouter: Selected ZERO-TOOL mode for conversational query")
                 return []
 
-        # 3. Workspace & Second-Brain Intent (Obsidian, Excel, Notion, Files)
+        # 3. Market Intelligence Direct Intent (P5.2 / Q62)
+        if self.INTEL_PATTERNS.search(q_clean):
+            intel_tool_names = [
+                "save_market_intelligence", "list_active_intelligence", "archive_market_intelligence"
+            ]
+            selected = self._get_tools_by_names(intel_tool_names)
+            logger.info(f"ChatToolRouter: Selected INTEL intent ({len(selected)} tools)")
+            return selected
+
+        # 4. Skill Authoring & Extension Intent (P5.3 / Q63)
+        if self.SKILL_PATTERNS.search(q_clean):
+            skill_tool_names = ["skill_view", "skills_list", "propose_action"]
+            for t_name in self.tool_map:
+                if "skill" in t_name.lower():
+                    if t_name not in skill_tool_names:
+                        skill_tool_names.append(t_name)
+            selected = self._get_tools_by_names(skill_tool_names)
+            logger.info(f"ChatToolRouter: Selected SKILL intent ({len(selected)} tools)")
+            return selected
+
+        # 5. Workspace & Second-Brain Intent (Obsidian, Excel, Notion, Files)
         if self.WORKSPACE_PATTERNS.search(q_clean):
             workspace_tool_names = [
                 "mcp_filesystem_workspace_fs_read_file",
@@ -367,30 +423,84 @@ class ChatToolRouter:
         # 4. Research & Ad-Hoc Market Intelligence Intent (Diprioritaskan sebelum Trade Intent)
         if self.RESEARCH_PATTERNS.search(q_clean):
             research_tool_names = [
-                "web_search", "get_economic_calendar", "get_news_items",
+                "web_search", "read_url", "search_academic", "get_economic_calendar", "get_news_items",
                 "get_news_digest", "get_cot_report", "get_dxy", "get_vix",
                 "get_retail_sentiment", "get_price_momentum", "get_price_history",
                 "get_smc_zones", "save_market_intelligence", "list_active_intelligence",
                 "archive_market_intelligence", "propose_action",
-                "get_fedwatch_probabilities", "get_treasury_yields", "get_interest_rates",
+                "get_fedwatch_probabilities", "get_central_bank_expectations", "get_treasury_yields", "get_interest_rates",
                 "get_eia_oil_inventory"
             ]
             selected = self._get_tools_by_names(research_tool_names)
             logger.info(f"ChatToolRouter: Selected RESEARCH intent ({len(selected)} tools)")
             return selected
 
-        # 4. Trade Execution Intent (Wajib sertakan propose_action & account tools)
-        if self.TRADE_KEYWORDS.search(q_clean):
-            trade_tool_names = [
-                "propose_action", "get_account_info", "get_open_positions",
-                "get_spread_snapshot", "get_risk_state", "get_market_session",
-                "get_price_history", "get_technical_indicators", "get_chart"
+        # 4. Learning & Continuous Improvement Intent (Refleksi, Lessons, Feedback Loop)
+        if self.LEARNING_PATTERNS.search(q_clean):
+            learning_tool_names = [
+                "trigger_learning_cycle", "get_asset_analysis", "get_trade_details",
+                "get_trade_history", "get_recent_activity", "get_risk_state",
+                "get_paper_trading_performance", "propose_action"
             ]
-            selected = self._get_tools_by_names(trade_tool_names)
-            logger.info(f"ChatToolRouter: Selected TRADE intent ({len(selected)} tools)")
+            selected = self._get_tools_by_names(learning_tool_names)
+            logger.info(f"ChatToolRouter: Selected LEARNING intent ({len(selected)} tools)")
             return selected
 
-        # 5. TimesFM Forecast & Quantitative Projection Intent (Hanya aktif jika bukan kueri makro / riset)
+        # 5. Diagnostic / Post-Mortem Intent (Kenapa SL, kenapa bot gak buka posisi, dsb)
+        if self.DIAGNOSTIC_PATTERNS.search(q_clean):
+            diagnostic_tool_names = [
+                "get_rejection_history", "get_latest_risk_verdict", "get_system_health",
+                "get_trade_details", "get_trade_history", "get_risk_state",
+                "search_historical_memories", "get_asset_analysis", "get_fundamental_brief",
+                "get_recent_activity", "get_economic_calendar"
+            ]
+            selected = self._get_tools_by_names(diagnostic_tool_names)
+            logger.info(f"ChatToolRouter: Selected DIAGNOSTIC intent ({len(selected)} tools)")
+            return selected
+
+        # 6. Python Scripting & Sandbox Calculation Intent
+        if self.SCRIPTING_PATTERNS.search(q_clean):
+            scripting_tool_names = [
+                "execute_analysis_code", "execute_code", "get_price_history",
+                "get_technical_indicators", "get_market_quote", "get_spread_snapshot",
+                "get_treasury_yields", "get_dxy", "get_vix", "get_market_correlations",
+                "run_analytical_query"
+            ]
+            selected = self._get_tools_by_names(scripting_tool_names)
+            logger.info(f"ChatToolRouter: Selected SCRIPTING intent ({len(selected)} tools)")
+            return selected
+
+        # 7. Quantitative Simulation & Backtesting Intent
+        if self.BACKTEST_PATTERNS.search(q_clean):
+            backtest_tool_names = [
+                "run_strategy_backtest", "run_monte_carlo_simulation", "run_walk_forward_analysis",
+                "run_parameter_plateau_optimization", "get_edge_tracker_status", "query_signal_performance",
+                "export_historical_data_csv", "get_price_history", "get_technical_indicators", "get_market_regime"
+            ]
+            selected = self._get_tools_by_names(backtest_tool_names)
+            logger.info(f"ChatToolRouter: Selected BACKTEST intent ({len(selected)} tools)")
+            return selected
+
+        # 8. Trade Execution / Setup Inquiry Intent
+        if (self.TRADE_KEYWORDS.search(q_clean) or self.CONDITIONAL_ANALYSIS_PATTERNS.search(q_clean)) and not (self.MACRO_PATTERNS.search(q_clean) and not self.TRADE_KEYWORDS.search(q_clean)):
+            is_conditional = bool(self.CONDITIONAL_ANALYSIS_PATTERNS.search(q_clean))
+            trade_tool_names = [
+                "propose_action", "calculate_position_size", "calculate_margin", "create_price_alert",
+                "set_trailing_stop", "close_positions_batch",
+                "get_account_info", "get_open_positions", "get_spread_snapshot",
+                "get_risk_state", "get_price_history", "get_technical_indicators", "get_chart"
+            ]
+            if is_conditional or self.SYMBOL_PATTERNS.search(q_clean):
+                trade_tool_names.extend([
+                    "get_smc_zones", "get_dxy", "get_economic_calendar", "get_market_regime",
+                    "get_fundamental_brief", "get_timesfm_forecast", "get_daily_range_context",
+                    "get_synthetic_cross_rate", "trigger_market_scan"
+                ])
+            selected = self._get_tools_by_names(trade_tool_names)
+            logger.info(f"ChatToolRouter: Selected TRADE/ANALYSIS intent ({len(selected)} tools)")
+            return selected
+
+        # 9. TimesFM Forecast & Quantitative Projection Intent (Hanya aktif jika bukan kueri makro / riset)
         if self.TIMESFM_PATTERNS.search(q_clean) and not (self.MACRO_PATTERNS.search(q_clean) or self.RESEARCH_PATTERNS.search(q_clean)):
             timesfm_tool_names = [
                 "get_timesfm_forecast", "get_price_history", "get_technical_indicators",
@@ -413,15 +523,15 @@ class ChatToolRouter:
 
         domain_count = sum([has_sentiment, has_report, has_portfolio, has_macro, has_tech, has_system, has_database, has_workspace])
 
-        # 6. Jika pertanyaan mencakup >=3 domain sekaligus, gunakan fallback full tools (fail-safe)
+        # 10. Jika pertanyaan mencakup >=3 domain sekaligus, gunakan fallback full tools (fail-safe)
         if domain_count >= 3:
             logger.info(f"ChatToolRouter: Multi-domain complex query detected ({domain_count} domains). Using full toolset.")
             return self.all_tools
 
-        # 7. Semantic Vector Search across all 50+ tools
-        semantic_tool_names = self._semantic_vector_search(q_clean, top_k=8, min_score=0.10)
+        # 11. Semantic Vector Search across all tools
+        semantic_tool_names = self._semantic_vector_search(q_clean, top_k=6, min_score=0.10)
 
-        # 8. Domain Spesifik Regex Matching
+        # 12. Domain Spesifik Regex Matching
         selected_names = set()
 
         if has_workspace:
@@ -431,7 +541,8 @@ class ChatToolRouter:
 
         if has_database:
             selected_names.update([
-                "inspect_database_schema", "read_database_records", "propose_action"
+                "inspect_database_schema", "read_database_records", "query_signal_performance",
+                "export_debate_transcripts", "export_dataset_file", "run_analytical_query", "propose_action"
             ])
 
         if has_sentiment:
@@ -442,14 +553,16 @@ class ChatToolRouter:
 
         if has_report:
             selected_names.update([
-                "get_paper_trading_performance", "get_trade_history", "get_trade_details",
-                "get_edge_tracker_status", "get_calibration_status", "get_risk_state"
+                "export_trades_to_excel", "generate_docx_report", "generate_pptx_deck", "generate_tearsheet_report",
+                "export_dataset_file", "get_paper_trading_performance", "get_pnl_summary", "get_trade_history", "get_trade_details",
+                "query_signal_performance", "get_edge_tracker_status", "get_calibration_status", "get_risk_state",
+                "get_market_correlations", "run_analytical_query"
             ])
 
         if has_portfolio:
             selected_names.update([
-                "get_account_info", "get_open_positions", "get_paper_trading_performance",
-                "get_trade_history", "get_active_triggers", "get_trade_details", "get_risk_state"
+                "get_account_info", "get_open_positions", "get_pnl_summary", "get_paper_trading_performance",
+                "get_trade_history", "get_active_triggers", "get_risk_state", "propose_action"
             ])
 
         if has_macro:
@@ -457,29 +570,38 @@ class ChatToolRouter:
                 "get_market_session", "get_fundamental_brief", "get_economic_calendar",
                 "get_news_items", "get_news_digest", "get_vix", "get_dxy",
                 "get_cot_report", "get_bond_yield_spreads", "get_spread_snapshot",
-                "get_fedwatch_probabilities", "get_treasury_yields", "get_interest_rates",
-                "get_eia_oil_inventory",
-                "web_search", "save_market_intelligence", "list_active_intelligence"
+                "get_fedwatch_probabilities", "get_central_bank_expectations", "get_treasury_yields", "get_interest_rates",
+                "get_macro_priced_in_score", "get_eia_oil_inventory", "get_market_correlations",
+                "web_search", "read_url", "search_academic", "save_market_intelligence", "list_active_intelligence"
             ])
 
         if has_tech:
             selected_names.update([
-                "get_chart", "get_price_history", "get_technical_indicators",
+                "get_chart", "get_price_history", "get_market_quote", "get_technical_indicators",
                 "get_multi_timeframe_summary", "get_atr", "get_swing_points",
                 "get_structure_breaks", "get_smc_zones", "get_fibonacci_levels",
-                "get_price_momentum", "get_daily_range_context", "get_optimal_intraday_levels",
-                "get_market_regime", "get_asset_analysis", "get_spread_snapshot",
-                "get_timesfm_forecast"
+                "get_synthetic_cross_rate", "get_price_momentum", "get_daily_range_context", "get_optimal_intraday_levels",
+                "get_market_regime", "get_volatility_regime", "scan_pattern_similarity", "get_timesfm_forecast", "trigger_market_scan"
             ])
 
         if has_system:
             selected_names.update([
-                "get_system_health", "get_token_usage_and_costs", "get_recent_activity", "get_risk_state"
+                "get_system_health", "run_system_doctor_check", "manage_cron",
+                "get_token_usage_and_costs", "get_recent_activity", "get_risk_state"
             ])
 
-        # Combine domain and high-scoring semantic tools
+        # Combine domain and high-scoring semantic tools within progressive budgets
         if semantic_tool_names:
-            selected_names.update(semantic_tool_names)
+            if has_portfolio and not (has_tech or has_macro or has_report):
+                budget = 10
+            elif has_tech or has_macro:
+                budget = 24
+            else:
+                budget = 14
+            for st in semantic_tool_names:
+                if len(selected_names) >= budget:
+                    break
+                selected_names.add(st)
 
         if selected_names:
             selected = self._get_tools_by_names(list(selected_names))
@@ -487,8 +609,7 @@ class ChatToolRouter:
                 logger.info(f"ChatToolRouter: Routed to tools ({len(selected)} tools)")
                 return selected
 
-        # 9. Default Fallback: Core Primitives Bundle
-        # Returns 6 essential tools rather than spending ~5,000 tokens for all 50+ tools
+        # 13. Default Fallback: Core Primitives Bundle (6 tools)
         core_primitive_names = [
             "get_account_info",
             "get_open_positions",

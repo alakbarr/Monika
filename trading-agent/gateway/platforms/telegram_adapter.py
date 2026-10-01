@@ -42,6 +42,12 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
+        try:
+            from telegram_bot.sanitizer import strip_emojis_and_emoticons
+            content = strip_emojis_and_emoticons(content)
+        except Exception:
+            pass
+
         record = {
             "chat_id": target_id,
             "content": content,

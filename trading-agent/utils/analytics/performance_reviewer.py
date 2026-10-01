@@ -106,7 +106,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     statistical_warning = ''
     if total < STATISTICALLY_SIGNIFICANT_N:
         statistical_warning = (
-            f'## ⚠️ STATISTICAL WARNING: SMALL SAMPLE\n\n'
+            f'## [PERINGATAN] STATISTICAL WARNING: SMALL SAMPLE\n\n'
             f'**{total} trades is NOT statistically significant (need ≥{STATISTICALLY_SIGNIFICANT_N}).**\n'
             f'**DO NOT adjust thresholds or strategy based solely on this data.**\n'
             f'Treat all recommendations below as preliminary observations only.\n\n'
@@ -131,7 +131,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     
     # Overall verdict
     if win_rate < 44:
-        lines.append('## ⚠️ ATTENTION: Win rate below theoretical breakeven')
+        lines.append('## [PERINGATAN] ATTENTION: Win rate below theoretical breakeven')
         lines.append('')
         lines.append(
             f'**Win rate {win_rate:.1f}% is below theoretical breakeven ({total} trades).**\n'
@@ -143,7 +143,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         )
         lines.append("")
     elif win_rate < 55:
-        lines.append('## ℹ️ MONITORING: Win rate below optimal range')
+        lines.append('## [INFO] MONITORING: Win rate below optimal range')
         lines.append('')
         lines.append(
             f'**Win rate {win_rate:.1f}% is below the 55% target ({total} trades analyzed).**\n'
@@ -153,7 +153,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         )
         lines.append("")
     elif win_rate > 60:
-        lines.append("## ✅ Performance Strong")
+        lines.append("## [OK] Performance Strong")
         lines.append("")
         lines.append("System performing well. Standard thresholds apply.")
         lines.append("")
@@ -179,7 +179,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     for score in sorted(by_confluence.keys(), key=lambda x: int(x)):
         data = by_confluence[score]
         wr = data["wins"] / data["total"] * 100 if data["total"] > 0 else 0
-        verdict = "✅ profitable" if wr >= 45 else ("⚠️ borderline" if wr >= 33 else "❌ losing")
+        verdict = "[OK] profitable" if wr >= 45 else ("[PERINGATAN] borderline" if wr >= 33 else "[GAGAL] losing")
         lines.append(f"- Score {score}: {wr:.0f}% WR ({data['total']} trades) — {verdict}")
 
     # --- Section: Performance by Market Session ---
@@ -193,7 +193,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     for key, data in session_buckets.items():
         if data['total'] >= 3:
             wr = data['wins'] / data['total'] * 100
-            verdict = '✅ profitable' if wr >= 45 else '⚠️ borderline' if wr >= 33 else '❌ losing — avoid this session'
+            verdict = '[OK] profitable' if wr >= 45 else '[PERINGATAN] borderline' if wr >= 33 else '[GAGAL] losing — avoid this session'
             lines.append(f"- {data['label']}: {wr:.0f}% WR ({data['total']} trades) — {verdict}")
         elif data['total'] > 0:
             lines.append(f"- {data['label']}: {data['total']} trades (insufficient data)")
@@ -212,11 +212,11 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
             wr = data['wins'] / data['total'] * 100
             pi_score = data['score']
             if pi_score >= 8 and wr > 50:
-                verdict = '⚠️ WARNING: High win rate at high priced-in score is suspicious — check if entries are actually post-event'
+                verdict = '[PERINGATAN] WARNING: High win rate at high priced-in score is suspicious — check if entries are actually post-event'
             elif pi_score >= 8 and wr < 40:
-                verdict = '✅ Expected: high priced-in score correctly associated with lower win rate'
+                verdict = '[OK] Expected: high priced-in score correctly associated with lower win rate'
             elif pi_score <= 4 and wr >= 50:
-                verdict = '✅ Good: low priced-in setups are profitable'
+                verdict = '[OK] Good: low priced-in setups are profitable'
             else:
                 verdict = ''
             lines.append(f"- Priced-In {pi_score}/10: {wr:.0f}% WR ({data['total']} trades) {verdict}")
@@ -233,9 +233,9 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         lines.append(f'- Average losing trade duration: {avg_loss_hold:.1f} hours')
         
         if avg_loss_hold > avg_win_hold * 1.5:
-            lines.append('⚠️ CONCERN: Losses are held significantly longer than wins. Possible "let losers run, cut winners short" bias. Review SL placement and trailing stop settings.')
+            lines.append('[PERINGATAN] CONCERN: Losses are held significantly longer than wins. Possible "let losers run, cut winners short" bias. Review SL placement and trailing stop settings.')
         elif avg_win_hold > avg_loss_hold * 2:
-            lines.append('✅ Good: Winning trades are held significantly longer — allowing trades to run to full TP.')
+            lines.append('[OK] Good: Winning trades are held significantly longer — allowing trades to run to full TP.')
     
     # --- Section: Day of Week Analysis ---
     lines.append('')
@@ -258,7 +258,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         data = dow_buckets[day]
         if data['total'] >= 3:
             wr = data['wins'] / data['total'] * 100
-            flag = '❌ avoid' if wr < 33 else '⚠️ borderline' if wr < 45 else '✅'
+            flag = '[GAGAL] avoid' if wr < 33 else '[PERINGATAN] borderline' if wr < 45 else '[OK]'
             lines.append(f"- {day}: {wr:.0f}% WR ({data['total']} trades) {flag}")
 
     try:

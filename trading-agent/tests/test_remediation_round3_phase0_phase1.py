@@ -191,7 +191,7 @@ async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
         notifier.bot.send_message = AsyncMock(side_effect=Exception("Network drop"))
 
         # Send alert that fails
-        await notifier._send("Critical DB error occurred", prefix="🚨 ERROR")
+        await notifier._send("Critical DB error occurred", prefix="[DARURAT] ERROR")
 
         # Outbox should have 1 item in memory and on disk
         assert len(AgentNotifier._outbox) == 1

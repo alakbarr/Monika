@@ -110,6 +110,7 @@ class SingleTimeframeResult:
     timeframe: str
     statistics: OutcomeStatistics
     top_matches: List[PatternMatch] = field(default_factory=list)
+    top_outcomes: List[PatternOutcome] = field(default_factory=list)
     avg_similarity: float = 0.0
     cross_symbol_matches: List[PatternMatch] = field(default_factory=list)
 
@@ -126,6 +127,7 @@ class SingleTimeframeResult:
             timeframe=timeframe,
             statistics=OutcomeStatistics(is_significant=False, reason="no_data"),
             top_matches=[],
+            top_outcomes=[],
             avg_similarity=0.0,
         )
 
@@ -202,11 +204,20 @@ class MultiTimeframeScreeningResult:
             else:
                 lines.append(f"- Directional sample not statistically significant (p={stats.p_value:.2f})")
 
-            # Top matches list
-            if res.top_matches:
+            # Top matches list with forward outcomes
+            if res.top_outcomes:
+                lines.append("| Date | Sim | Context | Source | Direction | Fwd Return (1d/4h) | MFE/MAE (ATR) |")
+                lines.append("|---|---|---|---|---|---|---|")
+                for o in res.top_outcomes[:5]:
+                    m = o.match
+                    dt_str = datetime.fromtimestamp(m.end_time, tz=timezone.utc).strftime("%Y-%m-%d")
+                    src = f"{m.source_symbol} (0.5x)" if m.is_cross_symbol else "Same-Asset"
+                    fwd_ret = o.forward_returns.get("1d", o.forward_returns.get("4h", o.forward_returns.get("1h", 0.0)))
+                    lines.append(f"| {dt_str} | {m.similarity:.1%} | {m.context_label} | {src} | {o.direction.upper()} | {fwd_ret:+.2f} ATR | +{o.mfe_atr:.1f} / -{abs(o.mae_atr):.1f} |")
+            elif res.top_matches:
                 lines.append("| Date | Sim | Context | Source |")
                 lines.append("|---|---|---|---|")
-                for m in res.top_matches[:3]:
+                for m in res.top_matches[:5]:
                     dt_str = datetime.fromtimestamp(m.end_time, tz=timezone.utc).strftime("%Y-%m-%d")
                     src = f"{m.source_symbol} (0.5x)" if m.is_cross_symbol else "Same-Asset"
                     lines.append(f"| {dt_str} | {m.similarity:.1%} | {m.context_label} | {src} |")

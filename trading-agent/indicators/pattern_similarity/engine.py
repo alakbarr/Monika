@@ -154,11 +154,13 @@ class PatternSimilarityEngine:
         )
 
         avg_sim = float(np.mean([m.similarity for m in matches])) if matches else 0.0
+        sorted_outcomes = sorted(outcomes, key=lambda o: o.match.similarity, reverse=True)[:5] if outcomes else []
 
         return SingleTimeframeResult(
             timeframe=timeframe,
             statistics=stats,
             top_matches=sorted(matches, key=lambda m: m.similarity, reverse=True)[:5],
+            top_outcomes=sorted_outcomes,
             avg_similarity=avg_sim,
         )
 

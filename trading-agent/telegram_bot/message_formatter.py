@@ -16,6 +16,38 @@ Converts trading agent outputs into clean monospace banking ledgers / dispatch s
 from typing import Any, Dict, List, Optional, Sequence
 from datetime import datetime, timezone
 
+DEFAULT_USD_IDR_RATE = 16250.0
+
+
+def convert_usd_to_idr(usd_amount: float, exchange_rate: float = DEFAULT_USD_IDR_RATE) -> float:
+    """Convert USD amount to Indonesian Rupiah (IDR)."""
+    try:
+        return float(usd_amount) * float(exchange_rate)
+    except Exception:
+        return 0.0
+
+
+def format_idr_currency(idr_amount: float) -> str:
+    """Format numeric IDR value with Indonesian thousand separators (e.g. 'Rp 2.450.000')."""
+    try:
+        sign = "-" if idr_amount < 0 else ""
+        abs_val = abs(idr_amount)
+        return f"{sign}Rp {abs_val:,.0f}".replace(",", ".")
+    except Exception:
+        return f"Rp {idr_amount}"
+
+
+def format_currency_dual(usd_amount: float, exchange_rate: float = DEFAULT_USD_IDR_RATE) -> str:
+    """Format USD amount with dual IDR representation (e.g. '$150.00 (~Rp 2.437.500)')."""
+    try:
+        usd_val = float(usd_amount)
+        idr_str = format_idr_currency(convert_usd_to_idr(usd_val, exchange_rate))
+        sign = "-" if usd_val < 0 else ""
+        abs_usd = abs(usd_val)
+        return f"{sign}${abs_usd:,.2f} (~{idr_str})"
+    except Exception:
+        return f"${usd_amount}"
+
 
 def make_header(title: str, width: int = 46) -> str:
     """Create a telegraph dispatch slip header."""
@@ -37,6 +69,9 @@ def format_status_slip(
     drawdown: str,
     last_analysis: str,
     now_str: Optional[str] = None,
+    balance: Optional[str] = None,
+    equity: Optional[str] = None,
+    margin_level: Optional[str] = None,
     width: int = 46,
 ) -> str:
     """Format agent status as teletype slip."""
@@ -50,15 +85,22 @@ def format_status_slip(
         f"STATUS         : {stamp}",
         f"TIME           : {now_str}",
         "-" * width,
-        "PORTFOLIO:",
-        f"  Open Positions : {pos_count} LOT",
-        f"  Daily P&L      : {daily_pnl}",
-        f"  Drawdown       : {drawdown}",
+    ]
+    if balance is not None:
+        lines.append(f"Balance        : {balance}")
+    if equity is not None:
+        lines.append(f"Equity         : {equity}")
+    if margin_level is not None:
+        lines.append(f"Margin Level   : {margin_level}")
+    lines.extend([
+        f"Open Positions : {pos_count} LOT",
+        f"Daily P&L      : {daily_pnl}",
+        f"Drawdown       : {drawdown}",
         "-" * width,
         f"Last Analysis  : {last_analysis}",
         make_footer(width),
         "```",
-    ]
+    ])
     return "\n".join(lines)
 
 
@@ -95,6 +137,7 @@ def format_risk_slip(
     daily_pnl: Optional[str] = None,
     drawdown: Optional[str] = None,
     reason: Optional[str] = None,
+    circuit_breaker: Optional[str] = None,
     width: int = 46,
 ) -> str:
     """Format risk state as teletype slip."""
@@ -107,6 +150,8 @@ def format_risk_slip(
         f"STREAK POL.  : {streak_policy.upper()}",
         f"SUSPENDED    : {susp_str}",
     ]
+    if circuit_breaker is not None:
+        lines.append(f"CIRCUIT BRK. : {circuit_breaker}")
     if reason:
         lines.append(f"REASON       : {reason}")
     lines.append("-" * width)

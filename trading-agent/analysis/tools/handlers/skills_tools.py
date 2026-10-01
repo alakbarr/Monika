@@ -32,10 +32,14 @@ def _extract_summary(skill_name: str) -> str:
     return f"Playbook for {skill_name.replace('_', ' ').title()}"
 
 
+from skills.usage_tracker import SkillUsageTracker
+from skills.loader import get_skill_metadata
+
+
 async def handle_skills_list(args: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
-    """Return an index of all available institutional skills and playbooks."""
+    """Return an index of all available institutional skills, versions, and usage statistics."""
     all_names = list_skills()
-    skills_meta: List[Dict[str, str]] = []
+    skills_meta: List[Dict[str, Any]] = []
 
     for name in all_names:
         category = "tactical"
@@ -47,10 +51,21 @@ async def handle_skills_list(args: Optional[Dict[str, Any]] = None, **kwargs) ->
             category = "discipline"
 
         summary = _extract_summary(name)
+        meta = get_skill_metadata(name) or {}
+        version = meta.get("version", "1.0")
+        
+        # Load usage telemetry
+        target_dir = _SKILLS_DIR / name
+        usage = SkillUsageTracker.load(target_dir if target_dir.exists() else _SKILLS_DIR)
+        
         skills_meta.append({
             "name": name,
             "category": category,
+            "version": version,
             "summary": summary,
+            "use_count": usage.get("use_count", 0),
+            "view_count": usage.get("view_count", 0),
+            "last_used_at": usage.get("last_used_at"),
         })
 
     return {
@@ -72,9 +87,14 @@ async def handle_skill_view(args: Dict[str, Any], **kwargs) -> Dict[str, Any]:
 
     try:
         content = load_skill(skill_name)
+        target_dir = _SKILLS_DIR / skill_name
+        if target_dir.exists():
+            SkillUsageTracker.record_view(target_dir)
+        meta = get_skill_metadata(skill_name) or {}
         return {
             "status": "success",
             "skill_name": skill_name,
+            "version": meta.get("version", "1.0"),
             "length_chars": len(content),
             "content": content,
         }
@@ -110,3 +130,56 @@ class SkillViewHandler(ToolHandler):
 
     async def execute(self, args: Dict[str, Any], session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> Any:
         return await handle_skill_view(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_create_skill(args: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    """Create and persist a new skill markdown file using SkillManager."""
+    skill_name = args.get("skill_name", "").strip().removesuffix(".md").replace(" ", "_").lower()
+    content = args.get("content", "").strip()
+    category = args.get("category", "trading").strip()
+    description = args.get("description", "").strip()
+
+    if not skill_name:
+        return {"status": "error", "message": "Missing 'skill_name' parameter."}
+    if not content:
+        return {"status": "error", "message": "Missing 'content' parameter."}
+
+    # Ensure valid frontmatter
+    if not content.startswith("---"):
+        frontmatter = f"---\nname: {skill_name}\ndescription: {description or skill_name}\ncategory: {category}\n---\n\n"
+        content = frontmatter + content
+
+    try:
+        from skills.skill_manager import SkillManager
+        manager = SkillManager()
+        success, message, created_path = manager.create_skill(
+            name=skill_name,
+            content=content,
+            category=category,
+        )
+        if success:
+            return {
+                "status": "success",
+                "message": f"Successfully created skill '{skill_name}' at {created_path}",
+                "skill_name": skill_name,
+                "category": category,
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to create skill '{skill_name}': {message}",
+            }
+    except Exception as e:
+        logger.error(f"Error creating skill '{skill_name}': {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@register_tool("create_skill", aliases=["learn_skill", "save_skill", "register_skill"], category="KNOWLEDGE", parallel_safe=False)
+class CreateSkillHandler(ToolHandler):
+    name = "create_skill"
+    category = "KNOWLEDGE"
+    parallel_safe = False
+
+    async def execute(self, args: Dict[str, Any], session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_create_skill(args, session=session, executor=executor, **kwargs)
+

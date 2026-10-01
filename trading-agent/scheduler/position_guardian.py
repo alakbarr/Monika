@@ -246,7 +246,7 @@ class PositionGuardian:
                     try:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_info(
-                            f"🎯 <b>Tranche Scale-Out: Leg 1 Closed</b>\n"
+                            f"[TARGET] <b>Tranche Scale-Out: Leg 1 Closed</b>\n"
                             f"Symbol: <b>{runner_leg.symbol}</b> | Ticket: <code>{runner_leg.mt5_ticket}</code>\n"
                             f"SL moved to Breakeven: <code>{be_price}</code>\n"
                             f"Leg 2 runner running risk-free with Trailing ATR active."
@@ -267,7 +267,7 @@ class PositionGuardian:
         """Mengeksekusi tindakan proteksi pada posisi terkait."""
 
         msg = (
-            f"⚠️ <b>News Alert — Open Position</b>\n\n"
+            f"[PERINGATAN] <b>News Alert — Open Position</b>\n\n"
             f"Position: {position.symbol} {position.direction.upper()} "
             f"{position.volume}L @ {position.entry_price}\n"
             f"SL: {position.sl} | TP: {position.tp}\n\n"
@@ -431,10 +431,10 @@ class PositionGuardian:
                 await session.commit()
                 
                 # Notifikasi hasil
-                lines = [f"🌙 <b>Friday Auto-Close Selesai</b>\n"]
+                lines = [f" <b>Friday Auto-Close Selesai</b>\n"]
                 lines.append(f"Posisi ditutup: <b>{closed_count}/{len(at_risk)}</b>")
                 if close_errors:
-                    lines.append(f"\n⚠️ Gagal: {', '.join(close_errors[:3])}")
+                    lines.append(f"\n[PERINGATAN] Gagal: {', '.join(close_errors[:3])}")
                 lines.append("\nSemua posisi at-risk telah diamankan dari weekend gap.")
                 
                 try:
@@ -451,7 +451,7 @@ class PositionGuardian:
             
             else:
                 # ALERT-ONLY MODE (default): Kirim alert kritis
-                lines = ["🌙 <b>CRITICAL: Market closing in <60 minutes</b>\n"]
+                lines = [" <b>CRITICAL: Market closing in <60 minutes</b>\n"]
                 lines.append("Open positions at weekend gap risk:")
                 for p in at_risk:
                     lines.append(f"• {p.symbol} {p.direction.upper()} {p.volume}L @ {p.entry_price} | SL:{p.sl}")

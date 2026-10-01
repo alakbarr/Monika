@@ -74,8 +74,8 @@ def test_telegram_bot_plugin_builders():
     assert "MONIKA PLUG-IN HARNESS" in text
     assert "Macro To Asset" in text
     assert "Technical Scalping" in text
-    assert "🟢" in text
-    assert "⚪" in text
+    assert "[AKTIF]" in text
+    assert "[NONAKTIF]" in text
 
     markup = bot._build_plugins_keyboard(sample_plugins)
     assert markup is not None
@@ -83,8 +83,8 @@ def test_telegram_bot_plugin_builders():
     btn_texts = [btn.text for btn in buttons]
     callbacks = [btn.callback_data for btn in buttons]
 
-    assert any("🟢" in t and "Macro To Asset" in t for t in btn_texts)
-    assert any("⚪" in t and "Technical" in t for t in btn_texts)
+    assert any("[AKTIF]" in t and "Macro To Asset" in t for t in btn_texts)
+    assert any("[NONAKTIF]" in t and "Technical" in t for t in btn_texts)
     assert any("plg:t:macro_to_asset" in c for c in callbacks)
     assert any("plg:cat" in c for c in callbacks)
     assert any("plg:ref" in c for c in callbacks)

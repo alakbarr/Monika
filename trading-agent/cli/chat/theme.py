@@ -26,13 +26,13 @@ from cli.theme import (
 )
 
 # Semantic UI Glyphs
-GLYPH_USER = "❯"
+GLYPH_USER = ""
 GLYPH_AGENT = "◈"
-GLYPH_THINK = "💭"
-GLYPH_TOOL = "⚙"
-GLYPH_SUCCESS = "✔"
-GLYPH_ERROR = "✖"
-GLYPH_WARN = "⚠"
+GLYPH_THINK = ""
+GLYPH_TOOL = ""
+GLYPH_SUCCESS = "[OK]"
+GLYPH_ERROR = ""
+GLYPH_WARN = "[PERINGATAN]"
 GLYPH_ARROW_RIGHT = "→"
 GLYPH_DOT = "•"
 GLYPH_BRANCH = "├──"

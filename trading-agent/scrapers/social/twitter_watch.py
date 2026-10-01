@@ -67,7 +67,7 @@ class TwitterWatchScraper(BaseScraper):
                     try:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
-                            "⚠️ <b>Twitter Scraper Alert</b>\n"
+                            "[PERINGATAN] <b>Twitter Scraper Alert</b>\n"
                             "All Twitter sessions are quarantined! "
                             "Please refresh cookies in <code>data/sessions/</code>. "
                             "Twitter-sourced news will be missing from analysis."

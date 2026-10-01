@@ -10,6 +10,8 @@ Telegram, WebSocket UI, or logs.
 import re
 from typing import List, Optional, Set
 
+from telegram_bot.sanitizer import ASCII_EMOTICON_PATTERN, EMOJI_PATTERN
+
 SECRET_PATTERNS = [
     (re.compile(r"(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\.]{12,})['\"]?", re.IGNORECASE), "[REDACTED_SECRET]"),
     (re.compile(r"bot\d{8,12}:[A-Za-z0-9_-]{35,}", re.IGNORECASE), "[REDACTED_TELEGRAM_TOKEN]"),
@@ -29,7 +31,7 @@ STRIP_TAG_PAIRS = [
 class StatefulStreamScrubber:
     """
     Stateful streaming text scrubber with boundary buffering.
-    Safely eliminates reasoning blocks and internal metadata across partial stream chunks.
+    Safely eliminates reasoning blocks, internal metadata, and emojis/emoticons across partial stream chunks.
     """
 
     def __init__(
@@ -37,10 +39,12 @@ class StatefulStreamScrubber:
         strip_thinking: bool = True,
         strip_internal_tags: bool = True,
         redact_secrets: bool = True,
+        strip_emojis: bool = True,
     ):
         self.strip_thinking = strip_thinking
         self.strip_internal_tags = strip_internal_tags
         self.redact_secrets = redact_secrets
+        self.strip_emojis = strip_emojis
 
         self._buffer: str = ""
         self._in_think: bool = False
@@ -145,6 +149,10 @@ class StatefulStreamScrubber:
                     break
 
         emitted = "".join(output_chunks)
+        if self.strip_emojis and emitted:
+            emitted = EMOJI_PATTERN.sub("", emitted)
+            emitted = ASCII_EMOTICON_PATTERN.sub("", emitted)
+            emitted = re.sub(r"[ \t]{2,}", " ", emitted)
         if self.redact_secrets and emitted:
             emitted = self._apply_redactions(emitted)
         return emitted
@@ -157,6 +165,10 @@ class StatefulStreamScrubber:
         self._buffer = ""
         if self._in_think or self._in_internal_tag:
             return ""
+        if self.strip_emojis and remaining:
+            remaining = EMOJI_PATTERN.sub("", remaining)
+            remaining = ASCII_EMOTICON_PATTERN.sub("", remaining)
+            remaining = re.sub(r"[ \t]{2,}", " ", remaining)
         if self.redact_secrets and remaining:
             remaining = self._apply_redactions(remaining)
         return remaining
@@ -174,6 +186,7 @@ class StatefulStreamScrubber:
         strip_thinking: bool = True,
         strip_internal_tags: bool = True,
         redact_secrets: bool = True,
+        strip_emojis: bool = True,
     ) -> str:
         """Convenience method to scrub a complete text string in one pass."""
         if not text:
@@ -182,6 +195,7 @@ class StatefulStreamScrubber:
             strip_thinking=strip_thinking,
             strip_internal_tags=strip_internal_tags,
             redact_secrets=redact_secrets,
+            strip_emojis=strip_emojis,
         )
         emitted = scrubber.process_delta(text)
         flushed = scrubber.flush()

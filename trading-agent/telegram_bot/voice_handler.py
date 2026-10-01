@@ -53,7 +53,7 @@ class VoiceHandler:
 
         status_msg = None
         try:
-            status_msg = await update.message.reply_text("🎤 Transcribing...")
+            status_msg = await update.message.reply_text("[PROSES] Mentranskripsikan rekaman suara...")
         except Exception as e:
             logger.debug(f"[VoiceHandler] Failed to send initial transcribing message: {e}")
 
@@ -66,7 +66,7 @@ class VoiceHandler:
 
             if not transcript or not transcript.strip():
                 if status_msg:
-                    await status_msg.edit_text("❌ Tidak dapat mengenali suara dalam pesan audio.")
+                    await status_msg.edit_text("[GAGAL] Tidak dapat mengenali suara dalam pesan audio.")
                 return
 
             transcript = transcript.strip()
@@ -77,7 +77,7 @@ class VoiceHandler:
             if proposal.is_trade_command:
                 if proposal.error:
                     if status_msg:
-                        await status_msg.edit_text(f"🎤 \"{transcript}\"\n\n⚠️ {proposal.error}")
+                        await status_msg.edit_text(f"[SUARA] \"{transcript}\"\n\n[PERINGATAN] {proposal.error}")
                     return
 
                 from risk.approval_hub import ApprovalHub
@@ -103,16 +103,16 @@ class VoiceHandler:
                 tp_str = f" | TP: `{proposal.take_profit}`" if proposal.take_profit else ""
                 kb = InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton(f"✅ EKSEKUSI: {proposal.action} {proposal.lots} {proposal.symbol}", callback_data=f"confirm:{req_id}"),
-                        InlineKeyboardButton("❌ BATALKAN", callback_data=f"reject:{req_id}"),
+                        InlineKeyboardButton(f"[EKSEKUSI] {proposal.action} {proposal.lots} {proposal.symbol}", callback_data=f"confirm:{req_id}"),
+                        InlineKeyboardButton("[BATALKAN]", callback_data=f"reject:{req_id}"),
                     ]
                 ])
                 card_text = (
-                    f"🎤 *Perintah Suara Terdeteksi*\n"
-                    f"📝 _\"{transcript}\"_\n\n"
-                    f"📌 *Tindakan*: `{proposal.action}` *{proposal.symbol}*\n"
-                    f"📦 *Volume*: `{proposal.lots} Lot`{sl_str}{tp_str}\n\n"
-                    f"⚠️ *Konfirmasi*: Tekan tombol di bawah untuk mengeksekusi order ke broker."
+                    f"*Perintah Suara Terdeteksi*\n"
+                    f"• *Transkrip*: \"{transcript}\"\n"
+                    f"• *Tindakan*: `{proposal.action}` *{proposal.symbol}*\n"
+                    f"• *Volume*: `{proposal.lots} Lot`{sl_str}{tp_str}\n\n"
+                    f"*Konfirmasi*: Tekan tombol di bawah untuk menyetujui atau membatalkan eksekusi order."
                 )
                 if status_msg:
                     await status_msg.edit_text(card_text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
@@ -121,7 +121,7 @@ class VoiceHandler:
                 return
 
             # Brief transcription acknowledgment for conversational text
-            ack_text = f"🎤 Heard: \"{transcript}\""
+            ack_text = f"[SUARA] \"{transcript}\""
             if status_msg:
                 try:
                     await status_msg.edit_text(ack_text)
@@ -208,7 +208,7 @@ class VoiceHandler:
             logger.error(f"[VoiceHandler] Error handling voice memo: {e}", exc_info=True)
             if status_msg:
                 try:
-                    await status_msg.edit_text(f"❌ Transkripsi gagal: {e}")
+                    await status_msg.edit_text(f"[GAGAL] Transkripsi gagal: {e}")
                 except Exception:
                     pass
 
@@ -219,7 +219,11 @@ class VoiceHandler:
         # 1. Try via LLM provider factory
         try:
             from analysis.providers.llm_factory import get_client_for_task
-            client = get_client_for_task("chat_telegram", self.settings)
+            task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
+            if "voice_transcription" in task_roles:
+                client = get_client_for_task("voice_transcription", self.settings)
+            else:
+                client = get_client_for_task("chat_telegram", self.settings)
         except Exception:
             client = None
 
@@ -259,8 +263,16 @@ class VoiceHandler:
             try:
                 import aiohttp
                 b64_audio = base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
-                chat_role = self.settings.get("llm", {}).get("task_roles", {}).get("chat_telegram", {})
-                model_name = chat_role.get("primary") or chat_role.get("model", "gemini-3.5-flash-lite")
+                task_roles = self.settings.get("llm", {}).get("task_roles", {})
+                voice_role = task_roles.get("voice_transcription", {})
+                model_name = (
+                    self.settings.get("telegram", {}).get("voice_transcription_model")
+                    or voice_role.get("primary")
+                    or voice_role.get("model")
+                    or task_roles.get("chat_telegram", {}).get("primary")
+                    or task_roles.get("chat_telegram", {}).get("model")
+                    or "gemini-2.5-flash"
+                )
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                 headers = {
                     "x-goog-api-key": api_key,

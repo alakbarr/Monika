@@ -75,6 +75,7 @@ services:
       - agent_logs:/app/trading-agent/logs
       - agent_data:/app/trading-agent/data
       - ../backups:/app/trading-agent/backups
+      - /opt/mt5:/opt/mt5:ro
     ports:
       # Dashboard API exposed on localhost (reverse proxy via Nginx / Caddy recommended)
       - "127.0.0.1:8000:8000"

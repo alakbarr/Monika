@@ -188,6 +188,7 @@ from agent.monitors import (
     run_scraper_loop,
     run_db_health_check,
     run_paper_trade_monitor,
+    run_margin_monitor,
 )
 
 _EMERGENCY_EXIT_CODE: Optional[int] = None
@@ -784,7 +785,7 @@ class TradingAgent:
             print(f"\n[FALLBACK] Approval timeout reached (5 minutes). Default: Rejected.")
             if self.telegram_bot:
                 asyncio.create_task(self.telegram_bot.send_notification(
-                    "⏳ Fallback approval timed out (5 minutes). Automated decision: *Rejected*."
+                    "[PROSES] Fallback approval timed out (5 minutes). Automated decision: *Rejected*."
                 ))
         elif tg_event.is_set():
             approved = tg_result["approved"]
@@ -797,7 +798,7 @@ class TradingAgent:
             source = "CLI"
             if self.telegram_bot:
                 asyncio.create_task(self.telegram_bot.send_notification(
-                    f"ℹ️ Fallback decision received from CLI: {'Approved' if approved else 'Rejected'}"
+                    f"[INFO] Fallback decision received from CLI: {'Approved' if approved else 'Rejected'}"
                 ))
 
         if approved and always:
@@ -856,7 +857,7 @@ class TradingAgent:
                 try:
                     if self.telegram_bot:
                         await self.telegram_bot.send_notification(
-                            "⚠️ MT5 tidak terhubung setelah restart!\n"
+                            "[PERINGATAN] MT5 tidak terhubung setelah restart!\n"
                             "Agent berjalan dalam mode degraded.\n"
                             "Position monitoring tetap berjalan; eksekusi baru ditunda."
                         )
@@ -1087,7 +1088,7 @@ class TradingAgent:
                         pass
                     
                     await self.telegram_bot.send_notification(
-                        f"🔄 *Agent Restarted Successfully*\n\n"
+                        f"[SYNC] *Agent Restarted Successfully*\n\n"
                         f"All systems online.\n"
                         f"Open positions synced: {open_pos_count}\n"
                         f"EA dead-man's switch: Reset\n\n"
@@ -1285,6 +1286,7 @@ class TradingAgent:
         _launch_task("FlashCrashDetector", self._run_flash_crash_detector, "flash_crash_detector")
         _launch_task("TickStream", self._run_tick_stream_loop, "tick_stream")
         _launch_task("FloatingDrawdownMonitor", self._run_floating_drawdown_monitor, "floating_drawdown_monitor")
+        _launch_task("MarginGuardian", self._run_margin_monitor, "margin_guardian")
         _launch_task("PaperTradeMonitor", self._run_paper_trade_monitor, "paper_trade_monitor")
         _launch_task("DBHealthCheck", self._run_db_health_check, "db_health_check")
         _launch_task("ScraperLoop", self._run_scraper_loop, "scraper_loop")
@@ -1585,9 +1587,9 @@ class TradingAgent:
                             self.mt5_health_checker.record_failure()
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_critical(
-                            f"🔌 <b>MT5 Connection Lost</b>\n"
+                            f"[PLUGIN] <b>MT5 Connection Lost</b>\n"
                             f"MT5 has been disconnected for ~{consecutive_failures} minutes.\n"
-                            f"⚠️ EA dead-man switch may trigger in ~2 minutes if not reconnected!\n"
+                            f"[PERINGATAN] EA dead-man switch may trigger in ~2 minutes if not reconnected!\n"
                             f"Price data is stale. Analysis quality is degraded.\n"
                             f"Please check MT5 terminal immediately!"
                         )
@@ -1602,7 +1604,7 @@ class TradingAgent:
                             asyncio.create_task(self.market_data_scheduler.sync_now())
                         try:
                             from utils.infra.notifier import AgentNotifier
-                            await AgentNotifier().send_info("✅ <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched.")
+                            await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched.")
                         except Exception:
                             pass
                     consecutive_failures = 0  # Reset on successful connection
@@ -1650,6 +1652,10 @@ class TradingAgent:
     async def _run_floating_drawdown_monitor(self):
         """Monitor floating drawdown."""
         await run_floating_drawdown_monitor(self)
+
+    async def _run_margin_monitor(self):
+        """Monitor account margin level and emit warning when critical (< 200%)."""
+        await run_margin_monitor(self)
 
     async def _run_db_health_check(self):
         """Monitor Database connection pool health."""
@@ -1713,7 +1719,7 @@ class TradingAgent:
                     ])
                     if self.telegram_bot:
                         await self.telegram_bot.send_notification(
-                            f"⚠️ *Agent SHUTDOWN dengan posisi terbuka:*\n{pos_summary}\n\n"
+                            f"[PERINGATAN] *Agent SHUTDOWN dengan posisi terbuka:*\n{pos_summary}\n\n"
                             f"EA Dead-Man's Switch akan memproteksi posisi ini.\n"
                             f"MT5 terminal JANGAN ditutup!"
                         )
@@ -1773,7 +1779,7 @@ class TradingAgent:
         try:
             if self.telegram_bot:
                 await self.telegram_bot.send_notification(
-                    "🔴 *Agent stopped.* Graceful shutdown complete."
+                    "[KRITIS] *Agent stopped.* Graceful shutdown complete."
                 )
         except Exception:
             pass
@@ -1859,7 +1865,7 @@ class TradingAgent:
                 )
                 now  = datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC")
                 await self.telegram_bot.send_notification(
-                    f"🟢 *Agent Online*\n\n"
+                    f"[AKTIF] *Agent Online*\n\n"
                     f"Environment: `{env}`\n"
                     f"Assets: {assets}\n"
                     f"Started: {now}\n\n"

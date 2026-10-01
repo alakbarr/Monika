@@ -182,7 +182,7 @@ class SubagentWorker:
                 worker_id=self.spec.worker_id,
                 role=self.spec.role,
                 success=False,
-                content=f"[Timeout] Analisis {self.spec.role} melampaui batas waktu ({self.spec.timeout_seconds}s).",
+                content=f"[Timeout] Analysis by {self.spec.role} exceeded execution timeout ({self.spec.timeout_seconds}s).",
                 elapsed_seconds=round(elapsed, 2),
                 error=f"Timeout after {self.spec.timeout_seconds}s",
             )
@@ -196,7 +196,7 @@ class SubagentWorker:
                 worker_id=self.spec.worker_id,
                 role=self.spec.role,
                 success=False,
-                content=f"[Error] Analisis {self.spec.role} mengalami kesalahan: {e}",
+                content=f"[Error] Analysis by {self.spec.role} encountered an error: {e}",
                 elapsed_seconds=round(elapsed, 2),
                 error=str(e),
             )
@@ -258,7 +258,7 @@ class DynamicSubagentPool:
         async with self._semaphore:
             if progress_callback:
                 try:
-                    cb = progress_callback(f"⏳ Subagent aktif: {spec.role}...")
+                    cb = progress_callback(f"[PROSES] Subagent aktif: {spec.role}...")
                     if asyncio.iscoroutine(cb):
                         await cb
                 except Exception:
@@ -268,7 +268,7 @@ class DynamicSubagentPool:
             res = await worker.run()
 
             if progress_callback:
-                status_icon = "✅" if res.success else "⚠️"
+                status_icon = "[OK]" if res.success else "[PERINGATAN]"
                 try:
                     cb = progress_callback(f"{status_icon} Subagent selesai: {spec.role}")
                     if asyncio.iscoroutine(cb):
@@ -387,7 +387,7 @@ class DynamicSubagentPool:
                     "4. [ ] Energy / Inventory: Call `get_eia_oil_inventory` if investigating crude oil or energy inflation.\n"
                     "5. [ ] Calendar & Volatility: Call `get_economic_calendar`, `get_news_digest`, and `get_vix` / `get_dxy`."
                 ),
-                query=f"Riset makroekonomi, suku bunga, yield spreads, DXY/VIX, dan katalis ekonomi: {query}",
+                query=f"Conduct a comprehensive macroeconomic, interest rate trajectory, yield spread, DXY/VIX volatility, and economic catalyst investigation for: {query}",
                 tools=_filter_tools(macro_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -406,7 +406,7 @@ class DynamicSubagentPool:
                     "liquidity sweeps, Fibonacci retracements, and TimesFM quantile forecasts. "
                     "Highlight exact invalidation and key reaction levels."
                 ),
-                query=f"Riset struktur teknikal, zona SMC, likuiditas, dan proyeksi TimesFM: {query}",
+                query=f"Conduct a high-precision market structure, SMC zone, liquidity sweep, and TimesFM quantile forecast analysis for: {query}",
                 tools=_filter_tools(tech_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -425,7 +425,7 @@ class DynamicSubagentPool:
                     "funding rates, and market sentiment extremes (Fear & Greed). "
                     "Identify asymmetric crowded trade risks."
                 ),
-                query=f"Riset sentimen institusi (COT), posisi ritel, funding rates, dan skew pasar: {query}",
+                query=f"Investigate institutional COT positioning, retail sentiment skew, funding rates, and market positioning extremes for: {query}",
                 tools=_filter_tools(sent_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -457,7 +457,7 @@ class DynamicSubagentPool:
                         "Investigate institutional liquidity pools, buy-side/sell-side liquidity sweeps, "
                         "tick volume delta absorptions, and hidden stop hunts around critical highs/lows."
                     ),
-                    query=f"Investigasi order flow, penyerapan likuiditas, dan sweeping level: {query}",
+                    query=f"Investigate institutional order flow dynamics, liquidity absorption, and critical sweep levels for: {query}",
                     tools=_filter_tools(order_flow_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,
@@ -474,7 +474,7 @@ class DynamicSubagentPool:
                         "Investigate intermarket spillover effects, US Treasury yield spreads vs DXY, "
                         "commodity terms of trade, and cross-asset beta."
                     ),
-                    query=f"Investigasi korelasi lintas aset, yield spreads, dan transmisi pasar: {query}",
+                    query=f"Investigate cross-asset macro correlations, sovereign yield spreads, and intermarket transmission channels for: {query}",
                     tools=_filter_tools(cross_asset_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,
@@ -491,7 +491,7 @@ class DynamicSubagentPool:
                         "Investigate breaking headline risks, geopolitical escalation/de-escalation, "
                         "consensus whisper deviations, and post-news price narrative drift."
                     ),
-                    query=f"Investigasi dinamika berita terkini, risiko geopolitik, dan ekspektasi whisper: {query}",
+                    query=f"Investigate breaking news dynamics, geopolitical escalation risks, consensus whisper deviations, and post-release narrative drift for: {query}",
                     tools=_filter_tools(news_drift_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,

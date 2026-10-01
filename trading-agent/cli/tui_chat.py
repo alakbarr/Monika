@@ -168,12 +168,12 @@ class ChatScreen(Screen):
             except Exception:
                 pass
             transcript = self.query_one("#transcript", RichLog)
-            transcript.write("[dim green]✔ Connected to live streaming Agent WebSocket engine.[/]\n")
+            transcript.write("[dim green][OK] Connected to live streaming Agent WebSocket engine.[/]\n")
             return True
         except Exception:
             await self._close_ws()
             transcript = self.query_one("#transcript", RichLog)
-            transcript.write("[dim yellow]ℹ Dashboard server not active. Operating in standalone local mode.[/]\n")
+            transcript.write("[dim yellow][INFO] Dashboard server not active. Operating in standalone local mode.[/]\n")
             return False
 
     async def _ensure_ws(self) -> bool:
@@ -193,13 +193,13 @@ class ChatScreen(Screen):
         if ws is not None and is_ws_alive(ws):
             try:
                 await ws.send_json({"type": "interrupt"})
-                transcript.write("[bold yellow]🛑 Sent interrupt signal to agent.[/]")
+                transcript.write("[bold yellow][STOP] Sent interrupt signal to agent.[/]")
                 return
             except Exception as e:
                 logger.warning(f"[TUI Chat] Failed sending WS interrupt: {e}")
         if self._local_agent:
             self._local_agent.interrupt("Turn interrupted by user.")
-            transcript.write("[bold yellow]🛑 Interrupted local agent turn.[/]")
+            transcript.write("[bold yellow][STOP] Interrupted local agent turn.[/]")
 
     async def action_clear_transcript(self) -> None:
         """Clear transcript messages."""
@@ -238,7 +238,7 @@ class ChatScreen(Screen):
                 await self._run_local_turn(text)
         except Exception as e:
             logger.error(f"[TUI Chat] Error in turn execution: {e}", exc_info=True)
-            transcript.write(f"[bold red]❌ Failed to process request:[/] {e}\n")
+            transcript.write(f"[bold red][GAGAL] Failed to process request:[/] {e}\n")
         finally:
             self._is_generating = False
 
@@ -274,7 +274,7 @@ class ChatScreen(Screen):
         transcript = self.query_one("#transcript", RichLog)
 
         if not await self._ensure_ws() or self._ws is None:
-            transcript.write("[dim yellow]ℹ WebSocket disconnected. Falling back to local engine...[/]\n")
+            transcript.write("[dim yellow][INFO] WebSocket disconnected. Falling back to local engine...[/]\n")
             await self._run_local_turn(text)
             return
 
@@ -290,11 +290,11 @@ class ChatScreen(Screen):
                     await ws.send_json({"type": "message", "text": text})
                 except Exception as retry_err:
                     logger.error(f"[TUI Chat] WebSocket retry failed: {retry_err}")
-                    transcript.write("[dim yellow]ℹ WebSocket disconnected. Falling back to local engine...[/]\n")
+                    transcript.write("[dim yellow][INFO] WebSocket disconnected. Falling back to local engine...[/]\n")
                     await self._run_local_turn(text)
                     return
             else:
-                transcript.write("[dim yellow]ℹ WebSocket reconnection failed. Falling back to local engine...[/]\n")
+                transcript.write("[dim yellow][INFO] WebSocket reconnection failed. Falling back to local engine...[/]\n")
                 await self._run_local_turn(text)
                 return
 
@@ -304,11 +304,11 @@ class ChatScreen(Screen):
                 msg = await asyncio.wait_for(ws.receive(), timeout=60.0)
             except asyncio.TimeoutError:
                 logger.warning("[TUI Chat] WebSocket stream receive timeout after 60s")
-                transcript.write("[bold red]❌ WebSocket stream timed out after 60s.[/]\n")
+                transcript.write("[bold red][GAGAL] WebSocket stream timed out after 60s.[/]\n")
                 break
             except (aiohttp.ClientError, ConnectionResetError, OSError) as recv_err:
                 logger.warning(f"[TUI Chat] WebSocket stream receive error: {recv_err}")
-                transcript.write("[bold red]❌ WebSocket connection dropped while receiving response stream.[/]\n")
+                transcript.write("[bold red][GAGAL] WebSocket connection dropped while receiving response stream.[/]\n")
                 break
 
             if msg.type != aiohttp.WSMsgType.TEXT:
@@ -332,17 +332,17 @@ class ChatScreen(Screen):
                     pass
             elif etype == "tool_start":
                 tool = data.get("tool", "")
-                transcript.write(f"[dim cyan]🔧 Invoking tool:[/] [white]{tool}[/]")
+                transcript.write(f"[dim cyan][TOOL] Invoking tool:[/] [white]{tool}[/]")
             elif etype == "tool_result":
                 tool = data.get("tool", "")
                 summary = data.get("summary", "")
-                transcript.write(f"[dim green]✔ Tool {tool}:[/] [dim]{summary}[/]")
+                transcript.write(f"[dim green][OK] Tool {tool}:[/] [dim]{summary}[/]")
             elif etype == "approval_request":
                 action = data.get("action", {})
                 self._pending_action_id = action.get("id")
                 desc = action.get("description", "Proposed trade action")
                 transcript.write(
-                    f"\n[bold yellow]⚠️ APPROVAL REQUIRED:[/] {desc}\n"
+                    f"\n[bold yellow][PERINGATAN] APPROVAL REQUIRED:[/] {desc}\n"
                     f"[dim]Modal prompt active or type [bold green]/allow[/], [bold cyan]/session[/], or [bold red]/deny[/].[/]\n"
                 )
                 try:
@@ -372,7 +372,7 @@ class ChatScreen(Screen):
                 except Exception:
                     pass
                 if etype == "error":
-                    transcript.write(f"[bold red]❌ Error:[/] {data.get('message', 'Unknown error')}\n")
+                    transcript.write(f"[bold red][GAGAL] Error:[/] {data.get('message', 'Unknown error')}\n")
                 else:
                     transcript.write("[yellow]Turn was interrupted by operator.[/]\n")
                 break
@@ -410,12 +410,12 @@ class ChatScreen(Screen):
             if pending:
                 self._pending_action_id = pending.id
                 transcript.write(
-                    f"\n[bold yellow]⚠️ APPROVAL REQUIRED:[/] {pending.description}\n"
+                    f"\n[bold yellow][PERINGATAN] APPROVAL REQUIRED:[/] {pending.description}\n"
                     f"[dim]Type [bold green]/allow[/] to execute, or [bold red]/deny[/] to cancel.[/]\n"
                 )
         except Exception as e:
             logger.error(f"[TUI Chat] Error in local agent turn: {e}", exc_info=True)
-            transcript.write(f"[bold red]❌ Error processing request:[/] {e}\n")
+            transcript.write(f"[bold red][GAGAL] Error processing request:[/] {e}\n")
 
 
 # -------------------------------------------------------------------------------

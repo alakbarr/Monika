@@ -121,17 +121,20 @@ class RunCardGenerator:
 
         # 3. Model Routing Matrix
         llm_cfg = cfg.get("llm", {})
+        task_roles = llm_cfg.get("task_roles", {})
         models_cfg = llm_cfg.get("models", {})
+        def_model = llm_cfg.get("default_model", "")
+        def_prov = llm_cfg.get("default_provider", "openrouter")
         model_routing = {
-            "primary_provider": llm_cfg.get("provider", "gemini"),
-            "fallback_provider": llm_cfg.get("fallback_provider", "groq"),
-            "fundamental": models_cfg.get("fundamental", "gemini-2.5-flash"),
-            "debate_bull": models_cfg.get("debate_bull", "gemini-2.5-pro"),
-            "debate_bear": models_cfg.get("debate_bear", "gemini-2.5-pro"),
-            "investment_judge": models_cfg.get("investment_judge", "gemini-2.5-pro"),
-            "trade_reflection": models_cfg.get("trade_reflection", "gemini-2.5-flash"),
-            "risk_analysis": models_cfg.get("risk_analysis", "gemini-2.5-flash"),
-            "macro_research": models_cfg.get("macro_research", "gemini-2.5-flash"),
+            "primary_provider": llm_cfg.get("provider", def_prov),
+            "fallback_provider": llm_cfg.get("fallback_provider", "openrouter"),
+            "fundamental": task_roles.get("stage1_fundamental", {}).get("primary") or models_cfg.get("fundamental", def_model),
+            "debate_bull": task_roles.get("debate_bull", {}).get("primary") or models_cfg.get("debate_bull", def_model),
+            "debate_bear": task_roles.get("debate_bear", {}).get("primary") or models_cfg.get("debate_bear", def_model),
+            "investment_judge": task_roles.get("debate_judge", {}).get("primary") or models_cfg.get("investment_judge", def_model),
+            "trade_reflection": task_roles.get("trade_reflection", {}).get("primary") or models_cfg.get("trade_reflection", def_model),
+            "risk_analysis": task_roles.get("risk_gate", {}).get("primary") or models_cfg.get("risk_analysis", def_model),
+            "macro_research": task_roles.get("macro_analyst", {}).get("primary") or models_cfg.get("macro_research", def_model),
         }
 
         # 4. Institutional Invariant Checklist

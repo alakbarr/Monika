@@ -229,6 +229,19 @@ class MacroPreprocessor:
             
             trend_strength = min(10, max(1, abs(recent_change) // 2000 + 1)) if len(lev_nets) >= 2 else 1
             
+            # Rolling Percentile Calculation if history is present
+            hist_rows = rows_by_market.get(m_code, [])
+            pctile = None
+            if len(hist_rows) >= 4:
+                try:
+                    all_pcts = [
+                        (float(r.leveraged_long or 0) / (float(r.leveraged_long or 0) + float(r.leveraged_short or 0) or 1.0) * 100.0)
+                        for r in hist_rows
+                    ]
+                    pctile = round(sum(1 for p in all_pcts if p <= lev_long_pct) / len(all_pcts) * 100.0, 1)
+                except Exception:
+                    pctile = None
+
             # Thresholds
             symbol = MARKET_CODE_TO_SYMBOL.get(m_code, '')
             ext_long_th = 85.0
@@ -238,21 +251,23 @@ class MacroPreprocessor:
                 ext_short_th = 20.0
                 
             flag = 'none'
-            if lev_long_pct > ext_long_th:
+            if (pctile is not None and pctile >= 90.0) or lev_long_pct > ext_long_th:
                 flag = 'extreme_long'
-            elif lev_long_pct < ext_short_th:
+            elif (pctile is not None and pctile <= 10.0) or lev_long_pct < ext_short_th:
                 flag = 'extreme_short'
                 
             signal = 'neutral'
-            if lev_long_pct > 60.0:
+            if lev_long_pct > 60.0 or (pctile is not None and pctile >= 75.0):
                 signal = 'bullish'
-            elif lev_long_pct < 40.0:
+            elif lev_long_pct < 40.0 or (pctile is not None and pctile <= 25.0):
                 signal = 'bearish'
                 
             cot_entry = {
                 "asset_mgr_net": asset_mgr_net,
                 "leveraged_net": leveraged_net,
                 "leveraged_net_4wk_avg": int(lev_net_4wk_avg),
+                "leveraged_long_pct": round(lev_long_pct, 1),
+                "percentile_rank": pctile,
                 "signal": signal,
                 "flag": flag,
                 "trend": trend,
@@ -279,8 +294,9 @@ class MacroPreprocessor:
         return result
 
     async def compute_surprise_summary(self, session: AsyncSession) -> dict:
-        """Mengagregasi sentimen kalender ekonomi (surprise score) secara deterministik."""
+        """Mengagregasi sentimen kalender ekonomi (surprise score) secara deterministik dengan time decay & tier weighting."""
         two_weeks_ago = clock.now() - timedelta(days=14)
+        now_dt = clock.now()
         
         q = select(EconomicCalendar).where(
             EconomicCalendar.event_time >= two_weeks_ago,
@@ -297,14 +313,18 @@ class MacroPreprocessor:
             if cur not in currency_scores:
                 currency_scores[cur] = 0.0
             
-            # Simple weighting based on impact
-            weight = 1.0
+            # Exponential time decay (half-life ~ 4 days, fresh events dominate)
+            days_old = max(0.0, (now_dt - e.event_time).total_seconds() / 86400.0) if e.event_time else 0.0
+            decay = max(0.20, 2.71828 ** (-days_old / 4.0))
+
+            # Tiered impact weighting (High Tier-1 is 4.0x, Medium 1.5x, Low 0.5x)
+            impact_weight = 1.5
             if e.impact == 'high':
-                weight = 2.0
+                impact_weight = 4.0
             elif e.impact == 'low':
-                weight = 0.5
+                impact_weight = 0.5
             
-            currency_scores[cur] += float(e.surprise_score or 0.0) * weight
+            currency_scores[cur] += float(e.surprise_score or 0.0) * impact_weight * decay
             
         result = {}
         for cur, score in currency_scores.items():

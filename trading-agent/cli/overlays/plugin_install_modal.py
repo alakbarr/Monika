@@ -125,7 +125,7 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="install_dialog"):
-            yield Static("🔌 MONIKA PLUG-IN HARNESS INSTALLER", id="install_title")
+            yield Static("[PLUGIN] MONIKA PLUG-IN HARNESS INSTALLER", id="install_title")
             yield Static(
                 "Install verified community packages, Git repositories, or local .whl packages into Monika's virtualenv.",
                 id="install_desc",
@@ -147,8 +147,8 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
             yield RichLog(id="install_log", wrap=True, highlight=True, markup=True)
 
             with Horizontal(id="install_buttons"):
-                yield Button("📥 Install via pip", variant="primary", id="btn_run_install")
-                yield Button("✕ Cancel / Close", variant="default", id="btn_close_install")
+                yield Button(" Install via pip", variant="primary", id="btn_run_install")
+                yield Button(" Cancel / Close", variant="default", id="btn_close_install")
 
     def on_mount(self) -> None:
         log = self.query_one("#install_log", RichLog)
@@ -223,10 +223,10 @@ class PluginInstallModalScreen(ModalScreen[Optional[bool]]):
                 log.write(f"[dim]{line}[/]")
 
         if success:
-            log.write("[bold green]✓ Installation succeeded![/] Press [Esc] or Close to return.")
-            btn_run.label = "✓ Installed"
+            log.write("[bold green] Installation succeeded![/] Press [Esc] or Close to return.")
+            btn_run.label = " Installed"
         else:
-            log.write("[bold red]✗ Installation failed.[/] Check error details above.")
+            log.write("[bold red] Installation failed.[/] Check error details above.")
             btn_run.disabled = False
             btn_run.label = "Retry Install"
 

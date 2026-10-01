@@ -222,12 +222,12 @@ async def compute_edge_status(session: AsyncSession) -> dict:
                 try:
                     from utils.infra.notifier import AgentNotifier
                     await AgentNotifier().send_critical(
-                        f'🚨 <b>EDGE TRACKER — AUTO PAUSE AKTIF</b>\n\n'
+                        f'[DARURAT] <b>EDGE TRACKER — AUTO PAUSE AKTIF</b>\n\n'
                         f'Win Rate: <b>{win_rate*100:.1f}%</b> '
                         f'(breakeven: {BREAKEVEN_WIN_RATE*100:.1f}%)\n'
                         f'Z-Score: <b>{z_score:.2f}</b> (threshold: {AUTO_PAUSE_Z_THRESHOLD})\n'
                         f'Jumlah Trade: {total}\n\n'
-                        f'⚠️ Trading dihentikan otomatis. '
+                        f'[PERINGATAN] Trading dihentikan otomatis. '
                         f'Review strategi lalu gunakan /resume untuk melanjutkan.'
                     )
                 except Exception as notify_err:

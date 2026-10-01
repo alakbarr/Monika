@@ -99,7 +99,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             try:
                 from utils.infra.notifier import AgentNotifier
                 await AgentNotifier().send_critical(
-                    f"🔴 <b>Stage 1 Consecutive Failures: {scheduler._stage1_consecutive_failures}</b>\n"
+                    f"[KRITIS] <b>Stage 1 Consecutive Failures: {scheduler._stage1_consecutive_failures}</b>\n"
                     f"Last error: {fund_result.get('error', 'unknown')[:200]}"
                 )
             except Exception as notif_err:
@@ -210,7 +210,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
                         
                         if affected_positions:
                             summary['fundamental_shift_alert'] = {'reversals': reversals, 'affected_positions': affected_positions}
-                            alert_lines = ['⚠️ <b>FUNDAMENTAL NARRATIVE SHIFT DETECTED</b>\n']
+                            alert_lines = ['[PERINGATAN] <b>FUNDAMENTAL NARRATIVE SHIFT DETECTED</b>\n']
                             for curr, rev in reversals.items():
                                 alert_lines.append(f'• {curr}: {rev["from"]} → <b>{rev["to"]}</b>')
                             alert_lines.append('\n<b>Positions at risk:</b>')

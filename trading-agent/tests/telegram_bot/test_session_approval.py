@@ -18,14 +18,14 @@ def test_command_router_3_tier_buttons():
 
     row1 = buttons[0]
     assert len(row1) == 2
-    assert row1[0].text == "✅ Allow Once"
+    assert row1[0].text == "[OK] Allow Once"
     assert row1[0].callback_data == "confirm:act999"
-    assert row1[1].text == "⏳ Allow for Session (4h)"
+    assert row1[1].text == "[PROSES] Allow for Session (4h)"
     assert row1[1].callback_data == "allow_session:act999"
 
     row2 = buttons[1]
     assert len(row2) == 1
-    assert row2[0].text == "❌ Deny"
+    assert row2[0].text == "[GAGAL] Deny"
     assert row2[0].callback_data == "reject:act999"
 
 

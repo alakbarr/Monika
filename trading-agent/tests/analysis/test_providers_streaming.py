@@ -163,7 +163,9 @@ async def test_fallback_on_stream_timeout():
     with patch.object(factory, "_create_client_instance", side_effect=mock_create_instance):
         result = await wrapper.classify_json("Judge the debate arguments")
 
-        assert result == {"winner": "BULL", "confidence": 0.85}
+        assert result["winner"] == "BULL"
+        assert result["confidence"] == 0.85
+        assert result.get("_is_fallback") is True
         assert primary_client.classify_json.called
         assert fallback_client.classify_json.called
 

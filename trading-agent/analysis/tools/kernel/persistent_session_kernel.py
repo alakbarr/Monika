@@ -46,7 +46,7 @@ _DEFAULT_TIMEOUT = 120.0
 _MAX_CAPTURE_BYTES = 100_000
 
 # Subprocess runner script template executed inside the child process
-_RUNNER_CODE = '''\
+_RUNNER_CODE = r'''
 import contextlib
 import io
 import json
@@ -103,6 +103,26 @@ if sys.platform == "win32":
 else:
     _start_watchdog_posix()
 
+def _handle_matplotlib_figures():
+    saved = []
+    if "matplotlib" in sys.modules:
+        try:
+            import matplotlib.pyplot as plt
+            fignums = plt.get_fignums()
+            if fignums:
+                os.makedirs("artifacts/scratch", exist_ok=True)
+                import time as _t
+                ts = int(_t.time() * 1000)
+                for i, num in enumerate(fignums):
+                    fig = plt.figure(num)
+                    filepath = os.path.abspath(f"artifacts/scratch/plot_{ts}_{i+1}.png")
+                    fig.savefig(filepath, bbox_inches="tight", dpi=150)
+                    saved.append(filepath)
+                plt.close("all")
+        except Exception:
+            pass
+    return saved
+
 def run_cell(code):
     out_buf, err_buf = io.StringIO(), io.StringIO()
     status, trace = "ok", ""
@@ -115,6 +135,11 @@ def run_cell(code):
     except BaseException:
         status, trace = "error", traceback.format_exc()
         
+    saved_figs = _handle_matplotlib_figures()
+    if saved_figs:
+        for f in saved_figs:
+            out_buf.write("\n[Generated plot: " + str(f) + "]\n")
+
     stdout_txt, stdout_clipped = _clip(out_buf.getvalue())
     stderr_txt, stderr_clipped = _clip(err_buf.getvalue())
     return {
@@ -124,6 +149,7 @@ def run_cell(code):
         "traceback": trace,
         "stdout_clipped": stdout_clipped,
         "stderr_clipped": stderr_clipped,
+        "saved_figures": saved_figs,
     }
 
 # Main request loop
@@ -141,14 +167,14 @@ while True:
             payload = run_cell(req.get("code", ""))
             
         json_bytes = json.dumps(payload).encode("utf-8")
-        frame_header = f"{_SENTINEL} {len(json_bytes)}\\n".encode("utf-8")
-        sys.stdout.buffer.write(frame_header + json_bytes + b"\\n")
+        frame_header = (_SENTINEL + " " + str(len(json_bytes)) + "\n").encode("utf-8")
+        sys.stdout.buffer.write(frame_header + json_bytes + b"\n")
         sys.stdout.buffer.flush()
     except Exception as exc:
         err_payload = {"status": "error", "traceback": f"Runner loop error: {exc}", "stdout": "", "stderr": ""}
         json_bytes = json.dumps(err_payload).encode("utf-8")
-        frame_header = f"{_SENTINEL} {len(json_bytes)}\\n".encode("utf-8")
-        sys.stdout.buffer.write(frame_header + json_bytes + b"\\n")
+        frame_header = (_SENTINEL + " " + str(len(json_bytes)) + "\n").encode("utf-8")
+        sys.stdout.buffer.write(frame_header + json_bytes + b"\n")
         sys.stdout.buffer.flush()
 '''
 
@@ -211,6 +237,7 @@ class PersistentSessionKernel:
         pass_fds = []
         if _IS_WINDOWS:
             import ctypes
+            import ctypes.wintypes
             SYNCHRONIZE = 0x00100000
             current_proc = ctypes.windll.kernel32.GetCurrentProcess()
             target_proc_handle = ctypes.wintypes.HANDLE()

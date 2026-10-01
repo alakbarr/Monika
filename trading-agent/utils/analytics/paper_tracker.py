@@ -796,7 +796,7 @@ class PaperTracker:
                 try:
                     from utils.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
-                        f'⏸️ <b>{symbol} Auto-Suspended</b>\n'
+                        f'[DIJEDA] <b>{symbol} Auto-Suspended</b>\n'
                         f'{consecutive_losses} consecutive losses detected.\n'
                         f'Suspended for {suspension_hours}h until {until[:16]} UTC.\n'
                         f'Review recent analyses to identify systematic issue.'
@@ -812,6 +812,50 @@ class PaperTracker:
             await session.commit()
             
         return newly_suspended
+
+    async def suspend_symbol(
+        self, session: AsyncSession, symbol: str, duration_hours: float = 24.0, reason: str = "manual_command"
+    ) -> dict:
+        """Suspend trading untuk simbol tertentu secara manual dengan durasi waktu."""
+        from database.models import SystemConfig
+        from sqlalchemy import select
+        import json
+        from datetime import timedelta
+
+        sym_norm = symbol.strip().upper().replace("/", "")
+        cfg = (await session.execute(
+            select(SystemConfig).where(SystemConfig.key == 'suspended_symbols')
+        )).scalar_one_or_none()
+
+        current = []
+        if cfg and cfg.value:
+            try:
+                current = json.loads(cfg.value)
+            except Exception:
+                current = []
+
+        now = clock.now()
+        until = now + timedelta(hours=duration_hours)
+        until_iso = until.isoformat()
+
+        entry = {"symbol": sym_norm, "until": until_iso, "reason": reason}
+        updated = False
+        for s in current:
+            if s.get("symbol", "").upper() == sym_norm:
+                s["until"] = until_iso
+                s["reason"] = reason
+                updated = True
+                break
+        if not updated:
+            current.append(entry)
+
+        if cfg:
+            cfg.value = json.dumps(current)
+        else:
+            session.add(SystemConfig(key='suspended_symbols', value=json.dumps(current)))
+        await session.commit()
+        logger.warning(f"[PaperTracker] Symbol {sym_norm} suspended manually until {until_iso} (reason={reason})")
+        return {"symbol": sym_norm, "until": until_iso, "duration_hours": duration_hours, "reason": reason}
 
     async def unsuspend_symbol(self, session: AsyncSession, symbol: str) -> bool:
         """Buka suspensi untuk simbol tertentu."""
@@ -1036,6 +1080,45 @@ class PaperTracker:
                 'closed_at': record.closed_at.isoformat() if record.closed_at else None,
             })
 
+        # Comprehensive quantitative ratios (Sharpe, Sortino, Calmar, Profit Factor, Max Drawdown)
+        import math
+        gross_profit = sum(p for p in pnl_values if p > 0)
+        gross_loss = abs(sum(p for p in pnl_values if p < 0))
+        profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
+
+        # Drawdown calculation
+        curr_eq = 100.0
+        peak = 100.0
+        max_dd = 0.0
+        for p in pnl_values:
+            curr_eq *= (1.0 + (p / 100.0))
+            if curr_eq > peak:
+                peak = curr_eq
+            dd = ((peak - curr_eq) / peak) * 100.0 if peak > 0 else 0.0
+            if dd > max_dd:
+                max_dd = dd
+
+        # Sharpe & Sortino ratios (annualized scaling)
+        if len(pnl_values) >= 2:
+            mean_ret = sum(pnl_values) / len(pnl_values)
+            variance = sum((p - mean_ret) ** 2 for p in pnl_values) / (len(pnl_values) - 1)
+            std_dev = math.sqrt(variance) if variance > 0 else 0.0
+            sharpe_ratio = (mean_ret / std_dev) * math.sqrt(min(252, len(pnl_values))) if std_dev > 0 else 0.0
+
+            downside_pnl = [p for p in pnl_values if p < 0]
+            if downside_pnl:
+                downside_var = sum(p ** 2 for p in downside_pnl) / len(downside_pnl)
+                downside_std = math.sqrt(downside_var) if downside_var > 0 else 0.0
+                sortino_ratio = (mean_ret / downside_std) * math.sqrt(min(252, len(pnl_values))) if downside_std > 0 else 0.0
+            else:
+                sortino_ratio = sharpe_ratio * 1.5 if sharpe_ratio > 0 else 0.0
+        else:
+            sharpe_ratio = 0.0
+            sortino_ratio = 0.0
+
+        total_pnl_val = sum(pnl_values)
+        calmar_ratio = (total_pnl_val / max_dd) if max_dd > 0 else (total_pnl_val if total_pnl_val > 0 else 0.0)
+
         return {
             "total_trades": len(records),
             "market_trades": market_total,
@@ -1051,6 +1134,11 @@ class PaperTracker:
             "avg_rr_achieved": round(avg_rr, 2),
             "expectancy_per_trade_pct": round(expectancy, 4),
             "expectancy_per_trade_R": round(expectancy_r, 3),
+            "sharpe_ratio": round(sharpe_ratio, 2),
+            "sortino_ratio": round(sortino_ratio, 2),
+            "calmar_ratio": round(calmar_ratio, 2),
+            "profit_factor": round(profit_factor, 2),
+            "max_drawdown_pct": round(max_dd, 2),
             "has_positive_edge": expectancy > 0,
             "edge_alert": expectancy < -0.1,
             "by_confluence": by_confluence,
@@ -1097,13 +1185,13 @@ class PaperTracker:
                     worst_symbol = sym
                     
             msg = (
-                f"🚨 <b>Win Rate Alert</b>\n"
+                f"[DARURAT] <b>Win Rate Alert</b>\n"
                 f"Paper trading win rate: {win_rate:.1f}% ({total} trades)\n"
                 f"Below minimum threshold: {alert_threshold:.1f}% (Breakeven: {breakeven_wr:.1f}%)\n\n"
                 f"System may NOT have statistical edge.\n"
             )
             if worst_symbol:
-                msg += f"⚠️ Worst performing asset: {worst_symbol} ({worst_pnl:.2f}% PnL)\n"
+                msg += f"[PERINGATAN] Worst performing asset: {worst_symbol} ({worst_pnl:.2f}% PnL)\n"
                 
             msg += (
                 f"\nAction needed:\n"
@@ -1236,7 +1324,7 @@ class PaperTracker:
         
         if result["alert_triggered"]:
             msg = (
-                f"🔴 <b>LOSING STREAK DETECTED</b>\n"
+                f"[KRITIS] <b>LOSING STREAK DETECTED</b>\n"
                 f"Last {lookback} trades: {len(losses)} losses, {len(wins)} wins\n"
                 f"Recent win rate: {recent_wr:.0f}%\n"
                 f"Consider pausing and reviewing recent analyses."

@@ -72,10 +72,19 @@ def _band_scale_factor(vol_regime: str) -> dict:
     return table.get(vol_regime, table['normal'])
 
 
-async def compute_daily_range_context(session: AsyncSession, symbol: str, settings: Optional[dict] = None, as_of: Optional[datetime] = None) -> dict:
+async def compute_daily_range_context(
+    session: AsyncSession,
+    symbol: str,
+    settings: Optional[dict] = None,
+    as_of: Optional[datetime] = None,
+    lookback_days: Optional[int] = None,
+) -> dict:
     settings = settings or {}
     risk_cfg = settings.get('trading', {}).get('risk', {})
-    lookback_days = _resolve_lookback_days(symbol, settings)
+    if lookback_days is None:
+        lookback_days = _resolve_lookback_days(symbol, settings)
+    else:
+        lookback_days = max(3, int(lookback_days))
     stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == 'D1')
     if as_of:
         stmt = stmt.where(PriceOHLCV.timestamp <= as_of)

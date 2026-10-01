@@ -297,6 +297,18 @@ class ToolExecutor:
         "market_quote": "get_market_quote",
         "fetch_quote": "get_market_quote",
         "quote": "get_market_quote",
+        "analytical_query": "run_analytical_query",
+        "query_analytics": "run_analytical_query",
+        "get_inducement": "get_inducements",
+        "inducements": "get_inducements",
+        "get_breaker_block": "get_breaker_blocks",
+        "breaker_blocks": "get_breaker_blocks",
+        "get_equal_highs": "get_equal_highs_lows",
+        "get_equal_lows": "get_equal_highs_lows",
+        "equal_highs_lows": "get_equal_highs_lows",
+        "judas_swing": "get_judas_swing",
+        "wick_fvg": "get_wick_to_wick_fvg",
+        "wick_to_wick_fvg": "get_wick_to_wick_fvg",
     }
 
     def _normalize_tool_name(self, raw_name: str) -> str:
@@ -989,6 +1001,68 @@ class ToolExecutor:
         from analysis.tools.handlers.market_data_tools import handle_get_fibonacci_levels
         return await handle_get_fibonacci_levels(inp, session=self.session, executor=self, settings=self.settings)
 
+    async def _tool_get_portfolio_exposure(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_get_portfolio_exposure
+        return await handle_get_portfolio_exposure(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_get_swap_rates(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trading_tools import handle_get_swap_rates
+        return await handle_get_swap_rates(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_get_market_regime(self, inp: dict) -> dict:
+        from analysis.tools.handlers.macro_tools import handle_get_market_regime
+        return await handle_get_market_regime(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_run_monte_carlo_simulation(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_run_monte_carlo_simulation
+        return await handle_run_monte_carlo_simulation(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_get_weekly_macro_summary(self, inp: dict) -> dict:
+        from analysis.tools.handlers.macro_tools import handle_get_weekly_macro_summary
+        return await handle_get_weekly_macro_summary(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_manage_cron(self, inp: dict) -> dict:
+        from analysis.tools.domain.cron_tool import handle_manage_cron, CronActionInput
+        input_obj = CronActionInput(**inp) if isinstance(inp, dict) else inp
+        return await handle_manage_cron(input_obj, context=self)
+
+    async def _tool_query_signal_performance(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_query_signal_performance
+        return await handle_query_signal_performance(inp, session=self.session, executor=self)
+
+    async def _tool_get_latest_risk_verdict(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_get_latest_risk_verdict
+        return await handle_get_latest_risk_verdict(inp, session=self.session, executor=self)
+
+    async def _tool_export_debate_transcripts(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_export_debate_transcripts
+        return await handle_export_debate_transcripts(inp, session=self.session, executor=self)
+
+    async def _tool_trigger_learning_cycle(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_trigger_learning_cycle
+        return await handle_trigger_learning_cycle(inp, session=self.session, executor=self)
+
+    async def _tool_run_system_doctor_check(self, inp: dict) -> dict:
+        from analysis.tools.handlers.system_info import handle_run_system_doctor_check
+        return await handle_run_system_doctor_check(inp, session=self.session, executor=self)
+
+    async def _tool_set_trailing_stop(self, inp: dict) -> dict:
+        from analysis.tools.handlers.position_mgmt import handle_set_trailing_stop
+        return await handle_set_trailing_stop(inp, session=self.session, settings=self.settings, executor=self)
+
+    async def _tool_export_historical_data_csv(self, inp: dict) -> dict:
+        from analysis.tools.handlers.market_data_tools import handle_export_historical_data_csv
+        return await handle_export_historical_data_csv(inp, session=self.session, executor=self, settings=self.settings)
+
+    async def _tool_trigger_market_scan(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_trigger_market_scan
+        return await handle_trigger_market_scan(inp, session=self.session, executor=self)
+
+    async def _tool_run_strategy_backtest(self, inp: dict) -> dict:
+        from analysis.tools.handlers.trade_intel import handle_run_strategy_backtest
+        return await handle_run_strategy_backtest(inp, session=self.session, executor=self)
+
+
 
     def __getattr__(self, name: str) -> Any:
         """Dynamic dispatch for _tool_* methods to handlers or execute()."""
@@ -1254,6 +1328,24 @@ class ToolExecutor:
         except Exception:
             pass
         try:
+            if kdp.get('fedwatch_repricing_delta_pct') is not None:
+                real_fw_comp = await self.execute('get_fedwatch_probabilities', {'compare_hours_ago': 24})
+                comparisons = real_fw_comp.get('comparisons', [])
+                if comparisons:
+                    all_deltas = []
+                    for c in comparisons:
+                        for d_val in (c.get('deltas_pct') or {}).values():
+                            all_deltas.append(float(d_val))
+                    if all_deltas:
+                        claimed_delta = float(kdp.get('fedwatch_repricing_delta_pct'))
+                        min_diff = min(abs(claimed_delta - d) for d in all_deltas)
+                        if min_diff > 8.0:
+                            errors.append(
+                                f"DATA_MISMATCH: Kamu menyatakan fedwatch_repricing_delta_pct={claimed_delta}% tapi delta aktual terdekat={min(all_deltas, key=lambda d: abs(claimed_delta - d))}%. Verifikasi output fedwatch.comparisons."
+                            )
+        except Exception:
+            pass
+        try:
             tol_yield_bp = self.settings.get('data_quality', {}).get('key_data_tolerance', {}).get('treasury_10y_yield_bp', 15.0)
             if tol_yield_bp is not None and kdp.get('treasury_10y_yield_pct') is not None:
                 real_yields = await self.execute('get_treasury_yields', {})
@@ -1300,14 +1392,24 @@ class ToolExecutor:
     async def _cross_check_all_currencies_priced_in(self, inp: dict) -> list[str]:
         from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
         warnings = []
-        fedwatch_res = await self.execute('get_fedwatch_probabilities', {})
+        fedwatch_res = await self.execute('get_fedwatch_probabilities', {'compare_hours_ago': 24})
         fedwatch_prob = None
+        fedwatch_delta = None
         if isinstance(fedwatch_res, dict) and fedwatch_res.get('meetings'):
             try:
                 probs = fedwatch_res['meetings'][0]['probabilities'].get('probabilities', {})
                 fedwatch_prob = max((v.get('probability', 0) for v in probs.values() if isinstance(v, dict)), default=None)
             except Exception:
                 pass
+            if fedwatch_res.get('comparisons'):
+                try:
+                    c0 = fedwatch_res['comparisons'][0]
+                    deltas = c0.get('deltas_pct', {})
+                    if deltas:
+                        max_k = max(deltas.keys(), key=lambda k: abs(deltas[k]))
+                        fedwatch_delta = deltas[max_k]
+                except Exception:
+                    pass
         
         CURRENCY_COT_MAP = {'EUR': '099741', 'GBP': '096742', 'JPY': '097741', 'AUD': '232741', 'XAU': '088691'}
         CURRENCY_PROXY_SYMBOL = {'EUR': 'EURUSD', 'GBP': 'GBPUSD', 'JPY': 'USDJPY', 'AUD': 'AUDUSD', 'XAU': 'XAUUSD'}
@@ -1324,7 +1426,13 @@ class ToolExecutor:
             proxy_symbol = CURRENCY_PROXY_SYMBOL.get(ccy)
             mom_res = await self.execute('get_price_momentum', {'symbol': proxy_symbol, 'timeframe': 'H4', 'period': 20}) if proxy_symbol else {}
             run_up = mom_res.get('run_up_vs_atr') if isinstance(mom_res, dict) else None
-            baseline = calculate_stage1_priced_in_baseline(ccy, percentile, fedwatch_dominant_prob=fedwatch_prob, eurusd_run_up_vs_atr=run_up)
+            baseline = calculate_stage1_priced_in_baseline(
+                ccy,
+                percentile,
+                fedwatch_dominant_prob=fedwatch_prob,
+                eurusd_run_up_vs_atr=run_up,
+                fedwatch_repricing_delta=fedwatch_delta,
+            )
             declared_bias = (inp.get('currency_bias', {}) or {}).get(ccy, 'neutral')
             declared_pi = (inp.get('priced_in_assessment', {}) or {}).get('priced_in_score', 5)
             if baseline['is_priced_in'] and declared_pi <= 3 and declared_bias != 'neutral':
@@ -1812,11 +1920,11 @@ class ToolExecutor:
         
         staleness_warning = ""
         if age_hours > max_critical:
-            staleness_warning = f'\n\n🚨 CRITICAL: Brief is {age_hours:.1f}h old (limit: {max_critical}h). MANDATORY WAIT for all assets. Do not submit BUY/SELL.'
+            staleness_warning = f'\n\n[DARURAT] CRITICAL: Brief is {age_hours:.1f}h old (limit: {max_critical}h). MANDATORY WAIT for all assets. Do not submit BUY/SELL.'
         elif age_hours > max_warning:
-            staleness_warning = f'\n\n⚠️ STALE: Brief is {age_hours:.1f}h old (limit: {max_warning}h). High-impact events may have occurred. Be extra cautious and do not enter on macro-dependent setups.'
+            staleness_warning = f'\n\n[PERINGATAN] STALE: Brief is {age_hours:.1f}h old (limit: {max_warning}h). High-impact events may have occurred. Be extra cautious and do not enter on macro-dependent setups.'
         elif age_hours > 2:
-            staleness_warning = f'\n\nℹ️ Brief is {age_hours:.1f}h old. Cross-validate macro assumptions with recent price action.'
+            staleness_warning = f'\n\n[INFO] Brief is {age_hours:.1f}h old. Cross-validate macro assumptions with recent price action.'
 
         return {
             "brief_id": row.id,

@@ -18,7 +18,7 @@ def test_trade_intent_includes_propose_action(router):
     tool_names = [t["name"] for t in tools]
     assert "propose_action" in tool_names
     assert "get_account_info" in tool_names
-    assert len(tools) <= 12
+    assert len(tools) <= 22
 
 
 def test_portfolio_intent(router):
@@ -34,7 +34,7 @@ def test_technical_intent(router):
     tool_names = [t["name"] for t in tools]
     assert "get_chart" in tool_names
     assert "get_smc_zones" in tool_names
-    assert len(tools) <= 18
+    assert len(tools) <= 24
 
 
 def test_system_intent(router):

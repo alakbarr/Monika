@@ -151,16 +151,34 @@ class LLMFactory:
         """
         role_config = self._task_roles.get(task_role)
         if not role_config:
-            logger.warning(f"Unknown task role: {task_role}, falling back to default gemini")
+            default_mod = (
+                self._llm_config.get("default_model")
+                or self._task_roles.get("chat_telegram", {}).get("primary")
+                or (next(iter(self._catalog.keys())) if self._catalog else "gpt-6.1-sol-medium")
+            )
+            default_prov = (
+                self._llm_config.get("default_provider")
+                or self._task_roles.get("chat_telegram", {}).get("provider")
+                or "openrouter"
+            )
+            logger.warning(f"Unknown task role: {task_role}, falling back to configured default '{default_mod}' ({default_prov})")
             role_config = {
-                "primary": "gemini-3.5-flash-lite",
+                "primary": default_mod,
+                "provider": default_prov,
                 "max_tokens": 8192,
                 "max_tool_turns": 15,
                 "temperature": 0.0,
-                "thinking": {"gemini": "none"}
+                "thinking": {
+                    "openrouter": "max",
+                    "gemini": "max",
+                    "anthropic": "max",
+                    "openai": "max",
+                    "deepseek": "max",
+                    "groq": "max",
+                }
             }
 
-        primary_model = role_config.get("primary", "gemini-3.5-flash-lite")
+        primary_model = role_config.get("primary") or self._llm_config.get("default_model") or (next(iter(self._catalog.keys())) if self._catalog else "gpt-6.1-sol-medium")
         fallback_chain: list[str] = []
 
         # 1. Support list format: fallback: [...] or fallbacks: [...]
@@ -964,7 +982,7 @@ class FallbackClientWrapper(BaseLLMClient):
                             try:
                                 from utils.infra.notifier import get_notifier
                                 await get_notifier().send_alert(
-                                    f"⚠️ *HOT PATH Auto-Failover*\n"
+                                    f"[PERINGATAN] *HOT PATH Auto-Failover*\n"
                                     f"Role: `{role}`\n"
                                     f"Failed: `{failed_model}`\n"
                                     f"Reason: `{err_reason}`\n"

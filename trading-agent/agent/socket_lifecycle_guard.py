@@ -119,3 +119,21 @@ def clear_socket_graveyard() -> int:
             except Exception:
                 pass
         return count
+
+
+def get_socket_guard_diagnostics() -> dict:
+    """
+    Returns diagnostics on the socket graveyard and active socket hygiene state.
+    """
+    with _RETIREMENT_LOCK:
+        active_graveyard_count = len(_RETIRED_SOCKETS)
+        open_fds = [s.fileno() for s in _RETIRED_SOCKETS if s.fileno() != -1]
+        
+    return {
+        "status": "healthy",
+        "graveyard_size": active_graveyard_count,
+        "max_graveyard_capacity": _MAX_GRAVEYARD_SIZE,
+        "active_retired_fds": open_fds,
+        "fd_leak_risk": "none" if active_graveyard_count < _MAX_GRAVEYARD_SIZE * 0.8 else "elevated",
+    }
+

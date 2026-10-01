@@ -60,7 +60,7 @@ Before ANY tool call or submission, internalize these rules:
 """
 
 FALLBACK_SYSTEM_PROMPT = """You are a senior macro-economic analyst and fundamental strategist.
-Your task is to analyze the macroeconomic environment, central bank reaction functions (Fed, ECB, BoE, BoJ, RBA), interest rate differentials, geopolitical risks, and institutional positioning to provide a bias for major currency pairs and commodities. Suku bunga dan ekspektasi arahnya adalah penggerak paling dominan nilai tukar. Use the provided tools to gather data and record your final brief by calling the tool 'submit_fundamental_brief'.
+Your task is to analyze the macroeconomic environment, central bank reaction functions (Fed, ECB, BoE, BoJ, RBA), interest rate differentials, geopolitical risks, and institutional positioning to provide a bias for major currency pairs and commodities. Interest rates and forward monetary policy expectations are the dominant drivers of currency valuation and capital flows. Use the provided tools to gather data and record your final brief by calling the tool 'submit_fundamental_brief'.
 """
 
 from utils.llm.prompt_disciplines import get_universal_execution_discipline
@@ -75,19 +75,20 @@ Analyze the pre-fetched macro environment, synthesize the cross-market drivers, 
 Invoke the tool 'submit_fundamental_brief' when complete.
 
 CORE CENTRAL BANK & CURRENCY ATTRACTIVENESS DIRECTIVES:
-1. Suku bunga dan ekspektasi arah masa depannya adalah driver paling dominan daya tarik mata uang (Capital flows seek highest risk-adjusted real yield).
-2. Data ekonomi mentah (CPI, NFP, GDP, PMI) BUKAN penggerak langsung mata uang, melainkan bekerja secara tidak langsung lewat merevisi ekspektasi kebijakan bank sentral.
-3. Evaluasi mandat spesifik masing-masing bank sentral:
-   - USD (The Fed): Dual Mandate (Max Employment vs 2% Core PCE). Evaluasi apakah pelemahan tenaga kerja (NFP/Claims/Unemployment) mendominasi inflasi tarif/capex.
-   - EUR (ECB): Single Mandate (2% HICP medium-term). Two-Pillar Approach (Ekonomi + Moneter M3/kredit). Pantau risiko fragmentasi spread sovereign (BTP/Bund) & TPI.
-   - GBP (BoE): Tiered Mandate (2% CPI primer via remit pemerintah; pertumbuhan sekunder). Pantau voting split 9 anggota MPC, pasar Gilt, dan kerentanan twin deficits.
-   - JPY (BoJ): Normalisasi keluar dari deflasi 30 tahun. Evaluasi siklus upah-harga (Shunto) vs risiko premature hike. Waspadai peran JPY sebagai global carry trade funding currency & intervensi MOF.
-   - AUD (RBA): Triple Mandate (rentang 2-3% inflasi, sustained full employment, kemakmuran). Pantau Trimmed Mean CPI, kapasitas utilisasi, dan harga komoditas ekspor (Iron Ore korelasi 0.88 & ekonomi China).
-4. Waspadai 4 kanal independen yang dapat mengalahkan/membalikkan sinyal suku bunga:
-   - Safe-haven surges (USD, CHF, JPY saat VIX > 25) vs Risk-on weakness (AUD, GBP).
-   - Risiko Fiskal / Sovereign debt health (Gilt/twin deficits menekan GBP meskipun yield tinggi).
-   - Terms of Trade & Komoditas (Iron Ore menggerakkan AUD tanpa intervensi RBA; oil import cost menekan EUR/JPY).
-   - Carry trade unwind squeeze (JPY menguat tajam saat risk-off meskipun suku bunga absolut rendah).
+1. Interest rates and forward trajectory expectations are the single most dominant driver of currency valuation (Capital flows seek highest risk-adjusted real yield).
+2. Raw economic releases (CPI, NFP, GDP, PMI) do NOT drive currencies directly; they transmit indirectly by altering market expectations of central bank policy.
+   - MANDATORY REPRICING CORRELATION: Inspect `fedwatch_comparison` or `fedwatch.comparisons` in the [PRE-FETCHED DATA] block. When evaluating USD releases (Core PCE, CPI, NFP, GDP), explain quantitatively how FedWatch probabilities shifted pre- vs post-release (e.g. "Pre-PCE hike odds were 45.0%, shifting post-release to 37.1%"). Record this shift in `macro_narrative`, `priced_in_assessment.fedwatch_shift_summary`, and `key_data_points_used.fedwatch_repricing_delta_pct`.
+3. Evaluate specific central bank reaction functions and mandates:
+   - USD (Federal Reserve): Dual Mandate (Maximum Employment vs 2.0% Core PCE). Evaluate whether labor market softness (NFP/Claims/Unemployment) outweighs tariff/energy inflation pressures.
+   - EUR (European Central Bank): Single Mandate (2.0% medium-term HICP). Two-Pillar Strategy (Economic Analysis + Monetary/Credit Trends). Monitor sovereign spread fragmentation risks (BTP/Bund) and TPI activation criteria.
+   - GBP (Bank of England): Tiered Mandate (2.0% CPI primary remit; secondary growth objective). Monitor 9-member MPC vote splits, Gilt market stability, and structural twin deficit risks.
+   - JPY (Bank of Japan): Normalization exit from 30-year deflation regime. Evaluate wage-price spirals (Shunto) against premature hike risks. Factor in JPY's role as a global carry trade funding currency and MOF intervention risk.
+   - AUD (Reserve Bank of Australia): Triple Mandate (2-3% inflation target, sustained full employment, national prosperity). Monitor Trimmed Mean CPI, labor capacity utilization, and bulk export commodity dynamics (Iron Ore 0.88 correlation and China cyclical growth).
+4. Beware 4 independent transmission channels that can override or invert interest rate differentials:
+   - Safe-haven surges (USD, CHF, JPY during VIX > 25) vs Risk-on cyclical beta weakness (AUD, GBP).
+   - Fiscal / Sovereign debt sustainability (Gilt yields/twin deficits depressing GBP despite high nominal rates).
+   - Terms of Trade & Commodity Shocks (Iron Ore moves AUD without RBA intervention; energy import costs pressure EUR/JPY).
+   - Carry trade unwind squeezes (JPY appreciating aggressively in risk-off despite lowest nominal yields).
 
 IMPORTANT FOR currency_bias:
 - Required: USD, EUR, GBP, JPY, AUD, XAU
@@ -105,11 +106,11 @@ MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_f
 [ ] Did I provide a clear directional bias for ALL requested pairs?
 [ ] Did I include `currency_confidence` and `invalidation_conditions` for every non-neutral bias?
     NOTE: `invalidation_conditions` MUST contain >= 40 characters AND specific numbers/price levels (e.g. "DXY D1 close < 103.50", "USDJPY > 155.00", "WTI close > 78.50 USD", "BTCUSD < 58500 USD"). Generic statements without numbers will be rejected.
-[ ] Did I include `strongest_counter_thesis` (>= 50 characters) citing concrete macro data/scenarios that would invalidate my thesis? (e.g. "Jika NFP Jumat > 250k ATAU US10Y naik di atas 4.35%, tesis USD bearish saya batal karena repricing ekspektasi Fed hawkish akan terjadi cepat.")
-[ ] Did I include `priced_in_assessment` with numerical percentiles and `sell_the_news_risk`?
-    Example: priced_in_assessment={"dominant_driver": "Fed 25bps cut expectations", "priced_in_score": 6, "sell_the_news_risk": "medium", "cot_positioning_percentile": 65.0, "retail_sentiment_percentile": 45.0, "upcoming_event_context": "FOMC meeting in 7 days"}
-[ ] Did I include `key_data_points_used` with pure numeric values (e.g. key_data_points_used={"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5, "cot_leveraged_long_pct": 58.4, "fedwatch_dominant_pct": 85.0, "treasury_10y_yield_pct": 4.25})? If COT was not cited, use null.
-[ ] If any currencies are listed in [STICKY BIAS CONTEXT], did I provide quantitative `bias_change_justification` with >= 40 characters and concrete numbers/levels (e.g. "Bias BTC bullish dipertahankan karena ETF inflow +$240M pada 2026-08-22 dan funding rate 0.01%")?
+[ ] Did I include `strongest_counter_thesis` (>= 50 characters) citing concrete macro data/scenarios that would invalidate my thesis? (e.g. "If Friday NFP exceeds 250k OR US 10Y yield rises above 4.35%, my USD bearish thesis is invalidated due to rapid hawkish repricing of Fed rate path.")
+[ ] Did I include `priced_in_assessment` with numerical percentiles, `sell_the_news_risk`, and `fedwatch_shift_summary`?
+    Example: priced_in_assessment={"dominant_driver": "Fed 25bps cut expectations", "priced_in_score": 6, "sell_the_news_risk": "medium", "cot_positioning_percentile": 65.0, "retail_sentiment_percentile": 45.0, "fedwatch_shift_summary": "Hike odds 37.1% vs 45.0% pre-PCE (-7.9%)", "upcoming_event_context": "FOMC meeting in 7 days"}
+[ ] Did I include `key_data_points_used` with pure numeric values (e.g. key_data_points_used={"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5, "cot_leveraged_long_pct": 58.4, "fedwatch_dominant_pct": 85.0, "fedwatch_repricing_delta_pct": -7.9, "treasury_10y_yield_pct": 4.25})? If COT was not cited, use null.
+[ ] If any currencies are listed in [STICKY BIAS CONTEXT], did I provide quantitative `bias_continuity_justification` with >= 40 characters and concrete numbers/levels (e.g. "BTC bullish bias maintained due to ETF net inflows of +$240M on 2026-08-22 and neutral perpetual funding rate at 0.01%")?
 """
 
 
@@ -244,8 +245,8 @@ class FundamentalStage:
                 if judge.get('internal_hallucination_detected'):
                     reasons_str = "; ".join(judge.get('hallucination_reasons', []))
                     b_data['macro_narrative'] = b_data.get('macro_narrative', '') + (
-                        f"\n\n[SYSTEM: Macro debate judge output memiliki ketidakkonsistenan internal: {reasons_str}. "
-                        f"Confidence dipangkas dan dieskalasi.]"
+                        f"\n\n[SYSTEM: Macro debate judge output contains internal inconsistencies: {reasons_str}. "
+                        f"Confidence penalized and escalated.]"
                     )
                     brief.confidence = min(brief.confidence or 0.7, 0.65)
 
@@ -255,8 +256,8 @@ class FundamentalStage:
                 if (norm_dxy == 'bullish' and norm_usd == 'bearish') or (norm_dxy == 'bearish' and norm_usd == 'bullish'):
                     outcome['contradicts_usd_bias'] = True
                     b_data['macro_narrative'] = b_data.get('macro_narrative', '') + (
-                        f"\n\n[SYSTEM: Macro debate judge menyimpulkan DXY bias={norm_dxy}, tapi "
-                        f"currency_bias['USD']={norm_usd}. Kontradiksi terdeteksi — dieskalasi untuk adjudikasi.]"
+                        f"\n\n[SYSTEM: Macro debate judge concluded DXY bias={norm_dxy}, while "
+                        f"currency_bias['USD']={norm_usd}. Contradiction detected — escalated for adjudication.]"
                     )
                     brief.confidence = min(brief.confidence or 0.7, 0.70)
                 brief.structured_json = json.dumps(b_data)
@@ -308,7 +309,7 @@ class FundamentalStage:
             if streak_cfg and streak_cfg.value:
                 streak_alerts = json.loads(streak_cfg.value)
                 if streak_alerts:
-                    dynamic_system_notes = f"\n\n[BEHAVIORAL WARNING]:\n" + "\n".join(streak_alerts) + "\nPastikan Anda benar-benar melihat data baru. Jika anchoring: jangan copy-paste bias lama. Jika flip-flop: waspadai whipsaw, pilih netral jika tidak ada driver makro baru yang sangat meyakinkan."
+                    dynamic_system_notes = f"\n\n[BEHAVIORAL WARNING]:\n" + "\n".join(streak_alerts) + "\nEnsure you evaluate fresh incoming data. If anchoring: do NOT duplicate prior cycle biases without new catalysts. If flip-flopping: beware of whipsaw noise; adopt a neutral stance unless a decisive new macro catalyst is confirmed."
         except Exception as e:
             logger.debug(f'Failed to load behavioral streak alerts: {e}')
 
@@ -509,7 +510,7 @@ class FundamentalStage:
                         actual_user_message += (
                             f"\n\n[STICKY BIAS CONTEXT & ANCHORING REQUIREMENT]\n"
                             f"The following currencies are anchored across recent distinct cycles:\n{sticky_lines}\n"
-                            f"If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 40 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{\"USD\": \"Bias USD bearish dipertahankan karena DXY bertahan di bawah 102.50 dan yield 10Y turun 4 bps pada 2026-08-23\"}}."
+                            f"If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 40 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{\"USD\": \"USD bearish bias maintained as DXY remains below 102.50 resistance and 10Y yields fell 4 bps on 2026-08-23\"}}."
                         )
         except Exception as _sticky_err:
             logger.warning(f"Sticky bias pre-computation error: {_sticky_err}")
@@ -549,9 +550,9 @@ class FundamentalStage:
                 "Skip: ECB, BOE, BOJ analysis. Skip: EUR/GBP/JPY/AUD/XAU bias (keep Friday baseline or neutral).\n"
                 "Provide brief for BTCUSD only. Evaluate confidence realistically based on available data.\n"
                 "Use minimal tool calls: get_vix, get_fedwatch_probabilities, get_news_digest, get_funding_rate only.\n"
-                "Anda WAJIB memanggil get_funding_rate untuk mengecek positioning/sentiment futures.\n"
+                "You MUST invoke get_funding_rate to inspect perpetual futures positioning and sentiment.\n"
                 "priced_in_assessment format for weekend: priced_in_assessment={\"dominant_driver\": \"BTC weekend risk sentiment & Fed policy\", \"priced_in_score\": 5, \"sell_the_news_risk\": \"low\", \"retail_sentiment_percentile\": 55.0, \"funding_rate\": 0.01}\n"
-                "If USD bias is sticky over the weekend, you may justify: bias_change_justification={\"USD\": \"Pasar Forex tutup untuk akhir pekan; referensi DXY penutupan Jumat 102.50 dan yield 4.10% dipertahankan.\"}"
+                "If USD bias is sticky over the weekend, you may justify: bias_continuity_justification={\"USD\": \"Forex markets closed for weekend; Friday close reference at DXY 102.50 and 10Y yield 4.10% maintained.\"}"
             )
             actual_user_message += weekend_context
 
@@ -625,7 +626,13 @@ class FundamentalStage:
         if not result["success"]:
             if result.get("is_billing_error") and (self.consent_callback is not None or (self.is_fallback_always_approved is not None and self.is_fallback_always_approved())):
                 role_fallbacks = self.settings.get('llm', {}).get('task_roles', {}).get('stage1_fundamental', {})
-                fallback_model = role_fallbacks.get('billing_fallback') or role_fallbacks.get('fallback_2') or role_fallbacks.get('fallback_3') or 'gemini-3.6-flash'
+                fallback_model = (
+                    role_fallbacks.get('billing_fallback')
+                    or role_fallbacks.get('fallback')
+                    or role_fallbacks.get('fallback_2')
+                    or role_fallbacks.get('fallback_3')
+                    or role_fallbacks.get('primary')
+                )
                 approved = False
                 if self.is_fallback_always_approved is not None and self.is_fallback_always_approved():
                     approved = True
@@ -866,21 +873,15 @@ class FundamentalStage:
                         else:
                             escalation_client = get_client_for_task('stage1_escalation', self.settings)
                             
-                            prev_brief_content = brief.structured_json if brief and hasattr(brief, 'structured_json') else 'N/A'
-                            
                             esc_msg = actual_user_message + f"""
 
 --- ESCALATION REQUIRED ---
 Trigger reason: {escalation_trigger_reason} (previous confidence: {brief_confidence:.2f}, threshold: {escalation_threshold}).
-Your task is to re-evaluate the data with extreme scrutiny and produce an authoritative Fundamental Brief.
-
-PREVIOUS ANALYSIS:
-{prev_brief_content}
+Your task is to re-evaluate the data from scratch with extreme scrutiny and produce an authoritative Fundamental Brief.
 
 INSTRUCTIONS:
-1. Identify WHY the previous analysis triggered escalation (e.g., conflicting data, missing justification, low conviction).
-2. Gather fresh data if needed, or re-weigh the existing data.
-3. Submit a NEW fundamental brief via `submit_fundamental_brief` that resolves all ambiguities.
+1. Re-weigh all fresh and pre-fetched macroeconomic data with zero confirmation bias.
+2. Submit an authoritative NEW fundamental brief via `submit_fundamental_brief` that resolves all ambiguities.
    - For ANY non-neutral bias, ensure `invalidation_conditions` has >= 40 chars and concrete numerical levels.
    - For ANY sticky currency (bias held >=4 cycles), ensure `bias_continuity_justification` has >= 40 chars with concrete numeric evidence.
 """
@@ -909,9 +910,9 @@ INSTRUCTIONS:
                                     except Exception as del_err:
                                         logger.debug(f"Pre-escalation draft brief cleanup error (non-fatal): {del_err}")
                                     
-                                    # Cross-provider sanity check
                                     try:
-                                        cross_check_model = self.settings.get('llm', {}).get('task_roles', {}).get('stage1_escalation', {}).get('fallback_2', 'gpt-5.6-sol')
+                                        stage1_esc = self.settings.get('llm', {}).get('task_roles', {}).get('stage1_escalation', {})
+                                        cross_check_model = stage1_esc.get('fallback_2') or stage1_esc.get('fallback') or stage1_esc.get('primary')
                                         cross_client = create_client(cross_check_model, self.settings)
                                         cross_schema = {'type': 'object', 'properties': {
                                             'currency_bias': {'type': 'object'}, 'confidence': {'type': 'number'}, 'one_line_reasoning': {'type': 'string'},
@@ -1009,32 +1010,35 @@ INSTRUCTIONS:
                     'type': 'object',
                     'properties': {
                         'currency_bias': {'type': 'object'},
-                        'agreement_pct': {'type': 'number'},
-                        'flagged_currencies': {'type': 'array', 'items': {'type': 'string'}},
+                        'rationale': {'type': 'string'},
                     },
-                    'required': ['currency_bias', 'agreement_pct', 'flagged_currencies'],
+                    'required': ['currency_bias'],
                 }
                 shadow_prompt = (
-                    f"Independen dari brief manapun, tentukan bias USD/EUR/GBP/JPY/AUD/XAU "
-                    f"(bullish/bearish/neutral) HANYA dari data mentah berikut:\n"
-                    f"{prefetched_json}\n\n"
-                    f"Brief yang sedang diverifikasi menyimpulkan: "
-                    f"{json.dumps(b_data.get('currency_bias', {}))}\n"
-                    f"Hitung agreement_pct (persentase currency yang biasnya SAMA dengan briefmu "
-                    f"sendiri), dan sebutkan flagged_currencies yang berbeda."
+                    "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias "
+                    "(bullish/bearish/neutral) ONLY from the raw macroeconomic data below. "
+                    "Do NOT reference any prior brief — form an unanchored, objective view strictly from raw data.\n\n"
+                    f"{prefetched_json}"
                 )
                 shadow_result = await cheap_check_client.classify_json(
                     prompt=shadow_prompt, schema=shadow_schema, temperature=0.0)
-                if shadow_result and shadow_result.get('agreement_pct', 100) < 60:
-                    logger.warning(f"[Stage1 Shadow Check] Low agreement ({shadow_result['agreement_pct']}%) "
-                                    f"pada {shadow_result.get('flagged_currencies')}. Confidence disesuaikan.")
-                    brief.confidence = min(brief.confidence, 0.70)
-                    b_data['confidence'] = brief.confidence
-                    curr_narrative = b_data.get('macro_narrative') or ''
-                    b_data['macro_narrative'] = curr_narrative + (f"\n\n[SYSTEM: Shadow cross-check independen berbeda "
-                        f"pada {shadow_result.get('flagged_currencies')}. Confidence disesuaikan ke 0.70.]")
-                    brief.structured_json = json.dumps(b_data)
-                    await session.commit()
+                if shadow_result and isinstance(shadow_result, dict):
+                    s_bias = shadow_result.get('currency_bias', {})
+                    f_bias = b_data.get('currency_bias', {})
+                    tracked_keys = [k for k in ('USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU') if k in f_bias and k in s_bias]
+                    matching_keys = [k for k in tracked_keys if f_bias[k] == s_bias[k]]
+                    flagged = [k for k in tracked_keys if f_bias[k] != 'neutral' and s_bias[k] != 'neutral' and f_bias[k] != s_bias[k]]
+                    agreement_pct = (len(matching_keys) / len(tracked_keys) * 100.0) if tracked_keys else 100.0
+                    if agreement_pct < 60.0 or len(flagged) >= 2:
+                        logger.warning(f"[Stage1 Shadow Check] Low agreement ({agreement_pct:.1f}%) "
+                                        f"pada {flagged}. Confidence disesuaikan.")
+                        brief.confidence = min(brief.confidence, 0.70)
+                        b_data['confidence'] = brief.confidence
+                        curr_narrative = b_data.get('macro_narrative') or ''
+                        b_data['macro_narrative'] = curr_narrative + (f"\n\n[SYSTEM: Shadow cross-check independen berbeda "
+                            f"pada {flagged} (agreement {agreement_pct:.0f}%). Confidence disesuaikan ke 0.70.]")
+                        brief.structured_json = json.dumps(b_data)
+                        await session.commit()
             except Exception as e:
                 logger.debug(f'Stage1 always-on shadow check failed (non-fatal): {e}')
 

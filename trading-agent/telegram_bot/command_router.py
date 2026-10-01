@@ -113,6 +113,24 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "crystallized": {"type": CommandType.DIRECT, "admin_only": False},
     "model":      {"type": CommandType.ADMIN,  "admin_only": True},
     "pair":       {"type": CommandType.DIRECT, "admin_only": False},
+    "suspend":    {"type": CommandType.ADMIN,  "admin_only": True},
+    "macro_weekly": {"type": CommandType.DIRECT, "admin_only": False},
+    "weekly_macro": {"type": CommandType.DIRECT, "admin_only": False},
+    "counterfactual": {"type": CommandType.DIRECT, "admin_only": False},
+    "chronicle":  {"type": CommandType.DIRECT, "admin_only": False},
+    "monte_carlo": {"type": CommandType.DIRECT, "admin_only": False},
+    "montecarlo": {"type": CommandType.DIRECT, "admin_only": False},
+    "export_chat": {"type": CommandType.DIRECT, "admin_only": False},
+    "export":     {"type": CommandType.DIRECT, "admin_only": False},
+    "undo":       {"type": CommandType.DIRECT, "admin_only": False},
+    "backup":     {"type": CommandType.ADMIN,  "admin_only": True},
+    "stress_test": {"type": CommandType.DIRECT, "admin_only": False},
+    "stresstest": {"type": CommandType.DIRECT, "admin_only": False},
+    "cron":       {"type": CommandType.DIRECT, "admin_only": False},
+    "cancel":     {"type": CommandType.ADMIN,  "admin_only": True},
+    "account":    {"type": CommandType.DIRECT, "admin_only": False},
+    "tasks":      {"type": CommandType.DIRECT, "admin_only": False},
+    "debate":     {"type": CommandType.DIRECT, "admin_only": False},
 }
 
 COMMAND_HELP: dict[str, str] = {
@@ -138,7 +156,9 @@ COMMAND_HELP: dict[str, str] = {
     "archive_intel": "[Admin] Arsipkan intelijen pasar berdasarkan ID: /archive_intel <id>",
     "pause":       "[Admin] Pause eksekusi trading baru",
     "resume":      "[Admin] Resume eksekusi trading",
+    "suspend":     "[Admin] Tangguhkan simbol trading: /suspend <symbol> <durasi> [alasan]",
     "unsuspend":   "[Admin] Buka blokir aset tersuspensi: /unsuspend <symbol|all>",
+    "backup":      "[Admin] Buat snapshot backup database manual: /backup",
     "kill":        "[Admin] DARURAT: Tutup semua posisi segera",
     "close":       "[Admin] Tutup posisi tertentu: /close <ticket>",
     "run":         "[Admin] Paksa eksekusi siklus analisis",
@@ -159,6 +179,7 @@ COMMAND_HELP: dict[str, str] = {
     "interrupt":   "[Interrupt] Hentikan eksekusi AI turn yang sedang berjalan",
     "resume_proposals": "[Proposals] Aktifkan kembali auto-proposals trade",
     "calendar":    "[Kalender] Event ekonomi makro mendatang: /calendar [currency]",
+    "macro_weekly": "[Macro] Ringkasan rilis makro ekonomi mingguan: /macro_weekly [days]",
     "fedwatch":    "[FedWatch] Probabilitas keputusan suku bunga FOMC (CME FedWatch)",
     "yields":      "[Yields] Kurva yield US Treasury & 2s10s spread inversion",
     "fear_greed":  "[Fear & Greed] Sentimen pasar dan klasifikasi (Alternative.me)",
@@ -174,6 +195,13 @@ COMMAND_HELP: dict[str, str] = {
     "playbooks":   "[Playbooks] Status FSM, win rate, dan cooldown playbooks",
     "rollback":    "[Rollback] 1-click rollback playbook ke versi sebelumnya: /rollback <name>",
     "crystallized": "[Crystallized] Daftar skill procedural hasil closed-loop learning",
+    "counterfactual": "[Counterfactual] Simulasi trade 'what-if' bila SL/TP berbeda: /counterfactual <id>",
+    "chronicle":   "[Chronicle] Narasi ringkasan pasar bulanan historis: /chronicle [month] [year]",
+    "monte_carlo": "[Monte Carlo] Simulasi risiko drawdown & ruin bootstrap 1,000 run",
+    "stress_test": "[Stress Test] Uji ketahanan feed & spread ekstrem: /stress_test [symbol]",
+    "export_chat": "[Export] Ekspor riwayat percakapan format ShareGPT JSON",
+    "undo":        "[Undo] Hapus giliran obrolan terakhir dari konteks AI",
+    "cron":        "[Cron] Jadwal tugas otomatis & cron expressions: /cron",
     "(any text)":  "[Chat] Diskusi dengan asisten AI terkait pasar dan trading",
 }
 
@@ -313,18 +341,20 @@ class CommandRouter:
         """Create inline keyboard for AI action proposal confirmation (3-Tier Session Gate)."""
         return InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("✅ Allow Once", callback_data=f"confirm:{action_id}"),
-                InlineKeyboardButton("⏳ Allow for Session (4h)", callback_data=f"allow_session:{action_id}"),
+                InlineKeyboardButton("[OK] Allow Once", callback_data=f"confirm:{action_id}"),
+                InlineKeyboardButton("[PROSES] Allow for Session (4h)", callback_data=f"allow_session:{action_id}"),
             ],
             [
-                InlineKeyboardButton("❌ Deny", callback_data=f"reject:{action_id}"),
+                InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
             ]
         ])
 
     @staticmethod
-    def build_close_keyboard(ticket: int) -> InlineKeyboardMarkup:
+    def build_close_keyboard(ticket: int, volume: Optional[float] = None) -> InlineKeyboardMarkup:
         """Create inline keyboard for position closure confirmation."""
+        cb_data = f"close:{ticket}:{volume}" if volume is not None else f"close:{ticket}"
+        btn_text = f"[ CLOSE #{ticket} ({volume} lot) ]" if volume is not None else f"[ CLOSE #{ticket} ]"
         return InlineKeyboardMarkup([[
-            InlineKeyboardButton(f"[ CLOSE #{ticket} ]", callback_data=f"close:{ticket}"),
+            InlineKeyboardButton(btn_text, callback_data=cb_data),
             InlineKeyboardButton("[ CANCEL ]",          callback_data="cancel"),
         ]])

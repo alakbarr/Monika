@@ -144,7 +144,13 @@ async def judge_output_ensemble(
         if default_judges and isinstance(default_judges, list):
             judge_models = default_judges
         else:
-            judge_models = [settings.get("benchmark", {}).get("default_judge", "claude-sonnet-5")]
+            default_j = (
+                settings.get("benchmark", {}).get("default_judge_model")
+                or settings.get("benchmark", {}).get("default_judge")
+                or settings.get("llm", {}).get("task_roles", {}).get("debate_judge", {}).get("primary")
+                or settings.get("llm", {}).get("default_model", "")
+            )
+            judge_models = [default_j] if default_j else []
 
     CATEGORY_PERSONA_MAP = {
         "macro": ["macro_economist", "portfolio_risk_assessor", "general"],

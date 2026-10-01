@@ -150,7 +150,7 @@ async def compute_brief_price_divergence(
 
     note = (
         f"\n\n{'='*60}\n"
-        f"⚠️  CONTEXT COHERENCE WARNING — {symbol}\n"
+        f"[PERINGATAN]  CONTEXT COHERENCE WARNING — {symbol}\n"
         f"{'='*60}\n"
         f"Context Divergence Score: {cds_score:.2f} (threshold: {CDS_TRIGGER_THRESHOLD})\n"
         f"\nConflict detected between Stage 1 macro brief and recent price action:\n"

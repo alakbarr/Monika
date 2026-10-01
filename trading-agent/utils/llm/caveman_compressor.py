@@ -5,7 +5,7 @@ def compress_tool_payload(
     strip_empty_collections: bool = True,
     preserve_keys: tuple = (
         "events", "news", "bars", "trades", "positions",
-        "dxy", "vix", "fedwatch", "treasury_yields", "interest_rates",
+        "dxy", "vix", "fedwatch", "fedwatch_comparison", "comparisons", "treasury_yields", "interest_rates",
         "cot_signals", "economic_calendar", "news_digest", "surprise_summary",
         "eurusd_momentum", "market_session", "funding_rate", "fear_greed"
     )

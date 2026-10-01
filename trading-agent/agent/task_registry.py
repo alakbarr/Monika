@@ -25,6 +25,8 @@ CORE_TRADING_TASKS: Set[str] = {
     "Heartbeat",
     "HeartbeatManager",
     "FloatingDrawdownMonitor",
+    "MarginGuardian",
+    "MarginMonitor",
     "ExecutionService",
     "PositionSupervisor",
     "OrderReconciler",
@@ -159,7 +161,7 @@ async def _run_with_restart(
                 else:
                     logger.warning(f"[DEGRADED] Auxiliary subsystem {name} exited {max_restarts} times. Isolating with 300s cooldown.")
                     await _safe_notify_warning(
-                        f"⚠️ <b>[DEGRADED] Subsystem {name} exited unexpectedly</b>\n"
+                        f"[PERINGATAN] <b>[DEGRADED] Subsystem {name} exited unexpectedly</b>\n"
                         f"Subsystem auxiliary masuk status DEGRADED dengan cooldown 300s."
                     )
                     restarts = 0
@@ -191,14 +193,14 @@ async def _run_with_restart(
 
             if is_permanent:
                 if name in CORE_TRADING_TASKS:
-                    error_msg = f"🚨 <b>FATAL CORE TASK CRASH (PERMANENT)</b>\nSubsystem inti <code>{name}</code> gagal permanen:\n{e}\nAplikasi melakukan shutdown darurat."
+                    error_msg = f"[DARURAT] <b>FATAL CORE TASK CRASH (PERMANENT)</b>\nSubsystem inti <code>{name}</code> gagal permanen:\n{e}\nAplikasi melakukan shutdown darurat."
                     logger.critical(f"[EMERGENCY] Core trading subsystem {name} failed permanently: {e}. Initiating emergency shutdown.")
                     await _safe_notify_critical(error_msg)
                     set_emergency_exit_code(2)
                     shutdown_event.set()
                     break
                 else:
-                    warn_msg = f"⚠️ <b>[DEGRADED] Auxiliary subsystem {name} failed (permanent error)</b>\nError: {e}\nSubsystem auxiliary diisolasi (cooldown 300s)."
+                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} failed (permanent error)</b>\nError: {e}\nSubsystem auxiliary diisolasi (cooldown 300s)."
                     logger.warning(f"[DEGRADED] Auxiliary subsystem {name} failed. Isolating error without shutting down: {e}")
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
@@ -216,14 +218,14 @@ async def _run_with_restart(
             restarts += 1
             if restarts > max_restarts:
                 if name in CORE_TRADING_TASKS:
-                    error_msg = f"🚨 <b>FATAL CORE TASK CRASH (MAX RESTARTS EXCEEDED)</b>\nSubsystem inti <code>{name}</code> gagal {max_restarts}x berulang.\nError terakhir: {e}\nAplikasi melakukan shutdown darurat."
+                    error_msg = f"[DARURAT] <b>FATAL CORE TASK CRASH (MAX RESTARTS EXCEEDED)</b>\nSubsystem inti <code>{name}</code> gagal {max_restarts}x berulang.\nError terakhir: {e}\nAplikasi melakukan shutdown darurat."
                     logger.critical(f"[EMERGENCY] Core trading subsystem {name} exceeded max restarts: {e}. Initiating emergency shutdown.")
                     await _safe_notify_critical(error_msg)
                     set_emergency_exit_code(2)
                     shutdown_event.set()
                     break
                 else:
-                    warn_msg = f"⚠️ <b>[DEGRADED] Auxiliary subsystem {name} hit max restarts ({max_restarts}x)</b>\nError: {e}\nSubsystem diisolasi (cooldown 300s)."
+                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} hit max restarts ({max_restarts}x)</b>\nError: {e}\nSubsystem diisolasi (cooldown 300s)."
                     logger.warning(f"[DEGRADED] Auxiliary subsystem {name} exceeded max restarts. Isolating error without shutting down: {e}")
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
@@ -257,12 +259,18 @@ class TaskDefinition:
     max_delay: float = 300.0
 
 
+_global_task_registry: Optional["TaskRegistry"] = None
+
+
 class TaskRegistry:
     """Registry and orchestrator for background tasks."""
 
     def __init__(self, shutdown_event: asyncio.Event):
+        global _global_task_registry
         self.shutdown_event = shutdown_event
         self._tasks: Dict[str, TaskDefinition] = {}
+        self._active_tasks: Dict[str, asyncio.Task] = {}
+        _global_task_registry = self
 
     def register(
         self,
@@ -297,7 +305,7 @@ class TaskRegistry:
         return [t for t in self._tasks.values() if t.is_core]
 
     def create_asyncio_task(self, defn: TaskDefinition) -> asyncio.Task:
-        return asyncio.create_task(
+        task = asyncio.create_task(
             _run_with_restart(
                 defn.name,
                 defn.runner,
@@ -308,3 +316,50 @@ class TaskRegistry:
             ),
             name=defn.task_id,
         )
+        self._active_tasks[defn.name] = task
+        return task
+
+    def get_task_status_table(self) -> List[Dict[str, Any]]:
+        """Returns live execution status table of all registered background tasks."""
+        rows = []
+        for name, defn in self._tasks.items():
+            t_handle = self._active_tasks.get(name)
+            is_alive = False
+            state_str = "REGISTERED"
+            if t_handle is not None:
+                if t_handle.cancelled():
+                    state_str = "CANCELLED"
+                elif t_handle.done():
+                    exc = t_handle.exception() if not t_handle.cancelled() else None
+                    state_str = f"ERROR: {exc}" if exc else "COMPLETED"
+                else:
+                    is_alive = True
+                    state_str = "RUNNING"
+            rows.append({
+                "name": name,
+                "task_id": defn.task_id,
+                "is_core": defn.is_core,
+                "is_alive": is_alive,
+                "status": state_str,
+                "max_restarts": defn.max_restarts,
+            })
+        return rows
+
+    @classmethod
+    def get_global_instance(cls) -> Optional["TaskRegistry"]:
+        return _global_task_registry
+
+    @classmethod
+    def get_formatted_status_table(cls, registry: Optional["TaskRegistry"] = None) -> str:
+        inst = registry or _global_task_registry
+        if not inst or not inst._tasks:
+            return "[INFO] *Background Tasks:* Belum ada worker aktif yang terdaftar di TaskRegistry."
+
+        rows = inst.get_task_status_table()
+        lines = [f" *STATUS BACKGROUND TASKS ({len(rows)} Registered)*\n"]
+        for r in rows:
+            st_icon = "[AKTIF]" if r["is_alive"] else ("[NONAKTIF]" if r["status"] == "REGISTERED" else "[KRITIS]")
+            core_badge = " `[CORE]`" if r["is_core"] else ""
+            lines.append(f"{st_icon} *{r['name']}*{core_badge}\n  Status: `{r['status']}` | Max Restarts: `{r['max_restarts']}`")
+        return "\n".join(lines)
+

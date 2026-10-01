@@ -228,7 +228,7 @@ recommend_block=true for significant, non-fatal risk factors.
             from utils.infra.notifier import AgentNotifier
             import asyncio
             asyncio.create_task(AgentNotifier().send_warning(
-                f"⚠️ <b>Adversarial Check Unavailable (Fail-Open)</b>\n\n"
+                f"[PERINGATAN] <b>Adversarial Check Unavailable (Fail-Open)</b>\n\n"
                 f"Symbol: {analysis.symbol}\n"
                 f"Decision: {analysis.decision}\n"
                 f"Error: {e}\n\n"
@@ -237,6 +237,14 @@ recommend_block=true for significant, non-fatal risk factors.
         except Exception:
             pass
 
-        return {'approve': True, 'overall_quality': 'medium', 'strongest_counter_argument': f"Adversarial check unavailable: {e}",
-                'hard_block': False, 'hard_block_reason': '',
-                'recommend_block': False, 'block_reason': ''}
+        return {
+            'approve': True,
+            'overall_quality': 'medium',
+            'strongest_counter_argument': f"Adversarial check unavailable: {e}",
+            'hard_block': False,
+            'hard_block_reason': '',
+            'recommend_block': False,
+            'block_reason': '',
+            'safety_damping_required': True,
+            'risk_damping_multiplier': 0.75
+        }

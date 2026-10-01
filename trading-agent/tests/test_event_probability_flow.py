@@ -186,7 +186,7 @@ class TestIsMacroEventQuery:
             "",
             "   ",
             "\n\t",
-            "🔥🔥🔥🚀🚀🚀",
+            "",
         ]
         with patch("telegram_bot.chat_agent.get_client_for_task"):
             agent = ChatAgent(settings={}, user_id=99902)
@@ -218,11 +218,11 @@ class TestInjectMacroPlaybooks:
             assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in injected
 
             # Verify core sections from event_probability_playbook.md
-            assert "PROTOKOL THINKING FLOW 5 TAHAP" in injected
-            assert "BAGIAN 2: PUSTAKA PRESEDEN HISTORIS" in injected
+            assert ("5-STAGE THINKING FLOW PROTOCOL" in injected or "PROTOKOL THINKING FLOW 5 TAHAP" in injected)
+            assert ("HISTORICAL PRECEDENT" in injected or "PUSTAKA PRESEDEN" in injected)
             assert "1994 Greenspan Preemptive Strike" in injected
             assert "2013 Bernanke" in injected
-            assert "TEMPLATE OUTPUT INSTITUSIONAL" in injected
+            assert ("INSTITUTIONAL" in injected or "TEMPLATE OUTPUT" in injected)
 
     def test_inject_macro_playbooks_tuple_format(self):
         with patch("telegram_bot.chat_agent.get_client_for_task"):
@@ -385,7 +385,7 @@ class TestDeepResearchSynthesizer:
 
             # 3. Check Synthesizer prompt contains Section 6 Macro Transmission & background persistence directive
             synth_sys = synth_kwargs.get("system_prompt", "")
-            assert "6. Ringkasan Transmisi Makro" in synth_sys
+            assert ("6. Multi-Asset Macro Transmission Summary" in synth_sys or "6. Ringkasan Transmisi Makro" in synth_sys)
             assert "user_market_intel" in synth_sys
             assert "IMPORTANT TRADING PLAN DIRECTIVE" in synth_sys
 
@@ -508,7 +508,7 @@ class TestSaveMarketIntelligencePendingAction:
             with patch("telegram_bot.chat_agent.get_session"), \
                  patch("analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor):
                 res_msg = await agent._execute_action(action)
-                assert "✅ Market Intelligence berhasil disimpan!" in res_msg
+                assert "[OK] Market Intelligence berhasil disimpan!" in res_msg
                 assert "ID: #42" in res_msg
                 assert "Judul: FOMC September 2026 Plan" in res_msg
                 assert "Directive: favor_buy" in res_msg

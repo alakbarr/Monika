@@ -340,7 +340,7 @@ def _build_warning_context(symbol: str, cds: float, breakdown: dict) -> str:
     """Light warning for CDS in warning range."""
     dominant = breakdown.get('dominant_dimension', 'unknown')
     return (
-        f"\\n⚠️ [SSVP WARNING — {symbol}] Context Divergence Score={cds:.2f} "
+        f"\\n[PERINGATAN] [SSVP WARNING — {symbol}] Context Divergence Score={cds:.2f} "
         f"(dominant: {dominant}). "
         f"Minor inconsistency detected between data sources. "
         f"Apply normal analysis. If submitting BUY/SELL, your rationale MUST explicitly state which source you trust "
@@ -370,7 +370,7 @@ def _build_contextmerge_prompt(
         dominant_issues.append(f"Current decision would dramatically contradict recent analysis history (task CDS={task:.2f})")
 
     force_wait_instruction = (
-        "\\n⛔ MANDATORY: Due to HIGH CDS, you MUST submit WAIT unless you can provide "
+        "\\n MANDATORY: Due to HIGH CDS, you MUST submit WAIT unless you can provide "
         "an extremely clear and specific adjudication resolving ALL conflicts above. "
         "Ambiguous rationale = WAIT submission required.\\n"
     ) if force_wait else ""

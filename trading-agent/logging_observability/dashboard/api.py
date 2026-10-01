@@ -156,11 +156,33 @@ async def verify_api_key(request: Request, call_next):
     if path == "/api/ping":
         return await call_next(request)
 
-    if allowed_ips and not is_localhost and client_host not in allowed_ips:
-        return JSONResponse(
-            status_code=403,
-            content={"detail": f"Forbidden: IP address {client_host} is not authorized."}
-        )
+    if allowed_ips and not is_localhost:
+        import ipaddress
+        ip_matched = False
+        try:
+            client_ip_obj = ipaddress.ip_address(client_host)
+            for allowed in allowed_ips:
+                try:
+                    if "/" in allowed:
+                        net = ipaddress.ip_network(allowed, strict=False)
+                        if client_ip_obj in net:
+                            ip_matched = True
+                            break
+                    elif client_host == allowed:
+                        ip_matched = True
+                        break
+                except Exception:
+                    if client_host == allowed:
+                        ip_matched = True
+                        break
+        except Exception:
+            ip_matched = (client_host in allowed_ips)
+
+        if not ip_matched:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": f"Forbidden: IP address {client_host} is not authorized."}
+            )
 
     if not api_key and not multi_keys:
         if not is_localhost:

@@ -426,7 +426,8 @@ class SignalArbitrator:
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
 
-            is_incubating = bool(getattr(quant_signal, "meta", {}).get("is_incubating", False)) if quant_signal else False
+            q_meta = quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
+            is_incubating = bool(q_meta.get("is_incubating", False)) if isinstance(q_meta, dict) else False
             if is_incubating and l_dir in ("avoid", "wait"):
                 return ArbitrationResult(
                     symbol=symbol,

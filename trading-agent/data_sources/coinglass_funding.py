@@ -9,6 +9,7 @@ Funding rate positif -> bias long (sentimen bullish, risiko reversal)
 Funding rate negatif -> bias short (sentimen bearish, risiko squeeze)
 """
 import logging
+from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,19 +20,58 @@ logger = logging.getLogger("TradingAgent.CoinglasFunding")
 
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 BINANCE_DAPI_URL = "https://dapi.binance.com/dapi/v1/premiumIndex"
+BINANCE_OI_URL = "https://fapi.binance.com/fapi/v1/openInterest"
 BYBIT_TICKERS_URL = "https://api.bybit.com/v5/market/tickers"
 COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 
 class CoinglasFundingFetcher:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
+
+    async def fetch_open_interest_btc(self) -> dict:
+        """Fetch BTC Open Interest data directly."""
+        try:
+            oi_data = await fetch_with_retry(
+                BINANCE_OI_URL,
+                params={"symbol": "BTCUSDT"},
+                timeout=10
+            )
+            if oi_data and isinstance(oi_data, dict) and "openInterest" in oi_data:
+                oi_val = float(oi_data.get("openInterest", 0.0))
+                return {
+                    "symbol": "BTCUSDT",
+                    "open_interest_usd": oi_val,
+                    "open_interest_coins": oi_val,
+                    "status": "success",
+                }
+        except Exception as oi_err:
+            logger.debug(f"Binance open interest fetch non-fatal: {oi_err}")
+        return {
+            "symbol": "BTCUSDT",
+            "open_interest_usd": 0.0,
+            "open_interest_coins": 0.0,
+            "status": "fallback",
+        }
     
     async def fetch(self) -> dict:
         """
-        Mengambil data funding rate BTC saat ini secara resilient dari bursa-bursa utama.
+        Mengambil data funding rate & open interest BTC saat ini secara resilient dari bursa-bursa utama.
         Hierarki: Binance Futures (USDT-M / Coin-M) -> Bybit -> Coinglass -> Baseline Neutral.
         """
         rates = []
+        open_interest_btc = None
+
+        # Fetch Open Interest from Binance Futures
+        try:
+            oi_data = await fetch_with_retry(
+                BINANCE_OI_URL,
+                params={"symbol": "BTCUSDT"},
+                timeout=10
+            )
+            if oi_data and isinstance(oi_data, dict) and "openInterest" in oi_data:
+                open_interest_btc = float(oi_data.get("openInterest", 0.0))
+        except Exception as oi_err:
+            logger.debug(f"Binance open interest fetch non-fatal: {oi_err}")
         
         # 1. Primary Source: Binance Futures (USDT-M dengan fallback ke Coin-M, 100% free, high availability)
         try:
@@ -128,6 +168,7 @@ class CoinglasFundingFetcher:
             return {
                 "symbol": "BTCUSD",
                 "average_funding_rate": None,
+                "open_interest_btc": open_interest_btc,
                 "exchanges": [],
                 "interpretation": "Unavailable (exchanges unreachable)",
                 "source": "unavailable",
@@ -139,6 +180,7 @@ class CoinglasFundingFetcher:
         result = {
             "symbol": "BTCUSD",
             "average_funding_rate": round(avg_rate, 6),
+            "open_interest_btc": open_interest_btc,
             "exchanges": rates,
             "interpretation": (
                 "Strongly long-biased (squeeze risk on shorts)" if avg_rate > 0.0005
@@ -161,3 +203,4 @@ class CoinglasFundingFetcher:
                     logger.debug(f"Funding rate SystemConfig.upsert error for {cfg_key}: {e}")
         
         return result
+

@@ -62,6 +62,7 @@ class HarnessMetrics:
     sortino_ratio: float
     max_drawdown_pct: float
     total_pnl_pct: float
+    calmar_ratio: float = 0.0
     trade_returns: List[float] = field(default_factory=list)
     trades: List[StrategyTradeRecord] = field(default_factory=list)
 
@@ -74,6 +75,7 @@ class HarnessMetrics:
             "sortino_ratio": self.sortino_ratio,
             "max_drawdown_pct": self.max_drawdown_pct,
             "total_pnl_pct": self.total_pnl_pct,
+            "calmar_ratio": self.calmar_ratio,
         }
 
 
@@ -779,6 +781,7 @@ class IsolatedStrategyBacktestHarness:
                 max_dd = dd
 
         total_pnl_pct = round((equity - 1.0) * 100.0, 2)
+        calmar_ratio = round(total_pnl_pct / max_dd, 2) if max_dd > 0.01 else (10.0 if total_pnl_pct > 0 else 0.0)
 
         return HarnessMetrics(
             total_trades=total_trades,
@@ -788,6 +791,7 @@ class IsolatedStrategyBacktestHarness:
             sortino_ratio=sortino_ratio,
             max_drawdown_pct=round(max_dd, 2),
             total_pnl_pct=total_pnl_pct,
+            calmar_ratio=calmar_ratio,
             trade_returns=returns,
             trades=records,
         )
@@ -979,10 +983,10 @@ class IsolatedStrategyBacktestHarness:
                 continue
 
             # Standardized next-bar-open fill semantics (Zero lookahead)
-            if i + 1 >= len(primary_candles):
+            if i + 1 >= len(candles):
                 break
-            next_bar = primary_candles[i + 1]
-            base_price = float(next_bar.open)
+            next_bar = candles[i + 1]
+            base_price = float(next_bar.get("open") if isinstance(next_bar, dict) else next_bar.open)
             entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost if sig.direction == "buy" else base_price - (self.spread_cost / 2.0) - self.slippage_cost
             atr = self._calculate_atr(h1_slice, period=14)
 
@@ -1002,11 +1006,11 @@ class IsolatedStrategyBacktestHarness:
             max_eval_bar = min(i + 15, len(candles))
             for f_idx in range(i + 1, max_eval_bar):
                 f_bar = candles[f_idx]
-                f_open = float(f_bar.open)
-                f_high = float(f_bar.high)
-                f_low = float(f_bar.low)
+                f_open = float(f_bar.get("open") if isinstance(f_bar, dict) else f_bar.open)
+                f_high = float(f_bar.get("high") if isinstance(f_bar, dict) else f_bar.high)
+                f_low = float(f_bar.get("low") if isinstance(f_bar, dict) else f_bar.low)
                 bars_held += 1
-                exit_time = f_bar.get("time") or cur_time
+                exit_time = f_bar.get("time") if isinstance(f_bar, dict) else getattr(f_bar, "time", cur_time)
 
                 if sig.direction == "buy":
                     if f_open <= sl:
@@ -1044,7 +1048,7 @@ class IsolatedStrategyBacktestHarness:
                         break
             else:
                 last_bar = candles[max_eval_bar - 1]
-                exit_price = float(last_bar.close)
+                exit_price = float(last_bar.get("close") if isinstance(last_bar, dict) else last_bar.close)
 
             ret_equity, ret_pct, r_mult = self._calculate_trade_pnl(
                 direction=sig.direction,

@@ -42,8 +42,9 @@ STRATEGY_PARAM_SPACES: Dict[str, List[ParameterSpec]] = {
         ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
     ],
     "xau_trend_engine": [
+        ParameterSpec("ema_fast", "int", low=10, high=30, step=2),
+        ParameterSpec("ema_slow", "int", low=40, high=70, step=5),
         ParameterSpec("donchian_period", "int", low=12, high=36, step=2),
-        ParameterSpec("volume_zscore_min", "float", low=1.0, high=2.5, step=0.1),
         ParameterSpec("size_multiplier", "float", low=0.5, high=1.0, step=0.1),
     ],
     "trend_trailing": [
@@ -552,9 +553,9 @@ class AlphaDiscoveryScheduler:
 
             # Notify operator if notifier is available
             if self.notifier and hasattr(self.notifier, "send_info"):
-                deploy_badge = "🚀 <b>HOT-DEPLOYED TO PAPER TRADING</b>" if proposal.status == "PAPER_ACTIVE" else "PROPOSED"
+                deploy_badge = " <b>HOT-DEPLOYED TO PAPER TRADING</b>" if proposal.status == "PAPER_ACTIVE" else "PROPOSED"
                 await self.notifier.send_info(
-                    f"🧬 <b>Autonomous Alpha Discovered!</b>\n"
+                    f" <b>Autonomous Alpha Discovered!</b>\n"
                     f"<b>Status:</b> {deploy_badge}\n"
                     f"<b>Strategy:</b> {proposal.hypothesis.name}\n"
                     f"<b>Symbol:</b> {proposal.hypothesis.symbol}\n"

@@ -43,8 +43,8 @@ class AnalysisCycleTree(Widget):
 
     ICONS = {
         "running": f"[{PHOSPHOR_AMBER}]⟳[/]",
-        "completed": f"[{BULL_PROFIT}]✓[/]",
-        "failed": f"[{BEAR_LOSS}]✗[/]",
+        "completed": f"[{BULL_PROFIT}][/]",
+        "failed": f"[{BEAR_LOSS}][/]",
         "waiting": f"[{MUTED}]○[/]",
     }
 
@@ -102,8 +102,8 @@ class AnalysisCycleTree(Widget):
         t = self.theme
         return {
             "running": f"[{t.step_running}]⟳[/]",
-            "completed": f"[{t.step_completed}]✓[/]",
-            "failed": f"[{t.step_failed}]✗[/]",
+            "completed": f"[{t.step_completed}][/]",
+            "failed": f"[{t.step_failed}][/]",
             "waiting": f"[{t.step_waiting}]○[/]",
         }
 
@@ -264,7 +264,7 @@ class AnalysisCycleTree(Widget):
                         rl = self.RAILS["last"] if is_l else self.RAILS["mid"]
                         st = hsteps.get(sname, {})
                         st_status = st.get("status", "completed")
-                        st_icon = icons.get(st_status, "✓")
+                        st_icon = icons.get(st_status, "")
                         st_dur = float(st.get("duration_s") or 0.0)
                         lines.append(f"      {rl} {st_icon} {sname} ({st_dur:.1f}s)")
 

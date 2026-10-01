@@ -71,6 +71,11 @@ class ConfigReloader:
                         return False
 
                     self.risk_gate.update_parameters(new_config)
+                    if hasattr(self.risk_gate, "settings") and isinstance(self.risk_gate.settings, dict):
+                        if "agent_architecture" in new_config:
+                            self.risk_gate.settings.setdefault("agent_architecture", {}).update(new_config.get("agent_architecture", {}))
+                        if "trading" in new_config:
+                            self.risk_gate.settings.setdefault("trading", {}).update(new_config.get("trading", {}))
 
                 # Notify all subscribing components
                 for sub in self.subscribers:

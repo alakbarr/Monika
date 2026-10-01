@@ -41,6 +41,38 @@ async def handle_calculate_position_size(args: dict, **ctx) -> dict:
     return await _calc_size(args, session=session, executor=ctx.get("executor"))
 
 
+async def handle_get_swap_rates(args: dict, **ctx) -> dict:
+    from utils.market.swap_estimator import FALLBACK_SWAP
+    symbol = args.get("symbol")
+    executor = ctx.get("executor")
+    mt5_client = getattr(executor, "mt5_client", None) if executor else None
+    
+    if symbol:
+        sym_clean = symbol.upper()
+        res = {"symbol": sym_clean, "wednesday_multiplier": 3.0, "rollover_time_utc": "21:00"}
+        info = None
+        if mt5_client:
+            try:
+                info = await mt5_client.get_symbol_info(sym_clean)
+            except Exception:
+                pass
+        if info:
+            res["swap_long"] = info.get("swap_long")
+            res["swap_short"] = info.get("swap_short")
+            res["source"] = "mt5_live"
+        else:
+            fb = FALLBACK_SWAP.get(sym_clean, {"long": -3.0, "short": -3.0})
+            res["swap_long"] = fb.get("long", -3.0)
+            res["swap_short"] = fb.get("short", -3.0)
+            res["source"] = "fallback_estimate"
+        return res
+    else:
+        out = {}
+        for sym, rates in FALLBACK_SWAP.items():
+            out[sym] = {"swap_long": rates["long"], "swap_short": rates["short"]}
+        return {"tracked_swaps": out, "wednesday_multiplier": 3.0, "rollover_time_utc": "21:00", "source": "fallback_rates"}
+
+
 def register_trading_tools():
     registry = ToolRegistry.get_instance()
     tools = [
@@ -84,9 +116,18 @@ def register_trading_tools():
             toolset="trading",
             requires_db=True,
         ),
+        ToolDefinition(
+            name="get_swap_rates",
+            description="Fetch overnight rollover swap rates (long and short) for trading symbols, including Wednesday 3x rollover info.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
+            handler=handle_get_swap_rates,
+            toolset="trading",
+            requires_db=False,
+        ),
     ]
     for t in tools:
         registry.register(t)
 
 
 register_trading_tools()
+

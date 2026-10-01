@@ -63,6 +63,10 @@ class StrategyRegistry:
         return cls._registry.get(strategy_id)
 
     @classmethod
+    def get(cls, strategy_id: str) -> Optional[Type[EdgeStrategy]]:
+        return cls._registry.get(strategy_id)
+
+    @classmethod
     def list_strategies(cls) -> list[str]:
         return list(cls._registry.keys())
 
@@ -371,3 +375,56 @@ class StrategyRegistry:
                     except Exception as rb_err:
                         logger.debug(f"[{strat_name}] rollback after failure (non-fatal): {rb_err}")
         return out
+
+    @classmethod
+    async def evaluate_strategy(
+        cls,
+        strategy_id: str,
+        session,
+        symbol: str,
+        settings: dict,
+        force_reload: bool = False,
+        current_regime: Optional[str] = None,
+    ) -> Optional[EdgeSignal]:
+        """Evaluate a single specific strategy by its strategy_id."""
+        strat_cls = cls.get_strategy(strategy_id)
+        if not strat_cls:
+            logger.warning(f"[StrategyRegistry] Strategy '{strategy_id}' not found in registry.")
+            return None
+
+        if session and hasattr(session, "execute"):
+            now_ts = time.time()
+            if force_reload or (now_ts - cls._last_load_time >= cls._load_interval):
+                try:
+                    await cls.load_dynamic_parameters(session)
+                    cls._last_load_time = now_ts
+                except Exception as e:
+                    logger.debug(f"[StrategyRegistry] dynamic param check non-fatal: {e}")
+
+        strat = None
+        if callable(strat_cls):
+            try:
+                strat = strat_cls(settings)
+            except TypeError:
+                try:
+                    strat = strat_cls(**(settings if isinstance(settings, dict) else {}))
+                except TypeError:
+                    strat = strat_cls()
+        else:
+            strat = strat_cls
+
+        if strat is None:
+            return None
+
+        dyn_params = cls._dynamic_symbol_params.get((strategy_id, symbol.upper())) or cls._dynamic_params.get(strategy_id)
+        if dyn_params and hasattr(strat, "set_parameters"):
+            strat.set_parameters(dyn_params)
+
+        res = strat.evaluate(session, symbol, settings, current_regime=current_regime)
+        if inspect.isawaitable(res):
+            res = await res
+        return res
+
+
+STRATEGY_REGISTRY = StrategyRegistry._registry
+
