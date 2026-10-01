@@ -1,23 +1,23 @@
 ---
 name: crystallized_eurusd_trend
-description: Playbook for EURUSD verified across 2 winning cycles.
+description: Playbook for EURUSD verified across 5 winning cycles.
 symbol: EURUSD
-win_count: 2
+win_count: 5
 avg_confidence: 0.88
-total_pnl_usd: 360.00
+total_pnl_usd: 900.00
 status: active
-last_crystallized_at: 2026-10-01T19:21:11.500034+00:00
+last_crystallized_at: 2026-10-01T19:36:06.320164+00:00
 ---
 
 # Crystallized Strategy: EURUSD (EURUSD_TREND)
 
 ## Empirical Setup Verification
-This skill was autonomously crystallized by the Closed-Loop Learning engine based on 2 profitable trading resolutions.
+This skill was autonomously crystallized by the Closed-Loop Learning engine based on 5 profitable trading resolutions.
 
 ## Empirical Track Record
 - Reliability Status: Early-Stage Pattern (Low Sample Size)
-- Sample Size: 2 verified winning trades
-- Baseline Conviction: 88% (n=2)
+- Sample Size: 5 verified winning trades
+- Baseline Conviction: 88% (n=5)
 
 ## Core Tactical Directives
 - Wait for Asian low sweep before buy entry.
