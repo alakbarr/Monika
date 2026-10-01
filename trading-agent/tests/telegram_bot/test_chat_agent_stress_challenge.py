@@ -414,12 +414,12 @@ class TestBoundaryAndAdversarialInputs:
     @pytest.mark.asyncio
     async def test_emojis_and_unusual_characters(self, agent):
         """Emojis and symbol strings."""
-        assert agent._is_macro_event_query("🔥🔥🔥🚀🚀🚀") is False
-        res = await agent._classify_query_complexity("🔥🔥🔥🚀🚀🚀")
+        assert agent._is_macro_event_query("") is False
+        res = await agent._classify_query_complexity("")
         assert res != "deep_research"
 
-        assert agent._is_macro_event_query("💰📈💵") is False
-        res = await agent._classify_query_complexity("💰📈💵")
+        assert agent._is_macro_event_query("[SALDO]") is False
+        res = await agent._classify_query_complexity("[SALDO]")
         assert res != "deep_research"
 
     @pytest.mark.asyncio

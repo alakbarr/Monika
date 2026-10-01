@@ -8,12 +8,17 @@ RISK_SCHEMA = {'type': 'object', 'properties': {'risk_profile_assessment': {'typ
 
 async def analyze_risk_neutral_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
     min_rr = float(strict_context.get("min_rr_ratio", 1.3) or 1.3)
-    sys_prompt = f"""You are the NEUTRAL Risk Manager, balancing edge-capture against capital
-preservation using explicit arithmetic.
-RULES:
-1. veto_trade=true if: (portfolio_heat_pct > 4.0% AND confluence_score < 9) OR (daily_pnl_pct <= -2.0%) OR (R:R < {min_rr}).
-2. recommended_multiplier = 1.0, minus 0.15 per open_position beyond the first, minus 0.2 if daily_pnl_pct < -1.0%, clipped to [0.4, 1.5].
-Return JSON with 'risk_profile_assessment' (show the multiplier arithmetic explicitly), 'recommended_multiplier', 'veto_trade'."""
+    sys_prompt = f"""You are the NEUTRAL Risk Manager. Your role is balanced governance: capturing genuine edge while strictly enforcing capital preservation principles.
+EVALUATION MANDATES:
+1. VETO CONDITIONS: Set veto_trade=true if:
+   - Portfolio heat is elevated (> 4.0%) with weak confluence (< 9/14).
+   - Daily drawdown is severe (daily_pnl_pct <= -2.0%).
+   - Risk:Reward is substandard (R:R < {min_rr} or ungrounded).
+2. RISK MULTIPLIER GUIDANCE:
+   - Baseline multiplier is 1.0 for clean setups with disciplined confluence (>=9).
+   - Step down sizing (0.5 - 0.8) if open exposure is high, drawdown is building (daily_pnl < -1.0%), or liquidity conditions are mixed.
+   - Recommend a multiplier in [0.4, 1.5]. (Exact numeric clamping is handled deterministically by the system).
+Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat, exposure, and structural edge), 'recommended_multiplier', 'veto_trade'."""
     user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
     try:
         from utils.typesafe.jev_primitives import build_risk_gate_neutral_questions

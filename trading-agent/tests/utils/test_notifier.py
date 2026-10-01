@@ -14,25 +14,31 @@ class TestNotifier:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_CHAT_ID": "123"})
+    @patch("database.db.get_session")
     @patch("utils.infra.notifier.Bot")
-    async def test_send_messages(self, mock_bot):
+    async def test_send_messages(self, mock_bot, mock_get_session):
+        mock_session = AsyncMock()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_get_session.return_value = mock_ctx
+
         notifier = AgentNotifier()
         notifier.bot.send_message = AsyncMock()
 
         await notifier.send_critical("Crit")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="🚨 <b>CRITICAL ERROR</b> 🚨\nCrit", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[KRITIS] KESALAHAN SISTEM</b>\nCrit", parse_mode="HTML")
 
         await notifier.send_warning("Warn")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="⚠️ <b>WARNING</b> ⚠️\nWarn", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[PERINGATAN]</b>\nWarn", parse_mode="HTML")
 
         await notifier.send_info("Info")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="ℹ️ <b>INFO</b>\nInfo", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[INFORMASI]</b>\nInfo", parse_mode="HTML")
 
         await notifier.send("Custom HTML Direct Message")
         notifier.bot.send_message.assert_called_with(chat_id="123", text="Custom HTML Direct Message", parse_mode="HTML")
 
         await notifier.send_alert("System degraded")
-        notifier.bot.send_message.assert_called_with(chat_id="123", text="⚠️ <b>WARNING</b> ⚠️\nSystem degraded", parse_mode="HTML")
+        notifier.bot.send_message.assert_called_with(chat_id="123", text="<b>[PERINGATAN]</b>\nSystem degraded", parse_mode="HTML")
 
         summary = {
             "elapsed_total_s": 10.5,
@@ -44,10 +50,10 @@ class TestNotifier:
         }
         await notifier.send_cycle_summary(summary)
         call_args = notifier.bot.send_message.call_args[1]
-        assert "CYCLE COMPLETE" in call_args["text"]
-        assert "10.5s" in call_args["text"]
-        assert "BTCUSD: BUY (conf: 0.80)" in call_args["text"]
-        assert "USDJPY: SKIP (cooldown)" in call_args["text"]
+        assert "SIKLUS SELESAI" in call_args["text"]
+        assert "10.5 detik" in call_args["text"]
+        assert "BTCUSD: BUY" in call_args["text"]
+        assert "USDJPY: DILEWATI (cooldown)" in call_args["text"]
 
     @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "test_token", "TELEGRAM_ADMIN_ID": "456", "TELEGRAM_ADMIN_CHAT_ID": ""}, clear=False)
     @patch("utils.infra.notifier.Bot")
@@ -74,7 +80,7 @@ def test_sanitize_telegram_html():
 
     # Comparison operators and unescaped entities must be escaped
     raw_alert = (
-        "💡 <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
+        "[CATATAN] <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
         "<b>ID:</b> <code>alpha_xauusd_5044bf</code>\n"
         "<b>Sharpe:</b> <code>2.88</code> (Target > 1.5)\n"
         "<b>Max Drawdown:</b> <code>2.3%</code> (Limit < 10.0%)\n"

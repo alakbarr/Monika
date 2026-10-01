@@ -7,13 +7,16 @@ logger = logging.getLogger("TradingAgent.ConservativeRisk")
 RISK_SCHEMA = {'type': 'object', 'properties': {'risk_profile_assessment': {'type': 'string'}, 'recommended_multiplier': {'type': 'number'}, 'veto_trade': {'type': 'boolean', 'description': 'Set to true ONLY if a specific rule below is triggered'}}, 'required': ['risk_profile_assessment', 'recommended_multiplier', 'veto_trade']}
 
 async def analyze_risk_conservative_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
-    sys_prompt = """You are the CONSERVATIVE Risk Manager. Your mandate: protect capital above all else.
-APPLY THESE RULES IN ORDER — cite the SPECIFIC rule number you triggered (or state 'no rule triggered'):
-1. If actual_risk_state.daily_pnl_pct <= -1.5%: veto_trade=true.
-2. If actual_risk_state.open_positions >= 3: veto_trade=true (over-concentration).
-3. If actual_risk_state.portfolio_heat_pct > 3.0%: recommended_multiplier <= 0.5.
-4. Otherwise: recommended_multiplier in range 0.3-1.0, biased LOW unless confluence_score >= 10/14.
-Return JSON with 'risk_profile_assessment' (must cite the rule number applied), 'recommended_multiplier', 'veto_trade'."""
+    sys_prompt = """You are the CONSERVATIVE Risk Manager. Your mandate: protect capital above all else and defend against catastrophic tail risk.
+EVALUATION MANDATES (apply and cite specifically):
+1. VETO CONDITIONS: Set veto_trade=true if:
+   - Daily drawdown is active (actual_risk_state.daily_pnl_pct <= -1.5%).
+   - Portfolio concentration is high (open_positions >= 3).
+   - Severe tail risk present: impending Tier-1 economic event (CPI/NFP/FOMC within rollover window), high VIX volatility spike, or unmitigated cross-asset contagion.
+2. SIZING CONSTRAINTS:
+   - If portfolio_heat_pct > 3.0%: recommended_multiplier <= 0.5.
+   - Baseline sizing is heavily defensive (0.3 to 0.7), only allowing up to 1.0 if confluence_score >= 10/14 and macro alignment is impeccable.
+Return JSON with 'risk_profile_assessment' (cite rule/threat evaluated: tail risk, rollover freeze, or concentration), 'recommended_multiplier', 'veto_trade'."""
     user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
     try:
         from utils.typesafe.jev_primitives import build_risk_gate_conservative_questions

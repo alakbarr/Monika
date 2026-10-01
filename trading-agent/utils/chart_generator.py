@@ -158,3 +158,123 @@ async def generate_candlestick_chart_async(
         show_ma=show_ma,
         indicators=indicators,
     )
+
+
+def generate_smc_candlestick_chart(
+    ohlcv_rows: list[dict],
+    symbol: str,
+    timeframe: str = "H1",
+    fvg_list: Optional[list[dict]] = None,
+    swing_points: Optional[list[dict]] = None,
+    save_to_disk: bool = True,
+) -> tuple[io.BytesIO, Optional[str]]:
+    """
+    Renders dark-theme candlestick chart with SMC overlays:
+    - Transparent Green/Red rectangles for Bullish/Bearish Fair Value Gaps (FVG)
+    - Triangle markers for Swing Highs (red) and Swing Lows (green)
+    Returns: (BytesIO buffer, Optional filepath on disk)
+    """
+    import matplotlib.patches as patches
+    from pathlib import Path
+    import os
+
+    if not ohlcv_rows or len(ohlcv_rows) < 2:
+        raise ValueError(f"Insufficient OHLCV data for {symbol}")
+
+    df = pd.DataFrame(ohlcv_rows)
+    col_map = {}
+    for col in df.columns:
+        c_low = str(col).lower()
+        if c_low in ["timestamp", "time", "date"]:
+            col_map[col] = "Date"
+        elif c_low == "open":
+            col_map[col] = "Open"
+        elif c_low == "high":
+            col_map[col] = "High"
+        elif c_low == "low":
+            col_map[col] = "Low"
+        elif c_low == "close":
+            col_map[col] = "Close"
+        elif c_low in ["volume", "tick_volume", "vol"]:
+            col_map[col] = "Volume"
+
+    df.rename(columns=col_map, inplace=True)
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"])
+        df.set_index("Date", inplace=True)
+    elif not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.date_range(end=pd.Timestamp.now(tz='UTC'), periods=len(df), freq='h')
+
+    for req_col in ["Open", "High", "Low", "Close"]:
+        if req_col in df.columns:
+            df[req_col] = pd.to_numeric(df[req_col], errors='coerce')
+
+    has_volume = "Volume" in df.columns and not (pd.to_numeric(df["Volume"], errors='coerce').fillna(0) == 0).all()
+    if has_volume:
+        df["Volume"] = pd.to_numeric(df["Volume"], errors='coerce').fillna(0)
+
+    fig, axlist = mpf.plot(
+        df,
+        type="candle",
+        style=DARK_STYLE,
+        title=f"\n{symbol}  •  {timeframe}  (SMC & FVG Structure)",
+        volume=has_volume,
+        figsize=(10, 6),
+        returnfig=True,
+    )
+    main_ax = axlist[0]
+
+    # Overlay FVGs
+    if fvg_list:
+        for fvg in fvg_list:
+            top = float(fvg.get("top", fvg.get("high", 0)))
+            bottom = float(fvg.get("bottom", fvg.get("low", 0)))
+            fvg_type = str(fvg.get("type", "bullish")).lower()
+            height = abs(top - bottom)
+            y_min = min(top, bottom)
+            is_bull = "bull" in fvg_type
+            color = "#00e676" if is_bull else "#ff1744"
+            alpha = 0.22
+
+            rect = patches.Rectangle(
+                (0, y_min), len(df), height,
+                linewidth=1, edgecolor=color, facecolor=color, alpha=alpha, linestyle="--"
+            )
+            main_ax.add_patch(rect)
+
+    # Overlay Swing Points
+    if swing_points:
+        for sp in swing_points:
+            p_type = str(sp.get("type", "")).lower()
+            price = float(sp.get("price", 0))
+            idx = sp.get("index", None)
+            if idx is None and "time" in sp:
+                try:
+                    t_val = pd.to_datetime(sp["time"])
+                    if t_val in df.index:
+                        idx = df.index.get_loc(t_val)
+                except Exception:
+                    pass
+
+            if idx is not None and 0 <= idx < len(df):
+                if "high" in p_type or "top" in p_type or "peak" in p_type:
+                    main_ax.scatter(idx, price, marker="v", color="#ff5252", s=70, zorder=6)
+                else:
+                    main_ax.scatter(idx, price, marker="^", color="#69f0ae", s=70, zorder=6)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+    buf.seek(0)
+
+    saved_path = None
+    if save_to_disk:
+        out_dir = Path("results/charts")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        saved_path = str(out_dir / f"{symbol}_{timeframe}_{ts_str}.png")
+        with open(saved_path, "wb") as f:
+            f.write(buf.getvalue())
+
+    plt.close(fig)
+    return buf, saved_path
+

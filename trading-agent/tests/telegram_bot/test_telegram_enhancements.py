@@ -69,7 +69,7 @@ class TestStreamingMessageEdit:
         result = await agent._stream_response(mock_update, None, mock_generator())
 
         assert "Halo! Ini adalah hasil analisis pasar terkini." in result
-        mock_update.message.reply_text.assert_called_once_with("⏳ Thinking...")
+        mock_update.message.reply_text.assert_called_once_with("[PROSES] Thinking...")
 
         # Intermediate edits should display cursor ▌
         calls = mock_sent_msg.edit_text.call_args_list
@@ -398,7 +398,7 @@ class TestVoiceMemoTranscription:
         vh._transcribe.assert_called_once_with(b"fake_audio_bytes", mime_type="audio/ogg")
 
         # 3. Displayed acknowledgment
-        mock_status_msg.edit_text.assert_called_with('🎤 Heard: "tolong jelaskan kondisi pasar hari ini"')
+        mock_status_msg.edit_text.assert_called_with('[SUARA] "tolong jelaskan kondisi pasar hari ini"')
 
         # 4. Routed to ChatAgent with override_text
         mock_agent.handle.assert_called_once()

@@ -226,10 +226,19 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
     if not session:
         return {"count": 0, "events": [], "status": "no_session"}
 
-    impact_filter = args.get("impact_filter", "high_and_medium")
+    event_filter = (args.get("event_name") or args.get("query") or args.get("search") or "").strip()
+    impact_filter = args.get("impact_filter")
+    if not impact_filter:
+        impact_filter = "all" if event_filter else "high_and_medium"
+
     currency_filter = args.get("currency_filter", "")
-    hours_ahead = args.get("hours_ahead", 48)
-    hours_behind = args.get("hours_behind", 24)
+    hours_ahead = int(args.get("hours_ahead", 48))
+
+    custom_behind = args.get("hours_behind")
+    if custom_behind is not None:
+        hours_behind = int(custom_behind)
+    else:
+        hours_behind = 168 if event_filter else 24
 
     now = clock.now()
     since = now - timedelta(hours=hours_behind)
@@ -242,6 +251,9 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
         .order_by(EconomicCalendar.event_time.asc())
         .limit(100)
     )
+
+    if event_filter:
+        query = query.where(EconomicCalendar.event_name.ilike(f"%{event_filter}%"))
 
     if impact_filter == "high":
         query = query.where(EconomicCalendar.impact == "high")
@@ -406,6 +418,17 @@ async def handle_get_treasury_yields(args: dict, **ctx) -> dict:
         except (IndexError, TypeError):
             pass
 
+    # Fed Net Liquidity calculation: Total Assets (WALCL in Millions/1000) - TGA (WTREGEN in Billions) - Reverse Repo (RRPONTSYD in Billions)
+    fed_net_liquidity = None
+    if "FED_TOTAL_ASSETS" in by_tenor and "TGA_BALANCE" in by_tenor and "REVERSE_REPO" in by_tenor:
+        try:
+            walcl_b = by_tenor["FED_TOTAL_ASSETS"][0]["yield_pct"] / 1000.0 if by_tenor["FED_TOTAL_ASSETS"][0]["yield_pct"] > 50000 else by_tenor["FED_TOTAL_ASSETS"][0]["yield_pct"]
+            tga_b = by_tenor["TGA_BALANCE"][0]["yield_pct"] / 1000.0 if by_tenor["TGA_BALANCE"][0]["yield_pct"] > 50000 else by_tenor["TGA_BALANCE"][0]["yield_pct"]
+            rrp_b = by_tenor["REVERSE_REPO"][0]["yield_pct"] / 1000.0 if by_tenor["REVERSE_REPO"][0]["yield_pct"] > 50000 else by_tenor["REVERSE_REPO"][0]["yield_pct"]
+            fed_net_liquidity = round(walcl_b - tga_b - rrp_b, 2)
+        except Exception:
+            fed_net_liquidity = None
+
     latest_date = None
     for tenor_rows in by_tenor.values():
         if tenor_rows:
@@ -425,6 +448,7 @@ async def handle_get_treasury_yields(args: dict, **ctx) -> dict:
     return {
         "yields_by_tenor": by_tenor,
         "2y_10y_spread": spread,
+        "fed_net_liquidity_billions": fed_net_liquidity,
         "curve_status": "inverted" if spread is not None and spread < 0 else "normal" if spread is not None and spread > 0 else "unknown",
         "data_age_hours": data_age_hours,
         "staleness_note": f"Data berumur {data_age_hours}h (bisa juga dari cache hingga 6h)." if data_age_hours and data_age_hours > 24 else None,
@@ -681,16 +705,63 @@ async def handle_get_interest_rates(args: dict, **ctx) -> dict:
     }
 
 
+def _parse_iso_or_str_dt(dt_val: Any) -> Optional[datetime]:
+    """Parse ISO or human-readable date/time string to timezone-aware UTC datetime."""
+    if isinstance(dt_val, datetime):
+        return dt_val.replace(tzinfo=timezone.utc) if dt_val.tzinfo is None else dt_val
+    if not dt_val or not isinstance(dt_val, str):
+        return None
+    try:
+        import dateutil.parser as dparser
+        dt = dparser.parse(dt_val.strip())
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except Exception:
+        return None
+
+
+def _extract_fedwatch_action_probs(probs_dict: Any) -> Dict[str, float]:
+    """Extract action -> probability mapping uniformly from probabilities_json."""
+    if not isinstance(probs_dict, dict):
+        return {}
+    res: Dict[str, float] = {}
+    if "probabilities" in probs_dict and isinstance(probs_dict["probabilities"], dict):
+        for range_key, pdata in probs_dict["probabilities"].items():
+            if isinstance(pdata, dict):
+                act = str(pdata.get("action", range_key)).upper()
+                p_val = float(pdata.get("probability", 0.0))
+                res[act] = round(res.get(act, 0.0) + p_val, 2)
+            elif isinstance(pdata, (int, float)):
+                res[str(range_key).upper()] = float(pdata)
+        return res
+    for k, v in probs_dict.items():
+        if isinstance(v, (int, float)):
+            res[str(k).upper()] = float(v)
+    return res
+
+
 async def handle_get_central_bank_expectations(args: dict, **ctx) -> dict:
     """
     Mengembalikan ekspektasi keputusan suku bunga pasar untuk FED, ECB, BOE, BOJ, RBA.
-    Mencakup probabilitas Hike %, Hold %, Cut %, tanggal rapat, dan derajat priced-in (1-10).
+    Mencakup probabilitas Hike %, Hold %, Cut %, tanggal rapat, komparasi sebelum vs sesudah event, dan derajat priced-in (1-10).
     """
     session, _, _ = _get_macro_context(args, ctx)
     if not session:
         return {"error": "Database session required for central bank rate expectations"}
 
     target_bank = (args.get("bank") or "").strip().upper()
+    compare_hours_ago = args.get("compare_hours_ago")
+    event_time_arg = args.get("event_time") or args.get("as_of")
+    include_history = bool(args.get("include_history", False))
+
+    ref_time = None
+    if compare_hours_ago is not None:
+        try:
+            ref_time = clock.now() - timedelta(hours=float(compare_hours_ago))
+        except (ValueError, TypeError):
+            pass
+    elif event_time_arg:
+        ref_time = _parse_iso_or_str_dt(event_time_arg)
+
     query = select(CentralBankRateExpectation).order_by(
         CentralBankRateExpectation.bank,
         CentralBankRateExpectation.fetched_at.desc(),
@@ -699,7 +770,8 @@ async def handle_get_central_bank_expectations(args: dict, **ctx) -> dict:
     if target_bank:
         query = query.where(CentralBankRateExpectation.bank == target_bank)
 
-    rows = (await _safe_execute(session, query.limit(50))).scalars().all()
+    fetch_limit = 200 if (include_history or ref_time) else 50
+    rows = (await _safe_execute(session, query.limit(fetch_limit))).scalars().all()
     if not rows:
         return {
             "expectations": {},
@@ -714,43 +786,52 @@ async def handle_get_central_bank_expectations(args: dict, **ctx) -> dict:
         }
 
     latest_by_bank = {}
+    history_by_bank = {}
+
     for r in rows:
         b = r.bank.upper()
+        probs = {
+            "hike": float(r.prob_hike or 0.0),
+            "hold": float(r.prob_hold or 0.0),
+            "cut": float(r.prob_cut or 0.0),
+        }
+        dom_action = max(probs, key=lambda k: probs[k])
+        dom_prob = probs[dom_action]
+
+        # Hitung Priced-In Score (1-10)
+        if dom_prob >= 90:
+            pi_score = 9; pi_label = "Fully Priced In"
+        elif dom_prob >= 75:
+            pi_score = 7; pi_label = "Largely Priced In"
+        elif dom_prob >= 55:
+            pi_score = 5; pi_label = "Partially Priced In"
+        elif dom_prob >= 35:
+            pi_score = 4; pi_label = "Weakly Priced In"
+        else:
+            pi_score = 2; pi_label = "NOT Priced In (Surprise Risk)"
+
+        item = {
+            "id": r.id,
+            "bank": b,
+            "current_rate_pct": r.current_rate,
+            "next_meeting_date": r.meeting_date,
+            "probabilities": probs,
+            "dominant_expected_action": dom_action,
+            "dominant_probability_pct": dom_prob,
+            "priced_in_score": pi_score,
+            "priced_in_label": pi_label,
+            "source": r.source,
+            "fetched_at": r.fetched_at.isoformat() if r.fetched_at else None,
+        }
+
+        r_fetched_tz = r.fetched_at.replace(tzinfo=timezone.utc) if (r.fetched_at and r.fetched_at.tzinfo is None) else r.fetched_at
+        if include_history or ref_time:
+            history_by_bank.setdefault(b, []).append((r_fetched_tz, item))
+
         if b not in latest_by_bank:
-            probs = {
-                "hike": float(r.prob_hike or 0.0),
-                "hold": float(r.prob_hold or 0.0),
-                "cut": float(r.prob_cut or 0.0),
-            }
-            dom_action = max(probs, key=lambda k: probs[k])
-            dom_prob = probs[dom_action]
+            latest_by_bank[b] = item
 
-            # Hitung Priced-In Score (1-10)
-            if dom_prob >= 90:
-                pi_score = 9; pi_label = "Fully Priced In"
-            elif dom_prob >= 75:
-                pi_score = 7; pi_label = "Largely Priced In"
-            elif dom_prob >= 55:
-                pi_score = 5; pi_label = "Partially Priced In"
-            elif dom_prob >= 35:
-                pi_score = 4; pi_label = "Weakly Priced In"
-            else:
-                pi_score = 2; pi_label = "NOT Priced In (Surprise Risk)"
-
-            latest_by_bank[b] = {
-                "bank": b,
-                "current_rate_pct": r.current_rate,
-                "next_meeting_date": r.meeting_date,
-                "probabilities": probs,
-                "dominant_expected_action": dom_action,
-                "dominant_probability_pct": dom_prob,
-                "priced_in_score": pi_score,
-                "priced_in_label": pi_label,
-                "source": r.source,
-                "fetched_at": r.fetched_at.isoformat() if r.fetched_at else None,
-            }
-
-    return {
+    result = {
         "count": len(latest_by_bank),
         "expectations": latest_by_bank,
         "interpretation_guide": (
@@ -759,6 +840,65 @@ async def handle_get_central_bank_expectations(args: dict, **ctx) -> dict:
             "Probabilitas < 50% = NOT PRICED IN (potensi kejutan besar jika terealisasi)."
         )
     }
+
+    # Perhitungan komparasi jika ref_time diberikan
+    if ref_time:
+        bank_comparisons = []
+        for b, s_list in history_by_bank.items():
+            pre_candidates = [s for s in s_list if s[0] and s[0] <= ref_time]
+            post_candidates = [s for s in s_list if s[0] and s[0] >= ref_time]
+
+            pre_snap = pre_candidates[0][1] if pre_candidates else (s_list[-1][1] if s_list else None)
+            post_snap = post_candidates[0][1] if post_candidates else (s_list[0][1] if s_list else None)
+
+            if pre_snap and post_snap and pre_snap["id"] != post_snap["id"]:
+                p0 = pre_snap["probabilities"]
+                p1 = post_snap["probabilities"]
+                def _to_p(v):
+                    return v * 100.0 if abs(v) <= 1.0 else float(v)
+
+                h0, h1 = _to_p(p0.get("hike", 0.0)), _to_p(p1.get("hike", 0.0))
+                hd0, hd1 = _to_p(p0.get("hold", 0.0)), _to_p(p1.get("hold", 0.0))
+                c0, c1 = _to_p(p0.get("cut", 0.0)), _to_p(p1.get("cut", 0.0))
+                deltas = {
+                    "hike": round(h1 - h0, 1),
+                    "hold": round(hd1 - hd0, 1),
+                    "cut": round(c1 - c0, 1),
+                }
+                summary = (
+                    f"Pergeseran suku bunga {b} (ref: {ref_time.strftime('%Y-%m-%d %H:%M UTC')}): "
+                    f"Hike {h0:.1f}% -> {h1:.1f}% ({deltas['hike']:+.1f}%), "
+                    f"Hold {hd0:.1f}% -> {hd1:.1f}% ({deltas['hold']:+.1f}%), "
+                    f"Cut {c0:.1f}% -> {c1:.1f}% ({deltas['cut']:+.1f}%)."
+                )
+                deltas_pct = {k.upper(): round(v, 1) for k, v in deltas.items()}
+                comp_item = {
+                    "bank": b,
+                    "reference_time": ref_time.isoformat(),
+                    "comparison_mode": "pre_vs_post_event" if event_time_arg else "temporal_delta",
+                    "current_probabilities": p1,
+                    "prior_probabilities": p0,
+                    "pre_event": pre_snap,
+                    "post_event": post_snap,
+                    "deltas": deltas,
+                    "deltas_pct": deltas_pct,
+                    "summary": summary,
+                    "narrative_summary": summary,
+                }
+                bank_comparisons.append(comp_item)
+                if b in latest_by_bank:
+                    latest_by_bank[b]["comparison"] = comp_item
+        if bank_comparisons:
+            result["comparisons"] = bank_comparisons
+            result["comparison_summary"] = "\n".join(bc["summary"] for bc in bank_comparisons)
+
+    if include_history:
+        result["history"] = {
+            b: [s[1] for s in s_list[:10]]
+            for b, s_list in history_by_bank.items()
+        }
+
+    return result
 
 
 async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
@@ -775,28 +915,66 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
             ),
         }
 
-    limit = args.get("limit", 4)
+    meeting_filter = (args.get("meeting_date") or "").strip()
+    compare_hours_ago = args.get("compare_hours_ago")
+    event_time_arg = args.get("event_time") or args.get("as_of")
+    include_history = bool(args.get("include_history", False))
+
+    limit = args.get("limit")
+    if limit is None or str(limit).strip().lower() in ("none", "null", ""):
+        limit = 4
+    else:
+        try:
+            limit = int(limit)
+        except (ValueError, TypeError):
+            limit = 4
+
+    # Determine reference comparison time if requested
+    ref_time = None
+    if compare_hours_ago is not None:
+        try:
+            ref_time = clock.now() - timedelta(hours=float(compare_hours_ago))
+        except (ValueError, TypeError):
+            pass
+    elif event_time_arg:
+        ref_time = _parse_iso_or_str_dt(event_time_arg)
+
+    base_query = select(FedWatchProbability).where(FedWatchProbability.fetched_at <= clock.now())
+    if meeting_filter:
+        base_query = base_query.where(FedWatchProbability.meeting_date.ilike(f"%{meeting_filter}%"))
+
+    query_limit = 200 if (include_history or ref_time) else max(limit * 2, 8)
     rows = (await session.execute(
-        select(FedWatchProbability)
-        .where(FedWatchProbability.fetched_at <= clock.now())
-        .order_by(FedWatchProbability.fetched_at.desc(), FedWatchProbability.id.desc())
-        .limit(limit * 2)
+        base_query.order_by(FedWatchProbability.fetched_at.desc(), FedWatchProbability.id.desc()).limit(query_limit)
     )).scalars().all()
 
     meetings_by_date = {}
+    history_by_date = {}
     for r in rows:
+        try:
+            probs = json.loads(r.probabilities_json)
+        except Exception:
+            probs = {"error": "Malformed JSON in database"}
+        fetched_tz = r.fetched_at.replace(tzinfo=timezone.utc) if r.fetched_at.tzinfo is None else r.fetched_at
+        age_hours = round((clock.now() - fetched_tz).total_seconds() / 3600, 1)
+
+        snapshot_item = {
+            "id": r.id,
+            "meeting_date": r.meeting_date,
+            "probabilities": probs,
+            "fetched_at": r.fetched_at.isoformat(),
+            "data_age_hours": age_hours,
+        }
+
+        if include_history or ref_time:
+            history_by_date.setdefault(r.meeting_date, []).append((fetched_tz, snapshot_item))
+
         if r.meeting_date not in meetings_by_date:
-            try:
-                probs = json.loads(r.probabilities_json)
-            except Exception:
-                probs = {"error": "Malformed JSON in database"}
-            fetched_tz = r.fetched_at.replace(tzinfo=timezone.utc) if r.fetched_at.tzinfo is None else r.fetched_at
-            age_hours = round((clock.now() - fetched_tz).total_seconds() / 3600, 1)
             meetings_by_date[r.meeting_date] = {
                 "meeting_date": r.meeting_date,
                 "probabilities": probs,
                 "fetched_at": r.fetched_at.isoformat(),
-                "data_age_hours": age_hours
+                "data_age_hours": age_hours,
             }
 
     meetings = list(meetings_by_date.values())
@@ -817,6 +995,91 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
         )
         result["fallback_tool"] = "web_search"
         result["suggested_query"] = "CME FedWatch target rate probabilities upcoming FOMC meeting"
+        return result
+
+    # Compute comparison if ref_time is provided
+    if ref_time:
+        comparisons = []
+        target_dates = [meeting_filter] if meeting_filter and meeting_filter in history_by_date else list(history_by_date.keys())[:limit]
+        for m_date in target_dates:
+            snapshots = history_by_date.get(m_date, [])
+            if not snapshots:
+                continue
+
+            pre_candidates = [s for s in snapshots if s[0] <= ref_time]
+            post_candidates = [s for s in snapshots if s[0] >= ref_time]
+
+            pre_snap = pre_candidates[0][1] if pre_candidates else (snapshots[-1][1] if snapshots else None)
+            post_snap = post_candidates[0][1] if post_candidates else (snapshots[0][1] if snapshots else None)
+
+            if pre_snap and post_snap and pre_snap["id"] != post_snap["id"]:
+                pre_actions = _extract_fedwatch_action_probs(pre_snap["probabilities"])
+                post_actions = _extract_fedwatch_action_probs(post_snap["probabilities"])
+
+                all_actions = sorted(list(set(pre_actions.keys()) | set(post_actions.keys())))
+                deltas = {}
+                shifts_text = []
+                for act in all_actions:
+                    p0 = pre_actions.get(act, 0.0)
+                    p1 = post_actions.get(act, 0.0)
+                    d = round(p1 - p0, 3)
+                    deltas[act] = d
+                    p0_pct = p0 * 100 if p0 <= 1.0 else p0
+                    p1_pct = p1 * 100 if p1 <= 1.0 else p1
+                    d_pct = d * 100 if abs(d) <= 1.0 else d
+                    if abs(d_pct) >= 0.5:
+                        sign = "+" if d_pct > 0 else ""
+                        shifts_text.append(f"{act} {p0_pct:.1f}% -> {p1_pct:.1f}% ({sign}{d_pct:.1f}%)")
+
+                shift_summary = f"Pergeseran ekspektasi rapat {m_date}: " + (", ".join(shifts_text) if shifts_text else "Relatif stabil.")
+
+                deltas_pct = {k: round(v * 100, 1) if abs(v) <= 1.0 else round(v, 1) for k, v in deltas.items()}
+                comp_obj = {
+                    "meeting_date": m_date,
+                    "reference_time": ref_time.isoformat(),
+                    "comparison_mode": "pre_vs_post_event" if event_time_arg else "temporal_delta",
+                    "current_probabilities": post_actions,
+                    "prior_probabilities": pre_actions,
+                    "pre_event": {
+                        "fetched_at": pre_snap["fetched_at"],
+                        "probabilities": pre_actions,
+                        "data_age_hours": pre_snap["data_age_hours"],
+                    },
+                    "post_event": {
+                        "fetched_at": post_snap["fetched_at"],
+                        "probabilities": post_actions,
+                        "data_age_hours": post_snap["data_age_hours"],
+                    },
+                    "deltas": deltas,
+                    "deltas_pct": deltas_pct,
+                    "summary": shift_summary,
+                    "narrative_summary": shift_summary,
+                }
+                comparisons.append(comp_obj)
+
+        if comparisons:
+            result["comparisons"] = comparisons
+            result["comparison_summary"] = "\n".join(c["summary"] for c in comparisons)
+            for c in comparisons:
+                for m in meetings:
+                    if m.get("meeting_date") == c.get("meeting_date"):
+                        m["comparison"] = c
+
+    if include_history:
+        history_out = {}
+        for m_date, s_list in history_by_date.items():
+            history_out[m_date] = [
+                {
+                    "fetched_at": s[1]["fetched_at"],
+                    "data_age_hours": s[1]["data_age_hours"],
+                    "probabilities": _extract_fedwatch_action_probs(s[1]["probabilities"]),
+                }
+                for s in s_list[:10]
+            ]
+        result["history"] = history_out
+        for m in meetings:
+            if m.get("meeting_date") in history_out:
+                m["history"] = history_out[m["meeting_date"]]
 
     return result
 
@@ -826,7 +1089,30 @@ async def handle_get_cot_report(args: dict, **ctx) -> dict:
     if not session:
         return {"error": "Database session required for cot report"}
 
-    market_codes = args.get("market_codes", [])
+    SYMBOL_TO_COT = {
+        "EUR": "099741", "EURUSD": "099741", "EURO": "099741", "EURO_FX": "099741",
+        "JPY": "097741", "USDJPY": "097741", "YEN": "097741", "JAPANESE_YEN": "097741",
+        "GBP": "096742", "GBPUSD": "096742", "POUND": "096742", "BRITISH_POUND": "096742",
+        "AUD": "232741", "AUDUSD": "232741", "AUST_DOLLAR": "232741",
+        "CAD": "090741", "USDCAD": "090741", "CANADIAN_DOLLAR": "090741",
+        "CHF": "092741", "USDCHF": "092741", "SWISS_FRANC": "092741",
+        "GOLD": "088691", "XAU": "088691", "XAUUSD": "088691",
+        "OIL": "067651", "CRUDE": "067651", "XTIUSD": "067651", "CL": "067651",
+        "BTC": "133741", "BITCOIN": "133741", "BTCUSD": "133741",
+    }
+
+    raw_codes = args.get("market_codes") or args.get("symbol") or args.get("currency") or []
+    if isinstance(raw_codes, str):
+        raw_codes = [c.strip() for c in raw_codes.split(",") if c.strip()]
+    elif not isinstance(raw_codes, list):
+        raw_codes = [str(raw_codes)]
+
+    market_codes = []
+    for c in raw_codes:
+        upper_c = str(c).upper().strip().replace("/", "")
+        market_codes.append(SYMBOL_TO_COT.get(upper_c, upper_c))
+
+    weeks_back = int(args.get("weeks_back", 4))
     query = select(COTReport).where(COTReport.report_date <= clock.now()).order_by(COTReport.market_code, COTReport.report_date.desc())
 
     if market_codes:
@@ -834,13 +1120,14 @@ async def handle_get_cot_report(args: dict, **ctx) -> dict:
 
     rows = (await session.execute(query)).scalars().all()
 
-    seen = set()
+    seen_counts: Dict[str, int] = {}
     reports = []
     now = clock.now()
 
     for r in rows:
-        if r.market_code not in seen:
-            seen.add(r.market_code)
+        cnt = seen_counts.get(r.market_code, 0)
+        if cnt < weeks_back:
+            seen_counts[r.market_code] = cnt + 1
             lev_net = r.leveraged_long - r.leveraged_short
             am_net = r.asset_mgr_long - r.asset_mgr_short
 
@@ -882,7 +1169,7 @@ async def handle_get_cot_report(args: dict, **ctx) -> dict:
                     f"Max COT contribution = {confluence_weight} point (not full +1)."
                 ),
                 "interpretation_note": (
-                    f"⚠️ COT data (Tue position, Fri release). {reliability_note}. "
+                    f"[PERINGATAN] COT data (Tue position, Fri release). {reliability_note}. "
                     f"If weight < 1.0, do NOT award the full +1 confluence point for COT. "
                     f"Pro-rate: weight={confluence_weight} means max COT contribution = {confluence_weight} point."
                 ),
@@ -1171,40 +1458,184 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
     }
 
 
-def register_macro_tools():
-    registry = ToolRegistry.get_instance()
+async def handle_get_weekly_macro_summary(args: dict, **ctx) -> dict:
+    """Menghasilkan ringkasan komprehensif lanskap makro ekonomi untuk 7 hari ke depan."""
+    session, _, settings = _get_macro_context(args, ctx)
+    if not session:
+        return {"error": "Database session required for weekly macro summary."}
+
+    days_ahead = int(args.get("days_ahead", 7))
+    curr_filter = args.get("currencies")
+
+    # 1. Economic Calendar upcoming events
+    hours_ahead = days_ahead * 24
+    cal_args = {"hours_ahead": hours_ahead, "hours_back": 12, "impact": "high"}
+    if curr_filter:
+        cal_args["currency_filter"] = curr_filter
+    cal_data = await handle_get_economic_calendar(cal_args, **ctx)
+    events = cal_data.get("events", []) if isinstance(cal_data, dict) else []
+
+    # 2. DXY Status
+    dxy_data = await handle_get_dxy({"days_back": 7}, **ctx)
+    dxy_close = None
+    dxy_trend = "unknown"
+    if isinstance(dxy_data, dict) and "latest" in dxy_data:
+        dxy_close = dxy_data["latest"].get("close")
+        dxy_trend = dxy_data.get("trend_5d", "flat")
+
+    # 3. VIX Status
+    vix_data = await handle_get_vix({}, **ctx)
+    vix_level = vix_data.get("vix_close") or vix_data.get("current_level")
+    vix_regime = vix_data.get("regime", "normal")
+
+    # 4. FedWatch Probabilities
+    fed_data = await handle_get_fedwatch_probabilities({}, **ctx)
+    fed_summary = fed_data.get("formatted", "") if isinstance(fed_data, dict) else ""
+    next_meeting = fed_data.get("next_meeting_date", "N/A") if isinstance(fed_data, dict) else "N/A"
+
+    # 5. Treasury Yields
+    yield_data = await handle_get_treasury_yields({}, **ctx)
+    us10y = None
+    curve_inverted = False
+    if isinstance(yield_data, dict):
+        us10y = yield_data.get("10Y") or yield_data.get("US10Y")
+        curve_inverted = yield_data.get("inverted_2y10y", False)
+
+    # Format text telegraphic slip
+    now_str = clock.now().strftime("%Y-%m-%d %H:%M UTC")
+    lines = [
+        "```",
+        "================================================",
+        "     MONIKA DISPATCH // WEEKLY MACRO OUTLOOK    ",
+        "================================================",
+        f"TIMESTAMP      : {now_str}",
+        f"HORIZON        : Next {days_ahead} Days",
+        "------------------------------------------------",
+        "GLOBAL MACRO DRIVERS:",
+        f"  DXY (Dollar) : {dxy_close or 'N/A'} (Trend: {str(dxy_trend).upper()})",
+        f"  VIX Index    : {vix_level or 'N/A'} (Regime: {str(vix_regime).upper()})",
+        f"  US 10Y Yield : {us10y or 'N/A'}% | Curve Inversion: {'YES' if curve_inverted else 'NO'}",
+        f"  Fed FOMC Next: {next_meeting}",
+        "------------------------------------------------",
+        f"HIGH-IMPACT ECONOMIC EVENTS ({len(events)} Total):",
+    ]
+    if events:
+        for ev in events[:8]:
+            dt = ev.get("datetime") or ev.get("time") or ev.get("date") or ""
+            curr = ev.get("currency", "ALL")
+            name = ev.get("name") or ev.get("event") or ""
+            prev = ev.get("previous", "-")
+            fc = ev.get("forecast", "-")
+            lines.append(f"  [{curr}] {str(dt)[:16]}: {name[:28]} (Prev: {prev}, Fc: {fc})")
+        if len(events) > 8:
+            lines.append(f"  ... +{len(events) - 8} additional high-impact releases")
+    else:
+        lines.append("  No critical high-impact releases scheduled in window.")
+    lines.extend([
+        "================================================",
+        "```"
+    ])
+    formatted_summary = "\n".join(lines)
+
+    return {
+        "success": True,
+        "days_ahead": days_ahead,
+        "high_impact_event_count": len(events),
+        "events": events[:15],
+        "dxy": {"close": dxy_close, "trend": dxy_trend},
+        "vix": {"level": vix_level, "regime": vix_regime},
+        "treasury_10y": us10y,
+        "curve_inverted": curve_inverted,
+        "next_fomc": next_meeting,
+        "fedwatch_summary": fed_summary,
+        "formatted_summary": formatted_summary,
+    }
+
+
+async def handle_get_macro_priced_in_score(args: dict, **ctx) -> dict:
+    from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
+    symbol = str(args.get("symbol", "EURUSD")).upper().strip()
+    cot_percentile = float(args.get("cot_percentile", 50.0))
+    retail_sentiment = args.get("retail_sentiment")
+    if retail_sentiment is not None:
+        retail_sentiment = float(retail_sentiment)
+    fedwatch_dominant_prob = args.get("fedwatch_dominant_prob")
+    if fedwatch_dominant_prob is not None:
+        fedwatch_dominant_prob = float(fedwatch_dominant_prob)
+    eurusd_run_up_vs_atr = args.get("eurusd_run_up_vs_atr")
+    if eurusd_run_up_vs_atr is not None:
+        eurusd_run_up_vs_atr = float(eurusd_run_up_vs_atr)
+    fedwatch_repricing_delta = args.get("fedwatch_repricing_delta")
+    if fedwatch_repricing_delta is not None:
+        fedwatch_repricing_delta = float(fedwatch_repricing_delta)
+
+    res = calculate_stage1_priced_in_baseline(
+        symbol=symbol,
+        cot_percentile=cot_percentile,
+        retail_sentiment=retail_sentiment,
+        fedwatch_dominant_prob=fedwatch_dominant_prob,
+        eurusd_run_up_vs_atr=eurusd_run_up_vs_atr,
+        fedwatch_repricing_delta=fedwatch_repricing_delta,
+    )
+    return {
+        "symbol": symbol,
+        "score": res["score"],
+        "is_priced_in": res["is_priced_in"],
+        "reasons": res["reasons"],
+        "parameters": {
+            "cot_percentile": cot_percentile,
+            "retail_sentiment": retail_sentiment,
+            "fedwatch_dominant_prob": fedwatch_dominant_prob,
+            "eurusd_run_up_vs_atr": eurusd_run_up_vs_atr,
+            "fedwatch_repricing_delta": fedwatch_repricing_delta,
+        }
+    }
+
+
+def register_macro_tools(registry: Optional[ToolRegistry] = None):
+    registry = registry or ToolRegistry.get_instance()
     tools = [
         ToolDefinition(
             name="get_market_session",
-            description="Fetch current global Forex session activity, overlap status, and session modifier.",
+            description="Fetch currently open market sessions (London, New York, Tokyo, Sydney) and high-volatility overlaps.",
             parameters={"type": "object", "properties": {}},
             handler=handle_get_market_session,
             toolset="macro",
             requires_db=False,
         ),
         ToolDefinition(
-            name="get_market_regime",
-            description="Detect market regime (trending vs ranging) via ADX for given symbols.",
-            parameters={"type": "object", "properties": {"symbols": {"type": "array", "items": {"type": "string"}}, "timeframe": {"type": "string"}}},
-            handler=handle_get_market_regime,
-            toolset="macro",
-            requires_db=True,
-        ),
-        ToolDefinition(
             name="get_volatility_regime",
-            description="Classify per-symbol volatility regime (trending/ranging/volatile) from ADX and volatility indicators.",
-            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}}},
+            description="Fetch current volatility regime from ATR/VIX ratios.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
             handler=handle_get_volatility_regime,
             toolset="macro",
             requires_db=True,
         ),
         ToolDefinition(
             name="get_macro_bias_score",
-            description="Compute macro alignment bias score for a symbol from yields, rates, and macro reality data.",
-            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "direction": {"type": "string"}}},
+            description="Fetch normalized macroeconomic bias score for a currency pair.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
             handler=handle_get_macro_bias_score,
             toolset="macro",
             requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_macro_priced_in_score",
+            description="Calculate macroeconomic priced-in score and saturation analysis using COT percentiles, retail sentiment, FedWatch probabilities, and ATR run-ups.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "Currency pair or asset (e.g. EURUSD, USDJPY, XAUUSD)"},
+                    "cot_percentile": {"type": "number", "description": "COT positioning percentile (0-100)"},
+                    "retail_sentiment": {"type": "number", "description": "Retail long percentage (0-100)"},
+                    "fedwatch_dominant_prob": {"type": "number", "description": "Dominant rate outcome probability (0-100)"},
+                    "eurusd_run_up_vs_atr": {"type": "number", "description": "Recent move extension relative to ATR"},
+                    "fedwatch_repricing_delta": {"type": "number", "description": "FedWatch shift percentage delta"},
+                },
+            },
+            handler=handle_get_macro_priced_in_score,
+            toolset="macro",
+            requires_db=False,
         ),
         ToolDefinition(
             name="get_dxy",
@@ -1263,16 +1694,16 @@ def register_macro_tools():
             requires_db=True,
         ),
         ToolDefinition(
-            name="get_yield_data",
-            description="Fetch US Treasury yield curve and 10Y-2Y / 10Y-3M spreads.",
-            parameters={"type": "object", "properties": {"days_back": {"type": "integer"}}},
-            handler=handle_get_treasury_yields,
+            name="get_market_regime",
+            description="Fetch full market regime classification including HMM, trend, and volatility state.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
+            handler=handle_get_market_regime,
             toolset="macro",
             requires_db=True,
         ),
         ToolDefinition(
             name="get_treasury_yields",
-            description="Fetch US Treasury yield curve and 10Y-2Y / 10Y-3M spreads.",
+            description="Fetch US Treasury yield curve (2Y, 5Y, 10Y, 30Y) and inversion status.",
             parameters={"type": "object", "properties": {"days_back": {"type": "integer"}}},
             handler=handle_get_treasury_yields,
             toolset="macro",
@@ -1299,6 +1730,14 @@ def register_macro_tools():
             description="Fetch high and medium impact economic events from the calendar.",
             parameters={"type": "object", "properties": {"hours_back": {"type": "integer"}, "hours_ahead": {"type": "integer"}}},
             handler=handle_get_economic_calendar,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_weekly_macro_summary",
+            description="Generate a comprehensive weekly macroeconomic summary covering key high-impact events, DXY, VIX, FedWatch, and yields.",
+            parameters={"type": "object", "properties": {"days_ahead": {"type": "integer"}, "currencies": {"type": "string"}}},
+            handler=handle_get_weekly_macro_summary,
             toolset="macro",
             requires_db=True,
         ),

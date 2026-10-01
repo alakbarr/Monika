@@ -81,6 +81,7 @@ async def compute_optimal_levels(
     settings: dict,
     existing_sl: Optional[float] = None,
     existing_tp: Optional[float] = None,
+    trade_style: str = "intraday",
 ) -> dict:
     direction = str(direction or "").strip().lower()
     adr_ctx = await compute_daily_range_context(session, symbol, settings)
@@ -89,7 +90,6 @@ async def compute_optimal_levels(
 
     atr = await _get_atr(session, symbol)
     if not atr or atr <= 0:
-        # Fallback to 0.5% of entry price for indices, crypto, commodities, and FX
         atr = 0.005 * entry_price
     zones = await _collect_zones(session, symbol)
     try:
@@ -107,8 +107,11 @@ async def compute_optimal_levels(
     mult_map = risk_cfg.get('min_sl_atr_multiplier_by_symbol', {})
     min_sl_mult = mult_map.get(symbol, mult_map.get('default', 1.0))
 
-    tp_min, tp_max = adr_ctx['target_tp_min_distance'], adr_ctx['target_tp_max_distance']
-    sl_max = adr_ctx['target_sl_max_distance']
+    is_swing = trade_style.lower() == "swing"
+    adr_val = float(adr_ctx.get('adr', atr * 3.0))
+    tp_min = float(adr_ctx.get('target_tp_min_distance', adr_val * 0.5))
+    tp_max = float(adr_ctx.get('target_tp_max_distance', adr_val * 0.8)) * (3.0 if is_swing else 1.0)
+    sl_max = float(adr_ctx.get('target_sl_max_distance', adr_val * 0.35)) * (2.0 if is_swing else 1.0)
     tp_mid, tp_width = (tp_min + tp_max) / 2.0, max(tp_max - tp_min, 1e-9)
 
     # TimesFM 3.0 Reachability Integration
@@ -268,6 +271,9 @@ async def compute_optimal_levels(
         'selected_rr': selected_rr,
         'top_tp_candidates': top_tp,
         'top_sl_candidates': top_sl,
+        'tp1': top_tp[0]['price'] if top_tp else None,
+        'tp2': top_tp[1]['price'] if len(top_tp) > 1 else (top_tp[0]['price'] if top_tp else None),
+        'sl': top_sl[0]['price'] if top_sl else None,
         'instruction': ('Prefer the highest-scored candidate for both TP and SL. If no candidate scores '
                          '> 0, no valid structural intraday setup exists right now — prefer WAIT.')
     }

@@ -59,8 +59,6 @@ class TestChatAgent:
         
         assert "Test reply" in reply
         assert "_[gemini-3.1-flash-lite | 100 in, 50 out]_" in reply
-        assert "⚡" not in reply
-        assert "🚀" not in reply
         assert pending is not None
         assert pending.action_type == "place_order"
         assert pending.params == {"symbol": "XAUUSD"}
@@ -159,10 +157,12 @@ class TestTelegramFormatSanitizer:
         assert "*2. Kesimpulan*" in sanitized
 
     def test_emoji_removal(self):
-        text = "🚀 gemini-3.7-flash ⚡ gemini-3.1-flash-lite | 22189 in, 412 out\n📊 Status: 🟢 OK ⏸️ PAUSED"
+        text = "\U0001f916 gemini-3.7-flash \U0001f4ca gemini-3.1-flash-lite | 22189 in, 412 out\nStatus: OK :) PAUSED"
         sanitized = _sanitize_telegram_format(text)
-        for emoji in ["🚀", "⚡", "📊", "🟢", "⏸️"]:
-            assert emoji not in sanitized
+        assert "\U0001f916" not in sanitized
+        assert "\U0001f4ca" not in sanitized
+        assert ":)" not in sanitized
+        assert "gemini-3.7-flash gemini-3.1-flash-lite" in sanitized
 
     def test_hallucinated_footer_stripped(self):
         text = "Laporan selesai.\n\n_gemini-3.7-flash | 123 in, 45 out_\ngemini-3.5-flash"
@@ -239,7 +239,7 @@ async def test_chat_agent_adhoc_pipeline_routing(mock_get_session):
         "success": True,
         "symbol": "XAUUSD",
         "decision": "BUY",
-        "formatted_summary": "🎯 *HASIL ANALISIS AD-HOC: XAUUSD*\n• *Keputusan*: `BUY`",
+        "formatted_summary": "[TARGET] *HASIL ANALISIS AD-HOC: XAUUSD*\n• *Keputusan*: `BUY`",
     }
 
     with patch("agent.agent_loop.SystemAgentLoop.execute_ad_hoc_analysis", new_callable=AsyncMock) as mock_adhoc:

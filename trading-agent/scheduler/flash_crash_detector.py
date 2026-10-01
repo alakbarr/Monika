@@ -231,7 +231,7 @@ class FlashCrashDetector:
                     }
                     alerts.append(alert_info)
                     logger.critical(
-                        f"🚨 FLASH CRASH DETECTED on {symbol}! Move={range_move:.5f} ({move_pct:.2f}% | {multiplier}x ATR H1). "
+                        f"[DARURAT] FLASH CRASH DETECTED on {symbol}! Move={range_move:.5f} ({move_pct:.2f}% | {multiplier}x ATR H1). "
                         f"Symbol blocked for {self.cooldown_minutes} min until {blocked_until}."
                     )
 
@@ -241,11 +241,11 @@ class FlashCrashDetector:
                     # 5. Kirim notifikasi Telegram (mendukung .send() dan .send_critical())
                     if self.notifier:
                         msg = (
-                            f"🚨 <b>CIRCUIT BREAKER: FLASH CRASH DETECTED</b>\n\n"
+                            f"[DARURAT] <b>CIRCUIT BREAKER: FLASH CRASH DETECTED</b>\n\n"
                             f"Instrumen: <b>{symbol}</b>\n"
                             f"Pergerakan: <code>{range_move:.5f}</code> ({move_pct:.2f}% | {multiplier}x ATR H1: {atr_h1:.5f})\n"
                             f"High: {max_high:.5f} | Low: {min_low:.5f}\n\n"
-                            f"🛡️ <b>Tindakan Otomatis</b>:\n"
+                            f"[KEAMANAN] <b>Tindakan Otomatis</b>:\n"
                             f"• Stop Loss posisi terbuka otomatis digeser ke Breakeven\n"
                             f"• Entry baru diblokir selama {self.cooldown_minutes} menit."
                         )

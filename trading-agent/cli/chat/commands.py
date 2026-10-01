@@ -46,19 +46,30 @@ AVAILABLE_THEMES = list(THEMES.keys())
 
 logger = logging.getLogger("TradingAgent.CLI.Chat.Commands")
 
-MODEL_ALIASES: Dict[str, str] = {
-    "auto": "auto",
-    "fast": "gemini-2.5-flash",
-    "balanced": "gemini-2.5-pro",
-    "reasoning": "deepseek-r1",
-    "deepseek": "deepseek-v3",
-    "opus": "claude-3-5-sonnet",
-    "claude": "claude-3-5-sonnet",
-    "claude-sonnet": "claude-3-5-sonnet",
-    "claude-opus": "claude-3-opus",
-    "gemini-flash": "gemini-2.5-flash",
-    "gemini-pro": "gemini-2.5-pro",
-}
+def _load_model_aliases() -> Dict[str, str]:
+    aliases: Dict[str, str] = {
+        "auto": "auto",
+        "fast": "gemini-2.5-flash",
+        "balanced": "gemini-2.5-pro",
+        "reasoning": "deepseek-r1",
+        "deepseek": "deepseek-v3",
+        "opus": "claude-3-5-sonnet",
+        "claude": "claude-3-5-sonnet",
+        "claude-sonnet": "claude-3-5-sonnet",
+        "claude-opus": "claude-3-opus",
+        "gemini-flash": "gemini-2.5-flash",
+        "gemini-pro": "gemini-2.5-pro",
+    }
+    try:
+        from config.settings import load_settings
+        settings = load_settings()
+        for k in settings.get("llm", {}).get("model_catalog", {}).keys():
+            aliases[k.lower()] = k
+    except Exception:
+        pass
+    return aliases
+
+MODEL_ALIASES: Dict[str, str] = _load_model_aliases()
 
 
 @dataclass
@@ -267,15 +278,16 @@ class ChatCommandRouter:
         p = self.renderer.palette
         console = self.renderer.console
 
+        current_aliases = _load_model_aliases()
         if not model_arg:
-            aliases_fmt = ", ".join([f"[bold {p.accent}]{k}[/]" for k in sorted(MODEL_ALIASES.keys())])
+            aliases_fmt = ", ".join([f"[bold {p.accent}]{k}[/]" for k in sorted(current_aliases.keys())])
             console.print(f"Active model: [bold {p.primary}]{self.prompt_manager.active_model}[/]")
             console.print(f"Available tiers / aliases: {aliases_fmt}")
             console.print(f"[dim {p.muted}]Usage: /model <tier_or_name> (e.g. /model fast, /model reasoning)[/]\n")
             return
 
         target_alias = model_arg.strip().lower()
-        resolved_model = MODEL_ALIASES.get(target_alias, model_arg.strip())
+        resolved_model = current_aliases.get(target_alias, model_arg.strip())
 
         self.prompt_manager.update_telemetry(model=resolved_model)
         self.renderer.render_notice(

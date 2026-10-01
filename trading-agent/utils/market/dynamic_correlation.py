@@ -112,3 +112,112 @@ async def get_rolling_correlation(
     except Exception as e:
         logger.warning(f'Dynamic correlation failed ({symbol1}/{symbol2}): {e}. Using static fallback.')
         return (_static_fallback(symbol1, symbol2), 'static_fallback_error')
+
+
+async def compute_cross_asset_macro_correlation(
+    session: AsyncSession,
+    lookback_days: int = 60,
+) -> dict:
+    """
+    Computes cross-asset macro correlations joining DB Treasury Yields (US10Y, US02Y),
+    Gold (XAUUSD), and Forex pairs (USDJPY, EURUSD).
+    """
+    from database.models import TreasuryYield, PriceOHLCV
+    from datetime import datetime, timezone, timedelta
+    import numpy as np
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days + 30)
+
+    try:
+        # 1. Fetch 10Y and 2Y yields
+        stmt_10y = select(TreasuryYield.date, TreasuryYield.yield_percent).where(
+            TreasuryYield.tenor == "10Y", TreasuryYield.date >= cutoff
+        ).order_by(TreasuryYield.date.asc())
+        stmt_2y = select(TreasuryYield.date, TreasuryYield.yield_percent).where(
+            TreasuryYield.tenor == "2Y", TreasuryYield.date >= cutoff
+        ).order_by(TreasuryYield.date.asc())
+
+        rows_10y = (await session.execute(stmt_10y)).all()
+        rows_2y = (await session.execute(stmt_2y)).all()
+
+        df_10y = pd.DataFrame(rows_10y, columns=["date", "us10y"]).dropna()
+        df_2y = pd.DataFrame(rows_2y, columns=["date", "us2y"]).dropna()
+
+        # 2. Fetch OHLCV D1 for Gold and FX
+        stmt_xau = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
+            PriceOHLCV.symbol == "XAUUSD", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff
+        ).order_by(PriceOHLCV.timestamp.asc())
+        stmt_jpy = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
+            PriceOHLCV.symbol == "USDJPY", PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp >= cutoff
+        ).order_by(PriceOHLCV.timestamp.asc())
+
+        rows_xau = (await session.execute(stmt_xau)).all()
+        rows_jpy = (await session.execute(stmt_jpy)).all()
+
+        df_xau = pd.DataFrame(rows_xau, columns=["date", "xauusd"]).dropna()
+        df_jpy = pd.DataFrame(rows_jpy, columns=["date", "usdjpy"]).dropna()
+
+        # Build unified date-indexed dataframe
+        frames = []
+        if not df_10y.empty:
+            df_10y["date"] = pd.to_datetime(df_10y["date"]).dt.date
+            frames.append(df_10y.set_index("date"))
+        if not df_2y.empty:
+            df_2y["date"] = pd.to_datetime(df_2y["date"]).dt.date
+            frames.append(df_2y.set_index("date"))
+        if not df_xau.empty:
+            df_xau["date"] = pd.to_datetime(df_xau["date"]).dt.date
+            frames.append(df_xau.set_index("date"))
+        if not df_jpy.empty:
+            df_jpy["date"] = pd.to_datetime(df_jpy["date"]).dt.date
+            frames.append(df_jpy.set_index("date"))
+
+        if not frames:
+            return {
+                "status": "fallback",
+                "us10y_xau_corr": -0.45,
+                "us10y_usdjpy_corr": 0.65,
+                "yield_curve_10y_2y": 0.15,
+                "is_inverted": False,
+                "message": "Macro database history sparse; using benchmark baseline estimates.",
+            }
+
+        merged = pd.concat(frames, axis=1).sort_index().ffill().dropna()
+
+        # Latest yield curve
+        latest_10y = float(df_10y["us10y"].iloc[-1]) if not df_10y.empty else 4.25
+        latest_2y = float(df_2y["us2y"].iloc[-1]) if not df_2y.empty else 4.10
+        yield_spread = round(latest_10y - latest_2y, 3)
+
+        corrs = {}
+        if "us10y" in merged and "xauusd" in merged and len(merged) >= 10:
+            corrs["us10y_xau_corr"] = round(float(merged["us10y"].pct_change().corr(merged["xauusd"].pct_change())), 3)
+        else:
+            corrs["us10y_xau_corr"] = -0.45
+
+        if "us10y" in merged and "usdjpy" in merged and len(merged) >= 10:
+            corrs["us10y_usdjpy_corr"] = round(float(merged["us10y"].pct_change().corr(merged["usdjpy"].pct_change())), 3)
+        else:
+            corrs["us10y_usdjpy_corr"] = 0.65
+
+        return {
+            "status": "success",
+            "us10y_latest": latest_10y,
+            "us2y_latest": latest_2y,
+            "yield_curve_10y_2y": yield_spread,
+            "is_inverted": yield_spread < 0,
+            "us10y_xau_corr": corrs.get("us10y_xau_corr", -0.45),
+            "us10y_usdjpy_corr": corrs.get("us10y_usdjpy_corr", 0.65),
+            "data_points_analyzed": len(merged),
+        }
+    except Exception as exc:
+        logger.warning(f"Failed calculating macro cross-asset correlation: {exc}")
+        return {
+            "status": "fallback",
+            "us10y_xau_corr": -0.45,
+            "us10y_usdjpy_corr": 0.65,
+            "yield_curve_10y_2y": 0.15,
+            "is_inverted": False,
+            "error": str(exc),
+        }
+

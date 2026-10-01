@@ -149,7 +149,7 @@ class TurnToolRoundCoordinator:
             return ToolRoundVerdict(
                 action="break",
                 halt_reason=f"Emergency Stop (ESTOP) active: {reason}",
-                terminal_response=f"⚠️ Tool execution halted: Emergency Stop is active ({reason}).",
+                terminal_response=f"[PERINGATAN] Tool execution halted: Emergency Stop is active ({reason}).",
             )
 
         # 1. Partition calls

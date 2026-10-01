@@ -85,7 +85,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     try:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
-                            f"⚠️ Economic calendar data is {cal_age:.1f}h old with no upcoming events in DB.\n"
+                            f"[PERINGATAN] Economic calendar data is {cal_age:.1f}h old with no upcoming events in DB.\n"
                             f"Calendar scrapers may have failed. Risk gate will block trades until calendar is refreshed."
                         )
                     except Exception as notif_err:
@@ -121,7 +121,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 await session.commit()
                 try:
                     from utils.infra.notifier import AgentNotifier
-                    await AgentNotifier().send_warning(f"⚠️ <b>News Classification Anomaly</b>\nHigh breaking rate detected: {health.get('breaking_rate_pct')}%. Auto-tightening activated.")
+                    await AgentNotifier().send_warning(f"[PERINGATAN] <b>News Classification Anomaly</b>\nHigh breaking rate detected: {health.get('breaking_rate_pct')}%. Auto-tightening activated.")
                 except Exception as notif_err:
                     logger.warning(f"Failed to send news anomaly alert: {notif_err}")
             else:
@@ -253,7 +253,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     else: session.add(SystemConfig(key=last_gen_key, value=json.dumps(gen_data)))
                     await session.commit()
                     from utils.infra.notifier import AgentNotifier
-                    await AgentNotifier().send_info(f"📊 <b>Performance Notes Regenerated</b>\nReason: {reason}\nUpdated in skills/trading/performance_notes.md and fundamental_performance_notes.md")
+                    await AgentNotifier().send_info(f"[LAPORAN] <b>Performance Notes Regenerated</b>\nReason: {reason}\nUpdated in skills/trading/performance_notes.md and fundamental_performance_notes.md")
                 summary["performance_notes"] = {"regenerated": True, "reason": reason}
             else:
                 summary["performance_notes"] = {"regenerated": False, "reason": reason}
@@ -336,7 +336,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         try:
             from utils.infra.notifier import AgentNotifier
             await AgentNotifier().send_critical(
-                f"🚨 <b>CRITICAL: Data Freshness Failure ({reason})!</b>\nStage 2 analysis SKIPPED this cycle.\n"
+                f"[DARURAT] <b>CRITICAL: Data Freshness Failure ({reason})!</b>\nStage 2 analysis SKIPPED this cycle.\n"
                 f"Errors: {', '.join(validation['errors'][:3])}\nCheck MT5 connection and data fetching."
             )
         except Exception: pass
@@ -378,7 +378,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     try:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
-                            f'⚠️ <b>VIX System Halt</b>\n'
+                            f'[PERINGATAN] <b>VIX System Halt</b>\n'
                             f'VIX={vix_latest.close:.1f} >= {vix_pause_threshold} (pause threshold)\n'
                             f'Full analysis cycle skipped. Trading blocked.\n'
                             f'Will retry next scheduled cycle.'

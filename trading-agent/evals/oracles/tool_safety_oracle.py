@@ -36,13 +36,23 @@ class ToolSafetyOracle:
     """
 
     def __init__(self, fixture_path: Optional[str] = None):
-        self.fixture_path = fixture_path or "trading-agent/evals/fixtures/tool_jailbreak_trap.json"
+        self.fixture_path = fixture_path or "evals/fixtures/tool_jailbreak_trap.json"
 
     def load_traps(self) -> List[Dict[str, Any]]:
         """Loads trap fixture specifications."""
         path = Path(self.fixture_path)
         if not path.exists():
-            return []
+            candidates = [
+                Path(__file__).parent.parent / "fixtures" / path.name,
+                Path("evals/fixtures") / path.name,
+                Path("trading-agent/evals/fixtures") / path.name,
+            ]
+            for c in candidates:
+                if c.exists():
+                    path = c
+                    break
+            else:
+                return []
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
             return data.get("traps", [])

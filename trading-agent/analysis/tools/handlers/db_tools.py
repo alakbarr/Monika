@@ -59,7 +59,7 @@ async def handle_inspect_database_schema(
     if not getattr(executor, "is_admin", False):
         return {
             "status": "error",
-            "error": "⛔ Akses Ditolak: Inspeksi database hanya diizinkan untuk Admin.",
+            "error": " Akses Ditolak: Inspeksi database hanya diizinkan untuk Admin.",
             "is_admin": False,
         }
 
@@ -123,7 +123,7 @@ async def handle_read_database_records(
     if not getattr(executor, "is_admin", False):
         return {
             "status": "error",
-            "error": "⛔ Akses Ditolak: Pembacaan data database hanya diizinkan untuk Admin.",
+            "error": " Akses Ditolak: Pembacaan data database hanya diizinkan untuk Admin.",
             "is_admin": False,
         }
 
@@ -144,13 +144,39 @@ async def handle_read_database_records(
     model_cls = table_map[table_name]
     query = select(model_cls)
 
-    # 1. Apply equality filters safely (SQL injection proof via ORM binding)
+    # 1. Apply equality and advanced filters safely (SQL injection proof via ORM binding)
     filters = args.get("filters") or {}
     if isinstance(filters, dict):
         for col_name, val in filters.items():
             if hasattr(model_cls, col_name):
                 col_attr = getattr(model_cls, col_name)
-                query = query.where(col_attr == val)
+                if val is None:
+                    query = query.where(col_attr.is_(None))
+                elif isinstance(val, dict):
+                    # Advanced operators: is_null, search_text/ilike/like, gt, gte, lt, lte, neq, in
+                    if "is_null" in val:
+                        query = query.where(col_attr.is_(None) if val["is_null"] else col_attr.isnot(None))
+                    if "search_text" in val or "ilike" in val:
+                        txt = str(val.get("search_text") or val.get("ilike"))
+                        query = query.where(col_attr.ilike(f"%{txt}%"))
+                    if "like" in val:
+                        query = query.where(col_attr.like(str(val["like"])))
+                    if "gt" in val:
+                        query = query.where(col_attr > val["gt"])
+                    if "gte" in val:
+                        query = query.where(col_attr >= val["gte"])
+                    if "lt" in val:
+                        query = query.where(col_attr < val["lt"])
+                    if "lte" in val:
+                        query = query.where(col_attr <= val["lte"])
+                    if "neq" in val:
+                        query = query.where(col_attr != val["neq"])
+                    if "in" in val and isinstance(val["in"], (list, tuple)):
+                        query = query.where(col_attr.in_(val["in"]))
+                elif isinstance(val, (list, tuple)):
+                    query = query.where(col_attr.in_(val))
+                else:
+                    query = query.where(col_attr == val)
 
     # 2. Sorting
     order_by = args.get("order_by")

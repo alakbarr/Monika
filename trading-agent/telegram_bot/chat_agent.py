@@ -52,9 +52,9 @@ SESSION_TIMEOUT_HOURS = 2     # Jeda >2 jam memutus rantai riwayat sesi lama
 
 def _sanitize_telegram_format(text: str) -> str:
     """
-    Sanitasi respon teks agar 100% kompatibel dengan Telegram Markdown:
-    1. Konversi heading markdown (#, ##, ###, ####) menjadi *Judul* (Bold).
-    2. Hapus seluruh karakter emoji / icon Unicode dekoratif.
+    Sanitasi respon teks agar 100% bebas dari emoticon dan kompatibel dengan Telegram/Web Markdown:
+    1. Konversi heading markdown (#, ##, ###, ####) menjadi *Judul* (Bold) untuk Telegram fallback.
+    2. Hapus 100% seluruh karakter emoji Unicode dan ASCII emoticons.
     3. Hapus halusinasi footer model di badan teks.
     4. Bersihkan spasi dan baris kosong berlebih.
     """
@@ -69,28 +69,16 @@ def _sanitize_telegram_format(text: str) -> str:
     except Exception:
         pass
     
-    # 1. Konversi heading markdown (#, ##, ###, ####) menjadi *Bold*
-    text = re.sub(r'(?m)^#{1,6}\s*(.+?)\s*$', r'*\1*', text)
-    
-    # 2. Hapus emoji Unicode
-    emoji_pattern = re.compile(
-        "["
-        "\U0001F600-\U0001F64F"  # Emoticons
-        "\U0001F300-\U0001F5FF"  # Symbols & Pictographs
-        "\U0001F680-\U0001F6FF"  # Transport & Map
-        "\U0001F700-\U0001F77F"  # Alchemical Symbols
-        "\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
-        "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
-        "\U0001F900-\U0001F9FF"  # Supplemental Symbols
-        "\U0001FA00-\U0001FA6F"  # Chess / Symbols
-        "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
-        "\U00002702-\U000027B0"  # Dingbats
-        "\U000024C2-\U0001F251"  # Enclosed Characters
-        "\U00002600-\U000026FF"  # Miscellaneous Symbols
-        "]+", flags=re.UNICODE
-    )
-    text = emoji_pattern.sub("", text)
-    
+    # 1. Hapus emoji Unicode dan text emoticons secara mutlak
+    try:
+        from telegram_bot.sanitizer import strip_emojis_and_emoticons
+        text = strip_emojis_and_emoticons(text)
+    except Exception:
+        pass
+
+    # 2. Konversi heading markdown (#, ##, ###) menjadi *Judul* (Bold)
+    text = re.sub(r"(?m)^#{1,6}\s*(.+?)\s*$", r"*\1*", text)
+
     # 3. Bersihkan tag model yang mungkin dihalusinasikan oleh LLM di akhir teks
     text = re.sub(
         r'(?m)^\s*\[?_?(?:gemini|claude|deepseek|qwen|gpt|llama|groq|minimax|glm)[-\w\.:]*(?:\s*\|\s*\d+\s*in,\s*\d+\s*out)?_?\]?\s*$',
@@ -98,7 +86,7 @@ def _sanitize_telegram_format(text: str) -> str:
         text
     )
     
-    # 4. Rapikan baris kosong berulang
+    # 3. Rapikan baris kosong berulang
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
@@ -368,7 +356,7 @@ class ChatAgent:
         success, msg = await self.confirm_action(action_id)
         if success and symbol:
             msg += (
-                f"\n\n🔐 *Izin Sesi Aktif*: Proposal trading untuk `{symbol.upper()}` "
+                f"\n\n *Izin Sesi Aktif*: Proposal trading untuk `{symbol.upper()}` "
                 f"diizinkan otomatis selama {self.SESSION_APPROVAL_TTL_HOURS} jam ke depan."
             )
         return success, msg
@@ -466,7 +454,8 @@ class ChatAgent:
 
         # Compound self-sufficient triggers that inherently signify macro event / probability analysis
         compound_triggers = (
-            r'\b(market\s*surprise|kejutan\s*pasar|keputusan\s*(?:suku\s*)?bunga|rate\s*decision)\b'
+            r'\b(market\s*surprise|kejutan\s*pasar|keputusan\s*(?:suku\s*)?bunga|rate\s*decision|'
+            r'probabilitas\s*(?:hike|cut|hold)|probabilitasnya\s*sebelum|odds\s*(?:hike|cut|hold))\b'
         )
         if re.search(compound_triggers, msg_lower):
             return True
@@ -476,7 +465,7 @@ class ChatAgent:
             r'\b(fedwatch|cme\s*fedwatch|cme|fomc|(?:the\s+)?fed\b|'
             r'fed\s*(?:hike|cut|hold|pause|pivot|decision)|'
             r'suku\s*bunga|interest\s*rate|'
-            r'rate\s*(?:hike|cut|hold|decision)|keputusan\s*(?:bunga|rate|suku\s*bunga)|'
+            r'(?:rate\s*)?(?:hike|cut|hold)|decision|keputusan\s*(?:bunga|rate|suku\s*bunga)|'
             r'bank\s*sentral|central\s*bank|press\s*conference|presser|konferensi\s*pers|'
             r'dot\s*plot|sep\b|kebijakan\s*moneter|monetary\s*policy|'
             r'greenspan|alan\s*greenspan|bernanke|ben\s*bernanke|yellen|janet\s*yellen|'
@@ -544,7 +533,7 @@ class ChatAgent:
         msg_lower = msg.lower().strip()
 
         # Ad-hoc Deep Research & Market Intelligence patterns (highest priority)
-        RESEARCH_PATTERNS = r'\b(deep-research|deep\s*research|riset\s*mendalam|investigasi\s*pasar|konsensus|whisper|saturasi\s*posisi|skenario\s*hit/miss|pre-event|bedah\s*peristiwa)\b'
+        RESEARCH_PATTERNS = r'\b(deep-research|deep\s*research|riset\s*mendalam|investigasi\s*pasar|konsensus|whisper|saturasi\s*posisi|skenario\s*hit/miss|pre-event|bedah\s*peristiwa|analisis\s*mendalam|bedah\s*makro)\b'
         if re.search(RESEARCH_PATTERNS, msg_lower):
             return 'deep_research'
 
@@ -639,7 +628,7 @@ class ChatAgent:
                 text = override_text if override_text is not None else user_message
 
             # Stream response if requested and update is available, provided it is not an action query requiring ToolExecutor and interactive cards
-            is_action_query = bool(re.search(r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi)\b', text, re.IGNORECASE))
+            is_action_query = bool(re.search(r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi|pause|jeda|hentikan|stop|resume|lanjutkan|emergency|panic)\b', text, re.IGNORECASE))
             if stream and not is_action_query and effective_update and (hasattr(effective_update, "message") or hasattr(effective_update, "reply_text")):
                 return await self._handle_streaming(
                     update=effective_update,
@@ -661,14 +650,14 @@ class ChatAgent:
             self._interrupt_message = None
             logger.info(f"[ChatAgent] Turn interrupted for user {self.user_id}: {interrupt_note}")
             await self._close_durable_failed_turn(session_id=session_id, reason=interrupt_note)
-            return f"⚠️ {interrupt_note}", None
+            return f"[PERINGATAN] {interrupt_note}", None
         except Exception as unhandled_exc:
             from agent.error_classifier import classify_api_error
             classified = classify_api_error(unhandled_exc)
             err_msg = f"Maaf, terjadi kendala teknis: {classified.reason.value}. {classified.message}"
             logger.error(f"[ChatAgent] Unhandled turn exception: {unhandled_exc}", exc_info=True)
             await self._close_durable_failed_turn(session_id=session_id, reason=f"Error: {classified.reason.value}")
-            return f"⚠️ {err_msg}", None
+            return f"[PERINGATAN] {err_msg}", None
         finally:
             self._active_task = None
 
@@ -767,9 +756,9 @@ class ChatAgent:
 
         message = None
         if hasattr(update, "message") and update.message:
-            message = await update.message.reply_text("⏳ Thinking...")
+            message = await update.message.reply_text("[PROSES] Thinking...")
         elif hasattr(update, "reply_text"):
-            message = await update.reply_text("⏳ Thinking...")
+            message = await update.reply_text("[PROSES] Thinking...")
 
         buffer = ""
         last_edit = 0.0
@@ -798,7 +787,7 @@ class ChatAgent:
         # Final message: remove cursor, apply full HTML sanitization
         final_clean = _sanitize_telegram_format(buffer)
         if not final_clean.strip():
-            final_clean = "⚠️ Tidak ada respons yang dihasilkan."
+            final_clean = "[PERINGATAN] Tidak ada respons yang dihasilkan."
 
         final = sanitize_telegram_html(final_clean)
         if message:
@@ -865,7 +854,7 @@ class ChatAgent:
         # Check hard cancel state
         if self._hard_cancelled:
             self._hard_cancelled = False
-            return "⚠️ Sesi sebelumnya dibatalkan secara penuh (Hard Cancel).", None
+            return "[PERINGATAN] Sesi sebelumnya dibatalkan secara penuh (Hard Cancel).", None
 
         # Check and inject steer guidance if present
         if self._steer_queue:
@@ -875,14 +864,36 @@ class ChatAgent:
         
         # Auto-detect jika tidak ada manual preference
         if preference == 'auto':
-            # HIGH-1 & HIGH-8: Check for ad-hoc single-asset LangGraph pipeline trigger
+            # Check for direct conversational pause / resume command
+            pause_match = re.search(r'\b(?:pause|jeda|hentikan\s+trading|stop\s+trading)\b', clean_message, re.IGNORECASE)
+            resume_match = re.search(r'\b(?:resume|lanjutkan\s+trading|start\s+trading)\b', clean_message, re.IGNORECASE)
+            if pause_match:
+                pending = self._create_pending_action({
+                    "action_type": "pause_trading",
+                    "params": {"reason": "User requested pause via Telegram chat"},
+                    "description": "Jeda (Pause) seluruh aktivitas trading dan order baru"
+                })
+                reply_text = "[PERINGATAN] *Konfirmasi Jeda Trading*\n\nApakah Anda yakin ingin menjeda (pause) seluruh aktivitas trading dan eksekusi order otomatis?"
+                return reply_text, pending
+            elif resume_match:
+                pending = self._create_pending_action({
+                    "action_type": "resume_trading",
+                    "params": {},
+                    "description": "Lanjutkan (Resume) aktivitas trading dan eksekusi order"
+                })
+                reply_text = "▶ *Konfirmasi Lanjutkan Trading*\n\nApakah Anda ingin melanjutkan (resume) aktivitas trading?"
+                return reply_text, pending
+
+            # HIGH-1 & P5.1 (Q36): Check for ad-hoc / debate re-evaluation LangGraph pipeline trigger
             adhoc_match = re.search(
-                r'\b(?:analisis|analisa|analyze|bedah|setup)\s+([A-Za-z]{3,6}(?:/[A-Za-z]{3})?)\b',
+                r'\b(?:analisis|analisa|analyze|bedah|setup|debat\s*ulang|ulangi\s*debat|re-?debate|evaluasi\s*ulang\s*debat|bandingkan|komparasi|bull\s*vs\s*bear)\s+([A-Za-z0-9,/_\s]{3,100})\b',
                 clean_message,
                 re.IGNORECASE,
             )
             if adhoc_match:
-                candidate_sym = adhoc_match.group(1).upper().replace('/', '')
+                candidate_str = adhoc_match.group(1).strip()
+                import re as _re
+                raw_syms = [_re.sub(r'[^A-Z0-9]', '', s.upper()) for s in _re.split(r'[,;\s]+', candidate_str) if s.strip()]
                 configured_syms = set(
                     s.upper().replace('/', '') for s in self.settings.get("trading", {}).get("symbols", [])
                 )
@@ -891,22 +902,26 @@ class ChatAgent:
                     "USDCAD", "USDCHF", "NZDUSD", "BTCUSD", "ETHUSD",
                     "XTIUSD", "XBRUSD", "SOLUSD"
                 } | configured_syms
-                if candidate_sym in KNOWN_ASSETS:
+                valid_syms = [s for s in raw_syms if s in KNOWN_ASSETS]
+                if valid_syms:
+                    is_debate_rerun = bool(re.search(r'\b(debat\s*ulang|ulangi\s*debat|re-?debate|evaluasi\s*ulang\s*debat|bandingkan|komparasi|bull\s*vs\s*bear)\b', clean_message, re.IGNORECASE))
                     from agent.agent_loop import SystemAgentLoop
                     agent_loop = SystemAgentLoop(settings=self.settings)
+                    action_desc = "Evaluasi debat ulang" if is_debate_rerun else "Ad-hoc LangGraph pipeline"
+                    syms_label = ", ".join(valid_syms)
                     if status_callback:
                         try:
-                            res = status_callback(f"🔬 Menjalankan ad-hoc LangGraph pipeline untuk {candidate_sym}...")
+                            res = status_callback(f" Menjalankan {action_desc} untuk *{syms_label}*...")
                             if asyncio.iscoroutine(res):
                                 await res
                         except Exception:
                             pass
                     adhoc_res = await agent_loop.execute_ad_hoc_analysis(
-                        candidate_sym,
+                        valid_syms if len(valid_syms) > 1 else valid_syms[0],
                         progress_callback=status_callback,
-                        custom_context=clean_message,
+                        custom_context=f"DEBATE_RE_EVALUATION: {clean_message}" if is_debate_rerun else clean_message,
                     )
-                    reply_text = adhoc_res.get("formatted_summary") or f"Analisis ad-hoc untuk {candidate_sym} selesai."
+                    reply_text = adhoc_res.get("formatted_summary") or f"Analisis ad-hoc untuk {syms_label} selesai."
                     try:
                         async with get_session() as session:
                             await self._save_message(session, "user", clean_message, session_id=session_id)
@@ -953,7 +968,7 @@ class ChatAgent:
 
         if preference == 'deep_research' and status_callback:
             try:
-                res = status_callback("🔍 Memulai riset mendalam...")
+                res = status_callback(" Memulai riset mendalam...")
                 if asyncio.iscoroutine(res):
                     await res
             except Exception as _st_err:
@@ -1065,7 +1080,7 @@ class ChatAgent:
                     logger.info(f"[ChatAgent] Auto-executing action #{pending.action_id} for session-approved symbol {action_sym}")
                     try:
                         auto_res = await self._execute_action(pending)
-                        display_text += f"\n\n⚡ *Auto-Executed (Session Approval Active for {action_sym.upper()})*:\n{auto_res}"
+                        display_text += f"\n\n[BERHASIL] *Auto-Executed (Session Approval Active for {action_sym.upper()})*:\n{auto_res}"
                         try:
                             async with get_session() as session:
                                 session.add(ActivityLog(
@@ -1078,7 +1093,7 @@ class ChatAgent:
                             logger.debug(f"[ChatAgent] Failed to log auto-execution to ActivityLog: {log_err}")
                     except Exception as exec_err:
                         logger.error(f"[ChatAgent] Auto-execution failed for #{pending.action_id}: {exec_err}")
-                        display_text += f"\n\n❌ *Auto-Execution Failed (Session Approval Active)*: {exec_err}"
+                        display_text += f"\n\n[GAGAL] *Auto-Execution Failed (Session Approval Active)*: {exec_err}"
                     pending = None
                 else:
                     self._pending_actions[pending.action_id] = pending
@@ -1134,7 +1149,7 @@ class ChatAgent:
 
         roles_list = ", ".join(s.role for s in specs)
         logger.info(f"[DeepResearch] DynamicSubagentPool spawned {len(specs)} specialists: {roles_list}")
-        await _notify_progress(f"🔍 Menjalankan riset paralel ({len(specs)} spesialis: {roles_list})...")
+        await _notify_progress(f" Menjalankan riset paralel ({len(specs)} spesialis: {roles_list})...")
 
         worker_client = self._client_research or self._client_deep
 
@@ -1146,7 +1161,7 @@ class ChatAgent:
 
         # Build dynamic synthesis prompt from all subagent outputs
         logger.info("[DeepResearch] All specialists completed. Synthesizing Executive Intelligence Brief...")
-        await _notify_progress("📑 Mensintesis Ringkasan Eksekutif Terkonsolidasi...")
+        await _notify_progress(" Mensintesis Ringkasan Eksekutif Terkonsolidasi...")
 
         sections = []
         total_in = 0
@@ -1171,14 +1186,18 @@ class ChatAgent:
             "[SYNTHESIZER ROLE]: You are the Chief Market Strategist & Synthesizer Agent. "
             f"{len(results)} specialist research subagents have investigated the user's query in parallel across "
             "multiple market domains. "
-            "Synthesize their findings into an authoritative, cohesive Executive Intelligence Brief in clean Bahasa Indonesia. "
+            "Synthesize their findings into an authoritative, cohesive Executive Intelligence Brief matching the user's language (Indonesian or English).\n\n"
+            "CRITICAL DIRECTIVE ON DIRECT ANSWER:\n"
+            "In your opening paragraph, deliver a direct, concise, and definitive answer to the user's specific question "
+            "(especially exact figures, probabilities, pre vs post news deltas, or direct yes/no conclusions). "
+            "Never omit or bury the direct answer beneath generic institutional commentary.\n\n"
             "Structure your report clearly answering the specific questions asked (mirroring the depth of institutional macro notes):\n"
-            "1. Snapshot Data Terkini & Trajektori Ekspektasi Pasar\n"
-            "2. Analisis Kepastian & Derajat Pemfaktoran Pasar (Priced-In vs Asimetri Risiko)\n"
-            "3. Preseden Historis: Kejutan Bank Sentral & Mekanisme Kegagalan Pasar\n"
-            "4. Komparasi Kontekstual Saat Ini vs Sejarah\n"
-            "5. Prediksi Press Conference & Sinyal Forward Guidance (Hawkish vs Dovish, Proyeksi Dot Plot SEP)\n"
-            "6. Ringkasan Transmisi Makro (DXY, Yields, Gold, Valas Utama, Kripto/Aset Risiko)\n\n"
+            "1. Current Data Snapshot & Market Expectation Trajectory\n"
+            "2. Certainty Analysis & Degree of Market Pricing (Priced-In Score vs Risk Asymmetry)\n"
+            "3. Historical Precedents: Central Bank Surprises & Market Failure Mechanisms\n"
+            "4. Contextual Comparison: Current Setup vs Historical Analogues\n"
+            "5. Press Conference Predictions & Forward Guidance Signals (Hawkish vs Dovish, Dot Plot / SEP Projections)\n"
+            "6. Multi-Asset Macro Transmission Summary (DXY, Yields, Gold, Major FX, Crypto/Risk Assets)\n\n"
             "IMPORTANT TRADING PLAN DIRECTIVE: If the user did NOT explicitly ask for a technical trading plan (SL/TP/entry levels), "
             "do NOT invent or force a technical trading plan with entry/SL/TP levels in this chat response. Focus 100% on the rigorous analytical "
             "and probabilistic reasoning requested. The system will automatically persist your synthesized intelligence in the background to "
@@ -1205,6 +1224,7 @@ class ChatAgent:
         if self._is_macro_event_query(message):
             try:
                 from database.models import UserMarketIntel
+                from datetime import datetime, timezone, timedelta
                 clean_title = message.strip().replace("\n", " ")[:120]
                 reply_raw = synth_response.get("reply", "")
                 summary_text = reply_raw[:600] if len(reply_raw) > 600 else reply_raw
@@ -1218,7 +1238,7 @@ class ChatAgent:
                         affected_symbols="ALL",
                         directive="scenario_watch",
                         target_cycle="next_cycle_only",
-                        expires_in_hours=24,
+                        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
                     )
                     intel_session.add(intel_record)
                     await intel_session.commit()
@@ -1229,7 +1249,7 @@ class ChatAgent:
         reply_final = synth_response.get("reply", "Riset selesai namun sintesis tidak menghasilkan output.")
         if self._is_macro_event_query(message):
             reply_final += (
-                "\n\nℹ️ _Hasil riset telah disimpan otomatis ke memori sistem (user_market_intel) "
+                "\n\n[INFO] _Hasil riset telah disimpan otomatis ke memori sistem (user_market_intel) "
                 "sebagai bahan pertimbangan siklus Analisis Makro (Stage 1) dan Pembuatan Trading Plan (Stage 2) berikutnya._"
             )
 
@@ -1391,7 +1411,7 @@ class ChatAgent:
             self._proposals_paused = True
             notice = (
                 f"Action rejected: {action.description}\n\n"
-                "⚠️ Circuit breaker tripped: 3 consecutive denials. "
+                "[PERINGATAN] Circuit breaker tripped: 3 consecutive denials. "
                 "Auto-proposals paused. Use /resume_proposals to re-enable."
             )
         else:
@@ -1423,7 +1443,7 @@ class ChatAgent:
             symbol = str(params.get("symbol") or "")
             direction = str(params.get("direction") or "")
             if not symbol or not direction:
-                return "❌ Order ditolak: parameter 'symbol' dan 'direction' wajib diisi."
+                return "[GAGAL] Order ditolak: parameter 'symbol' dan 'direction' wajib diisi."
 
             async with get_session() as session:
                 from analysis.tools.tool_executor import ToolExecutor
@@ -1439,18 +1459,24 @@ class ChatAgent:
                     take_profit=params.get("take_profit"),
                 )
                 if val_errs:
-                    return f"❌ Order ditolak oleh validasi struktural (ADR-band/R:R/SL-TP alignment):\n" + "\n".join(f"• {err}" for err in val_errs)
+                    return f"[GAGAL] Order ditolak oleh validasi struktural (ADR-band/R:R/SL-TP alignment):\n" + "\n".join(f"• {err}" for err in val_errs)
 
-                # Slippage validation against current market price & ATR
+                # Slippage validation: Only apply price drift check to market orders. For limit/stop, validate entry side.
+                order_type = str(params.get("order_type", "market")).lower()
                 curr_price, is_stale, _ = await svc._get_current_price(symbol, direction)
                 proposed_entry = params.get("entry_price")
-                if curr_price and proposed_entry:
+                if order_type == "market" and curr_price and proposed_entry:
                     atr_res = await executor.execute("get_atr", {"symbol": symbol, "timeframe": "H1"})
                     atr = (atr_res.get("atr_14") if isinstance(atr_res, dict) else None) or (curr_price * 0.005)
                     max_allowed_slippage = atr * 0.5
                     price_drift = abs(curr_price - proposed_entry)
                     if price_drift > max_allowed_slippage:
-                        return f"❌ Order kedaluwarsa karena harga bergerak melebihi batas toleransi slippage (0.5 ATR / {price_drift:.5f} vs max {max_allowed_slippage:.5f}). Silakan ajukan ulang."
+                        return f"[GAGAL] Order kedaluwarsa karena harga bergerak melebihi batas toleransi slippage (0.5 ATR / {price_drift:.5f} vs max {max_allowed_slippage:.5f}). Silakan ajukan ulang."
+                elif order_type in ("limit", "buy_limit", "sell_limit") and curr_price and proposed_entry:
+                    if direction == "buy" and proposed_entry >= curr_price:
+                        return f"[GAGAL] Buy Limit entry ({proposed_entry:.5f}) harus berada di bawah harga pasar saat ini ({curr_price:.5f})."
+                    elif direction == "sell" and proposed_entry <= curr_price:
+                        return f"[GAGAL] Sell Limit entry ({proposed_entry:.5f}) harus berada di atas harga pasar saat ini ({curr_price:.5f})."
 
                 brief = (await session.execute(
                     select(FundamentalBrief)
@@ -1483,7 +1509,7 @@ class ChatAgent:
 
             if result.executed:
                 msg = (
-                    f"✅ Order placed!\n"
+                    f"[OK] Order placed!\n"
                     f"Symbol: {result.symbol}\n"
                     f"Direction: {result.decision.upper()}\n"
                     f"Lots: {result.executed_lots}\n"
@@ -1504,15 +1530,15 @@ class ChatAgent:
                         "status": "OPEN",
                     })
                     if j_res.get("obsidian_path"):
-                        msg += f"\n📝 Obsidian: `{j_res['obsidian_path']}`"
+                        msg += f"\n Obsidian: `{j_res['obsidian_path']}`"
                     if j_res.get("excel_path"):
-                        msg += f"\n📊 Spreadsheet: `{j_res['excel_path']}`"
+                        msg += f"\n[LAPORAN] Spreadsheet: `{j_res['excel_path']}`"
                 except Exception as je:
                     logger.debug(f"[WorkspaceJournal] auto-journal failed: {je}")
                 return msg
             else:
                 reasons = "; ".join(result.risk_rejection_reasons) or result.mt5_error or "Unknown"
-                return f"❌ Order blocked: {reasons}"
+                return f"[GAGAL] Order blocked: {reasons}"
 
         elif action.action_type == "close_position":
             raw_ticket = params.get("ticket")
@@ -1522,8 +1548,10 @@ class ChatAgent:
                 ticket = int(raw_ticket)
             except ValueError:
                 return f"[ERROR] Invalid ticket format: {raw_ticket}"
+            vol_val = params.get("volume") or params.get("lots")
+            vol_f = float(vol_val) if vol_val is not None else None
             result = await svc.close_position_by_ticket(
-                ticket, requested_by="telegram_user", reason=params.get("reason", "")
+                ticket, requested_by="telegram_user", reason=params.get("reason", ""), volume=vol_f
             )
             if result.get("success"):
                 msg = f"[OK] Position #{ticket} closed. Profit: {result.get('profit', 'N/A')}"
@@ -1539,13 +1567,46 @@ class ChatAgent:
                         "thesis": params.get("reason", "Manual close via Telegram"),
                     })
                     if j_res.get("obsidian_path"):
-                        msg += f"\n📝 Obsidian: `{j_res['obsidian_path']}`"
+                        msg += f"\n Obsidian: `{j_res['obsidian_path']}`"
                     if j_res.get("excel_path"):
-                        msg += f"\n📊 Spreadsheet: `{j_res['excel_path']}`"
+                        msg += f"\n[LAPORAN] Spreadsheet: `{j_res['excel_path']}`"
                 except Exception as je:
                     logger.debug(f"[WorkspaceJournal] auto-journal failed: {je}")
                 return msg
             return f"[ERROR] Close failed: {result.get('error')}"
+
+        elif action.action_type == "close_all_positions":
+            reason = params.get("reason", "Close all positions requested via Chat")
+            filter_type = params.get("filter", "all")
+            try:
+                if hasattr(svc, "close_positions_batch"):
+                    res = await svc.close_positions_batch(filter_type=filter_type, requested_by="chat_user", reason=reason)
+                    closed_cnt = res.get("closed_count", 0)
+                    failed_cnt = res.get("failed_count", 0)
+                    return f"[OK] Closed {closed_cnt} positions (filter={filter_type}, failed={failed_cnt}). Summary: {res.get('closed_tickets')}"
+                else:
+                    res = await svc.kill_switch(reason=reason)
+                    return f"[STOP] [OK] Closed all positions via kill switch. Summary: {res}"
+            except Exception as e:
+                return f"[ERROR] Failed to execute close positions: {e}"
+
+        elif action.action_type == "cancel_order":
+            raw_ticket = params.get("ticket") or params.get("order_id") or params.get("id")
+            if raw_ticket is None:
+                return "[ERROR] Order ticket number missing for cancel_order."
+            try:
+                ticket = int(raw_ticket)
+            except ValueError:
+                return f"[ERROR] Invalid ticket format: {raw_ticket}"
+            if getattr(svc, "mt5", None):
+                try:
+                    success = await svc.mt5.cancel_order(ticket)
+                    if success:
+                        return f"[OK] [OK] Pending order #{ticket} successfully cancelled."
+                    return f"[GAGAL] [ERROR] Failed to cancel pending order #{ticket} on MT5 terminal."
+                except Exception as e:
+                    return f"[ERROR] Error cancelling order #{ticket}: {e}"
+            return "[ERROR] MT5 execution client unavailable."
 
         elif action.action_type == "close_paper_trade":
             from utils.analytics.paper_tracker import PaperTracker
@@ -1688,9 +1749,17 @@ class ChatAgent:
                 self._instrument_executor(executor)
                 res = await executor._tool_save_market_intelligence(params)
                 if res.get("status") == "success":
-                    return f"✅ Market Intelligence berhasil disimpan!\nID: #{res.get('intel_id')}\nJudul: {res.get('title')}\nDirective: {res.get('directive')}"
+                    return f"[OK] Market Intelligence berhasil disimpan!\nID: #{res.get('intel_id')}\nJudul: {res.get('title')}\nDirective: {res.get('directive')}"
                 else:
-                    return f"❌ Gagal menyimpan Market Intelligence: {res.get('error')}"
+                    return f"[GAGAL] Gagal menyimpan Market Intelligence: {res.get('error')}"
+
+        elif action.action_type in ("secure_positions", "bulk_breakeven"):
+            only_profit = params.get("only_profit", True)
+            symbol = params.get("symbol")
+            if hasattr(svc, "apply_immediate_breakeven"):
+                res = await svc.apply_immediate_breakeven(only_profit=only_profit, symbol=symbol, requested_by="telegram_chat")
+                return f"[KEAMANAN] [OK] {res.get('message', 'Positions secured to Breakeven.')}\nUpdated: {res.get('updated_count', 0)}, Skipped: {res.get('skipped_count', 0)}"
+            return "[ERROR] Execution service does not support bulk breakeven."
 
         elif action.action_type == "db_mutation":
             return await self._execute_db_mutation(params)
@@ -1700,7 +1769,7 @@ class ChatAgent:
     async def _execute_db_mutation(self, params: dict) -> str:
         """Eksekusi mutasi database terverifikasi (insert, update, delete) oleh Admin."""
         if not getattr(self, "is_admin", False):
-            return "❌ Eksekusi ditolak: Hanya Admin yang dapat memodifikasi database."
+            return "[GAGAL] Eksekusi ditolak: Hanya Admin yang dapat memodifikasi database."
 
         from analysis.tools.handlers.db_tools import get_table_model_map
         from analysis.tools.tool_guardrails import DATABASE_IMMUTABLE_TABLES
@@ -1714,11 +1783,11 @@ class ChatAgent:
         data = params.get("data") or {}
 
         if table_name in DATABASE_IMMUTABLE_TABLES:
-            return f"❌ Eksekusi dibatalkan: Tabel '{table_name}' bersifat audit-trail imutabel dan tidak boleh diubah/dihapus."
+            return f"[GAGAL] Eksekusi dibatalkan: Tabel '{table_name}' bersifat audit-trail imutabel dan tidak boleh diubah/dihapus."
 
         table_map = get_table_model_map()
         if table_name not in table_map:
-            return f"❌ Tabel '{table_name}' tidak ditemukan dalam skema database."
+            return f"[GAGAL] Tabel '{table_name}' tidak ditemukan dalam skema database."
 
         model_cls = table_map[table_name]
 
@@ -1727,7 +1796,7 @@ class ChatAgent:
                 # 1. Update operation
                 if operation == "update":
                     if not target_id:
-                        return "❌ Target ID wajib diisi untuk operasi UPDATE."
+                        return "[GAGAL] Target ID wajib diisi untuk operasi UPDATE."
 
                     pk_cols = list(sqla_inspect(model_cls).primary_key)
                     if pk_cols and isinstance(pk_cols[0].type, (Integer, BigInteger)):
@@ -1738,7 +1807,7 @@ class ChatAgent:
 
                     row = await session.get(model_cls, target_id)
                     if not row:
-                        return f"❌ Rekaman ID #{target_id} tidak ditemukan di tabel '{table_name}'."
+                        return f"[GAGAL] Rekaman ID #{target_id} tidak ditemukan di tabel '{table_name}'."
 
                     pre_state = {}
                     updated_fields = {}
@@ -1757,14 +1826,14 @@ class ChatAgent:
                     ))
                     await session.commit()
                     return (
-                        f"✅ Berhasil mengupdate tabel *{table_name}* (ID: #{target_id})!\n"
+                        f"[OK] Berhasil mengupdate tabel *{table_name}* (ID: #{target_id})!\n"
                         f"• Perubahan: `{json.dumps(updated_fields)}`"
                     )
 
                 # 2. Insert operation
                 elif operation == "insert":
                     if not isinstance(data, dict) or not data:
-                        return "❌ Data dictionary wajib diisi untuk operasi INSERT."
+                        return "[GAGAL] Data dictionary wajib diisi untuk operasi INSERT."
 
                     valid_fields = {k: v for k, v in data.items() if hasattr(model_cls, k)}
                     new_row = model_cls(**valid_fields)
@@ -1780,14 +1849,14 @@ class ChatAgent:
                     ))
                     await session.commit()
                     return (
-                        f"✅ Berhasil menambahkan rekaman baru ke tabel *{table_name}* (ID: #{new_id})!\n"
+                        f"[OK] Berhasil menambahkan rekaman baru ke tabel *{table_name}* (ID: #{new_id})!\n"
                         f"• Data: `{json.dumps(valid_fields)}`"
                     )
 
                 # 3. Delete operation
                 elif operation == "delete":
                     if not target_id:
-                        return "❌ Target ID wajib diisi untuk operasi DELETE."
+                        return "[GAGAL] Target ID wajib diisi untuk operasi DELETE."
 
                     pk_cols = list(sqla_inspect(model_cls).primary_key)
                     if pk_cols and isinstance(pk_cols[0].type, (Integer, BigInteger)):
@@ -1798,7 +1867,7 @@ class ChatAgent:
 
                     row = await session.get(model_cls, target_id)
                     if not row:
-                        return f"❌ Rekaman ID #{target_id} tidak ditemukan di tabel '{table_name}'."
+                        return f"[GAGAL] Rekaman ID #{target_id} tidak ditemukan di tabel '{table_name}'."
 
                     pre_state = {}
                     for col in sqla_inspect(model_cls).columns:
@@ -1816,15 +1885,15 @@ class ChatAgent:
                         actor="telegram_admin",
                     ))
                     await session.commit()
-                    return f"🗑️ Berhasil menghapus rekaman #{target_id} dari tabel *{table_name}*."
+                    return f" Berhasil menghapus rekaman #{target_id} dari tabel *{table_name}*."
 
                 else:
-                    return f"❌ Operasi database '{operation}' tidak didukung. Pilihan: insert, update, delete."
+                    return f"[GAGAL] Operasi database '{operation}' tidak didukung. Pilihan: insert, update, delete."
 
             except Exception as e:
                 await session.rollback()
                 logger.error(f"[ChatAgent] Database mutation failed: {e}", exc_info=True)
-                return f"❌ Gagal memodifikasi database: {str(e)}"
+                return f"[GAGAL] Gagal memodifikasi database: {str(e)}"
 
     # ------------------------------------------------------------------
     # Pending action factory
@@ -1910,12 +1979,11 @@ class ChatAgent:
             "Perform all tool interactions, calculations, and internal analytical reasoning in English.",
             "Always ground analytical answers in fresh data from tools rather than assumptions.",
             "",
-            "## STRICT TELEGRAM FORMATTING RULES (MANDATORY)",
-            "- ALWAYS communicate with the human user in fluent, polite, and professional Bahasa Indonesia unless requested otherwise in English.",
-            "- ZERO EMOJI POLICY: NEVER use emojis, icons, or decorative symbols (no rockets, lightning, brains, charts, flags, etc.). Keep all text completely clean.",
-            "- NO MARKDOWN HEADINGS: NEVER use '#', '##', or '###' heading syntax. Telegram does not render '#' tags properly. Use '*Bold Heading*' on a separate line instead.",
-            "- NO PIPE TABLES: NEVER use markdown tables with '|' characters. Format structured data as bulleted key-value lists (e.g. '• *Metric*: Value') or monospace code blocks.",
-            "- TOPIC ISOLATION: Answer ONLY the specific question asked by the user in the current turn. Do NOT re-answer, combine, or synthesize previous unrelated topics unless explicitly asked.",
+            "## STRICT COMMUNICATION & FORMATTING RULES (MANDATORY)",
+            "- FLEXIBLE BILINGUAL MATCHING: ALWAYS mirror the user's language dynamically. If the user communicates in Bahasa Indonesia, respond in articulate, natural, polite, and professional Bahasa Indonesia. If the user communicates in English, respond in articulate, natural, clear, and professional English.",
+            "- NATURAL HUMAN TONE: Use conversational, human-like language that is pleasant and easy to read. Avoid stiff robotic phrasing, meaningless jargon, or raw unformatted data dumps.",
+            "- ABSOLUTE ZERO EMOTICON POLICY: NEVER use any Unicode emojis (symbols, pictographs, charts, rockets, flags, etc.) or text-based ASCII emoticons (like :), :D, ;), ^^, -_-, <3, etc.). Keep 100% of all generated text pristine, clean, and elegant in all languages.",
+            "- STRUCTURED VISUAL HIERARCHY: Organize answers with clear sections, airy paragraph spacing, crisp bullet points ('•'), bold emphasis for key numbers/assets, and clean data tables where comparison is helpful.",
             "- For standard conversational turns, keep response length concise (<= 3000 characters). For deep research, comprehensive macro event probability analyses, or complex strategic investigations, provide exhaustive institutional-grade briefs without arbitrary character limits, utilizing multi-chunk message delivery.",
             "",
             "## Anti-Hallucination Rules (MANDATORY)",
@@ -1929,7 +1997,7 @@ class ChatAgent:
             "- To create or update notes and trading journals in Obsidian: use 'mcp_filesystem_workspace_fs_write_file'. Format entries with YAML frontmatter compatible with Obsidian Dataview.",
             "- To inspect, read, or append to Excel (.xlsx) and CSV spreadsheets: use 'mcp_excel_tabular_excel_read_sheet', 'mcp_excel_tabular_excel_append_row', 'mcp_excel_tabular_excel_list_sheets'.",
             "",
-            "Language Reminder: Reason internally in English, present final response to operator in Bahasa Indonesia.",
+            "Language Reminder: Reason internally in English, present final response to operator in the exact language used by the user (Bahasa Indonesia or English).",
         ]
 
         # Append trading persona skill (immutable communication style)
@@ -1944,12 +2012,9 @@ class ChatAgent:
         if self.settings.get("trading", {}).get("caveman_mode", False):
             lines.append('\n---\n')
             lines.append('# CAVEMAN MODE — SCOPE-LIMITED COMPRESSION')
-            lines.append('Padatkan HANYA prosa bebas non-analitis (basa-basi, filler, hedging '
-                          'percakapan). JANGAN padatkan: angka harga/level SL/TP, penjelasan '
-                          'rationale trading, kutipan data dari tool, atau argumen analitis apa '
-                          'pun. Jika ragu apakah suatu kalimat analitis, anggap analitis dan '
-                          'tulis lengkap — salah menulis singkat pada konten analitis jauh lebih '
-                          'mahal daripada salah menulis lengkap pada basa-basi.')
+            lines.append('Compress ONLY non-analytical conversational prose (pleasantries, filler, conversational hedging). '
+                         'NEVER compress: numerical price levels, SL/TP bounds, trading rationale, data quotations from tools, or analytical arguments. '
+                         'If uncertain whether a sentence is analytical, treat it as analytical and write it in full — compressing analytical content is far more costly than writing conversational prose in full.')
 
         # DYNAMIC TAIL: Current portfolio & time snapshot placed strictly in separate block to preserve static prefix cache
         dynamic_lines = []

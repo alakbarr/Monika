@@ -195,7 +195,7 @@ class ScraperRunner:
 
             if count == self.failure_alert_threshold:
                 msg = (
-                    f"⚠️ <b>Scraper Alert</b>\n"
+                    f"[PERINGATAN] <b>Scraper Alert</b>\n"
                     f"Scraper <code>{name}</code> has failed {count} times consecutively.\n"
                     f"Error: {str(e)[:200]}\n"
                     f"Check scraper logs or website availability."
@@ -459,7 +459,7 @@ class ScraperRunner:
                         from utils.infra.notifier import AgentNotifier
                         notifier = AgentNotifier()
                         await notifier.send_warning(
-                            f"⚠️ <b>RSS Scraper Alert</b>\n"
+                            f"[PERINGATAN] <b>RSS Scraper Alert</b>\n"
                             f"RSS <code>{name}</code> failed {count} times consecutively.\n"
                             f"Error: {err_msg[:200]}"
                         )

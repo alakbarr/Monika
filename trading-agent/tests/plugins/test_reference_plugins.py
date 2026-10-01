@@ -13,8 +13,20 @@ from plugins.scrapers.example_scraper.example_scraper import fetch_external_wire
 from plugins.alerts.discord_alert.discord_alert import dispatch_discord_alert
 
 
+def _get_plugins_dir() -> Path:
+    candidates = [
+        Path("plugins"),
+        Path("trading-agent/plugins"),
+        Path(__file__).resolve().parent.parent.parent / "plugins",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return Path("plugins")
+
+
 def test_discover_reference_plugins():
-    plugins_dir = Path("trading-agent/plugins")
+    plugins_dir = _get_plugins_dir()
     loader = PluginLoader(manager=PluginManager())
     discovered = loader.discover_plugins(str(plugins_dir))
 
@@ -25,7 +37,7 @@ def test_discover_reference_plugins():
 
 
 def test_load_reference_plugins():
-    plugins_dir = Path("trading-agent/plugins")
+    plugins_dir = _get_plugins_dir()
     mgr = PluginManager()
     loader = PluginLoader(manager=mgr)
     loaded = loader.load_plugins_from_directory(str(plugins_dir))

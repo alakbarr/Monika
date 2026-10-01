@@ -5,11 +5,12 @@
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from analysis.research.macro_playbook_runner import (
     MacroPlaybookRunner,
+    PlaybookMetadata,
     SymbolVerdict,
     VALID_VERDICT_STATES,
 )
@@ -46,6 +47,16 @@ Research details...
     assert "Research details..." in body
 
 
+def test_valid_verdict_states_includes_all_biases():
+    """Verify all 6 bias labels used in system are recognized."""
+    assert "HOT_BULLISH" in VALID_VERDICT_STATES
+    assert "BULLISH" in VALID_VERDICT_STATES
+    assert "NEUTRAL" in VALID_VERDICT_STATES
+    assert "BEARISH" in VALID_VERDICT_STATES
+    assert "HOT_BEARISH" in VALID_VERDICT_STATES
+    assert "RISK_OFF" in VALID_VERDICT_STATES
+
+
 def test_parse_verdicts_from_text():
     text = """
 Some analysis notes.
@@ -55,18 +66,25 @@ Some analysis notes.
 - GBPUSD: NEUTRAL - Range consolidation
 - XAUUSD: HOT_BULLISH - Real yields sliding
 - BTCUSD: RISK_OFF - Liquidation cascade
+- AUDUSD: BULLISH - RBA hawkish hold
+- USDJPY: BEARISH - BoJ rate hike speculation
 - INVALID: UNKNOWN_STATE - Fallback check
+- {SYMBOL}: {BIAS} - Template variable skipped
 """
     runner = MacroPlaybookRunner()
     verdicts = runner.parse_verdicts_from_text(text)
 
-    assert len(verdicts) == 5
+    assert len(verdicts) == 7
     assert verdicts["EURUSD"].state == "HOT_BEARISH"
     assert verdicts["GBPUSD"].state == "NEUTRAL"
     assert verdicts["XAUUSD"].state == "HOT_BULLISH"
     assert verdicts["BTCUSD"].state == "RISK_OFF"
+    assert verdicts["AUDUSD"].state == "BULLISH"
+    assert verdicts["USDJPY"].state == "BEARISH"
     # Unrecognized state defaults to NEUTRAL
     assert verdicts["INVALID"].state == "NEUTRAL"
+    # Template variable {SYMBOL} is skipped
+    assert "{SYMBOL}" not in verdicts
 
 
 @pytest.mark.asyncio
@@ -104,18 +122,33 @@ async def test_compute_and_persist_deltas():
 
 
 @pytest.mark.asyncio
-async def test_execute_real_playbook():
+async def test_fetch_playbook_data_handles_errors():
+    """Verify data fetching handles unknown capabilities and exceptions gracefully."""
+    runner = MacroPlaybookRunner()
+    meta = PlaybookMetadata(
+        title="Test",
+        data_capabilities=["nonexistent_capability", "economic_calendar"]
+    )
+    data = await runner._fetch_playbook_data(meta)
+    assert isinstance(data, dict)
+
+
+@pytest.mark.asyncio
+async def test_execute_real_playbook_template():
     pb_path = Path(__file__).resolve().parents[2] / "skills" / "research" / "playbooks" / "premarket_london_brief.md"
     if not pb_path.is_file():
         pb_path = Path("skills/research/playbooks/premarket_london_brief.md")
     assert pb_path.is_file(), "premarket_london_brief.md should exist"
 
     runner = MacroPlaybookRunner()
-    res = await runner.execute_playbook(pb_path)
+    with patch.object(runner, "_fetch_playbook_data", new=AsyncMock(return_value={})), \
+         patch.object(runner, "_generate_verdicts_via_llm", new=AsyncMock(return_value="")):
+        res = await runner.execute_playbook(pb_path)
 
     assert res["playbook_file"] == "premarket_london_brief.md"
-    assert "EURUSD" in res["verdicts"]
-    assert "GBPUSD" in res["verdicts"]
-    assert "XAUUSD" in res["verdicts"]
-    assert "USDJPY" in res["verdicts"]
-    assert len(res["deltas"]) >= 4
+    assert "EURUSD" in res["target_symbols"]
+    assert "GBPUSD" in res["target_symbols"]
+    assert "XAUUSD" in res["target_symbols"]
+    assert "USDJPY" in res["target_symbols"]
+    assert "execution_time" in res
+    assert "generation_method" in res

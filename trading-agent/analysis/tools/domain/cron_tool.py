@@ -15,7 +15,7 @@ import logging
 import os
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 from analysis.tools.unified_registry import unified_tool_registry
@@ -87,12 +87,17 @@ class CronRegistry:
         except Exception as e:
             logger.debug(f"[CronRegistry] Could not save schedules: {e}")
 
-    def add_job(self, name: str, cron_expr: str, instruction: str, description: str = "") -> CronJobRecord:
+    def add_job(self, name: Union[str, CronJobRecord], cron_expr: str = "", instruction: str = "", description: str = "") -> CronJobRecord:
+        if isinstance(name, CronJobRecord):
+            job = name
+            self._jobs[job.name] = job
+            self._save()
+            return job
         job = CronJobRecord(
-            name=name.strip(),
-            cron_expression=cron_expr.strip(),
-            instruction=instruction.strip(),
-            description=description.strip(),
+            name=str(name).strip(),
+            cron_expression=str(cron_expr).strip(),
+            instruction=str(instruction).strip(),
+            description=str(description).strip(),
             enabled=True,
             created_at=time.time(),
         )
@@ -151,6 +156,18 @@ async def handle_manage_cron(
             instruction=params.instruction,
             description=params.description or "",
         )
+        try:
+            from scheduler.unified_cron_engine import get_unified_cron_engine
+            engine = get_unified_cron_engine()
+            engine.add_job(
+                schedule=params.cron_expression,
+                prompt=params.instruction,
+                destination="telegram",
+                name=params.name,
+            )
+        except Exception as e:
+            logger.debug(f"[CronTool] UnifiedCronEngine integration non-fatal: {e}")
+
         return {
             "success": True,
             "message": f"Successfully registered recurring job '{job.name}' ({job.cron_expression}).",
@@ -178,3 +195,21 @@ async def handle_manage_cron(
         return {"success": True, "message": f"Cleared {cleared} cron schedules."}
 
     return {"success": False, "error": f"Unknown action '{act}'. Use 'add', 'list', 'remove', or 'clear'."}
+
+
+try:
+    from analysis.tools.registry import register_tool, ToolHandler
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    @register_tool("manage_cron", aliases=["schedule_cron_job"], category="SYSTEM", parallel_safe=False)
+    class ManageCronHandler(ToolHandler):
+        name = "manage_cron"
+        category = "SYSTEM"
+        parallel_safe = False
+
+        async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+            input_obj = CronActionInput(**args) if isinstance(args, dict) else args
+            return await handle_manage_cron(input_obj, context=executor)
+except Exception:
+    pass
+

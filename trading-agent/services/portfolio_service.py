@@ -108,3 +108,44 @@ class PortfolioService:
         stmt = stmt.order_by(desc(Order.created_at)).limit(limit)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def get_portfolio_exposure(
+        session: AsyncSession,
+        is_paper: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """Aggregate total exposure, gross lots, net lots, and by-symbol breakdown."""
+        positions = await PortfolioService.get_open_positions(session, is_paper=is_paper)
+        by_symbol: Dict[str, Dict[str, Any]] = {}
+        total_long_lots = 0.0
+        total_short_lots = 0.0
+        total_unrealized_pnl = 0.0
+
+        for p in positions:
+            sym = p.symbol or "UNKNOWN"
+            vol = float(p.volume or 0.0)
+            pnl = float(p.pnl or 0.0)
+            total_unrealized_pnl += pnl
+            side = (p.side or "").lower()
+            if sym not in by_symbol:
+                by_symbol[sym] = {"long_lots": 0.0, "short_lots": 0.0, "net_lots": 0.0, "unrealized_pnl": 0.0, "count": 0}
+            by_symbol[sym]["count"] += 1
+            by_symbol[sym]["unrealized_pnl"] = round(by_symbol[sym]["unrealized_pnl"] + pnl, 2)
+            if side in ("buy", "long"):
+                by_symbol[sym]["long_lots"] = round(by_symbol[sym]["long_lots"] + vol, 2)
+                total_long_lots += vol
+            else:
+                by_symbol[sym]["short_lots"] = round(by_symbol[sym]["short_lots"] + vol, 2)
+                total_short_lots += vol
+            by_symbol[sym]["net_lots"] = round(by_symbol[sym]["long_lots"] - by_symbol[sym]["short_lots"], 2)
+
+        return {
+            "open_positions_count": len(positions),
+            "total_gross_lots": round(total_long_lots + total_short_lots, 2),
+            "total_net_lots": round(total_long_lots - total_short_lots, 2),
+            "total_long_lots": round(total_long_lots, 2),
+            "total_short_lots": round(total_short_lots, 2),
+            "total_unrealized_pnl": round(total_unrealized_pnl, 2),
+            "by_symbol": by_symbol,
+        }
+

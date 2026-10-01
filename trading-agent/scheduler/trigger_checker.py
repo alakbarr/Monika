@@ -155,6 +155,22 @@ class TriggerChecker:
                             trigger_cond = json.loads(trigger.condition_json)
                         except Exception:
                             trigger_cond = {}
+
+                    # User-level price alert notification dispatch
+                    if trigger_cond.get("is_user_alert"):
+                        try:
+                            from utils.infra.notifier import AgentNotifier
+                            p_level = trigger_cond.get("price") or trigger_cond.get("target_price")
+                            cond_dir = trigger_cond.get("direction") or trigger_cond.get("condition", "")
+                            note_text = trigger_cond.get("note", "")
+                            alert_msg = f" <b>Price Alert Triggered!</b>\n\n<b>Symbol:</b> {symbol}\n<b>Condition:</b> Price reached {cond_dir} {p_level}"
+                            if note_text:
+                                alert_msg += f"\n<b>Note:</b> {note_text}"
+                            await AgentNotifier().send_message(alert_msg)
+                            logger.info(f"User price alert notification sent for trigger #{trigger.id} ({symbol})")
+                        except Exception as alert_notify_err:
+                            logger.error(f"Failed to send user alert notification: {alert_notify_err}")
+
                     preplanned_order = trigger_cond.get("preplanned_order") if isinstance(trigger_cond, dict) else None
 
                     if preplanned_order and self._execution_service:
@@ -243,7 +259,7 @@ class TriggerChecker:
                                             logger.debug(f"Could not build inline keyboard for trade proposal: {kb_err}")
 
                                         await notifier.send_proposal(
-                                            f"🎯 <b>Trade Proposal from Trigger</b>\n\n"
+                                            f"[TARGET] <b>Trade Proposal from Trigger</b>\n\n"
                                             f"<b>Symbol:</b> {symbol}\n"
                                             f"<b>Action:</b> {dec}\n"
                                             f"<b>Confidence:</b> {conf:.2f}\n"
@@ -413,7 +429,7 @@ class TriggerChecker:
                 
                 if should_alert:
                     alert_msg = (
-                        f'⚠️ <b>Invalidation Alert — {pos.symbol}</b>\n\n'
+                        f'[PERINGATAN] <b>Invalidation Alert — {pos.symbol}</b>\n\n'
                         f'Position: {pos.direction.upper()} {pos.volume}L @ {pos.entry_price} | ticket={pos.mt5_ticket}\n\n'
                         f'Condition Triggered: {trigger_desc}\n'
                         f'Original invalidation: <i>{(analysis.invalidation or "N/A")[:150]}</i>\n\n'
@@ -620,9 +636,15 @@ class TriggerChecker:
             .values(status="fired", fired_at=now)
         )
 
-        # Get the symbol from the linked AssetAnalysis
-        analysis = await session.get(AssetAnalysis, trigger.asset_analysis_id)
+        # Get the symbol from the linked AssetAnalysis or condition_json
+        analysis = await session.get(AssetAnalysis, trigger.asset_analysis_id) if trigger.asset_analysis_id else None
         symbol = analysis.symbol if analysis else None
+        if not symbol:
+            try:
+                cond_dict = json.loads(trigger.condition_json) if trigger.condition_json else {}
+                symbol = cond_dict.get("symbol")
+            except Exception:
+                pass
 
         # Log activity
         condition = {}
@@ -651,6 +673,9 @@ class TriggerChecker:
     async def _evaluate_trigger(self, trigger: TradeTrigger) -> 'bool | str':
         """Evaluasi apakah kondisi terpenuhi (True), belum (False), kedaluwarsa ('expired'), atau cacat ('invalid')."""
         trigger_type = trigger.trigger_type
+        if trigger_type and trigger_type.startswith("price_") and trigger_type not in ("price_level", "price"):
+            trigger_type = "price_level"
+
         try:
             condition = json.loads(trigger.condition_json) if trigger.condition_json else {}
         except Exception:
@@ -677,8 +702,8 @@ class TriggerChecker:
 
     async def _check_price_level(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
         """Evaluasi harga crossing level (above/below)."""
-        raw_price = condition.get("price")
-        direction = condition.get("direction")  # "above" or "below"
+        raw_price = condition.get("price") if condition.get("price") is not None else condition.get("target_price")
+        direction = condition.get("direction") or condition.get("condition")  # "above" or "below"
         symbol = condition.get("symbol")
 
         if (raw_price is None or not direction) and condition.get("detail"):

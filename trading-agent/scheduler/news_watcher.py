@@ -263,7 +263,7 @@ class NewsWatcher:
             try:
                 from utils.infra.notifier import AgentNotifier
                 asyncio.create_task(AgentNotifier().send_warning(
-                    f'⚠️ News classification pipeline error. Menggunakan fallback shock-keyword konservatif '
+                    f'[PERINGATAN] News classification pipeline error. Menggunakan fallback shock-keyword konservatif '
                     f'(tanpa validasi berlapis normal) sampai pipeline pulih.\n{str(e)[:150]}'
                 ))
             except Exception:

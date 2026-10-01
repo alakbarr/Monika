@@ -891,7 +891,13 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         if not result["success"]:
             if result.get("is_billing_error") and (self.consent_callback is not None or (self.is_fallback_always_approved is not None and self.is_fallback_always_approved())):
                 role_fallbacks = self.settings.get('llm', {}).get('task_roles', {}).get('stage2_per_asset_primary', {})
-                fallback_model = role_fallbacks.get('billing_fallback') or role_fallbacks.get('fallback_2') or role_fallbacks.get('fallback_3') or 'gemini-3.6-flash'
+                fallback_model = (
+                    role_fallbacks.get('billing_fallback')
+                    or role_fallbacks.get('fallback')
+                    or role_fallbacks.get('fallback_2')
+                    or role_fallbacks.get('fallback_3')
+                    or role_fallbacks.get('primary')
+                )
                 approved = False
                 if self.is_fallback_always_approved is not None and self.is_fallback_always_approved():
                     approved = True

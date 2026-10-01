@@ -294,9 +294,14 @@ Respond in valid JSON format conforming to the schema."""
             else:
                 raw_multiplier = max(0.20, raw_multiplier - regime_weights["volatility_penalty"])
 
-        if final_dec == "avoid" or (effective_counter_threat >= 9 and raw_multiplier <= 0.25):
+        if final_dec == "avoid" or effective_counter_threat >= 9:
             parsed["final_decision"] = "avoid"
             parsed["risk_multiplier"] = 0.0
+            if effective_counter_threat >= 9 and final_dec != "avoid":
+                parsed["rationale"] = (
+                    f"[FATAL FLAW OVERRIDE] Critical counter-threat established ({effective_counter_threat}/10). "
+                    f"Decision overridden to avoid. {parsed.get('rationale', '')}"
+                )
         else:
             parsed["risk_multiplier"] = max(0.20, min(1.0, raw_multiplier))
 

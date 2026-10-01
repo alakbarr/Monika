@@ -148,8 +148,8 @@ class TestEventProbabilityPlaybookStress(unittest.TestCase):
     def test_analog_matching_rubric_weights_sum_to_100(self):
         """Verify the 5 components of Analog Match Score sum exactly to 100 points."""
         content = load_skill("event_probability_playbook")
-        # Extract weights from Bagian 3.1
-        weight_matches = re.findall(r"Bobot:\s*(\d+)\s*Poin", content)
+        # Extract weights from Section 3.1
+        weight_matches = re.findall(r"Weight:\s*(\d+)\s*Points", content)
         self.assertEqual(
             len(weight_matches),
             5,
@@ -167,7 +167,7 @@ class TestEventProbabilityPlaybookStress(unittest.TestCase):
     # 6. Analytical Oracle: 5 Historical Surprises Multi-Asset Completeness
     # ----------------------------------------------------------------------
     def test_historical_precedents_multi_asset_coverage(self):
-        """Every historical precedent in Bagian 2 must specify yields, DXY, gold, equities, crypto, and systemic impacts."""
+        """Every historical precedent in Section 2 must specify yields, DXY, gold, equities, crypto, and systemic impacts."""
         content = load_skill("event_probability_playbook")
         required_precedents = [
             "1994 Greenspan",
@@ -180,9 +180,9 @@ class TestEventProbabilityPlaybookStress(unittest.TestCase):
             "Yields",
             "DXY",
             "Gold",
-            "Saham",
-            "Kripto",
-            "Sistemik",
+            "Equities",
+            "Crypto",
+            "Systemic",
         ]
         for precedent in required_precedents:
             with self.subTest(precedent=precedent):
@@ -196,19 +196,19 @@ class TestEventProbabilityPlaybookStress(unittest.TestCase):
     # 7. Analytical Oracle: Decision Tree Completeness
     # ----------------------------------------------------------------------
     def test_decision_tree_covers_all_5_precedents(self):
-        """Decision tree in Bagian 3.1 must map to each of the 5 canonical precedents."""
+        """Decision tree in Section 3.1 must map to each of the 5 canonical precedents."""
         content = load_skill("event_probability_playbook")
-        self.assertIn("[PRESEDEN 2022 POWELL]", content)
-        self.assertIn("[PRESEDEN 2015 YELLEN]", content)
-        self.assertIn("[PRESEDEN 2013 BERNANKE]", content)
-        self.assertIn("[PRESEDEN 1994 GREENSPAN]", content)
-        self.assertIn("[PRESEDEN 2019 POWELL]", content)
+        self.assertIn("[2022 POWELL PRECEDENT]", content)
+        self.assertIn("[2015 YELLEN PRECEDENT]", content)
+        self.assertIn("[2013 BERNANKE PRECEDENT]", content)
+        self.assertIn("[1994 GREENSPAN PRECEDENT]", content)
+        self.assertIn("[2019 POWELL PRECEDENT]", content)
 
     # ----------------------------------------------------------------------
     # 8. Analytical Oracle: 4-Quadrant Action vs Guidance Exhaustiveness
     # ----------------------------------------------------------------------
     def test_four_quadrants_exhaustive_coverage(self):
-        """Bagian 4 must cover all 4 quadrants of Action x Guidance."""
+        """Section 4 must cover all 4 quadrants of Action x Guidance."""
         content = load_skill("event_probability_playbook")
         quadrants = [
             "1. Hawkish Continuation",
@@ -224,15 +224,15 @@ class TestEventProbabilityPlaybookStress(unittest.TestCase):
     # 9. Institutional Output Template Completeness
     # ----------------------------------------------------------------------
     def test_institutional_output_template_has_all_6_sections(self):
-        """Bagian 5 must provide an explicit template for all 6 required sections."""
+        """Section 5 must provide an explicit template for all 6 required sections."""
         content = load_skill("event_probability_playbook")
         sections = [
-            "## 1. Snapshot Data Terkini & Trajektori Ekspektasi Pasar",
-            "## 2. Uji Derajat Pemfaktoran Pasar (Priced-In Score) & Asimetri Risiko",
-            "## 3. Analisis Preseden Historis Kejutan Bank Sentral",
-            "## 4. Dekonstruksi Proyeksi SEP & Prediksi Nada Press Conference",
-            "## 5. Trading Plan Multi-Skenario Terstruktur",
-            "## 6. Handshake ke LangGraph Execution Engine (user_market_intel)",
+            "## 1. Current Data Snapshot & Market Expectation Trajectory",
+            "## 2. Priced-In Score & Risk Asymmetry Analysis",
+            "## 3. Historical Precedents & Central Bank Surprise Analysis",
+            "## 4. SEP Projection Deconstruction & Press Conference Tone Prediction",
+            "## 5. Structured Multi-Scenario Trading Plan",
+            "## 6. LangGraph Engine Handshake (user_market_intel)",
         ]
         for sec in sections:
             with self.subTest(section=sec):

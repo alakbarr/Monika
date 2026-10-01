@@ -430,7 +430,7 @@ NEWS_CLASSIFICATION_SCHEMA = {
             "sentiments": {"type": "array", "items": {"type": "string", "enum": SENTIMENT_TAXONOMY}},
             "key_data_point": {
                 "type": "string",
-                "description": "Untuk DATA RELEASE saja: ekstrak angka actual vs forecast verbatim dari title/summary jika ada, contoh: CPI actual 3.8% vs forecast 3.1%. String kosong jika bukan data release."
+                "description": "For DATA RELEASES only: extract actual vs forecast figures verbatim from title/summary if available (e.g. 'CPI actual 3.8% vs forecast 3.1%'). Empty string for non-data releases."
             }
         },
         "required": ["index", "reasoning", "impact", "confidence", "surprise_magnitude", "currencies", "sentiments", "key_data_point"]
@@ -587,56 +587,56 @@ def generate_deterministic_currency_summary(currency: str, items: Sequence[Any])
 class NewsDigestProcessor:
     """Memproses berita untuk disajikan ke tahap analisis."""
     CLASSIFICATION_FEW_SHOT_EXAMPLES = """
-CONTOH TERKALIBRASI (pelajari pola penalaran ini, jangan hanya hafal jawabannya):
+CALIBRATED FEW-SHOT EXAMPLES (Study this reasoning pattern; do not merely memorize outputs):
 
-Contoh 1 — BREAKING yang benar:
-  Judul: "US CPI comes in at 4.2% vs 3.1% forecast, biggest miss in 2 years"
+Example 1 — Valid BREAKING:
+  Title: "US CPI comes in at 4.2% vs 3.1% forecast, biggest miss in 2 years"
   TIME-IN-SYSTEM: 12 min | CALENDAR_IMPACT_RATING=HIGH
-  -> impact=BREAKING, surprise_magnitude=large. Alasan: rilis data aktual, fresh (<90min),
-     deviasi besar dari forecast, calendar rating HIGH mendukung.
+  -> impact=BREAKING, surprise_magnitude=large. Reason: Official hard data release, fresh (<90min),
+     large deviation from consensus forecast, strongly supported by CALENDAR_IMPACT_RATING=HIGH.
 
-Contoh 2 — Terlihat penting tapi sebenarnya HIGH, bukan BREAKING:
-  Judul: "Fed's Williams says rate path remains data dependent"
-  TIME-IN-SYSTEM: 30 min | CALENDAR_IMPACT_RATING=(tidak ada)
-  -> impact=HIGH, surprise_magnitude=none. Alasan: pernyataan rutin pejabat Fed tanpa sinyal
-     kebijakan baru, bukan rilis data, tidak ada elemen "surprise".
+Example 2 — Appears important but is actually HIGH, not BREAKING:
+  Title: "Fed's Williams says rate path remains data dependent"
+  TIME-IN-SYSTEM: 30 min | CALENDAR_IMPACT_RATING=(none)
+  -> impact=HIGH, surprise_magnitude=none. Reason: Routine policymaker speech without new policy guidance,
+     not a quantitative data release, no shock/surprise element.
 
-Contoh 3 — HIGH yang keliru diklasifikasikan MEDIUM oleh model lemah:
-  Judul: "Eurozone flash PMI beats expectations, signals expansion"
+Example 3 — HIGH incorrectly classified as MEDIUM by weaker models:
+  Title: "Eurozone flash PMI beats expectations, signals expansion"
   TIME-IN-SYSTEM: 45 min | CALENDAR_IMPACT_RATING=HIGH
-  -> impact=HIGH (bukan MEDIUM!). Alasan: PMI flash adalah tier data penting (calendar rating
-     HIGH mengonfirmasi), meski bukan level NFP/CPI, "beats expectations" menunjukkan surprise
-     ringan-sedang yang tetap signifikan untuk EUR pairs.
+  -> impact=HIGH (not MEDIUM!). Reason: Flash PMI is a tier-1 forward-looking data release (confirmed by
+     CALENDAR_IMPACT_RATING=HIGH). Even though not NFP/CPI tier, beating expectations provides a meaningful
+     cyclical surprise for EUR currency pairs.
 
-Contoh 4 — MEDIUM yang benar (jangan naikkan ke HIGH):
-  Judul: "German consumer confidence index inches up slightly"
+Example 4 — Genuine MEDIUM (Do NOT promote to HIGH):
+  Title: "German consumer confidence index inches up slightly"
   TIME-IN-SYSTEM: 20 min | CALENDAR_IMPACT_RATING=MEDIUM
-  -> impact=MEDIUM. Alasan: data rutin tier-2, "inches up slightly" = tidak ada surprise,
-     calendar rating MEDIUM mendukung.
+  -> impact=MEDIUM. Reason: Routine tier-2 data release, "inches up slightly" indicates no material surprise,
+     calendar rating MEDIUM confirms routine nature.
 
-Contoh 5 — Reaksi pasar (BUKAN BREAKING meski judul dramatis):
-  Judul: "Gold surges past $2400 as dollar weakens"
+Example 5 — Market Reaction / Derivative Reporting (NOT BREAKING despite dramatic headline):
+  Title: "Gold surges past $2400 as dollar weakens"
   TIME-IN-SYSTEM: 25 min
-  -> impact=HIGH (bukan BREAKING). Alasan: kata "surges" menandakan pasar SUDAH bereaksi —
-     ini laporan reaksi harga, bukan event/data baru itu sendiri. Aturan (4) dilanggar.
+  -> impact=HIGH (not BREAKING). Reason: Word "surges" indicates price action has ALREADY occurred —
+     this reports market price reaction, not the original catalyst event. Violates Rule (4).
 
-Contoh 6 — Cakupan derivatif dari event yang sama (bukan BREAKING kedua kalinya):
-  Judul: "Analysts react to surprise BOJ rate hike" (setelah 3 artikel BOJ lain sudah ada)
+Example 6 — Secondary / Derivative Coverage of Same Event (Not BREAKING a second time):
+  Title: "Analysts react to surprise BOJ rate hike" (after 3 other BOJ articles already exist)
   TIME-IN-SYSTEM: 40 min
-  -> impact=MEDIUM (bukan BREAKING). Alasan: ini adalah cakupan turunan/analisis, bukan berita
-     asli event. Aturan (5) — 3+ artikel lain sudah membahas event yang sama.
+  -> impact=MEDIUM (not BREAKING). Reason: Secondary commentary/analysis, not original breaking event.
+     Violates Rule (5) — 3+ articles already cover the event.
 
-Contoh 7 — BREAKING Bitcoin/Crypto yang benar (relevan untuk BTCUSD):
-  Judul: "SEC approves first spot Bitcoin ETF applications in historic ruling"
+Example 7 — Genuine BREAKING Bitcoin/Crypto Event (Directly relevant to BTCUSD):
+  Title: "SEC approves first spot Bitcoin ETF applications in historic ruling"
   TIME-IN-SYSTEM: 15 min
   -> impact=BREAKING, surprise_magnitude=large, currencies=["BTC", "USD"], sentiments=["BULLISH_BTC", "RISK_ON"].
-     Alasan: keputusan regulasi besar historis, fresh (<90min), berdampak masif langsung ke likuiditas BTCUSD.
+     Reason: Historic landmark regulatory decision, fresh (<90min), directly and immediately impacts BTCUSD liquidity.
 
-Contoh 8 — LOW Kripto Spekulatif/Altcoin Kecil (Bukan Bitcoin/Makro):
-  Judul: "New dog-themed meme coin surges 300% on Solana decentralized exchange"
+Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
+  Title: "New dog-themed meme coin surges 300% on Solana decentralized exchange"
   TIME-IN-SYSTEM: 20 min
   -> impact=LOW, currencies=["NON"], sentiments=["NEUTRAL"].
-     Alasan: token meme spekulatif kecil tidak berdampak pada likuiditas BTC atau pasar makro institusional.
+     Reason: Minor speculative meme token has zero structural impact on institutional BTC liquidity or global macro markets.
 """
 
     def __init__(self, settings: dict):
@@ -1233,7 +1233,7 @@ Respond JSON array of objects:
                     import json as _json
                     directives = _json.loads(cfg.value).get('directives', [])
                     if directives:
-                        tier_directives_str = "\n\nCALIBRATION FEEDBACK (dari outcome tracking sistem):\n" + "\n".join(f"- {d}" for d in directives)
+                        tier_directives_str = "\n\nCALIBRATION FEEDBACK (System Outcome Tracking Directives):\n" + "\n".join(f"- {d}" for d in directives)
             except Exception:
                 pass
 
@@ -1381,7 +1381,7 @@ Return ONLY valid JSON matching schema."""
                     result = [{'index': j + 1, 'news_id': item.id, **_keyword_fallback_classify(item.title, item.summary)} for j, item in enumerate(batch)]
                     try:
                         from utils.infra.notifier import AgentNotifier
-                        await AgentNotifier().send_warning(f'⚠️ News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
+                        await AgentNotifier().send_warning(f'[PERINGATAN] News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
                     except Exception:
                         pass
             

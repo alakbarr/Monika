@@ -1,5 +1,7 @@
 app_name: Monika
 environment: development
+learning:
+  min_crystallization_wins: 5
 trading:
   cost_mode: standard
   stage1_self_consistency_enabled: true
@@ -29,14 +31,14 @@ trading:
     streak_risk_scale_factor: 0.5
     suspension_hours: 12
   asset_universe:
-  - XAUUSD
-  - EURUSD
-  - GBPUSD
-  - USDJPY
-  - AUDUSD
-  - XTIUSD
-  - BTCUSD
-  - XBRUSD
+    - XAUUSD
+    - EURUSD
+    - GBPUSD
+    - USDJPY
+    - AUDUSD
+    - XTIUSD
+    - BTCUSD
+    - XBRUSD
   position_guardian:
     enabled: true
     strategy: close_before_news
@@ -44,13 +46,13 @@ trading:
     check_interval_seconds: 300
     warning_minutes: 30
     impact_levels:
-    - high
+      - high
   weekend_management:
     enabled: true
     strategy: close_if_profitable
     gap_protection_hours: 2
     exempted_symbols:
-    - BTCUSD
+      - BTCUSD
     profit_threshold_pct: 0.5
     alert_hour_utc: 17
     auto_close_friday_positions: false
@@ -155,7 +157,7 @@ trading:
   edge_strategy:
     signal_cooldown_seconds: 3600
     macro_gate_exempt_strategies:
-    - gap_fade
+      - gap_fade
     stats_tracker:
       min_sample_size: 20
       min_profit_factor: 1.0
@@ -185,9 +187,9 @@ trading:
     tsm_momentum:
       enabled: true
       lookbacks_days:
-      - 63
-      - 126
-      - 252
+        - 63
+        - 126
+        - 252
     xau_trend_engine:
       enabled: true
       ema_fast: 20
@@ -233,9 +235,9 @@ trading:
     warmup_timeout_seconds: 360
     timezone: Asia/Jakarta
     cycle_times_local:
-    - 07:00
-    - '15:00'
-    - '20:00'
+      - 07:00
+      - '15:00'
+      - '20:00'
     daily_report_time_local: 08:00
     weekly_report_weekday: 5
     run_immediately_on_first_start: true
@@ -258,9 +260,9 @@ trading:
     horizon_hours: 24
     cache_ttl_hours: 8.0
     multivariate_covariates:
-    - DXY
-    - US10Y
-    - XTIUSD
+      - DXY
+      - US10Y
+      - XTIUSD
     expectancy_gate:
       enabled: true
       min_probabilistic_expectancy: 1.05
@@ -271,15 +273,15 @@ trading:
   mt5:
     broker_utc_offset_hours: 3
     timeframes:
-    - M15
-    - H1
-    - H4
-    - D1
+      - M15
+      - H1
+      - H4
+      - D1
   indicators:
     ma_periods:
-    - 20
-    - 50
-    - 200
+      - 20
+      - 50
+      - 200
     rsi_period: 14
     stochastic_k: 14
     stochastic_d: 3
@@ -292,14 +294,14 @@ trading:
     sr_tolerance: 0.002
     sr_min_touches: 2
   symbols:
-  - XAUUSD
-  - EURUSD
-  - GBPUSD
-  - USDJPY
-  - AUDUSD
-  - XTIUSD
-  - BTCUSD
-  - XBRUSD
+    - XAUUSD
+    - EURUSD
+    - GBPUSD
+    - USDJPY
+    - AUDUSD
+    - XTIUSD
+    - BTCUSD
+    - XBRUSD
 execution:
   max_price_staleness_seconds: 120
   max_analysis_age_for_execute_minutes: 30
@@ -364,7 +366,7 @@ data_quality:
     fedwatch: 7.0
   key_data_tolerance:
     treasury_10y_yield_bp: 15.0
-    cot_leveraged_pct: null
+    cot_leveraged_pct:
 ssvp:
   enabled: true
   cds_thresholds:
@@ -497,6 +499,9 @@ data_sources:
       ecb_deposit_rate: ECBDFR
       boe_base_rate: BOERUKM
       boj_policy_rate: IRSTCB01JPM156N
+      fed_total_assets: WALCL
+      reverse_repo_level: RRPONTSYD
+      treasury_general_account: WTREGEN
     update_frequency: daily
   cftc_cot:
     api_url: https://publicreporting.cftc.gov/resource
@@ -514,13 +519,14 @@ data_sources:
     source: yfinance
     update_frequency: daily
 telegram:
+  voice_transcription_model: gemini-3.8-flash
   notification_events:
-  - order_executed
-  - order_closed
-  - trigger_fired
-  - circuit_breaker
-  - scraper_failure
-  - mt5_disconnected
+    - order_executed
+    - order_closed
+    - trigger_fired
+    - circuit_breaker
+    - scraper_failure
+    - mt5_disconnected
 claude:
   fundamental_model_escalation: claude-opus-5
   fundamental_escalation_threshold: 0.6
@@ -605,6 +611,9 @@ search:
   cache_ttl_minutes: 15
   max_results_per_query: 5
 llm:
+  default_model: gpt-6.1-sol
+  default_provider: openrouter
+  embedding_model: gemini-embedding-2
   credential_pool:
     enabled: true
     exponential_backoff: true
@@ -1175,6 +1184,93 @@ llm:
       context_window: 128000
       supports_tool_calling: true
       cost_tier: low
+    gpt-6.1-sol:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: medium
+    gpt-6-sol:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: medium
+    gpt-6-luna:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+    gpt-6-luna-xhigh:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+      default_thinking: xhigh
+    gpt-6-luna-max:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+      default_thinking: max
+    gpt-5.6-luna-xhigh:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+      default_thinking: xhigh
+    gpt-5.6-luna-max:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: low
+      default_thinking: max
+    gpt-5.6-sol-high:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: high
+      default_thinking: high
+    gpt-5.6-sol-medium:
+      provider: openrouter
+      context_window: 1050000
+      supports_tool_calling: true
+      cost_tier: high
+      default_thinking: medium
+    claude-sonnet-5.5:
+      provider: openrouter
+      context_window: 200000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: medium
+    deepseek-v4.1-flash:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    glm-5.3-flash:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    muse-spark-1.3:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: medium
+    step-5-preview:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    mimo-v2.6-pro:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
+    mimo-v2.6-flash:
+      provider: openrouter
+      context_window: 128000
+      supports_tool_calling: true
+      cost_tier: low
     gpt-5.6-sol:
       provider: openrouter
       context_window: 1050000
@@ -1513,7 +1609,7 @@ llm:
         rpm: 5
         rpd: 20
     gemini-3.8-flash:
-      provider: gemini
+      provider: openrouter
       context_window: 1000000
       supports_tool_calling: true
       cost_tier: free
@@ -1657,15 +1753,18 @@ llm:
       max_tool_turns: 3
       temperature: 0.0
     stage1_fundamental:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
         anthropic: high
         gemini: high
         openai: high
@@ -1678,16 +1777,28 @@ llm:
       max_tool_turns: 12
       max_cost_per_call: 0.05
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     stage1_escalation:
-      primary: gemini-3.8-flash
-      fallback_1: gemini-3.7-flash
-      fallback_2: gemini-3.6-flash
-      fallback_3: gemini-3.5-flash
-      fallback_4: gemini-3.5-flash-lite
-      fallback_5: gemini-3.1-flash-lite
-      fallback_6: openrouter/free
-      fallback_7: groq-qwen3.8-27b
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
         anthropic: high
         gemini: high
         openai: high
@@ -1699,18 +1810,30 @@ llm:
       max_tokens: 16384
       max_tool_turns: 12
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     stage2_per_asset_primary:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: max
+        fallback_2: high
+        fallback_3: max
+        fallback_4: high
+        fallback_5: high
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: high
         anthropic: high
-        gemini: medium
+        gemini: high
         openai: high
         deepseek: high
         groq: high
@@ -1720,18 +1843,30 @@ llm:
       max_tokens: 12288
       max_tool_turns: 15
       temperature: 0.0
-    stage2_per_asset_secondary:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
+      fallback_1: mimo-v2.6-pro
+      fallback_2: gpt-6-sol
+      fallback_3: step-5-preview
+      fallback_4: gpt-5.6-sol
       fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      fallback_6: claude-sonnet-5.5
+      fallback_7: gemini-3.8-flash
+      fallback_8: muse-spark-1.3
+      fallback_9: grok-4.6
+    stage2_per_asset_secondary:
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: max
+        fallback_2: high
+        fallback_3: max
+        fallback_4: high
+        fallback_5: high
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: high
         anthropic: high
-        gemini: medium
+        gemini: high
         openai: high
         deepseek: high
         groq: high
@@ -1741,18 +1876,30 @@ llm:
       max_tokens: 12288
       max_tool_turns: 12
       temperature: 0.0
-    stage2_session_trigger:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
+      fallback_1: mimo-v2.6-pro
+      fallback_2: gpt-6-sol
+      fallback_3: step-5-preview
+      fallback_4: gpt-5.6-sol
       fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      fallback_6: claude-sonnet-5.5
+      fallback_7: gemini-3.8-flash
+      fallback_8: muse-spark-1.3
+      fallback_9: grok-4.6
+    stage2_session_trigger:
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: max
+        fallback_2: high
+        fallback_3: max
+        fallback_4: high
+        fallback_5: high
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: high
         anthropic: high
-        gemini: medium
+        gemini: high
         openai: high
         deepseek: high
         groq: high
@@ -1762,6 +1909,15 @@ llm:
       max_tokens: 8192
       max_tool_turns: 15
       temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: gpt-6-sol
+      fallback_3: step-5-preview
+      fallback_4: gpt-5.6-sol
+      fallback_5: gemini-3.7-flash
+      fallback_6: claude-sonnet-5.5
+      fallback_7: gemini-3.8-flash
+      fallback_8: muse-spark-1.3
+      fallback_9: grok-4.6
     stage2_prescreen:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -1780,66 +1936,102 @@ llm:
       max_tokens: 1024
       temperature: 0.0
     debate_bear:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
       max_tokens: 4096
       temperature: 0.1
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     debate_bull:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
       max_tokens: 4096
       temperature: 0.1
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     debate_judge:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: medium
-        gemini: medium
-        openai: medium
-        deepseek: medium
-        groq: medium
-        openrouter: medium
-        ollama: medium
-        openai_compatible: medium
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
       max_tokens: 6144
       max_cost_per_call: 0.15
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     risk_gate_conservative:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -1892,85 +2084,133 @@ llm:
       max_tokens: 2048
       temperature: 0.0
     risk_gate:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: claude-sonnet-5.5
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    macro_analyst:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    sentiment_analyst:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    portfolio_manager_per_trade:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
+        primary: medium
+        fallback_1: medium
+        fallback_2: max
+        fallback_3: max
+        fallback_4: medium
+        fallback_5: max
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: xhigh
         anthropic: medium
-        gemini: medium
+        gemini: max
         openai: medium
-        deepseek: medium
+        deepseek: max
         groq: medium
         openrouter: medium
-        ollama: medium
+        ollama: low
         openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: gpt-5.6-sol
+      fallback_2: deepseek-v4-flash
+      fallback_3: deepseek-v4.1-flash
+      fallback_4: gpt-6.1-sol
+      fallback_5: gemini-3.7-flash
+      fallback_6: gpt-5.6-sol-high
+      fallback_7: gpt-6-sol
+      fallback_8: muse-spark-1.2
+      fallback_9: gpt-5.6-terra
+    macro_analyst:
+      primary: claude-sonnet-5.5
+      thinking:
+        primary: medium
+        fallback_1: medium
+        fallback_2: max
+        fallback_3: max
+        fallback_4: medium
+        fallback_5: max
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: xhigh
+        anthropic: medium
+        gemini: max
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: gpt-5.6-sol
+      fallback_2: deepseek-v4-flash
+      fallback_3: deepseek-v4.1-flash
+      fallback_4: gpt-6.1-sol
+      fallback_5: gemini-3.7-flash
+      fallback_6: gpt-5.6-sol-high
+      fallback_7: gpt-6-sol
+      fallback_8: muse-spark-1.2
+      fallback_9: gpt-5.6-terra
+    sentiment_analyst:
+      primary: claude-sonnet-5.5
+      thinking:
+        primary: medium
+        fallback_1: medium
+        fallback_2: max
+        fallback_3: max
+        fallback_4: medium
+        fallback_5: max
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: xhigh
+        anthropic: medium
+        gemini: max
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: gpt-5.6-sol
+      fallback_2: deepseek-v4-flash
+      fallback_3: deepseek-v4.1-flash
+      fallback_4: gpt-6.1-sol
+      fallback_5: gemini-3.7-flash
+      fallback_6: gpt-5.6-sol-high
+      fallback_7: gpt-6-sol
+      fallback_8: muse-spark-1.2
+      fallback_9: gpt-5.6-terra
+    portfolio_manager_per_trade:
+      primary: gpt-6.1-sol
+      thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
       max_tokens: 6144
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     adversarial_check:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -2042,25 +2282,37 @@ llm:
       max_tokens: 1024
       temperature: 0.0
     news_classification_escalation:
-      primary: gemini-3.8-flash
-      fallback_1: gemini-3.7-flash
-      fallback_2: gemini-3.6-flash
-      fallback_3: gemini-3.5-flash
-      fallback_4: gemini-3.5-flash-lite
-      fallback_5: gemini-3.1-flash-lite
-      fallback_6: openrouter/free
-      fallback_7: groq-qwen3.8-27b
+      primary: claude-sonnet-5.5
       thinking:
-        anthropic: low
-        gemini: minimal
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
+        primary: medium
+        fallback_1: medium
+        fallback_2: max
+        fallback_3: max
+        fallback_4: medium
+        fallback_5: max
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: xhigh
+        anthropic: medium
+        gemini: max
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
         ollama: low
-        openai_compatible: low
+        openai_compatible: medium
       max_tokens: 4096
       temperature: 0.0
+      fallback_1: gpt-5.6-sol
+      fallback_2: deepseek-v4-flash
+      fallback_3: deepseek-v4.1-flash
+      fallback_4: gpt-6.1-sol
+      fallback_5: gemini-3.7-flash
+      fallback_6: gpt-5.6-sol-high
+      fallback_7: gpt-6-sol
+      fallback_8: muse-spark-1.2
+      fallback_9: gpt-5.6-terra
     news_classification_verifier:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -2079,45 +2331,69 @@ llm:
       max_tokens: 2048
       temperature: 0.0
     news_digest:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6-luna
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
+        primary: xhigh
+        fallback_1: max
+        fallback_2: max
+        fallback_3: xhigh
+        fallback_4: max
+        fallback_5: max
+        fallback_6: medium
+        fallback_7: max
+        fallback_8: max
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: xhigh
+        deepseek: max
         groq: low
-        openrouter: low
+        openrouter: xhigh
         ollama: low
         openai_compatible: low
       max_tokens: 4096
       temperature: 0.1
+      fallback_1: mimo-v2.6-flash
+      fallback_2: gpt-6-luna-max
+      fallback_3: gpt-5.6-luna
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-5.6-luna-max
+      fallback_6: gpt-6.1-sol
+      fallback_7: deepseek-v4-flash
+      fallback_8: glm-5.3-flash
+      fallback_9: deepseek-v4.1-flash
     news_digest_macro_overview:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6-luna
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
+        primary: xhigh
+        fallback_1: max
+        fallback_2: max
+        fallback_3: xhigh
+        fallback_4: max
+        fallback_5: max
+        fallback_6: medium
+        fallback_7: max
+        fallback_8: max
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: xhigh
+        deepseek: max
         groq: low
-        openrouter: low
+        openrouter: xhigh
         ollama: low
         openai_compatible: low
       max_tokens: 6144
       temperature: 0.2
+      fallback_1: mimo-v2.6-flash
+      fallback_2: gpt-6-luna-max
+      fallback_3: gpt-5.6-luna
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-5.6-luna-max
+      fallback_6: gpt-6.1-sol
+      fallback_7: deepseek-v4-flash
+      fallback_8: glm-5.3-flash
+      fallback_9: deepseek-v4.1-flash
     news_digest_verifier:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -2153,105 +2429,165 @@ llm:
       max_tokens: 2048
       temperature: 0.0
     cot_precompute:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: low
-        gemini: minimal
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    specialist_technical:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
-        anthropic: low
-        gemini: minimal
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    specialist_sentiment:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
-        anthropic: low
-        gemini: minimal
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    specialist_macro:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
-        anthropic: low
-        gemini: minimal
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
-        ollama: low
-        openai_compatible: low
-      max_tokens: 4096
-      temperature: 0.0
-    portfolio_synthesis:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
-      thinking:
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
         anthropic: medium
         gemini: medium
         openai: medium
-        deepseek: medium
+        deepseek: max
         groq: medium
         openrouter: medium
-        ollama: medium
+        ollama: low
         openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
+    specialist_technical:
+      primary: gpt-6.1-sol
+      thinking:
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
+    specialist_sentiment:
+      primary: gpt-6.1-sol
+      thinking:
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
+    specialist_macro:
+      primary: gpt-6.1-sol
+      thinking:
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
+    portfolio_synthesis:
+      primary: gpt-6.1-sol
+      thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
       max_tokens: 6144
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     stage2_adjudicator:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -2270,15 +2606,18 @@ llm:
       max_tokens: 6144
       temperature: 0.0
     trade_reflection:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
         anthropic: high
         gemini: high
         openai: high
@@ -2289,58 +2628,94 @@ llm:
         openai_compatible: high
       max_tokens: 12288
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     chat_telegram:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: high
+        fallback_4: medium
+        fallback_5: medium
+        fallback_6: xhigh
+        fallback_7: high
+        fallback_8: max
+        fallback_9: xhigh
+        anthropic: medium
+        gemini: max
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
         ollama: low
-        openai_compatible: low
+        openai_compatible: medium
       max_tokens: 4096
       max_tool_turns: 8
       temperature: 0.2
+      fallback_1: deepseek-v4-flash
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: gpt-6-sol
+      fallback_4: gpt-5.6-sol
+      fallback_5: claude-sonnet-5.5
+      fallback_6: gpt-5.6-terra
+      fallback_7: gpt-5.6-sol-high
+      fallback_8: gemini-3.7-flash
+      fallback_9: muse-spark-1.2
     chat_telegram_medium:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: claude-sonnet-5.5
       thinking:
-        anthropic: low
-        gemini: low
-        openai: low
-        deepseek: low
-        groq: low
-        openrouter: low
+        primary: medium
+        fallback_1: medium
+        fallback_2: max
+        fallback_3: max
+        fallback_4: medium
+        fallback_5: max
+        fallback_6: high
+        fallback_7: high
+        fallback_8: xhigh
+        fallback_9: xhigh
+        anthropic: medium
+        gemini: max
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
         ollama: low
-        openai_compatible: low
+        openai_compatible: medium
       max_tokens: 4096
       max_tool_turns: 10
       temperature: 0.1
-    chat_telegram_complex:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
+      fallback_1: gpt-5.6-sol
+      fallback_2: deepseek-v4-flash
+      fallback_3: deepseek-v4.1-flash
+      fallback_4: gpt-6.1-sol
       fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      fallback_6: gpt-5.6-sol-high
+      fallback_7: gpt-6-sol
+      fallback_8: muse-spark-1.2
+      fallback_9: gpt-5.6-terra
+    chat_telegram_complex:
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
         anthropic: high
         gemini: high
         openai: high
@@ -2352,16 +2727,28 @@ llm:
       max_tokens: 8192
       max_tool_turns: 12
       temperature: 0.0
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     deep_research:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
+        primary: high
+        fallback_1: high
+        fallback_2: xhigh
+        fallback_3: high
+        fallback_4: max
+        fallback_5: high
+        fallback_6: max
+        fallback_7: high
+        fallback_8: high
+        fallback_9: high
         anthropic: high
         gemini: high
         openai: high
@@ -2373,66 +2760,111 @@ llm:
       max_tokens: 16384
       max_tool_turns: 15
       temperature: 0.1
+      fallback_1: grok-4.6
+      fallback_2: muse-spark-1.3
+      fallback_3: claude-sonnet-5.5
+      fallback_4: mimo-v2.6-pro
+      fallback_5: gpt-6-sol
+      fallback_6: step-5-preview
+      fallback_7: gemini-3.8-flash
+      fallback_8: gpt-5.6-sol
+      fallback_9: gemini-3.7-flash
     context_compaction:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: none
-        gemini: none
-        openai: none
-        deepseek: none
-        groq: none
-        openrouter: none
-        ollama: none
-        openai_compatible: none
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
       max_tokens: 1024
       temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
     summarizer:
       primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
       thinking:
-        anthropic: none
-        gemini: none
-        openai: none
-        deepseek: none
-        groq: none
-        openrouter: none
-        ollama: none
-        openai_compatible: none
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
       max_tokens: 2048
       temperature: 0.0
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
     report_synthesizer:
-      primary: gemini-3.5-flash-lite
-      fallback_1: gemini-3.1-flash-lite
-      fallback_2: openrouter/free
-      fallback_3: groq-qwen3.8-27b
-      fallback_4: gemini-3.8-flash
-      fallback_5: gemini-3.7-flash
-      fallback_6: gemini-3.6-flash
-      fallback_7: gemini-3.5-flash
+      primary: gpt-6.1-sol
       thinking:
-        anthropic: none
-        gemini: none
-        openai: none
-        deepseek: none
-        groq: none
-        openrouter: none
-        ollama: none
-        openai_compatible: none
+        primary: medium
+        fallback_1: max
+        fallback_2: max
+        fallback_3: max
+        fallback_4: max
+        fallback_5: max
+        fallback_6: max
+        fallback_7: xhigh
+        fallback_8: xhigh
+        fallback_9: max
+        anthropic: medium
+        gemini: medium
+        openai: medium
+        deepseek: max
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
       max_tokens: 4096
       temperature: 0.2
+      fallback_1: mimo-v2.6-pro
+      fallback_2: deepseek-v4.1-flash
+      fallback_3: glm-5.3-flash
+      fallback_4: mimo-v2.6-flash
+      fallback_5: gpt-6-luna
+      fallback_6: gpt-5.6-luna
+      fallback_7: gpt-6-luna-xhigh
+      fallback_8: gpt-5.6-luna-xhigh
+      fallback_9: deepseek-v4-flash
     pattern_context_verifier:
       primary: jev-latest
       fallback_1: jaredpalmer/kev-4b
@@ -2501,6 +2933,22 @@ llm:
         openai_compatible: none
       max_tokens: 512
       temperature: 0.0
+    voice_transcription:
+      primary: gemini-3.8-flash
+      fallback_1: gemini-3.7-flash
+      fallback_2: mimo-v2.6-pro
+      provider: openrouter
+      max_tokens: 2048
+      temperature: 0.0
+      thinking:
+        anthropic: max
+        gemini: max
+        openai: max
+        deepseek: max
+        groq: max
+        openrouter: max
+        ollama: max
+        openai_compatible: max
 
 pattern_similarity:
   enabled: true
@@ -2532,9 +2980,9 @@ scenario_tree:
   ev_threshold: 0.40
   min_dominant_prob: 0.45
   branch_types:
-  - bull
-  - bear
-  - chop
+    - bull
+    - bear
+    - chop
   persist_trees: true
 context_compaction:
   enabled: true
@@ -2628,14 +3076,16 @@ mcp:
         transport: "stdio"
         command: "python"
         args: ["-m", "analysis.mcp.servers.filesystem_server"]
-        description: "Direct read/write access to Obsidian notes, markdown documents, and local filesystem"
+        description: "Direct read/write access to Obsidian notes, markdown documents,
+          and local filesystem"
 
       excel_tabular:
         enabled: true
         transport: "stdio"
         command: "python"
         args: ["-m", "analysis.mcp.servers.excel_server"]
-        description: "Direct inspection, reading, and appending of Excel (.xlsx) and CSV spreadsheets"
+        description: "Direct inspection, reading, and appending of Excel (.xlsx) and
+          CSV spreadsheets"
 
       notion_workspace:
         enabled: false
@@ -2644,14 +3094,16 @@ mcp:
         args: ["-y", "@modelcontextprotocol/server-notion"]
         env:
           NOTION_API_KEY: "${NOTION_API_KEY}"
-        description: "Notion workspace integration (enable when NOTION_API_KEY is set in .env)"
+        description: "Notion workspace integration (enable when NOTION_API_KEY is
+          set in .env)"
 
       google_workspace:
         enabled: true
         transport: "stdio"
         command: "python"
         args: ["-m", "analysis.mcp.servers.google_sheets_server"]
-        description: "Google Sheets and Google Docs integration via Service Account in Google Drive"
+        description: "Google Sheets and Google Docs integration via Service Account
+          in Google Drive"
 
       # --- PAID / PROPRIETARY MCP SERVERS (Ready-to-fill config blocks) ---
       # brave_search:
@@ -2773,7 +3225,8 @@ benchmark:
   tiers:
     system_one:
       name: "System One Fast Deciders (<100ms)"
-      description: "Sub-100ms deterministic classification for realtime market shocks and stop guards"
+      description: "Sub-100ms deterministic classification for realtime market shocks
+        and stop guards"
       target_tasks:
         - "jev_news_realtime"
         - "jev_trigger_validator"
@@ -2789,7 +3242,8 @@ benchmark:
         - "openrouter:google/gemma-4-26b-a4b-it:free"
     cheap_efficient:
       name: "Cheap & Token-Efficient (<$0.001/call)"
-      description: "Low-cost high-speed models for routine verification and feature extraction"
+      description: "Low-cost high-speed models for routine verification and feature
+        extraction"
       target_tasks:
         - "news_classification"
         - "fundamental_verifier"
@@ -2802,7 +3256,8 @@ benchmark:
         - "openrouter:minimax/minimax-m3:free"
     cheap_smart:
       name: "Smart Balanced ($0.001 - $0.01/call)"
-      description: "High quality reasoning for technical analysis, debate, and risk review"
+      description: "High quality reasoning for technical analysis, debate, and risk
+        review"
       target_tasks:
         - "stage2_per_asset_primary"
         - "debate_bull"

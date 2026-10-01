@@ -404,7 +404,7 @@ class PostReleaseAnalyzer:
                     notifier = get_notifier()
                     trade_summary = ', '.join(f"{s}: {r['decision'].upper()}" for s, r in actionable)
                     await notifier.send(
-                        f"📊 <b>Post-Release Trade Opportunity</b>\n"
+                        f"[LAPORAN] <b>Post-Release Trade Opportunity</b>\n"
                         f"Events: {ev_names}\n"
                         f"Trades: {trade_summary}"
                     )

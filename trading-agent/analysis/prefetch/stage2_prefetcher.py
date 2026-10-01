@@ -179,7 +179,7 @@ class Stage2DataBundler:
                         # Skip staleness warning if market is closed (weekend) for non-crypto
                         if age_hours > max_age_hours and not is_forex_closed:
                             warnings.append(
-                                f"⚠️ {check_tf} OHLCV last bar is {age_hours:.1f}h old "
+                                f"[PERINGATAN] {check_tf} OHLCV last bar is {age_hours:.1f}h old "
                                 f"(limit={max_age_hours}h) — MT5 may be disconnected!"
                             )
                     except Exception:
@@ -196,7 +196,7 @@ class Stage2DataBundler:
             is_valid, core_data, issues = await validator.validate_and_fetch_core_data()
             if not is_valid:
                 logger.error(f"[{symbol}] Core data invalid: {issues}. Fetch bundle aborted.")
-                return f"⚠️ CORE DATA INVALID: {'; '.join(issues)}\nPlease WAIT until data is resolved.", {}
+                return f"[PERINGATAN] CORE DATA INVALID: {'; '.join(issues)}\nPlease WAIT until data is resolved.", {}
         except Exception as e:
             logger.debug(f"CoreDataValidator failed (non-fatal): {e}")
 
@@ -378,7 +378,7 @@ class Stage2DataBundler:
             )
 
             if not coherence['coherent']:
-                coherence_warning = '⚠️ DATA COHERENCE ISSUES DETECTED:\n'
+                coherence_warning = '[PERINGATAN] DATA COHERENCE ISSUES DETECTED:\n'
                 for issue in coherence['issues']:
                     coherence_warning += f'  • {issue}\n'
                 coherence_warning += 'Consider submitting WAIT decision until data is refreshed.\n'
@@ -405,7 +405,7 @@ class Stage2DataBundler:
             from utils.protocol.context_coherence import compute_bundle_coherence_issues
             coherence_issues = compute_bundle_coherence_issues(data)
             if coherence_issues:
-                lines.append('── ⚠️  CROSS-DATA COHERENCE ALERTS (READ BEFORE PROCEEDING) ──')
+                lines.append('── [PERINGATAN]  CROSS-DATA COHERENCE ALERTS (READ BEFORE PROCEEDING) ──')
                 lines.append(
                     'These contradictions were detected across multiple data sources in this bundle.'
                 )
@@ -464,7 +464,7 @@ class Stage2DataBundler:
             align_status = "ALIGNED" if d1_bias == h4_bias and d1_bias != "NEUTRAL" else "CONFLICTING" if (d1_bias in ("BULLISH", "BEARISH") and h4_bias in ("BULLISH", "BEARISH") and d1_bias != h4_bias) else "NEUTRAL/PARTIAL"
             lines.append(f"D1 Technical Bias: {d1_bias} | H4 Technical Bias: {h4_bias} | Alignment: {align_status}")
             if align_status == "CONFLICTING":
-                lines.append("⚠️ WARNING: D1 trend and H4 entry timeframe are CONFLICTING. Prefer WAIT.")
+                lines.append("[PERINGATAN] WARNING: D1 trend and H4 entry timeframe are CONFLICTING. Prefer WAIT.")
             lines.append("")
 
         for key, value in data.items():
@@ -781,7 +781,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             
             if dropped_sections:
                 raw_bundle += (
-                    f"\n\n⚠️ BUNDLE COMPRESSION NOTICE: Bagian berikut dipotong/dihapus karena batas ukuran: "
+                    f"\n\n[PERINGATAN] BUNDLE COMPRESSION NOTICE: Bagian berikut dipotong/dihapus karena batas ukuran: "
                     f"{', '.join(dropped_sections)}. Jika data ini krusial untuk keputusanmu, panggil tool "
                     f"terkait secara manual sebelum submit.\n"
                 )

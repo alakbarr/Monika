@@ -38,6 +38,16 @@ except Exception as e:
     logger.debug(f"tri_convergent_alpha not loaded: {e}")
 
 try:
+    import analysis.strategies.smc_fvg
+except Exception as e:
+    logger.debug(f"smc_fvg not loaded: {e}")
+
+try:
+    import analysis.strategies.bb_volume_profile
+except Exception as e:
+    logger.debug(f"bb_volume_profile not loaded: {e}")
+
+try:
     from analysis.strategies.registry import StrategyRegistry
     StrategyRegistry.log_summary()
 except Exception as e:

@@ -632,3 +632,152 @@ class TechnicalIndicatorCalculator:
             }
 
         return snapshot
+
+
+def detect_rsi_divergence(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    rsi: pd.Series,
+    lookback: int = 30,
+) -> dict[str, Any]:
+    """
+    Detect regular bullish and bearish RSI divergences:
+    - Bullish: Price makes Lower Low while RSI makes Higher Low (reversal up signal).
+    - Bearish: Price makes Higher High while RSI makes Lower High (reversal down signal).
+    """
+    if len(close) < 15 or len(rsi) < 15:
+        return {"divergence": "none", "strength": 0.0, "details": "Insufficient data"}
+
+    sub_low = low.iloc[-lookback:]
+    sub_high = high.iloc[-lookback:]
+    sub_rsi = rsi.iloc[-lookback:]
+
+    bullish_div = False
+    bearish_div = False
+    details = []
+
+    try:
+        min_idx_1 = sub_low.iloc[-10:].idxmin()
+        min_idx_2 = sub_low.iloc[:-10].idxmin()
+
+        price_low_1 = float(sub_low.loc[min_idx_1])
+        price_low_2 = float(sub_low.loc[min_idx_2])
+        rsi_low_1 = float(sub_rsi.loc[min_idx_1])
+        rsi_low_2 = float(sub_rsi.loc[min_idx_2])
+
+        if price_low_1 < price_low_2 and rsi_low_1 > rsi_low_2 and rsi_low_1 < 50:
+            bullish_div = True
+            details.append(f"Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
+    except Exception:
+        pass
+
+    try:
+        max_idx_1 = sub_high.iloc[-10:].idxmax()
+        max_idx_2 = sub_high.iloc[:-10].idxmax()
+
+        price_high_1 = float(sub_high.loc[max_idx_1])
+        price_high_2 = float(sub_high.loc[max_idx_2])
+        rsi_high_1 = float(sub_rsi.loc[max_idx_1])
+        rsi_high_2 = float(sub_rsi.loc[max_idx_2])
+
+        if price_high_1 > price_high_2 and rsi_high_1 < rsi_high_2 and rsi_high_1 > 50:
+            bearish_div = True
+            details.append(f"Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
+    except Exception:
+        pass
+
+    if bullish_div and not bearish_div:
+        return {"divergence": "bullish", "strength": 0.8, "details": "; ".join(details)}
+    elif bearish_div and not bullish_div:
+        return {"divergence": "bearish", "strength": 0.8, "details": "; ".join(details)}
+    elif bullish_div and bearish_div:
+        return {"divergence": "mixed", "strength": 0.5, "details": "; ".join(details)}
+
+    return {"divergence": "none", "strength": 0.0, "details": "No divergence detected across lookback window"}
+
+
+def detect_macd_divergence(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    macd_line: Optional[pd.Series] = None,
+    macd_hist: Optional[pd.Series] = None,
+    lookback: int = 30,
+) -> dict[str, Any]:
+    """
+    Detect regular and hidden MACD divergences (Line and Histogram):
+    - Regular Bullish: Price Lower Low, MACD Higher Low (reversal up signal)
+    - Regular Bearish: Price Higher High, MACD Lower High (reversal down signal)
+    - Hidden Bullish: Price Higher Low, MACD Lower Low (continuation up signal)
+    - Hidden Bearish: Price Lower High, MACD Higher High (continuation down signal)
+    """
+    if macd_line is None:
+        try:
+            m_calc = ta.trend.MACD(close=close)
+            macd_line = m_calc.macd()
+            if macd_hist is None:
+                macd_hist = m_calc.macd_diff()
+        except Exception:
+            return {"divergence": "none", "type": "none", "strength": 0.0, "details": "MACD computation failed"}
+
+    if len(close) < 20 or len(macd_line) < 20:
+        return {"divergence": "none", "type": "none", "strength": 0.0, "details": "Insufficient data"}
+
+    sub_low = low.iloc[-lookback:]
+    sub_high = high.iloc[-lookback:]
+    sub_macd = macd_line.iloc[-lookback:]
+
+    bullish_div = False
+    bearish_div = False
+    hidden_bull = False
+    hidden_bear = False
+    details = []
+
+    try:
+        min_idx_1 = sub_low.iloc[-10:].idxmin()
+        min_idx_2 = sub_low.iloc[:-10].idxmin()
+
+        price_low_1 = float(sub_low.loc[min_idx_1])
+        price_low_2 = float(sub_low.loc[min_idx_2])
+        macd_low_1 = float(sub_macd.loc[min_idx_1])
+        macd_low_2 = float(sub_macd.loc[min_idx_2])
+
+        if price_low_1 < price_low_2 and macd_low_1 > macd_low_2:
+            bullish_div = True
+            details.append(f"Regular Bullish MACD Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Higher Low ({macd_low_2:.5f} -> {macd_low_1:.5f})")
+        elif price_low_1 > price_low_2 and macd_low_1 < macd_low_2:
+            hidden_bull = True
+            details.append(f"Hidden Bullish MACD Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with MACD Lower Low ({macd_low_2:.5f} -> {macd_low_1:.5f})")
+    except Exception:
+        pass
+
+    try:
+        max_idx_1 = sub_high.iloc[-10:].idxmax()
+        max_idx_2 = sub_high.iloc[:-10].idxmax()
+
+        price_high_1 = float(sub_high.loc[max_idx_1])
+        price_high_2 = float(sub_high.loc[max_idx_2])
+        macd_high_1 = float(sub_macd.loc[max_idx_1])
+        macd_high_2 = float(sub_macd.loc[max_idx_2])
+
+        if price_high_1 > price_high_2 and macd_high_1 < macd_high_2:
+            bearish_div = True
+            details.append(f"Regular Bearish MACD Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Lower High ({macd_high_2:.5f} -> {macd_high_1:.5f})")
+        elif price_high_1 < price_high_2 and macd_high_1 > macd_high_2:
+            hidden_bear = True
+            details.append(f"Hidden Bearish MACD Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with MACD Higher High ({macd_high_2:.5f} -> {macd_high_1:.5f})")
+    except Exception:
+        pass
+
+    if bullish_div:
+        return {"divergence": "bullish", "type": "regular", "strength": 0.85, "details": "; ".join(details)}
+    elif bearish_div:
+        return {"divergence": "bearish", "type": "regular", "strength": 0.85, "details": "; ".join(details)}
+    elif hidden_bull:
+        return {"divergence": "bullish", "type": "hidden", "strength": 0.75, "details": "; ".join(details)}
+    elif hidden_bear:
+        return {"divergence": "bearish", "type": "hidden", "strength": 0.75, "details": "; ".join(details)}
+
+    return {"divergence": "none", "type": "none", "strength": 0.0, "details": "No MACD divergence detected across lookback window"}
+

@@ -228,7 +228,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         try:
                             from utils.infra.notifier import AgentNotifier
                             await AgentNotifier().send_critical(
-                                f'🚨 <b>EA Dead-Man Switch Suspected</b>\n'
+                                f'[DARURAT] <b>EA Dead-Man Switch Suspected</b>\n'
                                 f'{closed_in_db} position(s) closed outside system control.\n'
                                 f'EA heartbeat stale: {stale_seconds}s\n'
                                 f'Manual verification required immediately!'
@@ -286,7 +286,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
         try:
             from utils.infra.notifier import AgentNotifier
             await AgentNotifier().send_warning(
-                f'⚠️ <b>STOP LOSS HIT</b>\nSymbol: {position.symbol}\nTicket: {position.mt5_ticket}\nPnL: {position.pnl}\n'
+                f'[PERINGATAN] <b>STOP LOSS HIT</b>\nSymbol: {position.symbol}\nTicket: {position.mt5_ticket}\nPnL: {position.pnl}\n'
                 f'Per-symbol cooldown: {cooldown_hours}h (risk gate will handle)'
             )
         except Exception as e:
@@ -361,6 +361,93 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
             ))
             await session.commit()
         return result
+
+    async def apply_immediate_breakeven(
+        self,
+        only_profit: bool = True,
+        symbol: Optional[str] = None,
+        requested_by: str = "user_chat"
+    ) -> dict:
+        """
+        Moves Stop Loss to entry price (Breakeven) on open positions.
+        Used for 'secure positions' / 'amankan posisi' / 'tarik SL ke BE'.
+        """
+        async with get_session() as session:
+            stmt = select(Position).where(Position.status == "open")
+            if symbol:
+                stmt = stmt.where(Position.symbol == symbol.strip().upper())
+            positions = (await session.execute(stmt)).scalars().all()
+
+            if not positions:
+                return {
+                    "success": True,
+                    "updated_count": 0,
+                    "message": "No open positions found to secure."
+                }
+
+            updated = []
+            skipped = []
+
+            for pos in positions:
+                entry = float(pos.entry_price or 0.0)
+                current_sl = float(pos.sl or 0.0) if pos.sl is not None else None
+                direction = (pos.direction or "").lower()
+
+                # Get current market quote/price if available
+                quote = None
+                if hasattr(self.mt5, "get_current_price"):
+                    try:
+                        quote = await self.mt5.get_current_price(pos.symbol)
+                    except Exception:
+                        quote = None
+                current_price = float(quote.get("bid" if direction == "buy" else "ask", entry)) if quote and isinstance(quote, dict) else entry
+
+                is_in_profit = False
+                if direction == "buy":
+                    is_in_profit = current_price > entry
+                elif direction == "sell":
+                    is_in_profit = current_price < entry
+
+                if only_profit and not is_in_profit:
+                    skipped.append({
+                        "ticket": pos.mt5_ticket or pos.id,
+                        "symbol": pos.symbol,
+                        "reason": "Not in profit"
+                    })
+                    continue
+
+                # Already at or better than BE?
+                if current_sl is not None:
+                    if direction == "buy" and current_sl >= entry:
+                        skipped.append({"ticket": pos.mt5_ticket or pos.id, "symbol": pos.symbol, "reason": "SL already at/above BE"})
+                        continue
+                    elif direction == "sell" and current_sl <= entry:
+                        skipped.append({"ticket": pos.mt5_ticket or pos.id, "symbol": pos.symbol, "reason": "SL already at/below BE"})
+                        continue
+
+                # Modify position
+                ticket = pos.mt5_ticket or pos.id
+                if getattr(pos, "is_paper", False):
+                    pos.sl = entry
+                    updated.append({"ticket": ticket, "symbol": pos.symbol, "new_sl": entry, "mode": "paper"})
+                else:
+                    res = await self.mt5.modify_position(pos.mt5_ticket, sl=entry, tp=pos.tp)
+                    if res.get("success"):
+                        pos.sl = entry
+                        updated.append({"ticket": pos.mt5_ticket, "symbol": pos.symbol, "new_sl": entry, "mode": "live"})
+                    else:
+                        skipped.append({"ticket": pos.mt5_ticket, "symbol": pos.symbol, "reason": res.get("error", "MT5 modify failed")})
+
+            await session.commit()
+
+            return {
+                "success": True,
+                "updated_count": len(updated),
+                "skipped_count": len(skipped),
+                "updated": updated,
+                "skipped": skipped,
+                "message": f"Secured {len(updated)} position(s) to Breakeven."
+            }
 
     async def reconcile_inflight_orders(self) -> dict:
         """
@@ -486,7 +573,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                     try:
                         notifier = AgentNotifier()
                         await notifier.send_critical(
-                            f"⚠️ <b>IN-FLIGHT ORDER RECONCILED</b>\n"
+                            f"[PERINGATAN] <b>IN-FLIGHT ORDER RECONCILED</b>\n"
                             f"Order <code>{order.client_order_id}</code> ({order.symbol} {order_dir.upper()} {order_vol} lots)\n"
                             f"terbukti sudah dieksekusi di broker (Ticket: <code>{ticket}</code> @ {fill_price}).\n"
                             f"Status order disinkronkan ke FILLED."
@@ -531,7 +618,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         try:
                             notifier = AgentNotifier()
                             await notifier.send_critical(
-                                f"🔍 <b>IN-FLIGHT ORDER INTERRUPTED</b>\n"
+                                f" <b>IN-FLIGHT ORDER INTERRUPTED</b>\n"
                                 f"Order <code>{order.client_order_id}</code> ({order.symbol} {order_dir.upper()})\n"
                                 f"berada dalam status in-flight saat crash/restart.\n"
                                 f"Tidak ditemukan di broker. Diberi status INTERRUPTED (tidak di-re-execute)."

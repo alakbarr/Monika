@@ -7,7 +7,6 @@ data_capabilities:
   - economic_calendar
   - dxy
   - treasury_yields
-  - prediction_market
   - vix
   - fear_greed
 ---
@@ -17,7 +16,7 @@ data_capabilities:
 ## 1. London-NY Overlap Dynamics
 - London midday trend check and liquidity absorption analysis.
 - DXY trend continuity and US 10-year Treasury yield momentum.
-- Review Polymarket odds for upcoming FOMC, CPI, and Fed speakers.
+- Review market-implied odds for upcoming FOMC, CPI, and Fed speakers.
 
 ## 2. Risk Appetite & Commodities
 - WTI / Crude Oil (XTIUSD) inventory context and energy shock risks.
@@ -27,9 +26,7 @@ data_capabilities:
 ## 3. High-Impact Macro Filters
 - Review US 13:30 UTC releases (NFP, CPI, Retail Sales, Unemployment Claims).
 
-## Verdict:
-- XAUUSD: HOT_BULLISH - Safe-haven flows surging amid Middle East energy risk headlines.
-- EURUSD: HOT_BEARISH - Dollar Index (DXY) momentum breakout testing 104.50 resistance.
-- GBPUSD: NEUTRAL - Consolidating inside London range ahead of US session data.
-- XTIUSD: HOT_BULLISH - Supply constraints highlighted in decentralized risk markets.
-- BTCUSD: RISK_OFF - Elevated VIX and broad derivative liquidation cascade.
+## Verdict Format
+*Verdicts are generated dynamically by MacroPlaybookRunner at runtime based on live market data.*
+*Each verdict line MUST follow: `- {SYMBOL}: {BIAS} - {justification with concrete data points}`*
+*Allowed biases: HOT_BULLISH, BULLISH, NEUTRAL, BEARISH, HOT_BEARISH, RISK_OFF*

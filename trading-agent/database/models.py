@@ -519,6 +519,7 @@ class AssetAnalysis(Base):
 
     # Phase 3 Context tracking
     decision_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    arbitration_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     source_strategy_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     pair_group_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     was_debate_modified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)
@@ -609,7 +610,7 @@ class TradeTrigger(Base):
     __tablename__ = "trade_triggers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey('asset_analysis.id'), index=True)
+    asset_analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
     trigger_type: Mapped[str] = mapped_column(String(20))  # price_level, indicator, time, news
     condition_json: Mapped[str] = mapped_column(Text)  # JSON condition detail
     status: Mapped[str] = mapped_column(String(10), default='pending')  # pending, fired, cancelled
@@ -903,6 +904,12 @@ class Position(Base):
     pnl: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     is_paper: Mapped[bool] = mapped_column(Boolean, default=False)
     pair_group_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    trailing_override_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    mae_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mfe_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sl_slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
+    entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Relationship
     order = relationship("Order", backref="positions", lazy="noload")
@@ -954,6 +961,11 @@ class TradeOutcome(Base):
     was_profitable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     was_debate_modified: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)
     decision_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    mae_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mfe_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sl_slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
+    entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     
     __table_args__ = (
         Index('idx_trade_outcome_symbol', 'symbol'),
@@ -994,10 +1006,35 @@ class PaperTradeRecord(Base):
     decision_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     was_debate_modified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)
     was_ssvp_suppressed: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)
+    mae_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mfe_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    sl_slippage_pips: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.0)
+    entry_session: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     __table_args__ = (
         Index('idx_paper_trade_status', 'status'),
         Index('idx_paper_trade_symbol', 'symbol'),
+    )
+
+
+class EquityDrawdownSnapshot(Base):
+    """Historical equity, balance, and drawdown telemetry snapshot."""
+    __tablename__ = "equity_drawdown_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    balance: Mapped[float] = mapped_column(Float)
+    equity: Mapped[float] = mapped_column(Float)
+    floating_pnl: Mapped[float] = mapped_column(Float, default=0.0)
+    margin_level_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    drawdown_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    drawdown_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    peak_equity: Mapped[float] = mapped_column(Float, default=0.0)
+    open_positions_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        Index('idx_equity_snapshot_ts', 'timestamp'),
     )
 
 
@@ -1092,6 +1129,7 @@ class RiskState(Base):
     current_drawdown: Mapped[float] = mapped_column(Float, default=0.0)
     trading_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    unpause_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # =============================================================================

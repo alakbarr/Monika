@@ -110,3 +110,81 @@ async def compute_surprise_scores(session: AsyncSession) -> int:
         await session.commit()
     
     return updated
+
+
+async def compute_cesi_index(
+    session: AsyncSession,
+    currency: str,
+    window_days: int = 90,
+    half_life_days: float = 30.0
+) -> dict:
+    """
+    Menghitung Citigroup-style Economic Surprise Index (CESI) untuk suatu mata uang
+    menggunakan pembobotan peluruhan eksponensial (exponential decay) selama window_days (default: 90 hari).
+    """
+    from datetime import datetime, timezone, timedelta
+    import utils.clock as clock
+    import math
+
+    curr = currency.strip().upper()
+    now = clock.now()
+    cutoff = now - timedelta(days=window_days)
+
+    events = (await session.execute(
+        select(EconomicCalendar)
+        .where(EconomicCalendar.currency == curr)
+        .where(EconomicCalendar.surprise_score != None)
+        .where(EconomicCalendar.event_time >= cutoff)
+        .order_by(EconomicCalendar.event_time.asc())
+    )).scalars().all()
+
+    if not events:
+        return {
+            "currency": curr,
+            "window_days": window_days,
+            "cesi_score": 0.0,
+            "event_count": 0,
+            "trend": "NEUTRAL",
+            "description": f"No scored economic events in the last {window_days} days."
+        }
+
+    decay_lambda = math.log(2) / max(1.0, half_life_days)
+    weighted_sum = 0.0
+    total_weights = 0.0
+
+    for ev in events:
+        ev_time = ev.event_time.replace(tzinfo=timezone.utc) if ev.event_time.tzinfo is None else ev.event_time
+        age_days = (now - ev_time).total_seconds() / 86400.0
+        weight = math.exp(-decay_lambda * max(0.0, age_days))
+
+        # Weight higher impact events more heavily
+        impact = str(ev.impact or "").upper()
+        impact_multiplier = 2.0 if impact == "HIGH" else (1.0 if impact == "MEDIUM" else 0.5)
+        effective_weight = weight * impact_multiplier
+
+        score = float(ev.surprise_score or 0.0)
+        weighted_sum += score * effective_weight
+        total_weights += effective_weight
+
+    cesi = round(weighted_sum / max(1e-6, total_weights), 2) if total_weights > 0 else 0.0
+
+    if cesi >= 15.0:
+        trend = "STRONG_POSITIVE_MOMENTUM"
+    elif cesi >= 5.0:
+        trend = "MODERATE_POSITIVE"
+    elif cesi <= -15.0:
+        trend = "STRONG_NEGATIVE_MOMENTUM"
+    elif cesi <= -5.0:
+        trend = "MODERATE_NEGATIVE"
+    else:
+        trend = "NEUTRAL"
+
+    return {
+        "currency": curr,
+        "window_days": window_days,
+        "cesi_score": cesi,
+        "event_count": len(events),
+        "trend": trend,
+        "description": f"CESI for {curr} over {window_days}d is {cesi:+.2f} ({trend}, {len(events)} events)."
+    }
+

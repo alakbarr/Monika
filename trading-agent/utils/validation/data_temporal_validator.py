@@ -180,7 +180,7 @@ class DataTemporalValidator:
         try:
             result = await DataTemporalValidator.check_data_freshness_chain(session, symbol)
             if not result['coherent']:
-                warning_lines = ['⚠️ TEMPORAL DATA COHERENCE WARNINGS:']
+                warning_lines = ['[PERINGATAN] TEMPORAL DATA COHERENCE WARNINGS:']
                 for gap in result['gaps']:
                     warning_lines.append(f'  - {gap}')
                 warning_lines.append('Consider these gaps when weighting your confluence factors.')

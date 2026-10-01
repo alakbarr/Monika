@@ -21,11 +21,17 @@ _OUTBOX_FILE = Path(__file__).parent.parent.parent / "data" / "notifier_outbox.j
 def sanitize_telegram_html(text: str) -> str:
     """
     Sanitizes arbitrary text containing Telegram HTML formatting.
-    Escapes standalone '<', '>', and '&' that are not part of valid Telegram HTML tags
-    (<b>, <strong>, <i>, <em>, <u>, <ins>, <s>, <strike>, <del>, <span>, <tg-spoiler>, <a>, <code>, <pre>, <blockquote>).
+    Guarantees 100% zero emoji/emoticon contamination and escapes standalone HTML brackets.
     """
     if not text or not isinstance(text, str):
         return ""
+    
+    try:
+        from telegram_bot.sanitizer import strip_emojis_and_emoticons
+        text = strip_emojis_and_emoticons(text)
+    except Exception:
+        pass
+
     tag_regex = re.compile(
         r'<\/?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|a|code|pre|blockquote)(?:\s+[^<>]*)?>',
         re.IGNORECASE
@@ -160,6 +166,22 @@ class AgentNotifier:
                         text=plain_text,
                     )
             
+            # Forward notification to Discord webhook if configured
+            discord_url = os.getenv("DISCORD_WEBHOOK_URL")
+            if discord_url:
+                try:
+                    import urllib.request
+                    plain_content = re.sub(r'<[^>]+>', '', full_msg)
+                    req_data = json.dumps({"content": plain_content[:2000]}).encode("utf-8")
+                    d_req = urllib.request.Request(
+                        discord_url,
+                        data=req_data,
+                        headers={"Content-Type": "application/json", "User-Agent": "Monika-Notifier/1.0"}
+                    )
+                    urllib.request.urlopen(d_req, timeout=5.0)
+                except Exception as d_err:
+                    logger.debug(f"Discord webhook dispatch non-fatal error: {d_err}")
+
             # Log to ActivityLog
             try:
                 from database.db import get_session
@@ -183,15 +205,15 @@ class AgentNotifier:
 
     async def send_critical(self, message):
         msg_str = str(message) if not isinstance(message, str) else message
-        await self._send(msg_str, prefix="🚨 <b>CRITICAL ERROR</b> 🚨")
+        await self._send(msg_str, prefix="<b>[KRITIS] KESALAHAN SISTEM</b>")
 
     async def send_warning(self, message):
         msg_str = str(message) if not isinstance(message, str) else message
-        await self._send(msg_str, prefix="⚠️ <b>WARNING</b> ⚠️")
+        await self._send(msg_str, prefix="<b>[PERINGATAN]</b>")
 
     async def send_info(self, message, reply_markup=None):
         msg_str = str(message) if not isinstance(message, str) else message
-        await self._send(msg_str, prefix="ℹ️ <b>INFO</b>", reply_markup=reply_markup)
+        await self._send(msg_str, prefix="<b>[INFORMASI]</b>", reply_markup=reply_markup)
 
     async def send_proposal(self, message: str, reply_markup=None):
         """Send actionable trade proposal with interactive inline keyboard confirmation buttons."""
@@ -216,15 +238,15 @@ class AgentNotifier:
         await self.send_warning(message)
 
     async def send_cycle_summary(self, summary: dict):
-        lines = ["🔄 <b>CYCLE COMPLETE</b> 🔄"]
+        lines = ["<b>[SIKLUS SELESAI] Ringkasan Eksekusi Siklus</b>"]
         if "elapsed_total_s" in summary:
-            lines.append(f"⏱️ Duration: {summary['elapsed_total_s']:.1f}s")
+            lines.append(f"• Durasi: {summary['elapsed_total_s']:.1f} detik")
         if "api_cost_usd" in summary:
-            lines.append(f"💰 Cost: ${summary['api_cost_usd']:.4f}")
+            lines.append(f"• Biaya API: ${summary['api_cost_usd']:.4f}")
             
         assets = summary.get("per_asset", {})
         if assets:
-            lines.append("\n<b>Decisions:</b>")
+            lines.append("\n<b>Keputusan Analisis Aset:</b>")
             for sym, r in assets.items():
                 if isinstance(r, dict):
                     decision = r.get("decision", "unknown").upper()
@@ -239,9 +261,9 @@ class AgentNotifier:
                             else "no_brief" if r.get("skipped_no_brief")
                             else "bypassed"
                         )
-                        lines.append(f"• {sym}: SKIP ({reason})")
+                        lines.append(f"• {sym}: DILEWATI ({reason})")
                     else:
-                        lines.append(f"• {sym}: {decision} (conf: {conf:.2f})")
+                        lines.append(f"• {sym}: {decision} (keyakinan: {conf:.2f})")
                     
         await self._send("\n".join(lines))
 

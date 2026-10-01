@@ -37,9 +37,17 @@ class ContextTracker:
     Tracks active cycle usage relative to current model context window limits.
     """
 
-    def __init__(self, default_model: str = "claude-3-5-sonnet"):
-        self.default_model = default_model
-        self.current_model = default_model
+    def __init__(self, default_model: Optional[str] = None):
+        if not default_model:
+            try:
+                from utils.config import load_settings
+                s = load_settings()
+                default_model = s.get("llm", {}).get("default_model") or s.get("llm", {}).get("task_roles", {}).get("stage1_fundamental", {}).get("primary")
+            except Exception:
+                default_model = None
+        resolved = default_model or "gpt-6.1-sol-medium"
+        self.default_model = resolved
+        self.current_model = resolved
         self.current_cycle_id: Optional[str] = None
         self.input_tokens: int = 0
         self.output_tokens: int = 0

@@ -36,6 +36,8 @@ def parse_args():
                         "(bull claim utk debate_bear, bull+bear utk debate_judge) supaya perbandingan adil.")
     p.add_argument("--concurrency", type=int, default=4,
                    help="Concurrency utk task json/text/custom. Task agent/chat selalu diserialkan.")
+    p.add_argument("--mode", choices=["standard", "arena"], default="standard",
+                   help="Mode eksekusi: 'standard' (evaluasi task) atau 'arena' (turnamen head-to-head via AlphaArenaTournament).")
     p.add_argument("--output", default="benchmark_report.md")
     return p.parse_args()
 
@@ -97,6 +99,39 @@ async def main():
         f.write(report)
     print(report)
     print(f"\nTersimpan di {args.output} (run_id={run_id}); query detail via tabel llm_benchmark_result.")
+
+    if getattr(args, "mode", "standard") == "arena":
+        from benchmark.alpha_arena import AlphaArenaTournament
+        tournament = AlphaArenaTournament()
+        print("\n=== ALPHA ARENA HEAD-TO-HEAD TOURNAMENT ===")
+        import itertools
+        from database.db import get_session
+        from sqlalchemy import select
+        from database.models import LLMBenchmarkResult
+        try:
+            async with get_session() as sess:
+                res_rows = (await sess.execute(
+                    select(LLMBenchmarkResult).where(LLMBenchmarkResult.run_id == run_id)
+                )).scalars().all()
+            model_scores: dict[str, list[float]] = {}
+            for r in res_rows:
+                model_scores.setdefault(r.model_name, []).append(float(r.normalized_score or 0.0))
+            for m_a, m_b in itertools.combinations(models, 2):
+                scores_a = model_scores.get(m_a, [50.0])
+                scores_b = model_scores.get(m_b, [50.0])
+                avg_a = sum(scores_a) / len(scores_a) if scores_a else 50.0
+                avg_b = sum(scores_b) / len(scores_b) if scores_b else 50.0
+                tournament.record_match(
+                    m_a, m_b,
+                    metrics_a={"pnl_pct": avg_a, "sharpe_ratio": avg_a / 50.0},
+                    metrics_b={"pnl_pct": avg_b, "sharpe_ratio": avg_b / 50.0}
+                )
+            leaderboard = tournament.get_leaderboard()
+            print("\n=== ALPHA ARENA LEADERBOARD ===")
+            for lb in leaderboard:
+                print(f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)")
+        except Exception as e_arena:
+            print(f"Arena tournament error (non-fatal): {e_arena}")
 
 
 if __name__ == "__main__":

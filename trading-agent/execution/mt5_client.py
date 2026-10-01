@@ -228,7 +228,7 @@ class MT5Client:
             logger.warning("MT5 Failover SUCCESSFUL: Operating on secondary terminal gateway.")
             if self.notifier is not None:
                 try:
-                    asyncio.create_task(self.notifier.send_warning("🚨 <b>MT5 FAILOVER</b>: System switched to secondary MT5 gateway."))
+                    asyncio.create_task(self.notifier.send_warning("[DARURAT] <b>MT5 FAILOVER</b>: System switched to secondary MT5 gateway."))
                 except Exception:
                     pass
         else:
@@ -245,7 +245,7 @@ class MT5Client:
             logger.info("MT5 Fallback SUCCESSFUL: Restored primary gateway connection.")
             if self.notifier is not None:
                 try:
-                    asyncio.create_task(self.notifier.send_info("ℹ️ <b>MT5 RESTORED</b>: System returned to primary MT5 gateway."))
+                    asyncio.create_task(self.notifier.send_info("[INFO] <b>MT5 RESTORED</b>: System returned to primary MT5 gateway."))
                 except Exception:
                     pass
         else:
@@ -304,7 +304,7 @@ class MT5Client:
                 self.mt5_fail_count = 0
                 try:
                     from utils.infra.notifier import AgentNotifier
-                    await AgentNotifier().send_info("✅ <b>MT5 Reconnected</b>")
+                    await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b>")
                 except Exception:
                     pass
             return True
@@ -340,7 +340,7 @@ class MT5Client:
                 from utils.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
                 await notifier.send_critical(
-                    f"🚨 <b>MT5 CONNECTION FAILED</b>\n"
+                    f"[DARURAT] <b>MT5 CONNECTION FAILED</b>\n"
                     f"Cannot reconnect to MetaTrader5 after max attempts.\n"
                     f"(Fail count: {self.mt5_fail_count}).\n"
                     f"Please check MT5 terminal immediately!"
@@ -726,6 +726,43 @@ class MT5Client:
             "last": tick.last,
             "time": datetime.fromtimestamp(tick.time, tz=timezone.utc),
             "fetched_at": time.time(),
+        }
+
+    async def calc_margin(self, symbol: str, lot: float, action: str = "buy", price: Optional[float] = None) -> dict:
+        """Calculates margin requirement using MT5 order_calc_margin with fallback."""
+        clean_sym = symbol.strip().upper().replace('/', '')
+        margin = None
+        if await self.ensure_connected():
+            try:
+                import MetaTrader5 as mt5
+                action_type = mt5.ORDER_TYPE_BUY if action.lower() == "buy" else mt5.ORDER_TYPE_SELL
+                if price is None:
+                    tick = await self.get_current_price(clean_sym)
+                    if tick:
+                        price = tick["ask"] if action.lower() == "buy" else tick["bid"]
+                if price:
+                    def _do_calc():
+                        return mt5.order_calc_margin(action_type, clean_sym, float(lot), float(price))
+                    margin = await self._run(_do_calc)
+            except Exception as e:
+                logger.debug(f"[{clean_sym}] MT5 order_calc_margin failed: {e}")
+
+        if margin is None:
+            from risk.position_sizing import DEFAULT_INSTRUMENTS
+            spec = DEFAULT_INSTRUMENTS.get(clean_sym)
+            contract = spec.contract_size if spec else (100 if "XAU" in clean_sym else 100_000)
+            cur_price = price or (2650.0 if "XAU" in clean_sym else 1.1000)
+            notional = float(lot) * contract * float(cur_price)
+            leverage = float(self.settings.get("trading", {}).get("default_leverage", 100.0))
+            margin = round(notional / leverage, 2)
+
+        return {
+            "symbol": clean_sym,
+            "lot_size": lot,
+            "action": action.upper(),
+            "price": price,
+            "required_margin_usd": margin,
+            "currency": "USD",
         }
 
     # ------------------------------------------------------------------
@@ -1541,6 +1578,47 @@ def _calculate_dom_vwap(symbol: str, direction: str, volume: float) -> dict:
     }
 
 
+MT5_RETCODE_DESCRIPTIONS: dict[int, str] = {
+    10004: "Requote: Harga berubah cepat, ulangi order.",
+    10006: "Order ditolak oleh broker/server.",
+    10007: "Order dibatalkan oleh trader atau sistem.",
+    10008: "Order ditempatkan (pending).",
+    10009: "Order berhasil dieksekusi.",
+    10011: "Error umum pemrosesan order oleh server broker.",
+    10012: "Request timeout. Periksa latensi atau koneksi ke broker.",
+    10013: "Request tidak valid. Periksa parameter order.",
+    10014: "Volume/lot tidak valid (cek min/max/step lot simbol pada broker).",
+    10015: "Harga order tidak valid (cek kuotasi harga terkini).",
+    10016: "SL/TP tidak valid (jarak terlalu dekat dengan pasar / melanggar stop level broker).",
+    10017: "Trading dinonaktifkan untuk simbol ini oleh broker.",
+    10018: "Pasar sedang tutup untuk simbol ini.",
+    10019: "Margin tidak mencukupi untuk membuka posisi (cek free margin & lot size).",
+    10020: "Harga telah berubah (slippage melebihi deviation yang diizinkan).",
+    10021: "Tidak ada kuotasi harga untuk memproses order.",
+    10022: "Waktu kadaluarsa order pending tidak valid.",
+    10023: "Status order telah berubah sebelum diproses.",
+    10024: "Terlalu banyak request ke broker dalam waktu singkat (rate limited).",
+    10025: "Tidak ada perubahan pada order/posisi yang diminta.",
+    10026: "Auto-trading dinonaktifkan oleh server broker.",
+    10027: "Algo Trading dinonaktifkan di terminal MT5 (aktifkan tombol Algo Trading di MT5).",
+    10028: "Request diblokir karena operasi lain sedang diproses.",
+    10029: "Order atau posisi dalam status beku (frozen).",
+    10030: "Tipe pengisian (filling mode) tidak didukung untuk simbol ini.",
+    10031: "Tidak ada koneksi ke server trading MT5.",
+    10032: "Operasi hanya diperbolehkan untuk akun live/real.",
+    10033: "Batas jumlah pending order pada broker telah tercapai.",
+    10034: "Batas volume maksimum posisi untuk simbol ini telah tercapai.",
+    10035: "Posisi sudah ditutup sebelumnya.",
+}
+
+
+def format_mt5_error(retcode: int, comment: str = "") -> str:
+    """Format MT5 error retcode into human-actionable Indonesian explanation."""
+    desc = MT5_RETCODE_DESCRIPTIONS.get(retcode, "Error broker tidak diketahui.")
+    cmt_str = f" [{comment}]" if comment else ""
+    return f"retcode={retcode}{cmt_str}: {desc}"
+
+
 def _place_order(
     symbol: str,
     direction: str,
@@ -1677,7 +1755,7 @@ def _place_order(
         if check_result is not None:
             check_retcode = getattr(check_result, "retcode", 0)
             if isinstance(check_retcode, int) and check_retcode not in (0, 10009):
-                err_msg = f"Pre-flight order_check rejected: retcode={check_retcode} ({getattr(check_result, 'comment', '')})"
+                err_msg = f"Pre-flight order_check rejected: {format_mt5_error(check_retcode, getattr(check_result, 'comment', ''))}"
                 logger.warning(f"[{resolved_symbol}] {err_msg}")
                 return {
                     'success': False, 'ticket': None, 'price': None,
@@ -1733,7 +1811,7 @@ def _place_order(
         'success': success,
         'ticket': getattr(result, "order", None) if success else None,
         'price': getattr(result, "price", None) if success else None,
-        'error': None if success else f'retcode={res_retcode} comment={getattr(result, "comment", "")}',
+        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
         'retcode': res_retcode,
         'volume': getattr(result, "volume", None) if success else None,
     }
@@ -1784,10 +1862,11 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
         return {'success': False, 'error': str(mt5.last_error()), 'retcode': -1}
 
     success = getattr(result, "retcode", -1) == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    res_retcode = getattr(result, "retcode", -1)
     return {
         'success': success,
-        'error': None if success else f'retcode={getattr(result, "retcode", -1)} {getattr(result, "comment", "")}',
-        'retcode': getattr(result, "retcode", -1),
+        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
+        'retcode': res_retcode,
     }
 
 
@@ -1867,12 +1946,13 @@ def _close_position(ticket: Any, volume: Optional[float], comment: str, lots: Op
                 'error': str(mt5.last_error()), 'retcode': -1}
 
     success = getattr(result, "retcode", -1) == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    res_retcode = getattr(result, "retcode", -1)
     return {
         'success': success,
         'price': getattr(result, "price", None) if success else None,
         'profit': getattr(current, "profit", None) if success else None,
-        'error': None if success else f'retcode={getattr(result, "retcode", -1)} {getattr(result, "comment", "")}',
-        'retcode': getattr(result, "retcode", -1),
+        'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
+        'retcode': res_retcode,
     }
 
 
@@ -1982,7 +2062,7 @@ def _cancel_order(ticket: Any) -> dict:
         "success": success,
         "ticket": ticket_id,
         "retcode": res_retcode,
-        "error": None if success else f"retcode={res_retcode} comment={getattr(result, 'comment', '')}",
+        "error": None if success else format_mt5_error(res_retcode, getattr(result, 'comment', '')),
     }
 
 

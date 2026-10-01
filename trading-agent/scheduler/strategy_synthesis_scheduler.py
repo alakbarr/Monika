@@ -1412,9 +1412,9 @@ class StrategySynthesisScheduler:
                 from analysis.strategies.decay_monitor import StrategyDecayMonitor
                 incubation_trades = getattr(StrategyDecayMonitor, "MIN_INCUBATION_TRADES", 15)
                 await self.notifier.send_info(
-                    f"💡 <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
+                    f"[CATATAN] <b>Autonomous Strategy Synthesized & Deployed!</b>\n"
                     f"<b>ID:</b> <code>{candidate.strategy_id}</code>\n"
-                    f"<b>Status:</b> 🧪 <b>INCUBATING (PAPER TRADING)</b>\n"
+                    f"<b>Status:</b>  <b>INCUBATING (PAPER TRADING)</b>\n"
                     f"<b>Symbol:</b> {candidate.symbol}\n"
                     f"<b>Sharpe:</b> <code>{candidate.sharpe_ratio:.2f}</code> (Target &gt;= {self.min_sharpe})\n"
                     f"<b>Max Drawdown:</b> <code>{candidate.max_drawdown_pct:.1f}%</code> (Limit &lt;= {self.max_drawdown_pct}%)\n"

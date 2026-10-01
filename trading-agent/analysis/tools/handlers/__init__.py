@@ -28,6 +28,7 @@ from analysis.tools.handlers import (
     ptc_handler,
     skills_tools,
     pattern_similarity_tools,
+    analytical_query_builder,
 )
 from analysis.tools.domain import spill_reader_tool
 from analysis.tools import domain
@@ -55,4 +56,5 @@ __all__ = [
     "db_tools",
     "skills_tools",
     "pattern_similarity_tools",
+    "analytical_query_builder",
 ]

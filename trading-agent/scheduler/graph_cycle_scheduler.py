@@ -171,7 +171,7 @@ class GraphCycleScheduler(CycleScheduler):
         if hasattr(self, 'notifier') and self.notifier:
             try:
                 await self.notifier.send_alert(
-                    f"⚠️ CRITICAL: Graph state persistence unavailable. MemorySaver fallback active. "
+                    f"[PERINGATAN] CRITICAL: Graph state persistence unavailable. MemorySaver fallback active. "
                     f"State will be LOST on restart."
                 )
             except Exception:
@@ -187,7 +187,7 @@ class GraphCycleScheduler(CycleScheduler):
         try:
             from utils.infra.notifier import AgentNotifier
             await AgentNotifier().send_warning(
-                '⚠️ <b>LangGraph: PostgreSQL Checkpointer Gagal</b>\n\n'
+                '[PERINGATAN] <b>LangGraph: PostgreSQL Checkpointer Gagal</b>\n\n'
                 f'Setup gagal setelah {MAX_RETRIES} percobaan.\n'
                 'Fallback ke MemorySaver - state tidak persisten antar restart.\n\n'
                 'Periksa koneksi DB dan variabel DATABASE_URL.'
@@ -518,7 +518,7 @@ class GraphCycleScheduler(CycleScheduler):
                         try:
                             from utils.infra.notifier import AgentNotifier
                             await AgentNotifier().send_critical(
-                                f"🚨 <b>EDGE DETECTION ALERT</b>\nNo statistical edge after {edge_data['total_trades']} trades\n"
+                                f"[DARURAT] <b>EDGE DETECTION ALERT</b>\nNo statistical edge after {edge_data['total_trades']} trades\n"
                                 f"Win Rate: {edge_data['win_rate']}% (need >{edge_data['breakeven_win_rate_pct']}%)\n"
                                 f"95% CI: [{edge_data['ci_lower']}% - {edge_data['ci_upper']}%]\n\n{edge_data['action']}"
                             )
@@ -545,7 +545,7 @@ class GraphCycleScheduler(CycleScheduler):
                             logger.warning(f'Critical patterns detected in last 24h: {pattern_summary}')
                             from utils.infra.notifier import AgentNotifier
                             await AgentNotifier().send_warning(
-                                f'📊 <b>Pattern Alert (24h)</b>\n{pattern_summary.get("summary", "")}'
+                                f'[LAPORAN] <b>Pattern Alert (24h)</b>\n{pattern_summary.get("summary", "")}'
                             )
                 except Exception as e:
                     logger.debug(f'Pattern summary check failed: {e}')
@@ -761,7 +761,7 @@ class GraphCycleScheduler(CycleScheduler):
                     if not calibration.get('confidence_is_calibrated') and calibration.get('total_analyzed', 0) >= 30:
                         from utils.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
-                            f'⚠️ <b>Confidence Calibration Issue</b>\n'
+                            f'[PERINGATAN] <b>Confidence Calibration Issue</b>\n'
                             f'Higher confidence scores do NOT reliably predict higher win rates.\n'
                             f'{calibration.get("recommendation", "")}'
                         )
@@ -944,7 +944,7 @@ class GraphCycleScheduler(CycleScheduler):
                     logger.warning(f'5+ consecutive WAIT-only cycles. Possible threshold too high or market regime issue.')
                     from utils.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
-                        f'⚠️ <b>No Trades for {consecutive_wait} Cycles</b>\n'
+                        f'[PERINGATAN] <b>No Trades for {consecutive_wait} Cycles</b>\n'
                         f'All assets returning WAIT/AVOID for {consecutive_wait} consecutive cycles.\n'
                         f'Consider reviewing: (1) VIX threshold, (2) confluence threshold, '
                         f'(3) market regime, (4) data quality.'
@@ -1061,7 +1061,7 @@ class GraphCycleScheduler(CycleScheduler):
                 try:
                     from utils.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
-                        f"⚠️ HIGH SKIP RATE DETECTED\n"
+                        f"[PERINGATAN] HIGH SKIP RATE DETECTED\n"
                         f"Average skip rate last 5 cycles: {avg_skip_rate:.0%}\n"
                         "This suggests: (1) Haiku prescreen too aggressive, "
                         "(2) Market in ranging regime, or (3) Data quality issues."

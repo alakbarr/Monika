@@ -195,9 +195,29 @@ class TrailingStopManager:
         new_sl = None
         reason = ""
 
-        # TimesFM 3.0 Dynamic Volatility Trailing Adjustment
+        # TimesFM 3.0 Dynamic Volatility Trailing Adjustment & Per-Ticket Overrides
         effective_trail_mult = self.trail_atr_multiple
-        if self.settings.get("timesfm", {}).get("volatility_trailing_adjustment", True):
+        effective_be_mult = self.breakeven_atr_multiple
+        static_pips = None
+        static_be_pips = None
+        if getattr(pos, "trailing_override_json", None):
+            try:
+                override = json.loads(pos.trailing_override_json)
+                if isinstance(override, dict):
+                    if override.get("disabled", False) or override.get("enabled") is False:
+                        return {}
+                    if "trailing_pips" in override or "pips" in override:
+                        static_pips = float(override.get("trailing_pips") or override.get("pips"))
+                    if "breakeven_pips" in override:
+                        static_be_pips = float(override["breakeven_pips"])
+                    if "trail_atr_multiple" in override:
+                        effective_trail_mult = float(override["trail_atr_multiple"])
+                    if "breakeven_atr_multiple" in override:
+                        effective_be_mult = float(override["breakeven_atr_multiple"])
+            except Exception as e:
+                logger.debug(f"Failed to parse trailing_override_json for ticket {pos.mt5_ticket}: {e}")
+
+        if static_pips is None and self.settings.get("timesfm", {}).get("volatility_trailing_adjustment", True) and not getattr(pos, "trailing_override_json", None):
             try:
                 from indicators.timesfm_engine import TimesFMEngine
                 tfm_engine = TimesFMEngine(self.settings)
@@ -205,14 +225,44 @@ class TrailingStopManager:
                 if tfm_fc:
                     vr = float(tfm_fc.get('volatility_expansion_ratio', 1.0))
                     if vr >= 1.30:
-                        effective_trail_mult = round(self.trail_atr_multiple * 1.25, 2)
+                        effective_trail_mult = round(effective_trail_mult * 1.25, 2)
                     elif vr <= 0.75:
-                        effective_trail_mult = round(self.trail_atr_multiple * 0.80, 2)
+                        effective_trail_mult = round(effective_trail_mult * 0.80, 2)
             except Exception:
                 pass
 
         profit_distance = 0.0
-        if pos.direction == "buy":
+        if static_pips is not None and static_pips > 0:
+            from execution.broker_adapter import _get_pip_size
+            pip_size = _get_pip_size(pos.symbol)
+            trail_dist = static_pips * pip_size
+            be_dist = (static_be_pips * pip_size) if static_be_pips is not None else trail_dist
+
+            if pos.direction == "buy":
+                profit_distance = current_price - entry
+                if profit_distance >= be_dist:
+                    be_sl = entry + (1.0 * pip_size)
+                    if be_sl > current_sl:
+                        new_sl = be_sl
+                        reason = f"static_pips_breakeven (profit={profit_distance/pip_size:.1f}p >= {be_dist/pip_size:.1f}p)"
+                if profit_distance >= trail_dist:
+                    trailing_sl = current_price - trail_dist
+                    if trailing_sl > current_sl and (new_sl is None or trailing_sl > new_sl):
+                        new_sl = trailing_sl
+                        reason = f"static_pips_trailing (profit={profit_distance/pip_size:.1f}p, trail_sl={trailing_sl:.4f})"
+            elif pos.direction == "sell":
+                profit_distance = entry - current_price
+                if profit_distance >= be_dist:
+                    be_sl = entry - (1.0 * pip_size)
+                    if be_sl < current_sl:
+                        new_sl = be_sl
+                        reason = f"static_pips_breakeven (profit={profit_distance/pip_size:.1f}p >= {be_dist/pip_size:.1f}p)"
+                if profit_distance >= trail_dist:
+                    trailing_sl = current_price + trail_dist
+                    if trailing_sl < current_sl and (new_sl is None or trailing_sl < new_sl):
+                        new_sl = trailing_sl
+                        reason = f"static_pips_trailing (profit={profit_distance/pip_size:.1f}p, trail_sl={trailing_sl:.4f})"
+        elif pos.direction == "buy":
             profit_distance = current_price - entry
             sl_distance = entry - current_sl if current_sl else None
             
@@ -224,7 +274,7 @@ class TrailingStopManager:
                     reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
             
             # Trail: jika harga bergerak searah profit sebesar 2x ATR, mulai trailing SL
-            if profit_distance >= 2 * self.breakeven_atr_multiple * atr:
+            if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price - (effective_trail_mult * atr)
                 if trailing_sl > current_sl and (new_sl is None or trailing_sl > new_sl):
                     new_sl = trailing_sl
@@ -241,7 +291,7 @@ class TrailingStopManager:
                     new_sl = breakeven_sl
                     reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
             
-            if profit_distance >= 2 * self.breakeven_atr_multiple * atr:
+            if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price + (effective_trail_mult * atr)
                 if trailing_sl < current_sl and (new_sl is None or trailing_sl < new_sl):
                     new_sl = trailing_sl

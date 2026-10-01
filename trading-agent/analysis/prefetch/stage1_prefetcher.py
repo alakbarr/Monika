@@ -101,6 +101,113 @@ class Stage1DataBundler:
                 logger.error(f"Prefetch error for {key}: {e}")
                 bundled_data[key] = {"error": str(e)}
 
+        # CME FedWatch Repricing Correlation (Multi-Event Pre vs Post USD Economic Releases or 24h Shift)
+        try:
+            ec_data = bundled_data.get("economic_calendar", {})
+            events_by_time = {}
+            if isinstance(ec_data, dict) and isinstance(ec_data.get("events"), list):
+                from datetime import datetime, timezone
+                import utils.clock as clock
+                now_utc = clock.now()
+                usd_past_events = []
+                for ev in ec_data["events"]:
+                    if not isinstance(ev, dict):
+                        continue
+                    curr = str(ev.get("currency", "")).upper()
+                    impact = str(ev.get("impact", "")).lower()
+                    ev_time_str = ev.get("event_time")
+                    if curr == "USD" and impact in ("high", "medium") and ev_time_str:
+                        try:
+                            ev_dt = datetime.fromisoformat(ev_time_str.replace("Z", "+00:00"))
+                            if ev_dt.tzinfo is None:
+                                ev_dt = ev_dt.replace(tzinfo=timezone.utc)
+                            if ev_dt <= now_utc:
+                                usd_past_events.append((ev_dt, ev))
+                        except Exception:
+                            continue
+
+                if usd_past_events:
+                    # Urutkan kronologis dari terlama ke terbaru agar membentuk trajektori
+                    usd_past_events.sort(key=lambda x: x[0])
+                    for ev_dt, ev in usd_past_events:
+                        t_str = ev.get("event_time")
+                        if t_str not in events_by_time:
+                            events_by_time[t_str] = []
+                        events_by_time[t_str].append(ev)
+
+            import re
+            def _clean(name):
+                return re.sub(r"<[^>]+>", "", name or "").strip()
+
+            all_event_shifts = []
+
+            if events_by_time:
+                # Ambil hingga 5 slot waktu rilis USD terbaru dalam 24 jam terakhir
+                time_keys = list(events_by_time.keys())[-5:]
+                for t_str in time_keys:
+                    ev_group = events_by_time[t_str]
+                    names = ", ".join([_clean(e.get("event_name")) for e in ev_group if _clean(e.get("event_name"))])
+                    fw_comp = await self.executor.execute("get_fedwatch_probabilities", {"event_time": t_str})
+                    if isinstance(fw_comp, dict) and fw_comp.get("comparisons"):
+                        c = fw_comp["comparisons"][0]
+                        all_event_shifts.append({
+                            "event_time": t_str,
+                            "events": names or "USD Release",
+                            "meeting_date": c.get("meeting_date"),
+                            "shift_summary": c.get("shift_summary"),
+                            "deltas_pct": c.get("deltas_pct"),
+                            "prior_probabilities": c.get("prior_probabilities"),
+                            "current_probabilities": c.get("current_probabilities"),
+                            "pre_snapshot_time": c.get("pre_snapshot_time"),
+                            "post_snapshot_time": c.get("post_snapshot_time"),
+                        })
+            else:
+                # Fallback: pergeseran temporal 24 jam jika tidak ada event kalender spesifik
+                fw_comp = await self.executor.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
+                if isinstance(fw_comp, dict) and fw_comp.get("comparisons"):
+                    c = fw_comp["comparisons"][0]
+                    all_event_shifts.append({
+                        "event_time": None,
+                        "events": "24h Temporal Shift",
+                        "meeting_date": c.get("meeting_date"),
+                        "shift_summary": c.get("shift_summary"),
+                        "deltas_pct": c.get("deltas_pct"),
+                        "prior_probabilities": c.get("prior_probabilities"),
+                        "current_probabilities": c.get("current_probabilities"),
+                        "pre_snapshot_time": c.get("pre_snapshot_time"),
+                        "post_snapshot_time": c.get("post_snapshot_time"),
+                    })
+
+            if all_event_shifts:
+                latest_shift = all_event_shifts[-1]
+                multi_summary = " | ".join([
+                    f"[{s['events']}]: {s['shift_summary']}"
+                    for s in all_event_shifts
+                ])
+
+                mode_str = "24h_temporal_shift"
+                if events_by_time:
+                    mode_str = "multi_event_pre_vs_post" if len(all_event_shifts) > 1 else "pre_vs_post_event"
+
+                bundled_data["fedwatch_comparison"] = {
+                    "mode": mode_str,
+                    "total_events_tracked": len(all_event_shifts),
+                    "trajectory_summary": multi_summary,
+                    "referenced_event": latest_shift["events"],
+                    "event_time": latest_shift["event_time"],
+                    "meeting_date": latest_shift.get("meeting_date"),
+                    "shift_summary": latest_shift.get("shift_summary"),
+                    "deltas_pct": latest_shift.get("deltas_pct"),
+                    "prior_probabilities": latest_shift.get("prior_probabilities"),
+                    "current_probabilities": latest_shift.get("current_probabilities"),
+                    "all_event_shifts": all_event_shifts,
+                }
+                existing_fw = bundled_data.get("fedwatch")
+                if isinstance(existing_fw, dict) and not existing_fw.get("error"):
+                    existing_fw["comparisons"] = all_event_shifts
+        except Exception as e:
+            logger.debug(f"FedWatch repricing correlation non-fatal error: {e}")
+
         # Compute Real Yield Context for XAUUSD & Dollar Macro Grounding
         try:
             yields_info = bundled_data.get("treasury_yields", {})
@@ -128,13 +235,29 @@ class Stage1DataBundler:
 
             if nom_10y is not None:
                 nom_10y = float(nom_10y)
+                is_breakeven_fallback = False
                 # Dynamic breakeven / real yield calculation with graceful fallback
                 if est_breakeven is not None:
                     est_breakeven = float(est_breakeven)
                 elif real_10y is not None:
                     est_breakeven = round(nom_10y - float(real_10y), 2)
                 else:
-                    est_breakeven = 2.25
+                    # Attempt dynamic median query from recent treasury yields if available
+                    try:
+                        from database.models import TreasuryYield
+                        stmt = select(TreasuryYield.yield_pct).where(
+                            TreasuryYield.tenor.in_(["10Y_INFLATION", "T10YIE"])
+                        ).order_by(TreasuryYield.fetched_at.desc()).limit(30)
+                        recent_vals = (await self.session.execute(stmt)).scalars().all()
+                        if recent_vals and len(recent_vals) > 0:
+                            import statistics
+                            est_breakeven = round(float(statistics.median(recent_vals)), 2)
+                        else:
+                            est_breakeven = 2.35
+                            is_breakeven_fallback = True
+                    except Exception:
+                        est_breakeven = 2.35
+                        is_breakeven_fallback = True
 
                 if real_10y is not None:
                     real_10y = round(float(real_10y), 2)
@@ -146,6 +269,7 @@ class Stage1DataBundler:
                     "nominal_us10y_pct": nom_10y,
                     "estimated_breakeven_inflation_pct": est_breakeven,
                     "real_us10y_yield_pct": real_10y,
+                    "is_breakeven_fallback": is_breakeven_fallback,
                     "gold_macro_bias": gold_bias,
                     "interpretation": f"Real 10Y Yield at {real_10y}%. Real yields > 2.0% create strong headwind for Gold (XAUUSD); < 1.0% provides fuel for Gold breakout."
                 }

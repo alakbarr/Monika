@@ -68,7 +68,7 @@ Rely heavily on the 'original_context' (entry, SL, TP, invalidation), the Bull's
 - Unsupported rhetorical assertions (e.g. 'breakdown is imminent', 'resistance is impenetrable') without quantitative metrics are strictly forbidden.
 - Ground all arguments in concrete mathematical and structural evidence: ATR levels, liquidity zones, CVD divergence, orderbook imbalance, and quantified price gaps.
 
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bear_dissent must be concise (max 2 sentences) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
+[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bear_dissent must be structured in 3-5 dense telegraphic bullet points (max 150 words) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
 Respond in valid JSON format ONLY conforming to the schema."""
     
     schema = {
@@ -81,6 +81,16 @@ Respond in valid JSON format ONLY conforming to the schema."""
                 "minItems": 2,
                 "items": {"type": "string"},
                 "description": "MANDATORY: List of exact numerical data points from the Fact Sheet that support your thesis. Example: ['ATR_14(H4)=2.45', 'DXY_trend=strengthening +0.4%', 'VIX=28.5', 'CVD_divergence=BEARISH', 'Book_imbalance=-0.45']. Minimum 2 items."
+            },
+            "key_levels": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": "List of key price levels cited in thesis (e.g. resistance, supply zone, FVG, swing pivot, order block boundary)."
+            },
+            "falsification_triggers": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Concrete price or macro conditions that would immediately invalidate the bearish argument."
             }
         },
         "required": ["bear_dissent", "risk_severity", "evidence_cited"]
@@ -154,7 +164,7 @@ Rely heavily on 'original_context', 'bear_claim', 'bull_dissent', and the Fact S
 
 {get_universal_execution_discipline()}
 
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. rebuttal_thesis must be concise (max 2 sentences) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
+[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. rebuttal_thesis must be structured in 3-5 dense telegraphic bullet points (max 150 words) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
 Respond in valid JSON format ONLY conforming to the schema."""
 
     schema = {

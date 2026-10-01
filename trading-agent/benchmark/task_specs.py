@@ -156,9 +156,9 @@ async def _case_stage1_escalation(session, settings, ex) -> BenchmarkCase:
     if prior_json == "{}":
         prior_json = json.dumps(get_synthetic_fundamental_brief())
     user_msg = (STAGE1_USER_MESSAGE_TEXT + f"\n\n[PRE-FETCHED DATA]\n{bundle}"
-                "\n\n--- ESCALATION REQUIRED ---\nBrief sebelumnya berkonfidensi rendah. Evaluasi "
-                f"ulang dengan sangat teliti, selesaikan semua ambiguitas secara eksplisit.\n"
-                f"BRIEF SEBELUMNYA:\n{prior_json}")
+                "\n\n--- ESCALATION REQUIRED ---\nPrior brief had low confidence. Re-evaluate "
+                f"exhaustively with maximum rigor, resolving all ambiguities explicitly.\n"
+                f"PRIOR BRIEF:\n{prior_json}")
     return BenchmarkCase("stage1_escalation", "macro", _stage1_system_prompt(settings), user_msg,
                           tools=STAGE1_TOOLS, stage_name="benchmark_stage1_escalation",
                           role_kwargs=dict(max_tokens=16000, max_tool_turns=8, thinking="high"),
@@ -189,10 +189,10 @@ async def _case_stage1_shadow_check(session, settings, ex) -> BenchmarkCase:
             pass
     if not declared_bias:
         declared_bias = get_synthetic_fundamental_brief().get("currency_bias", {})
-    prompt = ("Independen dari brief manapun, tentukan bias USD/EUR/GBP/JPY/AUD/XAU "
-              "(bullish/bearish/neutral) HANYA dari data mentah berikut:\n" + bundle[:6000] +
-              f"\n\nBrief yang sedang diverifikasi menyimpulkan: {json.dumps(declared_bias)}\n"
-              "Hitung agreement_pct dan sebutkan flagged_currencies yang berbeda.")
+    prompt = ("Independently determine USD/EUR/GBP/JPY/AUD/XAU bias "
+              "(bullish/bearish/neutral) based SOLELY on the following raw data:\n" + bundle[:6000] +
+              f"\n\nThe brief being verified concluded: {json.dumps(declared_bias)}\n"
+              "Calculate agreement_pct and list any diverging flagged_currencies.")
     return BenchmarkCase("stage1_shadow_check", "macro", "", prompt, schema=_SHADOW_SCHEMA,
                           role_kwargs=dict(max_tokens=800, thinking="low"), context_summary=bundle[:4000])
 
@@ -208,15 +208,15 @@ async def _case_fundamental_verifier(session, settings, ex) -> BenchmarkCase:
             pass
     if not st:
         st = get_synthetic_fundamental_brief()
-    prompt = ("Review brief trading makro ini untuk KONSISTENSI INTERNAL SAJA:\n\n"
+    prompt = ("Review this macro trading brief for INTERNAL CONSISTENCY ONLY:\n\n"
               f"Narrative:\n{st.get('macro_narrative','')[:2500]}\n\n"
               f"Currency Bias: {json.dumps(st.get('currency_bias', {}))}\n"
               f"Currency Confidence: {json.dumps(st.get('currency_confidence', {}))}\n"
               f"Risk Sentiment: {st.get('risk_sentiment')}\nOverall Confidence: {st.get('confidence')}\n"
               f"Strongest Counter Thesis: {st.get('strongest_counter_thesis')}\n\n"
-              "Cek: (1) nada narasi cocok currency_bias? (2) risk_sentiment konsisten dengan bias? "
-              "(3) confidence berdasar? (4) counter thesis substantif & falsifiable? Jangan menilai "
-              "apakah CALL makronya sendiri benar.")
+              "Check: (1) Does narrative tone match currency_bias? (2) Is risk_sentiment consistent with bias? "
+              "(3) Is confidence grounded? (4) Is counter-thesis substantive & falsifiable? Do not assess "
+              "whether the macro call itself is objectively correct.")
     return BenchmarkCase("fundamental_verifier", "macro", "", prompt, schema=VERIFIER_SCHEMA,
                           role_kwargs=dict(max_tokens=1024, thinking="low"), context_summary=json.dumps(st)[:4000])
 
@@ -235,7 +235,7 @@ def _stage2_system_prompt(settings, symbol, cot_code, threshold) -> str:
         skills.append("caveman_mode")
     body = compose_system_prompt(*skills).replace(
         "{tool_order_guidance}",
-        "Data standar sudah di-prefetch di bawah; hanya panggil tool untuk data yang benar-benar hilang.")
+        "Standard data is pre-fetched below; only invoke tools for genuinely missing data.")
     static = ("You are a professional FX/Gold/commodity/crypto technical analyst using SMC/ICT.\n\n" + body)
     dyn = (f"\n\n=== CURRENT ANALYSIS TARGET ===\nSymbol: {symbol}\nCOT Code: {cot_code or 'N/A'}\n"
            f"Effective Confluence Threshold: {threshold}/14\n"
@@ -263,8 +263,8 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
             bundle_text = None
     if not bundle_text:
         bundle_text, _ = get_synthetic_stage2_bundle(symbol)
-    user_msg = bundle_text + (f"\n\nAnalisis {symbol} pakai data pre-fetched di atas, lalu panggil "
-                               "submit_asset_analysis dengan keputusan final.")
+    user_msg = bundle_text + (f"\n\nAnalyze {symbol} using pre-fetched data above, then call "
+                               "submit_asset_analysis with your final decision.")
     return BenchmarkCase(symbol, "trade_decision", sysp, user_msg, tools=STAGE2_TOOLS,
                           stage_name=f"benchmark_{stage_tag}_{symbol}",
                           role_kwargs=dict(max_tokens=12000, max_tool_turns=10, thinking="high"),
@@ -289,9 +289,9 @@ async def _case_stage2_prescreen(session, settings, ex) -> BenchmarkCase:
             trading_paused = risk_state.get("trading_paused", False)
         except Exception:
             pass
-    prompt = (f"Quick trading opportunity check untuk {symbol}.\n"
+    prompt = (f"Quick trading opportunity check for {symbol}.\n"
               f"VIX: {vix_val}\nRisk paused: {trading_paused}\n"
-              "YES kalau layak analisis penuh, NO kalau risk paused / VIX ekstrem(>28) / pasar mati.")
+              "YES if viable for full analysis, NO if risk is paused / VIX is extreme (>28) / dead market.")
     schema = {"type": "object", "properties": {"decision": {"type": "string", "enum": ["YES", "NO"]},
               "reason": {"type": "string"}}, "required": ["decision", "reason"]}
     return BenchmarkCase(symbol, "trade_decision", "", prompt, schema=schema,
@@ -325,7 +325,7 @@ async def _build_specialist_case(session, settings, symbol, role: str) -> Benchm
     view = {k: v for k, v in raw.items() if k in keys and v is not None} if isinstance(raw, dict) else {}
     if not view:
         view = raw
-    data_view = json.dumps(view, default=str)[:6000] if view else "(tidak ada data untuk domain ini)"
+    data_view = json.dumps(view, default=str)[:6000] if view else "(no data available for this domain)"
     currencies = get_base_quote_tags(symbol).split(",")
     base_c = currencies[0].strip() if currencies else "USD"
     quote_c = currencies[1].strip() if len(currencies) > 1 else "USD"
@@ -428,12 +428,12 @@ async def _case_stage2_adjudicator(session, settings, ex) -> BenchmarkCase:
         except Exception:
             pass
     prompt = ("Rules: IF Technical=BULLISH AND Macro=BULLISH -> HIGH conf BUY. IF Technical=BEARISH AND "
-              "Macro=BEARISH -> HIGH conf SELL. IF Technical vs Macro conflict -> WAIT kecuali technical "
-              "trust_weight>0.8. IF semua NEUTRAL/MIXED -> WAIT.\n\n"
+              "Macro=BEARISH -> HIGH conf SELL. IF Technical vs Macro conflict -> WAIT unless technical "
+              "trust_weight>0.8. IF all NEUTRAL/MIXED -> WAIT.\n\n"
               f"Specialist biases {symbol}: {json.dumps(biases)}\n"
               f"Specialist confidence: {json.dumps(confidences)}\n"
-              f"Keputusan final: {decision}\nRationale: {rationale[:1500]}\n\n"
-              "Apakah keputusan final mengikuti aturan dengan benar berdasarkan bias-bias ini?")
+              f"Final decision: {decision}\nRationale: {rationale[:1500]}\n\n"
+              "Did the final decision correctly follow the adjudication rules based on these specialist biases?")
     return BenchmarkCase(symbol, "debate", "", prompt, schema=_ADJUDICATION_SCHEMA,
                           role_kwargs=dict(max_tokens=800, thinking="medium"), context_summary=prompt)
 
@@ -542,8 +542,8 @@ async def _case_portfolio_synthesis(session, settings, ex) -> BenchmarkCase:
     prompt = (f"Portfolio Review: Multiple proposed trades across asset universe.\n\nProposed Trades:\n" + "\n".join(summaries) +
               f"\n\nRisk sentiment: {brief_sentiment}\nBrief confidence: {brief_confidence}\n"
               f"VIX: {vix_val}\n\n"
-              "Eksekusi SEMUA trade ini, atau KURANGI portofolio karena korelasi/risiko? Jawab dengan "
-              "recommendation, keep[], size_adjustments{symbol:multiplier} opsional, reasoning.")
+              "Execute ALL of these trades, or REDUCE portfolio exposure due to correlation/risk clustering? Respond with "
+              "recommendation, keep[], optional size_adjustments{symbol:multiplier}, and reasoning.")
     return BenchmarkCase("portfolio", "risk", "", prompt, schema=_PORTFOLIO_SYNTHESIS_SCHEMA,
                           role_kwargs=dict(max_tokens=800, thinking="high"), context_summary=prompt)
 

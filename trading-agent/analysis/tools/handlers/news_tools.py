@@ -28,7 +28,12 @@ def _get_session(args: dict, ctx: dict) -> tuple[Optional[AsyncSession], dict]:
 
 async def handle_get_news_items(args: dict, **ctx) -> dict:
     session, _ = _get_session(args, ctx)
-    hours_back = int(args.get("hours_back", 24))
+    query_str = (args.get("query") or args.get("keyword") or args.get("search") or "").strip()
+    custom_hours = args.get("hours_back")
+    if custom_hours is not None:
+        hours_back = int(custom_hours)
+    else:
+        hours_back = 168 if query_str else 24
     limit = int(args.get("limit", 20))
     currency = args.get("currency") or args.get("currency_filter")
     min_impact = args.get("min_impact")
@@ -44,6 +49,14 @@ async def handle_get_news_items(args: dict, **ctx) -> dict:
             and_(NewsItem.published_at.isnot(None), NewsItem.published_at >= cutoff)
         )
     )
+    if query_str:
+        query = query.where(
+            or_(
+                NewsItem.title.ilike(f"%{query_str}%"),
+                NewsItem.summary.ilike(f"%{query_str}%"),
+                NewsItem.currency_tags.ilike(f"%{query_str}%")
+            )
+        )
     if currency:
         query = query.where(NewsItem.currency_tags.like(f"%{currency.upper()}%"))
     if min_impact:
@@ -144,14 +157,14 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
     if isinstance(age_hours, (int, float)):
         if age_hours > 6:
             staleness_warning = (
-                f"\n\n⚠️ STALE DIGEST WARNING: This digest is {age_hours:.1f}h old. "
+                f"\n\n[PERINGATAN] STALE DIGEST WARNING: This digest is {age_hours:.1f}h old. "
                 f"Significant market events may have occurred since generation. "
                 f"MANDATORY: Call get_news_items(hours_back=3) to check for recent developments "
                 f"before finalizing currency biases."
             )
         elif age_hours > 3:
             staleness_warning = (
-                f"\n\nℹ️ Digest is {age_hours:.1f}h old. "
+                f"\n\n[INFO] Digest is {age_hours:.1f}h old. "
                 f"Consider supplementing with get_news_items for very recent news."
             )
 

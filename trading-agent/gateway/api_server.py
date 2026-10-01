@@ -16,10 +16,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import secrets
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional, Callable, Awaitable
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -244,3 +245,132 @@ async def chat_completions(req: ChatCompletionRequest, request: Request):
             "total_tokens": (len(str(req.messages)) + len(response_text)) // 4,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Webhook Ingress Endpoints (TradingView & Omnichannel)
+# ---------------------------------------------------------------------------
+@app.post("/api/v1/webhooks/tradingview")
+@app.post("/webhooks/tradingview")
+async def tradingview_webhook(request: Request):
+    """
+    Ingress point for TradingView Webhook Alerts.
+    Normalizes Pine Script alerts and routes to the internal event pipeline.
+    """
+    from gateway.webhook_ingress import normalize_tradingview_payload, get_webhook_router
+
+    try:
+        raw_body = await request.body()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read request body: {e}")
+
+    expected_passphrase = os.getenv("TRADINGVIEW_PASSPHRASE", "").strip()
+
+    normalized = normalize_tradingview_payload(raw_body)
+    if expected_passphrase:
+        provided = normalized.get("passphrase") or request.headers.get("X-Passphrase", "")
+        if provided != expected_passphrase:
+            logger.warning("[ApiServer] TradingView webhook rejected: invalid passphrase.")
+            raise HTTPException(status_code=403, detail="Forbidden: Invalid webhook passphrase.")
+
+    # Dispatch to WebhookIngressRouter
+    router = get_webhook_router()
+    event_bytes = json.dumps(normalized).encode("utf-8")
+    req_headers = dict(request.headers)
+    result = await router.process_event(raw_body=event_bytes, headers=req_headers)
+
+    return {
+        "status": "success" if result.is_success else "rejected",
+        "result": result.status.value,
+        "event_id": result.event_id,
+        "message": result.message,
+        "signal": {
+            "symbol": normalized.get("symbol"),
+            "direction": normalized.get("direction"),
+            "volume": normalized.get("volume"),
+            "price": normalized.get("price"),
+            "sl": normalized.get("sl"),
+            "tp": normalized.get("tp"),
+        },
+    }
+
+
+@app.post("/api/v1/webhooks/ingress")
+@app.post("/webhooks/ingress")
+async def general_webhook_ingress(request: Request):
+    """General purpose webhook ingress endpoint for external integrations."""
+    from gateway.webhook_ingress import get_webhook_router
+
+    try:
+        raw_body = await request.body()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read request body: {e}")
+
+    router = get_webhook_router()
+    req_headers = dict(request.headers)
+    result = await router.process_event(raw_body=raw_body, headers=req_headers)
+
+    return {
+        "status": "success" if result.is_success else "rejected",
+        "result": result.status.value,
+        "event_id": result.event_id,
+        "message": result.message,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Interactive PTY Terminal WebSocket Endpoint
+# ---------------------------------------------------------------------------
+@app.websocket("/ws/terminal")
+async def terminal_websocket(websocket: WebSocket):
+    """
+    WebSocket endpoint for bidirectional interactive terminal console streaming.
+    Integrates with PtyBridgeManager and PtyQueryResponder.
+    """
+    from logging_observability.dashboard.pty_bridge import get_pty_bridge_manager
+
+    await websocket.accept()
+    manager = get_pty_bridge_manager()
+    session = await manager.create_session()
+
+    try:
+        # Initial greeting banner
+        await websocket.send_text(
+            "\r\n\x1b[1;36m=== MONIKA INTERACTIVE CONSOLE INITIALIZED ===\x1b[0m\r\n"
+            f"\x1b[33mSession ID:\x1b[0m {session.session_id}\r\n"
+            "\x1b[90mConnected to Monika Trading Intelligence Core. Type help or exit.\x1b[0m\r\n\r\nmonika> "
+        )
+
+        while True:
+            data = await websocket.receive_text()
+            if not data:
+                continue
+
+            clean_data = data.strip()
+            if clean_data in ("exit", "quit"):
+                await websocket.send_text("\r\n\x1b[33mClosing terminal session. Goodbye!\x1b[0m\r\n")
+                break
+
+            synthetic_resps = session.append_output(data)
+            for resp in synthetic_resps:
+                await websocket.send_bytes(resp)
+
+            if clean_data:
+                if clean_data in ("help", "?"):
+                    resp_text = "\r\nAvailable commands: status, positions, risk, kill, health, exit\r\nmonika> "
+                elif clean_data == "status":
+                    resp_text = "\r\n\x1b[32m[SYSTEM STATUS]\x1b[0m Fortress active, all engines operational.\r\nmonika> "
+                elif clean_data == "health":
+                    resp_text = "\r\n\x1b[32m[HEALTH]\x1b[0m Memory nominal, database connected.\r\nmonika> "
+                else:
+                    resp_text = f"\r\nExecuted: {clean_data}\r\nmonika> "
+                await websocket.send_text(resp_text)
+
+    except WebSocketDisconnect:
+        logger.info(f"[ApiServer] Terminal WebSocket disconnected: session {session.session_id}")
+    except Exception as e:
+        logger.warning(f"[ApiServer] Terminal WebSocket error: {e}")
+    finally:
+        await manager.close_session(session.session_id)
+
+

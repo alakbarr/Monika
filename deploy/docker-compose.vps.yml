@@ -114,6 +114,7 @@ services:
       - "127.0.0.1:18812:18812"
     volumes:
       - vps_mt5_bridge:/shared/mt5_bridge
+      - /opt/mt5:/opt/mt5:ro
     logging:
       driver: "json-file"
       options:

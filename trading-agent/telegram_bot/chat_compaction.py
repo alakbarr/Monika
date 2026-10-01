@@ -67,10 +67,16 @@ class ChatMicroCompactor:
 
             # Compress: extract key info, then summarize
             summary = self._summarize_assistant(original_content)
+            ts_tag = ""
+            msg_ts = msg.get("timestamp") or msg.get("created_at")
+            if msg_ts:
+                ts_str = msg_ts.isoformat() if hasattr(msg_ts, "isoformat") else str(msg_ts)
+                ts_tag = f'<temporal_boundary timestamp="{ts_str}"/>\n'
+
             result[i] = {
                 **msg,
                 "role": "assistant",
-                "content": f"[Ringkasan respons sebelumnya: {summary}]",
+                "content": f"{ts_tag}[Ringkasan respons sebelumnya: {summary}]",
                 "_compacted": True,
             }
 

@@ -1,44 +1,33 @@
 ---
 name: caveman-mode
-description: "Scope-limited token compression rules preserving full analytical depth."
+description: "Token compression rules preserving analytical rigor and actionable trading edge."
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]
 tags: [caveman, compression, token_efficiency, prompt_density, cot]
 ---
 
-# CAVEMAN MODE — TOKEN COMPRESSION RULES
+# CAVEMAN MODE — High-Density Token Compression Protocol
 
-## UNAFFECTED (MUST remain full, complete, and nuanced):
-1. **Internal thinking process (Extended Thinking / CoT).** Think deeply and comprehensively.
-2. **Analytical tool-call fields**: `rationale`, `macro_narrative`, `stress_test`, `bull_case`/`bull_thesis`, `bear_case`/`bear_dissent`, `invalidation`, `priced_in_assessment`, `key_evidence`, `analysis`. Preserve explicit numbers, probabilities, and causal logic.
-3. **Mandatory structures**: CONFLUENCE SCORECARD (`[ ] Fx_NAME: ... = __`), pre-submission checklists.
-4. Numerical values, price levels, symbol names, SMC terminology.
+> **System Scope**: This compression directive applies to Monika's internal agent execution nodes (`worker_macro`, `worker_asset`, `bull_analyst`, `bear_analyst`, `investment_judge`). It preserves full mathematical, structural, and quantitative rigor while eliminating conversational overhead and token waste.
 
-## AFFECTED (Compress aggressively):
-- Conversational commentary outside structured tool calls.
-- Cross-turn repetitive narrative (reference conclusions: "RSI neutral (noted above)").
+## 1. UNAFFECTED (MUST Remain Complete, Precise, and Nuanced):
+1. **Internal Chain-of-Thought / Extended Thinking**: Analytical rigor, probability calculations, and structural reasoning must be fully developed.
+2. **Analytical Tool-Call Payload Fields**: `rationale`, `macro_narrative`, `stress_test`, `bull_case`, `bear_dissent`, `invalidation`, `priced_in_assessment`, `key_evidence`. Preserve all explicit price numbers, percentages, and causal logic.
+3. **Mandatory Checklists & Scorecards**: `CONFLUENCE SCORECARD FOR {SYMBOL}`, RiskGate assertions.
+4. **Exact Precision Values**: Numerical prices, ATR multiples, Stop Loss and Take Profit levels, lot sizes, symbol tickers.
 
-## Compression Rules:
-- Drop articles (a/an/the), filler words (basically, just), pleasantries.
-- Pattern: [subject] [action] [reason]. [next step].
-- Preserve code, exact prices, technical terminology verbatim. Never drop negations (not/no/never).
+## 2. AFFECTED (Compress Aggressively):
+- Conversational preamble, greetings, pleasantries, and sign-offs.
+- Repetitive restatement of facts already stated in earlier turns.
+- Philosophical deliberations on low-probability, sub-threshold market chop.
 
-## Density Mandate for Analytical Fields:
-- One claim = one sentence. No repetitive restatements.
-- Drop empty transitions ("it is worth noting that", "in summary").
-- Write like dense professional trader notes (max 3 concise sentences for final `rationale`).
+## 3. High-Density Rules:
+- Drop articles (*a / an / the*), fluff transitions (*"it is important to highlight that"*, *"in summary"*).
+- Structure: `[Subject] [Action] [Reason]. [Invalidation / Target].`
+- Never omit negations (*NOT / NO / NEVER*).
+- Never summarize numbers into vague adjectives (use *"RSI 72.4 at 0.786 Fib"* instead of *"RSI is relatively high near resistance"*).
 
-## Early-Exit Thinking Directive (Anti-Deliberation Loop):
-- If initial scan shows confluence clearly below threshold (< 5/14) or market regime is chop with no edge, terminate extended CoT immediately.
-- Conclude with WAIT / AVOID. Do not burn thousands of thinking tokens over-analyzing non-setups.
-
-## Telegraphic Analytical Thinking Directives (Internal Thinking / CoT):
-- Think strictly in telegraphic analytical bullet points. Zero conversational prose, filler intros, or philosophical deliberations.
-- State macro catalysts, quantitative indicator reads, market structure levels, and confluence math directly.
-- Pattern for reasoning turns:
-  * Macro: [DXY / Yield / VIX read] -> [Bias]
-  * Structure: [HTF / LTF / FVG / BOS / ChoCH levels]
-  * Confluence: [Scorecard math: e.g. 8/14]
-  * Invalidation: [Exact price level & catalyst]
-- Cuts thinking tokens 50-60% while sharpening numerical precision.
+## 4. Early-Exit Thinking Directive (Anti-Deliberation Loop):
+- If initial scan shows confluence clearly below threshold ($< 5/14$) or market is in unmitigated high-volatility event blackout, terminate extended deliberation immediately.
+- Submit `WAIT` / `AVOID`. Do not burn excess tokens rationalizing non-viable market noise.

@@ -175,11 +175,11 @@ class PairingManager:
         )
 
         user_message = (
-            "🔒 **Pairing Authorization Required**\n\n"
-            "This Monika instance requires authorization before processing privileged requests.\n"
-            "An 8-character pairing code has been printed to the Monika server console.\n\n"
-            "Please check your server console and reply with:\n"
-            "`/pair <CODE>`"
+            "**[OTORISASI DIPERLUKAN] Pairing Authorization Required (Pemasangan Akun)**\n\n"
+            "Sistem Monika memerlukan otorisasi sebelum memproses instruksi pada channel ini.\n"
+            "Kode otorisasi (8 karakter) telah ditampilkan pada konsol server Monika.\n\n"
+            "Silakan periksa konsol server Anda dan balas dengan format:\n"
+            "`/pair <KODE>`"
         )
         return user_message, raw_otp
 
@@ -194,11 +194,11 @@ class PairingManager:
         with self._lock:
             req = self._pending_requests.get(key)
             if not req:
-                return False, "No active pairing request found. Request a new pairing code first."
+                return False, "[GAGAL] Tidak ditemukan permintaan pairing aktif. Silakan minta kode baru."
 
             if now > req.expires_at:
                 self._pending_requests.pop(key, None)
-                return False, "Pairing code has expired. Please initiate pairing again."
+                return False, "[KEDALUWARSA] Kode pairing telah kedaluwarsa. Silakan lakukan pairing ulang."
 
             req.attempts += 1
             calculated_hash = self._hash_otp(input_code, req.salt)
@@ -216,16 +216,16 @@ class PairingManager:
                 self._pending_requests.pop(key, None)
                 self._save_store()
                 logger.info(f"[PairingManager] Successfully authorized user {key} (User: @{req.username})")
-                return True, "✅ Pairing successful! Your account is now authorized to operate Monika."
+                return True, "[BERHASIL] Pairing berhasil! Akun Anda kini telah terotorisasi sebagai operator Monika."
 
             # Failed match
             remaining = req.max_attempts - req.attempts
             if remaining <= 0:
                 self._pending_requests.pop(key, None)
                 logger.warning(f"[PairingManager] Max pairing attempts exceeded for {key}. Request revoked.")
-                return False, "❌ Invalid code. Maximum attempts exceeded. Request has been revoked."
+                return False, "[GAGAL] Kode tidak valid. Batas percobaan habis. Permintaan dibatalkan."
 
-            return False, f"❌ Invalid pairing code. {remaining} attempt(s) remaining."
+            return False, f"[GAGAL] Kode pairing tidak valid. Tersisa {remaining} kesempatan lagi."
 
     def unpair_user(self, platform: str, user_id: str) -> bool:
         """Revokes authorization for a paired user."""

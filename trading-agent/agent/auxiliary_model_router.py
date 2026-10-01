@@ -109,15 +109,42 @@ class AuxiliaryModelRouter:
         self,
         default_caller: Optional[Callable[[str, str, Dict[str, Any]], Any]] = None,
         task_role_mapping: Optional[Dict[AuxiliaryTaskType, Tuple[str, str]]] = None,
+        settings: Optional[Dict[str, Any]] = None,
     ):
         self._default_caller = default_caller
-        self._task_role_mapping = task_role_mapping or {
-            AuxiliaryTaskType.COMPRESSION: ("openrouter", "google/gemini-2.5-flash"),
-            AuxiliaryTaskType.TITLE_GENERATION: ("openrouter", "google/gemini-2.5-flash"),
-            AuxiliaryTaskType.CLARIFY_OPTIONS: ("openrouter", "google/gemini-2.5-flash"),
-            AuxiliaryTaskType.SKILL_CURATOR: ("openrouter", "deepseek/deepseek-chat"),
-            AuxiliaryTaskType.INTENT_DETECTION: ("groq", "llama-3.3-70b-versatile"),
-            AuxiliaryTaskType.QUICK_SUMMARY: ("openrouter", "google/gemini-2.5-flash"),
+        self.settings = settings
+        if task_role_mapping is not None:
+            self._task_role_mapping = dict(task_role_mapping)
+        else:
+            self._task_role_mapping = self._build_mapping_from_settings(settings)
+
+    @classmethod
+    def _build_mapping_from_settings(cls, settings: Optional[Dict[str, Any]]) -> Dict[AuxiliaryTaskType, Tuple[str, str]]:
+        s = settings
+        if not s:
+            try:
+                from utils.config import load_settings
+                s = load_settings()
+            except Exception:
+                s = {}
+        llm = (s or {}).get("llm", {})
+        task_roles = llm.get("task_roles", {})
+        def_prov = llm.get("default_provider", "openrouter")
+        def_model = llm.get("default_model", "gpt-6.1-sol-medium")
+
+        def _resolve(role_name: str) -> Tuple[str, str]:
+            r = task_roles.get(role_name, {})
+            p = r.get("provider", def_prov)
+            m = r.get("primary", def_model)
+            return (p, m)
+
+        return {
+            AuxiliaryTaskType.COMPRESSION: _resolve("summarizer"),
+            AuxiliaryTaskType.TITLE_GENERATION: _resolve("summarizer"),
+            AuxiliaryTaskType.CLARIFY_OPTIONS: _resolve("chat_telegram"),
+            AuxiliaryTaskType.SKILL_CURATOR: _resolve("trade_reflection"),
+            AuxiliaryTaskType.INTENT_DETECTION: _resolve("jev_telegram_intent"),
+            AuxiliaryTaskType.QUICK_SUMMARY: _resolve("summarizer"),
         }
 
     def register_task_route(self, task: AuxiliaryTaskType, provider: str, model: str) -> None:
@@ -137,7 +164,7 @@ class AuxiliaryModelRouter:
         Executes an auxiliary task through the parameter ladder and reasoning floor stepper.
         """
         provider, model = self._task_role_mapping.get(
-            task, ("openrouter", "google/gemini-2.5-flash")
+            task, (self.settings.get("llm", {}).get("default_provider", "openrouter"), self.settings.get("llm", {}).get("default_model", "gpt-6.1-sol-medium")) if self.settings else ("openrouter", "gpt-6.1-sol-medium")
         )
         dispatch_caller = caller or self._default_caller
         if dispatch_caller is None:

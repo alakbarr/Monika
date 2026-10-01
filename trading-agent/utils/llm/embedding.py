@@ -18,7 +18,7 @@ LEGACY_MODEL_MIGRATIONS = {
 
 async def generate_gemini_embedding(
     text: str,
-    model: str = DEFAULT_EMBEDDING_MODEL,
+    model: Optional[str] = None,
     settings: Optional[dict] = None,
     api_key: Optional[str] = None,
     output_dimensionality: Optional[int] = 768,
@@ -46,7 +46,12 @@ async def generate_gemini_embedding(
         logger.debug("[Embedding] No Gemini API key available for embedding.")
         return None
 
-    target_model = model or (settings and settings.get("embedding_model")) or os.getenv("GEMINI_EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
+    target_model = (
+        model
+        or (settings and (settings.get("llm", {}).get("embedding_model") or settings.get("embedding_model")))
+        or os.getenv("GEMINI_EMBEDDING_MODEL")
+        or DEFAULT_EMBEDDING_MODEL
+    )
 
     # Strip model prefix if passed like models/gemini-embedding-001
     clean_model = target_model.split("/")[-1]

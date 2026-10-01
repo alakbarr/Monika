@@ -29,6 +29,7 @@ async def ping():
 
 
 @router.get("/api/metrics", tags=["Observability"])
+@router.get("/metrics", tags=["Observability"])
 async def get_metrics():
     """Prometheus metrics scrape endpoint."""
     from logging_observability.metrics_exporter import metrics

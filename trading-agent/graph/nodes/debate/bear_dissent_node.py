@@ -75,19 +75,20 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
                 bear_severity = bear_dissent.get('risk_severity', 5)
                 disagreement = abs(bull_strength - (10 - bear_severity))
                 divergence = round(disagreement / 10.0, 2)
-                max_rounds = debate_cfg.get('debate_rounds', 2)
-                needs_rebuttal = divergence > 0.40 and turn < 2 and max_rounds >= 2 and not rebuttal_completed
+                max_rounds = int(debate_cfg.get('debate_rounds', 2) or 2)
+                needs_rebuttal = divergence > 0.40 and turn < max_rounds and max_rounds >= 2
 
                 if needs_rebuttal:
-                    logger.info(f'[{sym}] High debate divergence ({divergence:.2f}) at turn {turn} — cyclic dialectic rebuttal required')
+                    logger.info(f'[{sym}] High debate divergence ({divergence:.2f}) at turn {turn}/{max_rounds} — cyclic dialectic rebuttal required')
 
                 return sym, {
                     'bear_dissent': bear_dissent,
                     'disagreement': disagreement,
                     'divergence': divergence,
                     'turn': turn,
+                    'max_rounds': max_rounds,
                     'needs_rebuttal': needs_rebuttal,
-                    'rebuttal_completed': rebuttal_completed
+                    'rebuttal_completed': turn >= max_rounds
                 }
             except Exception as e:
                 logger.error(f"[{sym}] Bear dissent failed: {e}", exc_info=True)

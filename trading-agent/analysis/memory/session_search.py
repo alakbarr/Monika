@@ -356,7 +356,9 @@ class SessionSearchEngine:
             content_text += f" | Outcome: {r.exit_reason}"
         if r.alpha_lesson or r.reflection_text:
             ref_text = r.alpha_lesson or r.reflection_text or ""
-            content_text += f" | Reflection: {ref_text[:120]}"
+            content_text += f" | Reflection: {ref_text}"
+        if r.specific_lesson:
+            content_text += f" | Lesson: {r.specific_lesson}"
 
         ts_str = r.created_at.isoformat() if r.created_at else datetime.now(timezone.utc).isoformat()
         return {
@@ -368,6 +370,10 @@ class SessionSearchEngine:
             "confidence": float(r.confidence or 0.0),
             "confluence_score": int(r.confluence_score or 0),
             "content": content_text,
+            "specific_lesson": r.specific_lesson,
+            "next_trade_adjustment": r.next_trade_adjustment,
+            "lesson_tags": r.lesson_tags,
+            "alpha_lesson": r.alpha_lesson,
             "pnl": pnl_val,
         }
 

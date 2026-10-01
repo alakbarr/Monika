@@ -37,7 +37,7 @@ logger = logging.getLogger("TradingAgent.FRED")
 FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 # Pemetaan FRED series ID ke tipe/label tenor
-TENOR_SERIES = {"DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE"}
+TENOR_SERIES = {"DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE", "WALCL", "RRPONTSYD", "WTREGEN", "M2SL"}
 INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR", "BOERUKM", "IRSTCB01JPM156N", "IRSTCB01AUM156N"}
 
 # Nama tenor yang mudah dibaca
@@ -48,6 +48,10 @@ SERIES_TO_TENOR = {
     "DGS30": "30Y",
     "DFII10": "10Y_REAL",
     "T10YIE": "10Y_INFLATION",
+    "WALCL": "FED_TOTAL_ASSETS",
+    "RRPONTSYD": "REVERSE_REPO",
+    "WTREGEN": "TGA_BALANCE",
+    "M2SL": "M2_MONEY_SUPPLY",
 }
 
 # Label bank untuk suku bunga

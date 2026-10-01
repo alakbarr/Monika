@@ -16,12 +16,14 @@ from pathlib import Path
 logger = logging.getLogger("TradingAgent.DBBackup")
 
 
-async def create_backup(settings: dict) -> dict:
+async def create_backup(settings: dict, force: bool = False) -> dict:
     """
     Buat backup PostgreSQL terkompresi via pg_dump.
     Menghapus backup lama secara otomatis.
     """
-    backup_cfg = settings.get("database", {}).get("backup", {})
+    backup_cfg = dict(settings.get("database", {}).get("backup", {}))
+    if force:
+        backup_cfg["enabled"] = True
     if not backup_cfg.get("enabled", False):
         return {"skipped": True, "reason": "backup_disabled"}
 

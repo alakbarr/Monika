@@ -56,5 +56,22 @@ class ExecutionToolHandlers:
         else:
             from execution.mt5_client import get_mt5_client
             client = get_mt5_client(self.settings)
-        return await client.get_spread(symbol=symbol or "EURUSD")
+        if client:
+            return await client.get_spread(symbol=symbol or "EURUSD")
+        return {"symbol": symbol or "EURUSD", "spread_points": 0}
+
+    async def calculate_margin(self, symbol: str, lot_size: float, action: str = "buy", price: Optional[float] = None, **kwargs) -> Dict[str, Any]:
+        """Calculates margin requirement for a given volume and instrument."""
+        if self.mt5_client is not None:
+            client = self.mt5_client
+        else:
+            from execution.mt5_client import get_mt5_client
+            client = get_mt5_client(self.settings)
+        if hasattr(client, "calc_margin"):
+            import inspect
+            res = client.calc_margin(symbol=symbol, lot=lot_size, action=action, price=price)
+            if inspect.iscoroutine(res):
+                res = await res
+            return res
+        return {"symbol": symbol, "lot": lot_size, "required_margin": 0.0, "error": "calc_margin not available"}
 

@@ -1203,7 +1203,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     err_msg = close_result.get('error') if close_result else 'No response from MT5'
                     logger.critical(f"EMERGENCY: Could not close orphan primary leg {primary.symbol} ticket={result_primary['ticket']}! Error: {err_msg}")
                     try:
-                        await AgentNotifier().send_critical(f"🚨 ORPHAN TRADE EMERGENCY: {primary.symbol} ticket={result_primary['ticket']} close failed ({err_msg})!")
+                        await AgentNotifier().send_critical(f"[DARURAT] ORPHAN TRADE EMERGENCY: {primary.symbol} ticket={result_primary['ticket']} close failed ({err_msg})!")
                     except Exception as notif_err:
                         logger.error(f"Failed to send orphan trade emergency alert: {notif_err}")
                     primary.execution_status = 'orphan_emergency'
@@ -1276,7 +1276,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                                 await AgentNotifier().send_critical(f"ORPHAN PAIRED TRADE: ticket={t}. DB commit and close both failed: {close_err}")
                 raise
 
-        logger.info(f"✅ Paired trade executed: {primary.symbol}+{hedge.symbol} "
+        logger.info(f"[OK] Paired trade executed: {primary.symbol}+{hedge.symbol} "
                    f"[group={pair_group_id[:8]}]")
         return {"success": True, "tickets": [result_primary['ticket'], result_hedge['ticket']]}
 
@@ -1488,7 +1488,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 err_msg = close_err or "Unknown error closing Leg 1"
                 logger.critical(f"EMERGENCY: Could not close orphan Leg 1 {symbol} ticket={res_leg1.get('ticket')}! Error: {err_msg}")
                 try:
-                    await AgentNotifier().send_critical(f"🚨 ORPHAN TRANCHE EMERGENCY: {symbol} ticket={res_leg1.get('ticket')} rollback failed ({err_msg})!")
+                    await AgentNotifier().send_critical(f"[DARURAT] ORPHAN TRANCHE EMERGENCY: {symbol} ticket={res_leg1.get('ticket')} rollback failed ({err_msg})!")
                 except Exception as notif_err:
                     logger.error(f"Failed to send orphan alert: {notif_err}")
 
@@ -1564,7 +1564,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         _EXECUTED_ANALYSIS_IDS[analysis.id] = time.time()
 
         logger.info(
-            f"✅ Multi-leg Tranche executed: {symbol} {decision.upper()} "
+            f"[OK] Multi-leg Tranche executed: {symbol} {decision.upper()} "
             f"L1={lots_1}L @ TP {tp_price}, L2={lots_2}L @ TP {tp_2} "
             f"[group={tranche_group_id}]"
         )
@@ -2234,7 +2234,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             if adv.get('recommend_block') and adv.get('overall_quality') == 'low':
                 logger.warning(f"[{symbol}] Adversarial check recommends block: {adv.get('block_reason')}")
                 try:
-                    await AgentNotifier().send_warning(f"⚠️ Adversarial Check — {symbol}\n{adv.get('strongest_counter_argument', '')[:200]}")
+                    await AgentNotifier().send_warning(f"[PERINGATAN] Adversarial Check — {symbol}\n{adv.get('strongest_counter_argument', '')[:200]}")
                 except Exception:
                     pass
 
@@ -2722,7 +2722,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                             logger.error(f"[{symbol}] Zero-Trust verification flagged issues post-execution: {issues}")
                             try:
                                 await AgentNotifier().send_warning(
-                                    f"⚠️ <b>Execution Verification Flagged</b>\n"
+                                    f"[PERINGATAN] <b>Execution Verification Flagged</b>\n"
                                     f"Symbol: {symbol} Ticket: {mt5_result.get('ticket')}\n"
                                     f"Issues: {'; '.join(issues)}"
                                 )
@@ -2810,7 +2810,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             try:
                 notifier = AgentNotifier()
                 msg = (
-                    f"✅ <b>TRADE EXECUTED — {result.symbol}</b>\n\n"
+                    f"[OK] <b>TRADE EXECUTED — {result.symbol}</b>\n\n"
                     f"Direction: {result.decision.upper()}\n"
                     f"Lots: {result.executed_lots}\n"
                     f"Entry: {result.executed_price}\n"
@@ -2824,7 +2824,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             logger.error(f"TRADE FAILED: {result.summary()}")
             try:
                 notifier = AgentNotifier()
-                await notifier.send_warning(f"❌ <b>TRADE FAILED</b>\n{result.summary()}")
+                await notifier.send_warning(f"[GAGAL] <b>TRADE FAILED</b>\n{result.summary()}")
             except Exception as e:
                 logger.error(f"Failed to notify trade failure: {e}")
         _prune_executed_analysis_ids()

@@ -53,8 +53,46 @@ class SentimentToolHandlers:
     get_fear_greed_index = get_fear_greed
 
     async def get_retail_sentiment(self, symbol: Optional[str] = None, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        target_symbol = (symbol or kwargs.get("asset") or "BTCUSD").upper()
+        target_symbol = (symbol or kwargs.get("asset") or "EURUSD").upper()
         if session:
+            # 1. Try fast cache read from SystemConfig (< 4 hours)
+            try:
+                import json
+                from datetime import datetime, timezone
+                import utils.clock as clock
+                from database.models import SystemConfig
+                from sqlalchemy import select
+
+                cache_keys = [
+                    f"sentiment_{target_symbol}",
+                    "myfxbook_sentiment_latest",
+                    "fxssi_sentiment_latest",
+                ]
+                for ck in cache_keys:
+                    cfg_row = (await session.execute(select(SystemConfig).where(SystemConfig.key == ck))).scalar_one_or_none()
+                    if cfg_row and cfg_row.value:
+                        try:
+                            cached_data = json.loads(cfg_row.value)
+                            ts_str = cached_data.get("timestamp") or cached_data.get("updated_at")
+                            if ts_str:
+                                dt = datetime.fromisoformat(ts_str)
+                                if dt.tzinfo is None:
+                                    dt = dt.replace(tzinfo=timezone.utc)
+                                if (clock.now() - dt).total_seconds() < 14400: # 4h fresh
+                                    if target_symbol in cached_data and isinstance(cached_data[target_symbol], dict):
+                                        res = dict(cached_data[target_symbol])
+                                        res["cached"] = True
+                                        return res
+                                    elif cached_data.get("symbol") == target_symbol:
+                                        res = dict(cached_data)
+                                        res["cached"] = True
+                                        return res
+                        except Exception:
+                            pass
+            except Exception as cache_err:
+                logger.debug(f"Sentiment cache check notice: {cache_err}")
+
+            # 2. Live fetch fallback if cache missing/stale
             try:
                 if target_symbol.startswith("BTC") or target_symbol.startswith("ETH"):
                     from scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher

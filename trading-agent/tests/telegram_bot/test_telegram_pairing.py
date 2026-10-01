@@ -104,7 +104,7 @@ async def test_cmd_pair_lifecycle(temp_pairing_mgr):
 
     await bot._cmd_pair(update2, ctx2)
     reply_text2 = update2.message.reply_text.call_args[0][0]
-    assert "Invalid pairing code" in reply_text2
+    assert "Kode pairing tidak valid" in reply_text2
     assert not temp_pairing_mgr.is_user_paired("telegram", str(stranger_id))
 
     # Step 3: Attempt with correct code (retrieve from in-memory challenge)

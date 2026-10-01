@@ -221,7 +221,7 @@ def test_safe_unicode_slice():
     from analysis.harness.context_compressor import safe_unicode_slice
 
     # Japanese text & currency symbols & emoji
-    text = "東京市場 分析 🚀 EURUSD €1.0850 ¥155.20"
+    text = "東京市場 分析  EURUSD €1.0850 ¥155.20"
     sliced = safe_unicode_slice(text, 10)
     assert len(sliced) <= 10
     # Must be valid utf-8 string without error

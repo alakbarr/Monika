@@ -235,9 +235,10 @@ class TestTelegramToolsIntegration:
         m_bar.scalar_one_or_none.return_value = PriceOHLCV(symbol="EURUSD", close=1.0850, timestamp=datetime.now(timezone.utc))
         mock_session.execute = AsyncMock(return_value=m_bar)
 
-        res = await executor.execute("get_spread_snapshot", {"symbols": ["EURUSD", "XAUUSD"]})
-        assert "spreads" in res
-        assert "EURUSD" in res["spreads"]
-        assert "XAUUSD" in res["spreads"]
-        assert res["spreads"]["EURUSD"]["current_spread_pips"] == 1.0
-        assert res["spreads"]["XAUUSD"]["current_spread_pips"] == 2.5
+        with patch("execution.mt5_client.get_mt5_client", return_value=None):
+            res = await executor.execute("get_spread_snapshot", {"symbols": ["EURUSD", "XAUUSD"]})
+            assert "spreads" in res
+            assert "EURUSD" in res["spreads"]
+            assert "XAUUSD" in res["spreads"]
+            assert res["spreads"]["EURUSD"]["current_spread_pips"] == 1.0
+            assert res["spreads"]["XAUUSD"]["current_spread_pips"] == 2.5

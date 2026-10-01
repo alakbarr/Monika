@@ -44,6 +44,9 @@ class FedProbability:
     target_range: str
     probability: float
     action: str
+    prior_1d: Optional[float] = None
+    prior_1w: Optional[float] = None
+    prior_1m: Optional[float] = None
 
 @dataclass
 class FedMeeting:

@@ -165,9 +165,9 @@ class TelegramBot:
         app.add_handler(CommandHandler("archive_intel", self._cmd_archive_intel))
         app.add_handler(CommandHandler("regime",      self._cmd_regime))
         app.add_handler(CommandHandler("audit",       self._cmd_audit))
-        # Admin commands
         app.add_handler(CommandHandler("pause",  self._cmd_pause))
         app.add_handler(CommandHandler("resume", self._cmd_resume))
+        app.add_handler(CommandHandler("suspend", self._cmd_suspend))
         app.add_handler(CommandHandler("unsuspend", self._cmd_unsuspend))
         app.add_handler(CommandHandler("kill",   self._cmd_kill))
         app.add_handler(CommandHandler("emergency", self._cmd_emergency))
@@ -196,14 +196,30 @@ class TelegramBot:
         app.add_handler(CommandHandler("reconcile",  self._cmd_reconcile))
         app.add_handler(CommandHandler("fedwatch",   self._cmd_fedwatch))
         app.add_handler(CommandHandler("yields",     self._cmd_yields))
+        app.add_handler(CommandHandler("macro_weekly", self._cmd_macro_weekly))
+        app.add_handler(CommandHandler("weekly_macro", self._cmd_macro_weekly))
         app.add_handler(CommandHandler("fear_greed", self._cmd_fear_greed))
         app.add_handler(CommandHandler("cot",        self._cmd_cot))
         app.add_handler(CommandHandler("playbooks",   self._cmd_playbooks))
         app.add_handler(CommandHandler("rollback",    self._cmd_rollback))
         app.add_handler(CommandHandler("crystallized", self._cmd_crystallized))
         app.add_handler(CommandHandler("cron",        self._cmd_cron))
+        app.add_handler(CommandHandler("counterfactual", self._cmd_counterfactual))
+        app.add_handler(CommandHandler("chronicle",     self._cmd_chronicle))
+        app.add_handler(CommandHandler("monte_carlo",   self._cmd_monte_carlo))
+        app.add_handler(CommandHandler("montecarlo",    self._cmd_monte_carlo))
+        app.add_handler(CommandHandler("export_chat",   self._cmd_export_chat))
+        app.add_handler(CommandHandler("export",        self._cmd_export_chat))
+        app.add_handler(CommandHandler("undo",          self._cmd_undo))
+        app.add_handler(CommandHandler("backup",        self._cmd_backup))
+        app.add_handler(CommandHandler("stress_test",   self._cmd_stress_test))
+        app.add_handler(CommandHandler("stresstest",    self._cmd_stress_test))
         app.add_handler(CommandHandler("model",       self._cmd_model))
         app.add_handler(CommandHandler("pair",        self._cmd_pair))
+        app.add_handler(CommandHandler("cancel",      self._cmd_cancel))
+        app.add_handler(CommandHandler("account",     self._cmd_account))
+        app.add_handler(CommandHandler("tasks",       self._cmd_tasks))
+        app.add_handler(CommandHandler("debate",      self._cmd_debate))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -388,9 +404,9 @@ class TelegramBot:
 
     async def _reject_non_admin(self, update: Update) -> None:
         if update.message:
-            await update.message.reply_text("⛔ Perintah ini hanya untuk admin.")
+            await update.message.reply_text("[AKSES DITOLAK] Perintah ini hanya untuk admin.")
         elif update.effective_message:
-            await update.effective_message.reply_text("⛔ Perintah ini hanya untuk admin.")
+            await update.effective_message.reply_text("[AKSES DITOLAK] Perintah ini hanya untuk admin.")
 
     # ------------------------------------------------------------------
     # Direct command handlers
@@ -401,7 +417,7 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         name = (update.effective_user.first_name if update.effective_user else None) or "Trader"
         await update.message.reply_text(
-            f"👋 Halo *{name}*!\n\n"
+            f"[SALAM] Halo *{name}*!\n\n"
             f"Halo! Saya *Monika* — MT5 Trading Agent otonom berbasis multi-agent LLM.\n\n"
             f"Gunakan /help untuk melihat semua perintah yang tersedia.\n"
             f"Atau ketik pertanyaan apa saja untuk berdiskusi langsung dengan asisten AI.",
@@ -434,7 +450,7 @@ class TelegramBot:
                 InlineKeyboardButton(f"▶ Run /{matched_def.command}", callback_data=f"cmd:{matched_def.command}")
             ]]
             await update.message.reply_text(
-                f"❓ Unknown command `/{raw_cmd}`.\n\nDid you mean: *{matched_def.usage}*?\n_{matched_def.description}_",
+                f"[?] Unknown command `/{raw_cmd}`.\n\nDid you mean: *{matched_def.usage}*?\n_{matched_def.description}_",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
@@ -442,13 +458,13 @@ class TelegramBot:
             suggest_str = ", ".join(f"`{s}`" for s in suggestions)
             keyboard = [[InlineKeyboardButton(s, callback_data=f"cmd:{s.lstrip('/')}") for s in suggestions[:3]]]
             await update.message.reply_text(
-                f"❓ Unknown command `/{raw_cmd}`.\n\nDid you mean: {suggest_str}?\nType `/help` to see all available commands.",
+                f"[?] Unknown command `/{raw_cmd}`.\n\nDid you mean: {suggest_str}?\nType `/help` to see all available commands.",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
         else:
             await update.message.reply_text(
-                f"❓ Unknown command `/{raw_cmd}`. Type `/help` to see all available commands.",
+                f"[?] Unknown command `/{raw_cmd}`. Type `/help` to see all available commands.",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -470,11 +486,11 @@ class TelegramBot:
             redirect_msg = " ".join(ctx.args) if ctx.args else "Turn interrupted by user"
             success = agent.interrupt(redirect_msg)
             if success:
-                await update.message.reply_text(f"🛑 Analysis interrupted. Note: {redirect_msg}")
+                await update.message.reply_text(f"[BERHENTI] Analysis interrupted. Note: {redirect_msg}")
             else:
-                await update.message.reply_text("ℹ️ No active task currently executing for your session.")
+                await update.message.reply_text("[INFORMASI] No active task currently executing for your session.")
         else:
-            await update.message.reply_text("ℹ️ No active chat session found.")
+            await update.message.reply_text("[INFORMASI] No active chat session found.")
 
     async def _cmd_resume_proposals(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -492,9 +508,9 @@ class TelegramBot:
 
         if agent:
             res = agent.resume_proposals()
-            await update.message.reply_text(f"✅ {res}")
+            await update.message.reply_text(f"[BERHASIL] {res}")
         else:
-            await update.message.reply_text("ℹ️ No active chat session found.")
+            await update.message.reply_text("[INFORMASI] No active chat session found.")
 
     async def _cmd_stats(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -533,19 +549,19 @@ class TelegramBot:
                 daily_budget = b_stat["daily_budget"]
             
             text = (
-                f"💰 *API Cost Report*\n\n"
+                f"[SALDO] *API Cost Report*\n\n"
                 f"• *Today Spend:* `${b_stat['daily_cost']:.4f}` / `${daily_budget:.2f}`\n"
                 f"• *Month-to-Date:* `${b_stat['mtd_cost']:.4f}` / `${budget:.2f}` ({b_stat['usage_pct']:.1f}%)\n"
                 f"• *Last 7 days:* `${rolling['cost_7d']:.4f}` ({rolling['cycles_7d']} cycles)\n"
                 f"• *Avg/cycle:* `${rolling['avg_per_cycle']:.4f}`\n"
                 f"• *Projected/month:* `${rolling['projected_monthly']:.2f}`\n"
-                f"• *Budget Status:* `{'🛑 PAUSED' if b_stat['is_paused'] else '✅ ACTIVE'}`\n"
+                f"• *Budget Status:* `{'[BERHENTI] PAUSED' if b_stat['is_paused'] else '[BERHASIL] ACTIVE'}`\n"
             )
             if rolling['projected_monthly'] > budget:
-                text += f"\n⚠️ *OVER BUDGET projection!* Consider reducing cycles or disabling escalation."
+                text += f"\n[PERINGATAN] *OVER BUDGET projection!* Consider reducing cycles or disabling escalation."
             await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
-            await update.message.reply_text(f"❌ Error: {e}")
+            await update.message.reply_text(f"[GAGAL] Error: {e}")
 
     async def _cmd_credits(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -572,43 +588,54 @@ class TelegramBot:
                     select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
                 )).scalar_one_or_none()
                 
-                lines = [f"⚙️ *System Calibration States*"]
+                lines = [f"[KONFIGURASI] *System Calibration States*"]
                 if cal_cfg and cal_cfg.value:
                     cal_data = _json.loads(cal_cfg.value)
                     if cal_data:
-                        lines.append("\n📰 *News Directives:*")
+                        lines.append("\n[BERITA] *News Directives:*")
                         for k, v in cal_data.items():
                             lines.append(f"• `{k}`: {v}")
                         
                 ceilings = await get_currency_confidence_ceiling(session, days_back=30)
                 if ceilings:
-                    lines.append("\n🎯 *Confidence Ceilings:*")
+                    lines.append("\n[TARGET] *Confidence Ceilings:*")
                     for cur, cap in ceilings.items():
                         lines.append(f"• `{cur}`: Max {cap}")
                 
                 from utils.protocol.enhanced_cds import get_cds_thresholds_async
                 cds_thr = await get_cds_thresholds_async(session, self.settings)
-                lines.append('\n📐 *SSVP CDS Thresholds:*')
+                lines.append('\n[ANALISIS] *SSVP CDS Thresholds:*')
                 for k, v in cds_thr.items():
                     lines.append(f'• `{k}`: {v}')
                 
                 from utils.analytics.specialist_tracker import compute_specialist_reliability
                 spec_rel = await compute_specialist_reliability(session)
                 if spec_rel.get('specialists'):
-                    lines.append('\n🧑‍💼 *Specialist Trust Weights:*')
+                    lines.append('\n[OPERATOR]‍[PORTOFOLIO] *Specialist Trust Weights:*')
                     for name, d in spec_rel['specialists'].items():
-                        flag = ' ⚠️ CHRONIC' if d.get('chronically_unreliable') else ''
+                        flag = ' [PERINGATAN] CHRONIC' if d.get('chronically_unreliable') else ''
                         lines.append(f"• `{name}`: {d['trust_weight']} (acc={d['accuracy_pct']}%, n={d['total']}){flag}")
                 
                 infl_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'score_inflation_correction_threshold'))).scalar_one_or_none()
                 if infl_cfg and infl_cfg.value:
                     infl_data = _json.loads(infl_cfg.value)
-                    lines.append(f"\n📊 *Score Inflation Correction:* threshold={infl_data.get('threshold')} (set {infl_data.get('set_at','')[:10]})")
+                    lines.append(f"\n[LAPORAN] *Score Inflation Correction:* threshold={infl_data.get('threshold')} (set {infl_data.get('set_at','')[:10]})")
+
+                try:
+                    from utils.calibration.confidence_calibrator import check_confidence_calibration
+                    cal_rep = await check_confidence_calibration(session, days_back=30)
+                    brier = cal_rep.get("brier_score")
+                    ece = cal_rep.get("ece")
+                    if brier is not None:
+                        ece_str = f", ECE={ece:.4f}" if ece is not None else ""
+                        lines.append(f"\n[TARGET] *Confidence Calibration:* Brier={brier:.4f}{ece_str}")
+                except Exception:
+                    pass
             
             text = "\n".join(lines) if len(lines) > 1 else "No active calibration directives."
             await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
-            await update.message.reply_text(f"❌ Error: {e}")
+            await update.message.reply_text(f"[GAGAL] Error: {e}")
 
     async def _cmd_edge(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -617,7 +644,7 @@ class TelegramBot:
         from utils.analytics.paper_tracker import PaperTracker
         from database.db import get_session
         
-        await update.message.reply_text("⏳ Menghitung edge assessment... (bisa memakan waktu beberapa detik)")
+        await update.message.reply_text("[MEMPROSES] Menghitung edge assessment... (bisa memakan waktu beberapa detik)")
         
         async with get_session() as session:
             dir_acc = await get_direction_accuracy_report(session, 14)
@@ -625,7 +652,7 @@ class TelegramBot:
             tracker = PaperTracker()
             stats = await tracker.get_statistics(session)
             
-        msg = "📊 *EDGE ASSESSMENT*\n\n"
+        msg = "[LAPORAN] *EDGE ASSESSMENT*\n\n"
         msg += f"• *Win Rate (Paper):* {stats.get('win_rate_pct', 0)}% (Total: {stats.get('total_trades', 0)})\n"
         if not dir_acc.get('insufficient_data') and 'overall_accuracy_4h_pct' in dir_acc:
             msg += f"• *Direction Accuracy (4H):* {dir_acc['overall_accuracy_4h_pct']}%\n\n"
@@ -719,8 +746,77 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        text = await self._build_trailing_text()
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        if not ctx.args:
+            text = await self._build_trailing_text()
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+            return
+
+        # Handle per-ticket override: /trailing <ticket> <trail_mult> [be_mult]
+        # or /trailing <ticket> disable / reset
+        import json
+        from database.db import get_session
+        from database.models import Position
+        from sqlalchemy import select, or_
+
+        ticket_str = ctx.args[0].strip().replace("#", "")
+        if not ticket_str.isdigit():
+            await update.message.reply_text(
+                "Penggunaan:\n"
+                "- `/trailing` : Lihat status trailing semua posisi\n"
+                "- `/trailing <ticket> <trail_mult> [be_mult]` : Atur trailing kustom\n"
+                "- `/trailing <ticket> disable` : Matikan trailing tiket ini\n"
+                "- `/trailing <ticket> reset` : Kembalikan ke default global",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        ticket_num = int(ticket_str)
+        arg_action = ctx.args[1].lower().strip() if len(ctx.args) > 1 else ""
+
+        async with get_session() as session:
+            stmt = select(Position).where(
+                or_(Position.mt5_ticket == ticket_num, Position.id == ticket_num),
+                Position.closed_at.is_(None)
+            ).limit(1)
+            pos = (await session.execute(stmt)).scalar_one_or_none()
+            if not pos:
+                await update.message.reply_text(f"[PERINGATAN] Posisi aktif dengan ticket #{ticket_num} tidak ditemukan.")
+                return
+
+            if arg_action in ("reset", "default", "clear"):
+                pos.trailing_override_json = None
+                await session.commit()
+                await update.message.reply_text(f"[BERHASIL] Trailing override untuk tiket #{ticket_num} ({pos.symbol}) di-reset ke default global.")
+                return
+
+            if arg_action in ("off", "disable", "disabled", "stop"):
+                pos.trailing_override_json = json.dumps({"disabled": True})
+                await session.commit()
+                await update.message.reply_text(f"[BERHENTI] Trailing stop untuk tiket #{ticket_num} ({pos.symbol}) dinonaktifkan.")
+                return
+
+            try:
+                trail_val = float(arg_action)
+                be_val = float(ctx.args[2]) if len(ctx.args) > 2 else 1.0
+                override_data = {
+                    "trail_atr_multiple": trail_val,
+                    "breakeven_atr_multiple": be_val,
+                    "disabled": False,
+                }
+                pos.trailing_override_json = json.dumps(override_data)
+                await session.commit()
+                await update.message.reply_text(
+                    f"[BERHASIL] Trailing stop override tiket #{ticket_num} ({pos.symbol}) aktif:\n"
+                    f"- Trail ATR Multiple: `{trail_val}x`\n"
+                    f"- Breakeven ATR Multiple: `{be_val}x`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except ValueError:
+                await update.message.reply_text(
+                    f"[PERINGATAN] Nilai multiple ATR '{arg_action}' tidak valid. Masukkan angka (misal: 1.5).",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
 
     async def _cmd_reconcile(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -757,6 +853,275 @@ class TelegramBot:
         market_code = ctx.args[0] if ctx.args else None
         text = await self._build_cot_text(market_code)
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_macro_weekly(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        days = 7
+        curr = None
+        if ctx.args:
+            first_arg = ctx.args[0].strip()
+            if first_arg.isdigit():
+                days = int(first_arg)
+            else:
+                curr = first_arg.upper()
+        if len(ctx.args) > 1 and ctx.args[1].strip().isdigit():
+            days = int(ctx.args[1].strip())
+        from database.db import get_session
+        from analysis.tools.handlers.macro_tools import handle_get_weekly_macro_summary
+        async with get_session() as session:
+            res = await handle_get_weekly_macro_summary(
+                {"days_ahead": days, "currencies": curr},
+                session=session,
+                settings=self.settings,
+            )
+        text = res.get("formatted_summary") or "[ FAILED ] Tidak dapat menyusun ringkasan makro mingguan."
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_counterfactual(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        args = ctx.args or []
+        if not args:
+            await update.message.reply_text(
+                "Usage: `/counterfactual <trade_id> [sl_pips_delta] [tp_pips_delta]`\nContoh: `/counterfactual 123 10.0` (simulasi jika SL 10 pips lebih lebar)",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        try:
+            trade_id = int(args[0])
+            sl_delta = float(args[1]) if len(args) > 1 else 10.0
+            tp_delta = float(args[2]) if len(args) > 2 else 0.0
+            from analysis.memory.counterfactual_simulator import CounterfactualSimulator
+            from database.db import get_session
+            sim = CounterfactualSimulator()
+            async with get_session() as sess:
+                res = await sim.simulate_single_trade_counterfactual(sess, trade_id, sl_delta, tp_delta)
+            if res.get("status") == "error":
+                await update.message.reply_text(f"[GAGAL] {res.get('message')}")
+                return
+            orig = res.get("original", {})
+            cf = res.get("counterfactual", {})
+            pnl_icon = "[AKTIF]" if cf.get("pnl_diff", 0) >= 0 else "[KRITIS]"
+            msg = (
+                f"[RISET] *Counterfactual Replay: Trade #{trade_id} ({res.get('symbol')} {res.get('direction')})*\n"
+                f"Entry: `{res.get('entry_price')}`\n\n"
+                f"[LAPORAN] *Hasil Asli:*\n"
+                f"• SL: `{orig.get('stop_loss')}` | TP: `{orig.get('take_profit')}`\n"
+                f"• Exit Reason: `{orig.get('exit_reason')}`\n"
+                f"• Realized PnL: `${orig.get('pnl'):.2f}`\n\n"
+                f"[UJI COBA] *Skenario Counterfactual (SL +{sl_delta} pips):*\n"
+                f"• New SL: `{cf.get('new_stop_loss')}`\n"
+                f"• Survived SL: `{'YA' if cf.get('survived_sl') else 'TIDAK'}`\n"
+                f"• Outcome: `{cf.get('outcome')}`\n"
+                f"• Est. PnL: `${cf.get('estimated_pnl'):.2f}`\n"
+                f"• PnL Delta: {pnl_icon} `${cf.get('pnl_diff'):+.2f}`\n\n"
+                f"[CATATAN] *Catatan:* {res.get('notes')}"
+            )
+            await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.error(f"Counterfactual command error: {e}", exc_info=True)
+            await update.message.reply_text(f"[ERROR] Gagal menjalankan counterfactual: {e}")
+
+    async def _cmd_chronicle(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+        args = ctx.args or []
+        month = args[0] if args else None
+        year = int(args[1]) if len(args) > 1 else None
+        from analysis.tools.handlers.trade_intel import handle_get_market_chronicle
+        res = await handle_get_market_chronicle({"month": month, "year": year or 2026, "limit": 10})
+        chronicles = res.get("chronicles", [])
+        if not chronicles:
+            await update.message.reply_text(f"[LOG] Tidak ada catatan chronicle untuk periode {month or 'terkini'} {year or ''}.")
+            return
+        lines = [f"[LOG] *Market Chronicle ({month or 'Terkini'} {year or res.get('year')}):*\n"]
+        for c in chronicles[:8]:
+            dt = str(c.get("event_date", ""))[:10]
+            cat = str(c.get("category", "")).upper()
+            hl = c.get("headline", "")
+            lines.append(f"• `[{dt}]` *[{cat}]* {hl}")
+            if c.get("narrative"):
+                lines.append(f"  _{c.get('narrative')[:120]}..._\n")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_monte_carlo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        from analysis.tools.handlers.trade_intel import handle_run_monte_carlo_simulation
+        symbol = ctx.args[0].upper() if ctx.args else None
+        sims = 1000
+        if len(ctx.args or []) > 1:
+            try:
+                sims = int(ctx.args[1])
+            except ValueError:
+                pass
+
+        res = await handle_run_monte_carlo_simulation({"num_simulations": sims, "symbol": symbol})
+        fe = res.get("final_equity_distribution", {})
+        text = (
+            f"[PELUANG] *Monte Carlo Stress Test Report*\n"
+            f"• Sim Iterations: `{res.get('num_simulations')}` (`{res.get('sample_source')}`)\n"
+            f"• Sample Trades: `{res.get('sample_trades_count')}` (Asset: `{res.get('symbol_filter')}`)\n"
+            f"• *VaR 95% Max DD:* `{res.get('var_95_drawdown_pct')}%`\n"
+            f"• *VaR 99% Max DD:* `{res.get('var_99_drawdown_pct')}%`\n"
+            f"• *Median Max DD:* `{res.get('median_drawdown_pct')}%`\n"
+            f"• *Ruin Probability:* `{res.get('ruin_probability_pct')}%`\n"
+            f"• *Equity Outcomes ($10k base):*\n"
+            f"  - Worst 5% (P5): `${fe.get('p5', 0):,.2f}`\n"
+            f"  - Median (P50): `${fe.get('median_p50', 0):,.2f}`\n"
+            f"  - Best 5% (P95): `${fe.get('p95', 0):,.2f}`"
+        )
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_export_chat(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message or not update.effective_user: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        import io
+        import json
+        from sqlalchemy import select
+        from database.db import get_session
+        from database.models import TelegramConversation
+        from analysis.memory.sharegpt_exporter import ShareGptExporter
+
+        user_id = str(update.effective_user.id)
+        limit = 50
+        if ctx.args:
+            try:
+                limit = int(ctx.args[0])
+            except ValueError:
+                pass
+
+        async with get_session() as session:
+            rows = (await session.execute(
+                select(TelegramConversation)
+                .where(TelegramConversation.telegram_user_id == user_id)
+                .order_by(TelegramConversation.timestamp.desc())
+                .limit(limit)
+            )).scalars().all()
+
+        if not rows:
+            await update.message.reply_text("Tidak ada riwayat percakapan untuk diekspor.")
+            return
+
+        msgs = [{"role": r.role, "content": r.message} for r in reversed(rows)]
+        sharegpt_data = ShareGptExporter.to_sharegpt_format(msgs)
+        
+        json_bytes = json.dumps(sharegpt_data, indent=2, ensure_ascii=False).encode("utf-8")
+        doc = io.BytesIO(json_bytes)
+        doc.name = f"chat_export_{user_id}.json"
+        await update.message.reply_document(document=doc, caption=f"[KIRIM] *ShareGPT Trajectory Export* ({len(sharegpt_data)} turns)", parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_undo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message or not update.effective_user: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        from database.db import get_session
+        from database.models import TelegramConversation
+        from sqlalchemy import select, delete
+
+        user_id = str(update.effective_user.id)
+        async with get_session() as session:
+            recent = (await session.execute(
+                select(TelegramConversation)
+                .where(TelegramConversation.telegram_user_id == user_id)
+                .order_by(TelegramConversation.timestamp.desc())
+                .limit(2)
+            )).scalars().all()
+
+            if not recent:
+                await update.message.reply_text("Tidak ada pesan sebelumnya yang dapat di-undo.")
+                return
+
+            ids_to_del = [r.id for r in recent]
+            await session.execute(
+                delete(TelegramConversation).where(TelegramConversation.id.in_(ids_to_del))
+            )
+            await session.commit()
+
+        try:
+            from database.session_db_wal import SessionDbWal, DEFAULT_SESSION_DB_PATH
+            from agent.state_rewind import StateRewindManager
+            if DEFAULT_SESSION_DB_PATH.exists():
+                wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
+                rewinder = StateRewindManager(wal_db)
+                rewinder.rewind_session(user_id)
+        except Exception:
+            pass
+
+        await update.message.reply_text(
+            "↩ *Percakapan Berhasil Di-Undo*\n"
+            f"• Pesan terakhir ({len(ids_to_del)} giliran) dihapus dari memori konteks.\n"
+            "• _Catatan: Transaksi broker MT5 tetap permanen di ledger._",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+    async def _cmd_backup(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_admin(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        from utils.infra.db_backup import create_backup
+        res = await create_backup(self.settings, force=True)
+        if res.get("success"):
+            text = (
+                f"[SIMPAN] *Database Backup Sukses!*\n"
+                f"• File: `{res.get('backup_file')}`\n"
+                f"• Ukuran: `{res.get('size_mb')} MB`\n"
+                f"• Waktu: `{res.get('timestamp')}`"
+            )
+        else:
+            text = f"[GAGAL] *Database Backup Gagal:*\n`{res.get('error') or res.get('reason')}`"
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_stress_test(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        import time
+        from evals.hostile_market_probe import HostileMarketProbe
+
+        symbol = ctx.args[0].upper() if ctx.args else "EURUSD"
+        probe = HostileMarketProbe(reference_price=1.0850, symbol=symbol)
+
+        def risk_validator(tick):
+            if tick["bid"] <= 0 or tick["ask"] <= 0:
+                return False, "Corrupt or non-positive price"
+            if tick["bid"] > tick["ask"] or tick["spread_pips"] < 0:
+                return False, "Crossed book inversion (bid > ask)"
+            if tick["spread_pips"] > 10.0:
+                return False, f"Catastrophic spread spike ({tick['spread_pips']} pips)"
+            if time.time() - tick["timestamp"] > 120.0:
+                return False, "Stale feed: timestamp exceeds max drift threshold (120s)"
+            if abs(tick["bid"] - 1.0850) / 1.0850 > 0.10:
+                return False, "Flash crash tick: price drop > 10% trips circuit breaker"
+            return True, "Valid tick"
+
+        res = probe.verify_resilience(risk_validator)
+        lines = [
+            f"[PROTEKSI] *Hostile Market Feed Wire Probes ({symbol})*",
+            f"• Battery Scenarios: `{res['total_tested']}`",
+            f"• Fail-Closed Rejections: `{res['passed_count']}/{res['total_tested']}`\n",
+        ]
+        for d in res["details"]:
+            st = "[BERHASIL] BLOCKED" if d["is_resilient"] else "[GAGAL] LEAKED"
+            lines.append(f"• `{d['scenario']}`: {st}\n  _{d['reason']}_")
+
+        if res["all_resilient"]:
+            lines.append("\n[TARGET] *Status: 100% RESILIENT (Semua anomali ditolak fail-closed)*")
+        else:
+            lines.append("\n[PERINGATAN] *Status: VULNERABILITY DETECTED*")
+
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_playbooks(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -797,11 +1162,11 @@ class TelegramBot:
             if subcmd == "list":
                 jobs = registry.list_jobs()
                 if not jobs:
-                    await update.message.reply_text("⏰ *Universal Cron Schedules*\n\nTidak ada jadwal cron aktif.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text("[WAKTU] *Universal Cron Schedules*\n\nTidak ada jadwal cron aktif.", parse_mode=ParseMode.MARKDOWN)
                     return
-                lines = [f"⏰ *Universal Cron Schedules ({len(jobs)} Active)*\n"]
+                lines = [f"[WAKTU] *Universal Cron Schedules ({len(jobs)} Active)*\n"]
                 for j in jobs:
-                    status = "✅" if j.enabled else "⏸️"
+                    status = "[BERHASIL]" if j.enabled else "[DIJEDA]"
                     lines.append(f"{status} *{j.name}* (`{j.cron_expression}`)\n  _{j.description}_\n  Prompt: `{j.instruction[:60]}...`\n")
                 lines.append("Gunakan `/cron add <name> <expr> <prompt>` atau `/cron remove <name>`.")
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
@@ -809,9 +1174,9 @@ class TelegramBot:
                 name = args[1].strip()
                 ok = registry.remove_job(name)
                 if ok:
-                    await update.message.reply_text(f"✅ Jadwal cron `{name}` berhasil dihapus.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(f"[BERHASIL] Jadwal cron `{name}` berhasil dihapus.", parse_mode=ParseMode.MARKDOWN)
                 else:
-                    await update.message.reply_text(f"❌ Jadwal cron `{name}` tidak ditemukan.", parse_mode=ParseMode.MARKDOWN)
+                    await update.message.reply_text(f"[GAGAL] Jadwal cron `{name}` tidak ditemukan.", parse_mode=ParseMode.MARKDOWN)
             elif subcmd == "add" and len(args) >= 4:
                 name = args[1].strip()
                 expr = args[2].strip()
@@ -825,10 +1190,10 @@ class TelegramBot:
                     created_at=time.time(),
                 )
                 registry.add_job(job)
-                await update.message.reply_text(f"✅ Jadwal cron `{name}` (`{expr}`) berhasil didaftarkan.", parse_mode=ParseMode.MARKDOWN)
+                await update.message.reply_text(f"[BERHASIL] Jadwal cron `{name}` (`{expr}`) berhasil didaftarkan.", parse_mode=ParseMode.MARKDOWN)
             else:
                 help_text = (
-                    "⏰ *Penggunaan Perintah Cron*\n\n"
+                    "[WAKTU] *Penggunaan Perintah Cron*\n\n"
                     "• `/cron` atau `/cron list` : Tampilkan seluruh jadwal\n"
                     "• `/cron add <nama> <cron_expr> <prompt>` : Tambah jadwal baru\n"
                     "  _Contoh:_ `/cron add cot_scan */30 * * * * Jalankan audit COT_\n"
@@ -836,7 +1201,7 @@ class TelegramBot:
                 )
                 await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as exc:
-            await update.message.reply_text(f"❌ Error mengevaluasi perintah cron: {exc}")
+            await update.message.reply_text(f"[GAGAL] Error mengevaluasi perintah cron: {exc}")
 
     async def _cmd_model(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Interactive model routing inspection and hot-swapping (/model)."""
@@ -856,7 +1221,7 @@ class TelegramBot:
                 task_roles = settings.get("llm", {}).get("task_roles", {})
                 overrides = registry.get_all_overrides()
 
-                lines = ["🤖 <b>Model Routing & Task Roles</b>\n"]
+                lines = ["[ASISTEN AI] <b>Model Routing & Task Roles</b>\n"]
                 all_roles = sorted(set(list(task_roles.keys()) + list(overrides.keys())))
 
                 for r in all_roles:
@@ -869,7 +1234,7 @@ class TelegramBot:
                     cur_fallback = ovr.get("fallback_1", def_fallback)
 
                     is_overridden = bool(ovr)
-                    marker = "⚡" if is_overridden else "▫️"
+                    marker = "[KILAT]" if is_overridden else "•"
                     lines.append(f"{marker} <b>{r}</b>:\n  Primary: <code>{cur_primary}</code>\n  Fallback: <code>{cur_fallback}</code>")
 
                 lines.append("\n<b>Penggunaan:</b>\n• <code>/model set &lt;role&gt; &lt;model_name&gt; [primary|fallback_1]</code>\n• <code>/model reset [role]</code>")
@@ -886,7 +1251,7 @@ class TelegramBot:
 
                 registry.set_role_model(role, model_name, slot=slot)
                 await update.message.reply_text(
-                    f"✅ <b>Model Hot-Swapped</b>\nRole: <code>{role}</code>\nSlot: <code>{slot}</code>\nModel: <code>{model_name}</code>",
+                    f"[BERHASIL] <b>Model Hot-Swapped</b>\nRole: <code>{role}</code>\nSlot: <code>{slot}</code>\nModel: <code>{model_name}</code>",
                     parse_mode=ParseMode.HTML
                 )
             elif subcmd == "reset":
@@ -894,17 +1259,17 @@ class TelegramBot:
                 registry.clear_overrides(role)
                 target_desc = f"role '{role}'" if role else "seluruh role"
                 await update.message.reply_text(
-                    f"🔄 <b>Model Overrides Direset</b>\nReset {target_desc} kembali ke konfigurasi default settings.yaml.",
+                    f"[SINKRONISASI] <b>Model Overrides Direset</b>\nReset {target_desc} kembali ke konfigurasi default settings.yaml.",
                     parse_mode=ParseMode.HTML
                 )
             else:
                 await update.message.reply_text(
-                    "❌ Format salah. Gunakan:\n• <code>/model</code> (tampilkan semua role)\n• <code>/model set &lt;role&gt; &lt;model&gt; [slot]</code>\n• <code>/model reset [role]</code>",
+                    "[GAGAL] Format salah. Gunakan:\n• <code>/model</code> (tampilkan semua role)\n• <code>/model set &lt;role&gt; &lt;model&gt; [slot]</code>\n• <code>/model reset [role]</code>",
                     parse_mode=ParseMode.HTML
                 )
         except Exception as exc:
             logger.error(f"Error handling /model command: {exc}", exc_info=True)
-            await update.message.reply_text(f"❌ Error mengevaluasi /model: {exc}")
+            await update.message.reply_text(f"[GAGAL] Error mengevaluasi /model: {exc}")
 
     async def _cmd_pair(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Interactive DM pairing via out-of-band console OTP (/pair [code])."""
@@ -919,7 +1284,7 @@ class TelegramBot:
         mgr = get_pairing_manager()
 
         if mgr.is_user_paired("telegram", user_id):
-            await update.message.reply_text("✅ Akun Telegram Anda sudah terhubung (paired) dengan Monika.")
+            await update.message.reply_text("[BERHASIL] Akun Telegram Anda sudah terhubung (paired) dengan Monika.")
             return
 
         if not args:
@@ -935,11 +1300,11 @@ class TelegramBot:
             if hasattr(self._router, "allowed_user_ids") and isinstance(self._router.allowed_user_ids, set):
                 self._router.allowed_user_ids.add(int(user_id))
             await update.message.reply_text(
-                f"🎉 *Pairing Berhasil!*\n\n{reply_msg}\nAnda sekarang memiliki akses penuh ke Monika.",
+                f"[SELESAI] *Pairing Berhasil!*\n\n{reply_msg}\nAnda sekarang memiliki akses penuh ke Monika.",
                 parse_mode=ParseMode.MARKDOWN
             )
         else:
-            await update.message.reply_text(f"❌ {reply_msg}", parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(reply_msg, parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_vix(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -978,12 +1343,12 @@ class TelegramBot:
 
         if not records:
             await update.message.reply_text(
-                "ℹ️ *Tidak ada Market Intelligence aktif.*\nGunakan /research atau chat untuk melakukan riset dan menyimpan intel baru.",
+                "[INFORMASI] *Tidak ada Market Intelligence aktif.*\nGunakan /research atau chat untuk melakukan riset dan menyimpan intel baru.",
                 parse_mode=ParseMode.MARKDOWN
             )
             return
 
-        lines = [f"🧠 *MARKET INTELLIGENCE AKTIF ({len(records)})*\n"]
+        lines = [f"[KEYAKINAN] *MARKET INTELLIGENCE AKTIF ({len(records)})*\n"]
         for r in records:
             symbols = ", ".join(r.affected_symbols_list) if hasattr(r, "affected_symbols_list") else (r.affected_symbols or "ALL")
             directive_str = f" | Directive: *{r.directive.upper()}*" if r.directive else ""
@@ -1018,10 +1383,10 @@ class TelegramBot:
             stmt = select(UserMarketIntel).where(UserMarketIntel.id == intel_id)
             intel = (await session.execute(stmt)).scalar_one_or_none()
             if not intel:
-                await update.message.reply_text(f"❌ Market Intelligence #{intel_id} tidak ditemukan.")
+                await update.message.reply_text(f"[GAGAL] Market Intelligence #{intel_id} tidak ditemukan.")
                 return
             if not intel.is_active:
-                await update.message.reply_text(f"ℹ️ Market Intelligence #{intel_id} sudah tidak aktif.")
+                await update.message.reply_text(f"[INFORMASI] Market Intelligence #{intel_id} sudah tidak aktif.")
                 return
 
             intel.is_active = False
@@ -1033,7 +1398,7 @@ class TelegramBot:
             ))
             await session.commit()
 
-        await update.message.reply_text(f"✅ Market Intelligence *#{intel_id}* berhasil dinonaktifkan.", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(f"[BERHASIL] Market Intelligence *#{intel_id}* berhasil dinonaktifkan.", parse_mode=ParseMode.MARKDOWN)
 
     # Admin commands
 
@@ -1042,22 +1407,53 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         if not self._is_admin(update): return await self._reject_non_admin(update)
         clean_args = [a for a in ctx.args if a not in ("-y", "--force")] if ctx.args else []
-        reason = " ".join(clean_args) if clean_args else "Paused via Telegram"
+        duration_hours = None
+        duration_desc = ""
+        reason = "Paused via Telegram"
+
+        if clean_args:
+            first = clean_args[0].lower().strip()
+            import re
+            m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?)$", first)
+            if m:
+                val = float(m.group(1))
+                unit = m.group(2).lower()
+                if unit.startswith("m"):
+                    duration_hours = val / 60.0
+                    duration_desc = f"{val:.0f} menit"
+                elif unit.startswith("d"):
+                    duration_hours = val * 24.0
+                    duration_desc = f"{val:.0f} hari"
+                else:
+                    duration_hours = val
+                    duration_desc = f"{val:g} jam"
+                reason_tokens = clean_args[1:]
+                reason = " ".join(reason_tokens) if reason_tokens else f"Jeda otomatis {duration_desc}"
+            else:
+                reason = " ".join(clean_args)
 
         if not ctx.args or ("-y" not in ctx.args and "--force" not in ctx.args):
             import secrets, time
             nonce = secrets.token_hex(4)
             if not hasattr(self, '_active_nonces'):
                 self._active_nonces = {}
-            self._active_nonces[nonce] = {"action": "pause", "reason": reason, "expires": time.time() + 120.0}
+            self._active_nonces[nonce] = {
+                "action": "pause",
+                "reason": reason,
+                "duration_hours": duration_hours,
+                "duration_desc": duration_desc,
+                "expires": time.time() + 120.0
+            }
 
             keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("[ KONFIRMASI JEDA ]", callback_data=f"pause:confirm:{nonce}"),
                 InlineKeyboardButton("[ BATAL ]", callback_data="cancel"),
             ]])
+            dur_line = f"Durasi: {duration_desc} (auto-unpause)\n" if duration_desc else ""
             await update.message.reply_text(
                 f"[ PERINGATAN: KONFIRMASI JEDA TRADING ]\n\n"
                 f"Alasan: {reason}\n"
+                f"{dur_line}"
                 f"Apakah Anda yakin ingin menjeda seluruh eksekusi trading?",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
@@ -1068,8 +1464,9 @@ class TelegramBot:
         from risk.risk_gate import RiskGate
         gate = RiskGate(self.settings)
         async with get_session() as session:
-            await gate.pause_trading(session, reason)
-        await update.message.reply_text(f"[ PAUSED ] Trading dijeda.\nAlasan: {reason}", parse_mode=ParseMode.MARKDOWN)
+            await gate.pause_trading(session, reason, duration_hours=duration_hours)
+        dur_msg = f"\nDurasi: {duration_desc} (auto-unpause aktif)" if duration_desc else ""
+        await update.message.reply_text(f"[ PAUSED ] Trading dijeda.\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN)
 
     async def _cmd_resume(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1086,6 +1483,70 @@ class TelegramBot:
                 await gate.resume_trading(session)
             await CostTracker.clear_budget_pause(session)
         await update.message.reply_text("[ RESUMED ] Trading & AI Budget dilanjutkan (All pause & kill flags cleared).", parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_suspend(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        from database.db import get_session
+        from utils.analytics.paper_tracker import PaperTracker
+
+        tracker = PaperTracker(self.settings)
+
+        if not ctx.args:
+            async with get_session() as session:
+                suspended = await tracker.get_suspended_symbols(session)
+            if suspended:
+                items_str = ", ".join(f"`{s}`" for s in suspended)
+                msg = f"[TERKUNCI] *Simbol tersuspensi saat ini ({len(suspended)}):*\n{items_str}\n\n"
+            else:
+                msg = "[INFORMASI] Tidak ada simbol yang tersuspensi saat ini.\n\n"
+            msg += (
+                "Penggunaan:\n"
+                "- `/suspend <symbol> <durasi> [alasan]`\n"
+                "Contoh: `/suspend EURUSD 24h market spike`\n"
+                "Contoh: `/suspend XAUUSD 3d NFP week`\n"
+                "- `/unsuspend <symbol>` untuk membuka suspensi."
+            )
+            await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+            return
+
+        target_sym = ctx.args[0].strip().upper().replace("/", "")
+        dur_str = ctx.args[1].lower().strip() if len(ctx.args) > 1 else "24h"
+        import re
+        dur_hours = 24.0
+        m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?)$", dur_str)
+        if m:
+            val = float(m.group(1))
+            unit = m.group(2).lower()
+            if unit.startswith("m"):
+                dur_hours = val / 60.0
+            elif unit.startswith("d"):
+                dur_hours = val * 24.0
+            else:
+                dur_hours = val
+            reason_tokens = ctx.args[2:]
+        else:
+            reason_tokens = ctx.args[1:]
+
+        reason = " ".join(reason_tokens) if reason_tokens else "Manual suspension via Telegram"
+
+        async with get_session() as session:
+            res = await tracker.suspend_symbol(
+                session=session,
+                symbol=target_sym,
+                duration_hours=dur_hours,
+                reason=reason,
+            )
+
+        await update.message.reply_text(
+            f"[TERKUNCI] *Simbol {target_sym} berhasil disuspend!*\n"
+            f"- Durasi: `{dur_hours:g} jam`\n"
+            f"- Berakhir pada: `{res.get('until', '-')}`\n"
+            f"- Alasan: {reason}",
+            parse_mode=ParseMode.MARKDOWN,
+        )
 
     async def _cmd_unsuspend(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1115,7 +1576,7 @@ class TelegramBot:
                         InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
                     ]])
                     await update.message.reply_text(
-                        "⚠️ *CONFIRMATION REQUIRED: UNSUSPEND ALL*\n\n"
+                        "[PERINGATAN] *CONFIRMATION REQUIRED: UNSUSPEND ALL*\n\n"
                         "Are you sure you want to lift trading suspension on all instruments?",
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=keyboard,
@@ -1164,14 +1625,14 @@ class TelegramBot:
         if not self._is_admin(update):
             return await self._reject_non_admin(update)
         # Langsung execute tanpa konfirmasi
-        await update.message.reply_text('🚨 EMERGENCY CLOSE INITIATED - NO CONFIRMATION NEEDED')
+        await update.message.reply_text('[DARURAT] EMERGENCY CLOSE INITIATED - NO CONFIRMATION NEEDED')
         if self.execution_service:
             result = await self.execution_service.kill_switch('EMERGENCY TELEGRAM COMMAND - INSTANT')
             await update.message.reply_text(
-                f"💥 Emergency close done: {result['closed']}/{result['total']} positions closed"
+                f"[VOLATILITAS] Emergency close done: {result['closed']}/{result['total']} positions closed"
             )
         else:
-            await update.message.reply_text("⚠️ ExecutionService tidak terhubung.")
+            await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
 
     async def _cmd_close(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1179,22 +1640,186 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("Usage: /close <ticket>")
+            await update.message.reply_text("Usage: /close <ticket> [volume|percentage%]\nContoh: `/close 12345` atau `/close 12345 50%` atau `/close 12345 0.05`", parse_mode=ParseMode.MARKDOWN)
             return
 
         try:
-            ticket = int(ctx.args[0])
+            ticket = int(ctx.args[0].replace("#", ""))
         except ValueError:
-            await update.message.reply_text("❌ Ticket harus berupa angka.")
+            await update.message.reply_text("[GAGAL] Ticket harus berupa angka.")
             return
 
+        volume = None
+        if len(ctx.args) > 1:
+            vol_arg = ctx.args[1].strip()
+            if vol_arg.endswith("%"):
+                try:
+                    pct = float(vol_arg.rstrip("%")) / 100.0
+                    from database.db import get_session
+                    from database.models import Position
+                    from sqlalchemy import select, or_
+                    async with get_session() as session:
+                        pos = (await session.execute(
+                            select(Position).where(or_(Position.mt5_ticket == ticket, Position.id == ticket)).limit(1)
+                        )).scalar_one_or_none()
+                        if pos and pos.volume:
+                            volume = round(float(pos.volume) * pct, 2)
+                except Exception:
+                    volume = None
+            else:
+                try:
+                    volume = float(vol_arg)
+                except ValueError:
+                    volume = None
+
         from telegram_bot.command_router import CommandRouter
-        keyboard = CommandRouter.build_close_keyboard(ticket)
+        keyboard = CommandRouter.build_close_keyboard(ticket, volume=volume)
+        vol_desc = f" ({volume} lot)" if volume is not None else ""
         await update.message.reply_text(
-            f"⚠️ Konfirmasi tutup posisi *#{ticket}*?",
+            f"[PERINGATAN] Konfirmasi tutup posisi *#{ticket}*{vol_desc}?",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=keyboard,
         )
+
+    async def _cmd_cancel(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Membatalkan pending order MT5 (/cancel <ticket>)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        if not ctx.args:
+            if self.execution_service and hasattr(self.execution_service, "mt5"):
+                try:
+                    orders = await self.execution_service.mt5.get_pending_orders()
+                    if orders:
+                        lines = ["[DATA] *Daftar Pending Order:*"]
+                        for o in orders:
+                            lines.append(f"• Ticket `#{o.get('ticket')}`: *{o.get('symbol')}* {o.get('type_str', '').upper()} {o.get('volume_initial', o.get('volume'))} lot @ `{o.get('price_open')}`")
+                        lines.append("\nKetik `/cancel <ticket>` untuk membatalkan.")
+                        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+                        return
+                    else:
+                        await update.message.reply_text("[INFORMASI] Tidak ada pending order yang aktif saat ini.")
+                        return
+                except Exception as e:
+                    logger.warning(f"Failed to fetch pending orders: {e}")
+            await update.message.reply_text("Penggunaan: `/cancel <ticket>`", parse_mode=ParseMode.MARKDOWN)
+            return
+
+        ticket_str = ctx.args[0].strip().replace("#", "")
+        if not ticket_str.isdigit():
+            await update.message.reply_text("[GAGAL] Ticket harus berupa angka.")
+            return
+
+        ticket = int(ticket_str)
+        if not self.execution_service or not hasattr(self.execution_service, "mt5"):
+            await update.message.reply_text("[PERINGATAN] ExecutionService MT5 tidak terhubung.")
+            return
+
+        res = await self.execution_service.mt5.cancel_order(ticket)
+        if res.get("success"):
+            await update.message.reply_text(f"[BERHASIL] Pending order `#{ticket}` berhasil dibatalkan.", parse_mode=ParseMode.MARKDOWN)
+        else:
+            await update.message.reply_text(f"[GAGAL] Gagal membatalkan order `#{ticket}`: {res.get('error', 'Unknown error')}", parse_mode=ParseMode.MARKDOWN)
+
+    async def _cmd_account(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Menampilkan detail balance, equity, margin, free margin, margin level (/account)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        if not self.execution_service or not hasattr(self.execution_service, "mt5"):
+            await update.message.reply_text("[PERINGATAN] MT5 Client tidak terhubung.")
+            return
+
+        try:
+            acc = await self.execution_service.mt5.get_account_info()
+            if not acc:
+                await update.message.reply_text("[PERINGATAN] Gagal mengambil informasi akun MT5.")
+                return
+
+            login = acc.get("login", "-")
+            server = acc.get("server", "-")
+            currency = acc.get("currency", "USD")
+            balance = acc.get("balance", 0.0)
+            equity = acc.get("equity", 0.0)
+            margin = acc.get("margin", 0.0)
+            free_margin = acc.get("margin_free", 0.0)
+            margin_level = acc.get("margin_level", 0.0)
+            leverage = acc.get("leverage", 1)
+
+            health = "[AKTIF] SEHAT" if margin_level == 0 or margin_level >= 300 else ("[WASPADA] PERHATIAN" if margin_level >= 200 else "[KRITIS] KRITIS")
+
+            text = (
+                f"[BANK] *DETAIL AKUN MT5*\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"• *Login:* `{login}` ({server})\n"
+                f"• *Currency:* `{currency}` | *Leverage:* `1:{leverage}`\n\n"
+                f"• *Balance:* `${balance:,.2f}`\n"
+                f"• *Equity:* `${equity:,.2f}`\n"
+                f"• *Margin Terpakai:* `${margin:,.2f}`\n"
+                f"• *Free Margin:* `${free_margin:,.2f}`\n"
+                f"• *Margin Level:* `{margin_level:.1f}%` [{health}]\n"
+                f"━━━━━━━━━━━━━━━━━━━━"
+            )
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.error(f"Error handling /account: {e}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Error: {e}")
+
+    async def _cmd_tasks(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Menampilkan tabel status background worker / monitors (/tasks)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        try:
+            from agent.task_registry import TaskRegistry
+            table_md = TaskRegistry.get_formatted_status_table(getattr(self, "task_registry", None))
+            await update.message.reply_text(table_md, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.error(f"Error handling /tasks: {e}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Error mengambil status background tasks: {e}")
+
+    async def _cmd_debate(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Memicu sesi ad-hoc Multi-Agent Debate Bull vs Bear (/debate <symbol>)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        if not self._is_admin(update): return await self._reject_non_admin(update)
+
+        symbol = ctx.args[0].upper().strip().replace("/", "") if ctx.args else "XAUUSD"
+        await update.message.reply_text(f"[DEBAT] Memulai Multi-Agent Debate untuk *{symbol}*...\n_Bull Specialist vs Bear Specialist vs Investment Judge_", parse_mode=ParseMode.MARKDOWN)
+
+        from database.db import get_session
+        from analysis.debate.debate_orchestrator import DebateOrchestrator
+        from analysis.prefetch.pipeline import prefetch_pipeline
+
+        try:
+            async with get_session() as session:
+                market_data = await prefetch_pipeline.get_market_context(symbol, session=session)
+                orchestrator = DebateOrchestrator(self.settings)
+                result = await orchestrator.run_symbol_debate(symbol, market_data=market_data, session=session)
+
+                decision = result.get("decision", "WAIT").upper()
+                confidence = result.get("confidence", 0.0)
+                rationale = result.get("rationale", "-")
+                bull_arg = result.get("bull_summary", "-")
+                bear_arg = result.get("bear_summary", "-")
+
+                text = (
+                    f"[DEBAT] *HASIL MULTI-AGENT DEBATE: {symbol}*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"[HASIL] *Keputusan Judge:* `{decision}` (Conf: `{confidence:.1%}`)\n\n"
+                    f"[BULL] *Bull Thesis:*\n_{bull_arg[:300]}_\n\n"
+                    f"[BEAR] *Bear Thesis:*\n_{bear_arg[:300]}_\n\n"
+                    f"[ARBITRASE] *Rationale:*\n{rationale[:400]}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━"
+                )
+                for chunk in self._chunk_text(text):
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.error(f"Error handling /debate: {e}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Error menjalankan debate: {e}")
 
     async def _cmd_closeall(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Tutup semua posisi aktif (Admin only)."""
@@ -1203,7 +1828,7 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
         if not self.execution_service:
-            await update.message.reply_text("⚠️ ExecutionService tidak terhubung.")
+            await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
 
         if not ctx.args or ("-y" not in ctx.args and "--force" not in ctx.args):
@@ -1214,18 +1839,18 @@ class TelegramBot:
             self._active_nonces[nonce] = {"action": "closeall", "expires": time.time() + 120.0}
 
             keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("[ 🚨 CONFIRM CLOSE ALL ]", callback_data=f"closeall:confirm:{nonce}"),
+                InlineKeyboardButton("[ [DARURAT] CONFIRM CLOSE ALL ]", callback_data=f"closeall:confirm:{nonce}"),
                 InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
             ]])
             await update.message.reply_text(
-                "🚨 *CONFIRMATION REQUIRED: CLOSE ALL POSITIONS*\n\n"
+                "[DARURAT] *CONFIRMATION REQUIRED: CLOSE ALL POSITIONS*\n\n"
                 "Are you sure you want to close ALL active open positions immediately?",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
             )
             return
 
-        await update.message.reply_text("🚨 Memproses penutupan seluruh posisi terbuka...")
+        await update.message.reply_text("[DARURAT] Memproses penutupan seluruh posisi terbuka...")
         try:
             if hasattr(self.execution_service, "close_all_positions"):
                 result = await self.execution_service.close_all_positions(comment="TG:CloseAll")
@@ -1237,11 +1862,11 @@ class TelegramBot:
             closed = result.get("closed", 0)
             total = result.get("total", 0)
             await update.message.reply_text(
-                f"✅ *Close All Selesai*: {closed}/{total} posisi berhasil ditutup.",
+                f"[BERHASIL] *Close All Selesai*: {closed}/{total} posisi berhasil ditutup.",
                 parse_mode=ParseMode.MARKDOWN,
             )
         except Exception as e:
-            await update.message.reply_text(f"❌ Gagal menutup semua posisi: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal menutup semua posisi: {e}")
 
     async def _cmd_override(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Ubah parameter risiko secara dinamis (Admin only)."""
@@ -1251,7 +1876,7 @@ class TelegramBot:
 
         if not ctx.args or len(ctx.args) < 2:
             help_text = (
-                "⚙️ *Penggunaan /override:*\n"
+                "[KONFIGURASI] *Penggunaan /override:*\n"
                 "• `/override max_risk <0.1-5.0>` — Risk per trade (%)\n"
                 "• `/override max_daily_dd <0.5-20.0>` — Max daily drawdown (%)\n"
                 "• `/override max_positions <1-20>` — Max concurrent positions\n"
@@ -1287,10 +1912,10 @@ class TelegramBot:
                 else:
                     updated_fields[key] = float(val_str)
             except ValueError:
-                await update.message.reply_text(f"❌ Nilai tidak valid untuk `{param}`: {val_str}")
+                await update.message.reply_text(f"[GAGAL] Nilai tidak valid untuk `{param}`: {val_str}")
                 return
         else:
-            await update.message.reply_text(f"❌ Parameter `{param}` tidak dikenali. Ketik `/override` untuk opsi.")
+            await update.message.reply_text(f"[GAGAL] Parameter `{param}` tidak dikenali. Ketik `/override` untuk opsi.")
             return
 
         if "-y" not in ctx.args and "--force" not in ctx.args:
@@ -1311,7 +1936,7 @@ class TelegramBot:
                 InlineKeyboardButton("[ CANCEL ]", callback_data="cancel"),
             ]])
             await update.message.reply_text(
-                f"⚙️ *CONFIRMATION REQUIRED: RISK OVERRIDE*\n\n"
+                f"[KONFIGURASI] *CONFIRMATION REQUIRED: RISK OVERRIDE*\n\n"
                 f"Parameter: `{param}`\n"
                 f"New Value: `{val_str}`\n"
                 f"Fields: `{updated_fields if param != 'reset' else 'RESET ALL'}`\n\n"
@@ -1369,7 +1994,7 @@ class TelegramBot:
             pass
 
         await update.message.reply_text(
-            f"✅ *Risk Override Diterapkan:*\n`{json.dumps(current_cfg, indent=2)}`",
+            f"[BERHASIL] *Risk Override Diterapkan:*\n`{json.dumps(current_cfg, indent=2)}`",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -1379,7 +2004,7 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         symbol = ctx.args[0].upper().strip() if ctx.args else "XAUUSD"
-        await update.message.reply_text(f"🔍 Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(f"[TELUSURI] Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN)
 
         from database.db import get_session
         from database.models import FundamentalBrief, VIXData
@@ -1410,7 +2035,7 @@ class TelegramBot:
             macro_sentiment = brief_row.risk_sentiment if brief_row else "neutral"
 
         lines = [
-            f"📊 *Rezim Pasar & Volatilitas* — `{symbol}`",
+            f"[LAPORAN] *Rezim Pasar & Volatilitas* — `{symbol}`",
             f"• *Rezim Komposit:* `{final_regime}`",
             f"• *Kualitas Sinyal:* `{quality:.2f}`",
             f"• *ADX Trend Strength:* `{adx if adx is not None else 'N/A'}`",
@@ -1438,7 +2063,7 @@ class TelegramBot:
                 )).scalar_one_or_none()
 
                 if not pos:
-                    await update.message.reply_text(f"❌ Posisi dengan ticket *#{ticket_arg}* tidak ditemukan.")
+                    await update.message.reply_text(f"[GAGAL] Posisi dengan ticket *#{ticket_arg}* tidak ditemukan.")
                     return
 
                 analysis = None
@@ -1446,7 +2071,7 @@ class TelegramBot:
                     analysis = await session.get(AssetAnalysis, pos.analysis_id)
 
                 lines = [
-                    f"📜 *Audit Trail — Ticket #{ticket_arg}*",
+                    f"[LOG] *Audit Trail — Ticket #{ticket_arg}*",
                     f"• Simbol: `{pos.symbol}` | Side: `{pos.direction}` | Lot: `{pos.volume}`",
                     f"• Entry: `{pos.entry_price}` | SL: `{pos.sl}` | TP: `{pos.tp}`",
                     f"• Status: `{pos.status}` | PnL: `${pos.pnl:,.2f}`" if pos.pnl is not None else f"• Status: `{pos.status}`",
@@ -1454,7 +2079,7 @@ class TelegramBot:
                 ]
                 if analysis:
                     lines.extend([
-                        f"\n🧠 *AI Reasoning:*",
+                        f"\n[KEYAKINAN] *AI Reasoning:*",
                         f"• Confluence Score: `{analysis.confluence_score}`",
                         f"• Confidence: `{analysis.confidence:.0%}`",
                         f"• Regime: `{analysis.market_regime_at_analysis or 'N/A'}`",
@@ -1467,10 +2092,10 @@ class TelegramBot:
                 )).scalars().all()
 
                 if not positions:
-                    await update.message.reply_text("ℹ️ Belum ada riwayat posisi untuk diaudit.")
+                    await update.message.reply_text("[INFORMASI] Belum ada riwayat posisi untuk diaudit.")
                     return
 
-                lines = ["📜 *Audit 5 Posisi Terakhir:*"]
+                lines = ["[LOG] *Audit 5 Posisi Terakhir:*"]
                 for p in positions:
                     pnl_str = f"+${p.pnl:,.2f}" if p.pnl and p.pnl >= 0 else f"-${abs(p.pnl or 0):,.2f}"
                     lines.append(f"• `#{p.mt5_ticket or p.id}` {p.symbol} {p.direction} {p.volume}L — {p.status} ({pnl_str})")
@@ -1482,11 +2107,11 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
-        await update.message.reply_text("🔄 Menjalankan siklus analisis manual...")
+        await update.message.reply_text("[SINKRONISASI] Menjalankan siklus analisis manual...")
         if self.cycle_scheduler:
             asyncio.create_task(self._run_cycle_and_notify(update))
         else:
-            await update.message.reply_text("⚠️ Scheduler tidak terhubung.")
+            await update.message.reply_text("[PERINGATAN] Scheduler tidak terhubung.")
 
     async def _run_cycle_and_notify(self, update: Update) -> None:
         if not self.cycle_scheduler or not update.message:
@@ -1494,14 +2119,14 @@ class TelegramBot:
         try:
             summary = await self.cycle_scheduler.run_once(forced=True)
             pa = summary.get("per_asset", {})
-            lines = [f"✅ *Siklus analisis selesai*"]
+            lines = [f"[BERHASIL] *Siklus analisis selesai*"]
             for sym, r in pa.items():
                 decision = (r.get("decision") or "N/A").upper()
                 conf     = r.get("confidence") or 0
                 lines.append(f"  {sym}: `{decision}` ({conf:.0%})")
             await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
-            await update.message.reply_text(f"❌ Siklus gagal: {e}")
+            await update.message.reply_text(f"[GAGAL] Siklus gagal: {e}")
 
     async def _cmd_backtest(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1516,10 +2141,10 @@ class TelegramBot:
             try:
                 days = int(ctx.args[0])
                 if days <= 0 or days > 365:
-                    await update.message.reply_text("❌ Parameter hari harus antara 1 dan 365.")
+                    await update.message.reply_text("[GAGAL] Parameter hari harus antara 1 dan 365.")
                     return
             except ValueError:
-                await update.message.reply_text("❌ Format salah. Contoh: `/backtest 30 [mode] [equity]`", parse_mode=ParseMode.MARKDOWN)
+                await update.message.reply_text("[GAGAL] Format salah. Contoh: `/backtest 30 [mode] [equity]`", parse_mode=ParseMode.MARKDOWN)
                 return
 
             if len(ctx.args) > 1:
@@ -1534,7 +2159,7 @@ class TelegramBot:
                     pass
 
         await update.message.reply_text(
-            f"⏳ *Memulai Point-in-Time Backtest ({days} hari)...*\n\n"
+            f"[MEMPROSES] *Memulai Point-in-Time Backtest ({days} hari)...*\n\n"
             f"Proses berjalan di background. Anda akan menerima notifikasi ringkasan setelah selesai.",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -1563,12 +2188,12 @@ class TelegramBot:
                 )
                 result = await engine.run()
                 msg = (
-                    f"✅ <b>Walk-Forward Optimization Selesai!</b>\n\n"
+                    f"[BERHASIL] <b>Walk-Forward Optimization Selesai!</b>\n\n"
                     f"Overall WFE: <b>{result.overall_wfe:.2f}</b>\n"
                     f"IS Sharpe: {result.aggregate_is_sharpe:.2f}\n"
                     f"OOS Sharpe: {result.aggregate_oos_sharpe:.2f}\n"
                     f"OOS Trades: {result.total_oos_trades}\n"
-                    f"Overfit: {'⚠️ YES' if result.is_overfit else '✅ NO'}\n"
+                    f"Overfit: {'[PERINGATAN] YES' if result.is_overfit else '[BERHASIL] NO'}\n"
                 )
                 await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
                 return
@@ -1597,8 +2222,8 @@ class TelegramBot:
                 total_pnl_pct = ((run_record.final_equity - run_record.initial_equity) / run_record.initial_equity) * 100
 
             msg = (
-                f"✅ <b>Backtest {days} hari Selesai!</b>\n\n"
-                f"<b>📊 PERFORMANCE REPORT:</b>\n"
+                f"[BERHASIL] <b>Backtest {days} hari Selesai!</b>\n\n"
+                f"<b>[LAPORAN] PERFORMANCE REPORT:</b>\n"
                 f"Total trades: {run_record.total_trades}\n"
                 f"Win rate: {float(run_record.win_rate):.2f}%\n"
             )
@@ -1619,7 +2244,7 @@ class TelegramBot:
             )
         except Exception as e:
             logger.error(f"Backtest error: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Backtest gagal: {e}")
+            await update.message.reply_text(f"[GAGAL] Backtest gagal: {e}")
 
     async def _cmd_calendar(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1646,21 +2271,21 @@ class TelegramBot:
 
                 if not events:
                     filter_txt = f" untuk {currency}" if currency else ""
-                    await update.message.reply_text(f"ℹ️ Tidak ada event kalender signifikan dalam 36 jam ke depan{filter_txt}.")
+                    await update.message.reply_text(f"[INFORMASI] Tidak ada event kalender signifikan dalam 36 jam ke depan{filter_txt}.")
                     return
 
-                lines = ["📅 <b>Jadwal Kalender Ekonomi Makro (Next 36h):</b>\n"]
+                lines = ["[KALENDER] <b>Jadwal Kalender Ekonomi Makro (Next 36h):</b>\n"]
                 for e in events:
-                    impact_emoji = "🔴" if (e.impact or "").lower() == "high" else "🟡" if (e.impact or "").lower() == "medium" else "⚪"
+                    impact_emoji = "[KRITIS]" if (e.impact or "").lower() == "high" else "[WASPADA]" if (e.impact or "").lower() == "medium" else "[NONAKTIF]"
                     t_str = e.event_time.strftime("%d %b %H:%M UTC") if e.event_time else "TBD"
                     act = f" | Act: {e.actual}" if e.actual else ""
                     fcst = f" | Fct: {e.forecast}" if e.forecast else ""
-                    lines.append(f"{impact_emoji} <b>[{e.currency}]</b> {e.event_name}\n   ⏰ <code>{t_str}</code>{fcst}{act}")
+                    lines.append(f"{impact_emoji} <b>[{e.currency}]</b> {e.event_name}\n   [WAKTU] <code>{t_str}</code>{fcst}{act}")
 
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Error fetching calendar: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal memuat kalender ekonomi: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal memuat kalender ekonomi: {e}")
 
     async def _cmd_skills(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1673,7 +2298,7 @@ class TelegramBot:
             core = [s for s in all_s if s not in playbooks]
 
             lines = [
-                f"🧠 <b>Autonomous Skills & Playbooks ({len(all_s)} Total)</b>\n",
+                f"[KEYAKINAN] <b>Autonomous Skills & Playbooks ({len(all_s)} Total)</b>\n",
                 f"<b>Core Prompt Skills ({len(core)}):</b>",
             ]
             for s in core[:8]:
@@ -1690,16 +2315,16 @@ class TelegramBot:
             await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Error listing skills: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal memuat daftar skills: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal memuat daftar skills: {e}")
 
     def _build_plugins_text(self, plugins: list[dict]) -> str:
         active_count = sum(1 for p in plugins if p.get("enabled", False))
         lines = [
-            f"🔌 <b>MONIKA PLUG-IN HARNESS ({active_count}/{len(plugins)} AKTIF)</b>",
+            f"[PLUGIN] <b>MONIKA PLUG-IN HARNESS ({active_count}/{len(plugins)} AKTIF)</b>",
             "<i>Ketuk tombol di bawah untuk toggle ON/OFF secara instan:</i>\n",
         ]
         for p in plugins:
-            icon = "🟢" if p.get("enabled") else "⚪"
+            icon = "[AKTIF]" if p.get("enabled") else "[NONAKTIF]"
             status = "ACTIVE" if p.get("enabled") else ("DEGRADED" if str(p.get("status", "")).startswith("DEGRADED") else "DISABLED")
             cat = p.get("category", "custom")
             lines.append(f"{icon} <b>{p.get('name', p['id'])}</b> <code>v{p.get('version', '1.0')}</code> [{cat}]")
@@ -1710,7 +2335,7 @@ class TelegramBot:
         keyboard = []
         row = []
         for p in plugins:
-            btn_icon = "🟢" if p.get("enabled") else "⚪"
+            btn_icon = "[AKTIF]" if p.get("enabled") else "[NONAKTIF]"
             btn_label = f"{btn_icon} {p.get('name', p['id'])[:15]}"
             cb_data = f"plg:t:{p['id'][:32]}"
             row.append(InlineKeyboardButton(btn_label, callback_data=cb_data))
@@ -1721,8 +2346,8 @@ class TelegramBot:
             keyboard.append(row)
 
         keyboard.append([
-            InlineKeyboardButton("📦 Marketplace Catalog", callback_data="plg:cat"),
-            InlineKeyboardButton("🔄 Refresh", callback_data="plg:ref"),
+            InlineKeyboardButton("[MODUL] Marketplace Catalog", callback_data="plg:cat"),
+            InlineKeyboardButton("[SINKRONISASI] Refresh", callback_data="plg:ref"),
         ])
         return InlineKeyboardMarkup(keyboard)
 
@@ -1734,7 +2359,7 @@ class TelegramBot:
             from harness.installer import list_all_plugins_status
             plugins = list_all_plugins_status()
             if not plugins:
-                await update.message.reply_text("ℹ️ Belum ada modul plugin yang terdaftar di sistem.")
+                await update.message.reply_text("[INFORMASI] Belum ada modul plugin yang terdaftar di sistem.")
                 return
 
             text = self._build_plugins_text(plugins)
@@ -1742,7 +2367,7 @@ class TelegramBot:
             await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=markup)
         except Exception as e:
             logger.error(f"Error listing plugins in Telegram: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal memuat status plugins: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal memuat status plugins: {e}")
 
     async def _cmd_plugin_catalog(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1751,16 +2376,16 @@ class TelegramBot:
         try:
             from harness.installer import get_community_catalog
             catalog = get_community_catalog()
-            lines = ["📦 <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
+            lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
             kb = []
-            for item in catalog:
+            for idx, item in enumerate(catalog):
                 lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
-                kb.append([InlineKeyboardButton(f"📥 Install {item['name'][:20]}", callback_data=f"plg:inst:{item['package'][:30]}")])
-            kb.append([InlineKeyboardButton("🔌 Plugins Terpasang", callback_data="plg:ref")])
+                kb.append([InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")])
+            kb.append([InlineKeyboardButton("[PLUGIN] Plugins Terpasang", callback_data="plg:ref")])
             await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
         except Exception as e:
             logger.error(f"Error viewing plugin catalog: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal memuat katalog plugin: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal memuat katalog plugin: {e}")
 
     async def _cmd_plugin_install(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1768,7 +2393,7 @@ class TelegramBot:
 
         if not ctx.args:
             await update.message.reply_text(
-                "ℹ️ Format: <code>/plugin_install &lt;package_name&gt;</code>\nContoh: <code>/plugin_install monika-plugin-deepseek</code>",
+                "[INFORMASI] Format: <code>/plugin_install &lt;package_name&gt;</code>\nContoh: <code>/plugin_install monika-plugin-deepseek</code>",
                 parse_mode=ParseMode.HTML,
             )
             return
@@ -1777,13 +2402,13 @@ class TelegramBot:
         from harness.installer import validate_package_spec, run_pip_install
         valid, err = validate_package_spec(pkg)
         if not valid:
-            await update.message.reply_text(f"❌ <b>Validasi Paket Ditolak:</b>\n{err}", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(f"[GAGAL] <b>Validasi Paket Ditolak:</b>\n{err}", parse_mode=ParseMode.HTML)
             return
 
-        msg = await update.message.reply_text(f"⏳ <b>Menginstall plugin via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
+        msg = await update.message.reply_text(f"[MEMPROSES] <b>Menginstall plugin via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
         success, out = await asyncio.to_thread(run_pip_install, pkg)
         
-        status_icon = "✅" if success else "❌"
+        status_icon = "[BERHASIL]" if success else "[GAGAL]"
         status_word = "Berhasil" if success else "Gagal"
         tail_out = out[-400:] if len(out) > 400 else out
         await msg.edit_text(f"{status_icon} <b>Instalasi {status_word}:</b> <code>{pkg}</code>\n\n<pre>{tail_out}</pre>", parse_mode=ParseMode.HTML)
@@ -1793,14 +2418,14 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("ℹ️ Format: <code>/plugin_uninstall &lt;package_name&gt;</code>", parse_mode=ParseMode.HTML)
+            await update.message.reply_text("[INFORMASI] Format: <code>/plugin_uninstall &lt;package_name&gt;</code>", parse_mode=ParseMode.HTML)
             return
 
         pkg = ctx.args[0].strip()
         from harness.installer import run_pip_uninstall
-        msg = await update.message.reply_text(f"⏳ <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML)
+        msg = await update.message.reply_text(f"[MEMPROSES] <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML)
         success, out = await asyncio.to_thread(run_pip_uninstall, pkg)
-        status_icon = "✅" if success else "❌"
+        status_icon = "[BERHASIL]" if success else "[GAGAL]"
         await msg.edit_text(f"{status_icon} <b>Uninstall {'Berhasil' if success else 'Gagal'}:</b> <code>{pkg}</code>", parse_mode=ParseMode.HTML)
 
     async def _cmd_plugin_toggle(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1808,7 +2433,7 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
         if not ctx.args:
-            await update.message.reply_text("ℹ️ Format: <code>/plugin_toggle &lt;plugin_id&gt;</code>", parse_mode=ParseMode.HTML)
+            await update.message.reply_text("[INFORMASI] Format: <code>/plugin_toggle &lt;plugin_id&gt;</code>", parse_mode=ParseMode.HTML)
             return
 
         plugin_id = ctx.args[0].strip()
@@ -1817,13 +2442,13 @@ class TelegramBot:
         if plugin_id in plugins:
             p = plugins[plugin_id]
             if not p["can_toggle"]:
-                await update.message.reply_text("⚠️ Komponen inti (core) tidak dapat dinonaktifkan.")
+                await update.message.reply_text("[PERINGATAN] Komponen inti (core) tidak dapat dinonaktifkan.")
                 return
             new_state = not p["enabled"]
             ok, res_msg = toggle_plugin_state(plugin_id, p["category"], new_state)
-            await update.message.reply_text(f"{'🟢' if new_state else '⚪'} {res_msg}")
+            await update.message.reply_text(f"{'[AKTIF]' if new_state else '[NONAKTIF]'} {res_msg}")
         else:
-            await update.message.reply_text(f"❌ Plugin '<code>{plugin_id}</code>' tidak ditemukan.", parse_mode=ParseMode.HTML)
+            await update.message.reply_text(f"[GAGAL] Plugin '<code>{plugin_id}</code>' tidak ditemukan.", parse_mode=ParseMode.HTML)
 
     async def _cmd_memory(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1850,12 +2475,12 @@ class TelegramBot:
                 reflections = (await session.execute(q)).scalars().all()
 
                 if not reflections:
-                    await update.message.reply_text("ℹ️ Belum ada rekaman refleksi memori yang cocok.")
+                    await update.message.reply_text("[INFORMASI] Belum ada rekaman refleksi memori yang cocok.")
                     return
 
-                lines = [f"🏛️ <b>Autonomous Memory Vault ({len(reflections)} Terkini)</b>\n"]
+                lines = [f"[PASAR] <b>Autonomous Memory Vault ({len(reflections)} Terkini)</b>\n"]
                 for r in reflections:
-                    res_emoji = "🟢" if (r.outcome_pnl_usd or 0) > 0 else "🔴"
+                    res_emoji = "[AKTIF]" if (r.outcome_pnl_usd or 0) > 0 else "[KRITIS]"
                     pnl_str = f"${r.outcome_pnl_usd:+,.2f}" if r.outcome_pnl_usd is not None else "N/A"
                     lesson_snippet = r.specific_lesson or (r.reflection_text[:120] if r.reflection_text else "No lesson recorded.")
                     safe_sym = html.escape(str(r.symbol or ""))
@@ -1863,13 +2488,13 @@ class TelegramBot:
                     safe_lesson = html.escape(lesson_snippet or "")
                     lines.append(
                         f"{res_emoji} <b>[{safe_sym}]</b> {safe_dec} | PnL: <code>{pnl_str}</code>\n"
-                        f"💡 <i>{safe_lesson}</i>\n"
+                        f"[CATATAN] <i>{safe_lesson}</i>\n"
                     )
 
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Error retrieving memory: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal membaca memori: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal membaca memori: {e}")
 
     async def _cmd_strategies(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -1888,10 +2513,10 @@ class TelegramBot:
                 ).scalars().all()
 
                 if not rules:
-                    await update.message.reply_text("ℹ️ Belum ada aturan playbook / strategi empiris terdaftar di DB.")
+                    await update.message.reply_text("[INFORMASI] Belum ada aturan playbook / strategi empiris terdaftar di DB.")
                     return
 
-                lines = ["⚔️ <b>Empirical Playbook Strategies & Rules:</b>\n"]
+                lines = ["[DEBAT] <b>Empirical Playbook Strategies & Rules:</b>\n"]
                 for rule in rules:
                     wr = (rule.win_rate or 0.0) * 100
                     pnl = rule.total_pnl or 0.0
@@ -1908,7 +2533,7 @@ class TelegramBot:
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Error retrieving strategies: {e}", exc_info=True)
-            await update.message.reply_text(f"❌ Gagal memuat playbook strategies: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal memuat playbook strategies: {e}")
 
     # ------------------------------------------------------------------
     # AI chat handler
@@ -1922,8 +2547,12 @@ class TelegramBot:
 
         user_id  = update.effective_user.id
         chat_id  = update.effective_chat.id if update.effective_chat else user_id
-        user_msg = update.message.text.strip()
+        user_msg = str(update.message.text).strip() if update.message and update.message.text else ""
         
+        # Check emergency close all fast-path
+        if user_msg and re.search(r'(?i)\b(close\s*all|tutup\s*semua|emergency\s*close|likuidasi\s*semua)\b', user_msg):
+            return await self._cmd_closeall(update, ctx)
+
         # Prune old chat agents
         now = datetime.now(timezone.utc)
         to_delete = []
@@ -2075,14 +2704,14 @@ class TelegramBot:
         await query.answer()  # Acknowledge to remove loading spinner
 
         if not self._is_authorized(update):
-            await query.edit_message_text("⛔ Unauthorized.")
+            await query.edit_message_text("[AKSES DITOLAK] Unauthorized.")
             return
 
         user_id = update.effective_user.id if update.effective_user else 0
         data = query.data or ""
 
         if data == "cancel":
-            await query.edit_message_text("❌ Dibatalkan.")
+            await query.edit_message_text("[GAGAL] Dibatalkan.")
             return
 
         if data.startswith("cmd:"):
@@ -2101,9 +2730,9 @@ class TelegramBot:
             stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
             import time
             if not stored or time.time() > stored.get("expires", 0):
-                await query.edit_message_text("⚠️ Confirmation expired or invalid.")
+                await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
-            await query.edit_message_text("🚨 Memproses likuidasi seluruh posisi terbuka...")
+            await query.edit_message_text("[DARURAT] Memproses likuidasi seluruh posisi terbuka...")
             if self.execution_service:
                 if hasattr(self.execution_service, "close_all_positions"):
                     result = await self.execution_service.close_all_positions(comment="TG:CloseAll")
@@ -2113,9 +2742,9 @@ class TelegramBot:
                     result = {"status": "error", "message": "Method close_all_positions not available"}
                 closed = result.get("closed", 0)
                 total = result.get("total", 0)
-                await query.edit_message_text(f"✅ Close All Selesai: {closed}/{total} posisi ditutup.")
+                await query.edit_message_text(f"[BERHASIL] Close All Selesai: {closed}/{total} posisi ditutup.")
             else:
-                await query.edit_message_text("⚠️ ExecutionService tidak terhubung.")
+                await query.edit_message_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
 
         if data.startswith("unsuspend_all:confirm:"):
@@ -2123,7 +2752,7 @@ class TelegramBot:
             stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
             import time
             if not stored or time.time() > stored.get("expires", 0):
-                await query.edit_message_text("⚠️ Confirmation expired or invalid.")
+                await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
             from database.db import get_session
             from utils.analytics.paper_tracker import PaperTracker
@@ -2141,7 +2770,7 @@ class TelegramBot:
             stored = getattr(self, '_active_nonces', {}).pop(nonce, None)
             import time
             if not stored or time.time() > stored.get("expires", 0):
-                await query.edit_message_text("⚠️ Confirmation expired or invalid.")
+                await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
             updated_fields = stored.get("updated_fields", {})
             param = stored.get("param", "")
@@ -2176,7 +2805,7 @@ class TelegramBot:
                     actor="telegram_admin",
                 ))
                 await session.commit()
-            await query.edit_message_text(f"✅ Risk parameter override applied: {updated_fields if param != 'reset' else 'RESET ALL'}")
+            await query.edit_message_text(f"[BERHASIL] Risk parameter override applied: {updated_fields if param != 'reset' else 'RESET ALL'}")
             return
 
         if data.startswith("plg:"):
@@ -2199,12 +2828,12 @@ class TelegramBot:
 
             if data == "plg:cat":
                 catalog = get_community_catalog()
-                lines = ["📦 <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
+                lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
                 kb = []
-                for item in catalog:
+                for idx, item in enumerate(catalog):
                     lines.append(f"• <b>{item['name']}</b> (<code>{item['package']}</code>)\n  <i>{item['description']}</i>\n")
-                    kb.append([InlineKeyboardButton(f"📥 Install {item['name'][:20]}", callback_data=f"plg:inst:{item['package'][:30]}")])
-                kb.append([InlineKeyboardButton("🔌 Plugins Terpasang", callback_data="plg:ref")])
+                    kb.append([InlineKeyboardButton(f"[TERIMA] Install {item['name'][:20]}", callback_data=f"plg:inst:{idx}")])
+                kb.append([InlineKeyboardButton("[PLUGIN] Plugins Terpasang", callback_data="plg:ref")])
                 try:
                     await query.edit_message_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
                 except Exception:
@@ -2213,18 +2842,18 @@ class TelegramBot:
 
             if data.startswith("plg:t:"):
                 if not self._is_admin(update):
-                    await query.answer("⛔ Hanya Admin yang berhak mengubah status plugin.", show_alert=True)
+                    await query.answer("[AKSES DITOLAK] Hanya Admin yang berhak mengubah status plugin.", show_alert=True)
                     return
                 plugin_id = data.split(":", 2)[2]
                 plugins = {p["id"]: p for p in list_all_plugins_status()}
                 if plugin_id in plugins:
                     p = plugins[plugin_id]
                     if not p.get("can_toggle", True):
-                        await query.answer("⚠️ Komponen inti (core) tidak dapat dinonaktifkan.", show_alert=True)
+                        await query.answer("[PERINGATAN] Komponen inti (core) tidak dapat dinonaktifkan.", show_alert=True)
                         return
                     new_state = not p["enabled"]
                     ok, msg = toggle_plugin_state(plugin_id, p["category"], new_state)
-                    await query.answer(f"{'🟢 Diaktifkan' if new_state else '⚪ Dinonaktifkan'}: {plugin_id}")
+                    await query.answer(f"{'[AKTIF] Diaktifkan' if new_state else '[NONAKTIF] Dinonaktifkan'}: {plugin_id}")
                     new_plugins = list_all_plugins_status()
                     new_text = self._build_plugins_text(new_plugins)
                     new_markup = self._build_plugins_keyboard(new_plugins)
@@ -2238,25 +2867,30 @@ class TelegramBot:
 
             if data.startswith("plg:inst:"):
                 if not self._is_admin(update):
-                    await query.answer("⛔ Hanya Admin yang berhak menginstall plugin.", show_alert=True)
+                    await query.answer("[AKSES DITOLAK] Hanya Admin yang berhak menginstall plugin.", show_alert=True)
                     return
-                pkg = data.split(":", 2)[2]
+                pkg_arg = data.split(":", 2)[2]
+                catalog = get_community_catalog()
+                if pkg_arg.isdigit() and int(pkg_arg) < len(catalog):
+                    pkg = catalog[int(pkg_arg)]["package"]
+                else:
+                    pkg = pkg_arg
                 await query.answer(f"Memulai instalasi {pkg}...", show_alert=False)
-                await query.edit_message_text(f"⏳ <b>Sedang menginstall via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
+                await query.edit_message_text(f"[MEMPROSES] <b>Sedang menginstall via pip:</b> <code>{pkg}</code>...\n<i>Mohon tunggu sebentar...</i>", parse_mode=ParseMode.HTML)
                 
                 success, out = await asyncio.to_thread(run_pip_install, pkg)
                 if success:
-                    res_text = f"✅ <b>Instalasi Berhasil:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
+                    res_text = f"[BERHASIL] <b>Instalasi Berhasil:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
                 else:
-                    res_text = f"❌ <b>Instalasi Gagal:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
+                    res_text = f"[GAGAL] <b>Instalasi Gagal:</b> <code>{pkg}</code>\n\n<pre>{out[-300:]}</pre>"
                 
-                kb = [[InlineKeyboardButton("🔌 Kembali ke Plugins", callback_data="plg:ref")]]
+                kb = [[InlineKeyboardButton("[PLUGIN] Kembali ke Plugins", callback_data="plg:ref")]]
                 await query.edit_message_text(res_text, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
                 return
 
         if data.startswith("fallback:"):
             if not self._is_admin(update):
-                await query.answer("⛔ Fallback approval only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Fallback approval only permitted for Admin.", show_alert=True)
                 return
             parts = data.split(":")
             if len(parts) >= 3:
@@ -2267,28 +2901,28 @@ class TelegramBot:
                 fallback_id = None
                 
             if not hasattr(self, '_fallback_events') or fallback_id not in self._fallback_events:
-                await query.edit_message_text("⚠️ Request fallback ini sudah kedaluwarsa atau dijawab.")
+                await query.edit_message_text("[PERINGATAN] Request fallback ini sudah kedaluwarsa atau dijawab.")
                 return
                 
             tg_event = self._fallback_events[fallback_id]
             tg_result = self._fallback_results[fallback_id]
             
             if tg_event.is_set():
-                await query.edit_message_text("⚠️ Request fallback ini sudah kedaluwarsa atau dijawab dari terminal.")
+                await query.edit_message_text("[PERINGATAN] Request fallback ini sudah kedaluwarsa atau dijawab dari terminal.")
                 return
             
             if action == "once":
                 tg_result["approved"] = True
                 tg_result["always"] = False
-                await query.edit_message_text("✅ Fallback disetujui (1 Siklus).")
+                await query.edit_message_text("[BERHASIL] Fallback disetujui (1 Siklus).")
             elif action == "always":
                 tg_result["approved"] = True
                 tg_result["always"] = True
-                await query.edit_message_text("✅ Fallback disetujui (Seterusnya).")
+                await query.edit_message_text("[BERHASIL] Fallback disetujui (Seterusnya).")
             elif action == "reject":
                 tg_result["approved"] = False
                 tg_result["always"] = False
-                await query.edit_message_text("❌ Fallback ditolak.")
+                await query.edit_message_text("[GAGAL] Fallback ditolak.")
             
             tg_event.set()
             
@@ -2298,33 +2932,38 @@ class TelegramBot:
 
         if data.startswith("pause:confirm"):
             if not self._is_admin(update):
-                await query.answer("⛔ Pause command only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Pause command only permitted for Admin.", show_alert=True)
                 return
             import time
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
             reason = "Paused via Telegram"
+            duration_hours = None
+            duration_desc = ""
             if nonce and hasattr(self, '_active_nonces'):
                 entry = self._active_nonces.get(nonce)
                 exp = entry if isinstance(entry, (int, float)) else (entry.get("expires", 0) if isinstance(entry, dict) else 0)
                 if exp < time.time():
-                    await query.edit_message_text("⚠️ Konfirmasi jeda trading ini sudah kedaluwarsa.")
+                    await query.edit_message_text("[PERINGATAN] Konfirmasi jeda trading ini sudah kedaluwarsa.")
                     return
-                if isinstance(entry, dict) and "reason" in entry:
-                    reason = entry["reason"]
+                if isinstance(entry, dict):
+                    reason = entry.get("reason", reason)
+                    duration_hours = entry.get("duration_hours")
+                    duration_desc = entry.get("duration_desc", "")
                 self._active_nonces.pop(nonce, None)
 
             from database.db import get_session
             from risk.risk_gate import RiskGate
             gate = RiskGate(self.settings)
             async with get_session() as session:
-                await gate.pause_trading(session, reason)
-            await query.edit_message_text(f"⏸️ *Trading berhasil dijeda.*\nAlasan: {reason}", parse_mode=ParseMode.MARKDOWN)
+                await gate.pause_trading(session, reason, duration_hours=duration_hours)
+            dur_msg = f"\nDurasi: {duration_desc} (auto-unpause aktif)" if duration_desc else ""
+            await query.edit_message_text(f"[DIJEDA] *Trading berhasil dijeda.*\nAlasan: {reason}{dur_msg}", parse_mode=ParseMode.MARKDOWN)
             return
 
         if data.startswith("killswitch:confirm"):
             if not self._is_admin(update):
-                await query.answer("⛔ Kill Switch only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Kill Switch only permitted for Admin.", show_alert=True)
                 return
             import time
             parts = data.split(":")
@@ -2332,103 +2971,149 @@ class TelegramBot:
             if nonce and hasattr(self, '_active_nonces'):
                 entry = self._active_nonces.get(nonce)
                 if not entry:
-                    await query.edit_message_text("⚠️ Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
+                    await query.edit_message_text("[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
                     return
                 exp = entry if isinstance(entry, (int, float)) else (entry.get("expires", 0.0) if isinstance(entry, dict) else 0.0)
                 if exp < time.time():
-                    await query.edit_message_text("⚠️ Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
+                    await query.edit_message_text("[PERINGATAN] Konfirmasi kill switch ini sudah kedaluwarsa atau telah digunakan.")
                     self._active_nonces.pop(nonce, None)
                     return
                 # Single-use: hapus nonce segera setelah divalidasi
                 self._active_nonces.pop(nonce, None)
 
-            await query.edit_message_text("⏳ Menjalankan kill switch...")
+            await query.edit_message_text("[MEMPROSES] Menjalankan kill switch...")
             if self.execution_service:
                 result = await self.execution_service.kill_switch("Telegram kill switch")
                 await query.edit_message_text(
-                    f"🛑 *Kill switch selesai.*\n"
+                    f"[BERHENTI] *Kill switch selesai.*\n"
                     f"Ditutup: {result['closed']}/{result['total']} posisi",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await query.edit_message_text("⚠️ ExecutionService tidak terhubung.")
+                await query.edit_message_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
 
         if data.startswith("close:"):
             if not self._is_admin(update):
-                await query.answer("⛔ Close position command only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Close position command only permitted for Admin.", show_alert=True)
                 return
-            ticket = int(data.split(":")[1])
+            parts = data.split(":")
+            ticket = int(parts[1])
+            volume = float(parts[2]) if len(parts) > 2 and parts[2] != "None" else None
             if self.execution_service:
                 result = await self.execution_service.close_position_by_ticket(
-                    ticket, requested_by="telegram_admin", reason="Manual close"
+                    ticket, requested_by="telegram_admin", reason="Manual close", volume=volume, lots=volume
                 )
                 if result.get("success"):
+                    vol_txt = f" ({volume} lot)" if volume else ""
                     await query.edit_message_text(
-                        f"✅ Posisi #{ticket} ditutup.\nProfit: {result.get('profit', 'N/A')}",
+                        f"[BERHASIL] Posisi #{ticket}{vol_txt} ditutup.\nProfit: {result.get('profit', 'N/A')}",
                     )
                 else:
-                    await query.edit_message_text(f"❌ Gagal tutup: {result.get('error')}")
+                    await query.edit_message_text(f"[GAGAL] Gagal tutup: {result.get('error')}")
             else:
-                await query.edit_message_text("⚠️ ExecutionService tidak terhubung.")
+                await query.edit_message_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
 
         if data.startswith("confirm:"):
             if not self._is_admin(update):
-                await query.answer("⛔ Action confirmation only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Action confirmation only permitted for Admin.", show_alert=True)
                 return
             action_id = data.split(":", 1)[1]
 
             from risk.approval_hub import ApprovalHub
             hub = ApprovalHub.get_instance()
-            if hub.get_request(action_id):
-                await query.edit_message_text(f"⏳ Mengeksekusi via ApprovalHub [{action_id}]...")
+            req = hub.get_request(action_id)
+            if req:
+                await query.edit_message_text(f"[MEMPROSES] Mengeksekusi via ApprovalHub [{action_id}]...")
                 success, msg = await hub.approve(action_id, operator=f"tg_{user_id}")
-                await query.edit_message_text(f"{'✅' if success else '❌'} {msg}")
+                if success and req.request_type == "trade_proposal" and self.execution_service:
+                    try:
+                        trade = req.details or {}
+                        symbol = req.symbol
+                        direction = (req.action_type or "buy").lower()
+                        if direction not in ("buy", "sell"):
+                            direction = "buy"
+                        lots = float(trade.get("lots") or trade.get("volume") or 0.01)
+                        sl = float(trade["stop_loss"]) if trade.get("stop_loss") is not None else None
+                        tp = float(trade["take_profit"]) if trade.get("take_profit") is not None else None
+
+                        from database.db import get_session
+                        from database.models import AssetAnalysis
+                        from datetime import datetime, timezone
+                        import json
+
+                        async with get_session() as session:
+                            analysis = AssetAnalysis(
+                                symbol=symbol,
+                                generated_at=datetime.now(timezone.utc),
+                                decision=direction,
+                                confidence=0.85,
+                                entry_zone=json.dumps({"type": "market"}),
+                                stop_loss=sl,
+                                take_profit=tp,
+                                rationale=f"Voice Note Approval Execution: {trade.get('transcript', '')}",
+                            )
+                            session.add(analysis)
+                            await session.flush()
+                            res = await self.execution_service.execute_analysis(session, analysis)
+                            if res.executed:
+                                await query.edit_message_text(
+                                    f"[BERHASIL] Order {res.decision.upper()} {res.executed_lots} lot {res.symbol} berhasil dieksekusi!\n"
+                                    f"Harga: {res.executed_price} | Ticket: #{res.mt5_ticket}"
+                                )
+                            else:
+                                reasons = "; ".join(res.risk_rejection_reasons) or res.mt5_error or "Ditolak RiskGate"
+                                await query.edit_message_text(f"[GAGAL] Order diblokir RiskGate: {reasons}")
+                    except Exception as exec_err:
+                        logger.error(f"[Bot] Failed to execute approved voice order: {exec_err}", exc_info=True)
+                        await query.edit_message_text(f"[PERINGATAN] Approval sukses tetapi eksekusi gagal: {exec_err}")
+                else:
+                    await query.edit_message_text(f"{'[BERHASIL]' if success else '[GAGAL]'} {msg}")
                 return
 
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
                 if action_id.isdigit() and self.execution_service:
-                    await query.edit_message_text(f"⏳ Mengeksekusi analisis #{action_id}...")
+                    await query.edit_message_text(f"[MEMPROSES] Mengeksekusi analisis #{action_id}...")
                     try:
                         res = await self.execution_service.execute_by_analysis_id(int(action_id))
-                        await query.edit_message_text(f"✅ {res.summary() if hasattr(res, 'summary') else str(res)}")
+                        await query.edit_message_text(f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}")
                     except Exception as exec_err:
-                        await query.edit_message_text(f"❌ Gagal eksekusi #{action_id}: {exec_err}")
+                        await query.edit_message_text(f"[GAGAL] Gagal eksekusi #{action_id}: {exec_err}")
                     return
-                await query.edit_message_text("❌ Sesi tidak ditemukan.")
+                await query.edit_message_text("[GAGAL] Sesi tidak ditemukan.")
                 return
-            await query.edit_message_text("⏳ Mengeksekusi...")
+            await query.edit_message_text("[MEMPROSES] Mengeksekusi...")
             success, msg = await agent.confirm_action(action_id)
             await query.edit_message_text(msg)
             return
 
         if data.startswith("allow_session:"):
             if not self._is_admin(update):
-                await query.answer("⛔ Session authorization only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Session authorization only permitted for Admin.", show_alert=True)
                 return
             action_id = data.split(":", 1)[1]
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
                 if action_id.isdigit() and self.execution_service:
-                    await query.edit_message_text(f"⏳ Mengeksekusi analisis #{action_id}...")
+                    await query.edit_message_text(f"[MEMPROSES] Mengeksekusi analisis #{action_id}...")
                     try:
                         res = await self.execution_service.execute_by_analysis_id(int(action_id))
-                        await query.edit_message_text(f"✅ {res.summary() if hasattr(res, 'summary') else str(res)}")
+                        await query.edit_message_text(f"[BERHASIL] {res.summary() if hasattr(res, 'summary') else str(res)}")
                     except Exception as exec_err:
-                        await query.edit_message_text(f"❌ Gagal eksekusi #{action_id}: {exec_err}")
+                        await query.edit_message_text(f"[GAGAL] Gagal eksekusi #{action_id}: {exec_err}")
                     return
-                await query.edit_message_text("❌ Sesi tidak ditemukan.")
+                await query.edit_message_text("[GAGAL] Sesi tidak ditemukan.")
                 return
-            await query.edit_message_text("⏳ Mengeksekusi dan mengaktifkan izin sesi (4h)...")
+            await query.edit_message_text("[MEMPROSES] Mengeksekusi dan mengaktifkan izin sesi (4h)...")
             success, msg = await agent.approve_for_session(action_id)
             await query.edit_message_text(msg)
             return
 
         if data.startswith("reject:"):
             if not self._is_admin(update):
-                await query.answer("⛔ Action rejection only permitted for Admin.", show_alert=True)
+                await query.answer("[AKSES DITOLAK] Action rejection only permitted for Admin.", show_alert=True)
                 return
             action_id = data.split(":", 1)[1]
 
@@ -2436,7 +3121,7 @@ class TelegramBot:
             hub = ApprovalHub.get_instance()
             if hub.get_request(action_id):
                 success, msg = await hub.reject(action_id, operator=f"tg_{user_id}", reason="Dibatalkan via Telegram")
-                await query.edit_message_text(f"❌ Permintaan [{action_id}] telah dibatalkan.")
+                await query.edit_message_text(f"[GAGAL] Permintaan [{action_id}] telah dibatalkan.")
                 return
 
             agent = await self._resolve_action_agent(user_id, action_id, query)
@@ -2471,15 +3156,15 @@ class TelegramBot:
                         except Exception:
                             pass
                         await session.commit()
-                    await query.edit_message_text(f"❌ Analisis #{action_id} ditolak.")
+                    await query.edit_message_text(f"[GAGAL] Analisis #{action_id} ditolak.")
                     return
-                await query.edit_message_text("❌ Sesi tidak ditemukan.")
+                await query.edit_message_text("[GAGAL] Sesi tidak ditemukan.")
                 return
             msg = await agent.reject_action(action_id)
-            await query.edit_message_text(f"❌ {msg}")
+            await query.edit_message_text(f"[GAGAL] {msg}")
             return
 
-        await query.edit_message_text("❓ Callback tidak dikenali.")
+        await query.edit_message_text("[?] Callback tidak dikenali.")
 
     # ------------------------------------------------------------------
     # Data builders (read-only DB queries)
@@ -2519,6 +3204,20 @@ class TelegramBot:
                 last_ts = last_analysis.generated_at.strftime("%d %b %Y %H:%M UTC") \
                           if last_analysis else "Belum ada"
 
+                balance_str = None
+                equity_str = None
+                margin_level_str = None
+                if self.execution_service and hasattr(self.execution_service, "mt5"):
+                    try:
+                        acc = await self.execution_service.mt5.get_account_info()
+                        if acc:
+                            balance_str = f"${acc.get('balance', 0.0):,.2f}"
+                            equity_str = f"${acc.get('equity', 0.0):,.2f}"
+                            ml = acc.get('margin_level', 0.0)
+                            margin_level_str = f"{ml:.1f}%" if ml else "N/A"
+                    except Exception:
+                        pass
+
                 return format_status_slip(
                     status_text=status_txt,
                     pos_count=pos_count,
@@ -2526,6 +3225,9 @@ class TelegramBot:
                     drawdown=drawdown,
                     last_analysis=last_ts,
                     now_str=now.strftime("%Y-%m-%d %H:%M UTC"),
+                    balance=balance_str,
+                    equity=equity_str,
+                    margin_level=margin_level_str,
                 )
         except Exception as e:
             return f"[ GAGAL ] Error mengambil status: {e}"
@@ -2658,6 +3360,12 @@ class TelegramBot:
                 drawdown = f"${risk.current_drawdown:.2f}" if risk else None
                 reason = risk.reason if (risk and risk.reason) else None
 
+                cb_status = "NORMAL (OFF)"
+                if risk and risk.trading_paused:
+                    cb_status = f"TRIGGERED ({reason or 'PAUSED'})"
+                elif risk and getattr(risk, "current_drawdown", 0) and risk.current_drawdown >= float(self.settings.get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0)):
+                    cb_status = "MAX DD TRIGGERED"
+
                 return format_risk_slip(
                     status_text=status_txt,
                     mode="LIVE" if auto_exec else "PAPER",
@@ -2666,6 +3374,7 @@ class TelegramBot:
                     daily_pnl=daily_pnl,
                     drawdown=drawdown,
                     reason=reason,
+                    circuit_breaker=cb_status,
                 )
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"
@@ -3003,32 +3712,32 @@ class TelegramBot:
                 )).scalars().all()
 
                 if not vix_rows:
-                    return "📉 *Data VIX belum tersedia.*"
+                    return "[GRAFIK] *Data VIX belum tersedia.*"
 
-                lines = ["*📉 VIX (5 Data Terakhir)*\n"]
+                lines = ["*[GRAFIK] VIX (5 Data Terakhir)*\n"]
                 for v in vix_rows:
                     date_str = v.date.strftime("%d %b") if v.date else "?"
                     close    = f"{v.close:.2f}" if v.close is not None else "?"
                     # VIX interpretation
                     if v.close and v.close > 30:
-                        icon = "🔴"
+                        icon = "[KRITIS]"
                     elif v.close and v.close > 20:
-                        icon = "🟡"
+                        icon = "[WASPADA]"
                     else:
-                        icon = "🟢"
+                        icon = "[AKTIF]"
                     lines.append(f"{icon} `{date_str}`: VIX = *{close}*")
                 return "\n".join(lines)
         except Exception as e:
-            return f"❌ Error: {e}"
+            return f"[GAGAL] Error: {e}"
 
     async def _build_tokens_text(self) -> str:
         try:
             from utils.analytics.token_auditor import TokenAuditor
             summary = await TokenAuditor.get_summary(hours=24)
             if not summary or summary["total_calls"] == 0:
-                return "📊 *Belum ada konsumsi token tercatat hari ini (24 jam terakhir).*"
+                return "[LAPORAN] *Belum ada konsumsi token tercatat hari ini (24 jam terakhir).*"
 
-            lines = ["*📊 Laporan Konsumsi Token (24 Jam Terakhir)*\n"]
+            lines = ["*[LAPORAN] Laporan Konsumsi Token (24 Jam Terakhir)*\n"]
             lines.append(f"• *Total Panggilan*: {summary['total_calls']:,} calls")
             lines.append(f"• *Total Input*: {summary['input_tokens']:,} tokens")
             lines.append(f"• *Total Output*: {summary['output_tokens']:,} tokens")
@@ -3040,31 +3749,31 @@ class TelegramBot:
             # Subsystem Breakdown
             subsystems = await TokenAuditor.get_subsystem_breakdown(hours=24)
             if subsystems:
-                lines.append("*📂 Berdasarkan Subsystem:*")
+                lines.append("*• Berdasarkan Subsystem:*")
                 for s in subsystems[:6]:
-                    lines.append(f"  ▫️ *{s['subsystem']}*: {s['sum_total']:,} tokens (${s['sum_cost_usd']:.4f} | {s['pct_cost']:.1f}%)")
+                    lines.append(f"  • *{s['subsystem']}*: {s['sum_total']:,} tokens (${s['sum_cost_usd']:.4f} | {s['pct_cost']:.1f}%)")
                 lines.append("")
 
             # Top Roles Breakdown
             roles = await TokenAuditor.get_role_breakdown(hours=24)
             if roles:
-                lines.append("*🤖 Top Task Roles Terbesar:*")
+                lines.append("*[ASISTEN AI] Top Task Roles Terbesar:*")
                 for r in roles[:5]:
-                    lines.append(f"  ▫️ `{r['task_role']}`: {r['calls']} calls, avg {r['avg_total']:,.0f} tok (${r['sum_cost_usd']:.4f})")
+                    lines.append(f"  • `{r['task_role']}`: {r['calls']} calls, avg {r['avg_total']:,.0f} tok (${r['sum_cost_usd']:.4f})")
 
             return "\n".join(lines)
         except Exception as e:
-            return f"❌ Error: {e}"
+            return f"[GAGAL] Error: {e}"
 
     async def _build_credits_text(self) -> str:
         try:
             from utils.api.credit_balance_tracker import CreditBalanceTracker
             rep = await CreditBalanceTracker.get_full_credit_report()
 
-            lines = ["*💳 LAPORAN SISA KREDIT & KUOTA API*\n"]
+            lines = ["*[KUOTA] LAPORAN SISA KREDIT & KUOTA API*\n"]
 
             # 1. Live Provider Balances (Tier Berbayar)
-            lines.append("*🔹 Saldo Live Provider (Tier Berbayar):*")
+            lines.append("*• Saldo Live Provider (Tier Berbayar):*")
             
             # OpenRouter Paid Key
             or_data = rep.get("openrouter", {})
@@ -3075,11 +3784,11 @@ class TelegramBot:
                 usg = paid_status.get("total_usage_usd", 0.0)
                 lines.append(f"• *OpenRouter (Paid Key)*: `${rem:.2f} USD` tersisa (Total: `${tot:.2f}` | Terpakai: `${usg:.2f}`)")
             elif paid_status.get("status") == "insufficient_credits":
-                lines.append("• *OpenRouter (Paid Key)*: ⚠️ `$0.00 USD` (Saldo top-up habis)")
+                lines.append("• *OpenRouter (Paid Key)*: [PERINGATAN] `$0.00 USD` (Saldo top-up habis)")
             elif not paid_status.get("configured"):
                 lines.append("• *OpenRouter (Paid Key)*: _OPENROUTER_PAID_API_KEY belum disetel_")
             else:
-                lines.append(f"• *OpenRouter (Paid Key)*: ⚠️ Status: {paid_status.get('message', 'Error')}")
+                lines.append(f"• *OpenRouter (Paid Key)*: [PERINGATAN] Status: {paid_status.get('message', 'Error')}")
 
             # DeepSeek
             ds_data = rep.get("deepseek", {})
@@ -3091,7 +3800,7 @@ class TelegramBot:
             elif ds_data.get("status") == "unconfigured":
                 lines.append("• *DeepSeek*: _API Key tidak aktif / opsional_")
             else:
-                lines.append(f"• *DeepSeek*: ⚠️ Status: {ds_data.get('message', 'Error')}")
+                lines.append(f"• *DeepSeek*: [PERINGATAN] Status: {ds_data.get('message', 'Error')}")
 
             lines.append("")
 
@@ -3100,20 +3809,20 @@ class TelegramBot:
             if free_keys.get("configured_count", 0) > 0:
                 act = free_keys.get("active_count", 0)
                 cfg = free_keys.get("configured_count", 0)
-                icon = "🟢" if act == cfg else ("🟡" if act > 0 else "🔴")
-                lines.append("*🔹 Pool Kunci Gratisan OpenRouter (Free Tier Models):*")
+                icon = "[AKTIF]" if act == cfg else ("[WASPADA]" if act > 0 else "[KRITIS]")
+                lines.append("*• Pool Kunci Gratisan OpenRouter (Free Tier Models):*")
                 lines.append(f"{icon} *OpenRouter Free Keys*: `{act} / {cfg}` Kunci Aktif & Siap (`is_free_tier: true`)")
                 lines.append("")
 
             # 3. Sisa Kuota Harian Free Tier (Hari ini)
             quotas = rep.get("quotas", {})
             if quotas:
-                lines.append("*🔹 Sisa Kuota Harian Free Tier (Hari Ini):*")
-                key_models = ["gemini-3.7-flash", "gemini-3.5-flash-lite", "groq-qwen3.8-27b", "qwen3.8-27b"]
+                lines.append("*• Sisa Kuota Harian Free Tier (Hari Ini):*")
+                key_models = list(quotas.keys())
                 for km in key_models:
                     if km in quotas:
                         q = quotas[km]
-                        icon = "🟢" if q["pct_used"] < 70 else ("🟡" if q["pct_used"] < 90 else "🔴")
+                        icon = "[AKTIF]" if q["pct_used"] < 70 else ("[WASPADA]" if q["pct_used"] < 90 else "[KRITIS]")
                         lines.append(f"{icon} `{km}`: *{q['remaining_calls']}* / {q['rpd_limit']} RPD tersisa ({q['used_calls']} calls)")
                 lines.append("")
 
@@ -3123,14 +3832,14 @@ class TelegramBot:
                 m_str = expenses.get("month_str", "Bulan Ini")
                 tot_cost = expenses.get("total_month_usd", 0.0)
                 tot_calls = expenses.get("total_month_calls", 0)
-                lines.append(f"*🔹 Akumulasi Pengeluaran ({m_str}):* `${tot_cost:.4f} USD` ({tot_calls:,} calls)")
+                lines.append(f"*• Akumulasi Pengeluaran ({m_str}):* `${tot_cost:.4f} USD` ({tot_calls:,} calls)")
                 by_prov = expenses.get("by_provider", {})
                 for prov, pdata in sorted(by_prov.items(), key=lambda x: x[1].get("cost_usd", 0), reverse=True):
-                    lines.append(f"  ▫️ *{prov.title()}*: `${pdata['cost_usd']:.4f}` ({pdata['calls']} calls, {pdata['tokens']:,} tok)")
+                    lines.append(f"  • *{prov.title()}*: `${pdata['cost_usd']:.4f}` ({pdata['calls']} calls, {pdata['tokens']:,} tok)")
 
             return "\n".join(lines)
         except Exception as e:
-            return f"❌ Error Credit Balance Tracker: {e}"
+            return f"[GAGAL] Error Credit Balance Tracker: {e}"
 
 
     # ------------------------------------------------------------------
@@ -3255,14 +3964,14 @@ class TelegramBot:
         try:
             analysis_id = int(ctx.args[0])
         except ValueError:
-            await update.message.reply_text("❌ analysis_id harus berupa angka.")
+            await update.message.reply_text("[GAGAL] analysis_id harus berupa angka.")
             return
         
         if not self.execution_service:
-            await update.message.reply_text("⚠️ ExecutionService tidak terhubung.")
+            await update.message.reply_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
         
-        await update.message.reply_text(f"⏳ Mengeksekusi analisis #{analysis_id}...")
+        await update.message.reply_text(f"[MEMPROSES] Mengeksekusi analisis #{analysis_id}...")
         try:
             result = await self.execution_service.execute_by_analysis_id(analysis_id)
             try:
@@ -3272,10 +3981,10 @@ class TelegramBot:
             except Exception:
                 pass
             await update.message.reply_text(
-                f"✅ {result.summary()}" if hasattr(result, 'summary') else str(result)
+                f"[BERHASIL] {result.summary()}" if hasattr(result, 'summary') else str(result)
             )
         except Exception as e:
-            await update.message.reply_text(f"❌ Gagal: {e}")
+            await update.message.reply_text(f"[GAGAL] Gagal: {e}")
 
     async def _cmd_reject(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -3332,7 +4041,7 @@ class TelegramBot:
             
             await session.commit()
         
-        await update.message.reply_text(f"❌ Analisis #{analysis_id_str} ditolak dan tidak akan dieksekusi.")
+        await update.message.reply_text(f"[GAGAL] Analisis #{analysis_id_str} ditolak dan tidak akan dieksekusi.")
 
     async def _cmd_steer(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Mid-stream in-flight steer directive synchronized across Telegram, WS, and TUI."""
@@ -3356,7 +4065,7 @@ class TelegramBot:
         await ApprovalHub.get_instance().steer(symbol, instruction, operator=operator_tag)
 
         await update.message.reply_text(
-            f"🎯 *Steer Synchronized Across All Surfaces*\n\n"
+            f"[TARGET] *Steer Synchronized Across All Surfaces*\n\n"
             f"• *Symbol:* `{symbol}`\n"
             f"• *Instruction:* {instruction}\n"
             f"• *Surfaces:* Telegram, Dashboard CRT, TUI Terminal\n"
@@ -3399,7 +4108,7 @@ class TelegramBot:
                     )).scalars().all()
 
             if not trades:
-                await update.message.reply_text(f"ℹ️ Belum ada trade closed dalam {days} hari terakhir.")
+                await update.message.reply_text(f"[INFORMASI] Belum ada trade closed dalam {days} hari terakhir.")
                 return
 
             tearsheet = QuantTearsheetGenerator.generate_from_trades(trades)
@@ -3408,7 +4117,7 @@ class TelegramBot:
                 await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
         except Exception as e:
             logger.error(f"Error executing /tearsheet: {e}")
-            await update.message.reply_text(f"❌ Error generating tearsheet: {e}")
+            await update.message.reply_text(f"[GAGAL] Error generating tearsheet: {e}")
 
     async def _cmd_report(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -3470,7 +4179,7 @@ class TelegramBot:
                 )).scalar_one_or_none()
                 
             lines = [
-                f"*📊 Weekly Report — {week_ago.strftime('%d %b')} to {now.strftime('%d %b %Y')}*\n",
+                f"*[LAPORAN] Weekly Report — {week_ago.strftime('%d %b')} to {now.strftime('%d %b %Y')}*\n",
                 f"*Trading Performance:*",
                 f"  Closed trades: {len(closed)}",
                 f"  Win rate: {win_rate:.1f}%",
@@ -3489,26 +4198,26 @@ class TelegramBot:
                     if exp is not None:
                         lines.append("*Edge Status:*")
                         if exp > 0:
-                            lines.append(f"  🟢 EDGE POSITIVE: Expectancy = +{exp:.2f}R per trade")
+                            lines.append(f"  [AKTIF] EDGE POSITIVE: Expectancy = +{exp:.2f}R per trade")
                         elif exp > -0.1:
-                            lines.append(f"  🟡 EDGE UNCERTAIN: Expectancy = {exp:.2f}R per trade")
+                            lines.append(f"  [WASPADA] EDGE UNCERTAIN: Expectancy = {exp:.2f}R per trade")
                         else:
-                            lines.append(f"  🔴 EDGE NEGATIVE: Expectancy = {exp:.2f}R per trade — AUTO-SUSPEND RISK")
+                            lines.append(f"  [KRITIS] EDGE NEGATIVE: Expectancy = {exp:.2f}R per trade — AUTO-SUSPEND RISK")
                     
                     suspended = await tracker.get_suspended_symbols(tracker_session)
                     if suspended:
-                        lines.append(f"  ⏸️ Suspended Symbols: {', '.join(suspended)}")
+                        lines.append(f"  [DIJEDA] Suspended Symbols: {', '.join(suspended)}")
                     lines.append("")
                     
                     from utils.analytics.analysis_tracker import get_direction_accuracy_report
                     dir_acc = await get_direction_accuracy_report(tracker_session, 7)
                     if dir_acc and "error" not in dir_acc and not dir_acc.get('insufficient_data'):
                         lines.append("*Analysis Quality:*")
-                        lines.append(f"  🎯 Direction Accuracy (4h): {dir_acc.get('direction_accuracy_4h', dir_acc.get('overall_accuracy_4h_pct'))}%")
+                        lines.append(f"  [TARGET] Direction Accuracy (4h): {dir_acc.get('direction_accuracy_4h', dir_acc.get('overall_accuracy_4h_pct'))}%")
                         brier = dir_acc.get('brier_score', dir_acc.get('mean_brier_score'))
                         if brier is not None:
                             # Brier score: 0 is perfect, 1 is totally wrong, 0.25 is random guessing
-                            lines.append(f"  🧠 Confidence Brier Score: {brier:.3f} (closer to 0 is better)")
+                            lines.append(f"  [KEYAKINAN] Confidence Brier Score: {brier:.3f} (closer to 0 is better)")
                         lines.append("")
             except Exception as e:
                 logger.debug(f"Failed to fetch tracker stats for report: {e}")
@@ -3560,7 +4269,7 @@ class TelegramBot:
             
             return "\n".join(lines)
         except Exception as e:
-            return f"❌ Error generating report: {e}"
+            return f"[GAGAL] Error generating report: {e}"
 
 
 # ---------------------------------------------------------------------------

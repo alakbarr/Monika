@@ -243,3 +243,7 @@ class MacroToolHandlers:
         from analysis.tools.handlers.macro_tools import handle_get_surprise_summary
         return await handle_get_surprise_summary(kwargs, session=session, settings=self.settings)
 
+    async def get_market_correlations(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
+        from analysis.tools.handlers.trade_intel import handle_get_market_correlations
+        return await handle_get_market_correlations(kwargs, session=session)
+

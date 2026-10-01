@@ -10,7 +10,16 @@ import type { ChatMessage, ChatToolEvent, ChatProposedAction } from '../types/ap
 const DEFAULT_WELCOME: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Hello! I am Monika, your autonomous MT5 Trading Agent. You can instruct me to analyze instruments (e.g., "analyze EURUSD"), review open positions, inspect active trade triggers, or audit risk exposure.',
+  text: `### Asisten Analisis Perdagangan MT5 Monika
+
+Selamat datang di konsol interaktif. Saya siap mendampingi Anda dalam mengelola dan menganalisis aktivitas perdagangan:
+
+• **Analisis Pasar**: Evaluasi instrumen (contoh: *"analisis XAUUSD"* atau *"evaluasi EURUSD"*).
+• **Portofolio & Posisi**: Tinjau posisi aktif, order pending, dan saldo akun.
+• **Manajemen Risiko**: Audit batasan risiko harian, level drawdown, dan kepatuhan aturan.
+• **Riset & Berita Makro**: Pantau kalender ekonomi dan sentimen pasar global.
+
+Silakan masukkan instruksi atau pertanyaan Anda untuk memulai.`,
   timestamp: new Date().toISOString(),
 };
 

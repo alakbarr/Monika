@@ -140,7 +140,7 @@ class ApprovalModalScreen(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Container(id="approval_dialog"):
-            yield Label("⚡ OPERATOR HUMAN-IN-THE-LOOP APPROVAL", id="approval_title")
+            yield Label(" OPERATOR HUMAN-IN-THE-LOOP APPROVAL", id="approval_title")
 
             yield Static(f"[bold white]{self.description}[/]", id="approval_desc")
 
@@ -191,7 +191,7 @@ class ApprovalModalScreen(ModalScreen[Optional[str]]):
                             yield Label(risk_str, classes="detail_value")
 
             yield Static(
-                "⚠ Live capital at risk. Verifying MT5 margin and RiskGate invariants before placement.",
+                "[PERINGATAN] Live capital at risk. Verifying MT5 margin and RiskGate invariants before placement.",
                 id="approval_warning"
             )
 

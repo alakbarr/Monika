@@ -644,3 +644,49 @@ async def get_session_messages(
             }
             for m in msgs
         ]
+
+
+@router.websocket("/ws/terminal")
+@router.websocket("/ws/pty/{session_id}")
+async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str] = None):
+    """Interactive bidirectional PTY terminal console streaming via PtyBridgeManager."""
+    from logging_observability.dashboard.pty_bridge import get_pty_bridge_manager
+
+    await websocket.accept()
+    sid = session_id or str(uuid.uuid4())
+    manager = get_pty_bridge_manager()
+    pty_session = await manager.create_session(sid)
+
+    try:
+        await websocket.send_text(f"\x1b[33m[Monika PTY Bridge] Connected session {sid}\x1b[0m\r\n")
+
+        async def _receiver():
+            while not pty_session.is_closed:
+                try:
+                    data = await websocket.receive_text()
+                    responses = pty_session.append_output(data)
+                    for resp in responses:
+                        await websocket.send_bytes(resp)
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.debug(f"[PtyBridge] Receiver error: {e}")
+                    break
+
+        async def _flusher():
+            while not pty_session.is_closed:
+                await asyncio.sleep(0.05)
+                buffered = pty_session.drain_output()
+                if buffered:
+                    await websocket.send_text(buffered)
+
+        await asyncio.gather(_receiver(), _flusher(), return_exceptions=True)
+    except Exception as e:
+        logger.warning(f"[PtyBridge] WebSocket error: {e}")
+    finally:
+        await manager.close_session(sid)
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+

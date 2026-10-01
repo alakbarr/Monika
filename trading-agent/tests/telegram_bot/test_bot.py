@@ -218,7 +218,7 @@ class TestTelegramBot:
         # Test cancel
         update.callback_query.data = "cancel"
         await bot._handle_callback(update, MagicMock())
-        update.callback_query.edit_message_text.assert_called_with("❌ Dibatalkan.")
+        update.callback_query.edit_message_text.assert_called_with("[GAGAL] Dibatalkan.")
         
         # Test confirm
         update.callback_query.data = "confirm:1"

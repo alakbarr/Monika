@@ -451,6 +451,10 @@ class PricedInAssessment(BaseModel):
         None, 
         description="Nilai sentimen retail numerik (0-100) dari get_retail_sentiment jika ada. WAJIB diisi pada hari kerja jika tidak ada cot_positioning_percentile."
     )
+    fedwatch_shift_summary: Optional[str] = Field(
+        None,
+        description="Ringkasan pergeseran ekspektasi FedWatch sebelum vs sesudah rilis data atau 24h shift (mis. 'Hike odds 37.1% vs 45.0% pre-event (-7.9%)')"
+    )
 
     @field_validator('key_unpriced_drivers', mode='before')
     @classmethod
@@ -646,6 +650,7 @@ class KeyDataPointsUsed(BaseModel):
     dxy_trend_5d: str = Field(..., description="e.g. 'strengthening +0.8%' or 'weakening -0.4%', persis seperti dibaca dari get_dxy()")
     vix_close: float = Field(..., description="Nilai VIX close terbaru, persis seperti dibaca dari get_vix()")
     fedwatch_dominant_pct: Optional[float] = Field(None, description="Probabilitas dominan FedWatch jika ada meeting dalam window analisis")
+    fedwatch_repricing_delta_pct: Optional[float] = Field(None, description="Pergeseran probabilitas dominan FedWatch (%) sebelum vs sesudah rilis data USD terkini atau pergeseran 24 jam")
     treasury_10y_yield_pct: Optional[float] = Field(None, description="Nilai yield 10Y terbaru (%), persis seperti dibaca dari get_treasury_yields()")
     cot_leveraged_long_pct: Optional[float] = Field(None, description="Persentase leveraged funds net-long terbaru untuk driver COT utama yang dikutip di narasi, persis seperti dibaca dari get_cot_report()/get_precomputed_cot_signals()")
 
@@ -657,7 +662,7 @@ class KeyDataPointsUsed(BaseModel):
             raise ValueError(f"vix_close must be a valid number, got '{v}'")
         return res
 
-    @field_validator('fedwatch_dominant_pct', 'treasury_10y_yield_pct', 'cot_leveraged_long_pct', mode='before')
+    @field_validator('fedwatch_dominant_pct', 'fedwatch_repricing_delta_pct', 'treasury_10y_yield_pct', 'cot_leveraged_long_pct', mode='before')
     @classmethod
     def validate_optional_pcts(cls, v):
         return coerce_float(v)

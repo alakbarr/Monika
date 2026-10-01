@@ -45,12 +45,12 @@ class TestCentralBanksFramework(unittest.TestCase):
         """Skill must detail the 7 independent non-rate channels."""
         content = load_skill("central_banks_framework")
         self.assertIn("Safe-Haven vs Risk-On", content)
-        self.assertIn("Reserve Currency Global", content)
-        self.assertIn("Risiko Fiskal", content)
+        self.assertIn("Global Reserve Currency", content)
+        self.assertIn("Fiscal Risk", content)
         self.assertIn("Terms of Trade", content)
         self.assertIn("Carry Trade Positioning", content)
-        self.assertIn("Geopolitik", content)
-        self.assertIn("Independensi Kelembagaan", content)
+        self.assertIn("Geopolitical", content)
+        self.assertIn("Institutional Independence", content)
 
     def test_compose_system_prompt_includes_central_banks(self):
         """Composing Stage 1 skills must properly include central banks framework."""

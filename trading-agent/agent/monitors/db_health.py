@@ -25,7 +25,7 @@ async def run_db_health_check(agent: Any) -> None:
                 from utils.infra.notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(
-                    f"🚨 <b>CRITICAL: Database Health Check Failed!</b>\n"
+                    f"[DARURAT] <b>CRITICAL: Database Health Check Failed!</b>\n"
                     f"PostgreSQL connection pool query <code>SELECT 1</code> error:\n"
                     f"<code>{e}</code>\n"
                     f"Trading operations may fail."

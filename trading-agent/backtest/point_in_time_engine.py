@@ -26,13 +26,15 @@ class PointInTimeBacktestEngine:
         self,
         start_date: datetime,
         end_date: datetime,
-        settings: dict,
+        settings: Optional[dict] = None,
         mode: BacktestMode = "replay",
         step_hours: int = 6,
         initial_equity: float = 10000.0,
         broker_adapter: Optional[Any] = None,
         execution_service: Optional[Any] = None,
         use_execution_service: Optional[bool] = None,
+        symbols: Optional[List[str]] = None,
+        strategies: Optional[List[str]] = None,
     ):
         if start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=timezone.utc)
@@ -43,11 +45,13 @@ class PointInTimeBacktestEngine:
 
         self.start_date = start_date
         self.end_date = end_date
-        self.settings = settings
+        self.settings = settings or {}
         self.mode = mode
         self.step_hours = step_hours
         self.initial_equity = initial_equity
         self.equity = initial_equity
+        self.symbols = [s.upper() for s in symbols] if symbols else None
+        self.strategies = strategies
         self.trades: List[BacktestTrade] = []
         self._evaluator: Optional[OutcomeEvaluator] = None
         self._unsettled_trades: List[tuple[BacktestTrade, Dict[str, Any]]] = []
@@ -55,10 +59,10 @@ class PointInTimeBacktestEngine:
             {"timestamp": start_date, "equity": initial_equity}
         ]
         self.run_record = None
-        self.sizer = PositionSizer(settings)
+        self.sizer = PositionSizer(self.settings)
         try:
             from risk.risk_gate import RiskGate
-            self.gate = RiskGate(settings=settings, mt5_client=None)
+            self.gate = RiskGate(settings=self.settings, mt5_client=None)
         except Exception:
             self.gate = None
 
@@ -70,7 +74,7 @@ class PointInTimeBacktestEngine:
                 from execution.broker_adapter import SimulatedBrokerAdapter
                 self.broker_adapter = SimulatedBrokerAdapter(
                     initial_balance=initial_equity,
-                    settings=settings,
+                    settings=self.settings,
                 )
             except Exception as adapter_err:
                 logger.debug(f"SimulatedBrokerAdapter init fallback: {adapter_err}")
@@ -82,7 +86,7 @@ class PointInTimeBacktestEngine:
             try:
                 from execution.execution_service import ExecutionService
                 self.execution_service = ExecutionService(
-                    settings=settings,
+                    settings=self.settings,
                     dry_run=True,
                     broker_adapter=self.broker_adapter,
                 )
@@ -93,7 +97,7 @@ class PointInTimeBacktestEngine:
         if use_execution_service is not None:
             self.use_execution_service = use_execution_service
         else:
-            self.use_execution_service = settings.get("backtest", {}).get("use_execution_service", False)
+            self.use_execution_service = self.settings.get("backtest", {}).get("use_execution_service", False)
 
     async def execute_trade_parity(
         self,
@@ -279,7 +283,7 @@ class PointInTimeBacktestEngine:
         and database temporal limits (WHERE timestamp <= as_of_time).
         """
         logger.debug(f"Running Full Mode (Point-in-Time Pipeline) from {self.start_date} to {self.end_date}")
-        symbols = self.settings.get(
+        symbols = self.symbols or self.settings.get(
             'trading', {}
         ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
 
@@ -485,8 +489,18 @@ class PointInTimeBacktestEngine:
                 .where(AssetAnalysis.generated_at >= self.start_date)
                 .where(AssetAnalysis.generated_at < self.end_date)
                 .where(AssetAnalysis.decision.in_(["buy", "sell"]))
-                .order_by(AssetAnalysis.generated_at)
             )
+            if self.symbols:
+                stmt = stmt.where(AssetAnalysis.symbol.in_(self.symbols))
+            if self.strategies:
+                from sqlalchemy import or_
+                stmt = stmt.where(
+                    or_(
+                        AssetAnalysis.source_strategy_id.in_(self.strategies),
+                        AssetAnalysis.decision_source.in_(self.strategies),
+                    )
+                )
+            stmt = stmt.order_by(AssetAnalysis.generated_at)
             analyses = (await session.execute(stmt)).scalars().all()
 
             if self.use_execution_service and self.execution_service is not None:
@@ -629,7 +643,7 @@ class PointInTimeBacktestEngine:
                 return {'effective_auto_execute': False}
 
         current_time = self.start_date
-        symbols = self.settings.get(
+        symbols = self.symbols or self.settings.get(
             'trading', {}
         ).get('asset_universe', ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'])
 

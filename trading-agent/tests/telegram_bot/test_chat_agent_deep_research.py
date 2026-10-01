@@ -219,7 +219,7 @@ async def test_run_tier_deep_research_synthesizer_tools_and_trading_plan():
         assert "AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in synth_sys
 
         # 4. System prompt contains Macro Transmission and background persistence directive
-        assert "6. Ringkasan Transmisi Makro" in synth_sys
+        assert "6. Multi-Asset Macro Transmission Summary" in synth_sys or "6. Ringkasan Transmisi Makro" in synth_sys
         assert "user_market_intel" in synth_sys
         assert "IMPORTANT TRADING PLAN DIRECTIVE" in synth_sys
 

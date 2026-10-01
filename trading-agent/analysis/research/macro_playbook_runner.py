@@ -8,7 +8,8 @@ Scheduled Macro Research Playbook Runner.
 
 Executes markdown research playbooks with YAML frontmatter, coordinates
 real-time data ingestion across quantitative and prediction market feeds,
-parses standardized symbol verdicts, and tracks historical state deltas.
+synthesizes standardized symbol verdicts dynamically via LLM reasoning,
+and tracks historical state deltas in PostgreSQL.
 """
 
 from __future__ import annotations
@@ -30,7 +31,14 @@ from database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.Analysis.MacroPlaybookRunner")
 
-VALID_VERDICT_STATES = {"HOT_BULLISH", "HOT_BEARISH", "NEUTRAL", "RISK_OFF"}
+VALID_VERDICT_STATES = {
+    "HOT_BULLISH",
+    "BULLISH",
+    "NEUTRAL",
+    "BEARISH",
+    "HOT_BEARISH",
+    "RISK_OFF",
+}
 
 VERDICT_PATTERN = re.compile(
     r"^-\s*([A-Za-z0-9_]+)\s*:\s*([A-Z_]+)\s*-\s*(.+)$",
@@ -110,19 +118,26 @@ class MacroPlaybookRunner:
     def parse_verdicts_from_text(self, text: str) -> dict[str, SymbolVerdict]:
         """
         Parses verdicts formatted as:
-        ## Verdict:
+        ## Verdict: / ## Verdict Format:
         - EURUSD: HOT_BULLISH - reason text
         - XAUUSD: RISK_OFF - reason text
         """
         verdicts: dict[str, SymbolVerdict] = {}
-        # Locate ## Verdict section
-        verdict_section_match = re.search(r"##\s*Verdict\s*:?\s*([\s\S]+)", text, re.IGNORECASE)
+        if not text:
+            return verdicts
+
+        # Locate ## Verdict or ## Verdict Format section if present
+        verdict_section_match = re.search(r"##\s*Verdict(?:\s*Format)?\s*:?\s*([\s\S]+)", text, re.IGNORECASE)
         target_text = verdict_section_match.group(1) if verdict_section_match else text
 
         for match in VERDICT_PATTERN.finditer(target_text):
             sym = match.group(1).upper().strip()
             state = match.group(2).upper().strip()
             reason = match.group(3).strip()
+
+            # Skip template variable markers e.g. {SYMBOL}, {BIAS}
+            if sym.startswith("{") or state.startswith("{"):
+                continue
 
             if state not in VALID_VERDICT_STATES:
                 logger.warning(f"Unrecognized verdict state '{state}' for {sym}, defaulting to NEUTRAL")
@@ -131,6 +146,86 @@ class MacroPlaybookRunner:
             verdicts[sym] = SymbolVerdict(symbol=sym, state=state, reason=reason)
 
         return verdicts
+
+    async def _fetch_playbook_data(self, meta: PlaybookMetadata) -> dict[str, Any]:
+        """Fetch real-time market data based on playbook's declared data_capabilities."""
+        data_bundle: dict[str, Any] = {}
+        if not meta.data_capabilities:
+            return data_bundle
+
+        try:
+            from analysis.tools.domain.macro_handlers import MacroToolHandlers
+            from analysis.tools.domain.sentiment_handlers import SentimentToolHandlers
+
+            macro_h = MacroToolHandlers(self.settings)
+            sent_h = SentimentToolHandlers(self.settings)
+
+            capability_map = {
+                "economic_calendar": lambda: macro_h.get_economic_calendar(session=self.session),
+                "treasury_yields": lambda: macro_h.get_treasury_yields(session=self.session),
+                "bond_yield_spreads": lambda: macro_h.get_bond_yield_spreads(session=self.session),
+                "vix": lambda: macro_h.get_vix(session=self.session),
+                "dxy": lambda: macro_h.get_dxy(session=self.session),
+                "cot_report": lambda: macro_h.get_cot_report(session=self.session),
+                "cot_signals": lambda: macro_h.get_precomputed_cot_signals(session=self.session),
+                "fedwatch": lambda: macro_h.get_fedwatch_probabilities(session=self.session),
+                "fear_greed": lambda: sent_h.get_fear_greed(session=self.session),
+                "retail_sentiment": lambda: sent_h.get_retail_sentiment(session=self.session),
+                "news_digest": lambda: sent_h.get_news_digest(session=self.session),
+            }
+
+            for cap in meta.data_capabilities:
+                handler = capability_map.get(cap)
+                if handler:
+                    try:
+                        res = await handler()
+                        data_bundle[cap] = res
+                    except Exception as err:
+                        logger.debug(f"[MacroPlaybookRunner] Fetch capability '{cap}' failed: {err}")
+        except Exception as e:
+            logger.debug(f"[MacroPlaybookRunner] Domain handlers init non-fatal error: {e}")
+
+        return data_bundle
+
+    async def _generate_verdicts_via_llm(
+        self,
+        meta: PlaybookMetadata,
+        template_body: str,
+        data_bundle: dict[str, Any],
+    ) -> str:
+        """Use LLM to generate verdicts based on playbook structure + real-time data."""
+        from analysis.providers.llm_factory import get_client_for_task
+
+        symbols_str = ", ".join(meta.target_symbols) if meta.target_symbols else "EURUSD, GBPUSD, XAUUSD, USDJPY"
+        valid_states_str = ", ".join(sorted(VALID_VERDICT_STATES))
+
+        system_prompt = (
+            "You are a Senior Macro Research Strategist generating decisive, high-conviction trading verdicts.\n"
+            "Analyze the provided real-time market data through the lens of the macro playbook framework.\n"
+            "RULES:\n"
+            "- Each verdict MUST be on its own line formatted exactly as: - {SYMBOL}: {BIAS} - {1-sentence rationale}\n"
+            f"- Allowed biases: {valid_states_str}\n"
+            "- Rationales must cite concrete market levels, spreads, or economic datapoints\n"
+            "- Be decisive: avoid NEUTRAL unless macroeconomic evidence is genuinely contradictory\n"
+            "- Output ONLY the verdict lines under '## Verdict:' heading."
+        )
+
+        user_prompt = (
+            f"## Playbook: {meta.title}\n\n"
+            f"## Target Symbols: {symbols_str}\n\n"
+            f"## Framework Guidelines:\n{template_body}\n\n"
+            f"## Live Market Data Snapshot:\n```json\n{json.dumps(data_bundle, default=str, indent=2)[:8000]}\n```\n\n"
+            f"Generate structured verdicts for all target symbols ({symbols_str}):"
+        )
+
+        client = get_client_for_task("stage1_fundamental", settings=self.settings)
+        response = await client.generate(
+            prompt=user_prompt,
+            system=system_prompt,
+            temperature=0.2,
+            max_tokens=600,
+        )
+        return response or ""
 
     async def compute_and_persist_deltas(
         self,
@@ -196,12 +291,29 @@ class MacroPlaybookRunner:
 
     async def execute_playbook(self, playbook_path: Path | str) -> dict[str, Any]:
         """
-        High-level pipeline: loads playbook, verifies frontmatter, parses verdicts,
-        and computes state deltas.
+        High-level pipeline: loads playbook template, fetches real-time data,
+        generates verdicts via LLM reasoning with graceful fallback, and computes state deltas.
         """
         path = Path(playbook_path)
         meta, body = self.parse_playbook_file(path)
-        verdicts = self.parse_verdicts_from_text(body)
+
+        # 1. Fetch real-time market data based on playbook capabilities
+        data_bundle = await self._fetch_playbook_data(meta)
+
+        # 2. Generate verdicts dynamically via LLM with fallback to template parsing
+        verdicts: dict[str, SymbolVerdict] = {}
+        generation_method = "llm"
+
+        try:
+            llm_text = await self._generate_verdicts_via_llm(meta, body, data_bundle)
+            verdicts = self.parse_verdicts_from_text(llm_text)
+        except Exception as e:
+            logger.debug(f"[MacroPlaybookRunner] Dynamic LLM generation fallback triggered for {path.name}: {e}")
+
+        if not verdicts:
+            verdicts = self.parse_verdicts_from_text(body)
+            generation_method = "static_fallback"
+
         deltas = await self.compute_and_persist_deltas(path.stem, verdicts)
 
         return {
@@ -213,4 +325,6 @@ class MacroPlaybookRunner:
             "verdicts": {s: asdict(v) for s, v in verdicts.items()},
             "deltas": [asdict(d) for d in deltas],
             "execution_time": datetime.now(timezone.utc).isoformat(),
+            "data_sources": list(data_bundle.keys()),
+            "generation_method": generation_method,
         }

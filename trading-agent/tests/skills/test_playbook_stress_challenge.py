@@ -22,17 +22,17 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         content = self.playbook_text
         # Pre-event rule
         self.assertIn("PRE-EVENT", content)
-        self.assertIn("DILARANG", content)
-        self.assertIn("breakout entry searah konsensus", content)
+        self.assertIn("FORBID", content)
+        self.assertIn("pre-event breakout", content)
 
         # Event spike avoidance rule
-        self.assertIn("EVENT (0-4 jam)", content)
-        self.assertIn("JANGAN PERNAH", content)
-        self.assertIn("mengejar spike candle pertama", content)
+        self.assertIn("EVENT (0-4 hours)", content)
+        self.assertIn("NEVER", content)
+        self.assertIn("chase the opening candle spike", content)
 
         # Post-event quality window
-        self.assertIn("POST-EVENT (4-48 jam)", content)
-        self.assertIn("JENDELA KUALITAS TERTINGGI", content)
+        self.assertIn("POST-EVENT (4-48 hours)", content)
+        self.assertIn("HIGHEST PROBABILITY WINDOW", content)
 
     def test_remedy_1_quadrant_2_avoids_pre_release_orders(self):
         """
@@ -42,8 +42,8 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         """
         content = self.playbook_text
         q2_row = [line for line in content.splitlines() if "| **2. Dovish Hike (Sell-the-News)** |" in line][0]
-        self.assertIn("JANGAN pasang order sebelum rilis", q2_row)
-        self.assertIn("pasca-presser", q2_row)
+        self.assertIn("FORBID pre-event breakout orders", q2_row)
+        self.assertIn("post-presser", q2_row)
         self.assertIn("MSS reclaim", q2_row)
 
     def test_remedy_2_analog_matching_rubric_includes_powell_2019(self):
@@ -58,7 +58,7 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         Total = 100 pts across exactly 5 components.
         """
         content = self.playbook_text
-        rubric_section = content.split("## BAGIAN 3.1:")[1].split("### 2. Decision Tree")[0]
+        rubric_section = content.split("## SECTION 3.1:")[1].split("### 2. Historical Precedent Decision Tree")[0]
 
         self.assertIn("Bernanke 2013", rubric_section)
         self.assertIn("Yellen 2015", rubric_section)
@@ -67,7 +67,7 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         self.assertIn("Powell 2019", rubric_section)
 
         # Verify weights sum to 100
-        weight_matches = re.findall(r"Bobot:\s*(\d+)\s*Poin", rubric_section)
+        weight_matches = re.findall(r"Weight:\s*(\d+)\s*Points", rubric_section)
         self.assertEqual(len(weight_matches), 5)
         self.assertEqual(sum(int(w) for w in weight_matches), 100)
 
@@ -79,10 +79,10 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         """
         content = self.playbook_text
         self.assertIn("min(10,", content)
-        self.assertIn("DILARANG", content)
-        self.assertIn("membuka posisi baru searah konsensus sebelum rilis event", content)
-        self.assertIn("priced-in 5-7 (LARGELY PRICED IN)", content)
-        self.assertIn("hard block", content)
+        self.assertIn("FORBID", content)
+        self.assertIn("opening new positions in consensus direction prior to release", content)
+        self.assertIn("priced-in score is 5–7 (LARGELY PRICED IN)", content)
+        self.assertIn("hard blocks", content)
 
     def test_remedy_4_timing_h4_close_reconciled_with_presser_entry(self):
         """
@@ -92,8 +92,8 @@ class TestPlaybookStressChallenge(unittest.TestCase):
         - Macro Swing: H4 close
         """
         content = self.playbook_text
-        self.assertIn("Biarkan H4 candle menutup", content)
-        self.assertIn("15-30 menit pasca-presser dimulai", content)
+        self.assertIn("Allow H4 candle close", content)
+        self.assertIn("15-30 minutes after press conference begins", content)
         self.assertIn("Intraday Execution (M15 / H1)", content)
         self.assertIn("Macro Swing Execution (H4 / D1)", content)
 

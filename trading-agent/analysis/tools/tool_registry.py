@@ -95,6 +95,7 @@ class ProgressiveToolRegistry:
     CATEGORY_MAP: Dict[str, List[str]] = {
         "MACRO": [
             "get_market_session", "get_fundamental_brief", "get_economic_calendar",
+            "get_weekly_macro_summary",
             "get_vix", "get_cot_report", "get_bond_yield_spreads", "get_dxy",
             "get_interest_rates", "get_treasury_yields", "get_fedwatch_probabilities", "get_eia_oil_inventory"
         ],
@@ -102,7 +103,7 @@ class ProgressiveToolRegistry:
             "get_price_history", "get_technical_indicators", "get_multi_timeframe_summary",
             "get_atr", "get_swing_points", "get_structure_breaks", "get_smc_zones",
             "get_fibonacci_levels", "get_daily_range_context", "get_optimal_intraday_levels",
-            "get_chart", "get_market_quote"
+            "get_chart", "get_market_quote", "get_timesfm_forecast", "get_market_regime", "get_volatility_regime"
         ],
         "SENTIMENT": [
             "get_news_items", "get_news_digest", "get_fear_greed_index", "get_funding_rate",
@@ -110,15 +111,17 @@ class ProgressiveToolRegistry:
             "get_structured_sentiment"
         ],
         "EXECUTION": [
-            "propose_action", "get_spread_snapshot", "get_active_triggers"
+            "propose_action", "get_spread_snapshot", "get_active_triggers", "get_swap_rates"
         ],
         "POSITION": [
             "get_open_positions", "get_account_info", "get_trade_history",
             "get_trade_details", "get_paper_trading_performance", "get_risk_state",
-            "get_asset_analysis", "get_edge_tracker_status", "get_market_correlations"
+            "get_asset_analysis", "get_edge_tracker_status", "get_market_correlations",
+            "get_portfolio_exposure", "get_debate_statistics", "get_rejection_history",
+            "run_trade_counterfactual", "run_monte_carlo_simulation"
         ],
         "KNOWLEDGE": [
-            "skills_list", "skill_view"
+            "skills_list", "skill_view", "create_skill", "get_market_chronicle"
         ],
     }
 
