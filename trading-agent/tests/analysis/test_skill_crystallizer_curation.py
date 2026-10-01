@@ -31,8 +31,35 @@ async def test_skill_crystallizer_llm_synthesis(tmp_path):
     mock_r2.specific_lesson = None
     mock_r2.rationale_summary = None
 
+    mock_r3 = MagicMock()
+    mock_r3.symbol = "BTCUSD"
+    mock_r3.confidence = 0.89
+    mock_r3.outcome_pnl_usd = 280.0
+    mock_r3.reflection_text = "TREND | Strong momentum breakout"
+    mock_r3.alpha_lesson = "Identify high volume breakout above H4 resistance before placing momentum entry."
+    mock_r3.specific_lesson = None
+    mock_r3.rationale_summary = None
+
+    mock_r4 = MagicMock()
+    mock_r4.symbol = "BTCUSD"
+    mock_r4.confidence = 0.91
+    mock_r4.outcome_pnl_usd = 350.0
+    mock_r4.reflection_text = "TREND | Strong momentum breakout"
+    mock_r4.alpha_lesson = "Ensure risk reward exceeds 1.5 before order placement."
+    mock_r4.specific_lesson = None
+    mock_r4.rationale_summary = None
+
+    mock_r5 = MagicMock()
+    mock_r5.symbol = "BTCUSD"
+    mock_r5.confidence = 0.87
+    mock_r5.outcome_pnl_usd = 220.0
+    mock_r5.reflection_text = "TREND | Strong momentum breakout"
+    mock_r5.alpha_lesson = "Never chase liquidity without confirmed fair value gap retest."
+    mock_r5.specific_lesson = None
+    mock_r5.rationale_summary = None
+
     mock_execute_res = MagicMock()
-    mock_execute_res.scalars.return_value.all.return_value = [mock_r1, mock_r2]
+    mock_execute_res.scalars.return_value.all.return_value = [mock_r1, mock_r2, mock_r3, mock_r4, mock_r5]
     mock_session.execute.return_value = mock_execute_res
 
     res = await crystallizer.evaluate_and_crystallize(mock_session, symbol="BTCUSD")
@@ -55,7 +82,7 @@ async def test_skill_crystallizer_llm_synthesis(tmp_path):
 async def test_skill_attribution_and_auto_deprecation(tmp_path):
     """
     Closed-loop curation: track win-rate attribution and deprecate skills
-    whose win-rate drops below 50% over recent trades.
+    whose win-rate drops below 50% over recent trades (min_eval_trades=5).
     """
     crystallizer = SkillCrystallizer()
     crystallizer.SKILLS_DIR = tmp_path
@@ -90,24 +117,30 @@ async def test_skill_attribution_and_auto_deprecation(tmp_path):
 
     mock_session.execute.side_effect = mock_execute
 
-    # Record 1st trade: loss
-    attr1 = await crystallizer.record_skill_attribution(
-        mock_session, skill_name, was_profitable=False, pnl=-50.0, min_eval_trades=2
-    )
-    assert attr1["times_triggered"] == 1
-    assert attr1["status"] == "active"  # Not deprecated yet because min_eval_trades = 2
+    # Record trades 1 to 4: losses (times_triggered < 5 -> status remains active)
+    current_attr = None
+    for i in range(1, 5):
+        if current_attr:
+            cfg_row = MagicMock()
+            cfg_row.value = json.dumps(current_attr)
+            existing_row = cfg_row
+        current_attr = await crystallizer.record_skill_attribution(
+            mock_session, skill_name, was_profitable=False, pnl=-50.0, min_eval_trades=5
+        )
+        assert current_attr["times_triggered"] == i
+        assert current_attr["status"] == "active"  # Not deprecated yet because min_eval_trades = 5
 
-    # Record 2nd trade: loss (win rate now 0.0 < 50%)
+    # Record 5th trade: loss (win rate now 0.0 < 50%, >= 5 trades)
     cfg_row = MagicMock()
-    cfg_row.value = json.dumps(attr1)
+    cfg_row.value = json.dumps(current_attr)
     existing_row = cfg_row
 
-    attr2 = await crystallizer.record_skill_attribution(
-        mock_session, skill_name, was_profitable=False, pnl=-60.0, min_eval_trades=2
+    attr5 = await crystallizer.record_skill_attribution(
+        mock_session, skill_name, was_profitable=False, pnl=-60.0, min_eval_trades=5
     )
-    assert attr2["times_triggered"] == 2
-    assert attr2["recent_win_rate"] == 0.0
-    assert attr2["status"] == "deprecated"
+    assert attr5["times_triggered"] == 5
+    assert attr5["recent_win_rate"] == 0.0
+    assert attr5["status"] == "deprecated"
 
     # Verify skill file was updated on disk with status: deprecated
     file_content = skill_file.read_text(encoding="utf-8")
@@ -135,33 +168,27 @@ def test_is_skill_deprecated_helper(tmp_path):
 @pytest.mark.asyncio
 async def test_skill_crystallizer_configurable_threshold(tmp_path):
     """Verify min_crystallization_wins threshold gating."""
-    crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 3}})
+    crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 6}})
     crystallizer.SKILLS_DIR = tmp_path
 
     mock_session = AsyncMock()
-    mock_r1 = MagicMock()
-    mock_r1.symbol = "ETHUSD"
-    mock_r1.confidence = 0.90
-    mock_r1.outcome_pnl_usd = 200.0
-    mock_r1.reflection_text = "TREND | Breakout"
-    mock_r1.alpha_lesson = "Test rule 1"
-    mock_r1.specific_lesson = None
-    mock_r1.rationale_summary = None
-
-    mock_r2 = MagicMock()
-    mock_r2.symbol = "ETHUSD"
-    mock_r2.confidence = 0.90
-    mock_r2.outcome_pnl_usd = 250.0
-    mock_r2.reflection_text = "TREND | Breakout"
-    mock_r2.alpha_lesson = "Test rule 2"
-    mock_r2.specific_lesson = None
-    mock_r2.rationale_summary = None
+    reflections = []
+    for i in range(5):
+        r = MagicMock()
+        r.symbol = "ETHUSD"
+        r.confidence = 0.90
+        r.outcome_pnl_usd = 200.0 + i * 10
+        r.reflection_text = "TREND | Breakout"
+        r.alpha_lesson = f"Test rule {i+1}"
+        r.specific_lesson = None
+        r.rationale_summary = None
+        reflections.append(r)
 
     mock_execute_res = MagicMock()
-    mock_execute_res.scalars.return_value.all.return_value = [mock_r1, mock_r2]
+    mock_execute_res.scalars.return_value.all.return_value = reflections
     mock_session.execute.return_value = mock_execute_res
 
-    # With min_crystallization_wins = 3, 2 reflections should not trigger crystallization
+    # With min_crystallization_wins = 6, 5 reflections should not trigger crystallization
     res = await crystallizer.evaluate_and_crystallize(mock_session, symbol="ETHUSD")
     assert len(res) == 0
 
