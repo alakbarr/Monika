@@ -3,7 +3,7 @@ Closed-Loop Skill Crystallizer.
 
 Transforms high-performing real-world and paper trade outcomes into reusable, modular
 procedural skills. When a setup achieves repeated statistical success (win rate >= 70%
-across >= 2 resolved cycles in a regime), this module formalizes the setup into a
+across >= 5 resolved cycles in a regime), this module formalizes the setup into a
 crystallized micro-playbook.
 
 Key Capabilities:
@@ -136,7 +136,7 @@ class SkillCrystallizer:
                 clusters.setdefault(key, []).append(r)
 
             # 3. Crystallize clusters with >= min_wins successful instances
-            min_wins = int(self.settings.get("learning", {}).get("min_crystallization_wins", 2))
+            min_wins = int(self.settings.get("learning", {}).get("min_crystallization_wins", 5))
             for cluster_key, reflections in clusters.items():
                 if len(reflections) >= min_wins:
                     skill_meta = await self._crystallize_cluster(session, cluster_key, reflections)
@@ -436,7 +436,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         skill_name: Optional[str] = None,
         was_profitable: Optional[bool] = None,
         pnl: float = 0.0,
-        min_eval_trades: int = 2,
+        min_eval_trades: int = 5,
         won: Optional[bool] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -530,7 +530,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
     async def curate_and_prune_skills(
         self,
         session: AsyncSession,
-        min_eval_trades: int = 2,
+        min_eval_trades: int = 5,
     ) -> List[Dict[str, Any]]:
         """
         Evaluates all crystallized skills against recent DecisionReflections and PaperTradeRecords.
