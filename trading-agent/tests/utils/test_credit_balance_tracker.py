@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for CreditBalanceTracker.
 Tests live credit fetching for OpenRouter & DeepSeek, daily quota calculation, and monthly expenses.
@@ -121,7 +122,7 @@ async def test_unconfigured_keys():
 @pytest.mark.asyncio
 async def test_daily_quota_and_monthly_expense_summary():
     """Memverifikasi kalkulasi kuota harian dan pengeluaran bulan berjalan dari DB."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Mock daily quota query
     mock_quota_row1 = MagicMock(provider="gemini", model_name="gemini-3.7-flash", call_count=4, sum_tokens=25000)

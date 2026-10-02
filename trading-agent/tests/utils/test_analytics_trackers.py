@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from utils.analytics.edge_tracker import is_trade_win
@@ -59,7 +60,7 @@ def test_package_level_analytics_exports():
 
 @pytest.mark.asyncio
 async def test_specialist_tracker_insufficient():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.all.return_value = []
     mock_session.execute.return_value = mock_res
@@ -70,7 +71,7 @@ async def test_specialist_tracker_insufficient():
 
 @pytest.mark.asyncio
 async def test_adversarial_tracker_insufficient():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_res

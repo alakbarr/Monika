@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Interactive 2-Way Dashboard Control Endpoints (MED-02).
 Tests /api/actions/trigger-cycle, /api/actions/override-risk,
@@ -33,7 +34,7 @@ def test_trigger_cycle_success(client):
     set_dashboard_dependencies(cycle_scheduler=mock_cycle_sched)
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -69,7 +70,7 @@ def test_override_risk_parameters(client):
     set_dashboard_dependencies(settings=settings)
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
         
@@ -106,7 +107,7 @@ def test_close_position_by_ticket(client):
     set_dashboard_dependencies(execution_service=mock_exec_svc)
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
         resp = client.post("/api/actions/close-position", json={"ticket": 123456, "reason": "Take Profit"})
@@ -139,7 +140,7 @@ def test_approve_trade_trigger(client):
     )
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -158,7 +159,7 @@ def test_approve_trade_trigger(client):
 def test_approve_trade_not_found(client):
     """Verify POST /api/actions/approve-trade/{id} returns 404 if ID does not match any record."""
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
         mock_exec_res = MagicMock()

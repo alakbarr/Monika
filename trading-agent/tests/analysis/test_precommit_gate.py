@@ -1,12 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.validators.precommit_gate import TradePreCommitGate
 
 
 @pytest.mark.asyncio
 async def test_precommit_gate_wait_avoid_passthrough():
     gate = TradePreCommitGate()
-    session = AsyncMock()
+    session = create_mock_async_session()
     passed, fails = await gate.verify_precommit(session, {"decision": "wait"}, "BTCUSD")
     assert passed is True
     assert fails == []
@@ -19,7 +20,7 @@ async def test_precommit_gate_wait_avoid_passthrough():
 @pytest.mark.asyncio
 async def test_precommit_gate_geometry_validation():
     gate = TradePreCommitGate()
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     # 1. Missing / zero SL/TP -> FAIL
     passed, fails = await gate.verify_precommit(

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/logging_observability/test_dashboard_phase2.py
 # ==============================================================================
@@ -104,7 +105,7 @@ def test_rbac_endpoint_enforcement(client):
 
         # 4. Admin trying admin action -> allowed through RBAC
         with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
             mock_res = MagicMock()
             mock_res.scalar_one_or_none.return_value = None
@@ -192,7 +193,7 @@ def test_put_config_settings_success(client, tmp_path):
 
     with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
         with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -223,7 +224,7 @@ def test_put_config_settings_role_forbidden(client):
 def test_list_sessions(client):
     """Verify GET /api/sessions queries and formats sessions properly."""
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
         row = MagicMock()
@@ -253,7 +254,7 @@ def test_list_sessions(client):
 def test_get_session_messages(client):
     """Verify GET /api/sessions/{session_id}/messages returns transcript."""
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
         msg1 = MagicMock()

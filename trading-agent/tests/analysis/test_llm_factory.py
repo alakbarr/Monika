@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper, get_client_for_task, create_client
@@ -327,12 +328,12 @@ async def test_fallback_wrapper_activity_log_recorded():
     factory = LLMFactory(settings)
 
     mock_primary = AsyncMock()
-    mock_primary.generate.side_effect = Exception("Primary provider timeout")
+    mock_primary.generate.side_effect = Exception("Primary provider authentication failed 401 invalid api key")
 
     mock_fallback = AsyncMock()
     mock_fallback.generate.return_value = "Fallback recovered"
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     added_items = []
     mock_session.add = MagicMock(side_effect=lambda item: added_items.append(item))
     mock_session.commit = AsyncMock()

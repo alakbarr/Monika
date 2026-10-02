@@ -5,6 +5,7 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from tests.conftest import create_mock_async_session
 
 from database.models import Order, OrderStatus
 from execution.execution_service import ExecutionService
@@ -14,7 +15,7 @@ from execution.execution_service import ExecutionService
 async def test_reconcile_inflight_orders_none_found():
     svc = ExecutionService(settings={}, dry_run=True)
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     session.execute = AsyncMock(return_value=mock_result)
@@ -41,7 +42,7 @@ async def test_reconcile_inflight_orders_matched_at_broker():
     )
     order.status = OrderStatus.SUBMITTED
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [order]
     session.execute = AsyncMock(return_value=mock_result)
@@ -88,7 +89,7 @@ async def test_reconcile_inflight_orders_not_at_broker_marked_interrupted():
     )
     order.status = OrderStatus.INTENT_COMMITTED
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [order]
     session.execute = AsyncMock(return_value=mock_result)
@@ -126,7 +127,7 @@ async def test_reconcile_inflight_orders_creates_position_record():
     )
     order.status = OrderStatus.SUBMITTED
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [order]
     mock_result.scalar_one_or_none.return_value = None
@@ -169,7 +170,7 @@ async def test_reconcile_inflight_orders_pending_order_retains_submitted():
     )
     order.status = OrderStatus.SUBMITTED
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [order]
     session.execute = AsyncMock(return_value=mock_result)

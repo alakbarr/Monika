@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/test_adjustment_validator.py
 # Monika Adjustment Validator Test Suite
@@ -19,7 +20,7 @@ class DummyAnalysis:
 
 @pytest.mark.asyncio
 async def test_no_adjustments_returns_true():
-    session = AsyncMock()
+    session = create_mock_async_session()
     ana = DummyAnalysis()
     ok, reason = await validate_and_apply_judge_adjustments(
         session=session,
@@ -34,7 +35,7 @@ async def test_no_adjustments_returns_true():
 
 @pytest.mark.asyncio
 async def test_buy_geometry_violation():
-    session = AsyncMock()
+    session = create_mock_async_session()
     ana = DummyAnalysis(direction="BUY", price=1.1000, sl=1.0900, tp=1.1200)
     
     # SL >= Entry
@@ -48,7 +49,7 @@ async def test_buy_geometry_violation():
 
 @pytest.mark.asyncio
 async def test_sell_geometry_violation():
-    session = AsyncMock()
+    session = create_mock_async_session()
     ana = DummyAnalysis(direction="SELL", price=1.1000, sl=1.1100, tp=1.0800)
     
     # SL <= Entry
@@ -62,7 +63,7 @@ async def test_sell_geometry_violation():
 
 @pytest.mark.asyncio
 async def test_min_rr_violation_exact_decimal():
-    session = AsyncMock()
+    session = create_mock_async_session()
     session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
     ana = DummyAnalysis(direction="BUY", price=100.0, sl=90.0, tp=110.0) # RR = 1.0
     
@@ -78,7 +79,7 @@ async def test_min_rr_violation_exact_decimal():
 
 @pytest.mark.asyncio
 async def test_entry_deviation_limit():
-    session = AsyncMock()
+    session = create_mock_async_session()
     session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
     ana = DummyAnalysis(direction="BUY", price=100.0, sl=90.0, tp=130.0)
     

@@ -4,6 +4,7 @@ Unit tests for Friday Market Close Shield and Weekend Gap Risk Protection in Pos
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from scheduler.position_guardian import PositionGuardian
 from database.models import Position
 from utils import clock
@@ -36,7 +37,7 @@ async def test_friday_close_protection_triggers_auto_close():
          patch("scheduler.position_guardian.get_session") as mock_get_session, \
          patch("utils.infra.notifier.AgentNotifier.send_info", new_callable=AsyncMock) as mock_notify:
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         mock_exec.scalars.return_value.all.return_value = [mock_pos_eur, mock_pos_btc]
         mock_session.execute.return_value = mock_exec

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -56,7 +57,7 @@ class TestCostTracker:
 
     @pytest.mark.asyncio
     async def test_log_cycle_cost_gemini_free_tier(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -84,7 +85,7 @@ class TestCostTracker:
 
     @pytest.mark.asyncio
     async def test_log_cycle_cost_claude_paid_tier(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -111,7 +112,7 @@ class TestCostTracker:
     @pytest.mark.asyncio
     async def test_check_and_update_budget_status_ssot_and_invariants(self):
         """Memverifikasi bahwa TokenUsageLog menjadi SSOT dan mtd_cost >= daily_cost selalu ditegakkan."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_cfg_pause = MagicMock()
@@ -158,7 +159,7 @@ class TestCostTracker:
 
     @pytest.mark.asyncio
     async def test_check_and_update_budget_status_triggers_daily_pause(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_cfg_pause = MagicMock()
@@ -204,7 +205,7 @@ class TestCostTracker:
 
     @pytest.mark.asyncio
     async def test_clear_budget_pause(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_cfg_pause = MagicMock()
         mock_cfg_pause.value = "true"
         mock_res = MagicMock()

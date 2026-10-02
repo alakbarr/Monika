@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.memory.layered_memory import LayeredMemoryManager
@@ -69,7 +70,7 @@ async def test_layered_memory_negative_constraints():
     mgr.session_search.get_symbol_precedents_hybrid = AsyncMock(return_value=[])
     mgr.session_search.get_symbol_precedents = MagicMock(return_value=[])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_reflection = MagicMock()
     mock_reflection.lesson_tags = ["false_breakout", "sl_too_tight"]
     mock_reflection.specific_lesson = "Bought the false top without confirmation"

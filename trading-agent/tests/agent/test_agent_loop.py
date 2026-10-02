@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/agent/test_agent_loop.py
 # ==============================================================================
@@ -105,7 +106,7 @@ async def test_adhoc_scheduler_proxy_get_symbol_paper_stats():
     assert stats_no_session == {"sufficient": False, "trades": 0, "win_rate": 50.0, "blocked": False}
 
     # 2. Insufficient trades (< 5)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     records_few = [
         PaperTradeRecord(symbol="XAUUSD", status="closed", exit_reason="tp_hit")
@@ -149,7 +150,7 @@ async def test_paper_tracker_get_statistics_accepts_symbol():
     from utils.analytics.paper_tracker import PaperTracker
 
     tracker = PaperTracker()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
     # Calling with symbol parameter must succeed without TypeError

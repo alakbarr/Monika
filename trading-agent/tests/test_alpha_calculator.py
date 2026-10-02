@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -5,7 +6,7 @@ from analysis.memory.alpha_calculator import AlphaCalculator
 
 @pytest.mark.asyncio
 async def test_alpha_calculator_flat():
-    session = AsyncMock()
+    session = create_mock_async_session()
     calc = AlphaCalculator(session)
     
     entry_time = datetime(2023, 1, 1, tzinfo=timezone.utc)
@@ -19,7 +20,7 @@ async def test_alpha_calculator_flat():
 
 @pytest.mark.asyncio
 async def test_alpha_calculator_dxy_inverse_buy():
-    session = AsyncMock()
+    session = create_mock_async_session()
     calc = AlphaCalculator(session)
     
     # Mocking get_benchmark_return to return 1.0 (DXY goes up 1%)
@@ -41,7 +42,7 @@ async def test_alpha_calculator_dxy_inverse_buy():
 
 @pytest.mark.asyncio
 async def test_alpha_calculator_dxy_inverse_sell():
-    session = AsyncMock()
+    session = create_mock_async_session()
     calc = AlphaCalculator(session)
     
     calc.get_benchmark_return = AsyncMock(return_value=1.0)
@@ -62,7 +63,7 @@ async def test_alpha_calculator_dxy_inverse_sell():
 
 @pytest.mark.asyncio
 async def test_alpha_calculator_dxy_positive_buy():
-    session = AsyncMock()
+    session = create_mock_async_session()
     calc = AlphaCalculator(session)
     
     calc.get_benchmark_return = AsyncMock(return_value=1.0)

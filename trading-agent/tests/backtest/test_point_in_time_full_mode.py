@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit Tests for PointInTimeBacktestEngine Full Mode Step Execution.
 """
@@ -43,7 +44,7 @@ async def test_point_in_time_full_mode_step_execution():
         timestamp=start
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_exec_res = MagicMock()
     mock_exec_res.scalar_one_or_none.return_value = mock_bar
     mock_session.execute.return_value = mock_exec_res

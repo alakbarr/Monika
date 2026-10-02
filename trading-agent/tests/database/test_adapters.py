@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -75,7 +76,7 @@ def test_fed_meeting_to_models():
 @pytest.mark.asyncio
 async def test_batch_save_news():
     """Bulk dedup: 1 query VIX + 1 bulk URL check; kedua news baru -> keduanya disimpan."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_vix_result = MagicMock()
     mock_vix_result.scalar_one_or_none.return_value = None  # no VIX row -> no warning prefix
@@ -95,7 +96,7 @@ async def test_batch_save_news():
 @pytest.mark.asyncio
 async def test_batch_save_news_skips_duplicates():
     """URL yang sudah ada di DB di-skip tanpa query per-item (anti N+1)."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_vix_result = MagicMock()
     mock_vix_result.scalar_one_or_none.return_value = None
@@ -116,7 +117,7 @@ async def test_batch_save_news_skips_duplicates():
 
 @pytest.mark.asyncio
 async def test_batch_save_calendar():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None 
@@ -131,7 +132,7 @@ async def test_batch_save_calendar():
 
 @pytest.mark.asyncio
 async def test_batch_save_calendar_updates_existing_event():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     
     existing_event = MagicMock()
@@ -165,7 +166,7 @@ async def test_batch_save_calendar_updates_existing_event():
 
 @pytest.mark.asyncio
 async def test_batch_save_calendar_self_heals_corrupt_timestamp():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     
     # Existing event has corrupted time (19:30 UTC instead of 12:30 UTC)
@@ -209,7 +210,7 @@ async def test_batch_save_calendar_self_heals_corrupt_timestamp():
 
 @pytest.mark.asyncio
 async def test_batch_save_tweets():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None 
@@ -224,7 +225,7 @@ async def test_batch_save_tweets():
 
 @pytest.mark.asyncio
 async def test_batch_save_fedwatch():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     
     meeting = FedMeeting(meeting_date="2024-02-01", current_rate_ref="", most_likely="", probabilities=[])

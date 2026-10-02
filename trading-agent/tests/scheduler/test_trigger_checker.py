@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
@@ -46,7 +47,7 @@ class TestTriggerChecker:
         checker._fire_trigger = AsyncMock(return_value="XAUUSD")
         checker.check_invalidation_conditions = AsyncMock(return_value=[])
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -66,7 +67,7 @@ class TestTriggerChecker:
         checker = TriggerChecker(settings)
         t1 = self._make_trigger("price_level", {"price": 100})
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -90,7 +91,7 @@ class TestTriggerChecker:
         checker = TriggerChecker(settings)
         t1 = self._make_trigger("price_level", {"price": 2000, "direction": "above", "symbol": "XAUUSD"})
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -122,7 +123,7 @@ class TestTriggerChecker:
             "threshold": 30, "direction": "below"
         })
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -198,7 +199,7 @@ class TestTriggerChecker:
     @patch("scheduler.trigger_checker.get_session")
     async def test_expire_stale_triggers_batch(self, mock_get_session, settings):
         checker = TriggerChecker(settings)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.rowcount = 5
         mock_session.execute.return_value = mock_result
@@ -221,7 +222,7 @@ class TestTriggerChecker:
         checker._evaluate_trigger = AsyncMock(side_effect=["invalid", "expired"])
         checker.check_invalidation_conditions = AsyncMock(return_value=[])
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

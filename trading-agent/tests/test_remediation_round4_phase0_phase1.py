@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit and Integration Test Suite: Architecture Safety and Core Invariants
 Verifies critical production hardening across modules:
@@ -51,7 +52,7 @@ async def test_cost_tracker_daily_spend_circuit_breaker_key_compatibility():
         }
     }
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute.return_value.scalar.return_value = 5.50
     mock_session.execute.return_value.scalar_one_or_none.return_value = None
     
@@ -298,7 +299,7 @@ async def test_lookahead_subcalculators_as_of_gating():
     from analysis.calculators.macro_bias_filter import evaluate_macro_alignment
     from database.models import TreasuryYield, InterestRate, VIXData
     
-    session = AsyncMock()
+    session = create_mock_async_session()
     # Mock queries to check that as_of date is properly handled
     test_as_of = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
     settings = {"trading": {"edge_strategy": {"macro_bias": {"enabled": True}}}}

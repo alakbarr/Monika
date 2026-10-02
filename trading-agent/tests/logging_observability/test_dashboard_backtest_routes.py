@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Backtest Dashboard API endpoints (/api/backtest/*).
 """
@@ -30,7 +31,7 @@ def test_list_backtest_runs():
         created_at=datetime(2026, 2, 2, tzinfo=timezone.utc),
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = [mock_run]
     mock_session.execute = AsyncMock(return_value=mock_res)
@@ -83,7 +84,7 @@ def test_get_backtest_run_details():
         rationale="Confluence test",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.get = AsyncMock(return_value=mock_run)
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = [mock_trade]
@@ -103,11 +104,12 @@ def test_get_backtest_run_details():
 
 def test_trigger_backtest_run():
     """Verify POST /api/backtest/run queues a background backtest execution."""
-    resp = client.post(
-        "/api/backtest/run",
-        json={"days": 14, "mode": "full", "initial_equity": 20000.0, "step_hours": 4},
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "queued"
-    assert "14 days" in data["message"]
+    with patch("logging_observability.dashboard.routes.backtest._execute_background_backtest"):
+        resp = client.post(
+            "/api/backtest/run",
+            json={"days": 14, "mode": "full", "initial_equity": 20000.0, "step_hours": 4},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "queued"
+        assert "14 days" in data["message"]

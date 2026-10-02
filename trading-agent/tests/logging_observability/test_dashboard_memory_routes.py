@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/logging_observability/test_dashboard_memory_routes.py
 # Description: Unit tests for dashboard memory browsing endpoints
@@ -16,7 +17,7 @@ class TestDashboardMemoryRoutes:
 
     @patch("logging_observability.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_reflections(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_reflection = MagicMock()
@@ -58,7 +59,7 @@ class TestDashboardMemoryRoutes:
 
     @patch("logging_observability.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_lessons(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_lesson = MagicMock()
@@ -89,7 +90,7 @@ class TestDashboardMemoryRoutes:
 
     @patch("logging_observability.dashboard.routes.memory.AsyncSessionLocal")
     def test_get_playbooks(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_pb = MagicMock()
@@ -109,7 +110,7 @@ class TestDashboardMemoryRoutes:
 
     @patch("logging_observability.dashboard.routes.memory.AsyncSessionLocal")
     def test_search_memory(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         # Mock reflections response

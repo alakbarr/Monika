@@ -2,6 +2,7 @@ import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
+from tests.conftest import create_mock_async_session
 from analysis.tools.tool_executor import ToolExecutor
 from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 from utils.llm.prompt_compressor import ContextCompressor
@@ -10,10 +11,21 @@ from database.models import DXYData
 
 @pytest.mark.asyncio
 async def test_stage1_prefetch_tuple_and_satisfied_tools():
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {}
     
-    with patch("analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor:
+    with patch("analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor, \
+         patch("data_sources.sovereign_yield_spreads.SovereignYieldSpreads.get_spreads", new_callable=AsyncMock, return_value={"status": "ok"}), \
+         patch("data_sources.crypto_orderbook_depth.CryptoOrderbookDepth.fetch_snapshot", new_callable=AsyncMock, return_value=None), \
+         patch("data_sources.gold_physical_radar.GoldPhysicalRadar.fetch_radar", new_callable=AsyncMock) as mock_gold:
+        
+        mock_radar = MagicMock()
+        mock_radar.institutional_flow_bias = "NEUTRAL"
+        mock_radar.gld_1d_change_pct = 0.0
+        mock_radar.xau_sentiment_conviction = 0.5
+        mock_radar.summary = "Neutral"
+        mock_gold.return_value = mock_radar
+
         mock_instance = MockExecutor.return_value
         async def mock_execute(tool_name, tool_input):
             return {"status": "ok", "tool": tool_name}
@@ -32,7 +44,7 @@ async def test_stage1_prefetch_tuple_and_satisfied_tools():
 
 @pytest.mark.asyncio
 async def test_tool_get_dxy_tier1_normal_window():
-    session = AsyncMock()
+    session = create_mock_async_session()
     executor = ToolExecutor(session)
     
     d1 = DXYData(date=datetime.now(timezone.utc), close=104.5)
@@ -49,7 +61,7 @@ async def test_tool_get_dxy_tier1_normal_window():
 
 @pytest.mark.asyncio
 async def test_tool_get_dxy_tier2_stale_fallback():
-    session = AsyncMock()
+    session = create_mock_async_session()
     executor = ToolExecutor(session)
     
     # First query (window 10d) returns empty
@@ -71,7 +83,7 @@ async def test_tool_get_dxy_tier2_stale_fallback():
 
 @pytest.mark.asyncio
 async def test_tool_get_dxy_tier3_synthetic_proxy_fallback():
-    session = AsyncMock()
+    session = create_mock_async_session()
     executor = ToolExecutor(session)
     
     # Both queries to DXYData return empty
@@ -93,7 +105,7 @@ async def test_tool_get_dxy_tier3_synthetic_proxy_fallback():
 
 @pytest.mark.asyncio
 async def test_validate_fundamental_brief_with_prefetched_tools():
-    session = AsyncMock()
+    session = create_mock_async_session()
     executor = ToolExecutor(session, prefetch_satisfied_tools={"get_dxy", "get_vix"})
     
     mock_result = MagicMock()
@@ -125,7 +137,7 @@ async def test_validate_fundamental_brief_with_prefetched_tools():
 
 @pytest.mark.asyncio
 async def test_validate_fundamental_brief_with_uncertain_flag_per_rule2():
-    session = AsyncMock()
+    session = create_mock_async_session()
     # get_dxy was not in called_tools or prefetch_satisfied_tools, but narrative notes DXY is uncertain per Rule 2
     executor = ToolExecutor(session, prefetch_satisfied_tools={"get_vix"})
     

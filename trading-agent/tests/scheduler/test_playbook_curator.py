@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
@@ -12,7 +13,7 @@ async def test_playbook_curator_insufficient_trades(tmp_path):
     curator.playbooks_dir.mkdir(parents=True, exist_ok=True)
     curator.crystallized_dir.mkdir(parents=True, exist_ok=True)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # 0 trades found
     res = MagicMock()
     res.scalars.return_value.all.return_value = []
@@ -46,7 +47,7 @@ async def test_playbook_curator_successful_curation(tmp_path):
     mock_reflection.alpha_lesson = None
     mock_reflection.reflection_text = ""
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     res_trades = MagicMock()
     res_trades.scalars.return_value.all.return_value = [mock_trade1, mock_trade2, mock_trade3]
 
@@ -82,7 +83,7 @@ async def test_playbook_curator_run_once(tmp_path):
     curator.playbooks_dir.mkdir(parents=True, exist_ok=True)
     curator.crystallized_dir.mkdir(parents=True, exist_ok=True)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     res = MagicMock()
     res.scalars.return_value.all.return_value = []
     mock_session.execute = AsyncMock(return_value=res)

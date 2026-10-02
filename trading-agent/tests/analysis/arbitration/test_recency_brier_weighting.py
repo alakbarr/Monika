@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,7 +11,7 @@ from database.models import PaperTradeRecord, AssetAnalysis
 
 @pytest.mark.asyncio
 async def test_brier_recency_decay_favors_recent_performance():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 20 trades total.
     # index 0..9 (most recent): LLM accurate (conf=0.90, win=1.0), Quant inaccurate (conf=0.20, win=1.0)
@@ -57,7 +58,7 @@ async def test_brier_recency_decay_favors_recent_performance():
 
 @pytest.mark.asyncio
 async def test_symbol_weight_boost():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 15 trades: 5 on XAUUSD (LLM won), 10 on other symbols (LLM lost)
     records = []
@@ -98,7 +99,7 @@ async def test_symbol_weight_boost():
 
 @pytest.mark.asyncio
 async def test_losing_streak_penalty():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 12 trades where LLM has 3 consecutive losses most recently
     records = []

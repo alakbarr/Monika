@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/memory/test_skill_curator.py
 # ==============================================================================
@@ -86,7 +87,7 @@ def test_curate_files_deduplication():
 @pytest.mark.asyncio
 async def test_curate_db_rules():
     curator = SkillCurator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Mock execute return values
     res_stale = MagicMock(rowcount=3)

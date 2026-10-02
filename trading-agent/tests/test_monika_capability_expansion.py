@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Comprehensive Integration & Verification Test Suite for Monika Capability Expansion.
 Validates all 5 Phases across 100 Case Requirements.
@@ -76,7 +77,7 @@ def test_fase2_task_registry_margin_guardian():
 
 @pytest.mark.asyncio
 async def test_fase2_pnl_summary_handler():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.one_or_none.return_value = (150.0, 5, 4)
     mock_session.execute.return_value = mock_result
@@ -119,7 +120,7 @@ def test_fase3_candlestick_pattern_detection():
 
 @pytest.mark.asyncio
 async def test_fase3_anchored_vwap_modes():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_bar = MagicMock(open=100.0, high=105.0, low=98.0, close=102.0, volume=500.0)
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = [mock_bar]
@@ -133,7 +134,7 @@ async def test_fase3_anchored_vwap_modes():
 
 @pytest.mark.asyncio
 async def test_fase3_optimal_levels_trade_style():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch("analysis.calculators.intraday_level_optimizer.compute_daily_range_context", new_callable=AsyncMock) as mock_adr, \
          patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as mock_atr, \
          patch("analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock) as mock_zones:
@@ -169,7 +170,7 @@ async def test_fase3_optimal_levels_trade_style():
 @pytest.mark.asyncio
 async def test_fase4_smc_fvg_strategy_evaluation():
     strat = SMCFairValueGapStrategy()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Provide synthetic candles with a bullish FVG
     now = datetime.now(timezone.utc)
@@ -193,7 +194,7 @@ async def test_fase4_smc_fvg_strategy_evaluation():
 @pytest.mark.asyncio
 async def test_fase4_bb_volume_profile_strategy_evaluation():
     strat = BBVolumeProfileMeanReversion()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_candles = [
         MagicMock(open=100.0 + i * 0.1, high=101.0 + i * 0.1, low=99.0 + i * 0.1, close=100.5 + i * 0.1, volume=100.0)
@@ -209,7 +210,7 @@ async def test_fase4_bb_volume_profile_strategy_evaluation():
 @pytest.mark.asyncio
 async def test_fase4_counterfactual_trailing_stop():
     sim = CounterfactualSimulator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_trade = MagicMock(
         id=101, symbol="EURUSD", direction="BUY", entry_price=1.0800,
@@ -251,7 +252,7 @@ async def test_fase4_hostile_stress_test():
 
 @pytest.mark.asyncio
 async def test_fase5_cross_asset_macro_correlation():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.all.return_value = [
         (datetime(2026, 9, 1, tzinfo=timezone.utc), 4.25),

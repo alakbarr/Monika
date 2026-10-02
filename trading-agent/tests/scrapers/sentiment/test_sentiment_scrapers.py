@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """Unit tests for MyFxBook and FXSSI sentiment scrapers and FRED series integration."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -106,7 +107,7 @@ async def test_fred_series_mapping():
     assert SERIES_TO_TENOR["T10YIE"] == "10Y_INFLATION"
     assert SERIES_TO_TENOR["DFII10"] == "10Y_REAL"
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     config = {
         "series": {
             "treasury_10y": "DGS10",

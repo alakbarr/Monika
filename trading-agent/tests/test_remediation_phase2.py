@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit & Integration Tests for Remediation Phase 2 (Architectural & Advanced Enhancements).
 """
@@ -61,7 +62,7 @@ async def test_outcome_evaluator_cost_friction():
 async def test_signal_arbitrator_concordant_boost():
     """Verify SignalArbitrator boosts conviction when Quant and LLM agree."""
     arbitrator = SignalArbitrator(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
         strategy_id="btc_donchian",
@@ -105,7 +106,7 @@ async def test_signal_arbitrator_concordant_boost():
 async def test_signal_arbitrator_conflict_regime_and_vix():
     """Verify SignalArbitrator resolves conflicts based on VIX uncertainty and trend regime."""
     arbitrator = SignalArbitrator(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
         strategy_id="xau_trend",
@@ -170,7 +171,7 @@ async def test_signal_arbitrator_conflict_regime_and_vix():
 @pytest.mark.asyncio
 async def test_transactional_advisory_lock_fallback():
     """Verify transactional_advisory_lock functions properly as an async context manager."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.get_bind.return_value = MagicMock(dialect=MagicMock(name="sqlite"))
 
     async with transactional_advisory_lock(mock_session, lock_key=12345) as is_locked:

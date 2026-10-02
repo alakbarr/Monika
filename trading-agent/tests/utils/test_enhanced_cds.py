@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -11,7 +12,7 @@ from utils.protocol.enhanced_cds import (
 @pytest.mark.asyncio
 async def test_compute_spatial_cds_aligned_strong_bullish():
     """Test that strong_bullish with upward price move is correctly normalized and yields 0.0 CDS."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     # 20 H4 bars with upward move: first_close=1.2000, last_close=1.2100 (+0.83% move)
     bars = []
@@ -35,7 +36,7 @@ async def test_compute_spatial_cds_aligned_strong_bullish():
 @pytest.mark.asyncio
 async def test_compute_spatial_cds_divergent_strong_bullish():
     """Test that strong_bullish with downward price move yields divergence (> 0.0 CDS)."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     # 20 H4 bars with downward move: first_close=1.2100, last_close=1.2000 (-0.83% move)
     bars = []
@@ -57,7 +58,7 @@ async def test_compute_spatial_cds_divergent_strong_bullish():
 
 @pytest.mark.asyncio
 async def test_compute_task_cds():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     # Test with < 3 analyses
     mock_res_empty = MagicMock()

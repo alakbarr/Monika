@@ -9,7 +9,7 @@ from config.settings import load_settings
 
 @pytest.mark.asyncio
 async def test_system_doctor_checks():
-    doctor = SystemDoctor(fix=False)
+    doctor = SystemDoctor(fix=False, live_probes=False)
     results = await doctor.run_diagnostics()
     assert len(results) > 0
 

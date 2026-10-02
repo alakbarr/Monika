@@ -7,6 +7,7 @@ import asyncio
 from datetime import datetime, timezone, timedelta
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 from config.schemas import TradingAgentConfig, PaperTradingConfig
 from agent.task_registry import TaskRegistry, TaskDefinition, CORE_TRADING_TASKS
@@ -156,7 +157,7 @@ async def test_order_emulator_watermark_trailing():
 @pytest.mark.asyncio
 async def test_safe_ops_cancelled_error_handling():
     """Group 4: DB-17 - safe_db_op and safe_commit rollback and re-raise CancelledError."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     session.rollback = AsyncMock()
 
     async def failing_op(sess):
@@ -220,7 +221,7 @@ async def test_agent_harness_turn_cost_calculation():
 async def test_verified_market_snapshot_timeframe_filter():
     """Group 6: AN-9 - VerifiedMarketSnapshot accepts and uses timeframe parameter."""
     snapshotter = VerifiedMarketSnapshot()
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None

@@ -7,6 +7,8 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
+from tests.conftest import create_mock_async_session
+
 from logging_observability.dashboard.api import app
 from logging_observability.dashboard.routes import (
     all_routers,
@@ -107,7 +109,7 @@ def test_steer_endpoint():
     """Verify /api/actions/steer accepts SteerRequest and records directive."""
     client = TestClient(app)
     with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
         response = client.post(
             "/api/actions/steer",
@@ -123,7 +125,7 @@ def test_calendar_upcoming_endpoint():
     """Verify /api/calendar/upcoming responds with event list."""
     client = TestClient(app)
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
@@ -158,7 +160,7 @@ def test_modify_position_endpoint():
     """Verify POST /api/positions/{ticket}/modify updates position SL/TP."""
     client = TestClient(app)
     with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
         mock_pos = MagicMock()
@@ -187,7 +189,7 @@ def test_market_indicators_endpoint():
     """Verify GET /api/market/indicators/{symbol} returns snapshot."""
     client = TestClient(app)
     with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()
@@ -207,7 +209,7 @@ def test_market_structure_endpoint():
     """Verify GET /api/market/structure/{symbol} returns structure levels."""
     client = TestClient(app)
     with patch("database.db.AsyncSessionLocal") as mock_sess_cls:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_sess_cls.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()

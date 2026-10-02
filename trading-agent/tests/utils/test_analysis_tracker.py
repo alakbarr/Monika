@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/utils/test_analysis_tracker.py
 # ==============================================================================
@@ -75,7 +76,7 @@ def test_group_by_symbol_and_direction_schema():
 @pytest.mark.asyncio
 async def test_compute_analysis_quality_report_no_key_error():
     """Verify compute_analysis_quality_report does not fail with KeyError: 'total'."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute = AsyncMock()
     mock_session.commit = AsyncMock()
     mock_session.add = MagicMock()
@@ -142,7 +143,7 @@ async def test_compute_analysis_quality_report_no_key_error():
 @pytest.mark.asyncio
 async def test_adaptive_threshold_hints_and_directional_bias():
     """Verify adaptive threshold hints and directional bias reporting parse report correctly."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     saved_report = {
         "total_outcomes": 20,
@@ -191,7 +192,7 @@ async def test_adaptive_threshold_hints_and_directional_bias():
 @pytest.mark.asyncio
 async def test_direction_accuracy_report_alias_keys():
     """Verify get_direction_accuracy_report returns compatibility alias keys."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     mock_analysis_1 = MagicMock()
     mock_analysis_1.symbol = "XAUUSD"

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Phase 2: Event-Driven Core & Unified Agent Harness (Pi Pattern).
 Covers:
@@ -481,7 +482,7 @@ class TestSchedulerEventBusIntegration:
 
         bus.subscribe(CircuitBreakerEvent, cb_handler)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
@@ -517,7 +518,7 @@ class TestSchedulerEventBusIntegration:
 
         manager._check_position = AsyncMock(return_value={"adjusted": True, "new_sl": 2010.0})
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.return_value = MagicMock(
             scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[mock_pos])))
         )
@@ -543,7 +544,7 @@ class TestSchedulerEventBusIntegration:
 
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.return_value = MagicMock(
             scalar_one_or_none=MagicMock(return_value=mock_cfg)
         )
@@ -566,7 +567,7 @@ class TestSchedulerEventBusIntegration:
 
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.return_value = MagicMock(
             scalar_one_or_none=MagicMock(return_value=mock_cfg)
         )
@@ -612,7 +613,7 @@ class TestSchedulerEventBusIntegration:
 
         mock_cfg = MagicMock()
         mock_cfg.value = "true"
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.return_value = MagicMock(
             scalar_one_or_none=MagicMock(return_value=mock_cfg)
         )
@@ -663,7 +664,7 @@ class TestSchedulerEventBusIntegration:
         mock_analyzer = MagicMock()
         mock_analyzer.analyze_all = AsyncMock(return_value={})
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
 
@@ -721,7 +722,13 @@ class TestSchedulerEventBusIntegration:
 
             agent.event_bus.subscribe(TickPriceEvent, capture)
 
-            await agent.publish_tick(symbol="XAUUSD", bid=2030.0, ask=2030.6, last=2030.3)
+            mock_session = create_mock_async_session()
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__.return_value = mock_session
+            with patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx), \
+                 patch("scheduler.position_guardian.get_session", return_value=mock_ctx), \
+                 patch("database.db.get_session", return_value=mock_ctx):
+                await agent.publish_tick(symbol="XAUUSD", bid=2030.0, ask=2030.6, last=2030.3)
 
             assert len(test_ticks) == 1
             assert test_ticks[0].symbol == "XAUUSD"
@@ -997,7 +1004,7 @@ class TestPhase2EdgeCases:
         # 3% crash on live tick
         tick2 = TickPriceEvent(symbol="EURUSD", bid=1.0670, ask=1.0672, last=1.0671, timestamp=now + timedelta(seconds=5))
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -1024,12 +1031,13 @@ class TestPhase2EdgeCases:
         # Tick 2 arrives 0.2s later (within 1.0s throttle window)
         tick2 = TickPriceEvent(symbol="EURUSD", bid=1.0801, timestamp=now + timedelta(milliseconds=200))
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
 
-        with patch("database.db.get_session", return_value=mock_ctx):
+        with patch("scheduler.trailing_stop_manager.get_session", return_value=mock_ctx), \
+             patch("database.db.get_session", return_value=mock_ctx):
             await manager.on_tick(tick1)
             await manager.on_tick(tick2)
 

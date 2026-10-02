@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/test_gap_analysis_remediation.py
 # ==============================================================================
@@ -101,7 +102,7 @@ async def test_paper_tracker_suspension():
     from unittest.mock import AsyncMock, MagicMock
     from database.models import SystemConfig
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_execute_result = MagicMock()
     mock_cfg = SystemConfig(key='suspended_symbols', value="[]")
     mock_execute_result.scalar_one_or_none.return_value = mock_cfg

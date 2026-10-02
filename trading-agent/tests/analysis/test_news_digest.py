@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from analysis.prefetch.news_digest import NewsDigestProcessor
@@ -16,7 +17,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_classify_unscored_news_empty(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalars().all.return_value = []
@@ -28,7 +29,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_classify_unscored_news_success(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         
@@ -66,7 +67,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_create_news_digest_empty(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         # mock_result_empty is for get_latest_digest, high, medium, and fallback
@@ -81,7 +82,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_create_news_digest_success(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         item1 = NewsItem(id=1, source="source1", title="title 1", summary="sum 1", currency_tags="USD")
@@ -139,7 +140,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_classify_unscored_news_zero_indexed_response(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
@@ -170,7 +171,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_classify_unscored_news_omitted_item_recovery(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
@@ -205,7 +206,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_build_5day_macro_context_and_cache(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         brief_mock = MagicMock()
         brief_mock.macro_regime = "stagflation"
@@ -237,7 +238,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_verify_high_medium_boundary_contradiction_guard(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.commit = AsyncMock()
 
         # Item 1: German economic breakdown (MEDIUM)
@@ -501,7 +502,7 @@ class TestNewsDigestProcessor:
         # Mock macro synth reconciliation
         processor._macro_synth.generate = AsyncMock(return_value="Corrected digest text [RECONCILED: 1 material contradictions resolved]")
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.commit = AsyncMock()
 
         # Reconcile shouldn't raise KeyError: 'claim_a'
@@ -550,7 +551,7 @@ class TestNewsDigestProcessor:
     @pytest.mark.asyncio
     async def test_create_news_digest_reconciliation_fallback_passive_note(self):
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -583,7 +584,7 @@ class TestNewsDigestProcessor:
     async def test_verify_high_medium_boundary_string_index(self):
         """Verify _verify_high_medium_boundary tolerates string index responses without TypeError."""
         processor = NewsDigestProcessor({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.commit = AsyncMock()
 
         item1 = NewsItem(id=1, title="Fed's Bullard Opinion on Inflation", summary="General opinion", impact="HIGH")
@@ -615,7 +616,7 @@ class TestNewsDigestProcessor:
 
         item1 = NewsItem(id=10, title="Federal Reserve Interest Rate Decision", summary="Fed policy update")
         item2 = NewsItem(id=20, title="ECB President Lagarde Speech on Inflation", summary="European central bank updates")
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 

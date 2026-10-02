@@ -284,15 +284,27 @@ def test_api_get_models(test_client):
 
 
 def test_api_get_runs_and_leaderboard_empty_or_mocked(test_client):
-    # Test runs list
-    response = test_client.get("/api/benchmark/runs")
-    assert response.status_code == 200
-    data = response.json()
-    assert "runs" in data
+    class MockAsyncSessionCM:
+        async def __aenter__(self):
+            m = MagicMock()
+            m.execute = AsyncMock(return_value=MagicMock(
+                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+                scalar_one_or_none=MagicMock(return_value=None),
+            ))
+            return m
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return None
 
-    # Test leaderboard
-    response_lb = test_client.get("/api/benchmark/leaderboard")
-    assert response_lb.status_code == 200
-    lb_data = response_lb.json()
-    assert "leaderboard" in lb_data
+    with patch("logging_observability.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
+        # Test runs list
+        response = test_client.get("/api/benchmark/runs")
+        assert response.status_code == 200
+        data = response.json()
+        assert "runs" in data
+
+        # Test leaderboard
+        response_lb = test_client.get("/api/benchmark/leaderboard")
+        assert response_lb.status_code == 200
+        lb_data = response_lb.json()
+        assert "leaderboard" in lb_data
 

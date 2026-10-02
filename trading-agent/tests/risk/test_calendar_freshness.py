@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/risk/test_calendar_freshness.py
 # ==============================================================================
@@ -28,7 +29,7 @@ def settings():
 async def test_calendar_fresh_under_4h(settings):
     """Calendar data is fresh (< 4h) -> approved without warnings."""
     gate = RiskGate(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     now = datetime.now(timezone.utc)
     mock_cfg = MagicMock()
@@ -57,7 +58,7 @@ async def test_calendar_fresh_under_4h(settings):
 async def test_calendar_age_between_4_and_8h(settings):
     """Calendar data between 4h and 8h -> approved with warning."""
     gate = RiskGate(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     now = datetime.now(timezone.utc)
     mock_cfg = MagicMock()
@@ -87,7 +88,7 @@ async def test_calendar_age_between_4_and_8h(settings):
 async def test_calendar_age_over_8h_with_future_coverage(settings):
     """Calendar fetch > 8h (e.g. 11.1h) but future schedule exists in DB -> approved with soft warning."""
     gate = RiskGate(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     now = datetime.now(timezone.utc)
     mock_cfg = MagicMock()
@@ -118,7 +119,7 @@ async def test_calendar_age_over_8h_with_future_coverage(settings):
 async def test_calendar_age_over_8h_without_future_coverage(settings):
     """Calendar fetch > 8h in degraded mode -> allowed with warning if no high-impact upcoming."""
     gate = RiskGate(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     now = datetime.now(timezone.utc)
     mock_cfg = MagicMock()
@@ -148,7 +149,7 @@ async def test_calendar_age_over_8h_without_future_coverage(settings):
 async def test_calendar_empty_database(settings):
     """No calendar rows in DB -> degraded mode pass with warning."""
     gate = RiskGate(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_res_cfg = MagicMock()
     mock_res_cfg.scalar_one_or_none.return_value = None

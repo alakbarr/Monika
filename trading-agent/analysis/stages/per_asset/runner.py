@@ -1126,26 +1126,24 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 )
                 # Track for monitoring
                 try:
-                    from database.db import get_session
-                    async with get_session() as track_session:
-                        from database.models import SystemConfig
-                        import json as _j
-                        key = f"ai_compliance_missing_fields_{symbol}"
-                        existing = (await track_session.execute(
-                            select(SystemConfig).where(SystemConfig.key == key)
-                        )).scalar_one_or_none()
-                        count = 1
-                        if existing and existing.value:
-                            try:
-                                count = _j.loads(existing.value).get("count", 0) + 1
-                            except Exception:
-                                pass
-                        data = _j.dumps({"count": count, "last_seen": _get_clock().now().isoformat(), "fields": missing_fields})
-                        if existing:
-                            existing.value = data
-                        else:
-                            track_session.add(SystemConfig(key=key, value=data))
-                        await track_session.commit()
+                    from database.models import SystemConfig
+                    import json as _j
+                    key = f"ai_compliance_missing_fields_{symbol}"
+                    existing = (await session.execute(
+                        select(SystemConfig).where(SystemConfig.key == key)
+                    )).scalar_one_or_none()
+                    count = 1
+                    if existing and existing.value:
+                        try:
+                            count = _j.loads(existing.value).get("count", 0) + 1
+                        except Exception:
+                            pass
+                    data = _j.dumps({"count": count, "last_seen": _get_clock().now().isoformat(), "fields": missing_fields})
+                    if existing:
+                        existing.value = data
+                    else:
+                        session.add(SystemConfig(key=key, value=data))
+                    await session.commit()
                 except Exception as e:
                     logger.debug(f"Failed to track AI compliance: {e}")
 

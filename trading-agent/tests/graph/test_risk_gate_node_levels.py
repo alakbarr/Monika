@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -57,7 +58,7 @@ async def test_quant_promoted_trade_synthesizes_levels():
     mock_arb_res.take_profit = None
     mock_arb_res.meta = {"strategy_id": "alpha_btc_test"}
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.get = AsyncMock(return_value=None)
     mock_session.commit = AsyncMock()
 
@@ -139,7 +140,7 @@ async def test_risk_gate_node_persists_to_asset_analysis_without_setter_error():
         meta={"strategy_id": "alpha_btc_1"},
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.get = AsyncMock(return_value=ana_record)
     mock_session.commit = AsyncMock()
 

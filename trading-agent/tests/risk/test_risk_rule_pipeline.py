@@ -4,7 +4,7 @@
 
 import pytest
 from unittest.mock import MagicMock, AsyncMock
-
+from tests.conftest import create_mock_async_session
 from risk.position_sizing import SizingResult
 from risk.risk_rule_plugin import (
     IRiskRulePlugin,
@@ -72,7 +72,7 @@ async def test_modular_risk_registry_rules():
     rule = AllowedSymbolsRule(allowed=["EURUSD", "GBPUSD"])
     registry.register_rule(rule)
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     sizing = MagicMock()
     sizing.recommended_lots = 0.1
 
@@ -107,7 +107,7 @@ async def test_dynamic_sizing_plugin():
     plugin = HalfRiskSizingPlugin()
     registry.register_sizing_plugin(plugin)
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     lots = await registry.apply_dynamic_sizing(
         session=session,
         symbol="EURUSD",
@@ -152,7 +152,7 @@ async def test_risk_gate_integration_with_modular_rule():
     risk_gate._check_vpin_toxicity = AsyncMock(side_effect=mock_pass)
     risk_gate._log_verdict = AsyncMock()
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     sizing = SizingResult(
         symbol="CADJPY",
         direction="buy",

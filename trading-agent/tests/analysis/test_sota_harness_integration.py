@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,7 +12,7 @@ from config.settings import load_all_config
 async def test_per_asset_preflight_gate_skips_turn_zero_tokens():
     settings = load_all_config()
     stage = PerAssetStage(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Force time during rollover window (22:30 UTC)
     rollover_time = datetime(2026, 9, 4, 22, 30, tzinfo=timezone.utc)
@@ -49,7 +50,7 @@ async def test_main_startup_checks_with_preflight(mock_connect, mock_session_loc
     mock_conn.execute = AsyncMock(side_effect=[[(1,)], all_tables, all_cols, [], []])
     mock_connect.return_value.__aenter__.return_value = mock_conn
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
     mock_session_local.return_value.__aenter__.return_value = mock_session
 

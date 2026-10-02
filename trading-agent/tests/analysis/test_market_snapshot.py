@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Verified Market Snapshot Ground Truth (H4).
 """
@@ -30,7 +31,7 @@ async def test_h4_market_snapshot_computation():
     mock_ind2.indicator_name = "macd"
     mock_ind2.value_json = json.dumps({"macd": 0.0012, "signal": 0.0009, "hist": 0.0003})
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Session execute returns bar for first query, indicator list for second query
     mock_exec1 = MagicMock()
@@ -59,7 +60,7 @@ async def test_h4_market_snapshot_computation():
 async def test_h4_market_snapshot_empty_db():
     """H4: VerifiedMarketSnapshot handles missing data gracefully."""
     snapshot_gen = VerifiedMarketSnapshot()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 4 executes: OHLCV (tf + fallback), indicators (tf + fallback)
     mock_empty_scalar = MagicMock()

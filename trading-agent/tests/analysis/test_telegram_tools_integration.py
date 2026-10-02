@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/test_telegram_tools_integration.py
 # ==============================================================================
@@ -49,7 +50,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_paper_trading_performance(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={"paper_trading": {"enabled": True}})
 
         with patch("utils.analytics.paper_tracker.PaperTracker.get_statistics", new_callable=AsyncMock) as mock_stats, \
@@ -83,7 +84,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_trade_history(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         trade1 = PaperTradeRecord(
@@ -105,7 +106,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_active_triggers(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         trigger = TradeTrigger(
@@ -135,7 +136,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_system_health(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={"paper_trading": {"enabled": True}})
 
         risk = RiskState(date=datetime.now(timezone.utc), daily_pnl=1.2, current_drawdown=0.5, trading_paused=False)
@@ -162,7 +163,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_open_positions_dual_mode(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         live_pos = Position(
@@ -197,7 +198,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_chart_tool_handler(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         now = datetime.now(timezone.utc)
@@ -228,7 +229,7 @@ class TestTelegramToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_get_spread_snapshot_tool_handler(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={"trading": {"asset_universe": ["EURUSD", "XAUUSD"]}})
 
         m_bar = MagicMock()

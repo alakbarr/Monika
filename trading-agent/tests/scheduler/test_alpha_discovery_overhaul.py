@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -55,7 +56,7 @@ async def test_tsm_momentum_dynamic_config():
         "min_agreement": 0.8,
     }
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [100.0] * 5  # insufficient candles
     mock_res = MagicMock()

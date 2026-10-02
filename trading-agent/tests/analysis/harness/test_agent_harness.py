@@ -1,6 +1,7 @@
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.harness.agent_harness import AgentHarness
 from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
@@ -11,6 +12,7 @@ class DummyLLMClient(BaseLLMClient):
         super().__init__(model=model, max_tokens=4096, **kwargs)
         self.provider_name = "dummy"
         self._save_token_usage = AsyncMock()
+        self._log_tool_call = AsyncMock()
         self.mock_run_tool_agent = AsyncMock()
 
     async def generate(self, prompt: str, system: str = "", temperature=None, max_tokens=None):
@@ -28,9 +30,7 @@ class DummyLLMClient(BaseLLMClient):
 
 @pytest.fixture
 def mock_session():
-    s = AsyncMock()
-    s.add = MagicMock()
-    return s
+    return create_mock_async_session()
 
 
 @pytest.fixture

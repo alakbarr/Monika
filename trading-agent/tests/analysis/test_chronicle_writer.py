@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ class TestChronicleWriter:
     @pytest.mark.asyncio
     async def test_maybe_record_news_event_breaking(self):
         writer = ChronicleWriter({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -41,7 +42,7 @@ class TestChronicleWriter:
     @pytest.mark.asyncio
     async def test_maybe_record_regime_shift(self):
         writer = ChronicleWriter({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -71,7 +72,7 @@ class TestChronicleWriter:
     @pytest.mark.asyncio
     async def test_get_chronicle_context(self):
         writer = ChronicleWriter({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         chronicle = MarketChronicle(
             id=1,

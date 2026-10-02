@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Comprehensive Empirical Stress-Test Suite for Milestone 2 (M2).
 Evaluates:
@@ -344,7 +345,7 @@ class TestFedWatchProbabilitiesStress:
     @pytest.mark.parametrize("limit", [None, 0, 1, 4, 10])
     async def test_fedwatch_empty_database_fallback(self, limit):
         """Verify empty database returns count=0, meetings=[], and automated web_search fallback guidance."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = []
@@ -387,7 +388,7 @@ class TestFedWatchProbabilitiesStress:
             ),
         ]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_records
@@ -420,7 +421,7 @@ class TestFedWatchProbabilitiesStress:
             ),
         ]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_records
@@ -453,7 +454,7 @@ class TestFedWatchProbabilitiesStress:
             ),
         ]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_records
@@ -486,7 +487,7 @@ class TestFedWatchProbabilitiesStress:
             ),
         ]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_records

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Comprehensive Unit Test Suite for Remediation Round 1: Phase 0 & Phase 1.
 Validates all 14 remediation items:
@@ -46,7 +47,7 @@ async def test_risk_gate_vix_lookahead_prevention():
     """Verify that VIX check ignores future VIX rows relative to clock.now()."""
     gate = RiskGate(settings={"trading": {"risk": {"vix_thresholds": {"pause": 30.0, "defensive": 25.0}}}})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = VIXData(
         date=datetime(2026, 1, 15, tzinfo=timezone.utc),
@@ -64,7 +65,7 @@ async def test_risk_gate_vix_lookahead_prevention():
 async def test_risk_gate_weekly_drawdown_temporal_bound():
     """Verify weekly drawdown query bounds upper time to closed_at <= now."""
     gate = RiskGate(settings={"trading": {"risk": {"max_weekly_drawdown_percent": 6.0}}})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = []
@@ -84,7 +85,7 @@ async def test_risk_gate_weekly_drawdown_temporal_bound():
 @pytest.mark.asyncio
 async def test_technical_resample_forex_weekend_filtered():
     """Verify that resampling Forex data filters out weekend market closure candles."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Friday 2026-01-09 21:00 UTC and Monday 2026-01-12 00:00 UTC
     friday_bar = PriceOHLCV(
@@ -128,7 +129,7 @@ async def test_active_calendar_poller_scraper_close():
     mock_investing.fetch_events.side_effect = Exception("Inv fail")
     mock_investing.close = MagicMock()
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_ev = MagicMock(id=1, event_name="Test Event")
     mock_ev.actual = None
     mock_res = MagicMock()
@@ -188,7 +189,7 @@ async def test_main_db_health_check_sends_telegram_alert():
 @pytest.mark.asyncio
 async def test_cost_tracker_nested_config_reading():
     """Verify check_monthly_budget reads cost_tracking.monthly_budget_usd."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar.return_value = 240.0  # $240 MTD
     mock_session.execute.return_value = mock_res
@@ -292,7 +293,7 @@ def test_point_in_time_engine_enforces_risk_gate():
 @pytest.mark.asyncio
 async def test_macro_priced_in_calculator_temporal_gating():
     """Verify calculate_macro_priced_in_baseline respects as_of parameter."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_res
@@ -347,7 +348,7 @@ def test_news_digest_untrusted_brackets_sanitized():
 @pytest.mark.asyncio
 async def test_signal_arbitrator_total_acc_epsilon_safe():
     """Verify arbitrator weights calculation handles zero accuracy safely."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.all.return_value = []
     mock_session.execute.return_value = mock_res

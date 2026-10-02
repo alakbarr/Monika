@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from utils.analytics.strategy_edge_tracker import compute_strategy_pair_stats, apply_disable_flags
 
 @pytest.mark.asyncio
 async def test_compute_strategy_pair_stats():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     class MockAnalysis:
         def __init__(self, strat, sym):
@@ -36,7 +37,7 @@ async def test_compute_strategy_pair_stats():
 
 @pytest.mark.asyncio
 async def test_apply_disable_flags():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     class MockAnalysis:
         def __init__(self, strat, sym):

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit and Integration Test Suite: Remediasi Menyeluruh Round 04 Fase 2 (Arsitektural)
 Memverifikasi 4 pilar arsitektural kompleks:
@@ -23,7 +24,7 @@ async def test_signal_arbitrator_dynamic_empirical_brier_weighting():
     from analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights
     from database.models import PaperTradeRecord, AssetAnalysis
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Create 12 trades:
     # - LLM had high confidence (0.90) but lost (is_win=0) -> High LLM Brier (bad calibration)
@@ -63,7 +64,7 @@ async def test_performance_reviewer_causal_setup_attribution():
     from utils.analytics.performance_reviewer import evaluate_candidate_lessons
     from database.models import CandidateLesson, PaperTradeRecord
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
     proposal_time = now - timedelta(days=20)
     
@@ -142,7 +143,7 @@ async def test_adaptive_policy_rolling_window_sample_cap():
     }
     
     policy = AdaptiveRiskPolicy(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Mock return: 50 trades, 38 wins in the recent rolling 60-day window (76% WR -> strong edge)
     mock_row = MagicMock()

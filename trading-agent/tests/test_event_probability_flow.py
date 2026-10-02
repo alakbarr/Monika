@@ -505,8 +505,11 @@ class TestSaveMarketIntelligencePendingAction:
             mock_executor._tool_save_market_intelligence = AsyncMock(return_value=mock_tool_res)
 
             # Mock get_session and ToolExecutor
-            with patch("telegram_bot.chat_agent.get_session"), \
+            from tests.conftest import create_mock_async_session
+            with patch("telegram_bot.chat_agent.get_session") as mock_gs, \
                  patch("analysis.tools.tool_executor.ToolExecutor", return_value=mock_executor):
+                mock_sess = create_mock_async_session()
+                mock_gs.return_value.__aenter__.return_value = mock_sess
                 res_msg = await agent._execute_action(action)
                 assert "[OK] Market Intelligence berhasil disimpan!" in res_msg
                 assert "ID: #42" in res_msg

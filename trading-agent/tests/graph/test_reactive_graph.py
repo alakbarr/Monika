@@ -4,6 +4,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 from graph.reactive_graph import (
     build_reactive_graph,
@@ -14,6 +15,14 @@ from graph.reactive_graph import (
     fast_debate_node,
     reactive_execution_node,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_reactive_graph_session():
+    with patch("graph.reactive_graph.get_session") as mock_get_session:
+        mock_sess = create_mock_async_session()
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
+        yield mock_sess
 
 
 @pytest.mark.asyncio

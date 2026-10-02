@@ -43,6 +43,15 @@ except ImportError:
 _queue_listener: Optional[logging.handlers.QueueListener] = None
 
 
+def _close_and_clear_handlers(logger: logging.Logger) -> None:
+    for h in list(logger.handlers):
+        try:
+            h.close()
+        except Exception:
+            pass
+    logger.handlers.clear()
+
+
 def shutdown_logging() -> None:
     """Stop the background QueueListener worker thread cleanly."""
     global _queue_listener
@@ -52,7 +61,8 @@ def shutdown_logging() -> None:
         except Exception:
             pass
         _queue_listener = None
-    logging.getLogger().handlers.clear()
+    _close_and_clear_handlers(logging.getLogger())
+    _close_and_clear_handlers(logging.getLogger("TradingAgent"))
 
 
 class _SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
@@ -91,13 +101,13 @@ def setup_logging(
     root.setLevel(level)
 
     root.propagate = bool(is_pytest)
-    root.handlers.clear()
+    _close_and_clear_handlers(root)
 
     # Root logger setup so third-party loggers (httpx, telegram, httpcore, etc.)
     # inherit standard format and RedactingFormatter
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
-    root_logger.handlers.clear()
+    _close_and_clear_handlers(root_logger)
 
     # --- Real file handler (rotating) ---
     try:

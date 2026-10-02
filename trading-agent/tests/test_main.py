@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
 from datetime import datetime, timezone
 from main import run_startup_checks, TradingAgent, _run_with_restart
+from tests.conftest import create_mock_async_session
 import sys
 
 class TestMain:
@@ -49,13 +50,39 @@ class TestMain:
         mock_anthropic.return_value = mock_client
         mock_client.messages.create = AsyncMock()
         
-        assert await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}}) is True
+        class MockAsyncSessionCM:
+            async def __aenter__(self):
+                m = MagicMock()
+                m.execute = AsyncMock(return_value=MagicMock(
+                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+                    scalar_one_or_none=MagicMock(return_value=None),
+                ))
+                m.commit = AsyncMock()
+                return m
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+
+        with patch("database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
+            assert await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}}) is True
 
     @pytest.mark.asyncio
     @patch("sqlalchemy.ext.asyncio.AsyncEngine.connect")
     async def test_startup_checks_db_fail(self, mock_connect):
         mock_connect.side_effect = Exception("DB Fail")
-        assert await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}}) is False
+        class MockAsyncSessionCM:
+            async def __aenter__(self):
+                m = MagicMock()
+                m.execute = AsyncMock(return_value=MagicMock(
+                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+                    scalar_one_or_none=MagicMock(return_value=None),
+                ))
+                m.commit = AsyncMock()
+                return m
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+
+        with patch("database.db.AsyncSessionLocal", return_value=MockAsyncSessionCM()):
+            assert await run_startup_checks({"paper_trading": {"enabled": True, "tp_detection_method": "close_price"}}) is False
 
     @pytest.mark.asyncio
     async def test_run_with_restart(self):
@@ -150,7 +177,7 @@ class TestMain:
         
         with patch("main.close_db", new_callable=AsyncMock) as mock_close_db, \
              patch("database.db.get_session") as mock_get_session:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.execute.return_value.scalars.return_value.all.return_value = []
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -224,7 +251,7 @@ class TestMain:
 
         with patch("main.close_db", new_callable=AsyncMock) as mock_close_db, \
              patch("database.db.get_session") as mock_get_session:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.execute.return_value.scalars.return_value.all.return_value = []
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -237,7 +264,7 @@ class TestMain:
 
     @staticmethod
     def _make_recovery_mock_ctx(last_cycle=None, brief=None):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         fresh_digest = MagicMock()
         fresh_digest.generated_at = datetime.now(timezone.utc)
         async def _exec(stmt, *args, **kwargs):

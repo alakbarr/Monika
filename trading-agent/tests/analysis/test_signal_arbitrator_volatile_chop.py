@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.arbitration.signal_arbitrator import SignalArbitrator, ArbitrationResult
 from analysis.strategies.base_strategy import EdgeSignal
 
@@ -16,7 +17,7 @@ async def test_signal_arbitrator_volatile_chop_blocked():
         }
     }
     arbitrator = SignalArbitrator(settings=settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
         strategy_id="bb_squeeze_scalp",
@@ -78,7 +79,7 @@ async def test_signal_arbitrator_linear_opinion_pool_concordant():
         }
     }
     arbitrator = SignalArbitrator(settings=settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
         strategy_id="xau_trend",

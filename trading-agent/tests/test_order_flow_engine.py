@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/test_order_flow_engine.py
 # ==============================================================================
@@ -33,7 +34,7 @@ async def test_order_flow_real_dom_l2_calculation():
     mock_mt5.market_book_get.return_value = books
 
     engine = OrderFlowEngine(mt5_client=mock_mt5)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     snapshot = await engine.analyze_order_flow(mock_session, "XAUUSD")
 
@@ -84,7 +85,7 @@ async def test_order_flow_lee_ready_fallback_and_absorption():
             volume=800.0
         ))
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = list(reversed(bars))  # desc order
     mock_session.execute.return_value = mock_result
@@ -99,7 +100,7 @@ async def test_order_flow_lee_ready_fallback_and_absorption():
 @pytest.mark.asyncio
 async def test_fetch_latest_order_flow_retrieval():
     """Verify fetch_latest_order_flow retrieves stored snapshot from TechnicalIndicator table."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = TechnicalIndicator(
         symbol="BTCUSD",
         timeframe="H1",
@@ -132,7 +133,7 @@ async def test_order_flow_real_dom_dict_structure():
     mock_mt5.market_book_get.return_value = books
 
     engine = OrderFlowEngine(mt5_client=mock_mt5)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     snapshot = await engine.analyze_order_flow(mock_session, "XAUUSD")
     assert snapshot.mode == "REAL_DOM_L2"

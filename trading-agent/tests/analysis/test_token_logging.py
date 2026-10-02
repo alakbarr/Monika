@@ -3,6 +3,7 @@ Unit test untuk verifikasi pencatatan komprehensif token_usage_log.
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.providers.base_provider import BaseLLMClient
 
 
@@ -48,7 +49,7 @@ async def test_save_token_usage_records_comprehensive_fields():
         cycle_id="cycle-20260827-01",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     with patch("database.models.TokenUsageLog") as MockTokenUsageLog, \
          patch("utils.analytics.pricing.cost_usd", return_value=0.005) as mock_cost:

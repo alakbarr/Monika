@@ -4,6 +4,7 @@ Unit tests for Critical Harness Protections (C1, C2, C3, M5, I2, I7).
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.harness.agent_harness import AgentHarness
 from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
 
@@ -32,9 +33,7 @@ class DummyHarnessClient(BaseLLMClient):
 
 @pytest.fixture
 def mock_session():
-    s = AsyncMock()
-    s.add = MagicMock()
-    return s
+    return create_mock_async_session()
 
 
 @pytest.mark.asyncio

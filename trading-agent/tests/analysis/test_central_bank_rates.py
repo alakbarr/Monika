@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta, date
 from utils import clock
@@ -32,7 +33,7 @@ def test_neutral_rate_estimates_exist():
 @pytest.mark.asyncio
 async def test_rate_score_calculation():
     """Rate score must calculate divergence from domestic neutral rate."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock(spec=InterestRate)
     mock_row.rate_percent = 5.25
     mock_row.effective_date = datetime(2026, 6, 1, tzinfo=timezone.utc)
@@ -92,7 +93,7 @@ async def test_handle_get_interest_rates_with_differentials(db_session):
 @pytest.mark.asyncio
 async def test_handle_get_interest_rates_with_date_object():
     """Verify handle_get_interest_rates handles effective_date of type datetime.date cleanly without UnboundLocalError."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock(spec=InterestRate)
     mock_row.bank = "FED"
     mock_row.rate_percent = 5.25
@@ -112,7 +113,7 @@ async def test_handle_get_interest_rates_with_date_object():
 @pytest.mark.asyncio
 async def test_economic_surprise_inverts_unemployment():
     """Unemployment higher than forecast must yield a negative surprise score."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Event 1: NFP higher than forecast -> Positive surprise (hawkish)
     ev_nfp = MagicMock(spec=EconomicCalendar)
@@ -141,7 +142,7 @@ async def test_economic_surprise_inverts_unemployment():
 @pytest.mark.asyncio
 async def test_handle_get_central_bank_expectations_with_data():
     """Verify handle_get_central_bank_expectations returns probabilities and priced-in scores."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     def make_exp(bank, cur_rate, hike, hold, cut, m_date="2026-06-15"):
         r = MagicMock(spec=CentralBankRateExpectation)
@@ -194,7 +195,7 @@ async def test_handle_get_central_bank_expectations_with_data():
 @pytest.mark.asyncio
 async def test_handle_get_central_bank_expectations_with_null_probabilities():
     """Verify handle_get_central_bank_expectations handles NULL prob_* values gracefully without TypeError."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     row = MagicMock(spec=CentralBankRateExpectation)
     row.bank = "RBA"
     row.current_rate = 4.35
@@ -221,7 +222,7 @@ async def test_handle_get_central_bank_expectations_with_null_probabilities():
 @pytest.mark.asyncio
 async def test_handle_get_central_bank_expectations_empty_fallback():
     """Verify empty central bank expectation rows trigger fallback with web_search guidance."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_res

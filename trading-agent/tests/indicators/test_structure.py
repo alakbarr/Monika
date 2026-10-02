@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import pandas as pd
 from datetime import datetime, timezone
@@ -9,7 +10,7 @@ class TestMarketStructureAnalyzer:
 
     @pytest.fixture
     def analyzer(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         return MarketStructureAnalyzer(mock_session, {"indicators": {"swing_window": 2, "sr_tolerance": 0.002, "sr_min_touches": 2}})
 

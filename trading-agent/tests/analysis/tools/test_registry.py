@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/tools/test_registry.py
 # ==============================================================================
@@ -61,7 +62,7 @@ def test_parallel_safety_flag():
 @pytest.mark.asyncio
 async def test_tool_executor_verified_snapshot():
     """Verify ToolExecutor handles get_verified_market_snapshot."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute = AsyncMock()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None
@@ -92,7 +93,7 @@ async def test_legacy_tool_executor_dispatches_via_registry():
         async def execute(self, args, session, executor=None, **kwargs):
             return {"status": "custom_ok", "param": args.get("val", 0) + 42}
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     legacy_exec = LegacyToolExecutor(mock_session, settings={}, symbol="EURUSD")
     res = await legacy_exec.execute("custom_dynamic_test_tool", {"val": 8})
 

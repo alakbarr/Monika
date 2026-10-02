@@ -2,11 +2,27 @@ import pytest
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.stages.per_asset_stage import PerAssetStage
 from database.models import AssetAnalysis, FundamentalBrief
 
 class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        self._patchers = [
+            patch("analysis.stages.per_asset.runner.get_client_for_task"),
+            patch("analysis.stages.per_asset.runner.create_client"),
+            patch("analysis.stages.per_asset.specialist_pipeline.get_client_for_task"),
+            patch("analysis.providers.llm_factory.get_client_for_task"),
+            patch("analysis.providers.llm_factory.create_client"),
+        ]
+        self.mock_clients = []
+        mock_c = MagicMock()
+        mock_c.model = "mock-model"
+        mock_c.close = AsyncMock()
+        for p in self._patchers:
+            m = p.start()
+            m.return_value = mock_c
+            self.mock_clients.append(m)
         self.settings = {
             "trading": {
                 "pairs": ["EURUSD", "BTCUSD"],
@@ -27,6 +43,10 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
             }
         }
 
+    def tearDown(self):
+        for p in self._patchers:
+            p.stop()
+
     def test_user_messages_contain_mandatory_tool_instruction(self):
         stage = PerAssetStage(self.settings)
         msg1 = stage._build_user_message("EURUSD")
@@ -39,8 +59,7 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
 
     async def test_recovery_tier2_heuristic_text_extraction(self):
         stage = PerAssetStage(self.settings)
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
 
         dummy_brief = FundamentalBrief(
             id=1, generated_at=datetime.now(timezone.utc), structured_json="{}"
@@ -111,8 +130,7 @@ class TestPerAssetStageRecovery(unittest.IsolatedAsyncioTestCase):
 
     async def test_recovery_tier3_deterministic_wait_record(self):
         stage = PerAssetStage(self.settings)
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
 
         dummy_brief = FundamentalBrief(
             id=1, generated_at=datetime.now(timezone.utc), structured_json="{}"

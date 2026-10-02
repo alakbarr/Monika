@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -53,7 +54,7 @@ class DummyFadeStrategy(EdgeStrategy):
 @pytest.mark.asyncio
 async def test_regime_classifier_probabilities():
     from analysis.calculators.regime_classifier import classify_market_regime
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None  # No VIX data
     mock_session.execute.return_value = mock_res
@@ -89,7 +90,7 @@ async def test_strategy_regime_compatibility():
 
 @pytest.mark.asyncio
 async def test_registry_evaluate_all_regime_filtering():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     strat1 = DummyTrendStrategy()
     with patch.dict(StrategyRegistry._registry, {"dummy_trend": DummyTrendStrategy, "dummy_fade": DummyFadeStrategy}, clear=True):
         # When current_regime is RANGE, only strat2 (fade) should run
@@ -120,7 +121,7 @@ async def test_risk_gate_strategy_factor_exposure():
     }
     gate = RiskGate(settings)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case 1: 1 existing trend position, adding 1 more -> Allowed
     pos1 = MagicMock(spec=Position)
@@ -191,7 +192,7 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
         factor_family="mean_reversion",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None  # No open position
     mock_session.execute.return_value = mock_res
@@ -244,7 +245,7 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
         factor_family="breakout",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = None  # No open position
     mock_session.execute.return_value = mock_res
@@ -287,7 +288,7 @@ async def test_trigger_checker_cancel_pending_ttl():
     paper_pending.status = "pending"
     paper_pending.notes = ""
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     res_pos = MagicMock()
     res_pos.scalars.return_value.all.return_value = [pos_pending]
     res_paper = MagicMock()

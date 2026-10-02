@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,7 +10,7 @@ from analysis.strategies.base_strategy import EdgeSignal
 async def test_xti_pairs_disabled():
     """Verify XTIPairsReadiness returns invalid EdgeSignal when disabled in settings."""
     strategy = XTIPairsReadiness()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {
         "trading": {
             "edge_strategy": {
@@ -30,7 +31,7 @@ async def test_xti_pairs_disabled():
 async def test_xti_pairs_missing_data_uses_now_without_error():
     """Verify XTIPairsReadiness executes DB queries using 'now' without NameError."""
     strategy = XTIPairsReadiness()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {
         "trading": {
             "edge_strategy": {
@@ -57,7 +58,7 @@ async def test_xti_pairs_missing_data_uses_now_without_error():
 async def test_xti_pairs_successful_buy_signal_and_hedge_leg():
     """Verify XTIPairsReadiness generates dual-leg stat-arb buy signal when spread is abnormally wide."""
     strategy = XTIPairsReadiness()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {
         "trading": {
             "edge_strategy": {
@@ -120,7 +121,7 @@ async def test_xti_pairs_successful_buy_signal_and_hedge_leg():
 async def test_xti_pairs_successful_sell_signal_and_hedge_leg():
     """Verify XTIPairsReadiness generates sell signal when spread is abnormally tight (Z < -2.0)."""
     strategy = XTIPairsReadiness()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {
         "trading": {
             "edge_strategy": {

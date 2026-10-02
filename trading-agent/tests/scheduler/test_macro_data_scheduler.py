@@ -1,6 +1,7 @@
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from scheduler.macro_data_scheduler import MacroDataScheduler
 
 
@@ -29,7 +30,7 @@ class TestMacroDataScheduler:
         scheduler = MacroDataScheduler(settings)
 
         with patch("scheduler.macro_data_scheduler.get_session") as mock_get_session:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
             with patch("data_sources.coinglass_funding.CoinglasFundingFetcher") as mock_coinglass_cls, \
@@ -42,7 +43,8 @@ class TestMacroDataScheduler:
                  patch("data_sources.dxy_yfinance.DXYFetcher") as mock_dxy_cls, \
                  patch("data_sources.bond_yields_fetcher.BondYieldFetcher") as mock_bond_cls, \
                  patch("data_sources.fear_greed.FearGreedFetcher") as mock_fg_cls, \
-                 patch("data_sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls:
+                 patch("data_sources.eia_oil_inventory.EIAInventoryFetcher") as mock_eia_cls, \
+                 patch("data_sources.central_bank_watch.CentralBankWatchFetcher") as mock_cbw_cls:
 
                 mock_cg = AsyncMock()
                 mock_cg.fetch.return_value = {"funding_rate": 0.0001}
@@ -87,6 +89,10 @@ class TestMacroDataScheduler:
                 mock_eia = AsyncMock()
                 mock_eia.fetch.return_value = {"crude": -1.2}
                 mock_eia_cls.return_value = mock_eia
+
+                mock_cbw = AsyncMock()
+                mock_cbw.fetch_all.return_value = {"expectations": {"FED": {}}, "yields": {"US": {}}}
+                mock_cbw_cls.return_value = mock_cbw
 
                 res = await scheduler.refresh_macro_data()
 

@@ -2,6 +2,7 @@ import asyncio
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 from analysis.stages.fundamental_stage import FundamentalStage
 
@@ -17,7 +18,7 @@ async def test_macro_debate_concurrent_execution():
         }
     }
     stage = FundamentalStage(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_brief = MagicMock()
     mock_brief.structured_json = json.dumps({"currency_bias": {"USD": "bullish"}})
     mock_brief.content_markdown = "Test brief"
@@ -76,7 +77,7 @@ async def test_macro_debate_exception_resilience():
         }
     }
     stage = FundamentalStage(settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_brief = MagicMock()
     mock_brief.structured_json = json.dumps({"currency_bias": {"USD": "neutral"}})
     mock_brief.content_markdown = "Test brief"

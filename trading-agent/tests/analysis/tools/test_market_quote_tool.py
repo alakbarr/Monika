@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """Unit tests for get_market_quote tool and handlers."""
 
 import pytest
@@ -53,7 +54,7 @@ async def test_get_market_quote_db_fallback():
     mock_bar.timeframe = "H1"
     mock_bar.timestamp = datetime(2026, 9, 8, 0, 0, 0, tzinfo=timezone.utc)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_bar
     mock_session.execute.return_value = mock_result
@@ -76,7 +77,7 @@ async def test_get_market_quote_no_data():
     mock_mt5 = AsyncMock()
     mock_mt5.get_current_price = AsyncMock(return_value=None)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -122,7 +123,7 @@ async def test_technical_domain_handler():
 @pytest.mark.asyncio
 async def test_tool_executor_dispatch_and_aliases():
     """Test ToolExecutor executes get_market_quote and alias get_quote."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session)
 
     mock_mt5 = AsyncMock()

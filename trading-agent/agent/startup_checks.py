@@ -290,7 +290,7 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from database.db import engine
+            from database.db import engine, get_engine
             from sqlalchemy import text
 
             db_url = _get_env("DATABASE_URL", "")
@@ -303,7 +303,7 @@ class StartupChecker:
                     logger.critical("CRITICAL: SQLite is not safe for live trading! Migrate to PostgreSQL.")
                     ok = False
 
-            eng = self.db_engine or engine
+            eng = self.db_engine or engine or get_engine()
             async with eng.connect() as conn:
                 await conn.execute(text("SELECT 1"))
                 logger.info("  [OK] Database connection")
@@ -689,8 +689,8 @@ class StartupChecker:
 
             try:
                 from sqlalchemy import text
-                from database.db import engine
-                eng = self.db_engine or engine
+                from database.db import engine, get_engine
+                eng = self.db_engine or engine or get_engine()
                 async with eng.connect() as conn:
                     await conn.execute(text("SELECT 1 FROM dxy_data LIMIT 1"))
                 logger.info("  [OK] DXYData table accessible")

@@ -59,9 +59,9 @@ def test_terminal_process_engine_exec_and_kill():
 
         # Run background command and kill it
         if sys.platform == "win32":
-            bg_res = engine.execute("Start-Sleep -Seconds 10", background=True)
+            bg_res = engine.execute("Start-Sleep -Seconds 2", background=True)
         else:
-            bg_res = engine.execute("sleep 10", background=True)
+            bg_res = engine.execute("sleep 2", background=True)
 
         assert bg_res["success"] is True
         sid = bg_res["session_id"]

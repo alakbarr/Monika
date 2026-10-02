@@ -7,6 +7,7 @@ broker position reconciliation, and ExecutionService integration.
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 
 from execution.idempotency_guard import (
     IdempotencyGuard,
@@ -120,7 +121,7 @@ async def test_execute_proposal_duplicate_blocked():
         proposal_id="same-uuid-1",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # First execution succeeds
     res1 = await service.execute_proposal(mock_session, prop)

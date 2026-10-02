@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -93,7 +94,7 @@ class TestScraperRunner:
             "rss_ft": {"enabled": False},
         }
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -114,7 +115,7 @@ class TestScraperRunner:
     @patch("scheduler.scraper_runner.get_session")
     @patch("scheduler.scraper_runner.batch_save_calendar")
     async def test_run_calendar(self, mock_save_cal, mock_get_session, settings):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -182,7 +183,7 @@ class TestScraperRunner:
     @patch("scheduler.scraper_runner.get_session")
     @patch("scheduler.scraper_runner.batch_save_calendar")
     async def test_fetch_calendar_investing_success(self, mock_save_cal, mock_get_session, settings):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -199,7 +200,7 @@ class TestScraperRunner:
     @patch("scheduler.scraper_runner.get_session")
     @patch("scheduler.scraper_runner.batch_save_calendar")
     async def test_fetch_calendar_fallback_to_forexfactory(self, mock_save_cal, mock_get_session, settings):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

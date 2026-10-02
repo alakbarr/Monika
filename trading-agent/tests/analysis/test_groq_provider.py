@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, patch
@@ -172,7 +173,7 @@ async def test_groq_run_agent_no_keys():
     with patch('analysis.providers.groq_provider.get_api_keys', return_value=[]):
         provider = GroqProvider(model="groq-compound", api_key=None)
         res = await provider.run_agent(
-            session=AsyncMock(),
+            session=create_mock_async_session(),
             system_prompt="sys",
             user_message="user",
             tools=[],
@@ -189,7 +190,7 @@ async def test_groq_run_agent_success():
         provider = GroqProvider(model="qwen3.8-27b", api_key="test-groq-key")
         assert provider.client is not None
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = {
             "success": True,
             "final_text": "Fundamental brief done",

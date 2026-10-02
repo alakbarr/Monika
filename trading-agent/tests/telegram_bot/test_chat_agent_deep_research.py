@@ -1,8 +1,17 @@
+from tests.conftest import create_mock_async_session
 import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from telegram_bot.chat_agent import ChatAgent
 from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+
+
+@pytest.fixture(autouse=True)
+def mock_chat_agent_db_session():
+    with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+        mock_sess = create_mock_async_session()
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
+        yield mock_sess
 
 
 @pytest.mark.asyncio
@@ -233,7 +242,7 @@ async def test_system_prompt_relaxed_character_limit():
         mock_get_client.return_value = mock_client
         agent = ChatAgent(settings, 12345)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         prompt_res = await agent._build_system_prompt(mock_session)
         static_prompt = prompt_res[0] if isinstance(prompt_res, tuple) else prompt_res
 

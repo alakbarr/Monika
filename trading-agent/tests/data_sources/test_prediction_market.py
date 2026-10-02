@@ -89,10 +89,12 @@ async def test_fetch_clob_orderbook():
         assert ob["bid_depth"] == 1
 
 
+from tests.conftest import create_mock_async_session
+
+
 @pytest.mark.asyncio
 async def test_ingest_and_persist_classification(mock_gamma_events):
-    session = AsyncMock()
-    session.execute.return_value = AsyncMock(scalar_one_or_none=lambda: None)
+    session = create_mock_async_session()
 
     client = PredictionMarketClient(session=session)
     with patch("data_sources.prediction_market.fetch_with_retry", new_callable=AsyncMock) as mock_fetch:

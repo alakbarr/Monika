@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
@@ -11,7 +12,7 @@ from utils.calibration.cds_threshold_calibrator import run_calibration_if_due
 @pytest.mark.asyncio
 async def test_calibration_skipped_if_not_due():
     # Mock session
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     # Mock cfg
     cfg = MagicMock()
@@ -34,7 +35,7 @@ async def test_calibration_skipped_if_not_due():
 @pytest.mark.asyncio
 async def test_calibration_runs_if_due():
     # Mock session
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     # Mock cfg
     cfg = MagicMock()

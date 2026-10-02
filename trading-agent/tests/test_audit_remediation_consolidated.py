@@ -48,11 +48,12 @@ def test_valid_order_transitions_submitted_to_expired():
 @pytest.mark.asyncio
 async def test_trigger_circuit_breaker_exists():
     from execution.service.emergency_manager import EmergencyManagerMixin
+    from tests.conftest import create_mock_async_session
     mixin = EmergencyManagerMixin()
     mixin.gate = MagicMock()
     mixin.gate.pause_trading = AsyncMock()
     with patch('execution.service.emergency_manager.get_session') as mock_gs:
-        mock_sess = AsyncMock()
+        mock_sess = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_sess
         res = await mixin.trigger_circuit_breaker('Test crash', cooldown_seconds=60)
         assert res.get('success') is True

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock
@@ -14,7 +15,7 @@ def test_binomial_confidence_interval():
 @pytest.mark.asyncio
 async def test_compute_edge_status_insufficient():
     """Test bahwa status insufficient_data dikembalikan saat < 30 trades."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [MagicMock() for _ in range(10)]
     mock_session.execute.return_value = mock_result
@@ -27,7 +28,7 @@ async def test_compute_edge_status_insufficient():
 @pytest.mark.asyncio
 async def test_compute_edge_status_positive():
     """Test edge status positif dengan 40 trade (25 wins, 15 losses)."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     records = []
     for _ in range(25):
         m = MagicMock()
@@ -66,7 +67,7 @@ async def test_compute_edge_status_dynamic_breakeven_r3():
     If average R:R = 1.0 (reward = 1x risk):
     Breakeven WR = 1 / (1 + 1.0) = 50%
     """
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     records = []
     # 30 trades dengan R:R 1:1 (entry=100, sl=95, tp=105 → R:R=1.0)
@@ -104,7 +105,7 @@ async def test_compute_edge_status_dynamic_breakeven_r3():
 @pytest.mark.asyncio
 async def test_compute_edge_status_no_edge():
     """Test status no_edge saat WR jauh di bawah breakeven."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     records = []
     # 30 trades: 10 wins (33.3%) — tepat di breakeven default 33.3%
     # Tapi dengan data yg cukup, z-score ≈ 0 → uncertain atau no_edge

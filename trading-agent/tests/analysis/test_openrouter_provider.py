@@ -1,8 +1,25 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.providers.openrouter_provider import OpenRouterProvider
 from analysis.providers.llm_factory import LLMFactory, create_client, get_client_for_task
+
+
+@pytest.fixture(autouse=True)
+def mock_openai_client(monkeypatch):
+    """Ensure OpenRouterProvider never instantiates real AsyncOpenAI network transport during unit tests."""
+    mock_instance = MagicMock()
+    mock_instance.base_url = "https://openrouter.ai/api/v1"
+    mock_instance.default_headers = {
+        "HTTP-Referer": "https://monika.local",
+        "X-Title": "Monika MT5 Trading Agent"
+    }
+    mock_instance.chat.completions.create = AsyncMock()
+    monkeypatch.setattr("openai.AsyncOpenAI", MagicMock(return_value=mock_instance))
+    OpenRouterProvider._client_pool.clear()
+    yield
+    OpenRouterProvider._client_pool.clear()
 
 
 def test_openrouter_provider_init():
@@ -118,7 +135,7 @@ async def test_openrouter_token_logging():
     """Token usage logging harus mencatat provider sebagai 'openrouter'."""
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch('database.models.TokenUsageLog') as mock_log_cls:
         await provider._save_token_usage(
             model_name="claude-sonnet-5",

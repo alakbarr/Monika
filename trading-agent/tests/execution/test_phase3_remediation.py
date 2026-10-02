@@ -9,6 +9,7 @@ import os
 import zlib
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 # ------------------------------------------------------------------------------
 # 1. DB-13: Atomic In-Memory Advisory Lock
@@ -17,11 +18,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 async def test_db13_atomic_in_memory_locks():
     from database.db import transactional_advisory_lock, _IN_MEMORY_EXECUTION_LOCKS
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mock engine without postgresql dialect to exercise in-memory path
     mock_bind = MagicMock()
     mock_bind.dialect.name = "sqlite"
-    mock_session.get_bind.return_value = mock_bind
+    mock_session.get_bind = MagicMock(return_value=mock_bind)
+    mock_session.bind = mock_bind
     
     lock_key = "test_atomic_lock_key"
     async with transactional_advisory_lock(mock_session, lock_key=lock_key) as locked:
@@ -160,7 +162,7 @@ async def test_post_restart_recovery_sets_event_before_market_warmup():
     agent.market_data_scheduler.sync_now = AsyncMock(side_effect=slow_sync)
 
     with patch("database.db.get_session") as mock_sess:
-        mock_sess.return_value.__aenter__.return_value = AsyncMock()
+        mock_sess.return_value.__aenter__.return_value = create_mock_async_session()
         with patch("analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_dm:
             mock_dm.return_value.load_from_db = AsyncMock()
             await agent._post_restart_recovery()
@@ -214,7 +216,7 @@ async def test_sc8_duplicate_position_close_prevention():
     em = DummyExecution()
     ticket = 12345
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mock position that is ALREADY closed
     mock_pos = MagicMock(spec=Position)
     mock_pos.status = "closed"
@@ -222,7 +224,7 @@ async def test_sc8_duplicate_position_close_prevention():
     
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_pos
-    mock_session.execute.return_value = mock_result
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
     with patch("execution.service.emergency_manager.get_session") as mock_gs:
         mock_gs.return_value.__aenter__.return_value = mock_session
@@ -341,7 +343,7 @@ async def test_db14_risk_gate_daily_trade_count_paper_vs_live():
     }
     gate = RiskGate(settings)
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Case: 3 paper trades opened today, but 0 live trades
     # When testing for a live trade (is_paper=False), it should PASS!
@@ -354,7 +356,7 @@ async def test_db14_risk_gate_daily_trade_count_paper_vs_live():
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.side_effect = mock_scalar
-    mock_session.execute.return_value = mock_result
+    mock_session.execute = AsyncMock(return_value=mock_result)
     
     # 1. Live trade check -> should pass because live_today = 0 < 3
     ok, msg = await gate._check_daily_trade_count(mock_session, is_backtest=False, is_paper=False)
@@ -384,20 +386,20 @@ async def test_db15_risk_gate_no_duplicate_pair_group():
     ]
     # Another leg with SAME pair_group_id -> ALLOWED
     ok, msg = await gate._check_no_duplicate(
-        AsyncMock(), symbol="XAUUSD", simulated_positions=sim_pos, pair_group_id="tranche_123"
+        create_mock_async_session(), symbol="XAUUSD", simulated_positions=sim_pos, pair_group_id="tranche_123"
     )
     assert ok is True
     assert "no duplicate (simulated)" in msg
 
     # Another trade for XAUUSD with DIFFERENT group or None -> REJECTED
     ok, msg = await gate._check_no_duplicate(
-        AsyncMock(), symbol="XAUUSD", simulated_positions=sim_pos, pair_group_id="other_group"
+        create_mock_async_session(), symbol="XAUUSD", simulated_positions=sim_pos, pair_group_id="other_group"
     )
     assert ok is False
     assert "Already have an open simulated position" in msg
 
     # 2. DB positions test with pair_group_id
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mock no conflict outside pair group, and 1 existing leg inside group
     res_conflict = MagicMock()
     res_conflict.scalar_one_or_none.return_value = None  # No outside position
@@ -405,7 +407,7 @@ async def test_db15_risk_gate_no_duplicate_pair_group():
     res_group_count = MagicMock()
     res_group_count.scalar_one_or_none.return_value = 1  # 1 leg already exists in group
     
-    mock_session.execute.side_effect = [res_conflict, res_group_count]
+    mock_session.execute = AsyncMock(side_effect=[res_conflict, res_group_count])
     
     ok, msg = await gate._check_no_duplicate(
         mock_session, symbol="XAUUSD", pair_group_id="tranche_123"

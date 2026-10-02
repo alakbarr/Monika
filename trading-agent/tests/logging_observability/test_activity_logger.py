@@ -1,8 +1,9 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import logging
 import os
 from unittest.mock import AsyncMock, patch, MagicMock
-from logging_observability.activity_logger import setup_logging, ActivityLogger, get_activity_logger, CATEGORIES
+from logging_observability.activity_logger import setup_logging, shutdown_logging, ActivityLogger, get_activity_logger, CATEGORIES
 
 class TestActivityLogger:
 
@@ -19,7 +20,7 @@ class TestActivityLogger:
         assert logger2 is logger
         
         # Clean up handlers so it doesn't affect other tests
-        logger.handlers.clear()
+        shutdown_logging()
 
     def test_get_activity_logger(self):
         logger1 = get_activity_logger()
@@ -30,7 +31,7 @@ class TestActivityLogger:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     async def test_log_success(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         # Set up async context manager mock
@@ -53,7 +54,7 @@ class TestActivityLogger:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     async def test_log_invalid_category(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -103,7 +104,7 @@ class TestActivityLogger:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     async def test_bulk(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -145,6 +146,6 @@ class TestActivityLogger:
         assert " | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot[REDACTED_TELEGRAM_TOKEN]/getUpdates" in content
 
         # Cleanup
-        logging.getLogger("TradingAgent").handlers.clear()
-        logging.getLogger().handlers.clear()
+        shutdown_logging()
+
 

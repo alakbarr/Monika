@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/test_audit_round3_remediation.py
 # Description: Comprehensive unit tests for Code Consistency Audit Round 3 remediations.
@@ -28,7 +29,7 @@ class TestIndicatorsRemediation:
         from indicators.technical import TechnicalIndicatorCalculator
         from database.models import PriceOHLCV, TechnicalIndicator
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         calc = TechnicalIndicatorCalculator(session=mock_session, settings={})
 
         dates = pd.date_range("2026-01-01 00:00:00", periods=5, freq="1h", tz=timezone.utc)
@@ -64,7 +65,7 @@ class TestIndicatorsRemediation:
         # Test scalar float in value_json
         mock_row_scalar = MagicMock()
         mock_row_scalar.value_json = "0.0055"
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute = AsyncMock(
             return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=mock_row_scalar))
         )
@@ -258,7 +259,7 @@ class TestDataSourcesRemediation:
     def test_dxy_yfinance_get_latest(self):
         """Verify DXYFetcher exposes get_latest() method."""
         from data_sources.dxy_yfinance import DXYFetcher
-        fetcher = DXYFetcher(session=AsyncMock())
+        fetcher = DXYFetcher(session=create_mock_async_session())
         assert hasattr(fetcher, "get_latest")
         assert callable(fetcher.get_latest)
 

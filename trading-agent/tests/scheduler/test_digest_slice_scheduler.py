@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ class TestDigestSliceScheduler:
     @pytest.mark.asyncio
     async def test_run_once_trigger_scheduled(self):
         scheduler = DigestSliceScheduler({"news_classification": {"slice_schedule": {"interval_minutes": 120}}})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Mock no slice in last 30 min
         mock_result = MagicMock()
@@ -29,7 +30,7 @@ class TestDigestSliceScheduler:
     @pytest.mark.asyncio
     async def test_run_once_skips_if_recent_exists(self):
         scheduler = DigestSliceScheduler({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Mock 1 slice in last 30 min
         mock_result = MagicMock()

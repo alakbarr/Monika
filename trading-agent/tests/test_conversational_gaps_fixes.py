@@ -8,6 +8,7 @@ import re
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.conftest import create_mock_async_session
 from telegram_bot.chat_tool_router import ChatToolRouter
 from analysis.tools.tools_definitions import (
     TELEGRAM_TOOLS,
@@ -117,8 +118,7 @@ async def test_tool_executor_dispatches_remediated_tools():
     from analysis.tools.executor import ToolExecutor
     from unittest.mock import AsyncMock, MagicMock
 
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, settings={"trading": {"symbols": ["EURUSD", "XAUUSD"]}})
 
     # 1. calculate_margin
@@ -205,25 +205,28 @@ async def test_create_and_query_price_alerts_db():
     from analysis.tools.handlers.trade_intel import handle_create_price_alert, handle_get_active_triggers
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with async_session() as session:
-        # Create price alert
-        create_res = await handle_create_price_alert(
-            args={"symbol": "EURUSD", "price_level": 1.1200, "condition": "above", "note": "Breakout test"},
-            session=session
-        )
-        assert create_res.get("status") == "created"
-        assert create_res.get("price_level") == 1.1200
-        assert create_res.get("symbol") == "EURUSD"
+        async with async_session() as session:
+            # Create price alert
+            create_res = await handle_create_price_alert(
+                args={"symbol": "EURUSD", "price_level": 1.1200, "condition": "above", "note": "Breakout test"},
+                session=session
+            )
+            assert create_res.get("status") == "created"
+            assert create_res.get("price_level") == 1.1200
+            assert create_res.get("symbol") == "EURUSD"
 
-        # Query active triggers
-        query_res = await handle_get_active_triggers(args={"symbol": "EURUSD"}, session=session)
-        assert query_res.get("count") >= 1
-        active = query_res.get("active_triggers", [])
-        assert any(t["symbol"] == "EURUSD" and float(t["trigger_price"]) == 1.1200 for t in active)
+            # Query active triggers
+            query_res = await handle_get_active_triggers(args={"symbol": "EURUSD"}, session=session)
+            assert query_res.get("count") >= 1
+            active = query_res.get("active_triggers", [])
+            assert any(t["symbol"] == "EURUSD" and float(t["trigger_price"]) == 1.1200 for t in active)
+    finally:
+        await engine.dispose()
 
 

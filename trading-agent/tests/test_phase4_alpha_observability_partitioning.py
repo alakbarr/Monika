@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Phase 4: Microstructure Alpha, Observability Live Feed & DB Partitioning.
 """
@@ -148,7 +149,7 @@ class TestDatabasePartitionPruning:
     @pytest.mark.asyncio
     async def test_drop_expired_partitions_sqlite_noop(self):
         """On non-PostgreSQL (SQLite), drop_expired_partitions safely returns 0."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_bind = MagicMock()
         mock_bind.dialect.name = "sqlite"
         mock_session.bind = mock_bind
@@ -159,7 +160,7 @@ class TestDatabasePartitionPruning:
     @pytest.mark.asyncio
     async def test_drop_expired_partitions_postgresql_drops_old_tables(self):
         """On PostgreSQL, drops partitions matching expired year/month."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_bind = MagicMock()
         mock_bind.dialect.name = "postgresql"
         mock_session.bind = mock_bind
@@ -229,7 +230,7 @@ class TestTimesFMAlphaIntegration:
         from unittest.mock import patch, MagicMock, AsyncMock
 
         sizer = PositionSizer({"trading": {"risk": {"risk_percent_per_trade": 1.0}}})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Mock instrument spec
         mock_spec = MagicMock()
@@ -298,7 +299,7 @@ class TestTimesFMAlphaIntegration:
         from analysis.tools.tool_executor import ToolExecutor
         from unittest.mock import patch, MagicMock, AsyncMock
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={})
 
         mock_fc = {

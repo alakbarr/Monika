@@ -1,7 +1,9 @@
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
-from database.models import UserMarketIntel, ActivityLog
+from tests.conftest import create_mock_async_session
+from database.models import UserMarketIntel, ActivityLog, FundamentalBrief
 import utils.clock as clock
 
 
@@ -24,7 +26,7 @@ class TestUserIntelCycleInjection:
             created_at=now,
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = [mock_intel]
         mock_res = MagicMock()
@@ -46,11 +48,13 @@ class TestUserIntelCycleInjection:
             mock_gs.return_value.__aenter__.return_value = mock_session
             with patch("analysis.calculators.economic_surprise.compute_surprise_scores", new=AsyncMock(return_value=0)), \
                  patch("analysis.prefetch.news_digest.NewsDigestProcessor") as mock_nd, \
+                 patch("analysis.prefetch.macro_preprocessor.MacroPreprocessor") as mock_mp, \
                  patch("indicators.technical.TechnicalIndicatorCalculator") as mock_calc, \
                  patch("indicators.structure.MarketStructureAnalyzer") as mock_analyzer, \
                  patch("utils.validation.data_validator.validate_data_freshness", new=AsyncMock(return_value={"errors": [], "warnings": []})):
                 mock_nd.return_value.classify_unscored_news = AsyncMock(return_value=0)
                 mock_nd.return_value.create_news_digest = AsyncMock(return_value=None)
+                mock_mp.return_value.run_all_and_save = AsyncMock(return_value=None)
                 mock_calc.return_value.compute_all_symbols = AsyncMock(return_value={})
                 mock_analyzer.return_value.analyze_all = AsyncMock(return_value={})
                 res = await fetch_data_node(state, config)
@@ -65,11 +69,15 @@ class TestUserIntelCycleInjection:
     async def test_fundamental_stage_injects_intel_to_user_message(self):
         from analysis.stages.fundamental_stage import FundamentalStage
 
-        stage = FundamentalStage(settings={"claude": {}, "trading": {}})
-        stage.client = MagicMock()
-        stage.client.run_agent = AsyncMock(return_value={"success": True, "brief_id": 1})
+        mock_client = MagicMock()
+        mock_client.run_agent = AsyncMock(return_value={"success": True, "brief_id": 1})
 
-        mock_session = AsyncMock()
+        with patch("analysis.providers.llm_factory.get_client_for_task", return_value=mock_client), \
+             patch("analysis.stages.fundamental_stage.get_client_for_task", return_value=mock_client):
+            stage = FundamentalStage(settings={"claude": {}, "trading": {}})
+            stage.client = mock_client
+
+        mock_session = create_mock_async_session()
         mock_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None), scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
 
         user_intel = [
@@ -84,17 +92,30 @@ class TestUserIntelCycleInjection:
             }
         ]
 
-        with patch.object(stage, "_log", new=AsyncMock()):
-            with patch("analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls:
-                mock_bundler = MagicMock()
-                mock_bundler.prefetch_all_data = AsyncMock(return_value=("{}", set()))
-                mock_bundler_cls.return_value = mock_bundler
+        mock_brief = FundamentalBrief(
+            id=1,
+            confidence=0.85,
+            structured_json=json.dumps({"currency_bias": {"USD": "bearish"}}),
+            generated_at=clock.now(),
+        )
 
-                await stage.run(
-                    session=mock_session,
-                    forced=True,
-                    user_market_intel=user_intel,
-                )
+        with patch.object(stage, "_log", new=AsyncMock()), \
+             patch.object(stage, "_run_macro_debate", new=AsyncMock(return_value={"ran": False})), \
+             patch.object(stage, "_generate_deterministic_fallback_brief", new=AsyncMock(return_value=mock_brief)), \
+             patch("analysis.memory.chronicle_writer.get_client_for_task", return_value=mock_client), \
+             patch("analysis.memory.chronicle_writer.ChronicleWriter") as mock_cw, \
+             patch("analysis.stages.fundamental_stage.Stage1DataBundler") as mock_bundler_cls:
+            mock_cw.return_value.get_chronicle_context = AsyncMock(return_value="")
+            mock_cw.return_value.get_condensed_chronicle_bullets = AsyncMock(return_value="")
+            mock_bundler = MagicMock()
+            mock_bundler.prefetch_all_data = AsyncMock(return_value=("{}", set()))
+            mock_bundler_cls.return_value = mock_bundler
+
+            await stage.run(
+                session=mock_session,
+                forced=True,
+                user_market_intel=user_intel,
+            )
 
         stage.client.run_agent.assert_called_once()
         call_kwargs = stage.client.run_agent.call_args.kwargs
@@ -205,7 +226,7 @@ class TestUserIntelCycleInjection:
             is_active=True,
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -220,20 +241,24 @@ class TestUserIntelCycleInjection:
 
         cycle_id = "cycle_test_123"
 
-        # Create scheduler and call actual cleanup method
-        scheduler = GraphCycleScheduler(
-            settings={
-                "trading": {
-                    "schedule": {"cycle_times_local": ["07:00", "15:00", "20:00"]},
-                    "assets": ["EURUSD"],
+        with patch("scheduler.graph_cycle_scheduler.build_trading_graph", return_value=MagicMock()):
+            scheduler = GraphCycleScheduler(
+                settings={
+                    "trading": {
+                        "schedule": {"cycle_times_local": ["07:00", "15:00", "20:00"]},
+                        "assets": ["EURUSD"],
+                    },
+                    "database": {},
                 },
-                "database": {},
-            },
-        )
+                mt5_client=MagicMock(),
+                fundamental_stage=MagicMock(),
+                per_asset_stage=MagicMock(),
+                macro_data_scheduler=MagicMock(),
+            )
 
-        with patch("scheduler.graph_cycle_scheduler.get_session") as mock_gs:
-            mock_gs.return_value.__aenter__.return_value = mock_session
-            res = await scheduler.cleanup_user_market_intel(cycle_id)
+            with patch("scheduler.graph_cycle_scheduler.get_session") as mock_gs:
+                mock_gs.return_value.__aenter__.return_value = mock_session
+                res = await scheduler.cleanup_user_market_intel(cycle_id)
 
         assert res["consumed"] == 1
         assert res["expired"] == 1
@@ -268,7 +293,7 @@ class TestUserIntelCycleInjection:
             created_at=now,
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalars.return_value.all.return_value = [db_intel]
         mock_session.execute = AsyncMock(return_value=mock_res)

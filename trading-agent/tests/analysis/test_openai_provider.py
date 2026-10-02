@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.providers.openai_provider import OpenAIProvider
 
 @pytest.mark.asyncio
@@ -172,7 +173,7 @@ async def test_openai_402_prompt_tokens_exceeded_fail_fast():
 @pytest.mark.asyncio
 async def test_openai_run_agent_empty_and_none_choices_safety():
     provider = OpenAIProvider(model="ox-alpha", api_key="test-key")
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case 1: choices is None (the exact ox-alpha bug)
     mock_resp_none_choices = MagicMock()
@@ -216,7 +217,7 @@ async def test_openai_run_agent_empty_and_none_choices_safety():
 @pytest.mark.asyncio
 async def test_openai_run_chat_loop_and_from_messages_safety():
     provider = OpenAIProvider(model="ox-alpha", api_key="test-key")
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Test run_chat_loop with choices = None
     mock_resp = MagicMock()
@@ -242,7 +243,7 @@ async def test_openai_run_chat_loop_and_from_messages_safety():
 @pytest.mark.asyncio
 async def test_openai_run_agent_extra_context():
     provider = OpenAIProvider(model="gpt-4o", api_key="test-key")
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_msg = MagicMock()
     mock_msg.content = "Analysis result"
@@ -276,7 +277,7 @@ async def test_openai_run_agent_extra_context():
 @pytest.mark.asyncio
 async def test_openai_run_agent_from_messages_tool_tracking():
     provider = OpenAIProvider(model="gpt-4o", api_key="test-key")
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Turn 1: Assistant calls submit_asset_analysis tool
     mock_func = MagicMock()

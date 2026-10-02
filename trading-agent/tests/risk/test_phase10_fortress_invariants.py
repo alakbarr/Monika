@@ -19,6 +19,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
+from tests.conftest import create_mock_async_session
 from risk.risk_gate import RiskGate, RiskVerdict
 from risk.position_sizing import PositionSizer
 from database.session_db_wal import SessionDbWal
@@ -51,7 +52,7 @@ async def test_fortress_risk_gate_rejects_excessive_drawdown(base_risk_settings)
     Fortress Invariant 1:
     Risk Gate deterministically denies order dispatch when account drawdown breaches threshold.
     """
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     gate = RiskGate(settings=base_risk_settings)
     sizer = PositionSizer(settings=base_risk_settings)
 
@@ -164,7 +165,7 @@ def test_fortress_end_to_end_moa_to_risk_pipeline(base_risk_settings):
 
     # Must pass RiskGate during open market hours
     gate = RiskGate(settings=base_risk_settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     market_open_time = datetime(2026, 9, 23, 14, 0, tzinfo=timezone.utc)
 
     import asyncio

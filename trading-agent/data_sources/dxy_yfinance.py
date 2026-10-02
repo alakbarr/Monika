@@ -178,29 +178,15 @@ class DXYFetcher:
                 select(DXYData.date).where(DXYData.date.in_(all_dates))
             )
             existing_dates = set()
-            found_by_scalars = False
             try:
                 if hasattr(existing_res, "scalars"):
                     sc = existing_res.scalars()
-                    if hasattr(sc, "__await__"):
-                        sc = await sc
-                    if hasattr(sc, "all"):
-                        vals = sc.all()
-                        if hasattr(vals, "__await__"):
-                            vals = await vals
-                        if isinstance(vals, (list, tuple, set)):
-                            existing_dates = {
-                                d.astimezone(timezone.utc) if getattr(d, "tzinfo", None) else d.replace(tzinfo=timezone.utc)
-                                if isinstance(d, datetime) else d
-                                for d in vals if d is not None
-                            }
-                            found_by_scalars = True
-                if not found_by_scalars and hasattr(existing_res, "scalar_one_or_none"):
-                    son = existing_res.scalar_one_or_none()
-                    if hasattr(son, "__await__"):
-                        son = await son
-                    if son and type(son).__name__ not in ("MagicMock", "AsyncMock", "Mock"):
-                        existing_dates = set(all_dates)
+                    vals = sc.all() if hasattr(sc, "all") else []
+                    if isinstance(vals, (list, tuple, set)):
+                        for d in vals:
+                            if d is not None and isinstance(d, datetime):
+                                dt = d.astimezone(timezone.utc) if getattr(d, "tzinfo", None) else d.replace(tzinfo=timezone.utc)
+                                existing_dates.add(dt)
             except Exception:
                 existing_dates = set()
 

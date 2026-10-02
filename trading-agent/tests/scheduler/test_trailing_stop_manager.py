@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from scheduler.trailing_stop_manager import TrailingStopManager
@@ -15,7 +16,7 @@ async def test_trailing_stop_manager_ignores_budget_pause():
     mock_exec_svc = MagicMock()
     manager = TrailingStopManager(settings, execution_service=mock_exec_svc)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_cfg_budget = MagicMock()
     mock_cfg_budget.key = "budget_pause"
     mock_cfg_budget.value = "true"
@@ -51,7 +52,7 @@ async def test_trailing_stop_manager_paused_on_kill_switch():
     mock_exec_svc = MagicMock()
     manager = TrailingStopManager(settings, execution_service=mock_exec_svc)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_cfg_kill = MagicMock()
     mock_cfg_kill.key = "kill_switch"
     mock_cfg_kill.value = "true"

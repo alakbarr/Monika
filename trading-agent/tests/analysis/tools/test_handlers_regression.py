@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """Regression tests for repaired tool handlers (Pylance type & contract fixes)."""
 
 import pytest
@@ -42,7 +43,7 @@ async def test_category_loader_market_context_delegation():
 async def test_market_data_composite_handlers():
     mock_executor = MagicMock()
     mock_executor.execute = AsyncMock(return_value={"status": "ok"})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     price_handler = GetPriceDataHandler()
     price_res = await price_handler.execute(
@@ -68,7 +69,7 @@ async def test_sentiment_handlers_delegation():
     mock_executor._tool_web_search = AsyncMock(return_value={"results": ["article 1"]})
     mock_executor._tool_get_forex_sentiment = AsyncMock(return_value={"long_pct": 60})
     mock_executor._tool_get_fxssi_sentiment = AsyncMock(return_value={"long_pct": 55})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     web_handler = WebSearchHandler()
     web_res = await web_handler.execute({"query": "inflation"}, session=mock_session, executor=mock_executor)

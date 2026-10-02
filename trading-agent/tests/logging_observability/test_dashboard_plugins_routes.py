@@ -9,10 +9,14 @@ from unittest.mock import patch, MagicMock
 
 from logging_observability.dashboard.api import app
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
-def test_get_plugins_endpoint():
+def test_get_plugins_endpoint(client):
     resp = client.get("/api/plugins")
     assert resp.status_code == 200
     data = resp.json()
@@ -22,7 +26,7 @@ def test_get_plugins_endpoint():
     assert len(data["plugins"]) > 0
 
 
-def test_get_plugin_catalog_endpoint():
+def test_get_plugin_catalog_endpoint(client):
     resp = client.get("/api/plugins/catalog")
     assert resp.status_code == 200
     data = resp.json()
@@ -32,7 +36,7 @@ def test_get_plugin_catalog_endpoint():
     assert data["catalog"][0]["package"].startswith("monika-plugin-")
 
 
-def test_toggle_plugin_endpoint():
+def test_toggle_plugin_endpoint(client):
     with patch("logging_observability.dashboard.routes.plugins.toggle_plugin_state") as mock_toggle:
         mock_toggle.return_value = (True, "Plugin toggled successfully.")
 
@@ -49,14 +53,14 @@ def test_toggle_plugin_endpoint():
         assert data["enabled"] is True
 
 
-def test_install_plugin_validation_rejection():
+def test_install_plugin_validation_rejection(client):
     # Attempt command injection
     payload = {"package_name": "malicious; rm -rf /"}
     resp = client.post("/api/plugins/install", json=payload)
     assert resp.status_code == 400
 
 
-def test_install_plugin_mock_success():
+def test_install_plugin_mock_success(client):
     with patch("logging_observability.dashboard.routes.plugins.run_pip_install") as mock_pip:
         mock_pip.return_value = (True, "Successfully installed monika-plugin-test-1.0.0")
 
@@ -69,16 +73,15 @@ def test_install_plugin_mock_success():
         assert "Successfully installed" in data["output"]
 
 
-def test_get_all_plugin_config_schemas():
+def test_get_all_plugin_config_schemas(client):
     resp = client.get("/api/config/plugins/schemas")
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, dict)
 
 
-def test_get_specific_plugin_config_schema():
+def test_get_specific_plugin_config_schema(client):
     resp = client.get("/api/config/plugins/macro_to_asset/schema")
     assert resp.status_code == 200
     data = resp.json()
     assert "$schema" in data or "type" in data
-

@@ -4,6 +4,7 @@ Unit test for LangGraph Parity Mode in PointInTimeBacktestEngine.
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from backtest.point_in_time_engine import PointInTimeBacktestEngine
 pytest.importorskip("langgraph")
 import graph.workflow
@@ -56,7 +57,7 @@ async def test_point_in_time_langgraph_parity_mode():
          patch("backtest.point_in_time_engine.get_session") as mock_get_session, \
          patch("backtest.outcome_evaluator.OutcomeEvaluator.evaluate_trade", new_callable=AsyncMock) as mock_eval:
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         mock_eval.return_value = {

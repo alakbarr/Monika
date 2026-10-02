@@ -232,6 +232,12 @@ class SystemDoctor:
                     self._record("PreFlight", "Check", "WARN", w.strip())
         except Exception as e:
             self._record("PreFlight", "StartupCheckerSuite", "FAIL", f"StartupChecker error: {e}")
+        finally:
+            try:
+                from database.db import close_db
+                await close_db()
+            except Exception:
+                pass
 
     def check_wal_integrity_and_repair(self) -> None:
         """Verify SQLite WAL database files integrity and clear stale locks."""
@@ -286,12 +292,19 @@ class SystemDoctor:
         self.check_mt5(settings)
         self.check_wal_integrity_and_repair()
         if self.live_probes:
-            await asyncio.gather(
-                self.check_database_migrations(),
-                self.check_redis(settings),
-                self.check_startup_checker_suite(settings),
-                return_exceptions=True
-            )
+            try:
+                await asyncio.gather(
+                    self.check_database_migrations(),
+                    self.check_redis(settings),
+                    self.check_startup_checker_suite(settings),
+                    return_exceptions=True
+                )
+            finally:
+                try:
+                    from database.db import close_db
+                    await close_db()
+                except Exception:
+                    pass
         return self.diagnostics
 
     def render_report(self) -> int:

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Master Test Suite: Round 2 Phase 0 & Phase 1 Remediation Verification.
 Covers:
@@ -180,7 +181,7 @@ async def test_risk_gate_decoupled_backtest_simulation():
         }
     }
     gate = RiskGate(settings=settings, mt5_client=None)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     sizing = SizingResult(
         symbol="EURUSD",
@@ -239,7 +240,7 @@ async def test_risk_gate_decoupled_backtest_simulation_max_positions_rejection()
         }
     }
     gate = RiskGate(settings=settings, mt5_client=None)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     sizing = SizingResult(
         symbol="EURUSD",

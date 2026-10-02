@@ -4,6 +4,7 @@ Integration and Concurrency Tests for Transactional Advisory Lock in ExecutionSe
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from execution.execution_service import ExecutionService, ExecutionResult
 
 
@@ -23,7 +24,7 @@ async def test_execution_service_lock_contention_handling():
         dry_run=True,
     )
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_result.scalars.return_value.all.return_value = []

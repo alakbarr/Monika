@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from database.db import init_db, get_db, get_session, close_db
@@ -31,7 +32,7 @@ class TestDB:
     @pytest.mark.asyncio
     @patch('database.db.AsyncSessionLocal')
     async def test_get_db(self, mock_sessionmaker):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -48,7 +49,7 @@ class TestDB:
     @pytest.mark.asyncio
     @patch('database.db.AsyncSessionLocal')
     async def test_get_session_success(self, mock_sessionmaker):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -60,7 +61,7 @@ class TestDB:
     @pytest.mark.asyncio
     @patch('database.db.AsyncSessionLocal')
     async def test_get_session_error(self, mock_sessionmaker):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -100,7 +101,7 @@ class TestDB:
     async def test_async_session_local_proxy_forwards_to_mock(self):
         from database.db import AsyncSessionLocal
         with patch('database.db.AsyncSessionLocal') as mock_sessionmaker:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__.return_value = mock_session
             mock_sessionmaker.return_value = mock_ctx

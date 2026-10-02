@@ -132,20 +132,36 @@ def test_semantic_cache_guardrails():
 # 9. Adaptive LLMLingua-2 Device Detection Tests
 def test_llmlingua_device_and_heuristic():
     from utils.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
+    from unittest.mock import MagicMock
     device = AdaptiveLLMLinguaCompressor.detect_device()
     assert device in ("cuda", "cpu")
 
-    compressor = AdaptiveLLMLinguaCompressor.get_instance()
+    compressor = AdaptiveLLMLinguaCompressor()
     text = (
         "Good morning everyone. As we have discussed in the previous meeting, "
         "the inflation rate increased to 3.2% while CPI core remained elevated at 2.8%. "
         "Federal Reserve FOMC minutes indicated interest rate cuts may be delayed. "
         "Thank you very much for your kind attention."
     )
+    # Test deterministic heuristic compression
+    res_heuristic = compressor._heuristic_compress(text, target_ratio=0.6)
+    assert len(res_heuristic) <= len(text)
+    assert "3.2%" in res_heuristic
+    assert "FOMC" in res_heuristic
+
+    # Test neural prompt compressor dispatch
+    mock_pc = MagicMock()
+    mock_pc.compress_prompt.return_value = {
+        "compressed_prompt": "inflation rate increased to 3.2% CPI core 2.8% FOMC minutes delayed",
+        "ratio": "0.55",
+    }
+    compressor._compressor = mock_pc
+    compressor._initialized = True
     res = compressor.compress_text(text, rate=0.6)
     assert len(res) <= len(text)
     assert "3.2%" in res
     assert "FOMC" in res
+    mock_pc.compress_prompt.assert_called_once()
 
 # 10. OpenRouter Claude Cache Control Passthrough Tests
 def test_openrouter_claude_cache_control():

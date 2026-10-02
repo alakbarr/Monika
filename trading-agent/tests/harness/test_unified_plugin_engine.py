@@ -138,8 +138,7 @@ async def test_hook_timeout_isolation(test_container):
 
     # Emitting pre_tool_call should not hang or crash when handler exceeds timeout
     # Handler will be cancelled/timed out, but emit should complete without raising
-    # Note: PluginManager default timeout is 5.0s, emit will handle timeout gracefully
-    await engine.manager.emit("pre_tool_call", tool_name="test_tool")
+    await engine.manager.emit("pre_tool_call", timeout_seconds=0.05, tool_name="test_tool")
 
 
 @pytest.mark.asyncio

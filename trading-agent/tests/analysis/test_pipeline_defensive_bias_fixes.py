@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.validators.in_harness_grounding import InHarnessGroundingValidator
@@ -56,7 +57,7 @@ async def test_unified_threshold_hard_ceiling_7():
     TradeStats = namedtuple('TradeStats', ['total_trades', 'winning_trades'])
     mock_trade_stats = TradeStats(total_trades=0, winning_trades=0)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     def mock_execute(query):
         res = MagicMock()
         res.first.return_value = mock_trade_stats

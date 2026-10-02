@@ -3,6 +3,7 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from execution.mt5_client import MT5Client
 
 class TestMT5Client:
@@ -60,7 +61,7 @@ class TestMT5Client:
 
     @pytest.mark.asyncio
     async def test_save_ohlcv(self, client):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -130,7 +131,7 @@ class TestMT5Client:
             {"ticket": 123, "symbol": "XAUUSD", "type": 0, "volume": 0.1, "price_open": 2000.0, "time": datetime.now(timezone.utc)}
         ])
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_result1 = MagicMock()
@@ -306,7 +307,7 @@ class TestMT5Client:
     @pytest.mark.asyncio
     async def test_save_ohlcv_d1_deduplicates_near_window(self, client):
         """Verifikasi bahwa save_ohlcv D1 tidak membuat baris duplikat jika bar pada hari yang sama sudah ada."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         existing_d1 = MagicMock(
             timestamp=datetime(2026, 9, 25, 0, 0, tzinfo=timezone.utc),
             open=100.0, high=105.0, low=95.0, close=102.0, volume=500.0

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
 from analysis.tools.tool_executor import ToolExecutor
@@ -28,7 +29,7 @@ def fake_forecast():
 
 @pytest.mark.asyncio
 async def test_tool_get_timesfm_forecast_success(fake_forecast):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     with patch("indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock) as mock_get_fc:
@@ -47,7 +48,7 @@ async def test_tool_get_timesfm_forecast_success(fake_forecast):
 
 @pytest.mark.asyncio
 async def test_tool_get_timesfm_forecast_positional_and_kwargs(fake_forecast):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     with patch("indicators.timesfm_engine.TimesFMEngine.get_or_generate_forecast", new_callable=AsyncMock) as mock_get_fc:
@@ -68,7 +69,7 @@ async def test_tool_get_timesfm_forecast_positional_and_kwargs(fake_forecast):
 
 @pytest.mark.asyncio
 async def test_tool_get_timesfm_forecast_missing_symbol():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     result = await executor.execute("get_timesfm_forecast", {})

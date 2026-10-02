@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import pandas as pd
 import numpy as np
@@ -11,7 +12,7 @@ class TestTechnicalIndicatorCalculator:
 
     @pytest.fixture
     def calc(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         settings = {
             "indicators": {
@@ -225,7 +226,7 @@ class TestTechnicalIndicatorCalculator:
     @pytest.mark.asyncio
     async def test_compute_and_save_with_exact_ma_period(self):
         """Verifikasi bahwa 200 bar cukup untuk menghitung SMA_200 tanpa dibuang."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         settings = {
             "trading": {
@@ -258,7 +259,7 @@ class TestTechnicalIndicatorCalculator:
     @pytest.mark.asyncio
     async def test_load_ohlcv_d1_deduplication(self):
         """Verifikasi bahwa _load_ohlcv mendeduplikasi beberapa candle pada tanggal yang sama."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         calc = TechnicalIndicatorCalculator(mock_session, {})
         
         # Simulasikan baris dari DB dengan tanggal sama tapi jam berbeda (polusi offset)

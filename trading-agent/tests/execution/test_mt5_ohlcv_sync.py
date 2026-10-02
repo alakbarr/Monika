@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from execution.mt5_client import MT5Client
 from database.models import PriceOHLCV
 
@@ -9,7 +10,7 @@ class TestMT5OHLCVSync:
     @pytest.mark.asyncio
     async def test_save_ohlcv_inserts_and_updates_forming_candle(self):
         client = MT5Client({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 

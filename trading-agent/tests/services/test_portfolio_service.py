@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/services/test_portfolio_service.py
 # ==============================================================================
@@ -10,7 +11,7 @@ from database.models import Position, Order
 
 @pytest.mark.asyncio
 async def test_portfolio_service_get_open_positions():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_pos1 = MagicMock(spec=Position, id=1, symbol="EURUSD", status="open", is_paper=True)
     mock_pos2 = MagicMock(spec=Position, id=2, symbol="GBPUSD", status="open", is_paper=False)
     
@@ -25,7 +26,7 @@ async def test_portfolio_service_get_open_positions():
 
 @pytest.mark.asyncio
 async def test_portfolio_service_metrics_empty():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -38,7 +39,7 @@ async def test_portfolio_service_metrics_empty():
 
 @pytest.mark.asyncio
 async def test_portfolio_service_metrics_calculated():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_p1 = MagicMock(spec=Position, pnl=100.0, volume=0.1)
     mock_p2 = MagicMock(spec=Position, pnl=-50.0, volume=0.1)
     mock_p3 = MagicMock(spec=Position, pnl=150.0, volume=0.2)
@@ -59,7 +60,7 @@ async def test_portfolio_service_metrics_calculated():
 
 @pytest.mark.asyncio
 async def test_portfolio_service_get_closed_and_orders():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result

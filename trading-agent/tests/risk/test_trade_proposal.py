@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Tests for PR-14: TradeProposal Schema and Financial Fortress Boundary.
 Verifies strictly-typed schema validation, geometric invariants, reasoning hashing,
@@ -186,7 +187,7 @@ async def test_risk_gate_evaluate_proposal_rejected_by_fortress():
         lot_size=0.1,
         timestamp=datetime.now(timezone.utc) - timedelta(seconds=600),
     )
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     verdict = await gate.evaluate_proposal(mock_session, stale_prop)
     assert verdict.approved is False
     assert "fortress_admission" in verdict.checks_failed
@@ -200,7 +201,7 @@ async def test_risk_gate_evaluate_proposal_wait():
         symbol="EURUSD",
         direction="WAIT",
     )
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     verdict = await gate.evaluate_proposal(mock_session, wait_prop)
     assert verdict.approved is True
     assert "fortress_admission" in verdict.checks_passed
@@ -247,7 +248,7 @@ def test_trade_proposal_accepts_analysis_and_dynamic_attributes():
 async def test_risk_gate_evaluate_proposal_forwards_analysis():
     gate = RiskGate(settings={})
     gate.evaluate = AsyncMock(return_value=MagicMock(approved=True, checks_passed=["all"], checks_failed=[]))
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     class DummyAnalysis:
         id = 456

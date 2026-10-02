@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Tests for NegativeConstraintGenerator (PR-13).
 Verifies automatic synthesis of "DO NOT" constraints from past loss patterns,
@@ -12,7 +13,7 @@ from analysis.memory.failure_taxonomy import FailureCategory
 
 @pytest.mark.asyncio
 async def test_generate_from_reflections_with_tags():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Mock reflection with lesson tags
     ref1 = MagicMock()
@@ -51,7 +52,7 @@ async def test_generate_from_reflections_with_tags():
 
 @pytest.mark.asyncio
 async def test_generate_from_paper_trades():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_result_ref = MagicMock()
     mock_result_ref.scalars.return_value.all.return_value = []

@@ -147,6 +147,7 @@ def arm_startup_watchdog(timeout_s: float = 180.0):
 
 
 import asyncio
+import inspect
 
 
 async def verify_broker_ping(client, timeout: float = 8.0) -> bool:
@@ -154,13 +155,13 @@ async def verify_broker_ping(client, timeout: float = 8.0) -> bool:
     if not client:
         return False
     try:
-        if hasattr(client, "is_connected") and asyncio.iscoroutinefunction(client.is_connected):
+        if hasattr(client, "is_connected") and inspect.iscoroutinefunction(client.is_connected):
             connected = await asyncio.wait_for(client.is_connected(), timeout=timeout)
             if not connected:
                 return False
         if hasattr(client, "get_account_info"):
             fn = client.get_account_info
-            res = await asyncio.wait_for(fn(), timeout=timeout) if asyncio.iscoroutinefunction(fn) else fn()
+            res = await asyncio.wait_for(fn(), timeout=timeout) if inspect.iscoroutinefunction(fn) else fn()
             return bool(res)
         return True
     except Exception as e:
@@ -179,7 +180,7 @@ async def verify_data_feed_freshness(client, symbols: list, max_stale_sec: float
         try:
             if hasattr(client, "get_current_price"):
                 fn = client.get_current_price
-                quote = await asyncio.wait_for(fn(sym), timeout=5.0) if asyncio.iscoroutinefunction(fn) else fn(sym)
+                quote = await asyncio.wait_for(fn(sym), timeout=5.0) if inspect.iscoroutinefunction(fn) else fn(sym)
                 if quote and isinstance(quote, dict):
                     ask = float(quote.get("ask") or 0.0)
                     bid = float(quote.get("bid") or 0.0)

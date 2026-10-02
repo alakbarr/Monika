@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import os
 import pytest
 from fastapi.testclient import TestClient
@@ -27,7 +28,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_overview(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -42,7 +43,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_positions(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -72,7 +73,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_activity(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -96,7 +97,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_analysis(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -124,7 +125,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_orders(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -150,7 +151,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_risk(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -174,7 +175,7 @@ class TestDashboardAPI:
     def test_get_risk_with_real_model(self, mock_session_local):
         from database.models import RiskState
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
@@ -204,7 +205,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_vix(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -224,7 +225,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_brief(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session_local.return_value.__aenter__.return_value = mock_session
         
@@ -307,7 +308,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_debate_outcomes(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()
@@ -343,7 +344,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_mt5_signals(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()
@@ -370,7 +371,7 @@ class TestDashboardAPI:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_trade_triggers(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()
@@ -554,7 +555,7 @@ class TestDashboardAPI:
 
         with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
             with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-                mock_session = AsyncMock()
+                mock_session = create_mock_async_session()
                 mock_session.add = MagicMock()
                 mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
@@ -590,7 +591,7 @@ class TestDashboardAPI:
     # -----------------------------------------------------------------------
     def test_list_sessions(self):
         with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
             row = MagicMock()
@@ -618,7 +619,7 @@ class TestDashboardAPI:
 
     def test_get_session_messages(self):
         with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
             msg1 = MagicMock()
@@ -694,7 +695,7 @@ class TestDashboardAPI:
         }
         with patch("logging_observability.dashboard.api._get_settings_path", return_value=str(dummy_yaml)):
             with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
-                mock_session = AsyncMock()
+                mock_session = create_mock_async_session()
                 mock_session.add = MagicMock()
                 mock_session_ctx.return_value.__aenter__.return_value = mock_session
 

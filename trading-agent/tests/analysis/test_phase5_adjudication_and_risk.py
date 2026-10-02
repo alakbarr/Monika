@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,7 +15,7 @@ async def test_consecutive_losses_lookback_cutoff():
     """Verify that losses older than 7 days are ignored in consecutive losses streak check."""
     gate = RiskGate(settings={"trading": {"auto_execute": True, "risk": {"max_consecutive_losses_per_symbol": 3}}})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mocking query execution: older losses (> 7 days) are filtered by query, so empty list returned
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
@@ -30,7 +31,7 @@ async def test_consecutive_losses_lookback_cutoff():
 async def test_adaptive_threshold_48h_time_decay():
     """Verify that adaptive threshold adjustments older than 48 hours decay back to 0."""
     sched = GraphCycleScheduler(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     old_time = (datetime.now(timezone.utc) - timedelta(hours=50)).isoformat()
     old_row = MagicMock()

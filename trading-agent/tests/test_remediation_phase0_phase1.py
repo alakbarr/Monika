@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit & Regression Tests for Remediation Phase 0 & Phase 1.
 """
@@ -91,7 +92,7 @@ def test_pydantic_confidence_fail_fast_without_default():
 @pytest.mark.asyncio
 async def test_confidence_calibrator_ece_and_guard():
     """Verify ECE / Brier score computation and sample guard N>=60."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case 1: < 20 records -> insufficient_data
     mock_result_insufficient = MagicMock()

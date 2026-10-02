@@ -1,10 +1,36 @@
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.stages.fundamental_stage import FundamentalStage
 from database.models import ActivityLog
 
 class TestFundamentalStage:
+
+    @pytest.fixture(autouse=True)
+    def mock_stage1_prefetch(self):
+        def fake_get_client(task, cfg=None):
+            m = MagicMock()
+            m.model = (cfg or {}).get("llm", {}).get("task_roles", {}).get(task, {}).get("primary", "test-model")
+            m.max_tokens = 1000
+            m.max_tool_turns = 10
+            m.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 1, "turns": 1})
+            m.classify_json = AsyncMock(return_value={})
+            m.generate_content = AsyncMock(return_value="")
+            return m
+
+        with patch("analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value=("{}", set()))), \
+             patch("analysis.stages.fundamental_stage.verify_fundamental_brief", AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True})), \
+             patch("analysis.stages.fundamental_stage.get_client_for_task", side_effect=fake_get_client), \
+             patch("analysis.memory.reflector.get_client_for_task", side_effect=fake_get_client), \
+             patch("analysis.memory.chronicle_writer.get_client_for_task", side_effect=fake_get_client), \
+             patch("analysis.debate.macro_bull_analyst.run_bull_analyst", AsyncMock(return_value={"thesis": "bull"})), \
+             patch("analysis.debate.macro_bear_analyst.run_bear_analyst", AsyncMock(return_value={"thesis": "bear"})), \
+             patch("analysis.debate.macro_judge.run_macro_judge", AsyncMock(return_value={"winner": "TIE", "escalation_required": False})):
+            yield
+
+    def _create_mock_session(self):
+        return create_mock_async_session()
 
     def test_init(self):
         settings = {
@@ -33,7 +59,7 @@ class TestFundamentalStage:
     @pytest.mark.asyncio
     async def test_run_success(self):
         stage = FundamentalStage({})
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
         
         # mock claude client run_agent
@@ -69,7 +95,7 @@ class TestFundamentalStage:
     @pytest.mark.asyncio
     async def test_run_success_no_brief(self):
         stage = FundamentalStage({})
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
         
         stage.client.run_agent = AsyncMock(return_value={
@@ -89,8 +115,14 @@ class TestFundamentalStage:
 
     @pytest.mark.asyncio
     async def test_run_failure(self):
-        stage = FundamentalStage({})
-        mock_session = AsyncMock()
+        settings = {
+            "analysis": {
+                "fundamental_max_retries": 1,
+                "fundamental_retry_base_delay": 0
+            }
+        }
+        stage = FundamentalStage(settings)
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
         
         stage.client.run_agent = AsyncMock(return_value={
@@ -120,7 +152,7 @@ class TestFundamentalStage:
     @pytest.mark.asyncio
     async def test_log(self):
         stage = FundamentalStage({})
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
         
         await stage._log(mock_session, "test desc", "test cat")
@@ -136,7 +168,7 @@ class TestFundamentalStage:
     @pytest.mark.asyncio
     async def test_log_exception(self):
         stage = FundamentalStage({})
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock(side_effect=Exception("DB error"))
         
         # Should not raise exception
@@ -156,7 +188,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
 
         stage.client.run_agent = AsyncMock(return_value={
@@ -208,7 +240,7 @@ class TestFundamentalStage:
             "trading": {"stage1_self_consistency_enabled": False}
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
 
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 1, "turns": 1})
 
@@ -267,7 +299,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
 
         # Initial client run
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 2, "turns": 1})
@@ -306,7 +338,7 @@ class TestFundamentalStage:
 
         @asynccontextmanager
         async def mock_get_session():
-            s = AsyncMock()
+            s = self._create_mock_session()
             s.execute = AsyncMock(side_effect=mock_exec)
             yield s
 
@@ -345,7 +377,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
         mock_session.add = MagicMock()
 
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 2, "turns": 1})
@@ -404,7 +436,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
 
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 2, "turns": 1})
 
@@ -429,7 +461,7 @@ class TestFundamentalStage:
 
         @asynccontextmanager
         async def mock_get_session():
-            s = AsyncMock()
+            s = self._create_mock_session()
             s.execute = AsyncMock(side_effect=mock_exec)
             yield s
 
@@ -440,7 +472,7 @@ class TestFundamentalStage:
              patch("analysis.stages.fundamental_stage.get_session", mock_get_session), \
              patch("utils.analytics.cost_tracker.CostTracker.is_budget_paused", AsyncMock(return_value=True)), \
              patch("analysis.prefetch.stage1_prefetcher.Stage1DataBundler.prefetch_all_data", AsyncMock(return_value="{}")), \
-             patch("analysis.validators.fundamental_verifier.verify_fundamental_brief", AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True})):
+             patch("analysis.stages.fundamental_stage.verify_fundamental_brief", AsyncMock(return_value={"internally_consistent": True, "counter_thesis_is_substantive": True})):
             
             res = await stage.run(mock_session)
             
@@ -457,7 +489,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
 
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 1, "turns": 1})
         stage._log = AsyncMock()
@@ -496,7 +528,7 @@ class TestFundamentalStage:
             }
         }
         stage = FundamentalStage(settings)
-        mock_session = AsyncMock()
+        mock_session = self._create_mock_session()
 
         stage.client.run_agent = AsyncMock(return_value={"success": True, "tool_calls_made": 1, "turns": 1})
         stage._log = AsyncMock()

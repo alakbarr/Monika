@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/telegram_bot/test_chat_database_access.py
 # ==============================================================================
@@ -60,7 +61,7 @@ async def test_inspect_database_schema_single_table():
 @pytest.mark.asyncio
 async def test_read_database_records_admin_gating_and_validation():
     """Non-admin must be denied reading records, invalid tables rejected."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     non_admin_exec = DummyExecutor(is_admin=False, session=mock_session)
 
     res_denied = await handle_read_database_records(

@@ -90,7 +90,7 @@ class TestPendingOrderAcceptedLifecycle:
     @pytest.mark.asyncio
     async def test_mt5_live_adapter_dry_run_pending_order_returns_accepted(self):
         """Verify MT5LiveAdapter in dry_run mode returns accepted status for LIMIT orders."""
-        mock_mt5 = AsyncMock()
+        mock_mt5 = MagicMock()
         adapter = MT5LiveAdapter(mt5_client=mock_mt5, dry_run=True)
 
         order = Order(
@@ -271,7 +271,7 @@ class TestOrderReconcilerWorker:
 
         # Mock MT5 / Broker adapter returns:
         # No pending orders, but position 778899 exists
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[{
             "ticket": 778899,
@@ -342,7 +342,7 @@ class TestOrderReconcilerWorker:
         session.add(order)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])
 
@@ -390,7 +390,7 @@ class TestOrderReconcilerWorker:
         session.add(order)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[{
             "ticket": 445566,
             "symbol": "EURUSD",
@@ -443,7 +443,7 @@ class TestOrderReconcilerWorker:
         session.add(pos)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])
         mock_adapter.get_account_info = AsyncMock(return_value={"equity": 10000.0})
@@ -491,7 +491,7 @@ class TestOrderReconcilerWorker:
         session.add(pos)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])
         mock_adapter.get_account_info = AsyncMock(return_value={"equity": 10000.0})
@@ -534,7 +534,7 @@ class TestOrderReconcilerWorker:
         session.add(pos)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[{
             "ticket": 343434,
@@ -567,7 +567,7 @@ class TestOrderReconcilerWorker:
         """
         session = async_sqlite_session
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[{
             "ticket": 565656,
@@ -597,9 +597,9 @@ class TestOrderReconcilerWorker:
         assert adopted.status == "open"
 
     @pytest.mark.asyncio
-    async def test_reconciler_start_and_stop_gracefully(self):
+    async def test_reconciler_start_and_stop_gracefully(self, async_sqlite_session):
         """Verify reconciler background loop runs and stops cleanly."""
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])
 
@@ -609,19 +609,26 @@ class TestOrderReconcilerWorker:
             interval_seconds=0.05,
         )
 
-        task = asyncio.create_task(reconciler.start())
-        await asyncio.sleep(0.12)
-        assert mock_adapter.get_orders.call_count >= 1
+        class AsyncContextManagerMock:
+            async def __aenter__(self):
+                return async_sqlite_session
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
 
-        reconciler.stop()
-        await asyncio.wait_for(task, timeout=1.0)
-        assert task.done()
+        with patch("scheduler.order_reconciler.get_session", return_value=AsyncContextManagerMock()):
+            task = asyncio.create_task(reconciler.start())
+            await asyncio.sleep(0.12)
+            assert mock_adapter.get_orders.call_count >= 1
+
+            reconciler.stop()
+            await asyncio.wait_for(task, timeout=1.0)
+            assert task.done()
 
 
 class TestMainOrchestrationIntegration:
     """Test that TradingAgent in main.py wires OrderReconciler cleanly."""
 
-    def test_trading_agent_initializes_order_reconciler(self):
+    def test_trading_agent_initializes_order_reconciler(self, clean_event_bus):
         """Verify TradingAgent creates OrderReconciler attribute in _init_components."""
         from main import TradingAgent
 
@@ -644,7 +651,15 @@ class TestMainOrchestrationIntegration:
              patch("analysis.stages.per_asset_stage.PerAssetStage"), \
              patch("scheduler.market_data_scheduler.MarketDataScheduler"), \
              patch("scheduler.macro_data_scheduler.MacroDataScheduler"), \
-             patch("scheduler.trigger_checker.TriggerChecker"):
+             patch("scheduler.trigger_checker.TriggerChecker"), \
+             patch("scheduler.digest_slice_scheduler.DigestSliceScheduler"), \
+             patch("harness.engine.PluginEngine"), \
+             patch("analysis.memory.background_review.BackgroundReviewEngine"), \
+             patch("scheduler.universal_cron_scheduler.UniversalCronScheduler"), \
+             patch("scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"), \
+             patch("scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"), \
+             patch("scheduler.playbook_curator.PlaybookCurator"), \
+             patch("utils.infra.notifier.AgentNotifier"):
             agent._init_components()
 
         assert agent.order_reconciler is not None
@@ -695,7 +710,7 @@ class TestReconcilerHardenedEdgeCases:
         await session.commit()
 
         # Mock adapter raising an exception / disconnected
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(side_effect=ConnectionError("MT5 Bridge Offline"))
         mock_adapter.get_positions = AsyncMock(side_effect=ConnectionError("MT5 Bridge Offline"))
 
@@ -737,7 +752,7 @@ class TestReconcilerHardenedEdgeCases:
         session.add(order)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])
 
@@ -788,7 +803,7 @@ class TestReconcilerHardenedEdgeCases:
         session.add_all([unrelated_pos, order])
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         # Terminal position has comment containing order's client_order_id
         mock_adapter.get_positions = AsyncMock(return_value=[{
@@ -837,7 +852,7 @@ class TestReconcilerHardenedEdgeCases:
         session.add(pos)
         await session.commit()
 
-        mock_adapter = AsyncMock()
+        mock_adapter = MagicMock()
         mock_adapter.get_orders = AsyncMock(return_value=[])
         mock_adapter.get_positions = AsyncMock(return_value=[])  # Position closed in terminal
         mock_adapter.get_account_info = AsyncMock(return_value={"equity": 10000.0})
@@ -864,7 +879,7 @@ class TestReconcilerHardenedEdgeCases:
     @pytest.mark.asyncio
     async def test_mt5_live_adapter_cancel_order_resolves_string_client_order_id(self):
         """Verify MT5LiveAdapter.cancel_order resolves string client_order_id to numeric ticket."""
-        mock_mt5 = AsyncMock()
+        mock_mt5 = MagicMock()
         mock_mt5.get_orders = AsyncMock(return_value=[{
             "ticket": 444333,
             "comment": "ORD#ord_abc1",
