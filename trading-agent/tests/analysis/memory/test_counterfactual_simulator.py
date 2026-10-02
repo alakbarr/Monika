@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.memory.counterfactual_simulator import CounterfactualSimulator
@@ -17,7 +18,7 @@ async def test_counterfactual_simulator_promotion(tmp_path):
         trade.pnl_pct = 1.5 if i < 14 else -1.0  # 14 wins out of 20 = 70% win rate
         mock_trades.append(trade)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = mock_trades
     mock_session.execute.return_value = mock_result
@@ -49,7 +50,7 @@ async def test_counterfactual_simulator_rejection(tmp_path):
         trade.pnl_pct = 1.0 if i < 8 else -1.0  # 8 wins = 40% win rate
         mock_trades.append(trade)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = mock_trades
     mock_session.execute.return_value = mock_result

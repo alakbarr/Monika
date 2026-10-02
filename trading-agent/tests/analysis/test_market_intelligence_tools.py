@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
@@ -9,7 +10,7 @@ class TestMarketIntelligenceTools:
 
     @pytest.mark.asyncio
     async def test_tool_web_search(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={})
 
         mock_search_res = {
@@ -34,7 +35,7 @@ class TestMarketIntelligenceTools:
 
     @pytest.mark.asyncio
     async def test_tool_save_market_intelligence_basic(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, 'id', 42))
         mock_session.commit = AsyncMock()
         mock_session.flush = AsyncMock()
@@ -62,7 +63,7 @@ class TestMarketIntelligenceTools:
 
     @pytest.mark.asyncio
     async def test_tool_save_market_intelligence_cross_posts_macro_structural(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock(side_effect=lambda obj: setattr(obj, 'id', 99))
         mock_session.commit = AsyncMock()
         mock_session.flush = AsyncMock()
@@ -91,7 +92,7 @@ class TestMarketIntelligenceTools:
 
     @pytest.mark.asyncio
     async def test_tool_list_active_intelligence(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         now = datetime.now(timezone.utc)
         
         intel_item1 = UserMarketIntel(
@@ -135,7 +136,7 @@ class TestMarketIntelligenceTools:
 
     @pytest.mark.asyncio
     async def test_tool_archive_market_intelligence(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         intel_item = UserMarketIntel(
             id=7,
             title="To be archived",

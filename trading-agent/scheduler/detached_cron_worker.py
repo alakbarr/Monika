@@ -15,6 +15,7 @@ Maintains persistent schedule and delivery state in SQLite deliveries.db.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import sqlite3
@@ -162,7 +163,7 @@ class DetachedCronWorker:
         payload = json.loads(job["payload_json"] or "{}")
         now = time.time()
         try:
-            if asyncio.iscoroutinefunction(handler):
+            if inspect.iscoroutinefunction(handler):
                 res = await handler(payload)
             else:
                 res = handler(payload)

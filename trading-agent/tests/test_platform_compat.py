@@ -2,6 +2,7 @@
 # File: tests/test_platform_compat.py
 # ==============================================================================
 
+from tests.conftest import create_mock_async_session
 import sys
 import pytest
 from pathlib import Path
@@ -99,7 +100,15 @@ async def test_trading_agent_remote_gateway_wiring_and_shutdown():
     agent._activity_log = MagicMock()
     agent._activity_log.system = AsyncMock()
 
-    with patch("database.db.get_session"), \
+    mock_session = create_mock_async_session()
+    mock_res = MagicMock()
+    mock_res.scalars.return_value.all.return_value = []
+    mock_session.execute = AsyncMock(return_value=mock_res)
+    mock_ctx = MagicMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("database.db.get_session", return_value=mock_ctx), \
          patch("main.close_db", new_callable=AsyncMock):
         await agent._shutdown()
 

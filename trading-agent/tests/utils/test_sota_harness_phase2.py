@@ -2,6 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.conftest import create_mock_async_session
 from analysis.memory.session_search import SessionSearchEngine
 from utils.llm.spill_subsystem import PostgresSpillSubsystem
 from analysis.memory.lesson_consolidator import enforce_declarative_memory_rule
@@ -50,7 +51,7 @@ async def test_hybrid_search_rrf():
     """Verify hybrid search with RRF merges sparse and dense rows correctly."""
     engine = SessionSearchEngine()
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mock return sparse rows and dense embedded rows
     r1 = MagicMock(id=101, symbol="XAUUSD", rationale_summary="Breakout on tariff news", reflection_text="Good follow through", alpha_lesson="Hold winners", decision="BUY", confidence=0.8, confluence_score=9, created_at=None, outcome_pnl_usd=120.0, is_paper_whatif=False, exit_reason="tp_hit")
     r2 = MagicMock(id=102, symbol="XAUUSD", rationale_summary="Range fakeout", reflection_text="Stopped out", alpha_lesson="Avoid low volume", decision="SELL", confidence=0.6, confluence_score=6, created_at=None, outcome_pnl_usd=-50.0, is_paper_whatif=False, exit_reason="sl_hit")
@@ -65,7 +66,7 @@ async def test_hybrid_search_rrf():
     mock_res_dense = MagicMock()
     mock_res_dense.scalars.return_value.all.return_value = [r1, r2]
     
-    mock_session.execute.side_effect = [mock_res_sparse, mock_res_dense]
+    mock_session.execute = AsyncMock(side_effect=[mock_res_sparse, mock_res_dense])
     
     # Query vector close to r2
     results = await engine.hybrid_search("tariff safe haven", symbol="XAUUSD", query_vector=[0.9, 0.9, 0.85], limit=2, session=mock_session)
@@ -78,7 +79,7 @@ async def test_spill_subsystem_threshold():
     """Verify payloads exceeding threshold are spilled and receipts generated."""
     subsystem = PostgresSpillSubsystem(settings={"context_compaction": {"spill_threshold_tokens": 50}})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     small_text = "short json result"
     res_small = await subsystem.maybe_spill(mock_session, "get_vix", small_text)
@@ -95,11 +96,13 @@ async def test_spill_subsystem_threshold():
 async def test_precommit_gate_geometry_and_staleness():
     """Verify TradePreCommitGate blocks invalid geometry and stale entries."""
     gate = TradePreCommitGate()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Mock no economic calendar events and normal VIX
-    mock_session.execute.return_value.scalar_one_or_none.return_value = None
-    mock_session.execute.return_value.scalars.return_value.all.return_value = []
+    mock_res = MagicMock()
+    mock_res.scalar_one_or_none.return_value = None
+    mock_res.scalars.return_value.all.return_value = []
+    mock_session.execute = AsyncMock(return_value=mock_res)
     
     # 1. Invalid SL geometry: BUY with SL above entry
     bad_decision = {
@@ -130,7 +133,7 @@ async def test_tool_executor_read_before_act_and_mandatory_tool():
     """Verify ToolExecutor blocks submit_asset_analysis without required data reads & position sizing."""
     from analysis.tools.tool_executor import ToolExecutor
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, symbol="EURUSD")
     
     # Attempt 1: submit without reading any market data

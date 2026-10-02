@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/telegram_bot/test_session_approval.py
 # ==============================================================================
@@ -60,7 +61,7 @@ async def test_chat_agent_session_approval_expiry():
 @pytest.mark.asyncio
 @patch("telegram_bot.chat_agent.get_session")
 async def test_chat_agent_approve_for_session(mock_get_session):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_ctx = AsyncMock()
     mock_ctx.__aenter__.return_value = mock_session
@@ -89,7 +90,7 @@ async def test_chat_agent_approve_for_session(mock_get_session):
 @patch("telegram_bot.chat_agent.get_client_for_task")
 @patch("telegram_bot.chat_agent.get_session")
 async def test_chat_agent_auto_execute_when_session_approved(mock_get_session, mock_get_client):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_ctx = AsyncMock()
     mock_ctx.__aenter__.return_value = mock_session

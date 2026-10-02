@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -47,7 +48,7 @@ async def test_strategy_registry_dynamic_parameter_loading():
     assert StrategyRegistry._dynamic_params.get("test_mock_alpha", {}).get("donchian_period") == 35
 
     # Evaluate all and verify dynamic parameter was reflected
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_empty = MagicMock()
     mock_empty.scalars.return_value.all.return_value = []

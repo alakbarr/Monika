@@ -2,6 +2,7 @@ import pytest
 import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta, timezone
+from tests.conftest import create_mock_async_session
 
 from analysis.providers.gemini_provider import GeminiProvider
 from analysis.stages.per_asset_stage import SPECIALIST_PROMPTS
@@ -52,7 +53,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         from analysis.memory.chronicle_writer import ChronicleWriter
         writer = ChronicleWriter()
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_result
@@ -96,7 +97,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         analysis.confluence_factors_json = "[]"
         analysis.rationale = "Test rationale"
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = []
         mock_scalars.scalar_one_or_none.return_value = None
@@ -119,7 +120,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         from analysis.memory.chronicle_writer import ChronicleWriter
         writer = ChronicleWriter()
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalar_one.return_value = 0  # Table is empty
         mock_result.scalar_one_or_none.return_value = None
@@ -230,7 +231,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         from database.models import DXYData, VIXData, FundamentalBrief
 
         mgr = LayeredMemoryManager(self.settings)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Mock DXY
         dxy1 = MagicMock(close=104.5)
@@ -263,7 +264,7 @@ class TestLLMMemoryCacheEnhancements(unittest.IsolatedAsyncioTestCase):
         from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
 
         agent = ChatAgent(self.settings, user_id=12345)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalars.return_value.all.return_value = []
         mock_res.scalar_one_or_none.return_value = None

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Tests for PR-21: Per-Turn Cost Tracking Dashboard.
 Verifies cycle-level cost accumulation, by_model, by_role breakdowns, and REST API endpoints.
@@ -13,7 +14,7 @@ from utils.analytics.token_auditor import TokenAuditor
 
 @pytest.mark.asyncio
 async def test_token_auditor_get_cycle_cost_breakdown():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     class DummyRow:
         def __init__(self, d):

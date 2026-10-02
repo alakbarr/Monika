@@ -4,6 +4,7 @@ Unit tests for CandidateLesson Shadow Holdout Validation and Adaptive Memory Wor
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from database.models import CandidateLesson, PaperTradeRecord
 from utils.analytics.performance_reviewer import evaluate_candidate_lessons
 from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook, auto_promote_high_confidence_rules
@@ -12,7 +13,7 @@ from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook,
 @pytest.mark.asyncio
 async def test_consolidate_lessons_creates_shadow_candidate_in_db():
     """Verify that consolidate_lessons_to_playbook proposes shadow CandidateLesson to DB without direct markdown write."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_reflection = MagicMock()
     mock_reflection.status = "resolved"
     mock_reflection.specific_lesson = "Avoid buying XAUUSD during DXY morning expansion"
@@ -48,7 +49,7 @@ async def test_consolidate_lessons_creates_shadow_candidate_in_db():
 @pytest.mark.asyncio
 async def test_evaluate_candidate_lessons_promotes_on_positive_delta():
     """Verify that evaluate_candidate_lessons promotes candidate lesson with >=30 trades and positive delta."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     proposed_time = datetime.now(timezone.utc) - timedelta(days=10)
 
     candidate = CandidateLesson(
@@ -93,7 +94,7 @@ async def test_evaluate_candidate_lessons_promotes_on_positive_delta():
 @pytest.mark.asyncio
 async def test_auto_promote_high_confidence_rules():
     """Verify auto_promote_high_confidence_rules promotes high-corroboration or high-delta candidates."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     cand1 = CandidateLesson(
         id=10,
         symbol="XAUUSD",

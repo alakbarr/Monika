@@ -121,17 +121,19 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                     from risk.position_sizing import PositionSizer
                     sizer = PositionSizer(settings)
                     equity = float(trade.get("account_equity") or 10000.0)
-                    sizing_res = sizer.calculate(
+                    sizing_res = await sizer.calculate_with_session(
+                        session=session,
                         symbol=sym,
+                        direction=decision or "buy",
                         entry_price=float(trade.get("entry_price") or entry),
                         stop_loss=float(trade.get("stop_loss") or sl),
+                        take_profit=float(trade.get("take_profit") or tp) if (trade.get("take_profit") or tp) else None,
                         account_equity=equity,
-                        confidence=float(trade.get("confidence", 0.7)),
-                        risk_multiplier=float(trade.get("risk_multiplier", 1.0)),
+                        risk_percent_override=float(trade.get("risk_multiplier", 1.0)) * sizer.risk_percent,
                     )
-                    trade["lot_size"] = sizing_res.lots
+                    trade["lot_size"] = sizing_res.recommended_lots
                     trade["sizing"] = sizing_res
-                    adjustment_notes.append(f"Position size recalculated to {sizing_res.lots} lots.")
+                    adjustment_notes.append(f"Position size recalculated to {sizing_res.recommended_lots} lots.")
                 except Exception as sz_err:
                     logger.debug(f"[PlanRefinementNode] Sizing recalculation notice: {sz_err}")
 

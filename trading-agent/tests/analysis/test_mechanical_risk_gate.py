@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from analysis.tools.tool_executor import ToolExecutor
@@ -14,7 +15,7 @@ async def test_mechanical_risk_gate_classification_and_synthetic_trigger():
             }
         }
     }
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_session.flush = AsyncMock()
     mock_session.commit = AsyncMock()

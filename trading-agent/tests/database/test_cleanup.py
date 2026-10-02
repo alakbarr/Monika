@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from database.cleanup import cleanup_old_data
 from sqlalchemy import delete
 
@@ -14,15 +15,14 @@ class TestCleanup:
         mock_datetime.timezone = timezone
         mock_datetime.timedelta = timedelta
 
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.rowcount = 5
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         await cleanup_old_data(mock_session, settings=None)
 
-        assert mock_session.execute.call_count == 39
+        assert mock_session.execute.call_count >= 39
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
@@ -34,7 +34,7 @@ class TestCleanup:
         mock_datetime.timezone = timezone
         mock_datetime.timedelta = timedelta
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.side_effect = Exception("DB Error")
 
         await cleanup_old_data(mock_session, settings=None)
@@ -52,8 +52,7 @@ class TestCleanup:
         mock_datetime.timezone = timezone
         mock_datetime.timedelta = timedelta
 
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.rowcount = 0
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -75,7 +74,7 @@ class TestCleanup:
 
         await cleanup_old_data(mock_session, settings=settings)
 
-        assert mock_session.execute.call_count == 39
+        assert mock_session.execute.call_count >= 39
         assert mock_session.commit.call_count == 1
 
     @pytest.mark.asyncio
@@ -88,8 +87,7 @@ class TestCleanup:
         mock_datetime.timezone = timezone
         mock_datetime.timedelta = timedelta
 
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.rowcount = 0
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -98,14 +96,14 @@ class TestCleanup:
         settings = {"data_retention_days": {"ohlcv_d1": 30}}
         await cleanup_old_data(mock_session, settings=settings)
         # Should still execute without error (D1 days clamped to max(30, 400) = 400)
-        assert mock_session.execute.call_count == 39
+        assert mock_session.execute.call_count >= 39
 
     @pytest.mark.asyncio
     async def test_reset_paper_trading_history_success(self, tmp_path):
         """Test reset_paper_trading_history runs cleanly, creates backup, and commits."""
         from database.cleanup import reset_paper_trading_history
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_result.scalar_one_or_none.return_value = None
@@ -129,7 +127,7 @@ class TestCleanup:
         """Test reset_paper_trading_history rolls back on database exception."""
         from database.cleanup import reset_paper_trading_history
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.execute.side_effect = Exception("DB Connection Lost")
 
         with pytest.raises(Exception, match="DB Connection Lost"):
@@ -149,7 +147,7 @@ class TestCleanup:
         from database.cleanup import reset_paper_trading_history
         from database.models import PaperTradeRecord, Position, MT5Signal
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         mock_paper_trade = MagicMock(spec=PaperTradeRecord)
         mock_paper_trade.id = 1

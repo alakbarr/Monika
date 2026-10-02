@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
@@ -8,7 +9,7 @@ from analysis.calculators.economic_surprise import compute_cesi_index
 
 @pytest.mark.asyncio
 async def test_rolling_correlation_computation():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Generate 40 daily bars for Symbol A and Symbol B with positive correlation
     dates = [datetime.now(timezone.utc) - timedelta(days=i) for i in reversed(range(40))]
@@ -45,7 +46,7 @@ async def test_rolling_correlation_computation():
 
 @pytest.mark.asyncio
 async def test_cesi_index_computation():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Generate mock EconomicCalendar events
     ev1 = MagicMock()

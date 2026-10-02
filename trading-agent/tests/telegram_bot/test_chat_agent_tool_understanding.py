@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/telegram_bot/test_chat_agent_tool_understanding.py
 # ==============================================================================
@@ -41,7 +42,7 @@ class TestChatAgentToolUnderstanding:
         }
         agent = ChatAgent(settings, user_id=123)
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_pos_res = MagicMock()
         mock_pos_res.scalars().all.return_value = []
         
@@ -148,7 +149,7 @@ class TestChatAgentToolUnderstanding:
         )
         bar = PriceOHLCV(symbol="XAUUSD", close=2650.0, timestamp=datetime.now(timezone.utc))
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         m_trade_res = MagicMock()
         m_trade_res.scalars().first.return_value = trade
 
@@ -181,7 +182,7 @@ class TestChatAgentToolUnderstanding:
 
         trigger = TradeTrigger(id=12, status="pending")
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         m_trig_res = MagicMock()
         m_trig_res.scalar_one_or_none.return_value = trigger
         mock_session.execute = AsyncMock(return_value=m_trig_res)
@@ -194,9 +195,12 @@ class TestChatAgentToolUnderstanding:
             assert trigger.status == "cancelled"
 
     @pytest.mark.asyncio
+    @patch("telegram_bot.chat_agent.get_session")
     @patch("telegram_bot.chat_agent.get_client_for_task")
-    async def test_pending_action_expiry_rejection(self, mock_get_client):
+    async def test_pending_action_expiry_rejection(self, mock_get_client, mock_get_session):
         """Memastikan confirm_action menolak aksi yang telah melewati batas 5 menit."""
+        mock_sess = create_mock_async_session()
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
         agent = ChatAgent({}, user_id=123)
         action = PendingAction(
             action_id="act-exp-1",
@@ -213,9 +217,13 @@ class TestChatAgentToolUnderstanding:
         assert "act-exp-1" not in agent._pending_actions
 
     @pytest.mark.asyncio
+    @patch("telegram_bot.chat_agent.get_session")
     @patch("telegram_bot.chat_agent.get_client_for_task")
-    async def test_pending_action_unknown_rejection(self, mock_get_client):
+    async def test_pending_action_unknown_rejection(self, mock_get_client, mock_get_session):
         """Memastikan confirm_action menolak action_id yang tidak ditemukan."""
+        mock_sess = create_mock_async_session()
+        mock_sess.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
         agent = ChatAgent({}, user_id=123)
         ok, msg = await agent.confirm_action("nonexistent_id")
         assert ok is False

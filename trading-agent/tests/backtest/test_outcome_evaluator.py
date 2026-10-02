@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from backtest.outcome_evaluator import OutcomeEvaluator
@@ -23,7 +24,7 @@ async def test_evaluate_buy_tp_hit():
         close=110.0
     )
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result
@@ -56,7 +57,7 @@ async def test_evaluate_buy_sl_hit():
         close=90.0
     )
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result

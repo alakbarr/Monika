@@ -4,6 +4,7 @@ import inspect
 import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 def test_group_a_inspect_iscoroutinefunction():
     async def sample_coro():
@@ -41,7 +42,7 @@ async def test_cw1_adhoc_scheduler_proxy_data_node():
     with patch('graph.nodes.data_node.get_session') as mock_gs, \
          patch('utils.validation.data_validator.validate_data_freshness', new_callable=AsyncMock) as mock_vdf:
         mock_vdf.return_value = {"ready": True, "stale_assets": [], "warnings": [], "errors": []}
-        mock_sess = AsyncMock()
+        mock_sess = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_sess
         with patch('analysis.calculators.economic_surprise.compute_surprise_scores', new_callable=AsyncMock) as mock_css:
             mock_css.return_value = 0
@@ -137,10 +138,7 @@ async def test_db10_risk_gate_flush_not_commit():
     from risk.position_sizing import SizingResult
     from risk.risk_gate import RiskVerdict
     gate = RiskGate({})
-    mock_session = AsyncMock()
-    mock_session.flush = AsyncMock()
-    mock_session.commit = AsyncMock()
-    mock_session.add = MagicMock()
+    mock_session = create_mock_async_session()
 
     sizing = SizingResult(
         symbol='EURUSD',
@@ -169,7 +167,7 @@ async def test_db10_risk_gate_flush_not_commit():
 @pytest.mark.asyncio
 async def test_db9_portfolio_correlation_gate_negative_correlation():
     from risk.portfolio_correlation_gate import filter_correlated_proposals
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch('risk.portfolio_correlation_gate.get_rolling_correlation', new_callable=AsyncMock) as mock_corr:
         mock_corr.return_value = (-0.85, 'dynamic_rolling')
         actionable = [
@@ -185,7 +183,7 @@ async def test_db9_portfolio_correlation_gate_negative_correlation():
 @pytest.mark.asyncio
 async def test_an3_adversarial_check_prompt_initialization():
     from analysis.validators.adversarial_check import run_adversarial_check
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     analysis = MagicMock()
     analysis.symbol = 'XAUUSD'
     analysis.decision = 'buy'

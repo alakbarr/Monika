@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
@@ -8,7 +9,7 @@ from analysis.calculators.rolling_correlation_calculator import compute_rolling_
 @pytest.mark.asyncio
 async def test_analytical_query_builder_overview():
     # Mock session
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Mock TradeOutcome scalars
     mock_outcome_1 = MagicMock()

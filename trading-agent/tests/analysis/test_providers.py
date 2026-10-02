@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.providers.anthropic_provider import AnthropicProvider
 from analysis.providers.gemini_provider import GeminiProvider
 from analysis.providers.base_provider import MockBlock, MockResponse
@@ -341,7 +342,7 @@ async def test_anthropic_run_tool_agent_anti_oscillation_hashlib(mock_anthropic)
 
     mock_client.messages.create.side_effect = [resp_1, resp_2, resp_3]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     provider = AnthropicProvider(model="claude-3-5-sonnet", settings={"llm": {"providers": {"anthropic": {"streaming": {"enabled": False}}}}})
     provider._save_token_usage = AsyncMock()
     provider._log_tool_call = AsyncMock()

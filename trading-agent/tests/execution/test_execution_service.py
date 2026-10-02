@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from execution.execution_service import ExecutionService, ExecutionResult
 from database.models import AssetAnalysis, Position
 
@@ -30,7 +31,7 @@ class TestExecutionService:
     @patch('execution.execution_service.PositionSizer')
     @patch('execution.execution_service.RiskGate')
     async def test_execute_analysis_skip_wait(self, mock_risk_cls, mock_sizer_cls, svc):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -63,7 +64,7 @@ class TestExecutionService:
         mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
         svc.gate = mock_gate
     
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -105,7 +106,7 @@ class TestExecutionService:
         mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
         svc.gate = mock_gate
 
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -171,7 +172,7 @@ class TestExecutionService:
         svc = ExecutionService({}, mt5_client=mock_mt5)
         svc.gate = AsyncMock()
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_pos = Position(mt5_ticket=123, entry_price=2000, volume=0.1)
         
@@ -200,7 +201,7 @@ class TestExecutionService:
         
         with patch('execution.execution_service.get_session') as mock_get_session:
             mock_ctx = AsyncMock()
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
             mock_result = MagicMock()
             mock_result.scalars.return_value.all.return_value = []
@@ -231,7 +232,7 @@ class TestExecutionService:
     @pytest.mark.asyncio
     async def test_count_open_positions(self):
         svc = ExecutionService({}, mt5_client=AsyncMock())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = 3
         mock_session.execute.return_value = mock_result
@@ -243,7 +244,7 @@ class TestExecutionService:
     async def test_news_blackout_circuit_breaker_triggered_for_matching_currency(self):
         from database.models import EconomicCalendar
         svc = ExecutionService({"trading": {"risk": {"news_window_minutes": 30}}}, mt5_client=AsyncMock(), dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         # Mock MT5 & DB checks before news blackout
@@ -285,7 +286,7 @@ class TestExecutionService:
         mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
         svc.gate = mock_gate
         
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         def mock_execute(*args, **kwargs):
@@ -331,7 +332,7 @@ class TestExecutionService:
         mock_gate.check.return_value = MagicMock(approved=True, checks_passed=[], checks_failed=[], rejection_reasons=[])
         svc.gate = mock_gate
         
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         def mock_execute(*args, **kwargs):
             m = MagicMock()
@@ -344,8 +345,15 @@ class TestExecutionService:
         brief_gen_at = datetime.now(timezone.utc) - timedelta(hours=6)
         mock_brief = FundamentalBrief(id=10, generated_at=brief_gen_at, structured_json="{}")
         
+        brief_session = create_mock_async_session()
+        brief_session.get = AsyncMock(return_value=mock_brief)
+        mock_exec_res = MagicMock()
+        mock_exec_res.scalar_one_or_none.return_value = None
+        mock_exec_res.scalars.return_value.all.return_value = []
+        brief_session.execute = AsyncMock(return_value=mock_exec_res)
+
         brief_ctx = AsyncMock()
-        brief_ctx.__aenter__.return_value.get = AsyncMock(return_value=mock_brief)
+        brief_ctx.__aenter__.return_value = brief_session
         
         analysis = AssetAnalysis(id=888, symbol="GBPUSD", decision="buy", brief_id=10, stop_loss=1.25, take_profit=1.27, confluence_score=6, confidence=0.8)
         with patch('execution.execution_service.get_session', return_value=brief_ctx), \
@@ -372,15 +380,18 @@ class TestExecutionService:
         mock_mt5.get_symbol_info = AsyncMock(return_value={"ask": 1.2605, "bid": 1.2600, "spread": 0.0005})
         svc.mt5 = mock_mt5
         
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         # 13 hours old brief (exceeds 12h threshold)
         brief_gen_at = datetime.now(timezone.utc) - timedelta(hours=13)
         mock_brief = FundamentalBrief(id=11, generated_at=brief_gen_at, structured_json="{}")
         
+        brief_session = create_mock_async_session()
+        brief_session.get = AsyncMock(return_value=mock_brief)
+
         brief_ctx = AsyncMock()
-        brief_ctx.__aenter__.return_value.get = AsyncMock(return_value=mock_brief)
+        brief_ctx.__aenter__.return_value = brief_session
         
         analysis = AssetAnalysis(id=889, symbol="GBPUSD", decision="buy", brief_id=11, stop_loss=1.25, take_profit=1.27)
         with patch('execution.execution_service.get_session', return_value=brief_ctx):
@@ -406,7 +417,7 @@ class TestExecutionService:
         with patch('execution.execution_service.get_session') as mock_get_session, \
              patch.object(svc, '_close_paper_position', new_callable=AsyncMock) as mock_close_p:
             mock_close_p.return_value = {"success": True, "ticket": 1}
-            mock_session = AsyncMock()
+            mock_session = create_mock_async_session()
             mock_session.add = MagicMock()
             
             async def fake_execute(query, *args, **kwargs):
@@ -447,7 +458,7 @@ class TestExecutionService:
         svc.effect_gate.request_abort("Test Abort")
         assert svc.effect_gate.is_aborted is True
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         cfg_kill = SystemConfig(key="kill_switch", value="true")

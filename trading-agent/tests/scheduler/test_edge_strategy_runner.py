@@ -1,6 +1,7 @@
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from scheduler.edge_strategy_runner import EdgeStrategyRunner
 from analysis.strategies.base_strategy import EdgeSignal
 
@@ -35,7 +36,7 @@ class TestEdgeStrategyRunner:
             rationale="Test signal"
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         # Mock validate_data_freshness -> ready: True
         with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
@@ -73,7 +74,7 @@ class TestEdgeStrategyRunner:
             rationale="Test signal"
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
              patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
@@ -113,7 +114,7 @@ class TestEdgeStrategyRunner:
             rationale="Test signal"
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
 
@@ -145,7 +146,7 @@ class TestEdgeStrategyRunner:
             rationale="Test signal"
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         with patch("scheduler.edge_strategy_runner.validate_data_freshness", AsyncMock(return_value={"ready": True})), \
              patch("scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all", AsyncMock(return_value=[signal])), \
@@ -177,7 +178,7 @@ class TestEdgeStrategyRunner:
         from utils import clock
         recent_dt = clock.now() - timedelta(minutes=10)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalar_one_or_none.return_value = recent_dt
         mock_session.execute.return_value = mock_res
@@ -202,7 +203,7 @@ class TestEdgeStrategyRunner:
             tags=["trend"]
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_res
@@ -251,7 +252,7 @@ class TestEdgeStrategyRunner:
             rationale="Sub-optimal RR signal"
         )
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         await runner._materialize_and_route(mock_session, signal)
 
         # Should be suppressed by upstream R:R pre-filter before materialization

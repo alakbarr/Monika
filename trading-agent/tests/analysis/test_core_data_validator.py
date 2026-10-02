@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -5,7 +6,7 @@ from analysis.validators.core_data_validator import CoreDataValidator
 
 @pytest.mark.asyncio
 async def test_validate_core_data_freshness():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     mock_result_1 = MagicMock()
     mock_brief = MagicMock()
@@ -35,7 +36,7 @@ async def test_validate_core_data_freshness():
 
 @pytest.mark.asyncio
 async def test_validate_core_data_stale():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     mock_result_1 = MagicMock()
     mock_brief = MagicMock()
@@ -60,7 +61,7 @@ async def test_validate_core_data_stale():
 
 @pytest.mark.asyncio
 async def test_validate_core_data_brief_age_custom_limit():
-    session = AsyncMock()
+    session = create_mock_async_session()
     now = datetime.datetime.now(datetime.timezone.utc)
     
     mock_result_1 = MagicMock()

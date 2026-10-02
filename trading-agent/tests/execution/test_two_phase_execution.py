@@ -106,13 +106,12 @@ async def test_execution_service_blocks_when_effect_gate_aborted():
     mock_gate.check.return_value = MagicMock(approved=True, checks_passed=['all'], checks_failed=[], rejection_reasons=[])
     svc.gate = mock_gate
 
-    session = AsyncMock()
-    session.add = MagicMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_result.scalars.return_value.first.return_value = None
-    mock_result.scalars.return_value.all.return_value = []
-    session.execute = AsyncMock(return_value=mock_result)
+    from tests.conftest import create_mock_async_session
+    session = create_mock_async_session()
+    mock_bind = MagicMock()
+    mock_bind.dialect.name = "sqlite"
+    session.get_bind = MagicMock(return_value=mock_bind)
+    session.bind = mock_bind
 
     analysis = AssetAnalysis(
         id=999,

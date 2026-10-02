@@ -641,9 +641,8 @@ class AgentHarness:
                 description=f"{desc} - {details}",
                 timestamp=datetime.now(timezone.utc),
             )
-            async with get_session() as log_session:
-                log_session.add(log_entry)
-                await log_session.commit()
+            session.add(log_entry)
+            await session.commit()
         except Exception as e:
             logger.debug(f"[{stage_name}][AgentHarness] Failed to log tool call audit trail (non-fatal): {e}")
 

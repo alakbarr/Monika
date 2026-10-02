@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -5,7 +6,7 @@ from utils.calibration.confidence_calibrator import compute_confidence_calibrati
 
 @pytest.mark.asyncio
 async def test_compute_confidence_calibration_no_data():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute.return_value = AsyncMock(all=lambda: [])
     
     result = await compute_confidence_calibration(mock_session)
@@ -31,7 +32,7 @@ async def test_compute_confidence_calibration_calibrated():
 
     mock_results = [(MockRecord(win, conf), MockAnalysis(win, conf)) for win, conf in simulated_data]
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute.return_value = AsyncMock(all=lambda: mock_results)
     
     result = await compute_confidence_calibration(mock_session)

@@ -37,6 +37,15 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> Opti
         return None
         
     lines = [
+        "---",
+        "name: fundamental-performance-notes",
+        "description: \"Stage 1 fundamental bias performance notes, accuracy, and calibrated weights.\"",
+        "category: TRADING",
+        "version: 1.0.0",
+        "platforms: [windows, linux, macos]",
+        "tags: [performance, fundamental, stage1, accuracy, brier_score, currency_bias]",
+        "---",
+        "",
         f"# Fundamental Stage Performance Notes — Auto-Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
         "",
         f"## Overall Macro Bias Accuracy (Last 30 Days)",
@@ -115,6 +124,15 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     # Generate markdown content
     now = datetime.now(timezone.utc)
     lines = [
+        "---",
+        "name: performance-notes",
+        "description: \"Stage 2 execution performance review notes and per-asset bias tracking.\"",
+        "category: TRADING",
+        "version: 1.0.0",
+        "platforms: [windows, linux, macos]",
+        "tags: [performance_notes, stage2, paper_trading, calibration, execution_notes]",
+        "---",
+        "",
         f"# Performance Notes — Auto-Generated {now.strftime('%Y-%m-%d')}",
         f"",
         f"## IMPORTANT: These notes are INFORMATIONAL ONLY.",

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Comprehensive Unit Tests for Overhauled Alpha Strategy Discovery & Paper Incubation Pipeline.
 """
@@ -101,7 +102,7 @@ async def test_xau_trend_engine_numeric_parsing():
     from analysis.strategies.xau_trend_engine import XAUTrendEngine
     strat = XAUTrendEngine({"trading": {}})
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     fast_mock = MagicMock()
     fast_mock.value_json = json.dumps({"value": 2650.5})
     slow_mock = MagicMock()
@@ -141,7 +142,7 @@ async def test_btc_donchian_breakout_abstract_contract():
     from analysis.strategies.btc_donchian_breakout import BTCDonchianBreakout
     strat = BTCDonchianBreakout({"trading": {}})
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     candles = [
         MagicMock(high=65000.0, low=64000.0, close=64500.0, volume=100.0)
         for _ in range(35)
@@ -280,7 +281,7 @@ async def test_context_builder_quant_edge_injection():
     from analysis.stages.per_asset.context_builder import ContextBuilder
 
     cb = ContextBuilder(settings={"trading": {}})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     with patch("analysis.calculators.regime_classifier.classify_market_regime", new=AsyncMock(return_value={"regime": "TREND"})), \
          patch("analysis.strategies.registry.StrategyRegistry.evaluate_all", new=AsyncMock(return_value=[

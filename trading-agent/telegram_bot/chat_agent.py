@@ -776,7 +776,8 @@ class ChatAgent:
                             await message.edit_text(display, parse_mode="HTML")
                             last_edit = now
                     except RetryAfter as e:
-                        retry_delay = float(getattr(e, "retry_after", 1.2))
+                        val = getattr(e, "retry_after", 1.2)
+                        retry_delay = float(val.total_seconds()) if hasattr(val, "total_seconds") else float(val)
                         await asyncio.sleep(retry_delay)
                         last_edit = time.monotonic()
                     except BadRequest:

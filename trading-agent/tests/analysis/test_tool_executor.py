@@ -2,6 +2,7 @@ import pytest
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.tools.tool_executor import ToolExecutor
 from database.models import (
     EconomicCalendar, TechnicalIndicator, PriceOHLCV, 
@@ -12,7 +13,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_execute_success(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
         
@@ -24,7 +25,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_execute_unknown(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
         
@@ -34,7 +35,7 @@ class TestToolExecutor:
         assert "non_existent" in result["error"]
 
     def test_tool_name_normalization(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         # Prefix duplication
@@ -54,7 +55,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_execute_with_duplicated_prefix(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
         executor._tool_submit_fundamental_brief = AsyncMock(return_value={"status": "recorded"})
 
@@ -65,7 +66,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_execute_failure(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
         
@@ -87,7 +88,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_get_economic_calendar(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
         
@@ -104,7 +105,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
@@ -166,7 +167,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_get_technical_indicators_success(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         executor = ToolExecutor(mock_session)
         
@@ -190,7 +191,7 @@ class TestToolExecutor:
     async def test_submit_asset_analysis_validation_failure(self, mock_calc_conf):
         mock_calc_conf.return_value = {"computed_score": 0}
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ts = MagicMock()
         mock_ts.scalar_one_or_none.return_value = datetime.now(timezone.utc)
         def execute_side_effect(*args, **kwargs):
@@ -253,7 +254,7 @@ class TestToolExecutor:
             "issues": []
         }
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
@@ -351,7 +352,7 @@ class TestToolExecutor:
         """Test that retrying within the same ToolExecutor instance updates existing analysis."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
@@ -434,7 +435,7 @@ class TestToolExecutor:
         """Test that submitting a new analysis cancels older pending triggers for the same symbol."""
         mock_calc_conf.return_value = {"computed_score": 8, "max_score": 14, "components": [], "issues": []}
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
@@ -474,7 +475,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_get_price_momentum_success(self):
         """Test price momentum tool with sufficient data and ATR available."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         now = datetime.now(timezone.utc)
@@ -515,7 +516,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_get_price_momentum_insufficient_data(self):
         """Test price momentum tool when fewer than 2 bars available."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         mock_result = MagicMock()
@@ -531,7 +532,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_get_price_momentum_no_atr(self):
         """Test price momentum tool when ATR unavailable (graceful degradation)."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         now = datetime.now(timezone.utc)
@@ -563,7 +564,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_with_priced_in(self):
         """Test that priced_in_assessment is stored in structured_json."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
@@ -631,7 +632,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_weak_invalidation_rejected(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
         executor.called_tools.add("get_dxy")
         executor.called_tools.add("get_vix")
@@ -681,7 +682,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_check_anchoring_and_require_justification(self):
         from datetime import datetime, timedelta
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         # Mock 4 distinct cycle briefs in DB (spaced 1 hour apart)
@@ -722,7 +723,7 @@ class TestToolExecutor:
     async def test_check_anchoring_distinct_cycle_deduplication(self):
         """Test that multiple briefs generated in the same 30m window are deduplicated and do not falsely trigger anchoring."""
         from datetime import datetime, timedelta
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
 
         # 3 briefs generated in the same 10-minute window, and 1 brief from 6 hours ago (total 2 distinct cycles)
@@ -747,7 +748,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_weekend_mode(self):
         """Test that on weekend, crypto priced-in without COT report is accepted."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
@@ -804,7 +805,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_tool_executor_symbol_resilience_and_auto_injection(self):
         """Test ToolExecutor symbol binding, auto-injection on missing symbol, and alias resolution."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.flush = AsyncMock()
         mock_session.commit = AsyncMock()
@@ -848,7 +849,7 @@ class TestToolExecutor:
 
     @pytest.mark.asyncio
     async def test_validate_fundamental_brief_auto_fill_cot(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
         executor.called_tools.add("get_dxy")
         executor.called_tools.add("get_vix")
@@ -894,7 +895,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_tool_get_fundamental_brief_staleness_thresholds(self):
         from datetime import timedelta
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={})
 
         now = datetime.now(timezone.utc)
@@ -962,7 +963,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_submit_fundamental_brief_auto_harmonize_counter_thesis(self):
         """Verify that omitting strongest_counter_thesis auto-synthesizes from invalidation_conditions without rejection."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session, settings={})
         executor.called_tools.update({"get_dxy", "get_vix"})
 

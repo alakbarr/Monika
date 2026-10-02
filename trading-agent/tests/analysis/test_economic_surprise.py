@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.calculators.economic_surprise import _parse_numeric, compute_surprise_scores
@@ -23,7 +24,7 @@ class TestEconomicSurprise:
     @pytest.mark.asyncio
     async def test_compute_surprise_scores(self):
         # Setup mock session
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         # Create mock events
@@ -60,7 +61,7 @@ class TestEconomicSurprise:
 
     @pytest.mark.asyncio
     async def test_compute_surprise_scores_no_events(self):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/harness/test_domain_plugins_integration.py
 # ==============================================================================
@@ -102,7 +103,7 @@ async def test_macro_to_asset_pipeline():
 
     assert engine.active_pipeline is pipeline
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     proposals = await pipeline.execute_analysis_cycle(mock_session, ["EURUSD", "GBPUSD"])
     assert proposals == []
     mock_scheduler.run_cycle.assert_awaited_once_with(mock_session, forced=False)

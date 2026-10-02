@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -12,7 +13,7 @@ async def test_skill_crystallizer_llm_synthesis(tmp_path):
     crystallizer = SkillCrystallizer()
     crystallizer.SKILLS_DIR = tmp_path
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_r1 = MagicMock()
     mock_r1.symbol = "BTCUSD"
     mock_r1.confidence = 0.92
@@ -106,7 +107,7 @@ async def test_skill_attribution_and_auto_deprecation(tmp_path):
     assert skill_name in active_skills
 
     # Mock DB session for SystemConfig
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     existing_row = None
 
@@ -171,7 +172,7 @@ async def test_skill_crystallizer_configurable_threshold(tmp_path):
     crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 6}})
     crystallizer.SKILLS_DIR = tmp_path
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     reflections = []
     for i in range(5):
         r = MagicMock()

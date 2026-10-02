@@ -13,6 +13,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.conftest import create_mock_async_session
 from database.models import PaperTradeRecord, SystemConfig
 from utils.analytics.paper_tracker import PaperTracker
 from risk.risk_gate import RiskGate
@@ -35,7 +36,7 @@ async def test_streak_policy_disabled_does_not_suspend():
             }
         }
     }
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     suspended = await tracker.check_and_suspend_poor_performers(mock_session, settings)
     assert suspended == []
 
@@ -58,7 +59,7 @@ async def test_streak_policy_warn_and_scale_does_not_suspend_and_risk_gate_passe
             }
         }
     }
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 1. Tracker check_and_suspend_poor_performers skips suspension
     suspended = await tracker.check_and_suspend_poor_performers(mock_session, settings)
@@ -75,7 +76,7 @@ async def test_streak_policy_warn_and_scale_does_not_suspend_and_risk_gate_passe
     mock_scalars.all.return_value = mock_trades
     mock_res = MagicMock()
     mock_res.scalars.return_value = mock_scalars
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
 
     gate = RiskGate(settings)
     ok, reason = await gate._check_consecutive_losses(mock_session, "EURUSD")
@@ -105,7 +106,7 @@ async def test_streak_policy_strict_suspends_and_blocks():
         PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.8, closed_at=now - timedelta(hours=2)),
         PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", pnl_pct=-0.6, closed_at=now - timedelta(hours=3)),
     ]
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Query 1: SystemConfig suspended_symbols -> None
     res_cfg = MagicMock()
@@ -117,7 +118,7 @@ async def test_streak_policy_strict_suspends_and_blocks():
     res_trades_scalars.all.return_value = mock_trades
     res_trades.scalars.return_value = res_trades_scalars
 
-    mock_session.execute.side_effect = [res_cfg, res_trades]
+    mock_session.execute = AsyncMock(side_effect=[res_cfg, res_trades])
 
     tracker = PaperTracker()
     suspended = await tracker.check_and_suspend_poor_performers(mock_session, settings)
@@ -161,7 +162,7 @@ async def test_infinite_loop_bug_fix_expired_suspension_does_not_resuspend():
         PaperTradeRecord(symbol="EURUSD", status="closed", exit_reason="sl_hit", closed_at=last_until - timedelta(hours=5)),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Query 1: SystemConfig
     res_cfg = MagicMock()
@@ -173,7 +174,7 @@ async def test_infinite_loop_bug_fix_expired_suspension_does_not_resuspend():
     res_trades_scalars.all.return_value = []  # No trades closed after last_until!
     res_trades.scalars.return_value = res_trades_scalars
 
-    mock_session.execute.side_effect = [res_cfg, res_trades]
+    mock_session.execute = AsyncMock(side_effect=[res_cfg, res_trades])
 
     tracker = PaperTracker()
     suspended = await tracker.check_and_suspend_poor_performers(mock_session, settings)
@@ -184,7 +185,7 @@ async def test_infinite_loop_bug_fix_expired_suspension_does_not_resuspend():
 @pytest.mark.asyncio
 async def test_unsuspend_symbol_and_all():
     """Verify unsuspend_symbol and unsuspend_all correctly update SystemConfig."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     tracker = PaperTracker()
 
     # Setup initial suspended list with EURUSD and GBPUSD
@@ -197,7 +198,7 @@ async def test_unsuspend_symbol_and_all():
     )
     res_cfg = MagicMock()
     res_cfg.scalar_one_or_none.return_value = cfg
-    mock_session.execute.return_value = res_cfg
+    mock_session.execute = AsyncMock(return_value=res_cfg)
 
     # Test unsuspend_symbol EURUSD
     ok = await tracker.unsuspend_symbol(mock_session, "EURUSD")
@@ -241,7 +242,7 @@ async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
 
     sync = DummySync(mock_mt5, mock_gate, settings=settings)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     # Mock 3 SL hits today
     res_count = MagicMock()
     res_count.scalar_one_or_none.return_value = 3

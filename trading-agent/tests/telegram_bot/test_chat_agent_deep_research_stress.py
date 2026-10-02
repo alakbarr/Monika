@@ -12,8 +12,17 @@ Areas Tested:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from telegram_bot.chat_agent import ChatAgent, PendingAction
 from analysis.tools.tools_definitions import PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+
+
+@pytest.fixture(autouse=True)
+def mock_chat_agent_db_session():
+    with patch("telegram_bot.chat_agent.get_session") as mock_get_session:
+        mock_sess = create_mock_async_session()
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
+        yield mock_sess
 
 
 # ==============================================================================

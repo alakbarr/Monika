@@ -51,8 +51,10 @@ async def test_timesfm_compute_and_save_forecast(db_session):
     db_session.add(atr_ind)
     await db_session.commit()
 
+    from unittest.mock import patch
     engine = TimesFMEngine({"timesfm": {"enabled": True}})
-    forecast = await engine.compute_forecast(db_session, "XAUUSD", timeframe="H1", horizon_steps=24)
+    with patch.object(TimesFMEngine, "get_model", return_value=None):
+        forecast = await engine.compute_forecast(db_session, "XAUUSD", timeframe="H1", horizon_steps=24)
 
     assert forecast is not None
     assert forecast["symbol"] == "XAUUSD"

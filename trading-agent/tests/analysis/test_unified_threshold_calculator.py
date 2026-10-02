@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 from collections import namedtuple
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -7,7 +8,7 @@ TradeStats = namedtuple('TradeStats', ['total_trades', 'winning_trades'])
 
 @pytest.mark.asyncio
 async def test_unified_threshold_base_and_regime_cap():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     mock_vix = MagicMock()
     mock_vix.close = 22.0
@@ -50,7 +51,7 @@ async def test_unified_threshold_base_and_regime_cap():
 
 @pytest.mark.asyncio
 async def test_unified_threshold_elevated_vix_over_30():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     mock_vix = MagicMock()
     mock_vix.close = 32.0  # > 30 triggers +1 penalty
@@ -85,7 +86,7 @@ async def test_unified_threshold_logging_live_vs_backtest(caplog):
     import logging
     from datetime import datetime, timezone
 
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_trade_stats = TradeStats(total_trades=0, winning_trades=0)
 
     def mock_execute(query):

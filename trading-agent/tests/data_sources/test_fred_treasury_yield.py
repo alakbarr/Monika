@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
@@ -34,7 +35,7 @@ class TestFREDDataFetcher:
 
     @pytest.mark.asyncio
     async def test_fetch_treasury_series(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_result = MagicMock()
@@ -60,7 +61,7 @@ class TestFREDDataFetcher:
 
     @pytest.mark.asyncio
     async def test_fetch_interest_rate(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_result = MagicMock()
@@ -113,7 +114,7 @@ class TestFREDDataFetcher:
     @pytest.mark.asyncio
     async def test_fetch_treasury_series_handles_nd_gracefully(self):
         """M-10: Guard float conversions when FRED returns 'ND' or empty string."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -136,7 +137,7 @@ class TestFREDDataFetcher:
     @pytest.mark.asyncio
     async def test_fetch_interest_rate_handles_nd_gracefully(self):
         """M-10: Guard float conversions in interest rates when FRED returns 'ND'."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         fetcher = FREDDataFetcher(mock_session, {}, api_key="test")

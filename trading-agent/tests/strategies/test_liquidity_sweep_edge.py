@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch
 from analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShift
@@ -6,7 +7,7 @@ from analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShi
 async def test_liquidity_sweep_edge():
     settings = {'trading': {'edge_strategy': {'liquidity_sweep': {'enabled': True, 'require_volume_confirmation': True}}}}
     strategy = LiquiditySweepStructuralShift(settings)
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     with patch('analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep', new_callable=AsyncMock) as mock_detect:
         # 1. Reject if no structure

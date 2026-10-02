@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.memory.skill_crystallizer import SkillCrystallizer
@@ -7,7 +8,7 @@ from analysis.memory.skill_crystallizer import SkillCrystallizer
 async def test_skill_crystallizer_cluster():
     crystallizer = SkillCrystallizer(settings={"learning": {"min_crystallization_wins": 5}})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_r1 = MagicMock()
     mock_r1.symbol = "EURUSD"
     mock_r1.confidence = 0.85

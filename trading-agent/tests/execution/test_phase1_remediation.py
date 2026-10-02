@@ -32,6 +32,7 @@ from execution.execution_service import ExecutionService
 from execution.verification_engine import EvidenceFirstVerifier
 from risk.position_sizing import PositionSizer
 from database.event_store import TradingEventStore
+from tests.conftest import create_mock_async_session
 
 
 # ------------------------------------------------------------------------------
@@ -136,7 +137,7 @@ async def test_mt5_close_position_lots_keyword_compatibility():
 @pytest.mark.asyncio
 async def test_precommit_gate_with_populated_trade_levels():
     gate = TradePreCommitGate(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case A: Trade levels provided directly in decision_data
     decision_data = {
@@ -165,7 +166,7 @@ async def test_precommit_gate_with_populated_trade_levels():
 @pytest.mark.asyncio
 async def test_precommit_gate_db_fallback_when_sl_tp_missing():
     gate = TradePreCommitGate(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Mock AssetAnalysis returned from session.get
     mock_analysis = MagicMock()
@@ -193,7 +194,7 @@ async def test_precommit_gate_db_fallback_when_sl_tp_missing():
 @pytest.mark.asyncio
 async def test_position_sizing_blown_account_protection():
     sizer = PositionSizer(settings={"paper_trading": {"initial_balance": 10000.0}})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Zero equity
     res_zero = await sizer.calculate_with_session(
@@ -254,7 +255,7 @@ async def test_evidence_verifier_assert_9_with_rationale_fallback():
         "rationale": "Strong bullish divergence on H4 RSI indicator. Key support holding firmly above 1.0950 level.",
     }
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     passed, violations = await verifier.pre_trade_assertions(signal, session=mock_session)
     assert "ASSERT_9" not in " ".join(violations)
 
@@ -271,26 +272,28 @@ async def test_provider_max_tokens_and_kwargs_signatures():
     from analysis.providers.groq_provider import GroqProvider
     from analysis.providers.ollama_provider import OllamaProvider
 
-    providers = [
-        AnthropicProvider(model="claude-3-5-haiku-20241022", settings={}),
-        OpenAIProvider(model="gpt-4o-mini", settings={}),
-        OpenRouterProvider(model="deepseek/deepseek-chat", settings={}),
-        GroqProvider(model="llama-3.3-70b-versatile", settings={}),
-        OllamaProvider(model="llama3", settings={}),
-    ]
+    with patch("anthropic.AsyncAnthropic"), \
+         patch("openai.AsyncOpenAI"):
+        providers = [
+            AnthropicProvider(model="claude-3-5-haiku-20241022", settings={}),
+            OpenAIProvider(model="gpt-4o-mini", settings={}),
+            OpenRouterProvider(model="deepseek/deepseek-chat", settings={}),
+            GroqProvider(model="llama-3.3-70b-versatile", settings={}),
+            OllamaProvider(model="llama3", settings={}),
+        ]
 
-    for p in providers:
-        # None client to avoid network calls; test method call signatures without TypeError
-        p.client = None
-        if isinstance(p, OllamaProvider):
-            p._client = AsyncMock()
-            p._client.ainvoke.return_value = MagicMock(content="{}", response_metadata={})
-        # Must accept max_tokens and arbitrary kwargs without raising TypeError
-        res_gen = await p.generate("Hello", system="test", temperature=0.5, max_tokens=1024, extra_arg=True)
-        assert res_gen is None or isinstance(res_gen, str)
+        for p in providers:
+            p.client = None
+            if isinstance(p, OllamaProvider):
+                p._client = AsyncMock()
+                p._client.ainvoke.return_value = MagicMock(content="{}", response_metadata={})
+            # Must accept max_tokens and arbitrary kwargs without raising TypeError
+            res_gen = await p.generate("Hello", system="test", temperature=0.5, max_tokens=1024, extra_arg=True)
+            assert res_gen is None or isinstance(res_gen, str)
 
-        res_json = await p.classify_json("Hello", system_prompt="test", schema={}, temperature=0.5, max_tokens=1024, extra_arg=True)
-        assert res_json is None or isinstance(res_json, dict)
+            res_json = await p.classify_json("Hello", system_prompt="test", schema={}, temperature=0.5, max_tokens=1024, extra_arg=True)
+            assert res_json is None or isinstance(res_json, dict)
+
 
 
 # ------------------------------------------------------------------------------
@@ -326,16 +329,7 @@ async def test_telegram_cmd_interrupt_synchronous():
 
 @pytest.mark.asyncio
 async def test_trading_event_store_savepoint_isolation():
-    mock_session = AsyncMock()
-    
-    class DummyNested:
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            return False
-
-    mock_session.begin_nested = MagicMock(return_value=DummyNested())
-    mock_session.flush = AsyncMock()
+    mock_session = create_mock_async_session()
 
     event_id = await TradingEventStore.emit(
         session=mock_session,

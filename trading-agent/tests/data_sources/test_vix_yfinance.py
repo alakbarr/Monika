@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/data_sources/test_vix_yfinance.py
 # ==============================================================================
@@ -180,7 +181,7 @@ class TestVIXFetcher:
 
     @pytest.mark.asyncio
     async def test_save_new(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_result = MagicMock()
@@ -202,7 +203,7 @@ class TestVIXFetcher:
 
     @pytest.mark.asyncio
     async def test_save_existing(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         mock_result = MagicMock()
@@ -219,7 +220,7 @@ class TestVIXFetcher:
 
     @pytest.mark.asyncio
     async def test_get_latest(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         
@@ -235,7 +236,7 @@ class TestVIXFetcher:
 
     @pytest.mark.asyncio
     async def test_get_latest_none(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -256,7 +257,7 @@ class TestVIXFetcher:
     @pytest.mark.asyncio
     async def test_save_existing_via_scalars(self):
         """Verify deduplication works with SQLAlchemy scalars().all() result."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
@@ -275,7 +276,7 @@ class TestVIXFetcher:
     @pytest.mark.asyncio
     async def test_save_partial_existing(self):
         """Verify that existing dates are skipped while new dates are inserted."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
@@ -302,7 +303,7 @@ class TestVIXFetcher:
     @pytest.mark.asyncio
     async def test_save_duplicate_in_dataframe(self):
         """Verify that duplicate rows within the same DataFrame are deduplicated."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
@@ -325,7 +326,7 @@ class TestVIXFetcher:
     @pytest.mark.asyncio
     async def test_save_commit_failure_returns_zero(self):
         """Verify that when safe_commit fails, _save returns 0."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()

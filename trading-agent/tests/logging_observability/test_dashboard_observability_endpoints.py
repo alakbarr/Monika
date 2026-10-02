@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/logging_observability/test_dashboard_observability_endpoints.py
 # ==============================================================================
@@ -15,7 +16,7 @@ class TestObservabilityEndpoints:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_playbook_tree(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()
@@ -43,7 +44,7 @@ class TestObservabilityEndpoints:
 
     @patch("database.db.AsyncSessionLocal")
     def test_get_prompt_cache_metrics(self, mock_session_local):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session_local.return_value.__aenter__.return_value = mock_session
 
         mock_res = MagicMock()

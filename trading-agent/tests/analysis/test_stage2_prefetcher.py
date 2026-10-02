@@ -4,9 +4,8 @@ from analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 
 ASSET_UNIVERSE = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XTIUSD", "BTCUSD", "XBRUSD"]
 
-def test_compress_history_includes_tick_volume():
-    session = AsyncMock()
-    bundler = Stage2DataBundler(session)
+def test_compress_history_includes_tick_volume(mock_async_session):
+    bundler = Stage2DataBundler(mock_async_session)
     sample_history = {
         "symbol": "EURUSD",
         "bars": [
@@ -36,9 +35,8 @@ def test_compress_history_includes_tick_volume():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("symbol", ASSET_UNIVERSE)
-async def test_prefetch_asset_fetches_d1_history_for_all_symbols(symbol):
-    session = AsyncMock()
-    bundler = Stage2DataBundler(session, settings={"trading": {"asset_universe": ASSET_UNIVERSE}})
+async def test_prefetch_asset_fetches_d1_history_for_all_symbols(symbol, mock_async_session):
+    bundler = Stage2DataBundler(mock_async_session, settings={"trading": {"asset_universe": ASSET_UNIVERSE}})
     
     executed_tools = []
     async def mock_execute(tool_name, inp):

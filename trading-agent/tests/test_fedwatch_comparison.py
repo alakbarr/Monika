@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit and Integration Tests for CME FedWatch Historical Comparison & Systematic Tool Enhancements.
 Tests:
@@ -96,7 +97,7 @@ async def test_fedwatch_compare_hours_ago():
         ),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_records
@@ -148,7 +149,7 @@ async def test_fedwatch_event_time_comparison():
         ),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_records
@@ -194,7 +195,7 @@ async def test_fedwatch_include_history():
         ),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_records
@@ -253,7 +254,7 @@ async def test_central_bank_expectations_comparison():
         ),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_records
@@ -285,7 +286,7 @@ async def test_economic_calendar_event_name_filter():
         MockCalendarRow("GDP Annualized (QoQ)", now_utc - timedelta(hours=3)),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [mock_events[0]]
@@ -314,7 +315,7 @@ async def test_news_items_query_filter():
         MockNewsRow("Fed rate outlook shifts after PCE data", "Investors price in lower chance of hike", now_utc),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_news
@@ -344,7 +345,7 @@ async def test_price_history_as_of_filter():
         MockPriceRow("XAUUSD", "H1", now_utc - timedelta(hours=1)),
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = mock_bars
@@ -414,7 +415,7 @@ async def test_stage1_databundler_correlates_recent_usd_event():
     """Verify Stage1DataBundler automatically detects recent past USD events and queries FedWatch comparison."""
     from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {"trading": {"asset_universe": ["EURUSD", "XAUUSD"]}}
     bundler = Stage1DataBundler(session=mock_session, settings=settings)
 
@@ -480,7 +481,7 @@ async def test_stage1_databundler_multi_event_correlation():
     """Verify Stage1DataBundler tracks multiple USD events occurring at different hours of the day (19:30, 20:45, 21:00, 01:00)."""
     from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     bundler = Stage1DataBundler(session=mock_session, settings={"trading": {"asset_universe": ["XAUUSD"]}})
 
     t1 = "2026-09-30T12:30:00+00:00"  # 19:30 WIB: Core PCE
@@ -673,7 +674,7 @@ async def test_stage1_to_stage2_repricing_inheritance():
         }),
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = mock_brief_row
     mock_session.execute = AsyncMock(return_value=mock_res)

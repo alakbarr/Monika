@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from utils.validation.data_validator import validate_data_freshness, check_data_coherence, is_crypto_symbol, is_forex_market_closed
@@ -6,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 class TestDataValidator:
     @pytest.mark.asyncio
     async def test_validate_fresh_h4_within_8h(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)  # Tuesday
         
@@ -26,7 +27,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_validate_stale_h4_over_8h(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)  # Tuesday
         
@@ -45,7 +46,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_validate_weekend_forex_vs_crypto(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         # Saturday noon UTC
         weekend_now = datetime(2026, 8, 22, 12, 0, 0, tzinfo=timezone.utc)
@@ -71,7 +72,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_validate_missing(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         now = datetime(2026, 8, 25, 0, 0, 43, tzinfo=timezone.utc)
         
@@ -101,7 +102,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_check_data_coherence_d1_fresh_at_18_5h(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         now = datetime(2026, 8, 25, 18, 30, 0, tzinfo=timezone.utc)  # Tuesday evening
         
         # H4 OHLCV (2h old), H4 Ind (2h old), D1 OHLCV (18.5h old), D1 Ind (18.5h old)
@@ -127,7 +128,7 @@ class TestDataValidator:
     @pytest.mark.asyncio
     async def test_check_data_coherence_d1_fresh_at_35_9h(self):
         """Verify D1 data is valid at 35.9h (e.g. Friday 18:52 WIB / 11:52 UTC from Thursday open)."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         now = datetime(2026, 9, 25, 11, 52, 18, tzinfo=timezone.utc)  # Friday
         
         # H4 fresh (2h), D1 fresh under 48h (35.9h)
@@ -152,7 +153,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_check_data_coherence_d1_stale_over_48h(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         now = datetime(2026, 8, 25, 18, 30, 0, tzinfo=timezone.utc)  # Tuesday evening
         
         # H4 fresh (2h), D1 stale (52h > 48h)
@@ -177,7 +178,7 @@ class TestDataValidator:
 
     @pytest.mark.asyncio
     async def test_check_data_coherence_indicator_desync(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         now = datetime(2026, 8, 25, 12, 0, 0, tzinfo=timezone.utc)
         
         # H4 OHLCV (1h old), H4 Ind (6h old -> 5h diff > 4.5h allowed desync)
@@ -203,7 +204,7 @@ class TestDataValidator:
     @pytest.mark.asyncio
     async def test_validate_macro_freshness_monday_morning_and_afternoon(self):
         """Verify Friday close macro data (VIX, DXY, Yields) is valid on Monday morning & afternoon."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         # Monday 07:00 WIB (00:00 UTC) -> Friday midnight UTC is 3.0 days old
         monday_morning = datetime(2026, 8, 31, 0, 3, 52, tzinfo=timezone.utc)
         friday_dt = datetime(2026, 8, 28, 0, 0, 0, tzinfo=timezone.utc)
@@ -231,7 +232,7 @@ class TestDataValidator:
     @pytest.mark.asyncio
     async def test_validate_macro_freshness_wednesday_stale_detection(self):
         """Verify Friday close macro data is flagged as stale on Wednesday (> 4.5 days old)."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         wednesday = datetime(2026, 9, 2, 12, 0, 0, tzinfo=timezone.utc)
         friday_dt = datetime(2026, 8, 28, 0, 0, 0, tzinfo=timezone.utc)  # 5.5 days old
         

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
@@ -105,7 +106,7 @@ async def test_preflight_high_impact_news_freeze():
     mock_tick.time = test_time.timestamp()
     mock_tick.spread = 8.0
     mock_mt5.get_latest_tick = AsyncMock(return_value=mock_tick)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     with patch.object(PreFlightTurnGate, "check_high_impact_news", AsyncMock(return_value=(True, "US Non-Farm Payrolls (USD)"))):
         is_allowed, reason = await PreFlightTurnGate.evaluate_preconditions(

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Advanced Analytics: Macro Cross-Asset Correlation & Coinglass Open Interest.
 """
@@ -11,7 +12,7 @@ from data_sources.coinglass_funding import CoinglasFundingFetcher
 
 @pytest.mark.asyncio
 async def test_cross_asset_macro_correlation_computation():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.all.return_value = [
         (datetime(2026, 9, 1, tzinfo=timezone.utc), 4.25),

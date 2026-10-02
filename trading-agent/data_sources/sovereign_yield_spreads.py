@@ -68,7 +68,18 @@ class SovereignYieldSpreads:
                         prev_close = meta.get("chartPreviousClose", meta.get("previousClose", curr_price))
                         if curr_price is not None:
                             return float(curr_price), float(prev_close or curr_price)
+        except urllib.error.HTTPError as e:
+            try:
+                e.close()
+            except Exception:
+                pass
+            logger.debug(f"Failed fetching yield for {ticker}: {e}")
         except Exception as e:
+            if hasattr(e, "close"):
+                try:
+                    e.close()
+                except Exception:
+                    pass
             logger.debug(f"Failed fetching yield for {ticker}: {e}")
         return None
 

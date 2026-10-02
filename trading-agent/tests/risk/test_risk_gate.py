@@ -4,6 +4,9 @@ from datetime import datetime, timezone, timedelta
 from risk.risk_gate import RiskGate, RiskVerdict
 from risk.position_sizing import SizingResult
 
+from tests.conftest import create_mock_async_session
+
+
 class TestRiskGate:
     @pytest.fixture
     def settings(self):
@@ -31,8 +34,7 @@ class TestRiskGate:
         )
 
     def _setup_mock_session(self, return_value_scalar=None, return_value_scalars=None):
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = return_value_scalar
         
@@ -126,8 +128,7 @@ class TestRiskGate:
         mock_event.event_name = "NFP"
         mock_event.currency = "USD"
         
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
         
         # Scenario 1: SystemConfig has fresh timestamp, but high-impact event is active
         mock_cfg = MagicMock()
@@ -259,7 +260,7 @@ class TestRiskGate:
     @pytest.mark.asyncio
     async def test_assess_weekend_gap_risk_saturday_blocked(self, settings):
         gate = RiskGate(settings)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         # Saturday at 10:00 UTC (weekday == 5, hour == 10)
         saturday_dt = datetime(2026, 8, 22, 10, 0, 0, tzinfo=timezone.utc)
@@ -328,7 +329,7 @@ class TestRiskGate:
         mock_risk_state.trading_paused = False
         mock_risk_state.reason = None
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_exec = AsyncMock()
         mock_exec.scalar_one_or_none.return_value = mock_risk_state
         mock_exec.scalar.return_value = 2
@@ -371,7 +372,7 @@ class TestRiskGate:
         mock_paper.stop_loss = 1.0900  # sl_dist = 0.0100
         mock_paper.risk_pct = 5.0
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         
         # 1st execute: select(RiskState) -> None
         exec_state = MagicMock()

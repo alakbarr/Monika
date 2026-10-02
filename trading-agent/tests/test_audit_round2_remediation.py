@@ -15,6 +15,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.conftest import create_mock_async_session
 from execution.broker_adapter import SimulatedBrokerAdapter, BrokerAdapter, MT5RemoteGatewayAdapter, _get_contract_size
 from execution.service.emergency_manager import EmergencyManagerMixin
 from risk.position_sizing import PositionSizer
@@ -73,10 +74,10 @@ class TestBrokerAdapterRemediation:
 
         manager = DummyExecutionService(broker_adapter=mock_adapter)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
+        mock_session.execute = AsyncMock(return_value=mock_result)
         with patch("execution.service.emergency_manager.get_session") as mock_get_sess:
             mock_get_sess.return_value.__aenter__.return_value = mock_session
             res = await manager.kill_switch(reason="Test kill switch")
@@ -94,7 +95,7 @@ class TestRiskGateRemediation:
         assert hasattr(gate, "_check_weekend_gap_risk")
         assert gate._check_weekend_gap_risk == gate.assess_weekend_gap_risk
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         # ETHUSD gap risk should be allowed (empty/low risk)
         allowed_btc, _ = await gate.assess_weekend_gap_risk(mock_session, "BTCUSD")
         allowed_eth, _ = await gate.assess_weekend_gap_risk(mock_session, "ETHUSD")
@@ -179,10 +180,10 @@ class TestPositionGuardianFridayClose:
             mock_now.hour = 20
             mock_clock_now.return_value = mock_now
 
-            sess = AsyncMock()
+            sess = create_mock_async_session()
             mock_result = MagicMock()
             mock_result.scalars.return_value.all.return_value = [pos_win, pos_loss]
-            sess.execute.return_value = mock_result
+            sess.execute = AsyncMock(return_value=mock_result)
             mock_sess.return_value.__aenter__.return_value = sess
 
             await guardian.check_friday_close_protection()

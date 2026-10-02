@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
@@ -14,7 +15,8 @@ class TestCFTCCOTFetcher:
         assert res == 0
 
     @pytest.mark.asyncio
-    async def test_fetch_all_routing_and_code_query(self):
+    @patch("data_sources.cftc_cot.asyncio.sleep", new_callable=AsyncMock)
+    async def test_fetch_all_routing_and_code_query(self, mock_sleep):
         config = {
             "markets": {
                 "gold": "088691",          # commodity
@@ -66,7 +68,7 @@ class TestCFTCCOTFetcher:
             "lev_money_positions_short": "27944"
         }]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -107,7 +109,7 @@ class TestCFTCCOTFetcher:
             "m_money_positions_short_all": "11251"
         }]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -140,7 +142,7 @@ class TestCFTCCOTFetcher:
             "report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000"
         }]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = 99  # Already exists in DB
@@ -157,7 +159,7 @@ class TestCFTCCOTFetcher:
     async def test_fetch_and_save_non_list_response(self, mock_fetch):
         mock_fetch.return_value = "<html>Error 500</html>"
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         fetcher = CFTCCOTFetcher(mock_session, {})
         res = await fetcher._fetch_and_save("http://test", {}, "gold", "088691")
 
@@ -177,7 +179,7 @@ class TestCFTCCOTFetcher:
             },
         ]
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None

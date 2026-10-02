@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/logging_observability/test_intelligence_routes.py
 # Description: Unit tests for Intelligence & Discovery API Endpoints
@@ -34,7 +35,7 @@ def test_intelligence_router_routes_registered():
 
 def test_get_calendar_events_mocked(client):
     """Test calendar events endpoint returns expected list structure."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -49,7 +50,7 @@ def test_get_calendar_events_mocked(client):
 
 def test_get_upcoming_calendar_mocked(client):
     """Test upcoming calendar events endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -64,7 +65,7 @@ def test_get_upcoming_calendar_mocked(client):
 
 def test_get_cot_data_mocked(client):
     """Test COT data endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -79,7 +80,7 @@ def test_get_cot_data_mocked(client):
 
 def test_get_classified_news_mocked(client):
     """Test classified news endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -94,7 +95,7 @@ def test_get_classified_news_mocked(client):
 
 def test_get_news_sentiment_mocked(client):
     """Test news sentiment breakdown."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -130,7 +131,7 @@ def test_get_plugins_endpoint(client):
 
 def test_get_latest_tearsheet_mocked(client):
     """Test /api/reports/tearsheet/latest endpoint when no outcomes exist."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -147,7 +148,7 @@ def test_get_latest_tearsheet_mocked(client):
 
 def test_get_market_fedwatch_mocked(client):
     """Test /api/market/fedwatch endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -165,7 +166,7 @@ def test_get_market_fedwatch_mocked(client):
 
 def test_get_market_yields_mocked(client):
     """Test /api/market/yields endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -184,7 +185,7 @@ def test_get_market_yields_mocked(client):
 
 def test_get_market_fear_greed_mocked(client):
     """Test /api/market/fear-greed fallback default."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -201,7 +202,7 @@ def test_get_market_fear_greed_mocked(client):
 
 def test_get_market_sentiment_composite_mocked(client):
     """Test /api/market/sentiment-composite endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -220,7 +221,7 @@ def test_get_market_sentiment_composite_mocked(client):
 
 def test_get_crystallized_skills_endpoint(client):
     """Test /api/skills/crystallized endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -237,7 +238,7 @@ def test_get_crystallized_skills_endpoint(client):
 
 def test_get_skill_stats_endpoint(client):
     """Test /api/skills/{name}/stats endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -254,7 +255,7 @@ def test_get_skill_stats_endpoint(client):
 
 def test_curate_skills_endpoint(client):
     """Test POST /api/skills/curate endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch("analysis.memory.skill_crystallizer.SkillCrystallizer.curate_and_prune_skills", new_callable=AsyncMock, return_value=[]):
@@ -267,7 +268,7 @@ def test_curate_skills_endpoint(client):
 
 def test_deprecate_skill_endpoint(client):
     """Test POST /api/skills/{name}/deprecate endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -284,7 +285,7 @@ def test_deprecate_skill_endpoint(client):
 
 def test_crystallize_skills_now_endpoint(client):
     """Test POST /api/skills/crystallize endpoint."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch("logging_observability.dashboard.routes.intelligence.AsyncSessionLocal") as mock_asl:
         mock_asl.return_value.__aenter__.return_value = mock_session
         with patch("analysis.memory.skill_crystallizer.SkillCrystallizer.evaluate_and_crystallize", new_callable=AsyncMock, return_value=[{"name": "test_cryst"}]):

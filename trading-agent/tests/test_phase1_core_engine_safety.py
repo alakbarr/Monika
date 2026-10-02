@@ -5,6 +5,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.conftest import create_mock_async_session
 from database.models import AssetAnalysis, Position, TradeTrigger, PriceOHLCV, TechnicalIndicator
 from execution.execution_service import ExecutionService, ExecutionResult
 from indicators.timesfm_engine import TimesFMEngine
@@ -25,7 +26,7 @@ class TestTimesFMAsyncForwardPass:
         settings = {"indicators": {"timesfm": {"enabled": True}}}
         engine = TimesFMEngine(settings)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         # Mock price data
         target_df_mock = MagicMock()
         target_df_mock.empty = False
@@ -64,7 +65,7 @@ class TestTimesFMAsyncForwardPass:
         settings = {"indicators": {"timesfm": {"enabled": True}}}
         engine = TimesFMEngine(settings)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         target_df_mock = MagicMock()
         target_df_mock.empty = False
         target_df_mock["close"].iloc = [2000.0]
@@ -231,7 +232,7 @@ class TestDeterministicTriggerEngine:
         checker._fire_trigger = AsyncMock(return_value="XAUUSD")
         checker.check_invalidation_conditions = AsyncMock(return_value=[])
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -274,7 +275,7 @@ class TestDeterministicTriggerEngine:
         }
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
 
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -313,7 +314,7 @@ class TestDeterministicTriggerEngine:
             "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5}
         }
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         order_plan = {
             "direction": "buy",
@@ -341,7 +342,7 @@ class TestDeterministicTriggerEngine:
             "execution": {"max_price_staleness_seconds": 120, "max_trigger_slippage_pct": 0.5, "max_trigger_slippage_pips": 5.0}
         }
         svc = ExecutionService(settings, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         order_plan = {
             "direction": "buy",
@@ -365,7 +366,7 @@ class TestDeterministicTriggerEngine:
         mock_mt5 = AsyncMock()
         mock_mt5.get_current_price.return_value = {"ask": 2015.0, "bid": 2014.0}
         svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         # Non-dict
         res1 = await svc.execute_preplanned_order(session, "XAUUSD", "not_a_dict")
@@ -384,7 +385,7 @@ class TestDeterministicTriggerEngine:
         mock_mt5 = AsyncMock()
         mock_mt5.get_current_price.return_value = {"ask": 2015.0, "bid": 2014.0}
         svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         # Zero stop loss
         plan_zero = {"direction": "buy", "entry_price": 2015.0, "stop_loss": 0.0, "lot_size": 0.1}
@@ -404,7 +405,7 @@ class TestDeterministicTriggerEngine:
         mock_mt5 = AsyncMock()
         mock_mt5.get_current_price.return_value = {"ask": 2015.0, "bid": 2014.0}
         svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         # BUY with SL above current price
         plan_buy_inv = {"direction": "buy", "entry_price": 2015.0, "stop_loss": 2025.0, "lot_size": 0.1}
@@ -425,7 +426,7 @@ class TestDeterministicTriggerEngine:
         # Price drifted by 1.0 (10 pips on gold where pip=0.1)
         mock_mt5.get_current_price.return_value = {"ask": 2016.0, "bid": 2015.5}
         svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        session = create_mock_async_session()
 
         plan = {
             "direction": "buy",
@@ -452,13 +453,17 @@ class TestDeterministicTriggerEngine:
         }
         mock_mt5.place_order.return_value = {"success": True, "ticket": 55555, "price": 2015.0}
 
-        svc = ExecutionService({}, mt5_client=mock_mt5, dry_run=True)
-        session = AsyncMock()
+        svc = ExecutionService({"trading": {"auto_execute": True}}, mt5_client=mock_mt5, dry_run=True)
+        session = create_mock_async_session()
         # session.get(AssetAnalysis, ...) returns None -> no row in DB
         session.get = AsyncMock(return_value=None)
         session.add = MagicMock()
         session.flush = AsyncMock()
         session.commit = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = True
+        mock_result.scalars.return_value.all.return_value = []
+        session.execute = AsyncMock(return_value=mock_result)
 
         mock_gate = AsyncMock()
         mock_gate.check.return_value = MagicMock(approved=True, checks_passed=["ok"], checks_failed=[], rejection_reasons=[])

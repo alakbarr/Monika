@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for Targeted Event Store (H5).
 """
@@ -10,7 +11,7 @@ from database.models import TradingEvent
 @pytest.mark.asyncio
 async def test_h5_event_store_emit():
     """H5: Emitting events writes to session with correct correlation and causation IDs."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_session.flush = AsyncMock()
     # emit() uses session.begin_nested() (SAVEPOINT) as async context manager
@@ -59,7 +60,7 @@ async def test_h5_event_store_emit():
 @pytest.mark.asyncio
 async def test_h5_event_store_get_chain():
     """H5: get_chain returns all events associated with a correlation_id."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_events = [
         TradingEvent(id="e1", event_type="cycle.started", correlation_id="c_999"),
         TradingEvent(id="e2", event_type="order.intent", correlation_id="c_999", causation_id="e1"),

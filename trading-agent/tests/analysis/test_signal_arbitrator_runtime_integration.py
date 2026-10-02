@@ -4,6 +4,7 @@ Unit Tests for SignalArbitrator Runtime Parameter Passing & Decision Source Hand
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
+from tests.conftest import create_mock_async_session
 from analysis.arbitration.signal_arbitrator import SignalArbitrator
 from analysis.strategies.base_strategy import EdgeSignal
 
@@ -13,7 +14,7 @@ async def test_signal_arbitrator_with_vix_and_regime():
     """Verify SignalArbitrator handles high VIX (>25) and ranging market conflict gracefully."""
     arbitrator = SignalArbitrator(settings={"arbitration": {"high_vol_vix_threshold": 25.0}})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     sig = EdgeSignal(
         strategy_id="donchian_breakout",
         symbol="BTCUSD",
@@ -53,7 +54,7 @@ async def test_signal_arbitrator_concordant_boost_runtime():
     """Verify SignalArbitrator boosts confidence when Quant and LLM agree."""
     arbitrator = SignalArbitrator(settings={})
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     sig = EdgeSignal(
         strategy_id="donchian_breakout",
         symbol="EURUSD",
@@ -93,7 +94,7 @@ async def test_signal_arbitrator_concordant_boost_runtime():
 async def test_signal_arbitrator_single_quant_signal_normal_vix():
     """Verify single quant signal approved with normal VIX (<=25)."""
     arbitrator = SignalArbitrator(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     sig = EdgeSignal(
         strategy_id="donchian_breakout",
@@ -126,7 +127,7 @@ async def test_signal_arbitrator_single_quant_signal_normal_vix():
 async def test_signal_arbitrator_single_quant_signal_high_vix():
     """Verify single quant signal approved with high VIX (>25) gets 0.5x penalty."""
     arbitrator = SignalArbitrator(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     sig = EdgeSignal(
         strategy_id="bollinger_reversion",
@@ -159,7 +160,7 @@ async def test_signal_arbitrator_single_quant_signal_high_vix():
 async def test_signal_arbitrator_quant_signal_dict_and_duck_typing():
     """Verify quant_signal passed as dict or object without strategy_id handles gracefully without AttributeError."""
     arbitrator = SignalArbitrator(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case A: Dict with strategy_id
     dict_sig = {

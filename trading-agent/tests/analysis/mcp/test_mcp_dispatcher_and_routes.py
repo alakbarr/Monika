@@ -3,10 +3,21 @@
 # ==============================================================================
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
+from tests.conftest import create_mock_async_session
 from analysis.mcp.dispatcher import MonikaMcpDispatcher
 from cli.subcommands.mcp import McpSubcommand
 from logging_observability.dashboard.api import app
+
+
+@pytest.fixture(autouse=True)
+def mock_mcp_db_session():
+    with patch("database.db.get_session") as mock_get_session:
+        mock_sess = create_mock_async_session()
+        mock_sess.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+        mock_get_session.return_value.__aenter__.return_value = mock_sess
+        yield mock_sess
 
 
 @pytest.mark.asyncio

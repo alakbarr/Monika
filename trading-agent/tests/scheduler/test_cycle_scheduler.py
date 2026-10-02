@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from scheduler.cycle_scheduler import CycleScheduler
@@ -57,7 +58,7 @@ class TestCycleScheduler:
         settings, mock_mt5, mock_fundamental, mock_per_asset
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.execute = AsyncMock(return_value=MagicMock())
         nested_cm = AsyncMock()
@@ -123,7 +124,7 @@ class TestCycleScheduler:
         settings, mock_mt5, mock_fundamental, mock_per_asset
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.execute = AsyncMock(return_value=MagicMock())
         nested_cm = AsyncMock()
@@ -163,6 +164,8 @@ class TestCycleScheduler:
         assert summary["fundamental"]["success"] is False
 
     @pytest.mark.asyncio
+    @patch("data_sources.central_bank_watch.CentralBankWatchFetcher")
+    @patch("data_sources.bond_yields_fetcher.BondYieldFetcher")
     @patch("database.db.get_session")
     @patch("scheduler.macro_data_scheduler.get_session")
     @patch("scheduler.cycle_scheduler.get_session")
@@ -193,9 +196,11 @@ class TestCycleScheduler:
         mock_cycle_get_session,
         mock_macro_get_session,
         mock_db_get_session,
+        mock_bond_yields,
+        mock_cbw,
         settings
     ):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.execute = AsyncMock(return_value=MagicMock())
         mock_ctx = AsyncMock()
@@ -215,6 +220,9 @@ class TestCycleScheduler:
         
         dxy_instance = mock_dxy.return_value
         dxy_instance.fetch = AsyncMock(side_effect=Exception("API Error"))
+
+        mock_bond_yields.return_value.fetch = AsyncMock(return_value={"10Y": 4.1})
+        mock_cbw.return_value.fetch_all = AsyncMock(return_value={"expectations": {}, "yields": {}})
         
         scheduler = CycleScheduler(settings)
         res = await scheduler._refresh_data_sources()
@@ -237,7 +245,7 @@ class TestCycleScheduler:
         settings, mock_mt5, mock_fundamental, mock_per_asset
     ):
         from scheduler.graph_cycle_scheduler import GraphCycleScheduler
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -279,7 +287,7 @@ class TestCycleScheduler:
         mock_db_session,
         settings
     ):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
@@ -307,7 +315,7 @@ class TestCycleScheduler:
     @pytest.mark.asyncio
     async def test_get_symbol_paper_stats_rolling_window_20(self, settings):
         scheduler = CycleScheduler(settings)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
 
         # Mock 20 records: 15 wins (tp_hit), 5 losses (sl_hit)

@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
+from tests.conftest import create_mock_async_session
 from utils.infra.notifier import AgentNotifier
 
 class TestNotifier:
@@ -17,7 +18,7 @@ class TestNotifier:
     @patch("database.db.get_session")
     @patch("utils.infra.notifier.Bot")
     async def test_send_messages(self, mock_bot, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

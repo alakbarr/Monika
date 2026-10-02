@@ -1,12 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock
+from tests.conftest import create_mock_async_session
 from analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 
 
 @pytest.mark.asyncio
 async def test_stage2_bundle_truncation_preserves_smc_zones():
     """Memastikan bahwa bundler Stage 2 tidak memotong paksa SMC zones meskipun bundle sangat besar (>40k chars)."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {
         "trading": {
             "cost_mode": "lite"
@@ -47,7 +48,9 @@ async def test_stage2_bundle_truncation_preserves_smc_zones():
 
     bundler.executor.execute = AsyncMock(side_effect=mock_execute)
     
-    bundle, raw_data = await bundler.fetch_bundle("EURUSD")
+    from unittest.mock import patch
+    with patch("analysis.validators.core_data_validator.CoreDataValidator.validate_and_fetch_core_data", new_callable=AsyncMock, return_value=(True, {}, [])):
+        bundle, raw_data = await bundler.fetch_bundle("EURUSD")
     
     # Verifikasi bahwa output TIDAK memuat teks truncation rusak
     assert "…(truncated)" not in bundle, "Bundle memuat pemotongan string rusak pada SMC zones!"

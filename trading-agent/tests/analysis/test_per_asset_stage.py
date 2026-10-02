@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone, date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.stages.per_asset_stage import PerAssetStage
 from database.models import AssetAnalysis, ActivityLog
 
@@ -56,7 +57,7 @@ class TestPerAssetStage:
     @patch('analysis.providers.llm_factory.FallbackClientWrapper.run_agent', new_callable=AsyncMock)
     async def test_run_one_success(self, mock_run_agent, mock_threshold):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         stage._check_brief_freshness_and_quality = AsyncMock(return_value=(None, MagicMock(), []))
         stage._compute_ssvp_coherence = AsyncMock(return_value=None)
@@ -114,7 +115,7 @@ class TestPerAssetStage:
     @patch('analysis.providers.llm_factory.FallbackClientWrapper.run_agent', new_callable=AsyncMock)
     async def test_run_one_failure(self, mock_run_agent, mock_threshold):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         stage._check_brief_freshness_and_quality = AsyncMock(return_value=(None, MagicMock(), []))
         stage._compute_ssvp_coherence = AsyncMock(return_value=None)
@@ -165,7 +166,7 @@ class TestPerAssetStage:
         if "specialist_decomposition" in settings:
             settings["specialist_decomposition"]["enabled"] = False
         stage = PerAssetStage(settings)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         stage._fetch_gemini_precomputed = AsyncMock(return_value='')
         stage._check_minimum_data_quality = AsyncMock(return_value=(True, 'ok'))
@@ -213,7 +214,7 @@ class TestPerAssetStage:
         stage.run_parallel = True
         
         # mock context manager
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -236,7 +237,7 @@ class TestPerAssetStage:
         stage.run_parallel = False
         
         # mock context manager
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -257,7 +258,7 @@ class TestPerAssetStage:
     @pytest.mark.asyncio
     async def test_log(self):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         await stage._log(mock_session, "test desc", "test cat")
@@ -273,7 +274,7 @@ class TestPerAssetStage:
     @pytest.mark.asyncio
     async def test_log_exception(self):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock(side_effect=Exception("DB error"))
         
         await stage._log(mock_session, "test")
@@ -284,7 +285,7 @@ class TestPerAssetStage:
     @patch('utils.validation.data_validator.check_data_coherence', new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_success(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_coherence.return_value = {'coherent': True, 'issues': []}
 
         # Mock ATR row
@@ -316,7 +317,7 @@ class TestPerAssetStage:
     @patch('utils.validation.data_validator.check_data_coherence', new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_vix_date_object(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_coherence.return_value = {'coherent': True, 'issues': []}
 
         mock_atr = MagicMock()
@@ -347,7 +348,7 @@ class TestPerAssetStage:
     @patch('utils.validation.data_validator.check_data_coherence', new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_vix_stale(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_coherence.return_value = {'coherent': True, 'issues': []}
 
         mock_atr = MagicMock()
@@ -378,7 +379,7 @@ class TestPerAssetStage:
     @patch('utils.validation.data_validator.check_data_coherence', new_callable=AsyncMock)
     async def test_check_data_coherence_for_analysis_missing_vix(self, mock_coherence, mock_clock):
         stage = PerAssetStage(get_test_settings())
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_coherence.return_value = {'coherent': True, 'issues': []}
 
         mock_atr = MagicMock()

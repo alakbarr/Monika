@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from database.models import DecisionReflection
 from analysis.memory.reflector import TradeReflector
 
@@ -9,7 +10,9 @@ async def test_reflector_includes_alpha():
     # Mock settings and LLMFactory
     settings = {}
     
-    with patch('analysis.memory.reflector.get_client_for_task') as mock_get_client:
+    with patch('analysis.memory.reflector.get_client_for_task') as mock_get_client, \
+         patch('analysis.memory.skill_crystallizer.SkillCrystallizer') as mock_cryst:
+        mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
         mock_client = AsyncMock()
         mock_client.generate_content.return_value = json.dumps({
             "reflection_text": "Good trade.",
@@ -20,7 +23,7 @@ async def test_reflector_includes_alpha():
         
         reflector = TradeReflector(settings=settings)
         
-        session = AsyncMock()
+        session = create_mock_async_session()
         mock_reflection = DecisionReflection(
             id=1,
             status='pending',
@@ -57,7 +60,7 @@ async def test_stage2_prefetcher_alpha_lessons_none_safe():
     
     # Mock executor & session
     mock_executor = MagicMock()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_executor.session = mock_session
     mock_executor.settings = {'analysis': {'stage2_max_bundle_chars': 36000}}
     

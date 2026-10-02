@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from analysis.tools.tool_executor import ToolExecutor
@@ -6,7 +7,7 @@ from analysis.tools.tool_executor import ToolExecutor
 @pytest.mark.asyncio
 async def test_tool_executor_delegates_to_technical_handlers():
     """Verify ToolExecutor correctly delegates technical tools to TechnicalToolHandlers."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     fake_snapshot = {"ATR": {"value": 15.5}, "RSI": {"value": 55.0}}
@@ -22,7 +23,7 @@ async def test_tool_executor_delegates_to_technical_handlers():
 @pytest.mark.asyncio
 async def test_tool_executor_delegates_to_macro_handlers():
     """Verify ToolExecutor delegates macro queries to MacroToolHandlers."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     with patch.object(executor.macro_handlers, "get_market_session", new_callable=AsyncMock) as mock_sess:
@@ -36,7 +37,7 @@ async def test_tool_executor_delegates_to_macro_handlers():
 @pytest.mark.asyncio
 async def test_tool_executor_delegates_to_position_handlers():
     """Verify ToolExecutor delegates position queries to PositionToolHandlers."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     with patch.object(executor.position_handlers, "get_open_positions", new_callable=AsyncMock) as mock_pos:
@@ -49,7 +50,7 @@ async def test_tool_executor_delegates_to_position_handlers():
 @pytest.mark.asyncio
 async def test_tool_executor_delegates_to_sentiment_handlers():
     """Verify ToolExecutor delegates sentiment tools to SentimentToolHandlers."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     with patch.object(executor.sentiment_handlers, "get_fear_greed", new_callable=AsyncMock) as mock_fg:
@@ -62,7 +63,7 @@ async def test_tool_executor_delegates_to_sentiment_handlers():
 @pytest.mark.asyncio
 async def test_tool_executor_executes_read_url():
     """Verify ToolExecutor correctly executes read_url via WebReader."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     fake_page = {
@@ -84,7 +85,7 @@ async def test_tool_executor_executes_read_url():
 @pytest.mark.asyncio
 async def test_tool_executor_executes_search_academic():
     """Verify ToolExecutor correctly executes search_academic via AcademicSearchClient."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     fake_papers = {
@@ -113,7 +114,7 @@ async def test_tool_executor_executes_search_academic():
 @pytest.mark.asyncio
 async def test_tool_executor_unknown_tool_returns_structured_error():
     """Verify unknown tool returns structured error instead of unhandled exception."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, settings={})
 
     res = await executor.execute("non_existent_tool_xyz", {"foo": "bar"})

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -5,7 +6,7 @@ from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
 
 @pytest.mark.asyncio
 async def test_stage1_data_bundler():
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {}
     
     with patch("analysis.prefetch.stage1_prefetcher.ToolExecutor") as MockExecutor, \

@@ -663,10 +663,10 @@ class BaseLLMClient(ABC):
     # --- Tool Call logging (shared) ---
 
     async def _log_tool_call(self, session, stage_name: str, tool_name: str, tool_input: dict, result: dict) -> None:
-        """Save tool call audit trail to ActivityLog using an isolated session."""
+        """Save tool call audit trail to ActivityLog using isolated session."""
         try:
-            from database.db import get_session
             from database.models import ActivityLog
+            from database.db import get_session
             from datetime import datetime, timezone
             actor_name = getattr(self, "role", getattr(self, "model", "llm"))
             entry = ActivityLog(

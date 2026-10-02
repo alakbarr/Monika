@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 
 from backtest.point_in_time_engine import PointInTimeBacktestEngine
 from database.models import AssetAnalysis
@@ -26,7 +27,7 @@ async def test_replay_mode():
         rationale="Looks good"
     )
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_analysis]
     mock_session.execute.return_value = mock_result
@@ -81,7 +82,7 @@ async def test_replay_mode_with_entry_zone_fallback():
         rationale="Edge registry entry"
     )
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_analysis]
     mock_session.execute.return_value = mock_result
@@ -143,7 +144,7 @@ async def test_point_in_time_dynamic_equity_feedback():
         rationale="A2",
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [a1, a2]
     mock_session.execute.return_value = mock_result

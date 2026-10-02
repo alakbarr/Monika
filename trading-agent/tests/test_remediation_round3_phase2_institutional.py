@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import os
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -125,7 +126,7 @@ async def test_f2_4_systemic_correlation_matrix_and_usd_exposure():
     """Verify NxN correlation matrix computation and USD concentration capping."""
     from risk.portfolio_correlation_gate import compute_portfolio_correlation_matrix, filter_correlated_proposals
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     symbols = ["EURUSD", "GBPUSD", "USDJPY"]
     with patch("risk.portfolio_correlation_gate.get_rolling_correlation", AsyncMock(return_value=(0.75, "db"))):

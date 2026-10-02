@@ -108,7 +108,7 @@ async def test_fallback_client_wrapper_cost_warning(caplog):
 
     mock_cheap = MagicMock()
     # Non-retryable error to fail over immediately without backoff delay
-    mock_cheap.generate = AsyncMock(side_effect=RuntimeError("Model service unavailable 503"))
+    mock_cheap.generate = AsyncMock(side_effect=RuntimeError("Model not found 404: model decommissioned"))
 
     mock_exp = MagicMock()
     mock_exp.generate = AsyncMock(return_value="Success from expensive model")

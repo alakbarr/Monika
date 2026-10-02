@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,7 +16,7 @@ class TestMacroPreprocessor:
 
     @pytest.mark.asyncio
     async def _ignore_test_compute_cot_signals(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         # Mock DB response
@@ -34,7 +35,7 @@ class TestMacroPreprocessor:
 
     @pytest.mark.asyncio
     async def _ignore_test_compute_cot_signals_empty(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
@@ -45,7 +46,7 @@ class TestMacroPreprocessor:
 
     @pytest.mark.asyncio
     async def _ignore_test_compute_indicator_signals(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         ind = TechnicalIndicator(symbol="XAUUSD", timeframe="H4", indicator_name="RSI_14", value_json="60.0")
@@ -72,7 +73,7 @@ class TestMacroPreprocessor:
         
     @pytest.mark.asyncio
     async def _ignore_test_compute_indicator_signals_empty(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         def mock_execute(query):
@@ -88,7 +89,7 @@ class TestMacroPreprocessor:
 
     @pytest.mark.asyncio
     async def _ignore_test_compute_surprise_summary(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         event = EconomicCalendar(currency="USD", event_name="NFP", impact="High", surprise_score=1.5)
@@ -104,7 +105,7 @@ class TestMacroPreprocessor:
 
     @pytest.mark.asyncio
     async def _ignore_test_compute_surprise_summary_empty(self, preprocessor):
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
@@ -120,7 +121,7 @@ class TestMacroPreprocessor:
         mock_now.isoformat.return_value = "2023-01-01T00:00:00Z"
         mock_datetime.now.return_value = mock_now
         
-        session = AsyncMock()
+        session = create_mock_async_session()
         session.add = MagicMock()
         
         preprocessor.compute_cot_signals = AsyncMock(return_value={"cot": 1})

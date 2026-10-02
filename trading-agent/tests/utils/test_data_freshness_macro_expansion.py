@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit Tests for Extended Macro Data Freshness in data_validator.py.
 """
@@ -10,7 +11,7 @@ from utils.validation.data_validator import validate_data_freshness
 @pytest.mark.asyncio
 async def test_validate_data_freshness_macro_tables():
     """Verify validate_data_freshness checks TreasuryYield, DXY, COT, and FedWatch."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
 
     execute_side_effects = [
@@ -40,7 +41,7 @@ async def test_validate_data_freshness_macro_tables():
 @pytest.mark.asyncio
 async def test_validate_data_freshness_dxy_fedwatch_and_vix_stale():
     """Verify stale DXY, FedWatch, and VIX are detected and flagged."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
 
     execute_side_effects = [
@@ -71,7 +72,7 @@ async def test_validate_data_freshness_dxy_fedwatch_and_vix_stale():
 @pytest.mark.asyncio
 async def test_validate_data_freshness_strict_mode_empty_macro_tables():
     """Verify require_macro_data=True turns missing macro tables into hard errors."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
 
     execute_side_effects = [

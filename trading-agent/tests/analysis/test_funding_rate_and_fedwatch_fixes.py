@@ -5,6 +5,7 @@ Unit tests for Funding Rate Resilience and Multi-Meeting FedWatch Dominant Valid
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 from data_sources.coinglass_funding import CoinglasFundingFetcher
 from analysis.tools.tool_executor import ToolExecutor
@@ -17,7 +18,7 @@ from analysis.tools.tool_executor import ToolExecutor
 @pytest.mark.asyncio
 async def test_funding_rate_fetcher_binance_primary_success():
     """Verify CoinglasFundingFetcher successfully parses Binance Futures premiumIndex."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     fetcher = CoinglasFundingFetcher(session=mock_session)
 
     binance_response = {
@@ -43,7 +44,7 @@ async def test_funding_rate_fetcher_binance_primary_success():
 @pytest.mark.asyncio
 async def test_funding_rate_fetcher_bybit_fallback_success():
     """Verify CoinglasFundingFetcher falls back to Bybit when Binance fails."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     fetcher = CoinglasFundingFetcher(session=mock_session)
 
     bybit_response = {
@@ -83,7 +84,7 @@ async def test_funding_rate_fetcher_bybit_fallback_success():
 @pytest.mark.asyncio
 async def test_tool_get_funding_rate_on_demand_live_fallback():
     """Verify _tool_get_funding_rate performs live on-demand fetch when SystemConfig is empty."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_res
@@ -109,7 +110,7 @@ async def test_tool_get_funding_rate_on_demand_live_fallback():
 @pytest.mark.asyncio
 async def test_tool_get_funding_rate_offline_neutral_baseline():
     """Verify _tool_get_funding_rate returns structured neutral baseline if all live endpoints fail."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_res
@@ -136,7 +137,7 @@ async def test_fedwatch_validation_multi_meeting_tolerance_match():
     Verify _validate_key_data_points accepts 52.7% when September meeting dominant is 52.7%
     even if December meeting dominant is 39.2%.
     """
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, settings={})
 
     # Mock get_fedwatch_probabilities returning multiple upcoming meetings
@@ -184,7 +185,7 @@ async def test_fedwatch_validation_multi_meeting_tolerance_match():
 @pytest.mark.asyncio
 async def test_fedwatch_validation_genuine_mismatch_rejection():
     """Verify _validate_key_data_points rejects when claimed value differs by > 8.0% from ALL meetings."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(session=mock_session, settings={})
 
     fedwatch_payload = {

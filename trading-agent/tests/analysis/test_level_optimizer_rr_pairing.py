@@ -1,12 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
 from analysis.strategies.liquidity_sweep_edge import LiquiditySweepStructuralShift
 
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_rr_pairing():
     """Verify that compute_optimal_levels pairs TP and SL to satisfy min_rr >= 1.3."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {"trading": {"risk": {"min_rr_ratio": 1.3}}}
 
     # Mock daily range context
@@ -51,7 +52,7 @@ async def test_compute_optimal_levels_rr_pairing():
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_synthetic_tp():
     """Verify that when structural TPs cannot fulfill min_rr, a synthetic TP is generated within ADR room."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {"trading": {"risk": {"min_rr_ratio": 1.5}}}
 
     mock_adr_ctx = {
@@ -94,7 +95,7 @@ async def test_compute_optimal_levels_synthetic_tp():
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_insufficient_adr_room():
     """Verify that when required TP for min_rr exceeds ADR limits, entry is disallowed."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {"trading": {"risk": {"min_rr_ratio": 2.0}}}
 
     mock_adr_ctx = {
@@ -129,7 +130,7 @@ async def test_compute_optimal_levels_insufficient_adr_room():
 @pytest.mark.asyncio
 async def test_compute_optimal_levels_with_existing_sl():
     """Verify that caller-provided existing_sl is prioritized and respected."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     settings = {"trading": {"risk": {"min_rr_ratio": 1.3}}}
 
     mock_adr_ctx = {
@@ -171,7 +172,7 @@ async def test_liquidity_sweep_computes_invalidation_stop_loss():
     """Verify that LiquiditySweepStructuralShift calculates SL from sweep_price +/- buffer."""
     settings = {"trading": {"edge_strategy": {"liquidity_sweep": {"enabled": True}}}}
     strategy = LiquiditySweepStructuralShift(settings)
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     with patch("analysis.strategies.liquidity_sweep_edge.detect_liquidity_sweep", new_callable=AsyncMock) as m_detect, \
          patch("analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock) as m_atr:

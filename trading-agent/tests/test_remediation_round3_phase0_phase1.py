@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import os
 import json
@@ -81,10 +82,14 @@ async def test_f0_3_dashboard_api_ip_whitelisting():
     assert resp_ping.status_code == 200
 
     # 2. Remote IP with DASHBOARD_ALLOWED_IPS configured
+    mock_eng = MagicMock()
+    mock_eng.connect.return_value.__aenter__.return_value = AsyncMock()
+    mock_eng.connect.return_value.__aexit__.return_value = None
     with patch.dict(os.environ, {
         "DASHBOARD_API_KEY": "secret_key_123",
         "DASHBOARD_ALLOWED_IPS": "192.168.1.100,10.0.0.5"
-    }):
+    }), patch("database.db.engine", mock_eng):
+
         # Unauthorized remote IP
         resp_blocked = client.get(
             "/api/health",
@@ -111,15 +116,18 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
     from analysis.arbitration.signal_arbitrator import compute_empirical_arbitrator_weights, SignalArbitrator
     from analysis.strategies.base_strategy import EdgeSignal
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Create mock trade records where LLM has high accuracy (low brier)
     mock_records = []
     for i in range(20):
         mock_rec = MagicMock()
         mock_rec.exit_reason = "tp_hit"  # 100% win rate
+        mock_rec.decision_source = "llm"
+        mock_rec.pnl_pct = 1.0
         mock_ana = MagicMock()
-        mock_ana.confidence = 0.85
+        mock_ana.confidence = 0.95
+        mock_ana.source_strategy_id = None
         mock_records.append((mock_rec, mock_ana))
 
     mock_session.execute.return_value.all.return_value = mock_records
@@ -227,7 +235,7 @@ async def test_f1_3_multi_regime_partitioned_calibration():
     """Verify regime-partitioned Platt calibration fitting and retrieval."""
     from utils.calibration.confidence_calibrator import compute_confidence_calibration, get_calibrated_confidence
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Generate 30 trending and 30 ranging closed records
     mock_records = []

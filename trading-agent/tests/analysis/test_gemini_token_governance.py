@@ -1,6 +1,7 @@
 import pytest
 import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.providers.gemini_provider import GeminiProvider
 
 class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
@@ -65,7 +66,7 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
         provider = GeminiProvider(model="gemini-3.5-flash", settings=self.settings)
         provider.max_tool_turns = 3
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Turn 1: model returns text without tool_use, stop_reason="end_turn"
         turn1_resp = MagicMock()

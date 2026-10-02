@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
@@ -23,6 +24,7 @@ class TestTelegramBot:
     @patch("telegram_bot.bot.ApplicationBuilder")
     async def test_start(self, mock_builder):
         mock_app = AsyncMock()
+        mock_app.add_handler = MagicMock()
         mock_app.__aenter__ = AsyncMock(return_value=mock_app)
         mock_app.__aexit__ = AsyncMock(return_value=None)
         mock_app.start = AsyncMock()
@@ -128,7 +130,7 @@ class TestTelegramBot:
         bot._is_authorized = MagicMock(return_value=True)
         bot._is_admin = MagicMock(return_value=True)
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_exec_res = MagicMock()
         mock_exec_res.scalar_one_or_none.return_value = None
@@ -179,7 +181,7 @@ class TestTelegramBot:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     async def test_handle_chat(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -203,7 +205,7 @@ class TestTelegramBot:
     @pytest.mark.asyncio
     @patch("database.db.get_session")
     async def test_handle_callback(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -281,7 +283,7 @@ class TestTelegramBot:
         bot = TelegramBot({})
         bot._is_authorized = MagicMock(return_value=True)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
 
         from datetime import datetime, timezone

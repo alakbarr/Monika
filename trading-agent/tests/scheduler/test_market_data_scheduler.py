@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
@@ -25,7 +26,7 @@ class TestMarketDataScheduler:
 
         scheduler = MarketDataScheduler(settings=settings, mt5_client=mock_mt5)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         with patch("scheduler.market_data_scheduler.get_session") as mock_get_session, \
              patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=False), \
@@ -75,7 +76,7 @@ class TestMarketDataScheduler:
         mock_mt5.fetch_and_save_all.return_value = {"BTCUSD/H1": 5}
 
         scheduler = MarketDataScheduler(settings=settings, mt5_client=mock_mt5)
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         with patch("scheduler.market_data_scheduler.get_session") as mock_get_session, \
              patch("scheduler.market_data_scheduler.is_forex_market_closed", return_value=True), \

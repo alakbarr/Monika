@@ -24,9 +24,10 @@ class TestBaseScraper:
         mock_page.assert_called_once_with(mock_options_instance)
         assert scraper.page == mock_page.return_value
 
+    @patch.object(BaseScraper, "_cleanup_stale_profile_locks")
     @patch("scrapers.base_scraper.ChromiumPage")
     @patch("scrapers.base_scraper.ChromiumOptions")
-    def test_init_profile(self, mock_options, mock_page):
+    def test_init_profile(self, mock_options, mock_page, mock_cleanup):
         scraper = BaseScraper(headless=False, profile_name="test_profile")
         
         assert not scraper.headless
@@ -36,6 +37,7 @@ class TestBaseScraper:
         mock_options_instance.headless.assert_called_with(False)
         # Verify user data path is set
         assert mock_options_instance.set_user_data_path.called
+        assert mock_cleanup.called
 
     @patch("scrapers.base_scraper.ChromiumPage")
     @patch("scrapers.base_scraper.ChromiumOptions")

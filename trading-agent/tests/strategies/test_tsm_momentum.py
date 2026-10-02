@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.strategies.tsm_momentum import TimeSeriesMomentum
@@ -7,7 +8,7 @@ async def test_tsm_momentum_insufficient_history():
     settings = {'trading': {'edge_strategy': {'tsm_momentum': {'enabled': True}}}}
     strategy = TimeSeriesMomentum(settings)
     
-    session = AsyncMock()
+    session = create_mock_async_session()
     # Mocking rows to be empty
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []

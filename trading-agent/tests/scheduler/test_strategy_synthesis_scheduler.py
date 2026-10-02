@@ -1,6 +1,7 @@
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from analysis.strategies.registry import StrategyRegistry
 from scheduler.strategy_synthesis_scheduler import (
     StrategySynthesisScheduler,
@@ -143,7 +144,7 @@ class HighAlphaStrategy(EdgeStrategy):
     returns = [0.01, 0.02, -0.004, 0.015, 0.022, 0.008, 0.019]
 
     with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_exec = MagicMock()
         mock_exec.scalar_one_or_none.return_value = None
@@ -369,7 +370,7 @@ async def test_strategy_registry_evaluate_all_isolation():
     StrategyRegistry.register(BrokenInitStrategy, overwrite=True)
     StrategyRegistry.register(WorkingStrategy, overwrite=True)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     signals = await StrategyRegistry.evaluate_all(mock_session, "EURUSD", {})
 
     # Working strategy must still produce signal despite BrokenInitStrategy failing
@@ -388,7 +389,7 @@ async def test_edge_strategy_get_historical_candles():
             return None
 
     strat = MockStrategy({})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock()
     mock_row.timestamp = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
     mock_row.open = 1.0850
@@ -455,7 +456,7 @@ async def test_synthesized_strategies_with_candle_dict():
         for i in range(50)
     ]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch.object(strat1, "get_historical_candles", new_callable=AsyncMock) as mock_get_candles1:
         mock_get_candles1.return_value = mock_candles
         sig1 = await strat1.evaluate(mock_session, "XAUUSD", {})
@@ -551,7 +552,7 @@ async def test_run_historical_simulation_disqualifies_on_eval_error(scheduler):
     ]
 
     with patch("scheduler.strategy_synthesis_scheduler.get_session") as mock_get_session:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_exec = MagicMock()
         mock_exec.scalars.return_value.all.return_value = mock_candles
         mock_session.execute = AsyncMock(return_value=mock_exec)

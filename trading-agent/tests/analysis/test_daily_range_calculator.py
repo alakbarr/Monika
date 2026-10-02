@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
@@ -25,7 +26,7 @@ async def test_compute_daily_range_context_normal_fx():
         DummyRow("2023-10-01T00:00:00", 1.04, 1.0500, 1.0400, 1.05), # 0.0100
     ]
     
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = rows
     mock_session.execute.return_value = mock_result
@@ -62,7 +63,7 @@ async def test_compute_daily_range_context_crypto():
         DummyRow("2023-10-02T00:00:00", 29000, 31000, 30000, 30000),
         DummyRow("2023-10-01T00:00:00", 29000, 30000, 29000, 30000),
     ]
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = rows
     mock_session.execute.return_value = mock_result
@@ -76,7 +77,7 @@ async def test_compute_daily_range_context_crypto():
 
 @pytest.mark.asyncio
 async def test_compute_daily_range_context_insufficient_data():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -93,7 +94,7 @@ async def test_compute_daily_range_context_today_bar_not_written():
         DummyRow("2023-10-02T00:00:00", 1.04, 1.0600, 1.0500, 1.05),
         DummyRow("2023-10-01T00:00:00", 1.04, 1.0500, 1.0400, 1.05),
     ]
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars().all.return_value = rows
     mock_session.execute.return_value = mock_result

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for SMCFairValueGapStrategy and BBVolumeProfileMeanReversion.
 """
@@ -19,7 +20,7 @@ def test_strategy_registry_includes_smc_and_bb():
 @pytest.mark.asyncio
 async def test_smc_fvg_strategy_bullish_signal():
     strat = SMCFairValueGapStrategy()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Synthetic candles creating a Bullish FVG
     candles = [
@@ -43,7 +44,7 @@ async def test_smc_fvg_strategy_bullish_signal():
 @pytest.mark.asyncio
 async def test_bb_volume_profile_oversold_signal():
     strat = BBVolumeProfileMeanReversion()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 30 candles where latest close dips below lower Bollinger band
     candles = [

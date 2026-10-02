@@ -9,16 +9,21 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
+from tests.conftest import create_mock_async_session
 from logging_observability.dashboard.api import app, set_dashboard_dependencies
 from logging_observability.dashboard.rbac import Role
 from execution.service.trade_confirm import TradeConfirmManager
 from risk.approval_hub import ApprovalHub
 from telegram_bot.bot import TelegramBot
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
-def test_backtest_rbac_protection():
+def test_backtest_rbac_protection(client):
     """Verify that backtest routes enforce RBAC Role permissions."""
     env = {
         "DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key,viewer:view_key",
@@ -46,11 +51,8 @@ def test_backtest_rbac_protection():
 
         # 3. Viewer CAN access read endpoints
         with patch("logging_observability.dashboard.routes.backtest.get_session") as mock_get_sess:
-            mock_sess = AsyncMock()
+            mock_sess = create_mock_async_session()
             mock_get_sess.return_value.__aenter__.return_value = mock_sess
-            mock_res = MagicMock()
-            mock_res.scalars.return_value.all.return_value = []
-            mock_sess.execute = AsyncMock(return_value=mock_res)
 
             res_get = client.get("/api/backtest/runs", headers={"X-API-Key": "view_key"})
             assert res_get.status_code == 200
@@ -126,9 +128,9 @@ def test_telegram_dead_commands_registered():
 
 
 @patch("database.db.AsyncSessionLocal")
-def test_get_risk_enriched_fields(mock_session_local):
+def test_get_risk_enriched_fields(mock_session_local, client):
     """Verify that /api/risk returns enriched metrics."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session_local.return_value.__aenter__.return_value = mock_session
 
     mock_res_risk = MagicMock()

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/test_pipeline_plugins.py
 # ==============================================================================
@@ -28,7 +29,7 @@ async def test_macro_to_asset_pipeline_lifecycle():
     passed, warnings = await pipeline.on_preflight(container)
     assert passed is True
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     proposals = await pipeline.execute_analysis_cycle(mock_session, ["EURUSD", "XAUUSD"])
     assert isinstance(proposals, list)
 
@@ -51,7 +52,7 @@ async def test_technical_scalping_pipeline_lifecycle():
     passed, warnings = await pipeline.on_preflight(container)
     assert passed is True
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     proposals = await pipeline.execute_analysis_cycle(mock_session, ["BTCUSD"])
     assert isinstance(proposals, list)
 

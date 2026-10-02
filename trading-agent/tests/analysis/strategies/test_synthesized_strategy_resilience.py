@@ -1,7 +1,8 @@
 """Unit tests for synthesized strategy resilience and safe_evaluate error boundary."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
 from analysis.strategies.registry import StrategyRegistry
 from analysis.strategies.synthesized.alpha_eurusd_6d622a import SynthesizedStrategy_alpha_eurusd_6d622a
@@ -26,7 +27,7 @@ async def test_alpha_eurusd_6d622a_evaluates_without_nan_casting_error():
         }))
 
     with patch.object(strat, "get_historical_candles", AsyncMock(return_value=mock_candles)):
-        sig = await strat.evaluate(AsyncMock(), "EURUSD", {})
+        sig = await strat.evaluate(create_mock_async_session(), "EURUSD", {})
 
     assert isinstance(sig, EdgeSignal)
     assert sig.symbol == "EURUSD"
@@ -59,7 +60,7 @@ class SynthesizedStrategy_alpha_test_buggy(EdgeStrategy):
     assert compiled_cls is not None
 
     strat = compiled_cls()
-    sig = await strat.evaluate(AsyncMock(), "EURUSD", {})
+    sig = await strat.evaluate(create_mock_async_session(), "EURUSD", {})
 
     assert isinstance(sig, EdgeSignal)
     assert sig.valid is False
@@ -96,7 +97,7 @@ async def test_strategy_registry_evaluate_all_isolation():
         StrategyRegistry.register(CrashingStrategy, overwrite=True)
         StrategyRegistry.register(HealthyStrategy, overwrite=True)
 
-        signals = await StrategyRegistry.evaluate_all(AsyncMock(), "EURUSD", {})
+        signals = await StrategyRegistry.evaluate_all(create_mock_async_session(), "EURUSD", {})
         healthy_signals = [s for s in signals if s.strategy_id == "alpha_healthy"]
         assert len(healthy_signals) == 1
         assert healthy_signals[0].direction == "buy"
@@ -161,7 +162,7 @@ class SynthesizedStrategy_alpha_test_fillna(EdgeStrategy):
     assert compiled_cls is not None
 
     strat = compiled_cls()
-    sig = await strat.evaluate(AsyncMock(), "EURUSD", {})
+    sig = await strat.evaluate(create_mock_async_session(), "EURUSD", {})
     assert isinstance(sig, EdgeSignal)
     assert sig.valid is True
     assert sig.direction == "buy"
@@ -196,7 +197,7 @@ async def test_repaired_synthesized_strategies_execution():
     ]:
         strat = strat_cls({})
         with patch.object(strat, "get_historical_candles", AsyncMock(return_value=mock_candles)):
-            sig = await strat.evaluate(AsyncMock(), sym, {})
+            sig = await strat.evaluate(create_mock_async_session(), sym, {})
             assert isinstance(sig, EdgeSignal)
             # Must not crash with TypeError fillna() got an unexpected keyword argument 'method'
             assert "NDFrame.fillna" not in sig.rationale
@@ -305,7 +306,7 @@ class SynthesizedStrategy_alpha_test_compile_repair(EdgeStrategy):
     assert compiled_cls is not None
 
     strat = compiled_cls()
-    sig = await strat.evaluate(AsyncMock(), "EURUSD", {})
+    sig = await strat.evaluate(create_mock_async_session(), "EURUSD", {})
     assert isinstance(sig, EdgeSignal)
     assert sig.valid is True
     assert sig.direction == "buy"
@@ -391,7 +392,7 @@ class SynthesizedStrategy_alpha_alias_test(EdgeStrategy):
     compiled_cls = scheduler.compile_strategy_class(alias_code, "SynthesizedStrategy_alpha_alias_test")
     assert compiled_cls is not None
     inst = compiled_cls()
-    sig = await inst.evaluate(AsyncMock(), "EURUSD", {})
+    sig = await inst.evaluate(create_mock_async_session(), "EURUSD", {})
     assert sig.direction == "sell"
     assert sig.confidence == 0.82
 
@@ -549,7 +550,7 @@ class SynthesizedStrategy_alpha_test_compile_unclosed(EdgeStrategy):
     compiled_cls = scheduler.compile_strategy_class(code_with_unclosed, "SynthesizedStrategy_alpha_test_compile_unclosed")
     assert compiled_cls is not None
     inst = compiled_cls()
-    sig = await inst.evaluate(AsyncMock(), "EURUSD", {})
+    sig = await inst.evaluate(create_mock_async_session(), "EURUSD", {})
     assert sig.direction == "buy"
     assert sig.confidence == 0.88
 
@@ -571,7 +572,7 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
     })
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=stub_payload)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [mock_config]
     mock_result = MagicMock()
@@ -603,7 +604,7 @@ async def test_strategy_registry_blacklists_and_purges_stub_synthesized_strategy
 async def test_strategy_registry_evaluate_all_throttling():
     """Verify evaluate_all throttles load_dynamic_parameters within _load_interval."""
     import time
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     StrategyRegistry._last_load_time = time.time()  # just loaded
 
     with patch.object(StrategyRegistry, "load_dynamic_parameters", AsyncMock()) as mock_load:
@@ -633,7 +634,7 @@ async def test_strategy_registry_quarantines_uncompilable_strategy():
     })
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=broken_payload)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [mock_config]
     mock_result = MagicMock()
@@ -681,7 +682,7 @@ class {cls_name}(EdgeStrategy):
     })
     mock_config = SystemConfig(key=f"synthesized_strategy_{s_id}", value=db_payload)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [mock_config]
     mock_result = MagicMock()

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from database.models import Position, TradePlan, TradePlanLeg
@@ -47,7 +48,7 @@ async def test_trailing_stop_auto_breakeven_on_tp1_buy():
     leg_probe = TradePlanLeg(id=1, plan_id=10, leg_type="probe", volume=0.3, target_entry=2700.0, stop_loss=2680.0, status="filled")
     plan.legs = [leg_probe]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_exec.mt5 = AsyncMock()
     mock_exec.mt5.get_open_positions.return_value = [
         {"ticket": 123456, "price_current": 2712.0}
@@ -122,7 +123,7 @@ async def test_trailing_stop_auto_breakeven_on_tp1_sell():
     leg_probe = TradePlanLeg(id=2, plan_id=11, leg_type="probe", volume=0.15, target_entry=1.1000, stop_loss=1.1050, status="filled")
     plan.legs = [leg_probe]
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_exec.mt5 = AsyncMock()
     mock_exec.mt5.get_open_positions.return_value = [
         {"ticket": 654321, "price_current": 1.0970}  # profit = 1.1000 - 1.0970 = 0.0030 >= ATR 0.0020

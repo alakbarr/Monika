@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """Unit tests for Phase 8 medium improvements and polish."""
 
 import pytest
@@ -89,7 +90,7 @@ async def test_risk_gate_check_correlation_exposure():
         "paper_trading": {"initial_balance": 10000.0},
     }
     gate = RiskGate(mock_settings)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Empty positions -> pass
     ok, reason = await gate.check_correlation_exposure(mock_session, "EURUSD", "buy", open_positions=[])

@@ -3,6 +3,7 @@ import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
+from tests.conftest import create_mock_async_session
 from data_sources.dxy_yfinance import DXYFetcher
 from database.models import DXYData
 
@@ -14,7 +15,7 @@ class TestDXYFetcher:
         df = pd.DataFrame({"Close": [100.5]}, index=[pd.Timestamp('2024-01-01', tz='UTC')])
         mock_direct.return_value = df
         
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         fetcher._save = AsyncMock(return_value=1)
         fetcher._fetch_yfinance = AsyncMock()
         
@@ -33,7 +34,7 @@ class TestDXYFetcher:
         df_yf = pd.DataFrame({"Close": [101.2]}, index=[pd.Timestamp('2024-01-01', tz='UTC')])
         mock_yf.return_value = df_yf
 
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         fetcher._save = AsyncMock(return_value=1)
 
         res = await fetcher.fetch(period="5d")
@@ -50,7 +51,7 @@ class TestDXYFetcher:
         mock_direct.return_value = None
         mock_yf.return_value = pd.DataFrame()
         
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         
         res = await fetcher.fetch()
         
@@ -63,7 +64,7 @@ class TestDXYFetcher:
         mock_direct.return_value = None
         mock_yf.return_value = None
         
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         
         res = await fetcher.fetch()
         
@@ -84,7 +85,7 @@ class TestDXYFetcher:
                 }]
             }
         }
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         df = await fetcher._fetch_yahoo_direct("10d")
 
         assert df is not None
@@ -96,7 +97,7 @@ class TestDXYFetcher:
     @patch('data_sources.dxy_yfinance.fetch_with_retry')
     async def test_fetch_yahoo_direct_missing_data(self, mock_fetch):
         mock_fetch.return_value = {"chart": {"result": []}}
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         df = await fetcher._fetch_yahoo_direct("10d")
         assert df is None
 
@@ -104,44 +105,40 @@ class TestDXYFetcher:
     @patch('data_sources.dxy_yfinance.fetch_with_retry')
     async def test_fetch_yahoo_direct_http_error(self, mock_fetch):
         mock_fetch.side_effect = Exception("Connection timeout")
-        fetcher = DXYFetcher(AsyncMock())
+        fetcher = DXYFetcher(MagicMock())
         df = await fetcher._fetch_yahoo_direct("10d")
         assert df is None
 
     @pytest.mark.asyncio
-    @patch('data_sources.dxy_yfinance.DXYFetcher._download')
-    async def test_fetch_yfinance_timeout(self, mock_download):
-        async def slow_download(*args, **kwargs):
-            import asyncio
-            await asyncio.sleep(20.0)
-            return pd.DataFrame()
-        mock_download.side_effect = slow_download
+    async def test_fetch_yfinance_timeout(self):
+        fetcher = DXYFetcher(MagicMock())
+        async def mock_wait_for(coro, timeout):
+            if hasattr(coro, "close"):
+                coro.close()
+            raise asyncio.TimeoutError()
 
-        fetcher = DXYFetcher(AsyncMock())
-        with patch('asyncio.wait_for', side_effect=asyncio.TimeoutError):
+        with patch('asyncio.wait_for', side_effect=mock_wait_for):
             df = await fetcher._fetch_yfinance("10d")
             assert df is None
 
     @pytest.mark.asyncio
-    @patch('data_sources.dxy_yfinance.DXYFetcher._download')
-    async def test_fetch_yfinance_exception(self, mock_download):
-        mock_download.side_effect = Exception("Crash")
-        fetcher = DXYFetcher(AsyncMock())
-        df = await fetcher._fetch_yfinance("10d")
-        assert df is None
+    async def test_fetch_yfinance_exception(self):
+        fetcher = DXYFetcher(MagicMock())
+        with patch('asyncio.to_thread', side_effect=Exception("Crash")):
+            df = await fetcher._fetch_yfinance("10d")
+            assert df is None
 
     def test_download(self):
         with patch('data_sources.dxy_yfinance.yf.download') as mock_download:
             mock_download.return_value = pd.DataFrame()
-            fetcher = DXYFetcher(AsyncMock())
+            fetcher = DXYFetcher(MagicMock())
             fetcher._download("5d")
             mock_download.assert_called_once_with("DX-Y.NYB", period="5d", progress=False, auto_adjust=True, timeout=8)
 
     @pytest.mark.asyncio
     async def test_save_existing_via_scalars(self):
         """Verify deduplication works with SQLAlchemy scalars().all() result."""
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
 
         mock_result = MagicMock()
         existing_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -159,8 +156,7 @@ class TestDXYFetcher:
     @pytest.mark.asyncio
     async def test_save_partial_existing(self):
         """Verify that existing dates are skipped while new dates are inserted."""
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
+        mock_session = create_mock_async_session()
 
         mock_result = MagicMock()
         existing_dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -186,12 +182,14 @@ class TestDXYFetcher:
     @pytest.mark.asyncio
     async def test_save_duplicate_in_dataframe(self):
         """Verify that duplicate rows within the same DataFrame are deduplicated."""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock()
 
         df = pd.DataFrame({
             "Close": [105.0, 105.5]
@@ -209,12 +207,14 @@ class TestDXYFetcher:
     @pytest.mark.asyncio
     async def test_save_commit_failure_returns_zero(self):
         """Verify that when safe_commit fails, _save returns 0."""
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
         mock_session.add = MagicMock()
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock()
 
         df = pd.DataFrame({"Close": [105.0]}, index=[pd.Timestamp('2024-01-01')])
 

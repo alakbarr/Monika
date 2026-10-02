@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 pytest.importorskip("langgraph")
 
@@ -65,7 +66,7 @@ async def test_data_node_calendar_freshness_timedelta_safety():
     assert dn.timedelta is timedelta
 
     # Simulate calendar check query block
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result_cfg = MagicMock()
     mock_result_cfg.scalar_one_or_none.return_value = None
     mock_result_cov = MagicMock()
@@ -103,7 +104,7 @@ async def test_per_asset_node_preserves_skipped_metadata():
     config = {'configurable': {'scheduler': mock_scheduler}}
     
     with patch('graph.nodes.per_asset_node.get_session') as mock_gs:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_gs.return_value.__aenter__.return_value = mock_session
         result = await per_asset_analysis_node(state, config)
         

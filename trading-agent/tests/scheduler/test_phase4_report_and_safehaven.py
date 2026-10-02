@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from scheduler.cycle_scheduler import CycleScheduler
 from analysis.tools.tool_executor import ToolExecutor
 
@@ -17,7 +18,7 @@ class TestPhase4ReportAndSafeHaven:
         mock_get_client.return_value = mock_client
         mock_send_markdown.return_value = True
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         settings = {
@@ -59,7 +60,7 @@ class TestPhase4ReportAndSafeHaven:
         mock_get_client.return_value = mock_client
         mock_send_info.return_value = True
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_exec_res = MagicMock()
         mock_exec_res.scalars.return_value.all.return_value = []
         mock_exec_res.scalar_one_or_none.return_value = None
@@ -92,7 +93,7 @@ class TestPhase4ReportAndSafeHaven:
         from analysis.stages.per_asset_stage import PerAssetStage
 
         stage = PerAssetStage(settings={"trading": {"asset_universe": ["EURUSD", "XAUUSD", "USDJPY"]}})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
 
         # Mock VIX row with close = 38 (exceeding 35)
         mock_vix = MagicMock()
@@ -133,7 +134,7 @@ class TestPhase4ReportAndSafeHaven:
     @pytest.mark.asyncio
     async def test_tool_executor_domain_delegation(self):
         """Test ToolExecutor falls back to domain handler for registered domain tools."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(session=mock_session, settings={})
 
         # Mock calculate_position_size on execution_handlers

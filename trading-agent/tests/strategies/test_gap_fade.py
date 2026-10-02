@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from analysis.strategies.gap_fade import DailyReopenGapFade
@@ -16,7 +17,7 @@ async def test_gap_fade_reject_outside_window():
     # Assume we are at 11:00 UTC
     clock.set_simulated_now(datetime.datetime(2026, 1, 1, 11, 0, 0, tzinfo=datetime.timezone.utc))
     
-    session = AsyncMock()
+    session = create_mock_async_session()
     sig = await strategy.evaluate(session, 'EURUSD', settings)
     
     assert not sig.valid
@@ -27,7 +28,7 @@ async def test_gap_fade_reject_outside_window():
 async def test_gap_fade_unsupported_symbol():
     settings = {'trading': {'edge_strategy': {'gap_fade': {'enabled': True}}}}
     strategy = DailyReopenGapFade(settings)
-    session = AsyncMock()
+    session = create_mock_async_session()
     sig = await strategy.evaluate(session, 'UNSUPPORTED_SYM', settings)
     assert not sig.valid
     assert "not in SESSION_OPEN_HOUR_UTC" in sig.rationale

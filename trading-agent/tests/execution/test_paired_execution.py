@@ -70,19 +70,13 @@ def base_analyses():
     return primary, hedge
 
 
+from tests.conftest import create_mock_async_session
+
+
 @pytest.fixture
 def mock_session():
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
+    return create_mock_async_session()
 
-    mock_exec = MagicMock()
-    mock_exec.scalar_one_or_none.return_value = None
-    mock_exec.scalar.return_value = 0
-    session.execute = AsyncMock(return_value=mock_exec)
-    return session
 
 
 @pytest.mark.asyncio

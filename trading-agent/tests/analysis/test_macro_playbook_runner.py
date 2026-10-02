@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/analysis/test_macro_playbook_runner.py
 # Monika Macro Playbook Runner Test Suite
@@ -89,7 +90,7 @@ Some analysis notes.
 
 @pytest.mark.asyncio
 async def test_compute_and_persist_deltas():
-    session = AsyncMock()
+    session = create_mock_async_session()
     # Mock previous state: EURUSD was NEUTRAL
     mock_row = MagicMock()
     mock_row.value = json.dumps({

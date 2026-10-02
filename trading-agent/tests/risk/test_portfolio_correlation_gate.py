@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,7 +29,7 @@ def test_usd_directional_delta():
 
 @pytest.mark.asyncio
 async def test_compute_portfolio_correlation_matrix():
-    session = AsyncMock()
+    session = create_mock_async_session()
     symbols = ["EURUSD", "GBPUSD"]
 
     with patch("risk.portfolio_correlation_gate.get_rolling_correlation", new=AsyncMock(return_value=(0.85, "db"))):
@@ -42,7 +43,7 @@ async def test_compute_portfolio_correlation_matrix():
 @pytest.mark.asyncio
 async def test_filter_correlated_proposals_nan_handling():
     """Verify that NaN correlation from open position does not raise NameError and defaults safely."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     mock_pos = MagicMock()
     mock_pos.symbol = "EURUSD"
     mock_pos.direction = "buy"
@@ -67,7 +68,7 @@ async def test_filter_correlated_proposals_nan_handling():
 
 @pytest.mark.asyncio
 async def test_filter_correlated_proposals_max_usd_exposure():
-    session = AsyncMock()
+    session = create_mock_async_session()
     # 3 open long USD positions
     open_positions = []
     for s in ["USDJPY", "USDCHF", "USDCAD"]:

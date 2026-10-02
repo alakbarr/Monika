@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from tests.conftest import create_mock_async_session
 from agent.turn_lease_manager import SymbolTurnLeaseManager
 from scheduler.news_watcher import NewsWatcher
 from database.models import NewsItem
@@ -60,7 +61,7 @@ async def test_news_watcher_coalesces_into_active_turn_lease(settings):
 
     # Call _trigger_reanalysis with affected_symbols=["XAUUSD"]
     with patch("scheduler.news_watcher.get_session") as mock_gs:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_gs.return_value = mock_ctx

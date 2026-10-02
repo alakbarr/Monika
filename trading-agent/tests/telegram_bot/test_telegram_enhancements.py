@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/telegram_bot/test_telegram_enhancements.py
 # ==============================================================================
@@ -86,6 +87,7 @@ class TestStreamingMessageEdit:
     async def test_stream_response_handles_retry_after(self):
         """Verify RetryAfter exception pauses and retries editing without crashing."""
         from telegram.error import RetryAfter
+        from datetime import timedelta
 
         agent = ChatAgent(settings={}, user_id=123)
         mock_sent_msg = AsyncMock()
@@ -94,9 +96,9 @@ class TestStreamingMessageEdit:
 
         # First edit raises RetryAfter, final edit succeeds
         mock_sent_msg.edit_text.side_effect = [
-            RetryAfter(0.01),
-            AsyncMock(),
-            AsyncMock(),
+            RetryAfter(timedelta(seconds=0.01)),
+            None,
+            None,
         ]
 
         async def mock_generator():
@@ -120,7 +122,7 @@ class TestStreamingMessageEdit:
 
         mock_sent_msg.edit_text.side_effect = [
             BadRequest("Message is not modified"),
-            AsyncMock(),
+            None,
         ]
 
         async def mock_generator():
@@ -175,7 +177,7 @@ class TestStreamingMessageEdit:
     @patch("database.db.get_session")
     async def test_handle_with_stream_flag(self, mock_get_session):
         """Verify calling handle(..., stream=True, update=...) delegates to _stream_response."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -282,7 +284,7 @@ class TestBotTopicRouting:
     @patch("database.db.get_session")
     async def test_handle_chat_routes_topic_thread_id(self, mock_get_session):
         """Verify updates with message_thread_id create topic session and route to isolated agent."""
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

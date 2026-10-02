@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import logging
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -93,7 +94,7 @@ async def test_load_dynamic_parameters_calls_log_summary():
         '{"strategy_id": "alpha_audusd_111111", "python_code": "code", "class_name": "Synthesized_Test"}'
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = [mock_row]
     mock_result = MagicMock()

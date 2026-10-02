@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import pandas as pd
 import json
@@ -23,7 +24,7 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_indicator_snapshot_delta_and_direction(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         calc = TechnicalIndicatorCalculator(mock_session, {})
         
         now = datetime.now(timezone.utc)
@@ -72,7 +73,7 @@ class TestTechnicalAnalysisImprovements:
 
     @pytest.mark.asyncio
     async def test_priced_in_subscores_usdjpy_cot(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         from database.models import COTReport
         
         cot_row = COTReport(
@@ -188,7 +189,7 @@ class TestTechnicalAnalysisImprovements:
     # ------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_fibonacci_selects_max_range_swing_pair(self):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         executor = ToolExecutor(mock_session)
         
         now = datetime.now(timezone.utc)

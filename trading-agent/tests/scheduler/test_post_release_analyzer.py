@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """Unit tests for PostReleaseAnalyzer."""
 import pytest
 from unittest.mock import MagicMock
@@ -80,7 +81,7 @@ class TestPostReleaseAnalyzer:
     @pytest.mark.asyncio
     async def test_check_releases_no_events(self):
         from unittest.mock import AsyncMock, patch
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_res
@@ -101,7 +102,7 @@ class TestPostReleaseAnalyzer:
         mock_event.previous = "2.9%"
         mock_event.event_time = datetime.now(timezone.utc)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_res = MagicMock()
         mock_res.scalars.return_value.all.return_value = [mock_event]
         mock_session.execute.return_value = mock_res

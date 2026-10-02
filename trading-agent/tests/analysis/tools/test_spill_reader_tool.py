@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Test Suite for Spill Reader Tool (retrieve_spilled_context).
 Verifies DB retrieval, disk fallback, pagination slicing, error handling,
@@ -19,7 +20,7 @@ from analysis.tools.registry import default_tool_registry
 
 @pytest.mark.asyncio
 async def test_retrieve_spilled_context_from_db():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     # Mock payload text in DB
     full_payload = "A" * 5000 + "B" * 5000
@@ -44,7 +45,7 @@ async def test_retrieve_spilled_context_from_db():
 
 @pytest.mark.asyncio
 async def test_retrieve_spilled_context_pagination():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     full_payload = "START_" + ("X" * 100) + "_END"
     mock_result.scalar_one_or_none.return_value = full_payload
@@ -72,7 +73,7 @@ async def test_retrieve_spilled_context_disk_fallback(tmp_path):
     spill_file.write_text(spill_content, encoding="utf-8")
 
     # DB returns None
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -97,7 +98,7 @@ async def test_retrieve_spilled_context_disk_fallback(tmp_path):
 
 @pytest.mark.asyncio
 async def test_retrieve_spilled_context_not_found():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result

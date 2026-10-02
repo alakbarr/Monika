@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit Tests for Consecutive SL Query Fix in UnifiedThresholdCalculator.
 """
@@ -11,7 +12,7 @@ from analysis.calculators.unified_threshold_calculator import compute_unified_co
 @pytest.mark.asyncio
 async def test_consecutive_sl_penalty_triggered_only_when_all_three_are_sl():
     """Verify +2 penalty is triggered ONLY when the 3 latest closed trades are ALL sl_hit."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
 
     # Scenario A: 3 latest trades are all sl_hit -> Penalty +2
@@ -44,7 +45,7 @@ async def test_consecutive_sl_penalty_triggered_only_when_all_three_are_sl():
 @pytest.mark.asyncio
 async def test_consecutive_sl_penalty_not_triggered_when_recent_win_exists():
     """Verify NO penalty when 3 latest trades contain a take profit (e.g. SL, TP, SL)."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
 
     # Scenario B: 3 latest trades are SL, TP, SL -> NOT consecutive 3 SL

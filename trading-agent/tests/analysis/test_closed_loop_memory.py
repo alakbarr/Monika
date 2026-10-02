@@ -2,6 +2,7 @@ import pytest
 import math
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
+from tests.conftest import create_mock_async_session
 from analysis.memory.layered_memory import compute_ebbinghaus_retention
 from analysis.memory.counterfactual_simulator import CounterfactualSimulator
 
@@ -72,10 +73,7 @@ async def test_reflector_dual_branch_negative_constraint():
     from database.models import DecisionReflection
 
     reflector = TradeReflector(settings={})
-    session = MagicMock()
-    session.get = AsyncMock()
-    session.add = MagicMock()
-    session.execute = AsyncMock()
+    session = create_mock_async_session()
 
     reflection = DecisionReflection(
         symbol="XAUUSD",

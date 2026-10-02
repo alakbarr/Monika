@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/risk/test_bounded_mandate_and_runcard.py
 # ==============================================================================
@@ -127,7 +128,7 @@ async def test_risk_gate_bounded_mandate_integration():
     )
 
     gate = RiskGate(settings={"trading": {"risk": {}}})
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     valid_sizing = SizingResult(
         symbol="EURUSD",

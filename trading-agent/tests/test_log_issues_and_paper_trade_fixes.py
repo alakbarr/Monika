@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -21,7 +22,7 @@ def test_enhanced_cds_new_thresholds():
 @pytest.mark.asyncio
 async def test_compute_temporal_cds_relaxed_age_spread():
     """Verify 4.5 hour age spread yields 0.0 temporal CDS with 6h threshold."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     now = datetime.now(timezone.utc)
     
     # Mock H4 ts (2h old), indicators ts (2h old), brief ts (5.5h old) -> spread 3.5h <= 6.0h
@@ -74,7 +75,7 @@ def test_reevaluation_trigger_fallback_to_time():
 @pytest.mark.asyncio
 async def test_tool_executor_symbol_injection():
     """Verify ToolExecutor automatically injects bound symbol if omitted by LLM."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     executor = ToolExecutor(mock_session, symbol="XAUUSD")
     
     # Payload without symbol
@@ -127,7 +128,7 @@ async def test_trigger_checker_price_level_fallback():
 async def test_paper_trade_open_and_close_simulation():
     """Verify PaperTracker opens paper trade with symmetric spread and closes on SL/TP."""
     tracker = PaperTracker()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     analysis = AssetAnalysis(
         id=101,
@@ -181,8 +182,7 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
         }
     }
     runner = EdgeStrategyRunner(settings=settings)
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock()
+    mock_session = create_mock_async_session()
 
     sig = EdgeSignal(
         strategy_id='tsm_momentum',
@@ -207,11 +207,14 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
         take_profit=1.3725
     )
 
+    mock_graph = MagicMock()
+    mock_graph.ainvoke = AsyncMock(return_value={})
+
     with patch('analysis.calculators.intraday_level_optimizer._get_atr', AsyncMock(return_value=0.0020)), \
          patch('analysis.calculators.daily_range_calculator.compute_daily_range_context', AsyncMock(return_value={'adr': 0.0080})), \
          patch('analysis.calculators.macro_bias_filter.evaluate_macro_alignment', AsyncMock(return_value={'aligned': True, 'score': 1.0, 'reason': 'ok'})), \
          patch('analysis.arbitration.signal_arbitrator.SignalArbitrator.arbitrate', AsyncMock(return_value=mock_arb)), \
-         patch('graph.reactive_graph.get_reactive_graph'):
+         patch('graph.reactive_graph.get_reactive_graph', return_value=mock_graph):
         
         await runner._materialize_and_route(mock_session, sig)
         

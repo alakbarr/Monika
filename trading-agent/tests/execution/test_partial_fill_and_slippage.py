@@ -5,6 +5,7 @@ Verifies slippage calculation, partial fill detection, and Position model persis
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from database.models import Position, PaperTradeRecord
 from execution.service.audit_logger import TradeAuditLogger
 from risk.position_sizing import SizingResult
@@ -44,7 +45,7 @@ def test_paper_trade_record_partial_fill_columns():
 
 @pytest.mark.asyncio
 async def test_save_position_records_slippage_and_partial_fill():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     analysis = MagicMock()
     analysis.id = 123
@@ -85,7 +86,7 @@ async def test_save_position_records_slippage_and_partial_fill():
 
 @pytest.mark.asyncio
 async def test_save_position_full_fill_zero_slippage():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     analysis = MagicMock()
     analysis.id = 124

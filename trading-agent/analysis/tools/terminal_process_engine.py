@@ -267,6 +267,7 @@ class TerminalProcessEngine:
         # Foreground execution: wait up to timeout
         try:
             proc.wait(timeout=timeout)
+            reader_thread.join(timeout=2)
             with self._lock:
                 entry = self._processes.get(session_id)
                 output = entry.output_buffer if entry else ""
@@ -344,7 +345,12 @@ class TerminalProcessEngine:
         except Exception as exc:
             logger.debug(f"[TerminalProcessEngine] Reader error for {session_id}: {exc}")
         finally:
-            proc.stdout.close()
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                if stream and not stream.closed:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
             proc.wait()
             with self._lock:
                 entry = self._processes.get(session_id)

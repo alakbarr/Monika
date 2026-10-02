@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import json
 from datetime import datetime, timezone
@@ -6,7 +7,7 @@ from analysis.calculators.macro_priced_in_calculator import calculate_macro_pric
 
 @pytest.mark.asyncio
 async def test_calculate_macro_priced_in_baseline_defaults():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
@@ -27,7 +28,7 @@ async def test_calculate_macro_priced_in_baseline_defaults():
 
 @pytest.mark.asyncio
 async def test_calculate_macro_priced_in_baseline_high_fedwatch_and_momentum():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Mock FedWatch row
     mock_fw_row = MagicMock()

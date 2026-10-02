@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
@@ -10,7 +11,7 @@ class TestDigestSliceGenerator:
     @pytest.mark.asyncio
     async def test_generate_slice_with_items(self):
         generator = DigestSliceGenerator({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -58,7 +59,7 @@ class TestDigestSliceGenerator:
     @pytest.mark.asyncio
     async def test_assemble_12h_digest(self):
         generator = DigestSliceGenerator({})
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 

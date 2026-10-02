@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from telegram_bot.chat_agent import ChatAgent, PendingAction, _sanitize_telegram_format, SESSION_TIMEOUT_HOURS
@@ -30,7 +31,7 @@ class TestChatAgent:
     @patch("telegram_bot.chat_agent.get_session")
     @patch("telegram_bot.chat_agent.get_client_for_task")
     async def test_handle_success(self, mock_get_client, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -68,7 +69,7 @@ class TestChatAgent:
     @patch("execution.execution_service.ExecutionService")
     @patch("telegram_bot.chat_agent.get_session")
     async def test_confirm_action_success(self, mock_get_session, mock_exec_cls):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -100,7 +101,7 @@ class TestChatAgent:
     @pytest.mark.asyncio
     @patch("telegram_bot.chat_agent.get_session")
     async def test_reject_action(self, mock_get_session):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -118,7 +119,7 @@ class TestChatAgent:
     @patch("database.models.SystemConfig.upsert", new_callable=AsyncMock)
     @patch("telegram_bot.chat_agent.get_session")
     async def test_pending_action_persistence_and_restore(self, mock_get_session, mock_upsert):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
@@ -186,7 +187,7 @@ class TestChatAgentHistoryMemory:
         row_old.message = "Pesan 13 jam lalu"
         row_old.timestamp = now - timedelta(hours=13)
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [row_recent, row_old]
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -211,7 +212,7 @@ class TestChatAgentHistoryMemory:
         # rows ordered desc (newest first: Message 9 down to Message 0)
         rows_desc = list(reversed(rows))
 
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = rows_desc
         mock_session.execute = AsyncMock(return_value=mock_result)
@@ -227,7 +228,7 @@ class TestChatAgentHistoryMemory:
 @pytest.mark.asyncio
 @patch("telegram_bot.chat_agent.get_session")
 async def test_chat_agent_adhoc_pipeline_routing(mock_get_session):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_ctx = AsyncMock()
     mock_ctx.__aenter__.return_value = mock_session
     mock_get_session.return_value = mock_ctx

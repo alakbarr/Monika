@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Master Unit & Integration Test Suite for Round 2 Phase 2 Remediation.
 
@@ -32,7 +33,7 @@ from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 @pytest.mark.asyncio
 async def test_lesson_consolidator_symbol_partitioning():
     """Verify consolidate_lessons_to_playbook queries partitions per symbol in asset_universe."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Mock reflections returned for EURUSD, GBPUSD, BTCUSD
     def make_reflection(sym, idx):
@@ -120,7 +121,7 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
         "risk_multiplier": 1.0
     }
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock) as mock_cal:
         mock_cal.return_value = 0.75
         res = await arbitrator.arbitrate(
@@ -178,7 +179,7 @@ async def test_signal_arbitrator_dynamic_bayesian_boost():
         "risk_multiplier": 1.0
     }
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch("utils.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock) as mock_cal:
         # High calibrated confidence triggers dynamic boost +0.02 (0.05 -> 0.07)
         mock_cal.return_value = 0.85
@@ -266,7 +267,7 @@ def test_risk_gate_broker_timezone_configuration():
 @pytest.mark.asyncio
 async def test_fxssi_sentiment_time_series_history_persistence():
     """Verify FXSSISentimentFetcher persists latest snapshot and append to time-series history."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     fetcher = FXSSISentimentFetcher(session=mock_session, headless=True)
     fetcher.fetch_sync = MagicMock(return_value={

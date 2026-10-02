@@ -4,6 +4,7 @@ Unit Tests for Trading Agent CLI Entrypoint (cli/main.py).
 import pytest
 import yaml
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 from cli.main import parse_args, _acli_run
 
 
@@ -73,12 +74,12 @@ async def test_cli_subcommand_status(capsys):
     from cli.main import _cmd_status
     args = parse_args(["status"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = []
     mock_res = MagicMock()
     mock_res.scalars.return_value = mock_scalars
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
 
     with patch("cli.main.init_db", AsyncMock()), \
          patch("cli.main.get_session") as mock_get_sess:
@@ -96,12 +97,12 @@ async def test_cli_subcommand_pause(capsys):
     from cli.main import _cmd_pause
     args = parse_args(["pause"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.add = MagicMock()
     mock_cfg = None
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = mock_cfg
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
 
     with patch("cli.main.init_db", AsyncMock()), \
          patch("cli.main.get_session") as mock_get_sess:
@@ -120,11 +121,11 @@ async def test_cli_subcommand_resume_with_yes(capsys):
     from cli.main import _cmd_resume
     args = parse_args(["resume", "-y"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_cfg = MagicMock()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = mock_cfg
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
 
     with patch("cli.main.init_db", AsyncMock()), \
          patch("cli.main.get_session") as mock_get_sess:
@@ -143,15 +144,25 @@ async def test_cli_subcommand_kill(capsys):
     from cli.main import _cmd_kill
     args = parse_args(["kill", "-y"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_cfg = MagicMock()
     mock_res = MagicMock()
     mock_res.scalar_one_or_none.return_value = mock_cfg
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
+
+    mock_http_resp = MagicMock(status=200)
+    mock_post_cm = MagicMock()
+    mock_post_cm.__aenter__ = AsyncMock(return_value=mock_http_resp)
+    mock_post_cm.__aexit__ = AsyncMock(return_value=None)
+
+    mock_http_sess = MagicMock()
+    mock_http_sess.post = MagicMock(return_value=mock_post_cm)
+    mock_http_sess.__aenter__ = AsyncMock(return_value=mock_http_sess)
+    mock_http_sess.__aexit__ = AsyncMock(return_value=None)
 
     with patch("cli.main.init_db", AsyncMock()), \
          patch("cli.main.get_session") as mock_get_sess, \
-         patch("aiohttp.ClientSession"):
+         patch("aiohttp.ClientSession", return_value=mock_http_sess):
         mock_get_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_kill(args)
 
@@ -167,12 +178,12 @@ async def test_cli_subcommand_positions(capsys):
     from cli.main import _cmd_positions
     args = parse_args(["positions"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = []
     mock_res = MagicMock()
     mock_res.scalars.return_value = mock_scalars
-    mock_session.execute.return_value = mock_res
+    mock_session.execute = AsyncMock(return_value=mock_res)
 
     with patch("cli.main.init_db", AsyncMock()), \
          patch("cli.main.get_session") as mock_get_sess:
@@ -310,7 +321,7 @@ async def test_cli_subcommand_config_set_local_success(tmp_path, capsys):
          patch("builtins.open", mock_open()), \
          patch("shutil.copy2"), \
          patch("os.replace") as mock_replace:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_config_set(args)
@@ -326,7 +337,7 @@ async def test_cli_subcommand_sessions(capsys):
     from cli.main import _cmd_sessions
     args = parse_args(["sessions", "--source", "all"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock()
     mock_row.telegram_user_id = "dash:admin"
     mock_row.message_count = 10
@@ -362,7 +373,7 @@ async def test_cli_subcommand_logs(capsys):
     mock_log.actor = "guardian"
     mock_log.description = "Trailing stop modified for EURUSD"
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = [mock_log]
     mock_session.execute.return_value = mock_res
@@ -383,22 +394,33 @@ async def test_tui_dashboard_mount():
     from cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
     from textual.widgets import DataTable, RichLog, Input
 
-    app = TradingDashboard(standalone=True)
-    async with app.run_test() as pilot:
-        # Check widgets mounted
-        assert app.query_one("#ticker", LiveTickerBanner) is not None
-        assert app.query_one("#positions_table", DataTable) is not None
-        assert app.query_one("#activity_log", RichLog) is not None
-        assert app.query_one("#status_bar", StatusBar) is not None
+    mock_db_data = {
+        "source": "mock",
+        "overview": {},
+        "positions": [],
+        "activity": [],
+        "tokens": {},
+        "signals": [],
+    }
+    with patch.object(TradingDashboard, "_fetch_data_from_db", AsyncMock(return_value=mock_db_data)), \
+         patch.object(TradingDashboard, "refresh_benchmark_table", AsyncMock()), \
+         patch.object(TradingDashboard, "refresh_plugins_table", AsyncMock()):
+        app = TradingDashboard(standalone=True)
+        async with app.run_test() as pilot:
+            # Check widgets mounted
+            assert app.query_one("#ticker", LiveTickerBanner) is not None
+            assert app.query_one("#positions_table", DataTable) is not None
+            assert app.query_one("#activity_log", RichLog) is not None
+            assert app.query_one("#status_bar", StatusBar) is not None
 
-        # Verify command execution in TUI
-        input_widget = app.query_one("#cmd_input", Input)
-        app.post_message(Input.Submitted(input_widget, "help"))
-        await pilot.pause(0.1)
+            # Verify command execution in TUI
+            input_widget = app.query_one("#cmd_input", Input)
+            app.post_message(Input.Submitted(input_widget, "help"))
+            await pilot.pause(0.1)
 
-        # Check activity log received help
-        log = app.query_one("#activity_log", RichLog)
-        assert len(log.lines) > 0
+            # Check activity log received help
+            log = app.query_one("#activity_log", RichLog)
+            assert len(log.lines) > 0
 
 
 @pytest.mark.asyncio
@@ -435,7 +457,7 @@ async def test_cli_subcommand_config_set_api_permission_error(capsys):
     mock_resp = MagicMock()
     mock_resp.status = 403
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.__aenter__.return_value = mock_session
     mock_session.put = AsyncMock(return_value=mock_resp)
 
@@ -473,7 +495,7 @@ async def test_cli_subcommand_config_set_json_list(tmp_path, capsys):
          patch("builtins.open", mock_open()) as mocked_file, \
          patch("shutil.copy2"), \
          patch("os.replace") as mock_replace:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_sess.return_value.__aenter__.return_value = mock_session
         await _cmd_config_set(args)
@@ -489,7 +511,7 @@ async def test_cli_subcommand_sessions_source_cli(capsys):
     from cli.main import _cmd_sessions
     args = parse_args(["sessions", "--source", "cli"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock()
     mock_row.telegram_user_id = "cli:tui_user"
     mock_row.message_count = 5
@@ -518,7 +540,7 @@ async def test_cli_subcommand_sessions_source_telegram(capsys):
     from cli.main import _cmd_sessions
     args = parse_args(["sessions", "--source", "telegram"])
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_row = MagicMock()
     mock_row.telegram_user_id = "123456789"
     mock_row.message_count = 12
@@ -553,7 +575,7 @@ async def test_cli_subcommand_logs_with_severity(capsys):
     mock_log.actor = "circuit_breaker"
     mock_log.description = "Critical threshold exceeded"
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_res = MagicMock()
     mock_res.scalars.return_value.all.return_value = [mock_log]
     mock_session.execute.return_value = mock_res
@@ -590,42 +612,53 @@ async def test_tui_command_bar_autocomplete_and_commands():
     from cli.tui import TradingDashboard, LiveTickerBanner, StatusBar
     from textual.widgets import Input, RichLog, DataTable
 
-    app = TradingDashboard(standalone=True)
-    async with app.run_test() as pilot:
-        input_widget = app.query_one("#cmd_input", Input)
+    mock_db_data = {
+        "source": "mock",
+        "overview": {},
+        "positions": [],
+        "activity": [],
+        "tokens": {},
+        "signals": [],
+    }
+    with patch.object(TradingDashboard, "_fetch_data_from_db", AsyncMock(return_value=mock_db_data)), \
+         patch.object(TradingDashboard, "refresh_benchmark_table", AsyncMock()), \
+         patch.object(TradingDashboard, "refresh_plugins_table", AsyncMock()):
+        app = TradingDashboard(standalone=True)
+        async with app.run_test() as pilot:
+            input_widget = app.query_one("#cmd_input", Input)
 
-        # 1. Check autocomplete suggester is attached
-        assert input_widget.suggester is not None
+            # 1. Check autocomplete suggester is attached
+            assert input_widget.suggester is not None
 
-        # 2. Test navigation actions
-        await app.action_focus_input()
-        await pilot.pause(0.05)
-        assert input_widget.has_focus
+            # 2. Test navigation actions
+            await app.action_focus_input()
+            await pilot.pause(0.05)
+            assert input_widget.has_focus
 
-        await app.action_blur_input()
-        await pilot.pause(0.05)
-        assert not input_widget.has_focus
+            await app.action_blur_input()
+            await pilot.pause(0.05)
+            assert not input_widget.has_focus
 
-        # 3. Test config command in TUI
-        app.post_message(Input.Submitted(input_widget, "config trading.risk"))
-        await pilot.pause(0.1)
-
-        # 4. Test sessions command in TUI
-        with patch("database.db.get_session") as mock_get_sess:
-            mock_sess = AsyncMock()
-            mock_res = MagicMock()
-            mock_res.all.return_value = []
-            mock_sess.execute.return_value = mock_res
-            mock_get_sess.return_value.__aenter__.return_value = mock_sess
-            app.post_message(Input.Submitted(input_widget, "sessions"))
+            # 3. Test config command in TUI
+            app.post_message(Input.Submitted(input_widget, "config trading.risk"))
             await pilot.pause(0.1)
 
-        # 5. Test logs command in TUI
-        app.post_message(Input.Submitted(input_widget, "logs"))
-        await pilot.pause(0.1)
+            # 4. Test sessions command in TUI
+            with patch("database.db.get_session") as mock_get_sess:
+                mock_sess = AsyncMock()
+                mock_res = MagicMock()
+                mock_res.all.return_value = []
+                mock_sess.execute.return_value = mock_res
+                mock_get_sess.return_value.__aenter__.return_value = mock_sess
+                app.post_message(Input.Submitted(input_widget, "sessions"))
+                await pilot.pause(0.1)
 
-        log = app.query_one("#activity_log", RichLog)
-        assert len(log.lines) > 0
+            # 5. Test logs command in TUI
+            app.post_message(Input.Submitted(input_widget, "logs"))
+            await pilot.pause(0.1)
+
+            log = app.query_one("#activity_log", RichLog)
+            assert len(log.lines) > 0
 
 
 @pytest.mark.asyncio
@@ -633,25 +666,36 @@ async def test_tui_ws_event_tick_preserves_position_counts():
     """Verify _handle_ws_event with tick updates quotes and preserves real/paper position counts."""
     from cli.tui import TradingDashboard, LiveTickerBanner
 
-    app = TradingDashboard(standalone=True)
-    async with app.run_test() as pilot:
-        # Simulate populated counts
-        app.real_count = 3
-        app.paper_count = 5
+    mock_db_data = {
+        "source": "mock",
+        "overview": {},
+        "positions": [],
+        "activity": [],
+        "tokens": {},
+        "signals": [],
+    }
+    with patch.object(TradingDashboard, "_fetch_data_from_db", AsyncMock(return_value=mock_db_data)), \
+         patch.object(TradingDashboard, "refresh_benchmark_table", AsyncMock()), \
+         patch.object(TradingDashboard, "refresh_plugins_table", AsyncMock()):
+        app = TradingDashboard(standalone=True)
+        async with app.run_test() as pilot:
+            # Simulate populated counts
+            app.real_count = 3
+            app.paper_count = 5
 
-        # Handle a tick event
-        tick_event = {
-            "type": "tick",
-            "payload": {"symbol": "EURUSD", "bid": 1.0875},
-        }
-        await app._handle_ws_event(tick_event)
-        await pilot.pause(0.1)
+            # Handle a tick event
+            tick_event = {
+                "type": "tick",
+                "payload": {"symbol": "EURUSD", "bid": 1.0875},
+            }
+            await app._handle_ws_event(tick_event)
+            await pilot.pause(0.1)
 
-        # Verify quote updated
-        assert app._quotes.get("EURUSD") == 1.0875
-        # Verify counts preserved on self
-        assert app.real_count == 3
-        assert app.paper_count == 5
+            # Verify quote updated
+            assert app._quotes.get("EURUSD") == 1.0875
+            # Verify counts preserved on self
+            assert app.real_count == 3
+            assert app.paper_count == 5
 
 
 @pytest.mark.asyncio
@@ -693,17 +737,16 @@ async def test_tui_chat_screen_streaming():
 async def test_run_cli_chat_fallback_on_ws_disconnect(capsys):
     """Verify run_cli_chat lazily instantiates local_agent when WebSocket drops mid-session."""
     from cli.tui_chat import run_cli_chat
+    from cli.chat.prompt import ChatPromptManager
 
     mock_agent = MagicMock()
     mock_agent.handle = AsyncMock(return_value=("Fallback response from local agent", None))
 
-    # Mock inputs: first message, then exit
-    inputs = iter(["Test message", "/exit"])
+    inputs = ["Test message", "/exit"]
 
-    with patch("cli.tui_chat._get_prompt_session", return_value=None), \
-         patch("asyncio.to_thread", side_effect=lambda fn, prompt: next(inputs)), \
+    with patch.object(ChatPromptManager, "prompt_async", AsyncMock(side_effect=inputs)), \
          patch("telegram_bot.chat_agent.ChatAgent", return_value=mock_agent), \
-         patch("cli.tui_chat.load_settings", return_value={}):
+         patch("config.settings.load_settings", return_value={}):
         # Run with offline=True to trigger local engine directly
         await run_cli_chat(offline=True)
 

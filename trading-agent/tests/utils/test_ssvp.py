@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 import pytest
 import datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -5,7 +6,7 @@ from utils.protocol.context_snapshot import compute_context_snapshot_id, detect_
 
 @pytest.mark.asyncio
 async def test_compute_context_snapshot_id():
-    session = AsyncMock()
+    session = create_mock_async_session()
     # Mocking sqlalchemy scalar_one_or_none and scalars().all()
     mock_result_1 = MagicMock()
     mock_brief = MagicMock()
@@ -38,7 +39,7 @@ async def test_compute_context_snapshot_id():
 
 @pytest.mark.asyncio
 async def test_detect_context_version_split():
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     mock_result = MagicMock()
     mock_analysis1 = MagicMock()

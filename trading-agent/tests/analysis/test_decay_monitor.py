@@ -4,6 +4,7 @@ Tests state machine transitions: ACTIVE -> MONITORING -> DECAYED -> DISABLED,
 recovery logic, and is_tradeable gating.
 """
 import pytest
+from tests.conftest import create_mock_async_session
 from analysis.strategies.decay_monitor import (
     StrategyDecayMonitor,
     DecayState,
@@ -109,7 +110,7 @@ async def test_decay_monitor_suppresses_registry_evaluation():
     strat_id = "test_decay_strat"
     monitor._health_map.pop(strat_id, None)
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_session.execute.return_value.scalars.return_value.all.return_value = []
 
     try:
@@ -143,7 +144,7 @@ async def test_paper_tracker_records_decay_outcome():
     monitor._health_map.pop(strat_id, None)
 
     tracker = PaperTracker(settings={})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     mock_analysis = MagicMock()
     mock_analysis.source_strategy_id = strat_id
@@ -199,7 +200,7 @@ async def test_decay_monitor_db_persistence():
 
     saved_payload = None
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_cfg = MagicMock()
     
     # Mock upsert capture

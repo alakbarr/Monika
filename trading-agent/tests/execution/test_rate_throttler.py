@@ -140,6 +140,7 @@ async def test_rate_throttler_invalid_zero_limit_clamping():
 async def test_position_synchronizer_throttling():
     from unittest.mock import AsyncMock, MagicMock, patch
     from execution.service.position_synchronizer import PositionSynchronizerMixin
+    from tests.conftest import create_mock_async_session
 
     class DummySyncService(PositionSynchronizerMixin):
         def __init__(self, throttler):
@@ -149,11 +150,10 @@ async def test_position_synchronizer_throttling():
             self.rate_throttler = throttler
 
     with patch("execution.service.position_synchronizer.get_session") as mock_get_session:
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx
-        mock_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
 
         throttler = RateThrottler(max_per_second=1, max_per_minute=10)
         svc = DummySyncService(throttler)

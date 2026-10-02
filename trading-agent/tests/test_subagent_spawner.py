@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit and regression tests for Dynamic Subagent Spawner Pool.
 Verifies SubagentWorker sandboxing, timeout enforcement, distillation token contracts,
@@ -258,7 +259,7 @@ async def test_fedwatch_probabilities_web_search_fallback():
     assert "CME FedWatch" in res_no_session.get("suggested_query", "")
 
     # 2. With session but empty database rows
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_scalars = MagicMock()
     mock_scalars.all.return_value = []

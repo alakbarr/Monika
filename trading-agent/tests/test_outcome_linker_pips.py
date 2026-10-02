@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 # ==============================================================================
 # File: tests/test_outcome_linker_pips.py
 # ==============================================================================
@@ -76,7 +77,7 @@ async def test_path_dependent_sl_hit_first():
         volume=120.0
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bar1, bar2]
     mock_session.execute.return_value = mock_result
@@ -128,7 +129,7 @@ async def test_path_dependent_tp_hit_first():
         volume=80.0
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bar1, bar2]
     mock_session.execute.return_value = mock_result
@@ -169,7 +170,7 @@ async def test_path_dependent_zero_or_inverted_sl_fallback():
         volume=100.0
     )
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bar]
     mock_session.execute.return_value = mock_result
@@ -198,7 +199,7 @@ async def test_path_dependent_timeframe_h1_filter():
     now = datetime.now(timezone.utc)
     symbol = "EURUSD"
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_session.execute.return_value = mock_result
@@ -259,7 +260,7 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
     # Sequence of queries:
     # 1. Main join query for reflections
     # 2. Target 24h bar query -> returns bar
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     mock_res_main = MagicMock()
     mock_res_main.all.return_value = [(reflection, analysis)]

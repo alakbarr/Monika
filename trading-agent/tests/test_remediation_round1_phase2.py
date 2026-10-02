@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Comprehensive Unit Tests for Round 1 Phase 2 Remediation:
 - P2-1 (BT-09): Dynamic Broker Spread & Session Friction Calibration in OutcomeEvaluator
@@ -48,7 +49,7 @@ async def test_outcome_evaluator_custom_friction_and_db_calibration():
     assert outcome["friction_pips"] >= 3.5  # 2.5 spread + 1.0 slippage
 
     # Test calibrate_from_db
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_trade1 = MagicMock(symbol="EURUSD", slippage_applied=1.2, closed_at=start)
     mock_trade2 = MagicMock(symbol="EURUSD", slippage_applied=1.8, closed_at=start)
     mock_trade3 = MagicMock(symbol="EURUSD", slippage_applied=1.5, closed_at=start)
@@ -142,7 +143,7 @@ async def test_walk_forward_engine_run_and_wfe_calculation():
 async def test_prompt_ab_test_thompson_sampling_bandit():
     """Verify PromptABTest dynamically updates Beta posteriors and samples optimal variant via Thompson Sampling."""
     test = PromptABTest(test_name="system_prompt_v2", min_warmup_samples=5)
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # 1. Warmup behavior (samples < 5) -> fallback heuristic
     mock_exec_none = MagicMock()
@@ -200,7 +201,7 @@ async def test_prompt_ab_test_thompson_sampling_bandit():
 async def test_signal_arbitrator_dynamic_concordant_multiplier():
     """Verify SignalArbitrator dynamically scales concordant risk multiplier based on historical win rate."""
     arbitrator = SignalArbitrator(arbitration_cfg={"dynamic_concordant_multiplier": True})
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
 
     # Case 1: High empirical win rate (70% win rate across 20 trades) -> Scales to 1.25x
     winning_trades = [
@@ -230,7 +231,7 @@ async def test_signal_arbitrator_dynamic_concordant_multiplier():
 @pytest.mark.asyncio
 async def test_performance_reviewer_structured_confluence_tag_matching():
     """Verify evaluate_candidate_lessons accurately matches structured confluence_factors_json tags."""
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     proposed_time = datetime.now(timezone.utc) - timedelta(days=10)
 
     candidate = CandidateLesson(

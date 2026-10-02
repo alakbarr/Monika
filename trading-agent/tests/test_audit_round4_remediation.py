@@ -9,6 +9,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, AsyncMock, patch
 
+from tests.conftest import create_mock_async_session
 from utils.validation.data_validator import is_spread_acceptable
 from analysis.strategies.gap_fade import DailyReopenGapFade
 from analysis.strategies.base_strategy import EdgeSignal
@@ -53,7 +54,7 @@ def test_is_spread_acceptable_canonical_assets():
 async def test_gap_fade_no_name_error():
     """Memverifikasi DailyReopenGapFade tidak melempar NameError: name 'gap' is not defined."""
     strat = DailyReopenGapFade(settings={})
-    session = AsyncMock()
+    session = create_mock_async_session()
     
     with patch("utils.clock.now") as mock_now:
         mock_now.return_value = datetime(2026, 9, 14, 8, 30, tzinfo=timezone.utc)
@@ -73,7 +74,7 @@ async def test_gap_fade_no_name_error():
         mock_exec = MagicMock()
         mock_exec.scalars.return_value = mock_scalars
         mock_exec.scalar_one_or_none.return_value = None
-        session.execute.return_value = mock_exec
+        session.execute = AsyncMock(return_value=mock_exec)
 
         signal = await strat.evaluate(
             session=session,
@@ -88,7 +89,7 @@ async def test_gap_fade_no_name_error():
 async def test_signal_arbitrator_direction_none():
     """Memverifikasi SignalArbitrator menangani sinyal quant dengan direction=None tanpa crash."""
     arbitrator = SignalArbitrator(settings={})
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     # 1. Quant signal invalid / direction None, no LLM decision
     invalid_signal = EdgeSignal(

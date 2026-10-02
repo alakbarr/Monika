@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
+from tests.conftest import create_mock_async_session
 from scheduler.news_watcher import NewsWatcher
 from database.models import NewsItem
 
@@ -35,7 +36,7 @@ class TestNewsWatcher:
         watcher = NewsWatcher(settings)
         watcher._fetch_new_news = AsyncMock(return_value=[])
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -59,7 +60,7 @@ class TestNewsWatcher:
         watcher._get_affected_symbols = MagicMock(return_value=["XAUUSD"])
         watcher._trigger_reanalysis = AsyncMock()
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -91,7 +92,7 @@ class TestNewsWatcher:
         watcher._get_affected_symbols = MagicMock(return_value=["EURUSD"])
         watcher._trigger_reanalysis = AsyncMock()
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         
         # Return mock_session for all get_session() contexts
@@ -159,7 +160,7 @@ class TestNewsWatcher:
     @patch("asyncio.sleep", new_callable=AsyncMock)
     @patch("scheduler.news_watcher.get_session")
     async def test_trigger_reanalysis(self, mock_get_sess, mock_sleep, settings):
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_session.add = MagicMock()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
@@ -200,7 +201,7 @@ class TestNewsWatcher:
         watcher._fetch_new_news = AsyncMock(return_value=[news_rehash])
         watcher._trigger_reanalysis = AsyncMock()
         
-        mock_session = AsyncMock()
+        mock_session = create_mock_async_session()
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session
         mock_get_session.return_value = mock_ctx

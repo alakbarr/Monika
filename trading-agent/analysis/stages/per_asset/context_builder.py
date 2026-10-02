@@ -419,12 +419,17 @@ class ContextBuilderMixin:
             from database.models import SystemConfig
             from sqlalchemy import select as _sel
             import json as _j
-            from database.db import get_session
-            async with get_session() as infl_session:
-                infl_cfg = (await infl_session.execute(
+            if session is not None:
+                infl_cfg = (await session.execute(
                     _sel(SystemConfig).where(SystemConfig.key == 'score_inflation_correction_threshold')
                 )).scalar_one_or_none()
-                if infl_cfg and infl_cfg.value:
+            else:
+                from database.db import get_session
+                async with get_session() as infl_session:
+                    infl_cfg = (await infl_session.execute(
+                        _sel(SystemConfig).where(SystemConfig.key == 'score_inflation_correction_threshold')
+                    )).scalar_one_or_none()
+            if infl_cfg and infl_cfg.value:
                     infl_data = _j.loads(infl_cfg.value)
                     set_at = datetime.fromisoformat(infl_data['set_at'])
                     if set_at.tzinfo is None:

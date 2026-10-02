@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import create_mock_async_session
 
 from analysis.debate.macro_bull_analyst import run_bull_analyst, MACRO_BULL_SCHEMA
 from analysis.debate.macro_bear_analyst import run_bear_analyst, MACRO_BEAR_SCHEMA
@@ -208,7 +209,7 @@ async def test_run_macro_debate_in_fundamental_stage():
     from database.models import FundamentalBrief
     import datetime
 
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     settings = {
         "agent_architecture": {
             "enable_debate": True

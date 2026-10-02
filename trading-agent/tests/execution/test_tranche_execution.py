@@ -48,18 +48,13 @@ def base_analysis():
     return analysis
 
 
+from tests.conftest import create_mock_async_session
+
+
 @pytest.fixture
 def mock_session():
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
+    return create_mock_async_session()
 
-    mock_exec = MagicMock()
-    mock_exec.scalar_one_or_none.return_value = None
-    session.execute = AsyncMock(return_value=mock_exec)
-    return session
 
 
 def make_mock_sizing(lots=0.20):

@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from analysis.memory.skill_evolution import MicroPlaybookCompiler, PLAYBOOKS_DIR
 
 @pytest.mark.asyncio
 async def test_micro_playbook_compiler_compiles_streak(tmp_path):
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     # Create 4 mock reflections with positive pnl (streak of 4 wins)
     reflections = []

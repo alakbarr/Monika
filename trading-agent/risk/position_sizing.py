@@ -593,14 +593,6 @@ class PositionSizer:
         Untuk eksekusi nyata, lihat execution_service.py yang sudah menggunakan
         `calculate_with_session()`.
         """
-        import warnings
-        warnings.warn(
-            "PositionSizer.calculate() is a sync fallback that does NOT apply the ADX "
-            "regime size multiplier (0.5x in ranging markets). "
-            "Use calculate_with_session() for production execution.",
-            DeprecationWarning,
-            stacklevel=2
-        )
         logger.warning(
             '[PositionSizer] calculate() (sync) called — ADX regime multiplier NOT applied. '
             'Use calculate_with_session() for production trading.'

@@ -1,3 +1,4 @@
+from tests.conftest import create_mock_async_session
 """
 Unit tests for PaperTradeRecord detection_method and exit_reason truncation fix.
 Validates model column lengths, Alembic migration chain, and PaperTracker error isolation.
@@ -75,7 +76,7 @@ def test_alembic_migration_chain():
 async def test_paper_tracker_check_sl_tp_sets_full_detection_method():
     """Verify PaperTracker._check_sl_tp correctly populates detection_method without truncation."""
     tracker = PaperTracker()
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     trade = PaperTradeRecord(
         id=3,
@@ -111,7 +112,7 @@ async def test_paper_tracker_error_isolation_on_flush_failure():
     """Verify that if an individual trade encounters an exception during processing,
     the failure is isolated, session rolled back, and the failed trade is not included in closed list."""
     tracker = PaperTracker()
-    session = AsyncMock()
+    session = create_mock_async_session()
 
     trade_bad = PaperTradeRecord(
         id=99,

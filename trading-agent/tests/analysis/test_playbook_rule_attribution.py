@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock
+from tests.conftest import create_mock_async_session
 from database.models import PlaybookRuleAttribution, DecisionReflection
 from analysis.memory.lesson_consolidator import record_playbook_rule_outcome
 from analysis.memory.session_search import SessionSearchEngine
@@ -8,7 +9,7 @@ from analysis.memory.session_search import SessionSearchEngine
 
 @pytest.mark.asyncio
 async def test_playbook_rule_attribution_model_and_recording():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     mock_result = MagicMock()
     mock_result.scalars.return_value.first.return_value = None
     mock_session.execute.return_value = mock_result
@@ -36,7 +37,7 @@ async def test_playbook_rule_attribution_model_and_recording():
 
 @pytest.mark.asyncio
 async def test_playbook_rule_auto_deprecation_on_low_win_rate():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     existing_attr = PlaybookRuleAttribution(
         rule_hash="eurusd_test_hash",
@@ -77,7 +78,7 @@ async def test_playbook_rule_auto_deprecation_on_low_win_rate():
 
 @pytest.mark.asyncio
 async def test_playbook_rule_auto_elevation_to_golden():
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     
     existing_attr = PlaybookRuleAttribution(
         rule_hash="gold_rule_hash",
