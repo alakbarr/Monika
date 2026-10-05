@@ -4,7 +4,7 @@ description: "Intraday range edge risk management, SL placement rules, and sizin
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]
-tags: [risk_management, position_sizing, stop_loss, adr, atr, drawdown, operator]
+tags: [risk, lot, drawdown, sl, invalidation, margin, risk_management, position_sizing, stop_loss, adr, atr, operator]
 ---
 
 # Risk Management Principles & Capital Preservation Fortress

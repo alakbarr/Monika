@@ -22,7 +22,7 @@ from typing import Optional, Any, cast
 
 import numpy as np
 import pandas as pd
-import ta  # type: ignore
+import ta
 import ta.momentum
 import ta.trend
 import ta.volatility
@@ -655,6 +655,8 @@ def detect_rsi_divergence(
 
     bullish_div = False
     bearish_div = False
+    hidden_bullish_div = False
+    hidden_bearish_div = False
     details = []
 
     try:
@@ -666,9 +668,14 @@ def detect_rsi_divergence(
         rsi_low_1 = float(sub_rsi.loc[min_idx_1])
         rsi_low_2 = float(sub_rsi.loc[min_idx_2])
 
+        # Regular Bullish: Price Lower Low, RSI Higher Low (reversal up)
         if price_low_1 < price_low_2 and rsi_low_1 > rsi_low_2 and rsi_low_1 < 50:
             bullish_div = True
-            details.append(f"Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
+            details.append(f"Regular Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
+        # Hidden Bullish: Price Higher Low, RSI Lower Low (continuation up)
+        elif price_low_1 > price_low_2 and rsi_low_1 < rsi_low_2 and rsi_low_2 < 50:
+            hidden_bullish_div = True
+            details.append(f"Hidden Bullish Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Lower Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})")
     except Exception:
         pass
 
@@ -681,20 +688,29 @@ def detect_rsi_divergence(
         rsi_high_1 = float(sub_rsi.loc[max_idx_1])
         rsi_high_2 = float(sub_rsi.loc[max_idx_2])
 
+        # Regular Bearish: Price Higher High, RSI Lower High (reversal down)
         if price_high_1 > price_high_2 and rsi_high_1 < rsi_high_2 and rsi_high_1 > 50:
             bearish_div = True
-            details.append(f"Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
+            details.append(f"Regular Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
+        # Hidden Bearish: Price Lower High, RSI Higher High (continuation down)
+        elif price_high_1 < price_high_2 and rsi_high_1 > rsi_high_2 and rsi_high_2 > 50:
+            hidden_bearish_div = True
+            details.append(f"Hidden Bearish Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Higher High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})")
     except Exception:
         pass
 
-    if bullish_div and not bearish_div:
-        return {"divergence": "bullish", "strength": 0.8, "details": "; ".join(details)}
-    elif bearish_div and not bullish_div:
-        return {"divergence": "bearish", "strength": 0.8, "details": "; ".join(details)}
-    elif bullish_div and bearish_div:
-        return {"divergence": "mixed", "strength": 0.5, "details": "; ".join(details)}
+    if bullish_div and not (bearish_div or hidden_bearish_div):
+        return {"divergence": "bullish", "divergence_type": "regular_bullish", "strength": 0.8, "details": "; ".join(details)}
+    elif bearish_div and not (bullish_div or hidden_bullish_div):
+        return {"divergence": "bearish", "divergence_type": "regular_bearish", "strength": 0.8, "details": "; ".join(details)}
+    elif hidden_bullish_div and not (bearish_div or hidden_bearish_div):
+        return {"divergence": "hidden_bullish", "divergence_type": "hidden_bullish", "strength": 0.75, "details": "; ".join(details)}
+    elif hidden_bearish_div and not (bullish_div or hidden_bullish_div):
+        return {"divergence": "hidden_bearish", "divergence_type": "hidden_bearish", "strength": 0.75, "details": "; ".join(details)}
+    elif any([bullish_div, hidden_bullish_div]) and any([bearish_div, hidden_bearish_div]):
+        return {"divergence": "mixed", "divergence_type": "mixed", "strength": 0.5, "details": "; ".join(details)}
 
-    return {"divergence": "none", "strength": 0.0, "details": "No divergence detected across lookback window"}
+    return {"divergence": "none", "divergence_type": "none", "strength": 0.0, "details": "No divergence detected across lookback window"}
 
 
 def detect_macd_divergence(
@@ -780,4 +796,141 @@ def detect_macd_divergence(
         return {"divergence": "bearish", "type": "hidden", "strength": 0.75, "details": "; ".join(details)}
 
     return {"divergence": "none", "type": "none", "strength": 0.0, "details": "No MACD divergence detected across lookback window"}
+
+
+def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
+    """
+    Compute daily/weekly pivot points.
+    Supported methods: 'classic' (floor), 'camarilla', 'woodie'.
+    """
+    method_lower = (method or "classic").lower()
+    diff = high - low
+
+    if method_lower == "all":
+        return {
+            "classic": compute_pivot_points(high, low, close, method="classic"),
+            "camarilla": compute_pivot_points(high, low, close, method="camarilla"),
+            "woodie": compute_pivot_points(high, low, close, method="woodie"),
+        }
+
+    if method_lower == "camarilla":
+        pp = (high + low + close) / 3.0
+        r4 = close + diff * 1.1 / 2.0
+        r3 = close + diff * 1.1 / 4.0
+        r2 = close + diff * 1.1 / 6.0
+        r1 = close + diff * 1.1 / 12.0
+        s1 = close - diff * 1.1 / 12.0
+        s2 = close - diff * 1.1 / 6.0
+        s3 = close - diff * 1.1 / 4.0
+        s4 = close - diff * 1.1 / 2.0
+        return {
+            "method": "camarilla",
+            "pp": round(pp, 5),
+            "pivot": round(pp, 5),
+            "r4": round(r4, 5),
+            "r3": round(r3, 5),
+            "r2": round(r2, 5),
+            "r1": round(r1, 5),
+            "s1": round(s1, 5),
+            "s2": round(s2, 5),
+            "s3": round(s3, 5),
+            "s4": round(s4, 5),
+        }
+    elif method_lower == "woodie":
+        pp = (high + low + 2.0 * close) / 4.0
+        r1 = 2.0 * pp - low
+        s1 = 2.0 * pp - high
+        r2 = pp + diff
+        s2 = pp - diff
+        return {
+            "method": "woodie",
+            "pp": round(pp, 5),
+            "pivot": round(pp, 5),
+            "r1": round(r1, 5),
+            "r2": round(r2, 5),
+            "s1": round(s1, 5),
+            "s2": round(s2, 5),
+        }
+    else:  # classic
+        pp = (high + low + close) / 3.0
+        r1 = 2.0 * pp - low
+        s1 = 2.0 * pp - high
+        r2 = pp + diff
+        s2 = pp - diff
+        r3 = high + 2.0 * (pp - low)
+        s3 = low - 2.0 * (high - pp)
+        return {
+            "method": "classic",
+            "pp": round(pp, 5),
+            "pivot": round(pp, 5),
+            "r1": round(r1, 5),
+            "r2": round(r2, 5),
+            "r3": round(r3, 5),
+            "s1": round(s1, 5),
+            "s2": round(s2, 5),
+            "s3": round(s3, 5),
+        }
+
+
+def compute_ichimoku(
+    df: pd.DataFrame,
+    tenkan_period: int = 9,
+    kijun_period: int = 26,
+    senkou_b_period: int = 52,
+) -> dict[str, Any]:
+    """
+    Compute Ichimoku Kinko Hyo components and current regime:
+    - Tenkan-sen (Conversion Line)
+    - Kijun-sen (Base Line)
+    - Senkou Span A (Leading Span A)
+    - Senkou Span B (Leading Span B)
+    - Chikou Span (Lagging Span)
+    """
+    if df is None or len(df) < senkou_b_period:
+        return {"error": f"Insufficient data for Ichimoku (need >= {senkou_b_period} bars, got {len(df) if df is not None else 0})"}
+
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    close = df["close"].astype(float)
+
+    tenkan = (high.rolling(tenkan_period).max() + low.rolling(tenkan_period).min()) / 2.0
+    kijun = (high.rolling(kijun_period).max() + low.rolling(kijun_period).min()) / 2.0
+    senkou_a = (tenkan + kijun) / 2.0
+    senkou_b = (high.rolling(senkou_b_period).max() + low.rolling(senkou_b_period).min()) / 2.0
+
+    cur_close = float(close.iloc[-1])
+    cur_tenkan = float(tenkan.iloc[-1]) if pd.notna(tenkan.iloc[-1]) else cur_close
+    cur_kijun = float(kijun.iloc[-1]) if pd.notna(kijun.iloc[-1]) else cur_close
+    cloud_a = float(senkou_a.iloc[-26]) if len(senkou_a) >= 26 and pd.notna(senkou_a.iloc[-26]) else cur_close
+    cloud_b = float(senkou_b.iloc[-26]) if len(senkou_b) >= 26 and pd.notna(senkou_b.iloc[-26]) else cur_close
+
+    cloud_top = max(cloud_a, cloud_b)
+    cloud_bottom = min(cloud_a, cloud_b)
+
+    if cur_close > cloud_top:
+        cloud_pos = "above_cloud (bullish)"
+    elif cur_close < cloud_bottom:
+        cloud_pos = "below_cloud (bearish)"
+    else:
+        cloud_pos = "inside_cloud (neutral/consolidation)"
+
+    tk_cross = "bullish_tk_cross" if cur_tenkan > cur_kijun else "bearish_tk_cross"
+    future_sentiment = "bullish_green" if float(senkou_a.iloc[-1]) > float(senkou_b.iloc[-1]) else "bearish_red"
+
+    return {
+        "status": "success",
+        "current_price": round(cur_close, 5),
+        "tenkan_sen": round(cur_tenkan, 5),
+        "kijun_sen": round(cur_kijun, 5),
+        "senkou_span_a": round(cloud_a, 5),
+        "senkou_span_b": round(cloud_b, 5),
+        "chikou_span": round(cur_close, 5),
+        "future_senkou_a": round(float(senkou_a.iloc[-1]), 5),
+        "future_senkou_b": round(float(senkou_b.iloc[-1]), 5),
+        "cloud_position": cloud_pos,
+        "cloud_bias": cloud_pos,
+        "tk_cross": tk_cross,
+        "future_cloud_sentiment": future_sentiment,
+    }
+
 

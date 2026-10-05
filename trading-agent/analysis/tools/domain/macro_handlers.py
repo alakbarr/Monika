@@ -67,6 +67,7 @@ class MacroToolHandlers:
             "highest_liquidity": overlap is not None,
             "session_modifier": 1 if overlap else (-2 if "Off-peak" in sessions else 0),
             "local_times": {
+                "Jakarta (WIB)": now.astimezone(ZoneInfo("Asia/Jakarta")).strftime("%H:%M WIB"),
                 "Tokyo": tokyo_now.strftime("%H:%M JST"),
                 "London": london_now.strftime("%H:%M %Z"),
                 "New York": ny_now.strftime("%H:%M %Z"),
@@ -117,6 +118,16 @@ class MacroToolHandlers:
                             return r_time <= curr_now
                         return False
 
+                    from scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
+                    wib_tz = ZoneInfo("Asia/Jakarta")
+
+                    def _fmt_wib(dt_val):
+                        if not dt_val:
+                            return None
+                        if dt_val.tzinfo is None:
+                            dt_val = dt_val.replace(tzinfo=timezone.utc)
+                        return dt_val.astimezone(wib_tz).strftime("%Y-%m-%d %H:%M WIB")
+
                     return {
                         "count": len(rows),
                         "events": [
@@ -129,6 +140,9 @@ class MacroToolHandlers:
                                 "forecast": r.forecast,
                                 "previous": r.previous,
                                 "event_time": r.event_time.isoformat() if r.event_time is not None else None,
+                                "event_time_wib": _fmt_wib(r.event_time),
+                                "affected_pairs": CURRENCY_TO_SYMBOLS.get((r.currency or "").upper(), []),
+                                "surprise_score": getattr(r, "surprise_score", None),
                             }
                             for r in rows
                         ],
@@ -246,4 +260,9 @@ class MacroToolHandlers:
     async def get_market_correlations(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
         from analysis.tools.handlers.trade_intel import handle_get_market_correlations
         return await handle_get_market_correlations(kwargs, session=session)
+
+    async def get_indonesia_macro(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
+        from analysis.tools.handlers.macro_tools import handle_get_indonesia_macro
+        return await handle_get_indonesia_macro(kwargs, session=session, settings=self.settings)
+
 

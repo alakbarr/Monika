@@ -4,7 +4,7 @@ description: "Institutional framework for Fed, ECB, BoE, BoJ, and RBA reaction f
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]
-tags: [central_banks, monetary_policy, fomc, ecb, boe, boj, rba, macro, yields]
+tags: [central_banks, monetary_policy, fomc, ecb, boe, boj, rba, macro, yields, suku_bunga, interest_rate, fed]
 ---
 
 # Central Banks Framework — Mandates, Monetary Policy Expectations & Multi-Channel Transmission

@@ -39,7 +39,7 @@ def _attach_usage_capture(client: BaseLLMClient) -> dict:
         if kwargs.get("thinking_tokens"):
             usage["thinking_tokens"] += kwargs["thinking_tokens"] or 0
 
-    client._save_token_usage = _capture  # type: ignore[method-assign]
+    client._save_token_usage = _capture
     return usage
 
 

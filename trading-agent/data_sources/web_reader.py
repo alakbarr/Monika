@@ -139,7 +139,7 @@ class WebReader:
             try:
                 from scrapers.base_scraper import BaseScraper
             except ImportError:
-                from trading_agent.scrapers.base_scraper import BaseScraper  # type: ignore[no-redef]
+                from trading_agent.scrapers.base_scraper import BaseScraper
             scraper = BaseScraper(headless=True, profile_name=None)
         except Exception as e:
             logger.warning(f"WebReader browser fallback unavailable (BaseScraper error): {e}")
@@ -182,9 +182,47 @@ class WebReader:
         except asyncio.TimeoutError:
             logger.warning(f"WebReader browser fallback timed out for {url}")
             return None
+    def _extract_pdf_content(self, url: str, raw_bytes: bytes) -> Optional[Dict[str, Any]]:
+        """Extracts clean text from binary PDF payload using pypdf."""
+        try:
+            import io
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(raw_bytes))
+            pages_text = []
+            for idx, page in enumerate(reader.pages[:30]):
+                text = page.extract_text() or ""
+                if text.strip():
+                    pages_text.append(f"--- Halaman {idx+1} ---\n{text.strip()}")
+            full_text = "\n\n".join(pages_text)
+            return {
+                "success": True,
+                "url": url,
+                "title": f"PDF Document ({len(reader.pages)} pages)",
+                "content": full_text[:self.max_chars],
+                "engine": "pypdf",
+                "pages_count": len(reader.pages),
+            }
         except Exception as e:
-            logger.warning(f"WebReader browser fallback execution failed for {url}: {e}")
+            logger.warning(f"WebReader PDF extraction failed for {url}: {e}")
             return None
+
+    async def _read_archive_fallback(self, url: str) -> Optional[Dict[str, Any]]:
+        """Attempts to fetch archived mirror from Wayback Machine if original page is paywalled/blocked."""
+        try:
+            wayback_url = f"https://web.archive.org/web/2/{url}"
+            logger.info(f"WebReader attempting archive fallback via Wayback Machine: {wayback_url}")
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10), headers=DEFAULT_HEADERS) as session:
+                async with session.get(wayback_url) as resp:
+                    if resp.status == 200:
+                        html = await resp.text(errors="replace")
+                        res = self._extract_content(url, html)
+                        if res.get("content") and len(res.get("content", "")) > 100:
+                            res["engine"] = "archive_fallback"
+                            res["title"] = f"[Archived] {res.get('title', '')}"
+                            return res
+        except Exception as e:
+            logger.debug(f"Wayback fallback error for {url}: {e}")
+        return None
 
     async def read_url(self, url: str) -> Dict[str, Any]:
         """
@@ -261,6 +299,14 @@ class WebReader:
                             chunks.append(chunk)
 
                         raw_bytes = b"".join(chunks)
+                        content_type = response.headers.get("Content-Type", "").lower()
+
+                        # 1. PDF Document Extraction via pypdf
+                        if "application/pdf" in content_type or clean_url.lower().endswith(".pdf") or raw_bytes.startswith(b"%PDF"):
+                            pdf_res = self._extract_pdf_content(clean_url, raw_bytes)
+                            if pdf_res:
+                                return pdf_res
+
                         encoding = response.get_encoding() or "utf-8"
                         try:
                             html = raw_bytes.decode(encoding, errors="replace")
@@ -273,6 +319,10 @@ class WebReader:
                             browser_res = await self._read_url_with_browser(current_url)
                             if browser_res and browser_res.get("success") and browser_res.get("content"):
                                 return browser_res
+                            # Try Wayback archive fallback if browser also failed
+                            archive_res = await self._read_archive_fallback(clean_url)
+                            if archive_res and archive_res.get("success"):
+                                return archive_res
                         return content_res
 
             return {

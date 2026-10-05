@@ -38,8 +38,8 @@ class GoogleSheetsMcpServer:
             base_dir = Path(__file__).resolve().parent.parent.parent.parent
             self.creds_path = str(base_dir / self.creds_path)
             
-        self.default_folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "15PKGN6q0UUab-2dc8AcAXMTG8L5jMRnd")
-        self.user_email = os.environ.get("GOOGLE_USER_EMAIL", "asaifulakbarw@gmail.com")
+        self.default_folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
+        self.user_email = os.environ.get("GOOGLE_USER_EMAIL", "")
         self.scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",

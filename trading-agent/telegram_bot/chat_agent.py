@@ -29,8 +29,8 @@ except ImportError:
         retry_after = 1.0
     class _FallbackBadRequest(Exception):
         pass
-    RetryAfter = _FallbackRetryAfter  # type: ignore[assignment,misc]
-    BadRequest = _FallbackBadRequest  # type: ignore[assignment,misc]
+    RetryAfter = _FallbackRetryAfter
+    BadRequest = _FallbackBadRequest
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +47,7 @@ logger = logging.getLogger("TradingAgent.ChatAgent")
 TELEGRAM_MAX_CHARS    = 4096
 HISTORY_WINDOW        = 50    # Max conversation turns to include in context (expanded for micro-compaction)
 MAX_HISTORY_CHARS     = 8000  # Max total characters from history
-SESSION_TIMEOUT_HOURS = 2     # Jeda >2 jam memutus rantai riwayat sesi lama
+SESSION_TIMEOUT_HOURS = 24    # Jeda >24 jam memutus rantai riwayat sesi lama
 
 
 def _sanitize_telegram_format(text: str) -> str:
@@ -177,6 +177,7 @@ class ChatAgent:
         
         self._pending_actions: dict[str, PendingAction] = {}
         self._pending_charts: list[Any] = []
+        self._pending_files: list[tuple[str, Any]] = []
         self.last_active: Optional[datetime] = None
         self._tool_router = ChatToolRouter(TELEGRAM_TOOLS)
 
@@ -201,6 +202,7 @@ class ChatAgent:
         # Tool event listener for dashboard WebSocket streaming
         self.tool_event_listener: Optional[Any] = None
         self._last_turn_streamed: bool = False
+        self._last_intercepted_pending: Optional[PendingAction] = None
 
     @property
     def was_last_turn_streamed(self) -> bool:
@@ -216,31 +218,128 @@ class ChatAgent:
         self.tool_event_listener = listener
 
     def _instrument_executor(self, executor: Any):
-        """Wrap ToolExecutor.execute to notify tool_event_listener if set."""
-        if not self.tool_event_listener:
-            return
+        """Wrap ToolExecutor.execute to notify tool_event_listener if set and enforce Safety Fortress gating."""
         orig_exec = executor.execute
         listener = self.tool_event_listener
 
+        MUTATING_ACTIONS_MAP = {
+            "place_order": "place_order",
+            "close_position": "close_position",
+            "close_positions_batch": "close_all_positions",
+            "set_trailing_stop": "set_trailing_stop",
+            "cancel_stale_pending_orders": "cancel_stale_pending_orders",
+            "modify_sl_tp": "modify_sl_tp",
+            "bulk_breakeven": "bulk_breakeven",
+            "secure_positions": "secure_positions",
+            "cancel_order": "cancel_order",
+            "close_paper_trade": "close_paper_trade",
+            "modify_paper_sl_tp": "modify_paper_sl_tp",
+        }
+
         async def _wrapped_exec(tool_name: str, tool_input: dict) -> Any:
-            try:
-                cb = listener("start", {"tool": tool_name, "input": tool_input})
-                if asyncio.iscoroutine(cb):
-                    await cb
-            except Exception as e:
-                logger.debug(f"[ChatAgent] Error in tool listener start: {e}")
+            # Safety Fortress Gate: Intercept direct mutating calls from chat LLM
+            if tool_name in MUTATING_ACTIONS_MAP:
+                action_type = MUTATING_ACTIONS_MAP[tool_name]
+                pending = self._create_pending_action({
+                    "action_type": action_type,
+                    "params": tool_input or {},
+                    "description": f"Mutasi {tool_name} ({action_type})"
+                })
+                if pending:
+                    self._last_intercepted_pending = pending
+                    logger.info(f"[SafetyFortress] Intercepted mutating tool '{tool_name}' -> Created PendingAction #{pending.action_id}")
+                    return {
+                        "status": "pending_operator_approval",
+                        "action_id": pending.action_id,
+                        "action_type": action_type,
+                        "message": (
+                            f"Action '{tool_name}' involves capital mutation and cannot be executed directly. "
+                            f"Proposal #{pending.action_id} has been generated and presented to the operator for confirmation."
+                        ),
+                    }
+
+            # Safety Fortress Gate: Intercept mutating terminal execution
+            if tool_name == "terminal":
+                cmd = str((tool_input or {}).get("command", "")).strip()
+                read_only_starters = (
+                    "git status", "git log", "git diff", "git branch", "uptime", "tasklist",
+                    "dir", "ls", "ps", "cat", "head", "tail", "whoami", "date", "hostname", "echo"
+                )
+                is_read_only = any(cmd.lower().startswith(starter) for starter in read_only_starters)
+                destructive_chars = [";", "&", "|", ">"]
+                if not (is_read_only and not any(ch in cmd for ch in destructive_chars)):
+                    action_type = "execute_terminal_command"
+                    pending = self._create_pending_action({
+                        "action_type": action_type,
+                        "params": tool_input or {},
+                        "description": f"Eksekusi Shell Command:\n• Command: `{cmd}`"
+                    })
+                    if pending:
+                        self._last_intercepted_pending = pending
+                        logger.info(f"[SafetyFortress] Intercepted terminal command '{cmd}' -> PendingAction #{pending.action_id}")
+                        return {
+                            "status": "pending_operator_approval",
+                            "action_id": pending.action_id,
+                            "action_type": action_type,
+                            "message": (
+                                f"Terminal command '{cmd}' requires operator authorization. "
+                                f"Proposal #{pending.action_id} generated for operator confirmation."
+                            ),
+                        }
+
+            # Safety Fortress Gate: Intercept interactive computer_use GUI actions
+            if tool_name == "computer_use":
+                gui_action = str((tool_input or {}).get("action", "")).lower().strip()
+                if gui_action != "screenshot":
+                    action_type = "desktop_gui_action"
+                    coord = (tool_input or {}).get("coordinate")
+                    txt = (tool_input or {}).get("text")
+                    key = (tool_input or {}).get("key")
+                    detail = f"• Aksi: {gui_action}"
+                    if coord:
+                        detail += f"\n• Koordinat: {coord}"
+                    if txt:
+                        detail += f"\n• Input Teks: {txt}"
+                    if key:
+                        detail += f"\n• Tombol Key: {key}"
+                    pending = self._create_pending_action({
+                        "action_type": action_type,
+                        "params": tool_input or {},
+                        "description": f"Desktop GUI Interaction:\n{detail}"
+                    })
+                    if pending:
+                        self._last_intercepted_pending = pending
+                        logger.info(f"[SafetyFortress] Intercepted GUI action '{gui_action}' -> PendingAction #{pending.action_id}")
+                        return {
+                            "status": "pending_operator_approval",
+                            "action_id": pending.action_id,
+                            "action_type": action_type,
+                            "message": (
+                                f"Desktop GUI action '{gui_action}' requires operator authorization. "
+                                f"Proposal #{pending.action_id} generated for operator confirmation."
+                            ),
+                        }
+
+            if listener:
+                try:
+                    cb = listener("start", {"tool": tool_name, "input": tool_input})
+                    if asyncio.iscoroutine(cb):
+                        await cb
+                except Exception as e:
+                    logger.debug(f"[ChatAgent] Error in tool listener start: {e}")
 
             res = await orig_exec(tool_name, tool_input)
 
-            try:
-                summary = str(res)
-                if len(summary) > 120:
-                    summary = summary[:120] + "..."
-                cb = listener("result", {"tool": tool_name, "summary": summary, "result": res})
-                if asyncio.iscoroutine(cb):
-                    await cb
-            except Exception as e:
-                logger.debug(f"[ChatAgent] Error in tool listener result: {e}")
+            if listener:
+                try:
+                    summary = str(res)
+                    if len(summary) > 120:
+                        summary = summary[:120] + "..."
+                    cb = listener("result", {"tool": tool_name, "summary": summary, "result": res})
+                    if asyncio.iscoroutine(cb):
+                        await cb
+                except Exception as e:
+                    logger.debug(f"[ChatAgent] Error in tool listener result: {e}")
 
             return res
 
@@ -428,6 +527,12 @@ class ChatAgent:
         self._pending_charts.clear()
         return charts
 
+    def pop_pending_files(self) -> list[tuple[str, Any]]:
+        """Ambil dan bersihkan file/dokumen yang tertunda dikirim ke user."""
+        files = list(self._pending_files)
+        self._pending_files.clear()
+        return files
+
     def _detect_model_preference(self, msg: str) -> str:
         """Returns: 'tier_lite', 'tier_medium', 'tier_deep', 'deep_research', atau 'auto'"""
         import re
@@ -483,31 +588,52 @@ class ChatAgent:
         )
         return bool(re.search(macro_event_patterns, msg_lower) and re.search(macro_intent_patterns, msg_lower))
 
-    def _inject_macro_playbooks(self, system_prompt: Union[str, tuple[str, str]]) -> Union[str, tuple[str, str]]:
-        """Inject event_probability_playbook and market_dynamics_framework into system prompt."""
+    def _inject_macro_playbooks(self, system_prompt: Union[str, tuple[str, str]], user_query: str = "") -> Union[str, tuple[str, str]]:
+        """Inject macro playbooks and dynamic matched skills into system prompt."""
         from skills.loader import load_skill
 
         playbook_sections: list[str] = []
-        try:
-            event_playbook = load_skill("event_probability_playbook")
-            if event_playbook:
-                playbook_sections.append(f"## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK\n{event_playbook}")
-        except Exception as e:
-            logger.warning(f"[ChatAgent] Failed to load event_probability_playbook: {e}")
 
-        try:
-            cb_framework = load_skill("central_banks_framework")
-            if cb_framework:
-                playbook_sections.append(f"## AUTHORITATIVE CENTRAL BANKS FRAMEWORK\n{cb_framework}")
-        except Exception as e:
-            logger.warning(f"[ChatAgent] Failed to load central_banks_framework: {e}")
+        # 1. Macro playbooks for macro-relevant queries
+        if not user_query or self._is_macro_event_query(user_query):
+            try:
+                event_playbook = load_skill("event_probability_playbook")
+                if event_playbook:
+                    playbook_sections.append(f"## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK\n{event_playbook}")
+            except Exception as e:
+                logger.warning(f"[ChatAgent] Failed to load event_probability_playbook: {e}")
 
-        try:
-            market_dynamics = load_skill("market_dynamics_framework")
-            if market_dynamics:
-                playbook_sections.append(f"## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK\n{market_dynamics}")
-        except Exception as e:
-            logger.warning(f"[ChatAgent] Failed to load market_dynamics_framework: {e}")
+            try:
+                cb_framework = load_skill("central_banks_framework")
+                if cb_framework:
+                    playbook_sections.append(f"## AUTHORITATIVE CENTRAL BANKS FRAMEWORK\n{cb_framework}")
+            except Exception as e:
+                logger.warning(f"[ChatAgent] Failed to load central_banks_framework: {e}")
+
+            try:
+                market_dynamics = load_skill("market_dynamics_framework")
+                if market_dynamics:
+                    playbook_sections.append(f"## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK\n{market_dynamics}")
+            except Exception as e:
+                logger.warning(f"[ChatAgent] Failed to load market_dynamics_framework: {e}")
+
+        # 2. Dynamic skill matching for domain-specific user requests (up to 3 skills)
+        if user_query:
+            try:
+                from skills.unified_runtime import get_skills_runtime
+                runtime = get_skills_runtime()
+                matched = runtime.match_skills_for_prompt(user_query)
+                for s_name in matched[:3]:
+                    if s_name in ("event_probability_playbook", "central_banks_framework", "market_dynamics_framework", "telegram_persona", "intent-resolution"):
+                        continue
+                    try:
+                        instr = runtime.load_skill_instructions(s_name)
+                        if instr:
+                            playbook_sections.append(f"## ACTIVATED SPECIALIZATION SKILL: {s_name.upper()}\n{instr}")
+                    except Exception as s_err:
+                        logger.debug(f"[ChatAgent] Could not load matched skill '{s_name}': {s_err}")
+            except Exception as match_err:
+                logger.debug(f"[ChatAgent] Dynamic skill matching failed: {match_err}")
 
         if not playbook_sections:
             return system_prompt
@@ -516,11 +642,11 @@ class ChatAgent:
 
         if isinstance(system_prompt, tuple):
             static_prompt, dynamic_snapshot = system_prompt
-            if "AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_prompt:
+            if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_prompt and not user_query:
                 return system_prompt
             return (f"{static_prompt}{injected_block}", dynamic_snapshot)
 
-        if "AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in system_prompt:
+        if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in system_prompt and not user_query:
             return system_prompt
         return f"{system_prompt}{injected_block}"
 
@@ -609,6 +735,7 @@ class ChatAgent:
         stream: bool = False,
         update: Optional[Any] = None,
         token_callback: Optional[Any] = None,
+        image_bytes: Optional[bytes] = None,
         **kwargs: Any,
     ) -> tuple[str, Optional[PendingAction]]:
         """Memproses pesan dari user dengan dukungan active turn interruption, topic isolation, dan token streaming."""
@@ -629,7 +756,7 @@ class ChatAgent:
 
             # Stream response if requested and update is available, provided it is not an action query requiring ToolExecutor and interactive cards
             is_action_query = bool(re.search(r'\b(close|tutup|modify|ubah|override|batalkan|cancel|adjust|geser|buy|beli|sell|jual|trade|eksekusi|pause|jeda|hentikan|stop|resume|lanjutkan|emergency|panic)\b', text, re.IGNORECASE))
-            if stream and not is_action_query and effective_update and (hasattr(effective_update, "message") or hasattr(effective_update, "reply_text")):
+            if stream and not is_action_query and not image_bytes and effective_update and (hasattr(effective_update, "message") or hasattr(effective_update, "reply_text")):
                 return await self._handle_streaming(
                     update=effective_update,
                     context=context,
@@ -644,6 +771,7 @@ class ChatAgent:
                 typing_callback=typing_callback,
                 status_callback=status_callback,
                 session_id=session_id,
+                image_bytes=image_bytes,
             )
         except asyncio.CancelledError:
             interrupt_note = self._interrupt_message or "Turn was interrupted."
@@ -721,8 +849,7 @@ class ChatAgent:
                     status_callback=status_callback,
                 )
 
-            if self._is_macro_event_query(clean_message):
-                system_prompt = self._inject_macro_playbooks(system_prompt)
+            system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
             if preference in ("tier_deep", "claude_sonnet"):
                 generator = await self._run_with_claude(
@@ -826,6 +953,7 @@ class ChatAgent:
         typing_callback: Optional[Any] = None,
         status_callback: Optional[Any] = None,
         session_id: Optional[str] = None,
+        image_bytes: Optional[bytes] = None,
     ) -> tuple[str, Optional[PendingAction]]:
         """Logika internal pemrosesan pesan dari user."""
         self._last_turn_streamed = False
@@ -931,6 +1059,7 @@ class ChatAgent:
                         logger.debug(f"[ChatAgent] Failed to save ad-hoc message to DB: {save_err}")
                     return f"{reply_text}\n\n_[SystemAgentLoop | LangGraph Isolated Pipeline]_", None
 
+            self._last_intercepted_pending = None
             complexity = await self._classify_query_complexity(clean_message)
             if complexity == 'deep_research':
                 preference = 'deep_research'
@@ -980,6 +1109,7 @@ class ChatAgent:
                 history = await self._load_history(session, session_id=session_id)
                 await self._save_message(session, "user", clean_message, session_id=session_id)
                 system_prompt = await self._build_system_prompt(session)
+                system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
                 executor = ToolExecutor(session, settings=self.settings)
                 executor.is_admin = getattr(self, "is_admin", False)
                 self._instrument_executor(executor)
@@ -987,15 +1117,17 @@ class ChatAgent:
                 if preference == 'deep_research':
                     response = await self._run_tier_deep_research(system_prompt, history, clean_message, tool_executor=executor, status_callback=status_callback)
                 elif preference == 'tier_lite':
-                    response = await self._run_tier_lite(system_prompt, history, clean_message, tool_executor=executor)
+                    response = await self._run_tier_lite(system_prompt, history, clean_message, tool_executor=executor, image_bytes=image_bytes)
                 elif preference == 'tier_medium':
-                    response = await self._run_tier_medium(system_prompt, history, clean_message, tool_executor=executor)
+                    response = await self._run_tier_medium(system_prompt, history, clean_message, tool_executor=executor, image_bytes=image_bytes)
                 else:
-                    response = await self._run_tier_deep(system_prompt, history, clean_message, tool_executor=executor)
+                    response = await self._run_tier_deep(system_prompt, history, clean_message, tool_executor=executor, image_bytes=image_bytes)
 
                 if getattr(executor, '_pending_charts', None):
                     self._pending_charts.extend(executor._pending_charts.values())
                     executor._pending_charts.clear()
+                if hasattr(executor, 'pop_pending_files'):
+                    self._pending_files.extend(executor.pop_pending_files())
         finally:
             if heartbeat_task:
                 heartbeat_task.cancel()
@@ -1012,6 +1144,22 @@ class ChatAgent:
         def _reply_makes_unfounded_price_claim(reply_text: str, tool_calls_made: int) -> bool:
             if tool_calls_made > 0:
                 return False
+            # Educational/glossary/hypothetical exemption
+            edu_pattern = r'\b(contoh|misal|misalkan|ilustrasi|definisi|adalah|yaitu|kontrak standar|rumus|cara hitung|pengertian|maksudnya|sebagai acuan|standard lot|micro lot|cent)\b'
+            if re.search(edu_pattern, reply_text, re.IGNORECASE) and not re.search(r'\b(live|posisi terbuka|saat ini|sekarang|running pnl|floating|real account)\b', reply_text, re.IGNORECASE):
+                return False
+
+            # Require specific symbol context or live claim to flag price claims
+            symbol_pattern = r'\b(XAUUSD|EURUSD|GBPUSD|USDJPY|BTCUSD|AUDUSD|USDCAD|USDCHF|NZDUSD|XTIUSD|XBRUSD|USTEC|NAS100|US30)\b'
+            has_symbol = bool(re.search(symbol_pattern, reply_text, re.IGNORECASE))
+
+            live_claim_pattern = r'\b(saldo|equity|balance|floating|current price|harga sekarang|harga saat ini|posisi saya|open position)\b'
+            has_live_claim = bool(re.search(live_claim_pattern, reply_text, re.IGNORECASE))
+
+            if not (has_symbol or has_live_claim):
+                # Pure conceptual explanation without concrete live market claim
+                return False
+
             price_pattern = r'\b\d{1,3}(?:,\d{3})*(?:\.\d{1,5})?\b'
             keyword_pattern = (
                 r'\b(SL|TP|entry|stop\s*loss|take\s*profit|harga|price|resistance|support|'
@@ -1048,6 +1196,8 @@ class ChatAgent:
                 if getattr(retry_executor, '_pending_charts', None):
                     self._pending_charts.extend(retry_executor._pending_charts.values())
                     retry_executor._pending_charts.clear()
+                if hasattr(retry_executor, 'pop_pending_files'):
+                    self._pending_files.extend(retry_executor.pop_pending_files())
 
             if retry_response.get('tool_calls_made', 0) > 0:
                 response = retry_response
@@ -1075,7 +1225,11 @@ class ChatAgent:
 
         if proposed_call:
             pending = self._create_pending_action(proposed_call)
-            if pending:
+        elif getattr(self, "_last_intercepted_pending", None):
+            pending = self._last_intercepted_pending
+            self._last_intercepted_pending = None
+
+        if pending:
                 action_sym = str(pending.params.get("symbol") or "")
                 if action_sym and self.is_symbol_session_approved(action_sym):
                     logger.info(f"[ChatAgent] Auto-executing action #{pending.action_id} for session-approved symbol {action_sym}")
@@ -1114,8 +1268,7 @@ class ChatAgent:
         """
         from analysis.subagent_spawner import DynamicSubagentPool
 
-        if self._is_macro_event_query(message):
-            system_prompt = self._inject_macro_playbooks(system_prompt)
+        system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
 
         all_mapped = {t.get("name"): t for t in TELEGRAM_TOOLS if t.get("name")}
         all_tools = list(all_mapped.values())
@@ -1270,42 +1423,54 @@ class ChatAgent:
             return static_sys, user_msg
         return system_prompt, message
 
-    async def _run_tier_lite(self, system_prompt, history, message, tool_executor=None) -> dict:
+    def _format_user_message_payload(self, user_msg: str, image_bytes: Optional[bytes] = None) -> Any:
+        if not image_bytes:
+            return user_msg
+        import base64
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        return [
+            {"type": "text", "text": user_msg},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+        ]
+
+    async def _run_tier_lite(self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None) -> dict:
         """Lite tier path untuk query sederhana."""
         selected_tools = self._tool_router.route_tools_for_query(message)
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
+        payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_lite.run_chat_loop(
             system_prompt=sys_prompt,
             conversation_history=history,
-            new_user_message=user_msg,
+            new_user_message=payload,
             tools=selected_tools,
             tool_executor=tool_executor
         )
         return response
 
-    async def _run_tier_medium(self, system_prompt, history, message, tool_executor=None) -> dict:
+    async def _run_tier_medium(self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None) -> dict:
         """Medium tier path untuk query menengah."""
         selected_tools = self._tool_router.route_tools_for_query(message)
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
+        payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_medium.run_chat_loop(
             system_prompt=sys_prompt,
             conversation_history=history,
-            new_user_message=user_msg,
+            new_user_message=payload,
             tools=selected_tools,
             tool_executor=tool_executor
         )
         return response
 
-    async def _run_tier_deep(self, system_prompt, history, message, tool_executor=None) -> dict:
+    async def _run_tier_deep(self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None) -> dict:
         """Deep tier path untuk analisis mendalam."""
-        if self._is_macro_event_query(message):
-            system_prompt = self._inject_macro_playbooks(system_prompt)
+        system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
         selected_tools = self._tool_router.route_tools_for_query(message)
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
+        payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_deep.run_chat_loop(
             system_prompt=sys_prompt,
             conversation_history=history,
-            new_user_message=user_msg,
+            new_user_message=payload,
             tools=selected_tools,
             tool_executor=tool_executor
         )
@@ -1578,7 +1743,11 @@ class ChatAgent:
 
         elif action.action_type == "close_all_positions":
             reason = params.get("reason", "Close all positions requested via Chat")
-            filter_type = params.get("filter", "all")
+            filter_type = params.get("filter_type") or params.get("filter") or "all"
+            if filter_type == "profit":
+                filter_type = "profit_only"
+            elif filter_type == "loss":
+                filter_type = "loss_only"
             try:
                 if hasattr(svc, "close_positions_batch"):
                     res = await svc.close_positions_batch(filter_type=filter_type, requested_by="chat_user", reason=reason)
@@ -1716,9 +1885,35 @@ class ChatAgent:
 
         elif action.action_type == "pause_trading":
             from risk.risk_gate import RiskGate
+            dur_raw = params.get("duration") or params.get("duration_hours") or params.get("duration_str")
+            duration_hours = None
+            if dur_raw:
+                import re
+                s = str(dur_raw).lower().strip()
+                m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|menit|minutes?|h|hr|hrs|jam|hours?|d|hari|days?)$", s)
+                if m:
+                    val = float(m.group(1))
+                    unit = m.group(2)
+                    if unit.startswith("m"):
+                        duration_hours = val / 60.0
+                    elif unit.startswith("d") or unit == "hari":
+                        duration_hours = val * 24.0
+                    else:
+                        duration_hours = val
+                else:
+                    try:
+                        duration_hours = float(s)
+                    except ValueError:
+                        pass
+            elif "besok" in str(params.get("reason", "")).lower():
+                duration_hours = 12.0
+
+            reason = params.get("reason", "Paused via Telegram chat")
             async with get_session() as session:
                 gate = RiskGate(self.settings)
-                await gate.pause_trading(session, params.get("reason", "Paused via Telegram chat"))
+                await gate.pause_trading(session, reason, duration_hours=duration_hours)
+            if duration_hours:
+                return f"[PAUSED] Trading paused for {duration_hours:g} hours. Auto-unpause scheduled."
             return "[PAUSED] Trading paused."
 
         elif action.action_type == "resume_trading":
@@ -1762,8 +1957,132 @@ class ChatAgent:
                 return f"[KEAMANAN] [OK] {res.get('message', 'Positions secured to Breakeven.')}\nUpdated: {res.get('updated_count', 0)}, Skipped: {res.get('skipped_count', 0)}"
             return "[ERROR] Execution service does not support bulk breakeven."
 
+        elif action.action_type == "cancel_stale_pending_orders":
+            from analysis.tools.handlers.trade_intel import handle_cancel_stale_pending_orders
+            max_age = float(params.get("max_age_hours", 24))
+            res = await handle_cancel_stale_pending_orders({"max_age_hours": max_age})
+            if res.get("status") == "success":
+                return f"[OK] Stale orders cancelled: {res.get('canceled_count', 0)} cancelled, {res.get('failed_count', 0)} failed."
+            return f"[ERROR] Failed to cancel stale orders: {res.get('error')}"
+
+        elif action.action_type == "set_trailing_stop":
+            from analysis.tools.handlers.position_mgmt import handle_set_trailing_stop
+            async with get_session() as session:
+                res = await handle_set_trailing_stop(params, session=session, settings=self.settings)
+                if res.get("success"):
+                    return f"[OK] Trailing stop configured: updated {res.get('updated_count', 0)} positions ({res.get('updated_tickets', [])})."
+                return f"[ERROR] Failed to set trailing stop: {res.get('error') or res.get('message')}"
+
+        elif action.action_type == "update_config":
+            from database.models import SystemConfig
+            key = params.get("key") or params.get("parameter")
+            value = params.get("value")
+            if not key or value is None:
+                return "[ERROR] Parameter 'key' and 'value' required for update_config."
+            async with get_session() as session:
+                cfg = (await session.execute(
+                    select(SystemConfig).where(SystemConfig.key == str(key))
+                )).scalar_one_or_none()
+                if cfg:
+                    cfg.value = str(value)
+                else:
+                    session.add(SystemConfig(key=str(key), value=str(value)))
+                await session.commit()
+                try:
+                    from risk.risk_gate import RiskGate
+                    gate = RiskGate(self.settings)
+                    gate.hot_reload_risk_parameters({str(key): value})
+                except Exception:
+                    pass
+                return f"[OK] Configuration '{key}' updated to '{value}'."
+
+        elif action.action_type == "update_user_preference":
+            from database.models import UserPreference
+            user_id = str(self.user_id)
+            cat = str(params.get("category") or "general")
+            key = str(params.get("key") or "preference")
+            val = params.get("value")
+            val_json = json.dumps(val) if not isinstance(val, str) else val
+            async with get_session() as session:
+                pref = (await session.execute(
+                    select(UserPreference).where(
+                        UserPreference.user_id == user_id,
+                        UserPreference.category == cat,
+                        UserPreference.key == key,
+                    )
+                )).scalar_one_or_none()
+                if pref:
+                    pref.value_json = val_json
+                    pref.is_active = True
+                else:
+                    session.add(UserPreference(
+                        user_id=user_id,
+                        category=cat,
+                        key=key,
+                        value_json=val_json,
+                        is_active=True,
+                    ))
+                await session.commit()
+                return f"[OK] User preference updated: [{cat}] {key} = {val_json}"
+
         elif action.action_type == "db_mutation":
             return await self._execute_db_mutation(params)
+
+        elif action.action_type == "execute_terminal_command":
+            from analysis.tools.tool_executor import ToolExecutor
+            async with get_session() as session:
+                executor = ToolExecutor(session, settings=self.settings)
+                res = await executor.execute("terminal", params)
+                return f"[TERMINAL OUTPUT]\n{res}"
+
+        elif action.action_type == "desktop_gui_action":
+            from analysis.tools.tool_executor import ToolExecutor
+            async with get_session() as session:
+                executor = ToolExecutor(session, settings=self.settings)
+                res = await executor.execute("computer_use", params)
+                return f"[GUI ACTION RESULT]\n{res}"
+
+        elif action.action_type == "partial_close_and_breakeven":
+            from database.models import Position
+            raw_ticket = params.get("ticket")
+            if raw_ticket is None:
+                return "[ERROR] Ticket number missing for partial_close_and_breakeven."
+            try:
+                ticket = int(raw_ticket)
+            except ValueError:
+                return f"[ERROR] Invalid ticket format: {raw_ticket}"
+            vol_val = params.get("volume") or params.get("lots")
+            if vol_val is None:
+                return "[ERROR] Volume to close is required for partial_close_and_breakeven."
+            vol_f = float(vol_val)
+
+            close_res = await svc.close_position_by_ticket(
+                ticket, requested_by="telegram_user", reason=params.get("reason", "Partial profit take"), volume=vol_f
+            )
+            if not close_res.get("success"):
+                return f"[ERROR] Partial close failed: {close_res.get('error')}"
+
+            entry_price = None
+            async with get_session() as session:
+                pos = (await session.execute(
+                    select(Position).where(Position.mt5_ticket == ticket)
+                )).scalar_one_or_none()
+                if pos:
+                    entry_price = getattr(pos, "entry_price", None) or getattr(pos, "price_open", None)
+            if entry_price is None and hasattr(svc, "mt5") and svc.mt5:
+                mt5_positions = await svc.mt5.get_open_positions()
+                for p in mt5_positions:
+                    if getattr(p, "ticket", None) == ticket:
+                        entry_price = getattr(p, "price_open", None)
+                        break
+
+            if entry_price is not None:
+                mod_res = await svc.modify_position_sl_tp(ticket, sl=entry_price, requested_by="telegram_chat")
+                if mod_res.get("success"):
+                    return f"[OK] Partial close of {vol_f} lots on #{ticket} succeeded (Profit: {close_res.get('profit', 'N/A')}), and SL moved to Breakeven ({entry_price})."
+                else:
+                    return f"[OK] Partial close of {vol_f} lots on #{ticket} succeeded, but moving SL to Breakeven returned: {mod_res.get('error')}"
+            return f"[OK] Partial close of {vol_f} lots on #{ticket} succeeded (Profit: {close_res.get('profit', 'N/A')}), but open position not found to set BE."
 
         return f"Unknown action type: {action.action_type}"
 
@@ -1921,6 +2240,17 @@ class ChatAgent:
             "cancel_trigger",
             "save_market_intelligence",
             "db_mutation",
+            "close_all_positions",
+            "bulk_breakeven",
+            "secure_positions",
+            "cancel_order",
+            "cancel_stale_pending_orders",
+            "set_trailing_stop",
+            "update_config",
+            "update_user_preference",
+            "execute_terminal_command",
+            "desktop_gui_action",
+            "partial_close_and_breakeven",
         ):
             logger.warning(f"Unknown proposed action type: {action_type}")
             return None
@@ -1937,6 +2267,40 @@ class ChatAgent:
                 f"• Data: {json.dumps(params.get('data', {}))}\n"
                 f"• Alasan: {rsn}"
             )
+        elif action_type == "close_all_positions":
+            flt = params.get("filter", "all")
+            rsn = proposed.get("reason") or params.get("reason", "Permintaan penutupan posisi massal")
+            description = f"Tutup Posisi Massal:\n• Filter: {flt}\n• Alasan: {rsn}"
+        elif action_type in ("bulk_breakeven", "secure_positions"):
+            sym = params.get("symbol", "SEMUA")
+            op = params.get("only_profit", True)
+            description = f"Amankan Posisi ke Breakeven:\n• Simbol: {sym}\n• Hanya Profit: {op}"
+        elif action_type == "cancel_stale_pending_orders":
+            max_age = params.get("max_age_hours", 24)
+            description = f"Batalkan Stale Pending Order:\n• Usia Maksimal: {max_age} jam"
+        elif action_type == "set_trailing_stop":
+            target = params.get("symbol") or params.get("ticket") or "Semua posisi"
+            tp = params.get("trailing_pips") or params.get("pips", "N/A")
+            description = f"Set Trailing Stop:\n• Target: {target}\n• Trailing Pips: {tp}"
+        elif action_type == "update_config":
+            k = params.get("key") or params.get("parameter")
+            v = params.get("value")
+            description = f"Update Konfigurasi Sistem:\n• Parameter: {k}\n• Nilai Baru: {v}"
+        elif action_type == "update_user_preference":
+            c = params.get("category", "general")
+            k = params.get("key", "preference")
+            v = params.get("value")
+            description = f"Update Preferensi User:\n• Kategori: {c}\n• Kunci: {k}\n• Nilai: {v}"
+        elif action_type == "execute_terminal_command":
+            cmd = params.get("command") or params.get("cmd") or "N/A"
+            description = f"Eksekusi Shell Command:\n• Command: `{cmd}`"
+        elif action_type == "desktop_gui_action":
+            act = params.get("action", "unknown")
+            description = f"Desktop GUI Interaction:\n• Aksi: {act}\n• Detail: {json.dumps(params)}"
+        elif action_type == "partial_close_and_breakeven":
+            tck = params.get("ticket")
+            vol = params.get("volume") or params.get("lots")
+            description = f"Partial Close & Geser Breakeven:\n• Tiket: #{tck}\n• Volume Ditutup: {vol} lot\n• SL Sisa: Geser ke BE (harga entri)"
 
         # HIGH-2: Tool Guardrail validation
         verdict = self.guardrail_controller.validate_tool_call(
@@ -1999,6 +2363,25 @@ class ChatAgent:
             "- To inspect, read, or append to Excel (.xlsx) and CSV spreadsheets: use 'mcp_excel_tabular_excel_read_sheet', 'mcp_excel_tabular_excel_append_row', 'mcp_excel_tabular_excel_list_sheets'.",
             "",
             "Language Reminder: Reason internally in English, present final response to operator in the exact language used by the user (Bahasa Indonesia or English).",
+            "",
+            "## 6-Pillar SOP for Asset Inquiries (e.g. 'gold gimana?', 'eu bisa buy gak?')",
+            "When the user asks short or ambiguous questions about an instrument, you MUST formulate a structured 6-pillar institutional briefing:",
+            "1. Current Price & Market Session: Live quote (bid/ask/spread) and active session (Jakarta WIB / London / NY).",
+            "2. Multi-Timeframe Trend Alignment: H4 & H1 trend alignment and market regime (trending/ranging).",
+            "3. Key SMC & SnR Structure: Immediate Order Blocks, FVG zones, swing highs/lows, and liquidity pools.",
+            "4. Macro & News Window Risk: Upcoming high-impact economic releases affecting the asset and risk window.",
+            "5. Calibrated Bias: Clear directional bias (Bullish/Bearish/Neutral) with confluence rationale and confidence.",
+            "6. Actionable Invalidation Level: Exact price level that invalidates the proposed setup or bias.",
+            "",
+            "## Available Slash Commands",
+            "If the user inquires about direct operations or fast commands, guide them to:",
+            "- /trade [symbol] [buy/sell] [lots] — Propose formal order execution with risk fortress validation.",
+            "- /chart [symbol] [timeframe] — Render and deliver SMC overlaid candlestick chart to chat.",
+            "- /positions — Show active open positions, entry, SL, TP, and current floating PnL.",
+            "- /macro [currency] — Show economic calendar, central bank expectations, and surprise scores.",
+            "- /status — System health check, MT5 connection status, and daily risk metrics.",
+            "- /research [topic] — Run institutional multi-source web and academic market research.",
+            "- /help — Show comprehensive help and operational guide.",
         ]
 
         # Append trading persona skill (immutable communication style)
@@ -2007,6 +2390,27 @@ class ChatAgent:
             persona = load_skill("telegram_persona")
             lines.append("\n---\n")
             lines.append(persona)
+        except Exception:
+            pass
+
+        # Append intent-resolution skill (intent decomposition & anti-slop guidelines)
+        try:
+            from skills.loader import load_skill
+            intent_res = load_skill("intent-resolution")
+            if intent_res:
+                lines.append("\n---\n")
+                lines.append(intent_res)
+        except Exception:
+            pass
+
+        # Append compact index of available specialization skills
+        try:
+            from skills.unified_runtime import get_skills_runtime
+            runtime = get_skills_runtime()
+            compact_index = runtime.get_compact_prompt_index(max_skills=15)
+            if compact_index:
+                lines.append("\n---\n")
+                lines.append(compact_index)
         except Exception:
             pass
 
@@ -2038,7 +2442,7 @@ class ChatAgent:
 
             # Paper Trading status snapshot
             from utils.analytics.paper_tracker import PaperTracker
-            from database.models import PaperTradeRecord, TradeTrigger
+            from database.models import PaperTradeRecord, TradeTrigger, UserPreference
             tracker = PaperTracker(self.settings)
             p_stats = await tracker.get_statistics(session)
             open_paper = (await session.execute(
@@ -2083,6 +2487,18 @@ class ChatAgent:
                     dynamic_lines.append(f"\n{c_ctx}")
             except Exception as e:
                 logger.debug(f"Chronicle context injection in Telegram Chat failed: {e}")
+
+            # Active Operator Preferences from UserPreference table
+            try:
+                prefs = (await session.execute(
+                    select(UserPreference).where(UserPreference.is_active == True)
+                )).scalars().all()
+                if prefs:
+                    dynamic_lines.append("\n## Active Operator Preferences & Constraints (MANDATORY)")
+                    for pr in prefs:
+                        dynamic_lines.append(f"- [{pr.category.upper()}] {pr.preference_key}: {pr.value_json}")
+            except Exception as e:
+                logger.debug(f"UserPreference injection failed: {e}")
 
         except Exception as e:
             logger.debug(f"System prompt dynamic tail enrichment failed: {e}")

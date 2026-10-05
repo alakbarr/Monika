@@ -180,6 +180,7 @@ class BenchmarkConfig(SubscriptableConfig):
 
 
 class TradingAgentConfig(SubscriptableConfig):
+    installation_tier: Optional[str] = Field(default="trial", pattern="^(trial|full|unconfigured)$")
     app_name: Optional[str] = None
     environment: Optional[str] = None
     trading: Optional[TradingConfig] = None

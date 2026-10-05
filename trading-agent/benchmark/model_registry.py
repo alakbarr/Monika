@@ -7,7 +7,7 @@ CANDIDATE_MODELS: list[str] = [
     # Anthropic
     "claude-opus-5", "claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
     # Google
-    "gemini-3.1-pro-preview", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
+    "gemini-3.1-pro-preview", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
     "gemini-3.5-flash-lite", "gemini-3.1-flash-lite",
     # OpenAI
     "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna",
@@ -66,9 +66,10 @@ def get_router_matrix(settings: Optional[dict] = None) -> dict[str, list[str]]:
             "9router:anthropic/claude-3.5-sonnet",
         ],
         "gemini-flash": [
+            "gemini:gemini-3.5-flash",
             "gemini:gemini-3.5-flash-lite",
-            "openrouter:google/gemini-2.5-flash",
-            "9router:google/gemini-2.5-flash",
+            "openrouter:google/gemini-3.5-flash",
+            "9router:google/gemini-3.5-flash",
         ],
         "qwen-27b": [
             "groq:groq-qwen3.8-27b",

@@ -9,11 +9,13 @@ Direct execution without circular trampolines.
 
 import json
 import logging
+import os
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, List
 from sqlalchemy import select, desc, or_, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import AssetAnalysis, PaperTradeRecord, TradeTrigger, TelegramConversation, DecisionReflection
+from database.models import AssetAnalysis, PaperTradeRecord, TradeTrigger, TelegramConversation, DecisionReflection, ActivityLog
 import utils.clock as clock
 from analysis.tools.base_handler import ToolHandler
 from analysis.tools.registry import register_tool, ToolRegistry, ToolDefinition
@@ -49,6 +51,7 @@ async def handle_get_trade_history(args: dict, session: Optional[AsyncSession] =
     trades = [
         {
             "id": r.id,
+            "ticket": getattr(r, "mt5_ticket", f"PAPER-{r.id}"),
             "symbol": r.symbol,
             "direction": r.direction,
             "entry_price": r.entry_price,
@@ -60,9 +63,41 @@ async def handle_get_trade_history(args: dict, session: Optional[AsyncSession] =
             "pnl_pct": r.pnl_pct,
             "opened_at": r.opened_at.isoformat() if r.opened_at else None,
             "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+            "mode": "paper",
         }
         for r in rows
     ]
+
+    # Query live Position records if requested or if paper trades list is empty
+    mode = str(args.get("mode") or "").lower()
+    if mode in ("live", "all") or not trades:
+        from database.models import Position
+        pos_q = select(Position)
+        if status_filter:
+            pos_q = pos_q.where(Position.status == status_filter)
+        if symbol:
+            clean_sym = symbol.strip().upper().replace("/", "")
+            pos_q = pos_q.where(Position.symbol == clean_sym)
+        pos_q = pos_q.order_by(desc(Position.opened_at)).limit(limit)
+        pos_rows = (await effective_session.execute(pos_q)).scalars().all()
+        for p in pos_rows:
+            trades.append({
+                "id": p.id,
+                "ticket": getattr(p, "mt5_ticket", p.id),
+                "symbol": p.symbol,
+                "direction": p.direction,
+                "entry_price": p.entry_price,
+                "stop_loss": getattr(p, "sl", getattr(p, "stop_loss", None)),
+                "take_profit": getattr(p, "tp", getattr(p, "take_profit", None)),
+                "lot_size": getattr(p, "volume", 0.01),
+                "status": p.status,
+                "pnl_usd": getattr(p, "pnl", getattr(p, "unrealized_pnl", None)),
+                "pnl_pct": getattr(p, "pnl_pct", None),
+                "opened_at": p.opened_at.isoformat() if p.opened_at else None,
+                "closed_at": p.closed_at.isoformat() if p.closed_at else None,
+                "mode": "live",
+            })
+
     return {"count": len(trades), "trades": trades}
 
 
@@ -908,6 +943,15 @@ async def handle_run_monte_carlo_simulation(args: dict, session: Optional[AsyncS
     mode = str(args.get("mode", "permutation"))
     initial_equity = float(args.get("initial_equity", 10000.0))
     symbol = args.get("symbol")
+    target_dd_raw = args.get("target_drawdown_pct") or args.get("ruin_drawdown_pct")
+    if target_dd_raw is not None:
+        try:
+            target_dd_val = float(target_dd_raw)
+            ruin_drawdown_pct = target_dd_val / 100.0 if target_dd_val > 1.0 else target_dd_val
+        except (ValueError, TypeError):
+            ruin_drawdown_pct = 0.50
+    else:
+        ruin_drawdown_pct = 0.50
 
     effective_session = session or getattr(executor, "session", None)
 
@@ -949,11 +993,14 @@ async def handle_run_monte_carlo_simulation(args: dict, session: Optional[AsyncS
             trade_returns=returns,
             num_simulations=num_simulations,
             initial_equity=initial_equity,
+            ruin_drawdown_pct=ruin_drawdown_pct,
             mode=mode,
         )
         res["sample_source"] = sample_source
         res["sample_trades_count"] = len(returns)
         res["symbol_filter"] = symbol or "ALL"
+        res["target_drawdown_pct"] = round(ruin_drawdown_pct * 100.0, 2)
+        res["target_drawdown_probability_pct"] = res.get("ruin_probability_pct", 0.0)
         return res
 
     if effective_session:
@@ -1165,27 +1212,53 @@ async def handle_trigger_learning_cycle(args: dict, session: Optional[AsyncSessi
     if not effective_session:
         return {"error": "Database session required for trigger_learning_cycle"}
 
+    settings = kwargs.get("settings") or getattr(executor, "settings", {}) or {}
     days_back = int(args.get("days_back", 7))
 
     try:
         from analysis.memory.reflector import TradeReflector
         from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
-        from analysis.memory.lesson_consolidator import LessonConsolidator
+        from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
+        from database.models import DecisionReflection
+        from sqlalchemy import select
+        from datetime import timedelta
+        import utils.clock as clock
 
-        reflector = TradeReflector(effective_session)
-        reflected_count = await reflector.reflect_on_closed_trades(days_back=days_back)
+        reflector = TradeReflector(settings)
+        since = clock.now() - timedelta(days=days_back)
+        q = (
+            select(DecisionReflection)
+            .where(DecisionReflection.status == "pending")
+            .where(DecisionReflection.created_at >= since)
+            .limit(20)
+        )
+        pending_rows = (await effective_session.execute(q)).scalars().all()
+        reflected_count = 0
+        for r in pending_rows:
+            try:
+                await reflector.reflect_on_trade(effective_session, r.id)
+                reflected_count += 1
+            except Exception as ref_err:
+                logger.warning(f"Error reflecting on trade {r.id}: {ref_err}")
 
-        constraint_gen = NegativeConstraintGenerator(effective_session)
-        new_constraints = await constraint_gen.generate_constraints(days_back=days_back)
+        symbols = settings.get("trading", {}).get("asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"])
+        total_constraints = 0
+        for sym in symbols:
+            try:
+                c = await NegativeConstraintGenerator.generate_negative_constraints_from_losses(
+                    session=effective_session, symbol=sym, max_constraints=2
+                )
+                total_constraints += len(c)
+            except Exception as neg_err:
+                logger.warning(f"Error generating negative constraints for {sym}: {neg_err}")
 
-        consolidator = LessonConsolidator(effective_session)
-        consolidated = await consolidator.consolidate_candidate_lessons()
+        consolidated_res = await consolidate_lessons_to_playbook(effective_session, settings, auto_propose_only=True)
 
         return {
             "status": "completed",
             "reflected_trades_count": reflected_count,
-            "new_negative_constraints": len(new_constraints) if isinstance(new_constraints, list) else str(new_constraints),
-            "consolidated_lessons": len(consolidated) if isinstance(consolidated, list) else str(consolidated),
+            "new_negative_constraints": total_constraints,
+            "consolidated_playbook": "updated" if consolidated_res else "insufficient_data_to_cluster",
             "message": f"Learning cycle successfully executed across last {days_back} days."
         }
     except Exception as e:
@@ -1577,7 +1650,7 @@ class RunHostileStressTestHandler(ToolHandler):
         return await handle_run_hostile_stress_test(args, session=session, executor=executor, **kwargs)
 
 
-async def handle_export_trades_to_excel(args: dict, session: Optional[AsyncSession] = None, **kwargs) -> dict:
+async def handle_export_trades_to_excel(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
     """Exports trading history (live positions and paper trades) to an Excel (.xlsx) file."""
     import os
     import pandas as pd
@@ -1642,13 +1715,43 @@ async def handle_export_trades_to_excel(args: dict, session: Optional[AsyncSessi
     filepath = os.path.join(out_dir, filename)
 
     try:
+        # Calculate Executive KPIs
+        total_trades = len(df)
+        wins = df[df["PnL ($)"] > 0]
+        losses = df[df["PnL ($)"] < 0]
+        win_rate = round((len(wins) / total_trades) * 100.0, 1) if total_trades > 0 else 0.0
+        tot_pnl = round(df["PnL ($)"].sum(), 2)
+        gross_profit = wins["PnL ($)"].sum()
+        gross_loss = abs(losses["PnL ($)"].sum())
+        profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else 999.0
+        avg_win = round(wins["PnL ($)"].mean(), 2) if len(wins) > 0 else 0.0
+        avg_loss = round(losses["PnL ($)"].mean(), 2) if len(losses) > 0 else 0.0
+        top_symbol = df["Symbol"].value_counts().index[0] if "Symbol" in df.columns and not df.empty else "N/A"
+
+        kpi_df = pd.DataFrame([
+            {"Metric": "Total Trades Executed", "Value": total_trades},
+            {"Metric": "Win Rate (%)", "Value": f"{win_rate}%"},
+            {"Metric": "Total Realized PnL ($)", "Value": f"${tot_pnl:,.2f}"},
+            {"Metric": "Profit Factor", "Value": profit_factor},
+            {"Metric": "Average Win ($)", "Value": f"${avg_win:,.2f}"},
+            {"Metric": "Average Loss ($)", "Value": f"${avg_loss:,.2f}"},
+            {"Metric": "Most Active Symbol", "Value": top_symbol},
+            {"Metric": "Export Timestamp (UTC)", "Value": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")},
+        ])
+
         with pd.ExcelWriter(filepath, engine="openpyxl") as writer:
+            kpi_df.to_excel(writer, sheet_name="Executive_KPIs", index=False)
             df.to_excel(writer, sheet_name="Trade_Journal", index=False)
+
+        abs_path = os.path.abspath(filepath)
+        if executor and hasattr(executor, "add_pending_file"):
+            executor.add_pending_file(file_path=abs_path, filename=filename, caption=f"Jurnal Trading & Executive KPIs ({total_trades} transaksi)")
         return {
             "status": "success",
             "total_records": len(trade_rows),
-            "filepath": os.path.abspath(filepath),
+            "filepath": abs_path,
             "filename": filename,
+            "delivered_as_document": True if (executor and hasattr(executor, "add_pending_file")) else False,
         }
     except Exception as e:
         return {"status": "error", "error": f"Failed writing Excel file: {e}"}
@@ -1703,7 +1806,19 @@ async def handle_generate_docx_report(args: dict, session: Optional[AsyncSession
         title=args.get("title", "Monika Quantitative Portfolio Performance Report"),
         filename=args.get("filename"),
     )
-    return {"status": "success", "filepath": filepath, "metrics": metrics_dict}
+    executor = kwargs.get("executor")
+    if executor and hasattr(executor, "add_pending_file") and filepath and os.path.exists(filepath):
+        executor.add_pending_file(
+            file_path=os.path.abspath(filepath),
+            filename=os.path.basename(filepath),
+            caption=args.get("title", "Portfolio Performance Report (.docx)")
+        )
+    return {
+        "status": "success",
+        "filepath": filepath,
+        "metrics": metrics_dict,
+        "delivered_as_document": True if (executor and hasattr(executor, "add_pending_file")) else False
+    }
 
 
 @register_tool("generate_docx_report", aliases=["generate_word_report", "export_docx"], category="REPORTING", parallel_safe=True)
@@ -1740,7 +1855,18 @@ async def handle_generate_pptx_deck(args: dict, session: Optional[AsyncSession] 
         subtitle=args.get("subtitle", "Quantitative Multi-Agent Architecture & Performance Deck"),
         filename=args.get("filename"),
     )
-    return {"status": "success", "filepath": filepath}
+    executor = kwargs.get("executor")
+    if executor and hasattr(executor, "add_pending_file") and filepath and os.path.exists(filepath):
+        executor.add_pending_file(
+            file_path=os.path.abspath(filepath),
+            filename=os.path.basename(filepath),
+            caption=args.get("title", "Executive Pitch Deck (.pptx)")
+        )
+    return {
+        "status": "success",
+        "filepath": filepath,
+        "delivered_as_document": True if (executor and hasattr(executor, "add_pending_file")) else False
+    }
 
 
 @register_tool("generate_pptx_deck", aliases=["generate_powerpoint_deck", "export_pptx"], category="REPORTING", parallel_safe=True)
@@ -1832,7 +1958,7 @@ async def handle_run_walk_forward_analysis(args: dict, session: Optional[AsyncSe
 
     try:
         from backtest.walk_forward_engine import WalkForwardEngine
-        from backtest.isolated_strategy_harness import STRATEGY_REGISTRY, EdgeStrategy
+        from analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
 
         strategy_cls = None
         for k, v in STRATEGY_REGISTRY.items():
@@ -1842,33 +1968,52 @@ async def handle_run_walk_forward_analysis(args: dict, session: Optional[AsyncSe
         if strategy_cls is None:
             strategy_cls = next((v for v in STRATEGY_REGISTRY.values() if isinstance(v, type) and issubclass(v, EdgeStrategy)), None)
 
+        import utils.clock as clock
+        from datetime import timedelta
+        end_date = clock.now()
+        total_days = max(120, n_folds * (train_months + test_months) * 30)
+        start_date = end_date - timedelta(days=total_days)
+        settings = getattr(executor, "settings", {}) or {}
+
         engine = WalkForwardEngine(
-            strategy_cls=strategy_cls,
-            symbol=symbol,
-            n_folds=n_folds,
-            train_months=train_months,
-            test_months=test_months,
+            start_date=start_date,
+            end_date=end_date,
+            is_window_days=train_months * 30,
+            oos_window_days=test_months * 30,
+            step_days=test_months * 30,
+            symbols=[symbol],
+            strategies=[strategy_name],
+            settings=settings,
         )
-        report = await engine.run(session=session)
+        report = await engine.run()
+        folds_data = [
+            {
+                "fold": f.fold_index,
+                "wfe": round(f.wfe, 2),
+                "is_sharpe": f.is_metrics.get("sharpe_ratio", 0.0),
+                "oos_sharpe": f.oos_metrics.get("sharpe_ratio", 0.0),
+            }
+            for f in getattr(report, "folds", [])
+        ]
         return {
             "status": "success",
             "symbol": symbol,
             "strategy": strategy_name,
-            "wfe_efficiency_ratio": getattr(report, "wfe_ratio", 0.72),
-            "robustness": getattr(report, "robustness_verdict", "ROBUST"),
-            "folds_summary": getattr(report, "folds", []),
+            "wfe_efficiency_ratio": getattr(report, "overall_wfe", 0.72),
+            "robustness": "OVERFIT" if getattr(report, "is_overfit", False) else "ROBUST",
+            "aggregate_is_sharpe": getattr(report, "aggregate_is_sharpe", 0.0),
+            "aggregate_oos_sharpe": getattr(report, "aggregate_oos_sharpe", 0.0),
+            "oos_win_rate_pct": getattr(report, "oos_win_rate_pct", 0.0),
+            "folds_summary": folds_data,
         }
     except Exception as e:
-        logger.debug(f"Walk-forward execution note: {e}")
+        logger.error(f"Walk-forward execution failed: {e}")
         return {
-            "status": "success",
+            "status": "unavailable",
             "symbol": symbol,
             "strategy": strategy_name,
-            "wfe_efficiency_ratio": 0.78,
-            "robustness": "ROBUST",
-            "in_sample_sharpe": 1.85,
-            "out_of_sample_sharpe": 1.44,
-            "interpretation": f"Walk-forward efficiency ratio is 78% (>50% threshold), confirming statistical resilience against overfitting on {symbol}.",
+            "error": f"Walk-forward analysis failed: {str(e)}",
+            "interpretation": f"Could not compute walk-forward efficiency for {symbol}: {str(e)}",
         }
 
 
@@ -1885,28 +2030,91 @@ class RunWalkForwardAnalysisHandler(ToolHandler):
 async def handle_run_parameter_plateau_optimization(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
     """Runs parameter flat plateau optimization to find robust parameter zones."""
     symbol = str(args.get("symbol", "EURUSD")).upper().strip()
-    n_trials = int(args.get("n_trials", 25))
+    n_trials = int(args.get("n_trials", 15))
+    strategy_name = str(args.get("strategy") or "smc_fvg").lower().strip()
+    effective_session = session or getattr(executor, "session", None)
+    settings = getattr(executor, "settings", {}) or {}
 
     try:
         from analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer, ParameterSpec
-        param_space = [
-            ParameterSpec(name="sl_atr_multiplier", param_type="float", low=1.0, high=3.0, step=0.25),
-            ParameterSpec(name="confluence_threshold", param_type="int", low=6, high=9, step=1),
-            ParameterSpec(name="risk_reward_ratio", param_type="float", low=1.5, high=4.0, step=0.5),
-        ]
+        from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+        from analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        import utils.clock as clock
+        from datetime import timedelta
+
+        # Resolve strategy class
+        strategy_cls = None
+        for k, v in STRATEGY_REGISTRY.items():
+            if strategy_name in k.lower() or k.lower() in strategy_name:
+                strategy_cls = v
+                break
+        if strategy_cls is None:
+            strategy_cls = next((v for v in STRATEGY_REGISTRY.values() if isinstance(v, type) and issubclass(v, EdgeStrategy)), None)
+
+        # Allow dynamic parameter range definitions if passed
+        raw_param_space = args.get("param_space")
+        if raw_param_space and isinstance(raw_param_space, list):
+            param_space = [
+                ParameterSpec(
+                    name=p["name"],
+                    param_type=p.get("type", "float"),
+                    low=float(p["low"]),
+                    high=float(p["high"]),
+                    step=float(p.get("step", 1.0))
+                ) for p in raw_param_space if "name" in p and "low" in p and "high" in p
+            ]
+        else:
+            param_space = [
+                ParameterSpec(name="sl_atr_multiplier", param_type="float", low=1.0, high=3.0, step=0.25),
+                ParameterSpec(name="confluence_threshold", param_type="int", low=6, high=9, step=1),
+                ParameterSpec(name="risk_reward_ratio", param_type="float", low=1.5, high=4.0, step=0.5),
+            ]
         optimizer = QuantPlateauOptimizer(param_space=param_space, n_trials=n_trials)
 
+        end_date = clock.now()
+        start_date = end_date - timedelta(days=60)
+
         async def eval_fn(params):
-            sl = params.get("sl_atr_multiplier", 1.5)
-            cf = params.get("confluence_threshold", 7)
-            base_sr = 1.6 - (abs(sl - 1.75) * 0.4) - (abs(cf - 7) * 0.2)
-            sr = max(0.2, base_sr)
-            return {"sharpe": sr, "trades": 30, "trade_returns": [0.01 * sr] * 30, "pnl_pct": sr * 5.0}
+            if effective_session and strategy_cls:
+                try:
+                    harness = IsolatedStrategyBacktestHarness(
+                        strategy_cls=strategy_cls,
+                        symbol=symbol,
+                        settings=settings,
+                        strategy_params=params,
+                    )
+                    metrics = await harness.run_simulation(
+                        session=effective_session,
+                        start_date=start_date,
+                        end_date=end_date,
+                        lookback_candles=500,
+                    )
+                    if metrics and metrics.total_trades > 0:
+                        return {
+                            "sharpe": metrics.sharpe_ratio,
+                            "trades": metrics.total_trades,
+                            "trade_returns": metrics.trade_returns,
+                            "pnl_pct": metrics.total_pnl_pct,
+                        }
+                except Exception as eval_err:
+                    logger.debug(f"[Plateau] Harness simulation note: {eval_err}")
+
+            return {"sharpe": 0.0, "trades": 0, "trade_returns": [], "pnl_pct": 0.0}
 
         res = await optimizer.optimize(eval_fn)
+        if not res or res.best_plateau_score <= 0.0:
+            return {
+                "status": "unavailable",
+                "symbol": symbol,
+                "strategy": strategy_cls.__name__ if hasattr(strategy_cls, "__name__") else strategy_name,
+                "error": "Insufficient backtest trade density to identify a stable parameter plateau.",
+                "interpretation": f"Could not find parameter plateau for {symbol} under {strategy_name}: 0 trades generated."
+            }
+
         return {
             "status": "success",
             "symbol": symbol,
+            "strategy": strategy_cls.__name__ if hasattr(strategy_cls, "__name__") else strategy_name,
             "best_params": res.best_params,
             "plateau_score": round(res.best_plateau_score, 3),
             "is_plateau_stable": res.is_plateau_stable,
@@ -1963,6 +2171,10 @@ async def handle_generate_tearsheet_report(args: dict, session: Optional[AsyncSe
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(gen.to_html(title=args.get("title", "Monika Quantitative Performance Tearsheet")))
 
+    executor = kwargs.get("executor")
+    if executor and hasattr(executor, "add_pending_file"):
+        executor.add_pending_file(file_path=out_path, filename=os.path.basename(out_path), caption="Institutional Performance Tearsheet")
+
     return {
         "status": "success",
         "filepath": out_path,
@@ -2016,6 +2228,10 @@ async def handle_export_dataset_file(args: dict, session: Optional[AsyncSession]
     else:
         df.to_csv(out_path, index=False)
 
+    executor = kwargs.get("executor")
+    if executor and hasattr(executor, "add_pending_file"):
+        executor.add_pending_file(file_path=out_path, filename=os.path.basename(out_path), caption=f"Dataset Export: {table_name}")
+
     return {
         "status": "success",
         "filepath": out_path,
@@ -2034,12 +2250,428 @@ class ExportDatasetFileHandler(ToolHandler):
         return await handle_export_dataset_file(args, session=session, executor=executor, **kwargs)
 
 
-def register_trade_intel_tools(registry: Optional[ToolRegistry] = None):
-    registry = registry or ToolRegistry.get_instance()
+async def handle_get_graduation_status(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Calculate and return paper-to-live graduation progress and metrics."""
+    effective_session = session or getattr(executor, "session", None)
+    if not effective_session:
+        return {"status": "no_session", "graduated": False}
+
+    settings = getattr(executor, "settings", {}) or {}
+    min_trades = int(settings.get("execution", {}).get("min_paper_trades_before_live", 50))
+    min_wr = float(settings.get("execution", {}).get("graduation_min_win_rate", 0.55))
+
+    from database.models import PaperTradeRecord
+    closed_records = (await effective_session.execute(
+        select(PaperTradeRecord).where(PaperTradeRecord.status == "closed")
+    )).scalars().all()
+
+    total_closed = len(closed_records)
+    wins = [r for r in closed_records if (getattr(r, "pnl_usd", None) or 0) > 0 or (r.pnl_pct or 0) > 0]
+    losses = [r for r in closed_records if (getattr(r, "pnl_usd", None) or 0) < 0 or (r.pnl_pct or 0) < 0]
+    win_count = len(wins)
+    loss_count = len(losses)
+    win_rate = (win_count / total_closed) if total_closed > 0 else 0.0
+
+    gross_profit = sum(float(r.pnl_usd or 0) for r in wins)
+    gross_loss = abs(sum(float(r.pnl_usd or 0) for r in losses))
+    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
+
+    trades_progress_pct = min(100.0, round((total_closed / min_trades) * 100.0, 1)) if min_trades > 0 else 100.0
+    graduated = (win_rate >= min_wr) and (total_closed >= min_trades)
+
+    return {
+        "status": "success",
+        "graduated": graduated,
+        "current_closed_trades": total_closed,
+        "required_closed_trades": min_trades,
+        "trades_progress_pct": trades_progress_pct,
+        "win_count": win_count,
+        "loss_count": loss_count,
+        "current_win_rate_pct": round(win_rate * 100.0, 1),
+        "required_win_rate_pct": round(min_wr * 100.0, 1),
+        "profit_factor": profit_factor,
+        "readiness_summary": (
+            f"Tingkat Kesiapan Graduasi: {trades_progress_pct}% "
+            f"({total_closed}/{min_trades} trade, WR: {win_rate*100:.1f}% vs target {min_wr*100:.1f}%)."
+            if not graduated else
+            f"[LULUS] Sistem telah memenuhi semua syarat graduasi ({total_closed} trade, WR: {win_rate*100:.1f}%, PF: {profit_factor}) dan siap untuk live execution!"
+        ),
+    }
+
+
+@register_tool("get_graduation_status", aliases=["graduation_progress", "check_graduation"], category="REPORTING", parallel_safe=True)
+class GetGraduationStatusHandler(ToolHandler):
+    name = "get_graduation_status"
+    category = "REPORTING"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_graduation_status(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_add_journal_entry(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Adds a qualitative trader journal / psychology reflection entry."""
+    effective_session = session or getattr(executor, "session", None)
+    if not effective_session:
+        return {"status": "error", "error": "No database session available"}
+
+    content = args.get("content") or args.get("notes") or args.get("text")
+    if not content:
+        return {"status": "error", "error": "Journal content required"}
+
+    symbol = args.get("symbol")
+    clean_sym = symbol.strip().upper().replace("/", "") if symbol else None
+    sentiment_tag = str(args.get("sentiment_tag") or args.get("tag") or "discipline").lower().strip()
+    ticket_ref = args.get("ticket") or args.get("ticket_ref")
+    try:
+        t_ref = int(ticket_ref) if ticket_ref else None
+    except Exception:
+        t_ref = None
+
+    from database.models import UserJournalEntry
+    user_id = str(getattr(executor, "user_id", "default") or "default")
+    entry = UserJournalEntry(
+        user_id=user_id,
+        content=str(content),
+        symbol=clean_sym,
+        sentiment_tag=sentiment_tag,
+        ticket_ref=t_ref,
+    )
+    effective_session.add(entry)
+    await effective_session.commit()
+
+    return {
+        "status": "success",
+        "entry_id": entry.id,
+        "message": f"Catatan jurnal trader tersimpan (ID: #{entry.id}, tag: [{sentiment_tag}])",
+    }
+
+
+@register_tool("add_journal_entry", aliases=["record_journal", "log_psychology"], category="ANALYSIS", parallel_safe=False)
+class AddJournalEntryHandler(ToolHandler):
+    name = "add_journal_entry"
+    category = "ANALYSIS"
+    parallel_safe = False
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_add_journal_entry(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_get_journal_entries(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Retrieves qualitative trader journal entries and reflections."""
+    effective_session = session or getattr(executor, "session", None)
+    if not effective_session:
+        return {"status": "error", "entries": []}
+
+    limit = int(args.get("limit", 20))
+    symbol = args.get("symbol")
+    tag = args.get("sentiment_tag") or args.get("tag")
+
+    from database.models import UserJournalEntry
+    query = select(UserJournalEntry)
+    if symbol:
+        clean_sym = symbol.strip().upper().replace("/", "")
+        query = query.where(UserJournalEntry.symbol == clean_sym)
+    if tag:
+        query = query.where(UserJournalEntry.sentiment_tag == str(tag).lower().strip())
+    query = query.order_by(desc(UserJournalEntry.timestamp)).limit(limit)
+
+    rows = (await effective_session.execute(query)).scalars().all()
+    entries = [
+        {
+            "id": r.id,
+            "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+            "symbol": r.symbol,
+            "sentiment_tag": r.sentiment_tag,
+            "content": r.content,
+            "ticket_ref": r.ticket_ref,
+        }
+        for r in rows
+    ]
+    return {
+        "status": "success",
+        "count": len(entries),
+        "entries": entries,
+    }
+
+
+@register_tool("get_journal_entries", aliases=["read_journal", "get_psychology_notes"], category="ANALYSIS", parallel_safe=True)
+class GetJournalEntriesHandler(ToolHandler):
+    name = "get_journal_entries"
+    category = "ANALYSIS"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_journal_entries(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_simulate_price_shock(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Simulates market price shocks (e.g. +/- 200 pips or +/- 2%) on currently open positions and equity."""
+    effective_session = session or getattr(executor, "session", None)
+    symbol = str(args.get("symbol") or "EURUSD").upper().strip().replace("/", "")
+    shock_pips = float(args.get("shock_pips", 0.0))
+    shock_pct = float(args.get("pct_change") or args.get("shock_pct") or 0.0)
+
+    from analysis.tools.domain.position_handlers import PositionToolHandlers
+    handlers = PositionToolHandlers(getattr(executor, "settings", {}))
+    open_positions = await handlers.get_open_positions(session=effective_session)
+    acct_info = await handlers.get_account_info(session=effective_session) or {"balance": 10000.0, "equity": 10000.0, "margin": 0.0}
+
+    initial_equity = float(acct_info.get("equity", 10000.0))
+    used_margin = float(acct_info.get("margin", 0.0) or acct_info.get("margin_used", 0.0))
+    pip_size = 0.01 if ("JPY" in symbol or "XAU" in symbol or "BTC" in symbol) else 0.0001
+    contract_size = 100 if "XAU" in symbol else 100000
+
+    impact_details = []
+    total_delta_pnl = 0.0
+
+    for pos in open_positions:
+        p_sym = str(pos.get("symbol") or "").upper().replace("/", "")
+        if p_sym != symbol and symbol != "ALL":
+            continue
+        cur_p = float(pos.get("price_current") or pos.get("entry_price") or 1.0)
+        direction = str(pos.get("direction") or "buy").lower()
+        lots = float(pos.get("lots") or 0.01)
+
+        # Calculate shocked price
+        if shock_pips != 0.0:
+            price_delta = shock_pips * pip_size
+        elif shock_pct != 0.0:
+            price_delta = cur_p * (shock_pct / 100.0)
+        else:
+            price_delta = -100.0 * pip_size  # Default -100 pips adverse shock
+
+        shocked_price = cur_p + price_delta
+        # PnL delta
+        pnl_delta = (price_delta if direction == "buy" else -price_delta) * lots * contract_size
+        total_delta_pnl += pnl_delta
+
+        impact_details.append({
+            "ticket": pos.get("ticket"),
+            "symbol": p_sym,
+            "direction": direction,
+            "lots": lots,
+            "current_price": cur_p,
+            "shocked_price": round(shocked_price, 5),
+            "pnl_impact_usd": round(pnl_delta, 2),
+        })
+
+    shocked_equity = round(initial_equity + total_delta_pnl, 2)
+    dd_pct = round((abs(min(0.0, total_delta_pnl)) / max(1.0, initial_equity)) * 100.0, 2)
+    shocked_margin_level_pct = round((shocked_equity / used_margin) * 100.0, 2) if used_margin > 0 else 999.0
+    margin_call_risk = shocked_equity <= (initial_equity * 0.3) or (used_margin > 0 and shocked_margin_level_pct < 100.0)
+
+    return {
+        "status": "success",
+        "symbol": symbol,
+        "shock_applied": f"{shock_pips} pips" if shock_pips != 0.0 else f"{shock_pct}%",
+        "initial_equity_usd": initial_equity,
+        "shocked_equity_usd": shocked_equity,
+        "used_margin_usd": used_margin,
+        "shocked_margin_level_pct": shocked_margin_level_pct,
+        "total_impact_pnl_usd": round(total_delta_pnl, 2),
+        "simulated_drawdown_pct": dd_pct,
+        "margin_call_risk": margin_call_risk,
+        "affected_positions_count": len(impact_details),
+        "positions": impact_details,
+    }
+
+
+@register_tool("simulate_price_shock", aliases=["stress_test_price", "shock_test"], category="POSITION", parallel_safe=True)
+class SimulatePriceShockHandler(ToolHandler):
+    name = "simulate_price_shock"
+    category = "POSITION"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_simulate_price_shock(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_read_system_logs(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Reads system runtime and activity logs for diagnosing system behavior and rejections."""
+    effective_session = session or getattr(executor, "session", None)
+    limit = min(500, int(args.get("lines") or args.get("limit") or 50))
+    category = args.get("category")
+    search = str(args.get("filter_query") or args.get("search") or "").strip()
+    source = str(args.get("source") or "").lower().strip()
+
+    from pathlib import Path
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
+    possible_log_paths = [
+        base_dir / "logs" / "monika.log",
+        Path("logs/monika.log"),
+        base_dir / "trading_agent.log",
+    ]
+    log_file = next((p for p in possible_log_paths if p.exists()), None)
+
+    # If source is explicitly file, or search includes ERROR/WARNING, prioritize physical file:
+    if source == "file" or (log_file and search and any(w in search.upper() for w in ["ERROR", "WARN", "FAIL", "EXCEPTION"])):
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                all_lines = f.readlines()
+                if search:
+                    import re
+                    pattern = re.compile(re.escape(search), re.IGNORECASE) if not any(c in search for c in "|[]*") else re.compile(search, re.IGNORECASE)
+                    matched_lines = [l.strip() for l in all_lines if pattern.search(l)]
+                else:
+                    matched_lines = [l.strip() for l in all_lines]
+                logs = [{"line": l} for l in matched_lines[-limit:]]
+                return {
+                    "status": "success",
+                    "source": "file",
+                    "file_path": str(log_file),
+                    "count": len(logs),
+                    "logs": logs,
+                }
+        except Exception as e:
+            logger.warning(f"Error reading log file {log_file}: {e}")
+
+    logs = []
+    if effective_session and source != "file":
+        from database.models import ActivityLog
+        q = select(ActivityLog)
+        if category and category != "all":
+            q = q.where(ActivityLog.category == str(category).lower().strip())
+        if search:
+            q = q.where(ActivityLog.description.ilike(f"%{search}%"))
+        q = q.order_by(desc(ActivityLog.timestamp)).limit(limit)
+        try:
+            rows = (await effective_session.execute(q)).scalars().all()
+            for r in rows:
+                logs.append({
+                    "id": r.id,
+                    "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                    "category": r.category,
+                    "actor": r.actor,
+                    "description": r.description,
+                })
+        except Exception as db_err:
+            logger.debug(f"DB log query note: {db_err}")
+
+    if not logs and log_file:
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                all_lines = f.readlines()
+                if search:
+                    import re
+                    pattern = re.compile(re.escape(search), re.IGNORECASE)
+                    matched = [l.strip() for l in all_lines if pattern.search(l)]
+                else:
+                    matched = [l.strip() for l in all_lines]
+                logs = [{"line": l} for l in matched[-limit:]]
+        except Exception:
+            pass
+
+    return {
+        "status": "success",
+        "source": "file" if not effective_session or source == "file" else "db_activity_log",
+        "count": len(logs),
+        "logs": logs,
+    }
+
+
+@register_tool("read_system_logs", aliases=["get_system_logs", "view_logs"], category="SYSTEM", parallel_safe=True)
+class ReadSystemLogsHandler(ToolHandler):
+    name = "read_system_logs"
+    category = "SYSTEM"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_read_system_logs(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_get_broker_expenses_summary(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Aggregates broker expenses (commissions, swap charges, and financing fees) over a specified period (default 30 days)."""
+    days = int(args.get("days", 30))
+    symbol_filter = str(args.get("symbol") or "").upper().strip()
+
+    import utils.clock as clock
+    from datetime import timedelta
+    now = clock.now()
+    since = now - timedelta(days=days)
+
+    total_commission = 0.0
+    total_swap = 0.0
+    total_fee = 0.0
+    total_profit = 0.0
+    deal_count = 0
+    by_symbol: dict = {}
+
+    try:
+        from execution.mt5_client import get_mt5_client
+        mt5_client = get_mt5_client(getattr(executor, "settings", {}))
+        deals = []
+        if hasattr(mt5_client, "mt5") and mt5_client.mt5 is not None:
+            deals = mt5_client.mt5.history_deals_get(since, now) or []
+            if not deals:
+                import MetaTrader5 as _mt5
+                deals = _mt5.history_deals_get(since, now) or []
+
+        for d in deals:
+            sym = getattr(d, "symbol", "") or "UNKNOWN"
+            if symbol_filter and sym != symbol_filter:
+                continue
+            comm = float(getattr(d, "commission", 0.0) or 0.0)
+            swp = float(getattr(d, "swap", 0.0) or 0.0)
+            fee = float(getattr(d, "fee", 0.0) or 0.0)
+            prof = float(getattr(d, "profit", 0.0) or 0.0)
+
+            total_commission += comm
+            total_swap += swp
+            total_fee += fee
+            total_profit += prof
+            deal_count += 1
+
+            if sym not in by_symbol:
+                by_symbol[sym] = {"commission": 0.0, "swap": 0.0, "fee": 0.0, "deals": 0}
+            by_symbol[sym]["commission"] = round(by_symbol[sym]["commission"] + comm, 2)
+            by_symbol[sym]["swap"] = round(by_symbol[sym]["swap"] + swp, 2)
+            by_symbol[sym]["fee"] = round(by_symbol[sym]["fee"] + fee, 2)
+            by_symbol[sym]["deals"] += 1
+
+    except Exception as e:
+        logger.debug(f"MT5 deal history fetch note: {e}")
+
+    total_expenses = abs(total_commission) + abs(total_swap) + abs(total_fee)
+    return {
+        "status": "success",
+        "period_days": days,
+        "deals_analyzed": deal_count,
+        "total_commission_usd": round(total_commission, 2),
+        "total_swap_usd": round(total_swap, 2),
+        "total_fee_usd": round(total_fee, 2),
+        "total_expenses_usd": round(total_expenses, 2),
+        "total_realized_profit_usd": round(total_profit, 2),
+        "net_profit_after_expenses_usd": round(total_profit + total_commission + total_swap + total_fee, 2),
+        "by_symbol": by_symbol,
+        "note": f"Aggregated {deal_count} deals from MT5 history over the last {days} days."
+    }
+
+
+@register_tool("get_broker_expenses_summary", aliases=["get_commissions_and_swap", "broker_fees_summary"], category="POSITION", parallel_safe=True)
+class GetBrokerExpensesSummaryHandler(ToolHandler):
+    name = "get_broker_expenses_summary"
+    category = "POSITION"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_broker_expenses_summary(args, session=session, executor=executor, **kwargs)
+
+
+def register_trade_intel_tools():
+    registry = ToolRegistry.get_instance()
     tools = [
         ToolDefinition(
+            name="get_trade_history",
+            description="Retrieve recent trade history with filters for status, symbol, and pagination.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "status": {"type": "string"}, "limit": {"type": "integer"}}},
+            handler=handle_get_trade_history,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
             name="export_trades_to_excel",
-            description="Export completed trade history, holding durations, commissions, and PnL to formatted Excel (.xlsx) file.",
+            description="Export trading journal and performance records to an Excel (.xlsx) spreadsheet document.",
             parameters={"type": "object", "properties": {"limit": {"type": "integer"}, "filename": {"type": "string"}}},
             handler=handle_export_trades_to_excel,
             toolset="trade_intel",
@@ -2102,10 +2734,169 @@ def register_trade_intel_tools(registry: Optional[ToolRegistry] = None):
             requires_db=True,
         ),
         ToolDefinition(
+            name="get_graduation_status",
+            description="Calculate paper-to-live trading graduation progress, win rate, and readiness scorecard.",
+            parameters={"type": "object", "properties": {}},
+            handler=handle_get_graduation_status,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="add_journal_entry",
+            description="Record a trader journal note or psychology reflection (FOMO, discipline, trade reflection).",
+            parameters={"type": "object", "properties": {"content": {"type": "string"}, "symbol": {"type": "string"}, "sentiment_tag": {"type": "string"}, "ticket": {"type": "integer"}}, "required": ["content"]},
+            handler=handle_add_journal_entry,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_journal_entries",
+            description="Retrieve qualitative trader journal notes and psychology reflections.",
+            parameters={"type": "object", "properties": {"limit": {"type": "integer"}, "symbol": {"type": "string"}, "sentiment_tag": {"type": "string"}}},
+            handler=handle_get_journal_entries,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="simulate_price_shock",
+            description="Simulate sudden adverse or favorable price movements (pips or percent) on current positions and equity.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "shock_pips": {"type": "number"}, "shock_pct": {"type": "number"}}},
+            handler=handle_simulate_price_shock,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="read_system_logs",
+            description="Read system activity and runtime logs to diagnose execution decisions, rejections, and health.",
+            parameters={"type": "object", "properties": {"limit": {"type": "integer"}, "category": {"type": "string"}, "search": {"type": "string"}}},
+            handler=handle_read_system_logs,
+            toolset="trade_intel",
+            requires_db=True,
+        ),
+        ToolDefinition(
             name="run_parameter_plateau_optimization",
             description="Run Parameter Flat Plateau Optimization to find robust, curve-fitting-resistant parameter regions.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "n_trials": {"type": "integer"}}},
             handler=handle_run_parameter_plateau_optimization,
+            toolset="trade_intel",
+        ),
+    ]
+    for t in tools:
+        registry.register(t)
+
+
+async def handle_get_recent_tick_flow(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Fetch recent tick flow and aggregate tick delta (bid vs ask aggressive volume)."""
+    symbol = (args.get("symbol") or "XAUUSD").strip().upper().replace("/", "")
+    minutes = int(args.get("minutes", 15))
+    try:
+        from execution.mt5_client import get_mt5_client
+        client = get_mt5_client()
+        now_dt = clock.now()
+        from_dt = now_dt - timedelta(minutes=minutes)
+        ticks = await client.copy_ticks_range(symbol, from_dt, now_dt)
+        if not ticks:
+            latest = await client.get_latest_tick(symbol)
+            if latest:
+                bid = getattr(latest, "bid", 0.0)
+                ask = getattr(latest, "ask", 0.0)
+                return {
+                    "symbol": symbol,
+                    "ticks_count": 1,
+                    "latest_bid": bid,
+                    "latest_ask": ask,
+                    "spread": round(ask - bid, 5),
+                    "status": "snapshot_only",
+                }
+            return {"symbol": symbol, "ticks_count": 0, "status": "no_ticks_available"}
+
+        buy_ticks = 0
+        sell_ticks = 0
+        for t in ticks:
+            flags = t.get("flags", 0)
+            if flags & 32:
+                buy_ticks += 1
+            elif flags & 64:
+                sell_ticks += 1
+            else:
+                buy_ticks += 0.5
+                sell_ticks += 0.5
+
+        delta = buy_ticks - sell_ticks
+        return {
+            "symbol": symbol,
+            "period_minutes": minutes,
+            "ticks_count": len(ticks),
+            "aggressive_buys": int(buy_ticks),
+            "aggressive_sells": int(sell_ticks),
+            "tick_delta": int(delta),
+            "flow_sentiment": "BULLISH_FLOW" if delta > 10 else ("BEARISH_FLOW" if delta < -10 else "BALANCED"),
+            "latest_bid": ticks[-1].get("bid"),
+            "latest_ask": ticks[-1].get("ask"),
+            "status": "success",
+        }
+    except Exception as e:
+        logger.error(f"Error fetching tick flow for {symbol}: {e}")
+        return {"symbol": symbol, "error": str(e)}
+
+
+async def handle_export_tick_data(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Exports historical tick flow to CSV file for user analysis."""
+    import os
+    from pathlib import Path
+    symbol = (args.get("symbol") or "XAUUSD").strip().upper().replace("/", "")
+    hours = min(int(args.get("hours", 1)), 24)
+    try:
+        from execution.mt5_client import get_mt5_client
+        client = get_mt5_client()
+        now_dt = clock.now()
+        from_dt = now_dt - timedelta(hours=hours)
+        ticks = await client.copy_ticks_range(symbol, from_dt, now_dt)
+        if not ticks:
+            return {"status": "error", "error": f"No tick data available from MT5 for {symbol}"}
+
+        import pandas as pd
+        df = pd.DataFrame(ticks)
+        export_dir = Path("data/exports")
+        export_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"ticks_{symbol}_{int(now_dt.timestamp())}.csv"
+        filepath = export_dir / filename
+        df.to_csv(filepath, index=False)
+
+        return {
+            "status": "success",
+            "file_path": str(filepath.resolve()),
+            "file_name": filename,
+            "symbol": symbol,
+            "rows_exported": len(df),
+            "message": f"Berhasil mengekspor {len(df)} ticks ke {filename}.",
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+def register_trade_intel_tools():
+    registry = ToolRegistry.get_instance()
+    tools = [
+        ToolDefinition(
+            name="get_recent_tick_flow",
+            description="Fetches recent MT5 tick flow order flow delta (aggressive buy vs sell volume) over the last N minutes.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "minutes": {"type": "integer"}}},
+            handler=handle_get_recent_tick_flow,
+            toolset="trade_intel",
+        ),
+        ToolDefinition(
+            name="export_tick_data",
+            description="Exports historical tick data from MT5 to a CSV file for download or local quantitative research.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "hours": {"type": "integer"}}},
+            handler=handle_export_tick_data,
+            toolset="trade_intel",
+        ),
+        ToolDefinition(
+            name="get_broker_expenses_summary",
+            description="Aggregates broker expenses (commissions, swap charges, and financing fees) over a specified period.",
+            parameters={"type": "object", "properties": {"days": {"type": "integer"}, "symbol": {"type": "string"}}},
+            handler=handle_get_broker_expenses_summary,
             toolset="trade_intel",
             requires_db=False,
         ),

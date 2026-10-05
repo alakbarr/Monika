@@ -31,6 +31,7 @@ Callback Queries:
 
 import asyncio
 import html
+import io
 import json
 import logging
 import os
@@ -228,6 +229,14 @@ class TelegramBot:
         # Free-text → AI chat
         app.add_handler(MessageHandler(
             filters.TEXT & ~filters.COMMAND, self._handle_chat
+        ))
+        # Photo / Image Vision → AI chat
+        app.add_handler(MessageHandler(
+            filters.PHOTO, self._handle_photo
+        ))
+        # Document (PDF) auto-extraction → AI chat
+        app.add_handler(MessageHandler(
+            filters.Document.ALL, self._handle_document
         ))
         # Voice memo & audio transcription
         if hasattr(self, "voice_handler") and self.voice_handler:
@@ -1412,23 +1421,23 @@ class TelegramBot:
         reason = "Paused via Telegram"
 
         if clean_args:
-            first = clean_args[0].lower().strip()
+            full_str = " ".join(clean_args).lower().strip()
             import re
-            m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|minutes?|h|hr|hrs|hours?|d|days?)$", first)
+            m = re.match(r"^(\d+(?:\.\d+)?)\s*(m|min|mins|menit|minutes?|h|hr|hrs|jam|hours?|d|hari|days?)(?:\s+(.*))?$", full_str)
             if m:
                 val = float(m.group(1))
                 unit = m.group(2).lower()
+                rem_reason = (m.group(3) or "").strip()
                 if unit.startswith("m"):
                     duration_hours = val / 60.0
                     duration_desc = f"{val:.0f} menit"
-                elif unit.startswith("d"):
+                elif unit.startswith("d") or unit == "hari":
                     duration_hours = val * 24.0
                     duration_desc = f"{val:.0f} hari"
                 else:
                     duration_hours = val
                     duration_desc = f"{val:g} jam"
-                reason_tokens = clean_args[1:]
-                reason = " ".join(reason_tokens) if reason_tokens else f"Jeda otomatis {duration_desc}"
+                reason = rem_reason if rem_reason else f"Jeda otomatis {duration_desc}"
             else:
                 reason = " ".join(clean_args)
 
@@ -2656,6 +2665,16 @@ class TelegramBot:
                 except Exception as e:
                     logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
 
+        # Send any generated files / documents
+        if hasattr(agent, 'pop_pending_files'):
+            files = agent.pop_pending_files()
+            for filename, file_buf in files:
+                try:
+                    file_buf.seek(0)
+                    await update.message.reply_document(document=file_buf, filename=filename)
+                except Exception as e:
+                    logger.warning(f"Failed sending document {filename} to user {user_id}: {e}")
+
         # If AI proposed an action, send confirm keyboard
         if pending:
             from telegram_bot.command_router import CommandRouter
@@ -2666,6 +2685,225 @@ class TelegramBot:
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=keyboard,
             )
+
+    async def _handle_photo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle incoming image/photo from user for multimodal vision analysis."""
+        if not update.message or not update.message.photo:
+            return
+        if not self._is_authorized(update) or not update.effective_user:
+            return await self._reject_unauthorized(update)
+
+        user_id = update.effective_user.id
+        chat_id = update.effective_chat.id if update.effective_chat else user_id
+        caption = (update.message.caption or "").strip() or "Tolong analisa gambar/chart ini secara teknikal dan SMC."
+
+        photo = update.message.photo[-1]
+        photo_file = await photo.get_file()
+        buf = io.BytesIO()
+        await photo_file.download_to_memory(buf)
+        image_bytes = buf.getvalue()
+
+        now = datetime.now(timezone.utc)
+        thread_id = getattr(update.message, "message_thread_id", None)
+        session_id = None
+        if isinstance(thread_id, int) and hasattr(self, "topic_manager") and self.topic_manager:
+            session_id = await self.topic_manager.get_session_for_topic(chat_id, thread_id)
+            if not session_id:
+                session_id = await self.topic_manager.create_topic_session(chat_id, thread_id, topic_name=f"Topic-{thread_id}")
+            agent_key = session_id
+        else:
+            agent_key = user_id
+
+        if update.message.chat:
+            try:
+                res = update.message.chat.send_action(ChatAction.TYPING)
+                if asyncio.iscoroutine(res):
+                    await res
+            except Exception:
+                pass
+
+        is_admin_user = self._is_admin(update)
+        if agent_key not in self._chat_agents:
+            from telegram_bot.chat_agent import ChatAgent
+            self._chat_agents[agent_key] = ChatAgent(self.settings, agent_key, is_admin=is_admin_user)
+
+        agent = self._chat_agents[agent_key]
+        agent.is_admin = is_admin_user
+        agent.last_active = now
+
+        chat_obj = update.message.chat
+        async def _typing_cb():
+            if chat_obj:
+                await chat_obj.send_action(ChatAction.TYPING)
+
+        try:
+            reply, pending = await agent.handle(
+                caption,
+                context=ctx,
+                typing_callback=_typing_cb,
+                session_id=session_id,
+                stream=False,
+                update=update,
+                image_bytes=image_bytes,
+            )
+        except Exception as e:
+            logger.error(f"ChatAgent error handling photo for user {user_id}: {e}")
+            await update.message.reply_text(f"[ERROR] {e}")
+            return
+
+        if reply:
+            for chunk in self._chunk_text(reply):
+                try:
+                    formatted_chunk = sanitize_telegram_html(chunk)
+                    await update.message.reply_text(formatted_chunk, parse_mode=ParseMode.HTML)
+                except Exception as e:
+                    logger.warning(f"Failed to send HTML reply chunk: {e}")
+                    await update.message.reply_text(chunk)
+
+        if hasattr(agent, 'pop_pending_charts'):
+            charts = agent.pop_pending_charts()
+            for chart_buf in charts:
+                try:
+                    await update.message.reply_photo(photo=chart_buf)
+                except Exception as e:
+                    logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
+
+        if hasattr(agent, 'pop_pending_files'):
+            files = agent.pop_pending_files()
+            for filename, file_buf in files:
+                try:
+                    file_buf.seek(0)
+                    await update.message.reply_document(document=file_buf, filename=filename)
+                except Exception as e:
+                    logger.warning(f"Failed sending document {filename} to user {user_id}: {e}")
+
+        if pending:
+            from telegram_bot.command_router import CommandRouter
+            keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
+            await update.message.reply_text(
+                f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=keyboard,
+            )
+
+    async def _handle_document(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle incoming documents (especially PDF reports, economic calendars, transcripts)."""
+        if not update.message or not update.message.document:
+            return
+        if not self._is_authorized(update) or not update.effective_user:
+            return await self._reject_unauthorized(update)
+
+        doc = update.message.document
+        file_name = doc.file_name or "document"
+        user_id = update.effective_user.id
+        chat_id = update.effective_chat.id if update.effective_chat else user_id
+        caption = (update.message.caption or "").strip()
+
+        is_pdf = file_name.lower().endswith(".pdf") or doc.mime_type == "application/pdf"
+        if not is_pdf:
+            await update.message.reply_text(f"Format dokumen '{file_name}' belum didukung untuk auto-parsing (saat ini mendukung file .pdf).")
+            return
+
+        try:
+            if update.message.chat:
+                try:
+                    res = update.message.chat.send_action(ChatAction.TYPING)
+                    if asyncio.iscoroutine(res):
+                        await res
+                except Exception:
+                    pass
+
+            doc_file = await doc.get_file()
+            import io
+            buf = io.BytesIO()
+            await doc_file.download_to_memory(buf)
+            buf.seek(0)
+
+            from pypdf import PdfReader
+            reader = PdfReader(buf)
+            pages_text = []
+            for idx, page in enumerate(reader.pages[:25]):
+                txt = page.extract_text() or ""
+                if txt.strip():
+                    pages_text.append(f"[Halaman {idx+1}]\n{txt.strip()}")
+
+            extracted_content = "\n\n".join(pages_text)
+            if not extracted_content.strip():
+                await update.message.reply_text("Dokumen PDF berhasil diterima tetapi teks tidak dapat diekstrak (kemungkinan scanned/image-only PDF).")
+                return
+
+            user_prompt = f"User mengunggah dokumen PDF: '{file_name}' ({len(reader.pages)} halaman).\n\n"
+            if caption:
+                user_prompt += f"Instruksi user: {caption}\n\n"
+            else:
+                user_prompt += "Tolong rangkum dan analisa poin-poin penting dari isi dokumen PDF ini untuk konteks pasar dan trading:\n\n"
+            user_prompt += f"--- ISI DOKUMEN ---\n{extracted_content[:12000]}"
+
+            now = datetime.now(timezone.utc)
+            thread_id = update.message.message_thread_id
+            session_id = f"{chat_id}_{thread_id}" if thread_id else str(chat_id)
+            agent_key = f"{user_id}_{thread_id}" if thread_id else str(user_id)
+
+            is_admin_user = self._is_admin(update)
+            if agent_key not in self._chat_agents:
+                from telegram_bot.chat_agent import ChatAgent
+                self._chat_agents[agent_key] = ChatAgent(self.settings, agent_key, is_admin=is_admin_user)
+
+            agent = self._chat_agents[agent_key]
+            agent.is_admin = is_admin_user
+            agent.last_active = now
+
+            chat_obj = update.message.chat
+            async def _typing_cb():
+                if chat_obj:
+                    await chat_obj.send_action(ChatAction.TYPING)
+
+            reply, pending = await agent.handle(
+                user_prompt,
+                context=ctx,
+                typing_callback=_typing_cb,
+                session_id=session_id,
+                stream=False,
+                update=update,
+            )
+
+            if reply:
+                for chunk in self._chunk_text(reply):
+                    try:
+                        formatted_chunk = sanitize_telegram_html(chunk)
+                        await update.message.reply_text(formatted_chunk, parse_mode=ParseMode.HTML)
+                    except Exception as e:
+                        logger.warning(f"Failed to send HTML reply chunk: {e}")
+                        await update.message.reply_text(chunk)
+
+            if hasattr(agent, 'pop_pending_charts'):
+                charts = agent.pop_pending_charts()
+                for chart_buf in charts:
+                    try:
+                        await update.message.reply_photo(photo=chart_buf)
+                    except Exception as e:
+                        logger.warning(f"Failed sending chart photo to user {user_id}: {e}")
+
+            if hasattr(agent, 'pop_pending_files'):
+                files = agent.pop_pending_files()
+                for fn, file_buf in files:
+                    try:
+                        file_buf.seek(0)
+                        await update.message.reply_document(document=file_buf, filename=fn)
+                    except Exception as e:
+                        logger.warning(f"Failed sending document {fn} to user {user_id}: {e}")
+
+            if pending:
+                from telegram_bot.command_router import CommandRouter
+                keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
+                await update.message.reply_text(
+                    f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
+                    parse_mode=ParseMode.MARKDOWN,
+                    reply_markup=keyboard,
+                )
+        except Exception as e:
+            logger.error(f"ChatAgent error handling PDF document for user {user_id}: {e}", exc_info=True)
+            await update.message.reply_text(f"[ERROR] Gagal memproses dokumen PDF: {e}")
 
     # ------------------------------------------------------------------
     # Callback query handler

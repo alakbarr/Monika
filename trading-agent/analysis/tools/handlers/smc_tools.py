@@ -7,6 +7,7 @@ Direct execution without circular trampolines.
 import json
 import logging
 from typing import Any, Dict, Optional
+import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -154,8 +155,9 @@ async def handle_get_volume_profile(args: dict, **ctx) -> dict:
 
     try:
         from analysis.calculators.volume_profile import compute_volume_profile, compute_anchored_vwap
+        anchor_mode = args.get("anchor_mode", "daily")
         vp = await compute_volume_profile(session, symbol, settings)
-        vwap = await compute_anchored_vwap(session, symbol)
+        vwap = await compute_anchored_vwap(session, symbol, anchor_mode=anchor_mode)
         return {"symbol": symbol, "volume_profile": vp, "anchored_vwap": vwap}
     except Exception as e:
         logger.debug(f"[{symbol}] Volume profile computation fallback: {e}")
@@ -303,11 +305,13 @@ async def handle_get_breaker_blocks(args: dict, **ctx) -> dict:
             "count": len(breakers),
             "breakers": [
                 {
+                    "block_type": b.block_type,
                     "direction": b.direction,
                     "price_low": b.price_low,
                     "price_high": b.price_high,
                     "broken_at": b.broken_at,
                     "retested": b.retested,
+                    "liquidity_swept": b.liquidity_swept,
                     "strength": b.strength
                 }
                 for b in breakers
@@ -318,10 +322,103 @@ async def handle_get_breaker_blocks(args: dict, **ctx) -> dict:
         return {"symbol": symbol, "timeframe": timeframe, "error": str(e)}
 
 
+async def handle_get_inverted_fvg(args: dict, **ctx) -> dict:
+    """Fetch Inverted Fair Value Gaps (IFVG) where broken gaps flipped into institutional support/resistance."""
+    session, symbol, _ = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        return {"error": "Missing required parameter 'symbol'"}
+    if not session:
+        return {"status": "unavailable", "message": "Database session required for get_inverted_fvg"}
+
+    timeframe = args.get("timeframe", "H1")
+    lookback = int(args.get("lookback", 150))
+
+    try:
+        from database.models import PriceOHLCV, FVGZone
+        from indicators.smc_advanced import detect_inverted_fvg
+
+        bars = (await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(lookback)
+        )).scalars().all()
+        if not bars:
+            return {"symbol": symbol, "timeframe": timeframe, "inverted_fvgs": []}
+
+        df = pd.DataFrame([{
+            "timestamp": b.timestamp,
+            "open": float(b.open),
+            "high": float(b.high),
+            "low": float(b.low),
+            "close": float(b.close),
+            "volume": float(b.volume or 0)
+        } for b in reversed(bars)])
+
+        fvgs_db = (await session.execute(
+            select(FVGZone)
+            .where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe)
+            .order_by(FVGZone.formed_at.desc())
+            .limit(50)
+        )).scalars().all()
+
+        fvgs = [{
+            "type": str(f.direction).lower() if hasattr(f, "direction") else ("bullish" if getattr(f, "is_bullish", True) else "bearish"),
+            "price_high": float(f.price_high),
+            "price_low": float(f.price_low),
+            "time": f.formed_at.isoformat() if hasattr(f.formed_at, "isoformat") else str(f.formed_at)
+        } for f in fvgs_db]
+
+        # If database has no FVGs recorded yet, compute them dynamically from df
+        if not fvgs and len(df) >= 3:
+            for i in range(2, len(df)):
+                # Bullish FVG: low[i] > high[i-2]
+                if df["low"].iloc[i] > df["high"].iloc[i-2]:
+                    fvgs.append({
+                        "type": "bullish",
+                        "price_high": float(df["low"].iloc[i]),
+                        "price_low": float(df["high"].iloc[i-2]),
+                        "time": str(df["timestamp"].iloc[i-1])
+                    })
+                # Bearish FVG: high[i] < low[i-2]
+                elif df["high"].iloc[i] < df["low"].iloc[i-2]:
+                    fvgs.append({
+                        "type": "bearish",
+                        "price_high": float(df["low"].iloc[i-2]),
+                        "price_low": float(df["high"].iloc[i]),
+                        "time": str(df["timestamp"].iloc[i-1])
+                    })
+
+        ifvgs = detect_inverted_fvg(df, fvgs)
+        return {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "count": len(ifvgs),
+            "inverted_fvgs": [
+                {
+                    "direction": inv.direction,
+                    "price_low": inv.price_low,
+                    "price_high": inv.price_high,
+                    "midpoint": inv.midpoint,
+                    "original_fvg_type": inv.original_fvg_type,
+                    "original_fvg_time": inv.original_fvg_time,
+                    "inverted_at": inv.inverted_at,
+                    "retested": inv.retested,
+                    "strength": inv.strength
+                }
+                for inv in ifvgs
+            ]
+        }
+    except Exception as e:
+        logger.debug(f"[{symbol}] Inverted FVG error: {e}")
+        return {"symbol": symbol, "timeframe": timeframe, "error": str(e)}
+
+
 async def handle_get_judas_swing(args: dict, **ctx) -> dict:
     session, symbol, settings = _get_session_and_symbol(args, ctx)
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
+
     if not session:
         return {"status": "unavailable", "message": "Database session required for get_judas_swing"}
 
@@ -355,10 +452,13 @@ async def handle_get_judas_swing(args: dict, **ctx) -> dict:
             "volume": float(b.volume or 0)
         } for b in reversed(bars)])
 
+        asian_h = asian_range.get("asian_high") if asian_range.get("asian_high") is not None else asian_range.get("high", 0.0)
+        asian_l = asian_range.get("asian_low") if asian_range.get("asian_low") is not None else asian_range.get("low", 0.0)
+
         res = detect_judas_swing(
             df_m15=df,
-            asian_high=asian_range.get("asian_high", 0.0),
-            asian_low=asian_range.get("asian_low", 0.0)
+            asian_high=asian_h,
+            asian_low=asian_l
         )
         return {
             "symbol": symbol,
@@ -473,6 +573,79 @@ async def handle_get_wick_to_wick_fvg(args: dict, **ctx) -> dict:
         return {"symbol": symbol, "timeframe": timeframe, "error": str(e)}
 
 
+async def handle_get_smt_divergence(args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Detects Smart Money Technique (SMT) Divergence between correlated or inversely correlated pairs (e.g. EURUSD vs DXY)."""
+    sym = None
+    if executor and hasattr(executor, "_resolve_symbol"):
+        sym = executor._resolve_symbol(args)
+    symbol = (sym or args.get("symbol") or "EURUSD").strip().upper().replace("/", "")
+    compared_symbol = str(args.get("compared_to") or args.get("benchmark_symbol") or ("DXY" if "EUR" in symbol or "GBP" in symbol else "EURUSD")).strip().upper().replace("/", "")
+    timeframe = str(args.get("timeframe") or "H1").upper()
+    lookback = min(100, max(15, int(args.get("lookback") or 30)))
+
+    if not session:
+        return {"status": "unavailable", "message": "Database session required for get_smt_divergence"}
+
+    try:
+        from database.models import PriceOHLCV
+        from indicators.smc_advanced import detect_smt_divergence
+
+        async def _fetch_df(sym_name: str):
+            bars = (await session.execute(
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == sym_name, PriceOHLCV.timeframe == timeframe)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(lookback + 20)
+            )).scalars().all()
+            if not bars:
+                return None
+            return pd.DataFrame([{
+                "timestamp": b.timestamp,
+                "open": float(b.open),
+                "high": float(b.high),
+                "low": float(b.low),
+                "close": float(b.close),
+                "volume": float(b.volume or 0)
+            } for b in reversed(bars)])
+
+        df1 = await _fetch_df(symbol)
+        df2 = await _fetch_df(compared_symbol)
+
+        if df2 is None and compared_symbol in ("DXY", "USDX") and df1 is not None:
+            df2 = df1.copy()
+            df2["high"] = 1.0 / df1["low"]
+            df2["low"] = 1.0 / df1["high"]
+            df2["open"] = 1.0 / df1["close"]
+            df2["close"] = 1.0 / df1["open"]
+
+        if df1 is None or df2 is None:
+            return {
+                "status": "partial_data",
+                "symbol": symbol,
+                "compared_to": compared_symbol,
+                "smt_detected": False,
+                "note": f"Insufficient historical candles in database for {symbol} or {compared_symbol} on {timeframe}."
+            }
+
+        is_inverse = any(k in compared_symbol for k in ("DXY", "USDX")) or ("USD" in symbol and "USD" not in compared_symbol)
+        res = detect_smt_divergence(
+            asset1_df=df1,
+            asset2_df=df2,
+            asset1_name=symbol,
+            asset2_name=compared_symbol,
+            lookback=lookback,
+            inverse_correlation=is_inverse
+        )
+
+        return {
+            "status": "success",
+            "timeframe": timeframe,
+            **res
+        }
+    except Exception as e:
+        return {"status": "error", "error": f"Failed to compute SMT divergence: {e}"}
+
+
 def register_smc_tools():
     registry = ToolRegistry.get_instance()
     tools = [
@@ -561,6 +734,22 @@ def register_smc_tools():
             description="Detect wick-to-wick shadow Fair Value Gaps on higher timeframes.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}}},
             handler=handle_get_wick_to_wick_fvg,
+            toolset="smc",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_smt_divergence",
+            description="Detect Smart Money Technique (SMT) divergence between correlated or inversely correlated pairs.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "compared_to": {"type": "string"}, "timeframe": {"type": "string"}}},
+            handler=handle_get_smt_divergence,
+            toolset="smc",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_inverted_fvg",
+            description="Fetch Inverted Fair Value Gaps (IFVG) where broken gaps flipped into institutional support/resistance.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "lookback": {"type": "integer"}}},
+            handler=handle_get_inverted_fvg,
             toolset="smc",
             requires_db=True,
         ),

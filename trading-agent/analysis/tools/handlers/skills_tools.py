@@ -152,7 +152,7 @@ async def handle_create_skill(args: Dict[str, Any], **kwargs) -> Dict[str, Any]:
     try:
         from skills.skill_manager import SkillManager
         manager = SkillManager()
-        success, message, created_path = manager.create_skill(
+        success, message = manager.create_skill(
             name=skill_name,
             content=content,
             category=category,
@@ -160,7 +160,7 @@ async def handle_create_skill(args: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         if success:
             return {
                 "status": "success",
-                "message": f"Successfully created skill '{skill_name}' at {created_path}",
+                "message": message,
                 "skill_name": skill_name,
                 "category": category,
             }

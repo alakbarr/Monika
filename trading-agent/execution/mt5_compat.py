@@ -263,7 +263,7 @@ def is_native_mt5_available() -> bool:
     if sys.platform != "win32":
         return False
     try:
-        import MetaTrader5  # type: ignore # noqa: F401
+        import MetaTrader5
         return True
     except (ImportError, Exception):
         return False
@@ -272,19 +272,19 @@ def is_native_mt5_available() -> bool:
 def is_mt5linux_available() -> bool:
     """Mengecek apakah paket RPC bridge (rpyc, pymt5linux, atau mt5linux) tersedia."""
     try:
-        import rpyc  # type: ignore # noqa: F401
+        import rpyc 
         return True
     except (ImportError, SyntaxError, Exception):
         pass
 
     try:
-        import pymt5linux  # type: ignore # noqa: F401
+        import pymt5linux
         return True
     except (ImportError, SyntaxError, Exception):
         pass
 
     try:
-        import mt5linux  # type: ignore # noqa: F401
+        import mt5linux
         return True
     except (ImportError, SyntaxError, Exception):
         return False
@@ -516,7 +516,7 @@ def get_mt5_module(host: Optional[str] = None, port: Optional[int] = None) -> An
     # 1. Native Windows
     if is_native_mt5_available():
         try:
-            import MetaTrader5 as native_mt5  # type: ignore
+            import MetaTrader5 as native_mt5
             _active_mt5_module = native_mt5
             logger.info("[MT5Compat] Using native MetaTrader5 C-extension on Windows.")
             return _active_mt5_module
@@ -554,7 +554,7 @@ def ensure_mt5_module(host: Optional[str] = None, port: Optional[int] = None) ->
             if not attr.startswith("__"):
                 setattr(mod, attr, getattr(mt5_inst, attr))
         # Ensure __getattr__ delegates dynamically
-        mod.__getattr__ = mt5_inst.__getattr__  # type: ignore
+        mod.__getattr__ = mt5_inst.__getattr__
         sys.modules["MetaTrader5"] = mod
         return mod
 

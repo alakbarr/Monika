@@ -65,8 +65,16 @@ async def _get_asian_session_range(session: AsyncSession, symbol: str, settings:
     bars = (await session.execute(bars_stmt)).scalars().all()
     if len(bars) < 4:
         return None
-    return {'session_start': session_start, 'session_end': session_end,
-            'high': max(b.high for b in bars), 'low': min(b.low for b in bars)}
+    h_val = max(b.high for b in bars)
+    l_val = min(b.low for b in bars)
+    return {
+        'session_start': session_start,
+        'session_end': session_end,
+        'high': h_val,
+        'low': l_val,
+        'asian_high': h_val,
+        'asian_low': l_val,
+    }
 
 async def detect_liquidity_sweep(session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None, timeframe: str = "H1", mode: str = "auto") -> dict:
     result = {'symbol': symbol, 'timeframe': timeframe, 'sweep_detected': False, 'sweep_direction': None,

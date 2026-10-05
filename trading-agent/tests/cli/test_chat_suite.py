@@ -203,7 +203,11 @@ async def test_command_router_basic():
     # 3. /model
     res = await router.handle("/model fast")
     assert res.handled
-    assert prompt_mgr.active_model == "gemini-2.5-flash"
+    assert prompt_mgr.active_model == "gemini-3.5-flash-lite"
+
+    res = await router.handle("/model reasoning")
+    assert res.handled
+    assert prompt_mgr.active_model == "gemini-3.8-flash"
 
     # 4. /theme
     res = await router.handle("/theme modern_dark")
@@ -285,7 +289,7 @@ def test_prompt_manager_toolbar():
     """Verify prompt manager dynamic bottom toolbar HTML generation."""
     pm = ChatPromptManager()
     pm.update_telemetry(
-        model="gemini-2.5-pro",
+        model="gemini-3.8-flash",
         mode="LIVE",
         status="ONLINE",
         latency_s=1.45,
@@ -295,7 +299,7 @@ def test_prompt_manager_toolbar():
     toolbar_html = pm._get_bottom_toolbar()
     html_text = toolbar_html.value
     assert "MONIKA" in html_text
-    assert "gemini-2.5-pro" in html_text
+    assert "gemini-3.8-flash" in html_text
     assert "LIVE" in html_text
     assert "ONLINE" in html_text
     assert "350 tok" in html_text

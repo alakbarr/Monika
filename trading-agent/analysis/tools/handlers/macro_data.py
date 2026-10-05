@@ -27,6 +27,14 @@ from analysis.tools.handlers.macro_tools import (
     handle_get_economic_surprise,
     handle_get_precomputed_cot_signals,
     handle_get_surprise_summary,
+    handle_inspect_economic_report,
+    handle_diff_central_bank_documents,
+    handle_get_macro_cross_report_synthesis,
+    handle_get_g10_macro_divergence,
+    handle_get_fed_net_liquidity_and_stress,
+    handle_get_treasury_auction_results,
+    handle_get_ecb_qt_progress,
+    handle_get_global_pmi_trend,
 )
 
 
@@ -168,3 +176,86 @@ class GetSurpriseSummaryHandler(ToolHandler):
 
     async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
         return await handle_get_surprise_summary(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("inspect_economic_report", aliases=["inspect_report", "decompose_report", "bedah_cpi", "bedah_nfp"], category="MACRO", parallel_safe=True)
+class InspectEconomicReportHandler(ToolHandler):
+    name = "inspect_economic_report"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_inspect_economic_report(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("diff_central_bank_documents", aliases=["diff_cb_documents", "diff_fomc_minutes", "diff_fomc_statement"], category="MACRO", parallel_safe=True)
+class DiffCentralBankDocumentsHandler(ToolHandler):
+    name = "diff_central_bank_documents"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_diff_central_bank_documents(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_macro_cross_report_synthesis", aliases=["macro_synthesis", "cross_report_synthesis"], category="MACRO", parallel_safe=True)
+class GetMacroCrossReportSynthesisHandler(ToolHandler):
+    name = "get_macro_cross_report_synthesis"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_macro_cross_report_synthesis(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_g10_macro_divergence", aliases=["g10_divergence", "macro_divergence"], category="MACRO", parallel_safe=True)
+class GetG10MacroDivergenceHandler(ToolHandler):
+    name = "get_g10_macro_divergence"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_g10_macro_divergence(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_fed_net_liquidity_and_stress", aliases=["fed_net_liquidity", "systemic_liquidity", "credit_stress"], category="MACRO", parallel_safe=True)
+class GetFedNetLiquidityAndStressHandler(ToolHandler):
+    name = "get_fed_net_liquidity_and_stress"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_fed_net_liquidity_and_stress(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_treasury_auction_results", aliases=["treasury_auctions", "us_debt_auctions"], category="MACRO", parallel_safe=True)
+class GetTreasuryAuctionResultsHandler(ToolHandler):
+    name = "get_treasury_auction_results"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_treasury_auction_results(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_ecb_qt_progress", aliases=["ecb_qt", "ecb_balance_sheet", "eurozone_qt"], category="MACRO", parallel_safe=True)
+class GetECBQTProgressHandler(ToolHandler):
+    name = "get_ecb_qt_progress"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_ecb_qt_progress(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_global_pmi_trend", aliases=["global_pmi", "manufacturing_pmi", "pmi_trend"], category="MACRO", parallel_safe=True)
+class GetGlobalPMITrendHandler(ToolHandler):
+    name = "get_global_pmi_trend"
+    category = "MACRO"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_global_pmi_trend(args, session=session, executor=executor, **kwargs)
+
+
+

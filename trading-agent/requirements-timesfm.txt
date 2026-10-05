@@ -1,0 +1,7 @@
+# Optional Neural Time-Series Forecasting Dependencies (TimesFM 3.0)
+# Install only if running neural forecasting with Nvidia GPU or high-spec CPU:
+# pip install -r requirements-timesfm.txt
+torch>=2.14.0
+timesfm>=3.0.1
+huggingface_hub>=0.28.0
+safetensors>=0.5.3

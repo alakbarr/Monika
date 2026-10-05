@@ -922,6 +922,39 @@ class Position(Base):
     def lots(self, val: float):
         self.volume = float(val)
 
+    @property
+    def stop_loss(self) -> Optional[float]:
+        return self.sl
+
+    @stop_loss.setter
+    def stop_loss(self, val: Optional[float]):
+        self.sl = val
+
+    @property
+    def take_profit(self) -> Optional[float]:
+        return self.tp
+
+    @take_profit.setter
+    def take_profit(self, val: Optional[float]):
+        self.tp = val
+
+    @property
+    def side(self) -> str:
+        return (self.direction or "").lower()
+
+    @property
+    def exit_price(self) -> Optional[float]:
+        return self._mt5_exit_price if self._mt5_exit_price is not None else self.entry_price
+
+    @property
+    def exit_reason(self) -> str:
+        return str(self._mt5_close_reason) if self._mt5_close_reason is not None else "closed"
+
+    @property
+    def pnl_pct(self) -> float:
+        notional = max(1.0, (self.entry_price or 1.0) * (self.volume or 0.01) * 100_000.0)
+        return round(((self.pnl or 0.0) / notional) * 100.0, 2)
+
     # Transient runtime attributes (set dynamically by MT5 client / execution service)
     _mt5_close_reason: Optional[int] = None
     _mt5_exit_price: Optional[float] = None
@@ -1016,6 +1049,26 @@ class PaperTradeRecord(Base):
         Index('idx_paper_trade_status', 'status'),
         Index('idx_paper_trade_symbol', 'symbol'),
     )
+
+    @property
+    def lot_size(self) -> float:
+        return self.requested_lot or 0.01
+
+    @lot_size.setter
+    def lot_size(self, val: float):
+        self.requested_lot = float(val)
+
+    @property
+    def volume(self) -> float:
+        return self.requested_lot or 0.01
+
+    @volume.setter
+    def volume(self, val: float):
+        self.requested_lot = float(val)
+
+    @property
+    def pnl_usd(self) -> float:
+        return round(10_000.0 * ((self.pnl_pct or 0.0) / 100.0), 2)
 
 
 class EquityDrawdownSnapshot(Base):
@@ -1821,5 +1874,112 @@ class AgentSessionMessage(Base):
         Index("idx_asm_sess_active", "session_id", "active"),
         Index("idx_asm_sess_created", "session_id", "created_at"),
     )
+
+
+class UserPreference(Base):
+    """User-defined persistent constraints and preferences (e.g. event blacklists, risk caps)."""
+    __tablename__ = "user_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True, default="default")
+    category: Mapped[str] = mapped_column(String(32), index=True)  # event_blacklist, risk_cap, trading_hours
+    key: Mapped[str] = mapped_column(String(64))  # blacklisted_events, max_risk_pct, etc.
+    value_json: Mapped[str] = mapped_column(Text)  # Serialized JSON string/list
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        Index("idx_user_pref_lookup", "user_id", "category", "is_active"),
+    )
+
+
+class UserJournalEntry(Base):
+    """Qualitative trader journal and psychology notes (FOMO, discipline, trade reflection)."""
+    __tablename__ = "user_journal_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True, default="default")
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    symbol: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    sentiment_tag: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)  # fomo, revenge, discipline, patience
+    content: Mapped[str] = mapped_column(Text)
+    ticket_ref: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class EconomicReportDecomposition(Base):
+    """Universal granular sub-component storage for all macroeconomic releases (US & G10)."""
+    __tablename__ = "economic_report_decompositions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_type: Mapped[str] = mapped_column(String(30), index=True)  # CPI, PPI, PCE, NFP, JOLTS, RETAIL_SALES, GDP, PMI, ECI, UMICH
+    country: Mapped[str] = mapped_column(String(10), default="US", index=True)
+    currency: Mapped[str] = mapped_column(String(10), default="USD", index=True)
+    period: Mapped[str] = mapped_column(String(20), index=True)       # e.g. "2026-09", "2026-Q3"
+    release_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    component_name: Mapped[str] = mapped_column(String(120))         # e.g. "Shelter", "Supercore Services", "Private Payrolls", "ISM Prices Paid"
+    category: Mapped[str] = mapped_column(String(50))                # "headline", "core", "sticky", "transitory", "leading", "revision"
+    weight_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    value_actual: Mapped[float] = mapped_column(Float)
+    value_forecast: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    value_previous: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mom_change: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    yoy_change: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    contribution_bps: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_noise: Mapped[bool] = mapped_column(Boolean, default=False)
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('report_type', 'country', 'period', 'component_name', name='uq_report_decomp'),
+        Index('idx_report_lookup', 'report_type', 'currency', 'period'),
+    )
+
+
+class CentralBankDocument(Base):
+    """Full-text repository for central bank monetary policy statements, minutes, and projections."""
+    __tablename__ = "central_bank_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bank: Mapped[str] = mapped_column(String(20), index=True)         # FED, ECB, BOE, BOJ, SNB, RBA, BOC
+    doc_type: Mapped[str] = mapped_column(String(30), index=True)     # STATEMENT, MINUTES, DOT_PLOT, BEIGE_BOOK, PRESS_CONF
+    meeting_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    source_url: Mapped[str] = mapped_column(String(1000))
+    full_text: Mapped[str] = mapped_column(Text)
+    paragraphs_json: Mapped[str] = mapped_column(Text)                # JSON array of paragraphs
+    hawkish_dovish_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True) # -1.0 (dovish) to +1.0 (hawkish)
+    key_phrases_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('bank', 'doc_type', 'meeting_date', name='uq_cb_doc_record'),
+        Index('idx_cb_doc_bank_type_date', 'bank', 'doc_type', 'meeting_date'),
+    )
+
+
+class MacroLiquidityCreditMetric(Base):
+    """Storage for central bank balance sheets, systemic liquidity, debt auctions, and credit stress metrics."""
+    __tablename__ = "macro_liquidity_credit_metrics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    metric_type: Mapped[str] = mapped_column(String(50), index=True)  # FED_NET_LIQUIDITY, WALCL, TGA, ON_RRP, TREASURY_AUCTION_10Y, HY_OAS, SOFR, TIC_FLOWS
+    country: Mapped[str] = mapped_column(String(10), default="US", index=True)
+    record_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    value: Mapped[float] = mapped_column(Float)
+    previous_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    change_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    unit: Mapped[str] = mapped_column(String(20), default="USD_BILLIONS")
+    regime: Mapped[Optional[str]] = mapped_column(String(30), nullable=True) # EXPANSIONARY, CONTRACTIONARY, STRESS, BENIGN
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('metric_type', 'country', 'record_date', name='uq_macro_liq_metric'),
+        Index('idx_liq_lookup', 'metric_type', 'record_date'),
+    )
+
+
 
 

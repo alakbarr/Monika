@@ -7,15 +7,19 @@ Position management and execution proposal handlers.
 Direct execution without circular trampolines.
 """
 
+import logging
 from typing import Any, Dict, Optional
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from analysis.tools.base_handler import ToolHandler
 from analysis.tools.registry import register_tool
 from analysis.tools.domain.position_handlers import PositionToolHandlers
 from analysis.tools.domain.execution_handlers import ExecutionToolHandlers
-from database.models import ActivityLog
+from database.models import ActivityLog, Position
 import utils.clock as clock
+
+logger = logging.getLogger("TradingAgent.Tools.PositionMgmt")
 
 
 async def handle_get_open_positions(session: Optional[AsyncSession] = None, settings: Optional[dict] = None, **kwargs) -> Any:
@@ -92,13 +96,18 @@ async def handle_calculate_position_size(args: dict, session: Optional[AsyncSess
         else:
             stop_loss = entry_price - (30 * pip_size)
 
+    account_equity_val = float(args.get("account_equity") or args.get("equity") or args.get("capital") or 0.0)
+    extra_kwargs = {k: v for k, v in args.items() if k not in ("symbol", "entry_price", "stop_loss", "risk_pct", "risk_percent")}
+    if account_equity_val > 0:
+        extra_kwargs["account_equity"] = account_equity_val
+
     return await handlers.calculate_position_size(
         symbol=clean_sym,
         entry_price=entry_price,
         stop_loss=stop_loss,
         risk_pct=risk_pct,
         session=effective_session,
-        **args
+        **extra_kwargs
     )
 
 
@@ -196,13 +205,24 @@ async def handle_set_trailing_stop(args: dict, session: Optional[AsyncSession] =
     ticket = args.get("ticket")
     symbol = args.get("symbol")
     trailing_pips = args.get("trailing_pips") or args.get("pips")
+    trailing_pct = args.get("trailing_pct") or args.get("pct")
     trail_atr_multiple = args.get("trail_atr_multiple")
     breakeven_pips = args.get("breakeven_pips")
     only_profit = args.get("only_profit", False)
     
     override_data = {}
+    warning_msg = None
     if trailing_pips is not None:
-        override_data["trailing_pips"] = float(trailing_pips)
+        pips_val = float(trailing_pips)
+        override_data["trailing_pips"] = pips_val
+        if symbol and "BTC" in symbol.upper() and pips_val < 100:
+            warning_msg = (
+                f"Trailing stop {pips_val} pips pada {symbol} bernilai ${pips_val:.2f} (sangat ketat untuk aset $60k+). "
+                f"Disarankan menggunakan trail_atr_multiple atau trailing_pips >= 250."
+            )
+            logger.warning(f"[TrailingStop] {warning_msg}")
+    if trailing_pct is not None:
+        override_data["trailing_pct"] = float(trailing_pct)
     if breakeven_pips is not None:
         override_data["breakeven_pips"] = float(breakeven_pips)
     if trail_atr_multiple is not None:
@@ -229,13 +249,16 @@ async def handle_set_trailing_stop(args: dict, session: Optional[AsyncSession] =
         updated.append(pos.mt5_ticket)
     
     await effective_session.commit()
-    return {
+    res = {
         "success": True,
         "updated_count": len(updated),
         "updated_tickets": updated,
         "override_config": override_data,
         "message": f"Updated trailing stop configuration for {len(updated)} position(s)."
     }
+    if warning_msg:
+        res["warning"] = warning_msg
+    return res
 
 
 @register_tool("set_trailing_stop", aliases=["configure_trailing_stop", "update_trailing_stop"], category="POSITION", parallel_safe=False)

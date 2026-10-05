@@ -28,6 +28,9 @@ async def compute_anchored_vwap(
     if anchor_mode == "custom" and anchor_timestamp:
         anchor = anchor_timestamp
         name = f"custom_{anchor.strftime('%Y%m%d_%H%M')}"
+    elif anchor_mode == "daily":
+        anchor = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        name = "daily_open_00:00"
     elif anchor_mode in ("weekly_low", "weekly_high"):
         from datetime import timedelta
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)

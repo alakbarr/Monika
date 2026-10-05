@@ -15,7 +15,7 @@ from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import utils.clock as clock
-from database.models import UserMarketIntel, MarketChronicle, ActivityLog
+from database.models import UserMarketIntel, MarketChronicle, ActivityLog, SystemConfig
 from analysis.tools.base_handler import ToolHandler
 from analysis.tools.registry import register_tool
 
@@ -242,3 +242,72 @@ class ArchiveMarketIntelligenceHandler(ToolHandler):
 
     async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
         return await handle_archive_market_intelligence(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_get_active_negative_constraints(tool_input: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs) -> dict:
+    """Retrieve currently active negative reasoning constraints (DO NOT rules) formulated to prevent repeating past trading failures."""
+    effective_session = session or getattr(executor, "session", None)
+    symbol_filter = str(tool_input.get("symbol") or "").upper().strip()
+
+    constraints = []
+    if effective_session:
+        try:
+            stmt = select(SystemConfig).where(SystemConfig.key.like("negative_constraint_%")).order_by(SystemConfig.id.desc()).limit(30)
+            rows = (await effective_session.execute(stmt)).scalars().all()
+            for r in rows:
+                if r.value:
+                    try:
+                        data = json.loads(r.value)
+                        sym = data.get("symbol", "ALL")
+                        if symbol_filter and sym not in (symbol_filter, "ALL"):
+                            continue
+                        constraints.append({
+                            "key": r.key,
+                            "symbol": sym,
+                            "constraint_text": data.get("constraint_text") or data.get("lesson"),
+                            "tags": data.get("tags", []),
+                            "source": "trade_reflection",
+                            "created_at": datetime.fromtimestamp(data.get("created_at", 0), tz=timezone.utc).isoformat() if data.get("created_at") else None,
+                        })
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug(f"Error reading negative constraints from SystemConfig: {e}")
+
+        target_symbols = [symbol_filter] if symbol_filter else ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
+        from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+        for sym in target_symbols:
+            try:
+                dyn = await NegativeConstraintGenerator.generate_negative_constraints_from_losses(
+                    session=effective_session, symbol=sym, max_constraints=2
+                )
+                for rule in dyn:
+                    if not any(c.get("constraint_text") == rule for c in constraints):
+                        constraints.append({
+                            "key": f"dynamic_{sym.lower()}",
+                            "symbol": sym,
+                            "constraint_text": rule,
+                            "tags": ["empirical_loss"],
+                            "source": "failure_taxonomy",
+                            "created_at": clock.now().isoformat(),
+                        })
+            except Exception as dyn_err:
+                logger.debug(f"Dynamic constraint generation note for {sym}: {dyn_err}")
+
+    return {
+        "status": "success",
+        "symbol_filter": symbol_filter or "ALL",
+        "active_constraints_count": len(constraints),
+        "constraints": constraints,
+    }
+
+
+@register_tool("get_active_negative_constraints", aliases=["list_negative_constraints", "get_negative_rules"], category="ANALYSIS", parallel_safe=True)
+class GetActiveNegativeConstraintsHandler(ToolHandler):
+    name = "get_active_negative_constraints"
+    category = "ANALYSIS"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_get_active_negative_constraints(args, session=session, executor=executor, **kwargs)
+

@@ -422,139 +422,79 @@ llm:
 
 ## 7. Installation & Quickstart
 
-### Prerequisites
-- **Operating System:** Windows 10/11 or Windows Server (required for native MetaTrader 5; Linux requires Wine/Docker).
-- **Python:** `3.11` or higher.
-- **Database:** PostgreSQL `16.0` or higher.
-- **Node.js:** `18.0` or higher (only required if building the Web Dashboard frontend).
-- **MetaTrader 5:** Installed desktop terminal with a **demo account**.
+Monika is designed for **zero-friction onboarding**: you can be up and running in ~2 minutes with zero database server setup, without installing Node.js/npm, and using free Google Gemini API keys.
+
+👉 **Complete Bilingual Installation Guide:** See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) for full Indonesian & English walkthroughs.
 
 ---
 
-### Step-by-Step Setup
+### 📦 Package Tiers: Choose Your Experience
 
+Monika offers two setup packages out of the box:
+
+| Package | Database | MetaTrader 5 | Execution | AI Provider | Telegram Bot | Setup Time |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **🚀 Trial Package** *(Recommended)* | **SQLite (Zero-Config WAL)** | **Required (Demo Account OK)** | **Paper Trading Sandbox** | **Gemini Free (Min 1 key)** | **Required (Mobile Oversight)** | **~2 minutes** |
+| **🔥 Full Package** | **PostgreSQL 16+** | **Required (Live/Demo)** | **Paper & MT5 Live Bridge** | **Multi-Provider + 9Router** | **Required (Mobile Oversight)** | **~10-15 minutes** |
+
+> 💡 **Upgrade Anytime:** Start with the **Trial Package**. Whenever you are ready to unlock PostgreSQL, the React 19 Web Dashboard, and live MT5 bridges, run:
+> ```bash
+> python -m cli.main upgrade
+> ```
+
+---
+
+### ⚡ Quickstart (One-Click Launch)
+
+#### Prerequisite (Both Windows & Linux)
+1. **Download & Install MetaTrader 5**: [metatrader5.com/en/download](https://www.metatrader5.com/en/download)
+2. **Open a Free Demo Account**: Inside MT5, go to `File` → `Open an Account` → select `MetaQuotes-Demo`.
+3. **Enable Algo Trading**: Click the **Algo Trading** button in the MT5 top toolbar so it turns green.
+
+#### Windows
+Clone or download this repository, then simply **double-click**:
+```cmd
+start_monika.bat
+```
+*The launcher automatically verifies Python (accepting Python >= 3.11, with automated winget fallback), prepares `trading-agent\venv`, and launches the interactive setup wizard.*
+
+#### Linux / macOS / VPS (Ubuntu 22.04+)
 ```bash
-# 1. Clone repository
 git clone https://github.com/alakbarr/Monika.git
 cd Monika
-
-# 2. Create and activate a Python virtual environment
-# Windows (PowerShell):
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# Linux / macOS:
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Install Python dependencies
-pip install --upgrade pip
-pip install -r trading-agent/requirements.txt
-
-# 4. Optional: Build the Web Dashboard frontend
-cd trading-agent/logging_observability/dashboard/frontend
-npm install
-npm run build
-cd ../../../..
+chmod +x start_monika.sh
+./start_monika.sh
 ```
 
----
-
-### Database Initialization
-
-Ensure your PostgreSQL service is running, then create a database:
-```sql
-CREATE DATABASE monika_trading;
-```
-
-Apply database migrations:
-```bash
-cd trading-agent
-alembic upgrade head
-cd ..
-```
-
----
-
-### Environment Variables (`.env`)
-
-Copy the template configuration file:
+#### Containerized Docker (VPS)
 ```bash
 cp .env.example .env
+docker compose -f deploy/docker-compose.vps.yml up -d --build
 ```
-
-Configure `.env` with your credentials:
-```ini
-# PostgreSQL 16+ Database
-DATABASE_URL=postgresql+asyncpg://postgres:yourpassword@localhost:5432/monika_trading
-
-# MetaTrader 5 Demo Account
-MT5_ACCOUNT=12345678
-MT5_PASSWORD=YourDemoPassword
-MT5_SERVER=MetaQuotes-Demo
-MT5_PATH=C:/Program Files/MetaTrader 5/terminal64.exe
-
-# LLM Providers (Configure at least one)
-GEMINI_API_KEYS=your_gemini_api_key
-OPENROUTER_API_KEYS=your_openrouter_api_key
-GROQ_API_KEY=your_groq_api_key
-
-# Optional Data Feeds
-FRED_API_KEY=your_fred_api_key
-FINNHUB_API_KEY=your_finnhub_api_key
-
-# Optional Telegram Remote Supervision
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
-TELEGRAM_ADMIN_CHAT_ID=123456789
-```
-
-> [!CAUTION]
-> **Never commit your `.env` file to version control.** It contains private credentials and is excluded by `.gitignore`.
 
 ---
 
-### Pre-Flight Diagnostic Check
+### 🔑 API Key & Credential Reference Guide
 
-Run the diagnostic utility to verify database connectivity, MT5 path, and API keys:
-
-```bash
-python trading-agent/cli/main.py doctor
-```
-
-The doctor check verifies:
-- PostgreSQL connectivity and Alembic schema migration status.
-- MetaTrader 5 executable path and account authentication.
-- LLM API key responsiveness.
-- Heartbeat file path write permissions.
+| Service | Status | Official Registration | Notes |
+| :--- | :--- | :--- | :--- |
+| **MetaTrader 5 Account** | **Required** | In-app (`File` → `Open an Account`) | Free Demo account is 100% fine for testing. |
+| **Telegram Bot** | **Required** | [@BotFather on Telegram](https://t.me/BotFather) | Mobile oversight, trade approval cards, and remote emergency kill. |
+| **Google Gemini** | **Required (Pick 1)** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Generous free tier. Requires standard Google account login. |
+| **9Router Gateway** | *Recommended* | [github.com/9router/9router](https://github.com/9router) | Smart local AI proxy (port 20128) for rotation and failover. |
+| **OpenRouter** | Alternative | [openrouter.ai/keys](https://openrouter.ai/keys) | Single key for open-source and commercial models. |
+| **Groq** | Alternative | [console.groq.com/keys](https://console.groq.com/keys) | Ultra-fast Llama-3 inference (free tier available). |
+| **Anthropic Claude** | Alternative | [console.anthropic.com](https://console.anthropic.com/) | Claude 3.5 Sonnet / Haiku reasoning. |
+| **FRED Data** | Optional | [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html) | US Treasury yields and macro data (free). |
+| **Finnhub** | Optional | [finnhub.io/register](https://finnhub.io/register) | Real-time financial calendar and news sentiment. |
 
 ---
 
-### Starting the Application
+### System Diagnostics (System Doctor)
 
-#### Option A: Windows Batch Script
-Launches the daemon and dashboard:
-```cmd
-trading-agent\start_agent.bat
-```
-
-#### Option B: Linux / macOS Shell Script
+Run the offline diagnostic probe to verify environment and component health:
 ```bash
-bash trading-agent/start_agent.sh
-```
-
-#### Option C: CLI Daemon (Paper Mode)
-```bash
-python trading-agent/cli/main.py run --mode paper
-```
-
-#### Option D: Terminal UI Mode
-```bash
-python trading-agent/cli/main.py tui
-```
-
-#### Option E: Containerized Deployment
-```bash
-docker compose up -d
+python -m cli.main doctor --offline
 ```
 
 ---
@@ -566,6 +506,7 @@ docker compose up -d
 | Command | Primary Function |
 | :--- | :--- |
 | `python -m cli.main setup` | Interactive terminal wizard to configure `.env` and broker parameters. |
+| `python -m cli.main upgrade` | Interactively upgrades Monika from Trial to Full package. |
 | `python -m cli.main doctor` | Runs diagnostic health checks for PostgreSQL, MT5, and LLM API keys. |
 | `python -m cli.main run` | Starts the background trading agent daemon. |
 | `python -m cli.main status` | Displays system health, active background tasks, and account equity. |

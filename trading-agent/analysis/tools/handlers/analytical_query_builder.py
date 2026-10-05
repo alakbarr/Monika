@@ -127,6 +127,15 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
         rr = _calculate_rr(o.entry_price, o.stop_loss, o.take_profit)
         if min_rr > 0 and rr < min_rr:
             continue
+        hour_val = "Unknown"
+        if o.closed_at:
+            try:
+                dt_c = o.closed_at if isinstance(o.closed_at, datetime) else datetime.fromisoformat(str(o.closed_at))
+                if dt_c.tzinfo is None:
+                    dt_c = dt_c.replace(tzinfo=timezone.utc)
+                hour_val = f"{dt_c.astimezone(timezone(timedelta(hours=7))).hour:02d}:00 WIB"
+            except Exception:
+                pass
         trades.append({
             "id": o.id,
             "symbol": o.symbol,
@@ -142,7 +151,9 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
             "session": str(o.entry_session or "Unknown"),
             "market_regime": str(o.market_regime or "Unknown"),
             "decision_source": str(o.decision_source or "LLM_Agent"),
-            "closed_at": o.closed_at.isoformat() if o.closed_at else ""
+            "closed_at": o.closed_at.isoformat() if o.closed_at else "",
+            "hour": hour_val,
+            "hour_wib": hour_val,
         })
 
     # If no TradeOutcome records, fallback to closed positions
@@ -155,6 +166,15 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
             holding_h = 0.0
             if p.opened_at and p.closed_at:
                 holding_h = round((p.closed_at - p.opened_at).total_seconds() / 3600, 2)
+            hour_val = "Unknown"
+            if p.closed_at:
+                try:
+                    dt_c = p.closed_at if isinstance(p.closed_at, datetime) else datetime.fromisoformat(str(p.closed_at))
+                    if dt_c.tzinfo is None:
+                        dt_c = dt_c.replace(tzinfo=timezone.utc)
+                    hour_val = f"{dt_c.astimezone(timezone(timedelta(hours=7))).hour:02d}:00 WIB"
+                except Exception:
+                    pass
             trades.append({
                 "id": p.id,
                 "symbol": p.symbol,
@@ -170,7 +190,9 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
                 "session": str(p.entry_session or "Unknown"),
                 "market_regime": str(p.market_regime or "Unknown"),
                 "decision_source": "MT5_Position",
-                "closed_at": p.closed_at.isoformat() if p.closed_at else ""
+                "closed_at": p.closed_at.isoformat() if p.closed_at else "",
+                "hour": hour_val,
+                "hour_wib": hour_val,
             })
 
     if not trades:
@@ -192,6 +214,11 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
         win_count = len(wins)
         loss_count = len(losses)
         win_rate = round((win_count / count) * 100, 2)
+
+        win_rrs = [t["rr"] for t in wins if t.get("rr") and t["rr"] > 0]
+        loss_rrs = [t["rr"] for t in losses if t.get("rr") and t["rr"] > 0]
+        avg_win_rr = round(float(np.mean(win_rrs)), 2) if win_rrs else 0.0
+        avg_loss_rr = round(float(np.mean(loss_rrs)), 2) if loss_rrs else 0.0
 
         gross_profit = sum(t["pnl"] for t in wins)
         gross_loss = abs(sum(t["pnl"] for t in losses))
@@ -230,6 +257,8 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
             "sharpe_ratio": sharpe_ratio,
             "avg_win_usd": round(avg_win, 2),
             "avg_loss_usd": round(avg_loss, 2),
+            "avg_win_rr": avg_win_rr,
+            "avg_loss_rr": avg_loss_rr,
             "avg_holding_win_hours": avg_holding_win,
             "avg_holding_loss_hours": avg_holding_loss,
             "avg_mae_pips": avg_mae,
@@ -238,7 +267,7 @@ async def handle_run_analytical_query(args: dict, **ctx) -> dict:
             "max_sl_slippage_pips": max_slippage,
         }
 
-    if group_by == "none" or group_by not in ["session", "market_regime", "symbol", "decision_source", "risk_reward_bucket"]:
+    if group_by == "none" or group_by not in ["session", "market_regime", "symbol", "decision_source", "risk_reward_bucket", "hour", "hour_wib", "hour_utc"]:
         result = _compute_metrics_for_subset(trades)
         result["metric"] = metric
         result["lookback_days"] = days_back

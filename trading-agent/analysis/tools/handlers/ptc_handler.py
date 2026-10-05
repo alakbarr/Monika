@@ -124,6 +124,10 @@ class PTCHandler:
                 env["PYTHONPATH"] = base_dir
                 env["PYTHONUNBUFFERED"] = "1"
 
+                scratch_dir = Path(base_dir) / "data" / "sandbox_scratch"
+                scratch_dir.mkdir(parents=True, exist_ok=True)
+                existing_mtimes = {p: p.stat().st_mtime for p in scratch_dir.glob("*") if p.is_file()}
+
                 def _run_proc():
                     import subprocess
                     p = subprocess.Popen(
@@ -131,6 +135,7 @@ class PTCHandler:
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         env=env,
+                        cwd=str(scratch_dir),
                     )
                     try:
                         out, err = p.communicate(timeout=PTC_TIMEOUT_SECONDS)
@@ -141,6 +146,29 @@ class PTCHandler:
                         return -1, b"", b"", True
 
                 returncode, stdout_bytes, stderr_bytes, timed_out = await asyncio.to_thread(_run_proc)
+
+                # Scan for new/modified output files (charts and reports)
+                for fpath in scratch_dir.glob("*"):
+                    if not fpath.is_file():
+                        continue
+                    mtime = fpath.stat().st_mtime
+                    if fpath not in existing_mtimes or mtime > existing_mtimes[fpath]:
+                        suf = fpath.suffix.lower()
+                        if suf in (".png", ".jpg", ".jpeg"):
+                            if hasattr(self.tool_executor, "_pending_charts") and isinstance(self.tool_executor._pending_charts, dict):
+                                self.tool_executor._pending_charts[f"ptc_{fpath.name}"] = {
+                                    "data": fpath.read_bytes(),
+                                    "filename": fpath.name,
+                                    "caption": f"Chart from Python sandbox: {fpath.name}",
+                                }
+                        elif suf in (".xlsx", ".csv", ".pdf", ".parquet", ".json"):
+                            if hasattr(self.tool_executor, "add_pending_file"):
+                                self.tool_executor.add_pending_file(
+                                    file_path=str(fpath),
+                                    filename=fpath.name,
+                                    data=fpath.read_bytes(),
+                                    caption=f"File generated in sandbox: {fpath.name}",
+                                )
 
                 if timed_out:
                     return {

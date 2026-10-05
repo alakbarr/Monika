@@ -1359,7 +1359,7 @@ class AgentHarness:
                     schema_err = None
 
                     try:
-                        import jsonschema  # type: ignore[import-untyped, import-not-found]
+                        import jsonschema
                         jsonschema.validate(instance=t_input, schema=input_schema)
                     except ImportError:
                         req = input_schema.get("required", [])

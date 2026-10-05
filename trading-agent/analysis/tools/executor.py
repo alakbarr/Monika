@@ -65,6 +65,7 @@ class ToolExecutor:
         self._submitted_analysis_id: Optional[int] = None
         self._submitted_brief_id: Optional[int] = None
         self._pending_charts: dict[str, Any] = {}
+        self._pending_files: list[dict] = []
         self.verification_ledger: Optional[Any] = None
         self.is_admin: bool = False
         try:
@@ -136,6 +137,44 @@ class ToolExecutor:
             inp["symbol"] = clean_sym
             return clean_sym
         return None
+
+    def add_pending_file(self, file_path: str, filename: Optional[str] = None, data: Optional[Any] = None, caption: Optional[str] = None) -> None:
+        """Queue a file (document/excel/pdf) to be delivered to the user interface."""
+        import os
+        import io
+        if isinstance(filename, (bytes, io.BytesIO)) and data is None:
+            data = filename
+            filename = os.path.basename(file_path)
+        self._pending_files.append({
+            "filepath": file_path,
+            "filename": filename or os.path.basename(file_path),
+            "data": data,
+            "caption": caption,
+        })
+
+    def pop_pending_files(self) -> list[tuple[str, Any]]:
+        """Menguras dan mengembalikan antrean file dokumen sebagai tuple (filename, BytesIO) untuk Telegram delivery."""
+        import io
+        import os
+        result = []
+        for item in list(self._pending_files):
+            fn = item.get("filename") or os.path.basename(item.get("filepath", "report.dat"))
+            raw_bytes = item.get("data")
+            if hasattr(raw_bytes, "getvalue"):
+                raw_bytes = raw_bytes.getvalue()
+            if not raw_bytes and item.get("filepath") and os.path.exists(item["filepath"]):
+                try:
+                    with open(item["filepath"], "rb") as f:
+                        raw_bytes = f.read()
+                except Exception as e:
+                    logger.warning(f"Gagal membaca file pending {item['filepath']}: {e}")
+                    continue
+            if raw_bytes:
+                buf = io.BytesIO(raw_bytes)
+                buf.name = fn
+                result.append((fn, buf))
+        self._pending_files.clear()
+        return result
 
     @property
     def effective_called_tools(self) -> set:
@@ -494,6 +533,27 @@ class ToolExecutor:
                     handler = _reg_wrapper
             except Exception as _reg_err:
                 logger.debug(f"Registry dispatch error for '{normalized_name}': {_reg_err}")
+
+        # Fallback to UnifiedToolRegistry bridge (terminal, computer_use, domain tools)
+        if handler is None:
+            try:
+                from analysis.tools.unified_registry import unified_tool_registry
+                u_entry = unified_tool_registry.get_tool(normalized_name)
+                if u_entry is not None:
+                    async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
+                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
+                        res = await unified_tool_registry.execute_tool(
+                            _ue.name, params, session=self.session, executor=self
+                        )
+                        if isinstance(res, str):
+                            try:
+                                res = json.loads(res)
+                            except Exception:
+                                pass
+                        return res
+                    handler = _unified_wrapper
+            except Exception as _unif_err:
+                logger.debug(f"UnifiedToolRegistry bridge dispatch error for '{normalized_name}': {_unif_err}")
 
         if handler is None:
             logger.warning(f"Unknown tool called: '{tool_name}' (normalized: '{normalized_name}')")

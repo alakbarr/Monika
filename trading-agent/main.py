@@ -160,8 +160,9 @@ async def run_startup_checks(settings: dict) -> bool:
         True if all critical checks pass, False if agent should abort.
     """
     db_url = os.getenv('DATABASE_URL', '')
-    if 'sqlite' in db_url.lower():
-        logger.error('[FAIL] SQLite detected. PostgreSQL is REQUIRED — partial unique indexes behave incorrectly on SQLite.')
+    is_paper = settings.get('paper_trading', {}).get('enabled', True)
+    if 'sqlite' in db_url.lower() and not is_paper:
+        logger.error('[FAIL] SQLite detected. PostgreSQL is REQUIRED for live trading — partial unique indexes behave incorrectly on SQLite.')
         return False
     return await _delegate_startup_checks(settings)
 
@@ -631,11 +632,11 @@ class TradingAgent:
 
         # Initialize Universal Cron Scheduler
         try:
-            from scheduler.universal_cron_scheduler import UniversalCronScheduler
-            self.universal_cron = UniversalCronScheduler()
-            logger.info("  [OK] UniversalCronScheduler initialized")
+            from scheduler.unified_cron_engine import get_unified_cron_engine
+            self.universal_cron = get_unified_cron_engine()
+            logger.info("  [OK] UnifiedCronEngine initialized")
         except Exception as e:
-            logger.warning(f"UniversalCronScheduler initialization error: {e}")
+            logger.warning(f"UnifiedCronEngine initialization error: {e}")
             self.universal_cron = None
 
         logger.info("All components initialized")

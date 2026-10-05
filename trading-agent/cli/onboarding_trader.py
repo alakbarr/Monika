@@ -48,23 +48,23 @@ class TraderOnboarding:
         console.print(f"[{PHOSPHOR_AMBER}]       MONIKA — TRADER ONBOARDING & PERSONALIZATION         [/]")
         console.print(f"[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]\n")
 
-        console.print(f"{stamp_info('PROFILE')} Mari definisikan persona dan filosofi trading Anda.")
+        console.print(f"{stamp_info('PROFILE')} Define your trader persona and risk philosophy.")
 
-        name = Prompt.ask("Nama atau Call-sign Trader", default="Operator")
+        name = Prompt.ask("Trader Name or Call-sign", default="Operator")
 
-        console.print(f"\n[bold {BRASS}]Gaya Trading Utama:[/] ")
+        console.print(f"\n[bold {BRASS}]Primary Trading Style:[/] ")
         console.print("  1. Intraday Scalper (M5 - M15, target 10-25 pips)")
         console.print("  2. Day Trader (M15 - H1, target 30-75 pips)")
         console.print("  3. Swing Trader (H1 - H4/D1, target 100+ pips)")
-        style_choice = Prompt.ask("Pilih gaya trading (1/2/3)", choices=["1", "2", "3"], default="2")
+        style_choice = Prompt.ask("Select trading style (1/2/3)", choices=["1", "2", "3"], default="2")
         style_map = {"1": "scalper", "2": "day_trader", "3": "swing_trader"}
         trading_style = style_map[style_choice]
 
-        console.print(f"\n[bold {BRASS}]Toleransi Risiko & Drawdown:[/] ")
-        console.print("  1. Konservatif (Risk 0.5% / trade, Max Daily DD 2.0%)")
-        console.print("  2. Moderat (Risk 1.0% / trade, Max Daily DD 3.0%)")
-        console.print("  3. Agresif (Risk 1.5% / trade, Max Daily DD 5.0%)")
-        risk_choice = Prompt.ask("Pilih profil risiko (1/2/3)", choices=["1", "2", "3"], default="2")
+        console.print(f"\n[bold {BRASS}]Risk Tolerance & Drawdown:[/] ")
+        console.print("  1. Conservative (Risk 0.5% / trade, Max Daily DD 2.0%)")
+        console.print("  2. Moderate (Risk 1.0% / trade, Max Daily DD 3.0%)")
+        console.print("  3. Aggressive (Risk 1.5% / trade, Max Daily DD 5.0%)")
+        risk_choice = Prompt.ask("Select risk profile (1/2/3)", choices=["1", "2", "3"], default="2")
 
         if risk_choice == "1":
             risk_appetite = "conservative"
@@ -80,13 +80,13 @@ class TraderOnboarding:
             daily_dd = 3.0
 
         syms_input = Prompt.ask(
-            "Fokus Pasang Simbol (pisahkan koma)",
+            "Primary Symbol Watchlist (comma-separated)",
             default="XAUUSD, EURUSD, GBPUSD"
         )
         primary_symbols = [s.strip().upper() for s in syms_input.split(",") if s.strip()]
 
         sessions_input = Prompt.ask(
-            "Sesi Trading Prioritas (misal: London, New York)",
+            "Priority Trading Sessions (e.g., London, New York)",
             default="London, New York"
         )
         session_focus = [s.strip() for s in sessions_input.split(",") if s.strip()]
@@ -104,7 +104,7 @@ class TraderOnboarding:
         self.save_profile(profile)
         self.sync_to_trading_soul(profile)
 
-        console.print(f"\n{stamp_ok('ONBOARDED')} Profil trader berhasil disimpan dan disinkronkan ke TRADING_SOUL.md!")
+        console.print(f"\n{stamp_ok('ONBOARDED')} Trader profile saved and synchronized to TRADING_SOUL.md successfully!")
         return profile
 
     def save_profile(self, profile: TraderProfile) -> None:

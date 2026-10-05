@@ -312,3 +312,73 @@ class CounterfactualSimulator:
     # Alias for convenience
     simulate_trade = simulate_single_trade_counterfactual
 
+    async def replay_portfolio_sizing(
+        self,
+        session: AsyncSession,
+        target_risk_pct: float,
+        baseline_risk_pct: float = 1.0,
+        limit: int = 50,
+    ) -> Dict[str, Any]:
+        """
+        Simulate portfolio outcome if position sizing risk had been scaled.
+        e.g. baseline 1.0% vs target 0.5% (conservative) or 2.0% (aggressive).
+        """
+        stmt = (
+            select(PaperTradeRecord)
+            .where(PaperTradeRecord.status == "closed")
+            .order_by(desc(PaperTradeRecord.closed_at))
+            .limit(limit)
+        )
+        trades = (await session.execute(stmt)).scalars().all()
+
+        multiplier = float(target_risk_pct) / max(float(baseline_risk_pct), 0.01)
+
+        actual_pnls = []
+        cf_pnls = []
+
+        for t in trades:
+            pnl_usd = float(t.pnl_usd or 0.0)
+            actual_pnls.append(pnl_usd)
+            cf_pnls.append(pnl_usd * multiplier)
+
+        total_actual = sum(actual_pnls)
+        total_cf = sum(cf_pnls)
+
+        def _calc_dd(pnl_list):
+            equity = 10000.0
+            peak = equity
+            max_dd = 0.0
+            for p in reversed(pnl_list):
+                equity += p
+                if equity > peak:
+                    peak = equity
+                dd = (peak - equity) / peak * 100.0
+                if dd > max_dd:
+                    max_dd = dd
+            return round(max_dd, 2)
+
+        actual_dd = _calc_dd(actual_pnls)
+        cf_dd = _calc_dd(cf_pnls)
+
+        return {
+            "status": "success",
+            "trades_replayed": len(trades),
+            "baseline_risk_pct": baseline_risk_pct,
+            "target_risk_pct": target_risk_pct,
+            "scaling_multiplier": round(multiplier, 2),
+            "baseline": {
+                "total_pnl_usd": round(total_actual, 2),
+                "max_drawdown_pct": actual_dd,
+            },
+            "counterfactual": {
+                "total_pnl_usd": round(total_cf, 2),
+                "max_drawdown_pct": cf_dd,
+                "pnl_difference_usd": round(total_cf - total_actual, 2),
+            },
+            "summary": (
+                f"Dengan scaling risk ke {target_risk_pct}% (multiplier {multiplier:.1f}x), "
+                f"total PnL berubah dari ${total_actual:.2f} menjadi ${total_cf:.2f}, "
+                f"dengan max drawdown terproyeksi {cf_dd}% (dibandingkan {actual_dd}% baseline)."
+            ),
+        }
+

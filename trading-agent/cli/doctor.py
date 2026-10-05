@@ -65,13 +65,18 @@ class SystemDoctor:
                 else:
                     self._record("Filesystem", f"dir:{os.path.basename(d)}", "WARN", f"Missing directory: {d}", fixable=True)
 
-    def check_dependencies(self) -> None:
-        """Verify system binaries and critical python packages."""
+    def check_dependencies(self, settings: Optional[dict] = None) -> None:
+        """Verify system binaries and critical python packages with tier awareness."""
+        from config.settings import get_installation_tier
+        tier = get_installation_tier(settings or {})
+
         # Check Node.js and npm for dashboard
         node_path = shutil.which("node")
         npm_path = shutil.which("npm")
         if node_path and npm_path:
             self._record("Dependencies", "Node/NPM", "OK", f"Dashboard prerequisites available ({node_path})")
+        elif tier == "trial":
+            self._record("Dependencies", "Node/NPM", "INFO", "Node/npm optional in Trial package (using CLI + Telegram).")
         else:
             self._record("Dependencies", "Node/NPM", "WARN", "Node.js or npm not found. Dashboard frontend build may fail.", details="Install Node.js LTS if running the local web dashboard.")
 
@@ -83,10 +88,15 @@ class SystemDoctor:
                 self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 native Python package installed (v{getattr(mt5, '__version__', 'unknown')}).")
             elif is_mt5linux_available():
                 self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 Linux RPC bridge (mt5linux) available.")
+            elif tier == "trial":
+                self._record("Dependencies", "MetaTrader5-Pkg", "INFO", "Internal Paper Trading Sandbox active (native MT5 binary optional).")
             else:
                 self._record("Dependencies", "MetaTrader5-Pkg", "WARN", "MetaTrader5 native package or mt5linux not installed.", details="For Windows: pip install MetaTrader5. For Linux VPS: pip install mt5linux")
         except Exception as e:
-            self._record("Dependencies", "MetaTrader5-Pkg", "WARN", f"MetaTrader5 check error: {e}", details="For Windows: pip install MetaTrader5. For Linux VPS: pip install mt5linux")
+            if tier == "trial":
+                self._record("Dependencies", "MetaTrader5-Pkg", "INFO", "Paper Trading simulation sandbox active.")
+            else:
+                self._record("Dependencies", "MetaTrader5-Pkg", "WARN", f"MetaTrader5 check error: {e}", details="For Windows: pip install MetaTrader5. For Linux VPS: pip install mt5linux")
 
     def check_market_session(self) -> None:
         """Checks whether the global financial markets are open or in weekend closure."""
@@ -143,17 +153,24 @@ class SystemDoctor:
     def check_mt5(self, settings: dict) -> None:
         """Check MT5 terminal and account settings."""
         mt5_cfg = settings.get("mt5", {}) if isinstance(settings, dict) else {}
+        pt = settings.get("paper_trading", {}) if isinstance(settings, dict) else {}
+        is_paper = pt.get("enabled", True) if isinstance(pt, dict) else True
+
         mt5_path = os.getenv("MT5_PATH") or mt5_cfg.get("path")
         if mt5_path and os.path.exists(mt5_path):
             self._record("MT5", "MT5_PATH", "OK", f"MT5 terminal binary located at: {mt5_path}")
+        elif is_paper:
+            self._record("MT5", "MT5_PATH", "INFO", "MT5 terminal binary not found (Paper trading active, MT5 optional).")
         else:
             self._record("MT5", "MT5_PATH", "WARN", f"MT5 binary path not found or unset: {mt5_path}")
 
         account = os.getenv("MT5_ACCOUNT")
         if account:
             self._record("MT5", "MT5_ACCOUNT", "OK", f"MT5 Account configured ({account}).")
+        elif is_paper:
+            self._record("MT5", "MT5_ACCOUNT", "INFO", "MT5_ACCOUNT unset (Paper trading mode active, simulation only).")
         else:
-            self._record("MT5", "MT5_ACCOUNT", "FAIL", "MT5_ACCOUNT environment variable is missing.")
+            self._record("MT5", "MT5_ACCOUNT", "FAIL", "MT5_ACCOUNT environment variable is missing for live trading.")
 
     async def check_database_migrations(self) -> None:
         """Verify database connectivity, active DBA transaction locks, and schema migrations."""
@@ -190,7 +207,8 @@ class SystemDoctor:
                 except Exception:
                     self._record("Database", "Alembic-Version", "WARN", "alembic_version table not initialized.")
 
-            self._record("Database", "PostgreSQL", "OK", "Database connection successful (SELECT 1 passed).")
+            db_type_label = "SQLite" if "sqlite" in os.getenv("DATABASE_URL", "") else "PostgreSQL"
+            self._record("Database", db_type_label, "OK", f"{db_type_label} connection successful (SELECT 1 passed).")
         except Exception as e:
             self._record("Database", "PostgreSQL", "FAIL", f"Database connection failed: {str(e)[:150]}")
             if self.fix:
@@ -285,7 +303,7 @@ class SystemDoctor:
             self._record("Config", "load_all_config", "FAIL", f"Error loading settings: {e}")
 
         await self.check_directories()
-        self.check_dependencies()
+        self.check_dependencies(settings)
         self.check_market_session()
         self.check_configuration(settings)
         self.check_credentials(settings)

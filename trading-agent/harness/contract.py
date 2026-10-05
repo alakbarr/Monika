@@ -17,7 +17,7 @@ import logging
 try:
     from utils.infra.container import ServiceContainer
 except ImportError:
-    ServiceContainer = Any  # type: ignore
+    ServiceContainer = Any
 
 try:
     from utils.protocol.event_bus import (
@@ -29,12 +29,12 @@ try:
         CircuitBreakerEvent,
     )
 except ImportError:
-    EventBus = Any  # type: ignore
+    EventBus = Any
 
 try:
     from agent.task_registry import TaskRegistry
 except ImportError:
-    TaskRegistry = Any  # type: ignore
+    TaskRegistry = Any
 
 logger = logging.getLogger("TradingAgent.Harness.Contract")
 

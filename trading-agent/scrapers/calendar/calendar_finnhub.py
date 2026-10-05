@@ -31,7 +31,7 @@ try:
     import requests
     HAS_REQUESTS = True
 except ImportError:
-    requests = None  # type: ignore
+    requests = None
     HAS_REQUESTS = False
     logger.warning("requests not installed — FinnhubCalendarScraper unavailable")
 
@@ -262,3 +262,44 @@ class FinnhubCalendarScraper:
     # Uniform interface aliases matching InvestingCalendarScraper & ForexfactoryCalendarScraper
     fetch_events = fetch_today_events
     afetch_events = afetch_today_events
+
+    def fetch_earnings_calendar(self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None) -> List[dict]:
+        """Fetch corporate earnings calendar from Finnhub."""
+        if not self.api_key or not HAS_REQUESTS or requests is None:
+            return []
+        url = "https://finnhub.io/api/v1/calendar/earnings"
+        today = date.today()
+        from_str = from_date or today.strftime("%Y-%m-%d")
+        to_str = to_date or (today + timedelta(days=30)).strftime("%Y-%m-%d")
+        params = {"from": from_str, "to": to_str, "token": self.api_key}
+        if symbol:
+            params["symbol"] = symbol.upper().strip()
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("earningsCalendar", [])
+        except Exception as e:
+            logger.debug(f"Finnhub earnings fetch error: {e}")
+        return []
+
+    async def afetch_earnings_calendar(self, symbol: str | None = None, from_date: str | None = None, to_date: str | None = None) -> List[dict]:
+        """Async fetch corporate earnings calendar from Finnhub."""
+        if not self.api_key:
+            return []
+        url = "https://finnhub.io/api/v1/calendar/earnings"
+        today = date.today()
+        from_str = from_date or today.strftime("%Y-%m-%d")
+        to_str = to_date or (today + timedelta(days=30)).strftime("%Y-%m-%d")
+        params = {"from": from_str, "to": to_str, "token": self.api_key}
+        if symbol:
+            params["symbol"] = symbol.upper().strip()
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+                async with session.get(url, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("earningsCalendar", [])
+        except Exception as e:
+            logger.debug(f"Finnhub async earnings fetch error: {e}")
+        return []

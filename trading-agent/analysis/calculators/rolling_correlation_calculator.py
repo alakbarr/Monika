@@ -16,10 +16,43 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PriceOHLCV, TreasuryYield
+from database.models import PriceOHLCV, TreasuryYield, DXYData
 import utils.clock as clock
 
 logger = logging.getLogger("TradingAgent.Calculators.RollingCorrelation")
+
+
+async def _fetch_series(session: AsyncSession, sym: str, timeframe: str, cutoff: datetime) -> List[Dict[str, Any]]:
+    sym_clean = sym.strip().upper().replace("/", "")
+    if sym_clean in ("DXY", "USDX"):
+        rows = (await session.execute(
+            select(DXYData)
+            .where(DXYData.date >= cutoff)
+            .order_by(DXYData.date.asc())
+        )).scalars().all()
+        result = []
+        for r in rows:
+            dt = getattr(r, "date", None)
+            if dt is None:
+                dt = getattr(r, "timestamp", None)
+            d = dt.date() if hasattr(dt, "date") else dt
+            result.append({"timestamp": d, "close": float(r.close)})
+        return result
+    elif sym_clean in ("US10Y", "US2Y", "US30Y", "US05Y"):
+        tenor_map = {"US10Y": "10Y", "US2Y": "2Y", "US30Y": "30Y", "US05Y": "5Y"}
+        rows = (await session.execute(
+            select(TreasuryYield)
+            .where(TreasuryYield.tenor == tenor_map.get(sym_clean, "10Y"), TreasuryYield.date >= cutoff)
+            .order_by(TreasuryYield.date.asc())
+        )).scalars().all()
+        return [{"timestamp": r.date.date(), "close": float(r.yield_percent)} for r in rows]
+    else:
+        bars = (await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == sym_clean, PriceOHLCV.timeframe == timeframe, PriceOHLCV.timestamp >= cutoff)
+            .order_by(PriceOHLCV.timestamp.asc())
+        )).scalars().all()
+        return [{"timestamp": b.timestamp.date(), "close": float(b.close)} for b in bars]
 
 
 async def compute_rolling_correlation(
@@ -36,19 +69,10 @@ async def compute_rolling_correlation(
     sym_b = symbol_b.strip().upper().replace("/", "")
     cutoff = clock.now() - timedelta(days=max(window_days * 3, 180))
 
-    bars_a = (await session.execute(
-        select(PriceOHLCV)
-        .where(PriceOHLCV.symbol == sym_a, PriceOHLCV.timeframe == timeframe, PriceOHLCV.timestamp >= cutoff)
-        .order_by(PriceOHLCV.timestamp.asc())
-    )).scalars().all()
+    series_a = await _fetch_series(session, sym_a, timeframe, cutoff)
+    series_b = await _fetch_series(session, sym_b, timeframe, cutoff)
 
-    bars_b = (await session.execute(
-        select(PriceOHLCV)
-        .where(PriceOHLCV.symbol == sym_b, PriceOHLCV.timeframe == timeframe, PriceOHLCV.timestamp >= cutoff)
-        .order_by(PriceOHLCV.timestamp.asc())
-    )).scalars().all()
-
-    if len(bars_a) < 10 or len(bars_b) < 10:
+    if len(series_a) < 10 or len(series_b) < 10:
         return {
             "symbol_a": sym_a,
             "symbol_b": sym_b,
@@ -59,8 +83,8 @@ async def compute_rolling_correlation(
             "description": f"Insufficient price data for {sym_a} or {sym_b}."
         }
 
-    df_a = pd.DataFrame([{"timestamp": b.timestamp.date(), "close_a": float(b.close)} for b in bars_a]).drop_duplicates(subset=["timestamp"])
-    df_b = pd.DataFrame([{"timestamp": b.timestamp.date(), "close_b": float(b.close)} for b in bars_b]).drop_duplicates(subset=["timestamp"])
+    df_a = pd.DataFrame([{"timestamp": s["timestamp"], "close_a": s["close"]} for s in series_a]).drop_duplicates(subset=["timestamp"])
+    df_b = pd.DataFrame([{"timestamp": s["timestamp"], "close_b": s["close"]} for s in series_b]).drop_duplicates(subset=["timestamp"])
 
     merged = pd.merge(df_a, df_b, on="timestamp", how="inner").sort_values("timestamp")
     if len(merged) < window_days:

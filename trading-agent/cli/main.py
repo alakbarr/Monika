@@ -192,16 +192,16 @@ def ensure_daemon_running(args, console=None) -> bool:
     mode = getattr(args, "mode", "paper")
     cfg_path = getattr(args, "config", None)
 
-    console.print(f"{stamp_info('DAEMON')} Monika trading daemon belum aktif.")
-    console.print(f"[{MUTED}]Memulai Monika daemon di latar belakang (mode: {mode.upper()})...[/]")
+    console.print(f"{stamp_info('DAEMON')} Monika trading daemon is not running.")
+    console.print(f"[{MUTED}]Starting Monika daemon in background (mode: {mode.upper()})...[/]")
 
     try:
         pid = spawn_daemon_background(mode=mode, config_path=cfg_path)
     except Exception as e:
-        console.print(f"{stamp_err('DAEMON')} Gagal memulai daemon background: {e}")
+        console.print(f"{stamp_err('DAEMON')} Failed to start background daemon: {e}")
         return False
 
-    console.print(f"[{MUTED}]Menunggu daemon siap (PID: {pid})...[/]")
+    console.print(f"[{MUTED}]Waiting for daemon to initialize (PID: {pid})...[/]")
 
     start_t = time.time()
     ready = False
@@ -387,11 +387,11 @@ async def _cmd_stop(args):
 
     pid = get_daemon_pid()
     if not pid:
-        console.print(f"{stamp_info('STOP')} Tidak ada Monika daemon yang sedang berjalan.")
+        console.print(f"{stamp_info('STOP')} No active Monika daemon found running.")
         return
 
     import psutil
-    console.print(f"{stamp_info('STOP')} Menghentikan Monika daemon (PID: {pid})...")
+    console.print(f"{stamp_info('STOP')} Stopping Monika daemon (PID: {pid})...")
 
     # Mark clean shutdown flag so auto-restart loop scripts won't loop
     try:
@@ -441,7 +441,7 @@ async def _cmd_stop(args):
         except Exception:
             pass
 
-    console.print(f"{stamp_ok('STOP')} Monika daemon (PID {pid}) berhasil dihentikan.")
+    console.print(f"{stamp_ok('STOP')} Monika daemon (PID {pid}) stopped successfully.")
 
 
 async def _cmd_positions(args):
@@ -524,9 +524,21 @@ async def _acli_run(args):
     else:
         settings = load_all_config()
 
-    # 2. Configure Trading Mode
+    # 2. Configure Trading Mode & Tier
     mode = getattr(args, "mode", "paper")
     is_dry_run = (mode == "paper")
+
+    from config.settings import get_installation_tier
+    active_tier = get_installation_tier(settings)
+    if active_tier == "trial" and mode != "live":
+        from pathlib import Path
+        data_dir = Path.cwd() / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        db_path = (data_dir / "monika.db").resolve()
+        os.environ["MONIKA_TIER"] = "trial"
+        os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
+        os.environ["PAPER_TRADING_MODE"] = "true"
+
     if mode == "live":
         if not getattr(args, "confirm_live", False):
             if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
@@ -538,11 +550,11 @@ async def _acli_run(args):
                 logger.critical("Live capital execution requires explicit operator confirmation or '--confirm-live' flag. Aborting.")
                 sys.exit(1)
         settings.setdefault("trading", {})["auto_execute"] = True
-        logger.warning("[PERINGATAN] Starting in LIVE execution mode. Real capital will be traded via MT5.")
+        logger.warning("[WARNING] Starting in LIVE execution mode. Real capital will be traded via MT5.")
     else:
         settings.setdefault("paper_trading", {})["enabled"] = True
         settings.setdefault("trading", {}).setdefault("paper_trading", {})["enabled"] = True
-        logger.info("Starting in PAPER trading mode (simulation).")
+        logger.info(f"Starting in PAPER trading mode (simulation) [Tier: {active_tier.upper()}].")
 
     # Configure Gemini Rate Limiter limits from settings
     from utils.api.gemini_rate_limiter import configure_from_settings
@@ -1638,14 +1650,14 @@ async def _cmd_stress_test(args):
 
     res = probe.verify_resilience(risk_validator)
     console = get_console()
-    console.print(f"\n[bold {PHOSPHOR_AMBER}][KEAMANAN] Monika Adversarial Stress Testing Battery ({sym})[/]")
+    console.print(f"\n[bold {PHOSPHOR_AMBER}][SECURITY] Monika Adversarial Stress Testing Battery ({sym})[/]")
     for d in res["details"]:
         status = f"[{BULL_PROFIT}]PASS (BLOCKED)[/]" if d["is_resilient"] else f"[{BEAR_LOSS}]FAIL (LEAKED)[/]"
         console.print(f" • [bold]{d['scenario']}[/] ({d['anomaly_type']}): {status} -> [italic]{d['reason']}[/]")
     if res["all_resilient"]:
         console.print(f"\n[{BULL_PROFIT}][OK] 100% RESILIENT: All {res['total_tested']} hostile feed anomalies successfully rejected fail-closed.[/]\n")
     else:
-        console.print(f"\n[{BEAR_LOSS}][GAGAL] VULNERABILITY DETECTED: {res['total_tested'] - res['passed_count']} scenarios passed through filters![/]\n")
+        console.print(f"\n[{BEAR_LOSS}][FAIL] VULNERABILITY DETECTED: {res['total_tested'] - res['passed_count']} scenarios passed through filters![/]\n")
 
 
 async def _cmd_backup(args):
@@ -1660,7 +1672,7 @@ async def _cmd_backup(args):
     if res.get("success"):
         console.print(f"[{BULL_PROFIT}][OK] Backup created successfully: {res.get('backup_file')} ({res.get('size_mb', 0):.2f} MB)[/]")
     else:
-        console.print(f"[{BEAR_LOSS}][GAGAL] Backup failed: {res.get('error') or res.get('reason')}[/]")
+        console.print(f"[{BEAR_LOSS}][FAIL] Backup failed: {res.get('error') or res.get('reason')}[/]")
 
 
 class MonikaArgumentParser(argparse.ArgumentParser):
@@ -1994,7 +2006,7 @@ async def _dispatch_cli(args):
             await _cmd_stress_test(args)
         elif args.command == "backup":
             await _cmd_backup(args)
-        elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard"):
+        elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard", "upgrade"):
             from cli.subcommands import AVAILABLE_SUBCOMMANDS
             for sc in AVAILABLE_SUBCOMMANDS:
                 if sc.name == args.command:
@@ -2010,14 +2022,14 @@ async def _dispatch_cli(args):
                     from rich.prompt import Confirm
                     from cli.theme import get_console, stamp_warn
                     console = get_console()
-                    console.print(f"\n{stamp_warn('NOT CONFIGURED')} Monika belum terkonfigurasi (kredensial minimum MT5, DB, atau LLM belum lengkap).")
-                    if Confirm.ask("Jalankan Interactive Setup Wizard sekarang?", default=True):
+                    console.print(f"\n{stamp_warn('NOT CONFIGURED')} Monika is not configured (minimum credentials: MT5, DB, or LLM not set).")
+                    if Confirm.ask("Run Interactive Setup Wizard now?", default=True):
                         await _cmd_setup(args)
                         if not EnvFileManager.is_configured():
-                            console.print(f"{stamp_warn('ABORT')} Konfigurasi belum selesai. Menutup proses.\n")
+                            console.print(f"{stamp_warn('ABORT')} Configuration incomplete. Exiting process.\n")
                             return
                     else:
-                        console.print("Jalankan `python -m cli.main setup` untuk mengonfigurasi kredensial.\n")
+                        console.print("Run `python -m cli.main setup` to configure credentials.\n")
                         return
                 else:
                     logger.critical("Monika is not configured (missing MT5_ACCOUNT, DATABASE_URL, or LLM keys). Run 'python -m cli.main setup' first.")

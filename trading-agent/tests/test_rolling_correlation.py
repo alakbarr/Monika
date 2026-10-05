@@ -26,6 +26,7 @@ async def test_rolling_correlation_computation():
 
         b_b = MagicMock()
         b_b.timestamp = d
+        b_b.date = d
         b_b.close = p_b
         bars_b.append(b_b)
 

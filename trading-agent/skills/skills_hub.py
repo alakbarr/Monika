@@ -123,7 +123,13 @@ class SkillsHub:
                     if subdir.exists() and subdir.is_dir():
                         linked[sub] = [f.name for f in subdir.glob("*") if f.is_file()]
 
-            raw_tags = frontmatter.get("tags") or frontmatter.get("metadata", {}).get("tags") or []
+            raw_tags = (
+                frontmatter.get("tags")
+                or frontmatter.get("triggers")
+                or frontmatter.get("metadata", {}).get("tags")
+                or frontmatter.get("metadata", {}).get("triggers")
+                or []
+            )
             if isinstance(raw_tags, str):
                 tags_list = [t.strip() for t in raw_tags.split(",") if t.strip()]
             elif isinstance(raw_tags, list):

@@ -69,8 +69,14 @@ NINEROUTER_MODEL_ALIASES: Dict[str, str] = {
     "mmf/mimo-auto": "mmf/mimo-auto",
 
     # --- Gemini CLI Free (gc/) ---
-    "gc/gemini-2.5-flash": "gc/gemini-2.5-flash",
-    "gc/gemini-2.5-pro": "gc/gemini-2.5-pro",
+    "gc/gemini-3.5-flash": "gc/gemini-3.5-flash",
+    "gc/gemini-3.6-flash": "gc/gemini-3.6-flash",
+    "gc/gemini-3.7-flash": "gc/gemini-3.7-flash",
+    "gc/gemini-3.8-flash": "gc/gemini-3.8-flash",
+    "gc/gemini-3.1-flash-lite": "gc/gemini-3.1-flash-lite",
+    "gc/gemini-3.5-flash-lite": "gc/gemini-3.5-flash-lite",
+    "gc/gemini-2.5-flash": "gc/gemini-3.5-flash",
+    "gc/gemini-2.5-pro": "gc/gemini-3.8-flash",
     "gc/gemini-3-flash-preview": "gc/gemini-3-flash-preview",
     "gc/gemini-3.1-pro-preview": "gc/gemini-3.1-pro-preview",
 
@@ -151,6 +157,8 @@ FREE_TIER_MODELS_9ROUTER: set[str] = {
     "mmf/mimo-auto",
 
     # Gemini CLI Free
+    "gc/gemini-3.5-flash", "gc/gemini-3.6-flash", "gc/gemini-3.7-flash", "gc/gemini-3.8-flash",
+    "gc/gemini-3.1-flash-lite", "gc/gemini-3.5-flash-lite",
     "gc/gemini-2.5-flash", "gc/gemini-2.5-pro", "gc/gemini-3-flash-preview", "gc/gemini-3.1-pro-preview",
 
     # API Airforce Free

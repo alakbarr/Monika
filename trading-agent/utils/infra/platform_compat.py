@@ -45,7 +45,7 @@ def configure_event_loop() -> Dict[str, Any]:
         return {"loop_factory": asyncio.SelectorEventLoop}
     else:
         try:
-            import uvloop  # type: ignore
+            import uvloop
             return {"loop_factory": uvloop.new_event_loop}
         except ImportError:
             return {}

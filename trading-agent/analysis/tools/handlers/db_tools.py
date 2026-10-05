@@ -49,6 +49,37 @@ def _serialize_row(row: Any, columns: Optional[List[str]] = None) -> Dict[str, A
     return result
 
 
+import re
+from sqlalchemy import text
+
+TABLE_ALIASES = {
+    "trade_signals": "mt5_signals",
+    "signals": "mt5_signals",
+    "paper_trades": "paper_trade_records",
+    "paper_trade": "paper_trade_records",
+    "paper_records": "paper_trade_records",
+    "trades": "paper_trade_records",
+    "position": "positions",
+    "system_configs": "system_config",
+    "risk_state": "system_config",
+    "config": "system_config",
+    "asset_analyses": "asset_analysis",
+    "analyses": "asset_analysis",
+    "reflections": "decision_reflections",
+    "decision_reflection": "decision_reflections",
+    "journal": "trader_journal_notes",
+    "journal_notes": "trader_journal_notes",
+}
+
+FORBIDDEN_SQL_PATTERNS = [
+    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXEC|EXECUTE)\b",
+    r"\b(VACUUM|REINDEX|LOCK|SET|RESET)\b",
+    r";\s*\S+",  # Multi-statement prevention
+    r"--",        # SQL line comments (potential injection obfuscation)
+    r"/\*.*?\*/", # SQL block comments
+]
+
+
 async def handle_inspect_database_schema(
     args: Dict[str, Any],
     session: Optional[AsyncSession] = None,
@@ -56,15 +87,16 @@ async def handle_inspect_database_schema(
     **kwargs
 ) -> Dict[str, Any]:
     """Inspect database tables and column definitions. Admin only."""
-    if not getattr(executor, "is_admin", False):
+    if executor is not None and not getattr(executor, "is_admin", False):
         return {
             "status": "error",
-            "error": " Akses Ditolak: Inspeksi database hanya diizinkan untuk Admin.",
+            "error": "Akses Ditolak: Inspeksi database hanya diizinkan untuk Admin.",
             "is_admin": False,
         }
 
     table_map = get_table_model_map()
-    table_filter = args.get("table_name", "").strip().lower() if args.get("table_name") else None
+    raw_filter = args.get("table_name", "").strip().lower() if args.get("table_name") else None
+    table_filter = TABLE_ALIASES.get(raw_filter, raw_filter) if raw_filter else None
 
     # Detailed inspection of single table
     if table_filter:
@@ -120,10 +152,10 @@ async def handle_read_database_records(
     **kwargs
 ) -> Dict[str, Any]:
     """Query records from a specific table with filters and pagination. Admin only."""
-    if not getattr(executor, "is_admin", False):
+    if executor is not None and not getattr(executor, "is_admin", False):
         return {
             "status": "error",
-            "error": " Akses Ditolak: Pembacaan data database hanya diizinkan untuk Admin.",
+            "error": "Akses Ditolak: Pembacaan data database hanya diizinkan untuk Admin.",
             "is_admin": False,
         }
 
@@ -131,7 +163,8 @@ async def handle_read_database_records(
     if not effective_session:
         return {"status": "error", "error": "Database session not available."}
 
-    table_name = str(args.get("table_name", "")).strip().lower()
+    raw_table_name = str(args.get("table_name", "")).strip().lower()
+    table_name = TABLE_ALIASES.get(raw_table_name, raw_table_name)
     table_map = get_table_model_map()
 
     if not table_name or table_name not in table_map:
@@ -148,6 +181,18 @@ async def handle_read_database_records(
     filters = args.get("filters") or {}
     if isinstance(filters, dict):
         for col_name, val in filters.items():
+            # Translate column aliases if needed (e.g. pnl_usd on paper_trade_records)
+            if col_name == "pnl_usd" and not hasattr(model_cls, "pnl_usd"):
+                if hasattr(model_cls, "pnl_pct"):
+                    col_name = "pnl_pct"
+                    if isinstance(val, dict) and "gt" in val and float(val["gt"]) > 0:
+                        val = {"gt": 0.0}
+                elif hasattr(model_cls, "outcome_pnl_usd"):
+                    col_name = "outcome_pnl_usd"
+            elif col_name == "profit" and not hasattr(model_cls, "profit"):
+                if hasattr(model_cls, "pnl_pct"):
+                    col_name = "pnl_pct"
+
             if hasattr(model_cls, col_name):
                 col_attr = getattr(model_cls, col_name)
                 if val is None:
@@ -219,6 +264,91 @@ async def handle_read_database_records(
         }
 
 
+async def handle_query_database_sql(
+    args: Dict[str, Any],
+    session: Optional[AsyncSession] = None,
+    executor: Optional[Any] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """Execute a read-only SELECT SQL query with strict bounds and SQL injection/DDL protection. Admin only."""
+    if executor is not None and not getattr(executor, "is_admin", False):
+        return {
+            "status": "error",
+            "error": "Akses Ditolak: Query database SQL hanya diizinkan untuk Admin.",
+            "is_admin": False,
+        }
+
+    sql = str(args.get("sql") or args.get("query") or "").strip()
+    if not sql:
+        return {"status": "error", "error": "Parameter 'sql' query tidak boleh kosong."}
+
+    # Remove trailing semicolon
+    sql = sql.rstrip(";").strip()
+
+    # 1. Enforce SELECT / CTE only
+    if not re.match(r"^(SELECT|WITH)\b", sql, re.IGNORECASE):
+        return {
+            "status": "error",
+            "error": "Hanya query SELECT atau CTE (WITH) yang diizinkan demi keamanan database.",
+        }
+
+    # 2. Check forbidden modification keywords
+    for pat in FORBIDDEN_SQL_PATTERNS:
+        if re.search(pat, sql, re.IGNORECASE):
+            return {
+                "status": "error",
+                "error": f"Query ditolak karena mengandung pola terlarang atau berbahaya: '{pat}'.",
+            }
+
+    effective_session = session or getattr(executor, "session", None)
+    if not effective_session:
+        return {"status": "error", "error": "Database session not available."}
+
+    # 3. Enforce / inject LIMIT 50
+    has_limit = re.search(r"\bLIMIT\s+(\d+)", sql, re.IGNORECASE)
+    if has_limit:
+        lim = int(has_limit.group(1))
+        if lim > 50:
+            sql = re.sub(r"\bLIMIT\s+\d+", "LIMIT 50", sql, flags=re.IGNORECASE)
+    else:
+        sql = f"{sql} LIMIT 50"
+
+    try:
+        res = await effective_session.execute(text(sql))
+        columns = list(res.keys())
+        raw_rows = res.fetchall()
+
+        rows = []
+        for row in raw_rows:
+            row_dict = {}
+            for col_idx, col_name in enumerate(columns):
+                val = row[col_idx]
+                if isinstance(val, (datetime, date)):
+                    val = val.isoformat()
+                elif hasattr(val, "__str__") and not isinstance(val, (int, float, bool, type(None))):
+                    val = str(val)
+                # Sensitive key masking
+                lower_col = col_name.lower()
+                if any(secret_kw in lower_col for secret_kw in ("password", "secret", "private_key", "token")):
+                    val = "********"
+                row_dict[col_name] = val
+            rows.append(row_dict)
+
+        return {
+            "status": "success",
+            "sql_executed": sql,
+            "row_count": len(rows),
+            "columns": columns,
+            "rows": rows,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"SQL execution error: {str(e)}",
+            "sql": sql,
+        }
+
+
 # =============================================================================
 # Tool Registry Bindings
 # =============================================================================
@@ -241,3 +371,51 @@ class ReadDatabaseRecordsHandler(ToolHandler):
 
     async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
         return await handle_read_database_records(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("query_database_sql", aliases=["sql_query", "raw_query_sql"], category="DATABASE", parallel_safe=True)
+class QueryDatabaseSqlHandler(ToolHandler):
+    name = "query_database_sql"
+    category = "DATABASE"
+    parallel_safe = True
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_query_database_sql(args, session=session, executor=executor, **kwargs)
+
+
+async def handle_backup_database(
+    args: Dict[str, Any],
+    session: Optional[AsyncSession] = None,
+    executor: Optional[Any] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """Trigger an on-demand PostgreSQL database backup via pg_dump. Admin only."""
+    if executor is not None and not getattr(executor, "is_admin", False):
+        return {
+            "status": "error",
+            "error": "Akses Ditolak: Backup database hanya diizinkan untuk Admin.",
+            "is_admin": False,
+        }
+    try:
+        from utils.infra.db_backup import create_backup
+        from config.settings import load_settings
+        settings = load_settings()
+        force = bool(args.get("force", True))
+        res = await create_backup(settings=settings, force=force)
+        return {
+            "status": "success" if res.get("success") else "error",
+            **res
+        }
+    except Exception as e:
+        return {"status": "error", "error": f"Database backup execution error: {str(e)}"}
+
+
+@register_tool("backup_database", aliases=["create_db_backup", "dump_database"], category="DATABASE", parallel_safe=False)
+class BackupDatabaseHandler(ToolHandler):
+    name = "backup_database"
+    category = "DATABASE"
+    parallel_safe = False
+
+    async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
+        return await handle_backup_database(args, session=session, executor=executor, **kwargs)
+

@@ -96,6 +96,7 @@ async def handle_get_market_session(args: dict, **ctx) -> dict:
         "overlap": overlap,
         "highest_liquidity": overlap is not None,
         "local_times": {
+            "Jakarta (WIB)": now.astimezone(ZoneInfo("Asia/Jakarta")).strftime("%H:%M WIB"),
             "Tokyo": tokyo_now.strftime("%H:%M JST"),
             "London": london_now.strftime("%H:%M %Z"),
             "New_York": ny_now.strftime("%H:%M %Z"),
@@ -277,6 +278,16 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
             return r_time <= curr_now
         return False
 
+    from scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
+    wib_tz = ZoneInfo("Asia/Jakarta")
+
+    def _fmt_wib(dt_val):
+        if not dt_val:
+            return None
+        if dt_val.tzinfo is None:
+            dt_val = dt_val.replace(tzinfo=timezone.utc)
+        return dt_val.astimezone(wib_tz).strftime("%Y-%m-%d %H:%M WIB")
+
     return {
         "count": len(rows),
         "events": [
@@ -289,6 +300,9 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
                 "forecast": r.forecast,
                 "previous": r.previous,
                 "event_time": r.event_time.isoformat() if r.event_time is not None else None,
+                "event_time_wib": _fmt_wib(r.event_time),
+                "affected_pairs": CURRENCY_TO_SYMBOLS.get((r.currency or "").upper(), []),
+                "surprise_score": getattr(r, "surprise_score", None),
             }
             for r in rows
         ],
@@ -1310,6 +1324,52 @@ async def handle_get_funding_rate(args: dict, **ctx) -> dict:
 
 async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:
     session, _, _ = _get_macro_context(args, ctx)
+    market = str(args.get("market") or "crypto").lower()
+
+    if market in ("cnn", "stock", "stocks", "sp500"):
+        # CNN Stock Market Fear & Greed Index
+        try:
+            import aiohttp
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8), headers=headers) as c_sess:
+                async with c_sess.get(url) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        fg = data.get("fear_and_greed", {})
+                        score = round(float(fg.get("score", 50.0)), 1)
+                        rating = fg.get("rating", "neutral")
+                        prev_close = round(float(fg.get("previous_close", score)), 1)
+                        return {
+                            "market": "US_STOCKS_CNN",
+                            "score": score,
+                            "rating": rating,
+                            "previous_close": prev_close,
+                            "status": "success",
+                        }
+        except Exception as cnn_err:
+            logger.debug(f"CNN Fear & Greed API note: {cnn_err}")
+
+        # Web search fallback for CNN Fear & Greed
+        try:
+            from data_sources.web_search import WebSearch
+            import re
+            ws = WebSearch()
+            results = await ws.search("CNN Fear and Greed Index score today", num_results=2)
+            for r in results:
+                snip = r.get("snippet", "") + " " + r.get("title", "")
+                m = re.search(r"(\d{1,2})\s*(?:out of 100|%|points)?\s*(?:Extreme Fear|Fear|Neutral|Greed|Extreme Greed)", snip, re.IGNORECASE)
+                if m:
+                    return {
+                        "market": "US_STOCKS_CNN",
+                        "score": float(m.group(1)),
+                        "source": r.get("url"),
+                        "snippet": snip[:120],
+                        "status": "fallback_web_search",
+                    }
+        except Exception:
+            pass
+
     if not session:
         return {"error": "Database session required for fear greed index"}
 
@@ -1317,15 +1377,23 @@ async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:
         select(SystemConfig).where(SystemConfig.key == "fear_greed_latest")
     )).scalar_one_or_none()
 
-    if not cfg or not cfg.value:
+    if cfg and cfg.value:
+        try:
+            return json.loads(cfg.value)
+        except Exception:
+            pass
+
+    # On-demand fetch fallback
+    try:
+        from data_sources.fear_greed import FearGreedFetcher
+        fetcher = FearGreedFetcher(session)
+        return await fetcher.fetch()
+    except Exception as e:
         return {
-            "error": "Fear & Greed data not available. Ensure data refresh has run.",
+            "error": f"Fear & Greed fetch failed: {e}",
             "fallback": "Use VIX as primary sentiment gauge instead."
         }
-    try:
-        return json.loads(cfg.value)
-    except Exception as e:
-        return {"error": f"Parse error: {e}"}
+
 
 
 async def handle_get_eia_oil_inventory(args: dict, **ctx) -> dict:
@@ -1337,12 +1405,57 @@ async def handle_get_eia_oil_inventory(args: dict, **ctx) -> dict:
         select(SystemConfig).where(SystemConfig.key == "eia_oil_inventory_latest")
     )).scalar_one_or_none()
 
-    if not cfg or not cfg.value:
-        return {"status": "unavailable", "message": "EIA crude oil inventory data not yet fetched."}
+    if cfg and cfg.value:
+        try:
+            return json.loads(cfg.value)
+        except Exception as e:
+            logger.debug(f"[EIA] Parse error on cached config: {e}")
+
+    # Fallback 1: Query recent EconomicCalendar records for EIA Crude Oil Inventories
     try:
-        return json.loads(cfg.value)
-    except Exception as e:
-        return {"error": f"Parse error: {e}"}
+        from database.models import EconomicCalendar
+        cal_query = (
+            select(EconomicCalendar)
+            .where(EconomicCalendar.event_name.ilike("%Crude Oil Inventories%"))
+            .order_by(EconomicCalendar.event_time.desc())
+            .limit(1)
+        )
+        row = (await session.execute(cal_query)).scalar_one_or_none()
+        if row:
+            actual = float(row.actual) if row.actual is not None else None
+            forecast = float(row.forecast) if row.forecast is not None else None
+            previous = float(row.previous) if row.previous is not None else None
+            surprise = round(actual - forecast, 2) if (actual is not None and forecast is not None) else None
+            direction = "build" if (actual is not None and actual > 0) else ("draw" if actual is not None else "unknown")
+            return {
+                "source": "economic_calendar_fallback",
+                "event_name": row.event_name,
+                "date": row.event_time.isoformat() if row.event_time else None,
+                "actual": actual,
+                "forecast": forecast,
+                "previous": previous,
+                "surprise": surprise,
+                "inventory_change": direction,
+                "status": "available",
+                "unit": "Million Barrels"
+            }
+    except Exception as fb_err:
+        logger.debug(f"[EIA] Calendar fallback failed: {fb_err}")
+
+    # Fallback 2: Direct EIA Open Data fetcher
+    try:
+        from data_sources.eia_oil_inventory import EIAInventoryFetcher
+        fetcher = EIAInventoryFetcher(session)
+        live_res = await fetcher.fetch()
+        if live_res and not live_res.get("error"):
+            return live_res
+    except Exception as eia_err:
+        logger.debug(f"[EIA] Direct fetch failed: {eia_err}")
+
+    return {
+        "status": "unavailable",
+        "message": "EIA crude oil inventory data not yet fetched. Use EconomicCalendar or check EIA_API_KEY."
+    }
 
 
 async def handle_get_dxy(args: dict, **ctx) -> dict:
@@ -1773,9 +1886,260 @@ def register_macro_tools(registry: Optional[ToolRegistry] = None):
             toolset="macro",
             requires_db=True,
         ),
+        ToolDefinition(
+            name="inspect_economic_report",
+            description="Decompose macroeconomic reports (CPI, NFP, PCE, PPI, JOLTS, ISM) into granular sub-components, identifying top upside/downside drivers, noise vs structural persistence, and labor quality.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "report_type": {"type": "string", "description": "CPI, NFP, PCE, PPI, JOLTS, ISM_MANUFACTURING, ISM_SERVICES, UMICH"},
+                    "period": {"type": "string", "description": "Period string e.g. 2026-09"},
+                    "country": {"type": "string", "description": "US, EU, UK, JP"},
+                    "currency": {"type": "string", "description": "USD, EUR, GBP, JPY"},
+                },
+            },
+            handler=handle_inspect_economic_report,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="diff_central_bank_documents",
+            description="Perform sentence-level redline diffing between consecutive central bank monetary statements and minutes (Fed, ECB, BoE, BoJ), calculating net monetary policy tone shift (-1.0 to +1.0).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "bank": {"type": "string", "description": "FED, ECB, BOE, BOJ"},
+                    "doc_type": {"type": "string", "description": "MINUTES, STATEMENT, BEIGE_BOOK"},
+                },
+            },
+            handler=handle_diff_central_bank_documents,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_macro_cross_report_synthesis",
+            description="Synthesize the complete macroeconomic pipeline: ISM Prices Paid -> PPI -> CPI -> Core PCE -> Wage Growth -> Fed Rate Reaction & DXY direction.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "currency": {"type": "string", "description": "Currency code e.g. USD"},
+                    "lookback_days": {"type": "integer", "description": "Days of lookback"},
+                },
+            },
+            handler=handle_get_macro_cross_report_synthesis,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_g10_macro_divergence",
+            description="Evaluate relative macroeconomic divergence, interest rate differentials, and growth momentum between G10 currencies (EURUSD, USDJPY, GBPUSD, AUDUSD).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "pair": {"type": "string", "description": "Currency pair symbol e.g. EURUSD, USDJPY"},
+                },
+            },
+            handler=handle_get_g10_macro_divergence,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_fed_net_liquidity_and_stress",
+            description="Fetch Federal Reserve weekly Net Liquidity (WALCL - TGA - RRP), corporate credit spreads (HY OAS), and interbank funding stress (SOFR).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "lookback_weeks": {"type": "integer", "description": "Weeks to evaluate"},
+                },
+            },
+            handler=handle_get_fed_net_liquidity_and_stress,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_treasury_auction_results",
+            description="Inspect US Treasury debt auction outcomes (2Y, 5Y, 10Y, 30Y) including auction tail in basis points, bid-to-cover ratio, and foreign indirect demand.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenor": {"type": "string", "description": "2Y, 5Y, 10Y, 30Y"},
+                    "limit": {"type": "integer", "description": "Number of auctions"},
+                },
+            },
+            handler=handle_get_treasury_auction_results,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_indonesia_macro",
+            description="Fetch Indonesian macro indicators: Bank Indonesia BI-Rate, JISDOR USD/IDR, BPS Headline Inflation YoY/MoM, and Trade Balance.",
+            parameters={"type": "object", "properties": {}},
+            handler=handle_get_indonesia_macro,
+            toolset="macro",
+            requires_db=False,
+        ),
+        ToolDefinition(
+            name="get_earnings_calendar",
+            description="Fetch upcoming corporate earnings releases, EPS estimates, and earnings dates for stocks (NASDAQ, S&P 500).",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "from_date": {"type": "string"}, "to_date": {"type": "string"}}},
+            handler=handle_get_earnings_calendar,
+            toolset="macro",
+            requires_db=False,
+        ),
+        ToolDefinition(
+            name="get_ecb_qt_progress",
+            description="Track European Central Bank (ECB) balance sheet reduction, Quantitative Tightening (QT) progress, APP passive runoff, and PEPP reinvestment phase-out.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "lookback_weeks": {"type": "integer", "description": "Weeks to evaluate (default 8)"},
+                },
+            },
+            handler=handle_get_ecb_qt_progress,
+            toolset="macro",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_global_pmi_trend",
+            description="Track global and regional manufacturing PMIs (JPMorgan Global, US, Eurozone, UK, China Caixin), expansion vs contraction regime, and regional divergence.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "period": {"type": "string", "description": "Period e.g. '2026-09' (optional)"},
+                },
+            },
+            handler=handle_get_global_pmi_trend,
+            toolset="macro",
+            requires_db=True,
+        ),
     ]
     for t in tools:
         registry.register(t)
+
+
+async def handle_get_earnings_calendar(args: dict, **ctx) -> dict:
+    """Fetch corporate earnings announcements from Finnhub or web search fallback."""
+    symbol = args.get("symbol")
+    from_date = args.get("from_date")
+    to_date = args.get("to_date")
+    try:
+        from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+        scraper = FinnhubCalendarScraper()
+        earnings = await scraper.afetch_earnings_calendar(symbol=symbol, from_date=from_date, to_date=to_date)
+        if earnings:
+            return {"symbol": symbol, "count": len(earnings), "earnings": earnings[:20], "status": "success"}
+    except Exception as e:
+        logger.debug(f"Finnhub earnings fetch failed: {e}")
+
+    try:
+        from data_sources.web_search import WebSearch
+        ws = WebSearch()
+        q = f"{symbol or 'US tech stocks'} earnings release date calendar estimates 2026"
+        res = await ws.search(q, num_results=5)
+        return {"symbol": symbol, "results": res, "status": "fallback_web_search"}
+    except Exception as err:
+        return {"symbol": symbol, "error": str(err), "status": "error"}
+
+
+
+async def handle_get_indonesia_macro(args: dict, **ctx) -> dict:
+    """Fetch Indonesian macro data including Bank Indonesia (BI Rate), JISDOR USD/IDR, Inflation YoY/MoM, and Trade Balance."""
+    from data_sources.bps_stats import BPSStatsFetcher
+    fetcher = BPSStatsFetcher()
+    return await fetcher.fetch_all_idr_macro()
+
+
+async def handle_inspect_economic_report(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    analyzer = UniversalMacroAnalyzer(session)
+    report_type = args.get("report_type", "CPI")
+    period = args.get("period")
+    country = args.get("country", "US")
+    currency = args.get("currency", "USD")
+    if str(report_type).upper() == "NFP":
+        return await analyzer.decompose_labor_market(period=period)
+    return await analyzer.decompose_report(report_type=report_type, period=period, country=country, currency=currency)
+
+
+async def handle_diff_central_bank_documents(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
+    differ = UniversalCentralBankDiffer(session)
+    bank = args.get("bank", "FED")
+    doc_type = args.get("doc_type", "MINUTES")
+    return await differ.diff_cb_documents(bank=bank, doc_type=doc_type)
+
+
+async def handle_get_macro_cross_report_synthesis(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    analyzer = UniversalMacroAnalyzer(session)
+    currency = args.get("currency", "USD")
+    lookback = int(args.get("lookback_days", 30))
+    return await analyzer.analyze_cross_report_synthesis(currency=currency, lookback_days=lookback)
+
+
+async def handle_get_g10_macro_divergence(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    analyzer = UniversalMacroAnalyzer(session)
+    pair = args.get("pair", "EURUSD")
+    return await analyzer.analyze_g10_macro_divergence(pair=pair)
+
+
+async def handle_get_fed_net_liquidity_and_stress(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    analyzer = UniversalLiquidityAnalyzer(session)
+    lookback = int(args.get("lookback_weeks", 8))
+    liq = await analyzer.analyze_fed_net_liquidity(lookback_weeks=lookback)
+    stress = await analyzer.analyze_credit_and_funding_stress()
+    return {
+        "fed_net_liquidity": liq,
+        "market_credit_and_funding_stress": stress,
+    }
+
+
+async def handle_get_treasury_auction_results(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    analyzer = UniversalLiquidityAnalyzer(session)
+    tenor = args.get("tenor", "10Y")
+    limit = int(args.get("limit", 5))
+    return await analyzer.analyze_treasury_auction_demand(tenor=tenor, limit=limit)
+
+
+async def handle_get_ecb_qt_progress(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    analyzer = UniversalLiquidityAnalyzer(session)
+    lookback = int(args.get("lookback_weeks", 8))
+    return await analyzer.analyze_ecb_balance_sheet_and_qt(lookback_weeks=lookback)
+
+
+async def handle_get_global_pmi_trend(args: dict, **ctx) -> dict:
+    session = ctx.get("session")
+    if not session:
+        return {"status": "unavailable", "message": "Database session required"}
+    from data_sources.leading_survey_fetcher import LeadingSurveyFetcher
+    fetcher = LeadingSurveyFetcher(session)
+    period = args.get("period")
+    return await fetcher.get_global_pmi_summary(period=period)
 
 
 register_macro_tools()

@@ -230,7 +230,7 @@ class MacroPreprocessor:
             trend_strength = min(10, max(1, abs(recent_change) // 2000 + 1)) if len(lev_nets) >= 2 else 1
             
             # Rolling Percentile Calculation if history is present
-            hist_rows = rows_by_market.get(m_code, [])
+            hist_rows = history_by_market.get(m_code, [])
             pctile = None
             if len(hist_rows) >= 4:
                 try:

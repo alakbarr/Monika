@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-10-05
+
+### Comprehensive User Capability & Quantitative Intelligence Remediation (Q1-Q150)
+
+#### Added
+- **Multi-Source Market Data Cascade**:
+  - `MarketDataService.ensure_bars`: Transparent 3-tier cascade (MT5 client &rarr; SQLite cache &rarr; Yahoo Finance fallback).
+  - Native support for emerging markets (`USDIDR`), indices (`USTEC`, `US30`, `US500`), and equities outside forex watchlist.
+- **Quantitative & Technical Indicator Suite**:
+  - `get_pivot_points`: Classic, Camarilla, and Woodie support/resistance levels.
+  - `get_ichimoku`: Full Tenkan, Kijun, Senkou Span A/B, Chikou Span, and cloud regime classification.
+  - `scan_chart_patterns`: Classical (Double Top/Bottom, H&S) and 5-point Harmonic patterns (Gartley, Bat, Butterfly, Crab).
+  - `get_seasonality`: Multi-year monthly return profiling and day-of-week win-rate tendencies.
+  - `get_divergences`: Multi-timeframe RSI, MACD, and Stochastic regular/hidden momentum divergences.
+  - `get_recent_tick_flow` & `export_tick_data`: Direct MT5 tick-level order flow, aggressive delta, and CSV export.
+  - Persistent script runtime (`save_script`, `list_saved_scripts`, `run_saved_script`) under `data/user_scripts/`.
+- **Emerging Markets & Macro Fallback Cascade**:
+  - `get_indonesia_macro`: Real-time Bank Indonesia BI-Rate, JISDOR USD/IDR reference rate, and BPS stats (Inflation YoY, Trade Balance).
+  - `get_earnings_calendar`: Finnhub corporate earnings releases, consensus EPS, and revenue dates.
+  - CBOE Gold Volatility (`GVZCLS`) and Crude Oil Volatility (`OVXCLS`) in FRED yield fetcher.
+  - `browser` tool: Headless DrissionPage browser automation overcoming Cloudflare and JavaScript paywalls.
+  - `pypdf` extraction and Wayback Machine fallback in `WebReader` and Telegram document upload handler.
+- **Dynamic Skills & Intent Resolution**:
+  - 7 new specialization skills: `intent-resolution`, `web-research-fallback`, `system-devops-lifecycle`, `quant-research-workflow`, `trading-tutor`, `mql5-ea-builder`, `emerging-markets-idr`.
+  - Dynamic skill prompt matching directly injecting relevant playbooks into LLM system prompt based on user query intent.
+  - `BASELINE_TOOLS` guarantee in `ChatToolRouter` ensuring foundational tools are always accessible.
+  - Safety ceiling clamps on `update_config_parameter` to reject dangerous risk overrides.
+
+---
+
 ## [1.0.0] - 2026-09-14
 
 ### Initial Production Release

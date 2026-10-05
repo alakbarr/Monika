@@ -191,6 +191,7 @@ class PptxDeckGenerator:
     def _add_bullet_cards(self, slide, items, slide_width, navy_color, dark_gray):
         from pptx.util import Inches, Pt
         from pptx.enum.shapes import MSO_SHAPE
+        from pptx.dml.color import RGBColor
 
         card_width = Inches(5.4)
         card_height = Inches(2.2)

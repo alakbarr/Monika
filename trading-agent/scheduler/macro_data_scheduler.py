@@ -214,9 +214,46 @@ class MacroDataScheduler:
                 logger.warning(f"MacroDataScheduler: Central Bank Watch fetch failed: {e}")
                 results['central_bank_watch'] = {'error': str(e)}
 
+            # 13. Fed H.4.1 Net Liquidity, Treasury Auctions & Market Stress
+            try:
+                from data_sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
+                from data_sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
+                async with get_session() as session:
+                    fed_fetcher = FedLiquidityH41Fetcher(session)
+                    stress_fetcher = MarketStressAuctionFetcher(session)
+                    fed_res = await fed_fetcher.fetch_and_store_liquidity()
+                    auc_res = await stress_fetcher.fetch_and_store_treasury_auction(tenor="10Y")
+                    stress_res = await stress_fetcher.fetch_and_store_credit_and_money_market()
+                    results['systemic_liquidity_and_stress'] = {
+                        'net_liquidity_b': fed_res.get('net_liquidity_billions'),
+                        'auction_yield': auc_res.get('value'),
+                        'stress_metrics': len(stress_res),
+                    }
+                    logger.info(f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed")
+            except Exception as e:
+                logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {e}")
+                results['systemic_liquidity_and_stress'] = {'error': str(e)}
+
+            # 14. Central Bank Documents & Macro Decomposition Warmup
+            try:
+                from scrapers.macro.macro_trigger_router import MacroTriggerRouter
+                async with get_session() as session:
+                    router = MacroTriggerRouter(session)
+                    await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")
+                    await router.ensure_cb_document_available(bank="FED", doc_type="STATEMENT")
+                    await router.ensure_cb_document_available(bank="ECB", doc_type="STATEMENT")
+                    await router.ensure_cb_document_available(bank="BOJ", doc_type="STATEMENT")
+                    await router.ensure_report_available(report_type="CPI")
+                    await router.ensure_report_available(report_type="NFP")
+                    results['macro_docs_and_decomposition'] = {'status': 'verified_and_warmed'}
+                    logger.info("MacroDataScheduler: Central bank documents and macro decomposition cache warmed")
+            except Exception as e:
+                logger.warning(f"MacroDataScheduler: Central bank docs warm failed: {e}")
+                results['macro_docs_and_decomposition'] = {'error': str(e)}
+
             self._last_refresh_time = datetime.now(timezone.utc)
             self._last_results = results
-            logger.info("MacroDataScheduler: Ingestion cycle completed for all 12 sources.")
+            logger.info("MacroDataScheduler: Ingestion cycle completed for all 14 sources.")
             return results
 
     async def start(self) -> None:

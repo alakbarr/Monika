@@ -6,6 +6,7 @@ Direct execution without circular trampolines.
 
 import json
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,8 @@ def _get_session_and_symbol(args: dict, ctx: dict) -> tuple[Optional[AsyncSessio
 async def handle_get_price_history(args: dict, **ctx) -> Any:
     session, symbol, settings = _get_session_and_symbol(args, ctx)
     if not symbol:
-        return {"error": "Missing required parameter 'symbol'"}
+        watchlist = (settings or {}).get("trading", {}).get("watchlist") or ["XAUUSD"]
+        symbol = watchlist[0] if watchlist else "XAUUSD"
     timeframe = args.get("timeframe", "H1")
     count = int(args.get("count") or args.get("limit") or 100)
     as_csv = args.get("format") == "csv" or args.get("as_csv") is True
@@ -53,13 +55,12 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
     rates = None
     if not as_of_dt:
         try:
-            from execution.mt5_client import get_mt5_client
-            client = get_mt5_client()
-            rates = await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
+            from services.market_data_service import MarketDataService
+            rates = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=count, session=session)
             if rates and not as_csv:
                 return rates
         except Exception as e:
-            logger.debug(f"[{symbol}] MT5 get_rates unavailable: {e}")
+            logger.debug(f"[{symbol}] ensure_bars unavailable: {e}")
 
     if as_csv and rates:
         lines = ["time,O,H,L,C,V"]
@@ -75,19 +76,20 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
         rows = (await session.execute(
             query.order_by(PriceOHLCV.timestamp.desc()).limit(count)
         )).scalars().all()
-        if as_csv:
-            lines = ["time,O,H,L,C,V"]
-            for r in reversed(rows):
-                t_str = r.timestamp.strftime("%m-%d %H:%M") if hasattr(r.timestamp, "strftime") else str(r.timestamp)
-                lines.append(f"{t_str},{r.open:.5f},{r.high:.5f},{r.low:.5f},{r.close:.5f},{r.volume}")
-            return "\n".join(lines)
-        return [
-            {
-                "time": r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp),
-                "open": r.open, "high": r.high, "low": r.low, "close": r.close, "volume": r.volume
-            }
-            for r in reversed(rows)
-        ]
+        if rows:
+            if as_csv:
+                lines = ["time,O,H,L,C,V"]
+                for r in reversed(rows):
+                    t_str = r.timestamp.strftime("%m-%d %H:%M") if hasattr(r.timestamp, "strftime") else str(r.timestamp)
+                    lines.append(f"{t_str},{r.open:.5f},{r.high:.5f},{r.low:.5f},{r.close:.5f},{r.volume}")
+                return "\n".join(lines)
+            return [
+                {
+                    "time": r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp),
+                    "open": r.open, "high": r.high, "low": r.low, "close": r.close, "volume": r.volume
+                }
+                for r in reversed(rows)
+            ]
     return {"symbol": symbol, "timeframe": timeframe, "bars": [], "status": "no_data"}
 
 
@@ -139,9 +141,9 @@ async def handle_get_synthetic_cross_rate(args: dict, **ctx) -> dict:
     (e.g., GBPJPY = GBPUSD * USDJPY, EURGBP = EURUSD / GBPUSD, EURJPY = EURUSD * USDJPY).
     """
     session, symbol, settings = _get_session_and_symbol(args, ctx)
-    cross_symbol = str(symbol or args.get("cross_symbol") or "").upper().replace("/", "").strip()
+    cross_symbol = str(args.get("pair") or args.get("cross_symbol") or args.get("symbol") or symbol or "").upper().replace("/", "").strip()
     if not cross_symbol:
-        return {"error": "Missing required cross_symbol parameter"}
+        return {"error": "Missing required pair or cross_symbol parameter"}
 
     try:
         from execution.mt5_client import get_mt5_client
@@ -195,10 +197,16 @@ async def handle_get_synthetic_cross_rate(args: dict, **ctx) -> dict:
             formula = "GBPUSD / AUDUSD"
 
         if synth_rate is not None:
+            # Synthetic spread approximation (sum of percentage spreads)
+            spread_pips = round((0.00015 / eur_price + 0.015 / jpy_price) * synth_rate * (100 if "JPY" in cross_symbol else 10000), 1)
+            # Estimated ATR approximation from typical 0.65% daily volatility
+            est_daily_atr = round(synth_rate * 0.0065, 4 if "JPY" not in cross_symbol else 2)
             return {
                 "symbol": cross_symbol,
                 "is_synthetic": True,
                 "synthetic_rate": round(synth_rate, 5 if "JPY" not in cross_symbol else 3),
+                "spread_pips": spread_pips,
+                "estimated_daily_atr": est_daily_atr,
                 "formula": formula,
                 "components": {
                     "eurusd": eur_price,
@@ -398,8 +406,64 @@ async def handle_get_smc_zones(args: dict, **ctx) -> dict:
 
 async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
     session, symbol, _ = _get_session_and_symbol(args, ctx)
+    manual_high = args.get("high")
+    manual_low = args.get("low")
+
+    # Direct calculation if user provides manual high and low
+    if manual_high is not None and manual_low is not None:
+        try:
+            high = float(manual_high)
+            low = float(manual_low)
+            if high <= low:
+                return {"error": "Invalid bounds: high must be greater than low"}
+            diff = high - low
+            trend = args.get("trend", "bullish")
+            if trend == "bullish":
+                levels = {
+                    "0.0 (Swing Low - Origin)": low,
+                    "0.236": round(low + diff * 0.236, 4),
+                    "0.382": round(low + diff * 0.382, 4),
+                    "0.500 (Equilibrium)": round(low + diff * 0.500, 4),
+                    "0.618 (Golden Pocket)": round(low + diff * 0.618, 4),
+                    "0.705 (OTE)": round(low + diff * 0.705, 4),
+                    "0.786": round(low + diff * 0.786, 4),
+                    "1.0 (Swing High - Target)": high,
+                    "1.272 (Extension)": round(low + diff * 1.272, 4),
+                    "1.618 (Golden Extension)": round(low + diff * 1.618, 4),
+                }
+            else:
+                levels = {
+                    "0.0 (Swing High - Origin)": high,
+                    "0.236": round(high - diff * 0.236, 4),
+                    "0.382": round(high - diff * 0.382, 4),
+                    "0.500 (Equilibrium)": round(high - diff * 0.500, 4),
+                    "0.618 (Golden Pocket)": round(high - diff * 0.618, 4),
+                    "0.705 (OTE)": round(high - diff * 0.705, 4),
+                    "0.786": round(high - diff * 0.786, 4),
+                    "1.0 (Swing Low - Target)": low,
+                    "1.272 (Extension)": round(high - diff * 1.272, 4),
+                    "1.618 (Golden Extension)": round(high - diff * 1.618, 4),
+                }
+            return {
+                "source": "manual_input",
+                "symbol": symbol or "CUSTOM",
+                "trend": trend,
+                "swing_high": high,
+                "swing_low": low,
+                "range": round(diff, 4),
+                "levels": levels,
+                "ote_zone": [levels["0.618 (Golden Pocket)"], levels["0.786"]],
+                "discount_premium": {
+                    "equilibrium": levels["0.500 (Equilibrium)"],
+                    "discount_zone": [low, levels["0.500 (Equilibrium)"]] if trend == "bullish" else [levels["0.500 (Equilibrium)"], high],
+                    "premium_zone": [levels["0.500 (Equilibrium)"], high] if trend == "bullish" else [low, levels["0.500 (Equilibrium)"]],
+                }
+            }
+        except (ValueError, TypeError) as err:
+            return {"error": f"Invalid high/low values: {err}"}
+
     if not symbol:
-        return {"error": "Missing required parameter 'symbol'"}
+        return {"error": "Missing required parameter 'symbol' (or provide manual 'high' and 'low')"}
     timeframe = args.get("timeframe", "H4")
     if not session:
         return {"error": "Database session required for get_fibonacci_levels"}
@@ -466,6 +530,10 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
             "0.705": low + diff * 0.705,
             "0.786 (OTE)": low + diff * 0.786,
             "1.0 (Swing High - End)": high,
+            "1.272 (Target Ext 1)": low + diff * 1.272,
+            "1.414 (Target Ext 2)": low + diff * 1.414,
+            "1.618 (Golden Extension)": low + diff * 1.618,
+            "2.0 (Full Expansion)": low + diff * 2.0,
         }
         retracement_zone = f"Golden zone (OTE): {round(low + diff * 0.618, 5)} - {round(low + diff * 0.786, 5)}"
     else:
@@ -479,6 +547,10 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
             "0.705": high - diff * 0.705,
             "0.786 (OTE)": high - diff * 0.786,
             "1.0 (Swing Low - End)": low,
+            "1.272 (Target Ext 1)": high - diff * 1.272,
+            "1.414 (Target Ext 2)": high - diff * 1.414,
+            "1.618 (Golden Extension)": high - diff * 1.618,
+            "2.0 (Full Expansion)": high - diff * 2.0,
         }
         retracement_zone = f"Golden zone (OTE): {round(high - diff * 0.786, 5)} - {round(high - diff * 0.618, 5)}"
 
@@ -633,6 +705,10 @@ async def handle_export_historical_data_csv(args: dict, **ctx) -> dict:
             else:
                 ts = r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp)
                 writer.writerow([ts, r.open, r.high, r.low, r.close, r.volume])
+
+    executor = ctx.get("executor")
+    if executor and hasattr(executor, "add_pending_file"):
+        executor.add_pending_file(file_path=filepath, filename=filename, caption=f"OHLCV {symbol} ({timeframe})")
 
     return {
         "status": "success",
@@ -924,43 +1000,102 @@ async def handle_get_multi_timeframe_summary(args: dict, **ctx) -> dict:
 async def handle_get_chart(args: dict, **ctx) -> dict:
     session, symbol, settings = _get_session_and_symbol(args, ctx)
     if not symbol:
-        return {"error": "Missing required parameter 'symbol'"}
-    if not session:
-        return {"error": "Database session required for get_chart"}
+        watchlist = (settings or {}).get("trading", {}).get("watchlist") or ["XAUUSD"]
+        symbol = watchlist[0] if watchlist else "XAUUSD"
 
     timeframe = args.get("timeframe", "H4")
     limit = min(max(args.get("candles", 80), 20), 200)
 
-    rows = (await session.execute(
-        select(PriceOHLCV)
-        .where(PriceOHLCV.symbol == symbol)
-        .where(PriceOHLCV.timeframe == timeframe)
-        .where(PriceOHLCV.timestamp <= clock.now())
-        .order_by(PriceOHLCV.timestamp.desc())
-        .limit(limit)
-    )).scalars().all()
+    rows = []
+    if session:
+        rows = (await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol)
+            .where(PriceOHLCV.timeframe == timeframe)
+            .where(PriceOHLCV.timestamp <= clock.now())
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(limit)
+        )).scalars().all()
 
-    if not rows or len(rows) < 5:
+    ohlcv_data = []
+    if rows and len(rows) >= 5:
+        rows = list(reversed(rows))
+        ohlcv_data = [
+            {
+                "timestamp": r.timestamp,
+                "open": r.open,
+                "high": r.high,
+                "low": r.low,
+                "close": r.close,
+                "volume": r.volume or 0,
+            }
+            for r in rows
+        ]
+    else:
+        try:
+            from services.market_data_service import MarketDataService
+            bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=limit, session=session)
+            if bars and len(bars) >= 5:
+                import dateutil.parser as dparser
+                for b in bars:
+                    ts = b.get("time")
+                    if isinstance(ts, str):
+                        try:
+                            ts = dparser.parse(ts)
+                        except Exception:
+                            ts = clock.now()
+                    ohlcv_data.append({
+                        "timestamp": ts,
+                        "open": float(b.get("open", 0.0)),
+                        "high": float(b.get("high", 0.0)),
+                        "low": float(b.get("low", 0.0)),
+                        "close": float(b.get("close", 0.0)),
+                        "volume": float(b.get("volume", 0.0)),
+                    })
+        except Exception as bar_err:
+            logger.debug(f"[handle_get_chart] ensure_bars fallback error: {bar_err}")
+
+    if not ohlcv_data or len(ohlcv_data) < 5:
         return {"error": f"Insufficient price history data for {symbol} {timeframe} to generate chart"}
 
-    rows = list(reversed(rows))
-    ohlcv_data = [
-        {
-            "timestamp": r.timestamp,
-            "open": r.open,
-            "high": r.high,
-            "low": r.low,
-            "close": r.close,
-            "volume": r.volume or 0,
-        }
-        for r in rows
-    ]
-
-    from utils.chart_generator import generate_candlestick_chart
     try:
-        chart_buf = generate_candlestick_chart(
-            ohlcv_data, symbol=symbol, timeframe=timeframe, show_volume=True, show_ma=(20, 50)
-        )
+        include_smc = args.get("smc", True)
+        chart_buf = None
+        if include_smc:
+            try:
+                from database.models import FVGZone, SwingPoint
+                from utils.chart_generator import generate_smc_candlestick_chart
+                fvg_rows = (await session.execute(
+                    select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe).limit(10)
+                )).scalars().all()
+                swing_rows = (await session.execute(
+                    select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe).order_by(desc(SwingPoint.timestamp)).limit(10)
+                )).scalars().all()
+                fvg_list = [
+                    {
+                        "top": float(getattr(f, "gap_high", getattr(f, "top", 0.0))),
+                        "bottom": float(getattr(f, "gap_low", getattr(f, "bottom", 0.0))),
+                        "type": getattr(f, "direction", getattr(f, "type", "bullish")),
+                        "timestamp": getattr(f, "formed_at", getattr(f, "created_at", None)),
+                    }
+                    for f in fvg_rows
+                ]
+                swings_list = [{"price": float(s.price), "type": s.type, "timestamp": s.timestamp} for s in swing_rows]
+                chart_buf, _ = generate_smc_candlestick_chart(
+                    ohlcv_data, symbol=symbol, timeframe=timeframe,
+                    fvg_list=fvg_list if fvg_list else None,
+                    swing_points=swings_list if swings_list else None,
+                    save_to_disk=False,
+                )
+            except Exception as smc_err:
+                logger.debug(f"[handle_get_chart] SMC overlay render fallback: {smc_err}")
+
+        if chart_buf is None:
+            from utils.chart_generator import generate_candlestick_chart
+            chart_buf = generate_candlestick_chart(
+                ohlcv_data, symbol=symbol, timeframe=timeframe, show_volume=True, show_ma=(20, 50)
+            )
+
         chart_id = f"chart_{symbol}_{timeframe}_{int(clock.now().timestamp())}"
         executor = ctx.get("executor")
         if executor and hasattr(executor, "_pending_charts"):
@@ -1294,9 +1429,114 @@ async def handle_plot_price_chart(args: dict, **ctx) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-def register_market_data_tools():
+async def handle_plot_equity_curve(args: dict, **ctx) -> dict:
+    """Plot and deliver inline PNG equity curve chart with drawdown bands."""
+    session, _, settings = _get_session_and_symbol(args, ctx)
+    if not session:
+        return {"error": "Database session required for plot_equity_curve"}
+
+    days_back = int(args.get("days_back", 90))
+    since = clock.now() - timedelta(days=days_back)
+
+    from database.models import PaperTradeRecord, Position
+    from utils.chart_generator import generate_equity_curve_chart
+
+    # Query closed trades
+    records = []
+    try:
+        trades = (await session.execute(
+            select(PaperTradeRecord)
+            .where(PaperTradeRecord.closed_at >= since)
+            .order_by(PaperTradeRecord.closed_at.asc())
+        )).scalars().all()
+        for t in trades:
+            pnl = float(t.realized_pnl or t.pnl_usd or 0.0)
+            records.append({
+                "time": t.closed_at,
+                "pnl": pnl,
+            })
+    except Exception as e:
+        logger.debug(f"PaperTradeRecord query error: {e}")
+
+    if not records:
+        try:
+            positions = (await session.execute(
+                select(Position)
+                .where(Position.closed_at >= since)
+                .order_by(Position.closed_at.asc())
+            )).scalars().all()
+            for p in positions:
+                pnl = float(p.realized_pnl or 0.0)
+                records.append({
+                    "time": p.closed_at,
+                    "pnl": pnl,
+                })
+        except Exception as e:
+            logger.debug(f"Position query error: {e}")
+
+    try:
+        buf, saved_path = generate_equity_curve_chart(
+            records, title="Monika Portfolio Performance & Drawdown", save_to_disk=True
+        )
+        chart_id = f"equity_curve_{int(clock.now().timestamp())}"
+        executor = ctx.get("executor")
+        if executor and hasattr(executor, "_pending_charts"):
+            executor._pending_charts[chart_id] = buf
+
+        return {
+            "status": "success",
+            "chart_id": chart_id,
+            "trades_counted": len(records),
+            "file_path": saved_path,
+            "message": f"Equity curve rendered successfully ({len(records)} closed trades) and saved to {saved_path}",
+        }
+    except Exception as err:
+        logger.error(f"Error plotting equity curve: {err}", exc_info=True)
+        return {"status": "error", "error": str(err)}
+
+
+async def handle_get_symbol_specification(args: dict, **ctx) -> dict:
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        return {"error": "Missing required parameter 'symbol'"}
+    from utils.market.instrument_identity import normalize_symbol
+    norm_sym = normalize_symbol(symbol)
+
+    executor = ctx.get("executor")
+    client = ctx.get("mt5_client") or ctx.get("client") or getattr(executor, "mt5_client", None)
+
+    from risk.position_sizing import get_instrument_spec
+    spec = get_instrument_spec(norm_sym, mt5_client=client)
+
+    return {
+        "symbol": norm_sym,
+        "contract_size": spec.contract_size,
+        "pip_size": spec.pip_size,
+        "pip_value_usd": spec.pip_value_usd,
+        "digits": spec.digits,
+        "min_lot": getattr(spec, "min_lot", 0.01),
+        "max_lot": getattr(spec, "max_lot", 100.0),
+        "status": "success",
+    }
+
+
+def register_market_data_tools_core():
     registry = ToolRegistry.get_instance()
     tools = [
+        ToolDefinition(
+            name="get_symbol_specification",
+            description="Get exact instrument specifications including contract size, pip size, pip value in USD, digits, and lot limits.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "Symbol name or shorthand (e.g. XAUUSD, EURUSD, BTCUSD, US30)"},
+                },
+                "required": ["symbol"],
+            },
+            handler=handle_get_symbol_specification,
+            toolset="market_data",
+            requires_db=False,
+        ),
         ToolDefinition(
             name="get_market_quote",
             description="Fetch current market quote (live tick or latest price) for a symbol.",
@@ -1342,6 +1582,14 @@ def register_market_data_tools():
             description="Fetch current spread snapshot for a symbol.",
             parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
             handler=handle_get_spread_snapshot,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_synthetic_cross_rate",
+            description="Computes synthetic cross-rates, spread, and estimated volatility for cross currency pairs.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]},
+            handler=handle_get_synthetic_cross_rate,
             toolset="market_data",
             requires_db=True,
         ),
@@ -1442,18 +1690,245 @@ def register_market_data_tools():
             toolset="market_data",
             requires_db=True,
         ),
+    ]
+    for t in tools:
+        registry.register(t)
+
+
+async def handle_get_pivot_points(args: dict, **ctx) -> dict:
+    """Calculate Pivot Points (Classic, Camarilla, or Woodie) for a symbol."""
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        symbol = "XAUUSD"
+    method = args.get("method", "classic")
+    timeframe = args.get("timeframe", "D1")
+
+    from services.market_data_service import MarketDataService
+    bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=5, session=session)
+    if not bars or len(bars) < 2:
+        return {"error": f"Insufficient historical bars for {symbol} to calculate pivot points"}
+
+    prev_bar = bars[-2]
+    high = float(prev_bar.get("high", 0.0))
+    low = float(prev_bar.get("low", 0.0))
+    close = float(prev_bar.get("close", 0.0))
+    cur_price = float(bars[-1].get("close", close))
+
+    from indicators.technical import compute_pivot_points
+    levels = compute_pivot_points(high=high, low=low, close=close, method=method)
+    levels["symbol"] = symbol
+    levels["timeframe"] = timeframe
+    levels["current_price"] = cur_price
+    levels["status"] = "success"
+    return levels
+
+
+async def handle_get_ichimoku(args: dict, **ctx) -> dict:
+    """Calculate Ichimoku Kinko Hyo cloud and signal status."""
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        symbol = "XAUUSD"
+    timeframe = args.get("timeframe", "H4")
+
+    from services.market_data_service import MarketDataService
+    bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=100, session=session)
+    if not bars or len(bars) < 52:
+        return {"error": f"Insufficient bars ({len(bars) if bars else 0}) for Ichimoku (need >= 52)"}
+
+    import pandas as pd
+    df = pd.DataFrame(bars)
+    from indicators.technical import compute_ichimoku
+    res = compute_ichimoku(df)
+    res["symbol"] = symbol
+    res["timeframe"] = timeframe
+    res["status"] = "success"
+    return res
+
+
+async def handle_scan_chart_patterns(args: dict, **ctx) -> dict:
+    """Scan for classical (Double Top/Bottom, H&S) and harmonic patterns (Gartley, Bat, Butterfly, Crab)."""
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        symbol = "XAUUSD"
+    timeframe = args.get("timeframe", "H4")
+    order = int(args.get("order", 5))
+
+    from services.market_data_service import MarketDataService
+    bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=120, session=session)
+    if not bars or len(bars) < 25:
+        return {"error": f"Insufficient bars ({len(bars) if bars else 0}) for chart pattern scanning"}
+
+    import pandas as pd
+    df = pd.DataFrame(bars)
+    from indicators.chart_patterns import scan_all_chart_patterns
+    res = scan_all_chart_patterns(df, order=order)
+    res["symbol"] = symbol
+    res["timeframe"] = timeframe
+    return res
+
+
+async def handle_get_seasonality(args: dict, **ctx) -> dict:
+    """Calculate monthly and day-of-week calendar seasonality tendencies for a symbol."""
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        symbol = "XAUUSD"
+    mode = args.get("type", "all").lower()
+
+    from services.market_data_service import MarketDataService
+    bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe="D1", count=750, session=session)
+    if not bars or len(bars) < 30:
+        return {"error": f"Insufficient daily data ({len(bars) if bars else 0}) for seasonality analysis"}
+
+    import pandas as pd
+    df = pd.DataFrame(bars)
+    from analysis.calculators.seasonality import SeasonalityCalculator
+    out = {"symbol": symbol, "status": "success"}
+    if mode in ("monthly", "all"):
+        m_res = SeasonalityCalculator.compute_monthly_seasonality(df)
+        out.update(m_res)
+    if mode in ("day_of_week", "dow", "daily", "all"):
+        d_res = SeasonalityCalculator.compute_day_of_week_seasonality(df)
+        out.update(d_res)
+    return out
+
+
+async def handle_get_divergences(args: dict, **ctx) -> dict:
+    """Scan for multi-timeframe RSI and MACD divergences."""
+    session, symbol, settings = _get_session_and_symbol(args, ctx)
+    if not symbol:
+        symbol = "XAUUSD"
+    tfs = args.get("timeframes") or ["H1", "H4"]
+    if isinstance(tfs, str):
+        tfs = [t.strip().upper() for t in tfs.split(",") if t.strip()]
+
+    from services.market_data_service import MarketDataService
+    import pandas as pd
+    import ta
+    from indicators.technical import detect_rsi_divergence, detect_macd_divergence
+
+    results = {}
+    for tf in tfs:
+        bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=tf, count=60, session=session)
+        if not bars or len(bars) < 25:
+            results[tf] = {"status": "insufficient_data"}
+            continue
+        df = pd.DataFrame(bars)
+        close = df["close"].astype(float)
+        high = df["high"].astype(float)
+        low = df["low"].astype(float)
+
+        rsi_s = ta.momentum.rsi(close, window=14)
+        rsi_div = detect_rsi_divergence(high, low, close, rsi_s)
+
+        m_calc = ta.trend.MACD(close)
+        m_line = m_calc.macd()
+        m_hist = m_calc.macd_diff()
+        macd_div = detect_macd_divergence(high, low, close, macd_line=m_line, macd_hist=m_hist)
+
+        results[tf] = {
+            "rsi_divergence": rsi_div,
+            "macd_divergence": macd_div,
+            "has_confluence": (rsi_div.get("divergence") == macd_div.get("divergence") and rsi_div.get("divergence") != "none"),
+        }
+
+    return {
+        "symbol": symbol,
+        "timeframes_analyzed": tfs,
+        "results": results,
+        "status": "success",
+    }
+
+
+def register_market_data_tools():
+    registry = ToolRegistry.get_instance()
+    tools = [
         ToolDefinition(
-            name="get_synthetic_cross_rate",
-            description="Calculate synthetic cross-rate, spread, and synthetic ATR from USD-based majors for non-universe pairs (e.g. GBPJPY, EURGBP, EURJPY, AUDJPY, EURAUD, GBPAUD).",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "pair": {"type": "string", "description": "Cross pair to synthesize (e.g. GBPJPY, EURGBP, EURJPY, AUDJPY)"},
-                    "timeframe": {"type": "string", "description": "Timeframe for ATR calculation (e.g. H1, H4, D1)"},
-                },
-                "required": ["pair"],
-            },
-            handler=handle_get_synthetic_cross_rate,
+            name="get_price_history",
+            description="Fetch historical OHLCV candle bars from MT5 or persistent storage.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "count": {"type": "integer"}}},
+            handler=handle_get_price_history,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_technical_indicators",
+            description="Fetch technical indicators (EMA, RSI, ATR, MACD, etc.) for a symbol and timeframe.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}}},
+            handler=handle_get_technical_indicators,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_atr",
+            description="Fetch Average True Range (ATR) volatility measure for a symbol.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "period": {"type": "integer"}}},
+            handler=handle_get_atr,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_pivot_points",
+            description="Calculate Classic, Camarilla, or Woodie Pivot Points (support and resistance levels) for a symbol.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "method": {"type": "string", "enum": ["classic", "camarilla", "woodie"]}, "timeframe": {"type": "string"}}},
+            handler=handle_get_pivot_points,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="get_ichimoku",
+            description="Calculate Ichimoku Kinko Hyo cloud indicators (Tenkan, Kijun, Senkou Span A/B, TK Cross).",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}}},
+            handler=handle_get_ichimoku,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="scan_chart_patterns",
+            description="Scan for classical chart patterns (Double Top/Bottom, H&S) and harmonic patterns (Gartley, Bat, Butterfly, Crab).",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "order": {"type": "integer"}}},
+            handler=handle_scan_chart_patterns,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="get_seasonality",
+            description="Calculate historical monthly and day-of-week calendar seasonality tendencies for a symbol.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "type": {"type": "string", "enum": ["all", "monthly", "day_of_week"]}}},
+            handler=handle_get_seasonality,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="get_divergences",
+            description="Scan for RSI and MACD regular and hidden divergences across multiple timeframes.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframes": {"type": "array", "items": {"type": "string"}}}},
+            handler=handle_get_divergences,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="get_market_quote",
+            description="Fetch current live bid/ask quote, spread, and broker server time for a symbol.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}},
+            handler=handle_get_market_quote,
+            toolset="market_data",
+        ),
+        ToolDefinition(
+            name="get_chart",
+            description="Generate a visual candlestick chart for a symbol with optional SMC overlays.",
+            parameters={"type": "object", "properties": {"symbol": {"type": "string"}, "timeframe": {"type": "string"}, "candles": {"type": "integer"}, "smc": {"type": "boolean"}}},
+            handler=handle_get_chart,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="get_spread_snapshot",
+            description="Fetch current live spread and pip size for symbols across the asset universe.",
+            parameters={"type": "object", "properties": {"symbols": {"type": "array", "items": {"type": "string"}}}},
+            handler=handle_get_spread_snapshot,
+            toolset="market_data",
+            requires_db=True,
+        ),
+        ToolDefinition(
+            name="plot_equity_curve",
+            description="Plot and deliver inline PNG equity curve chart with peak high-water mark and drawdown bands directly into chat (Q013).",
+            parameters={"type": "object", "properties": {"days_back": {"type": "integer"}}},
+            handler=handle_plot_equity_curve,
             toolset="market_data",
             requires_db=True,
         ),
@@ -1462,4 +1937,5 @@ def register_market_data_tools():
         registry.register(t)
 
 
+register_market_data_tools_core()
 register_market_data_tools()

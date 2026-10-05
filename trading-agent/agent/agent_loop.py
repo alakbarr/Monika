@@ -21,7 +21,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Callable, Awaitable, List
+from typing import Optional, Dict, Any, Callable, Awaitable, List, Union, Sequence
 
 from graph.workflow import build_trading_graph
 

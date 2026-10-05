@@ -376,7 +376,7 @@ GET_PRICE_HISTORY = _tool(
         },
         "timeframe": {
             "type": "string",
-            "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"],
+            "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1", "MN1"],
             "default": "H1",
             "description": "Timeframe for the OHLCV data. Default: 'H1'.",
         },
@@ -636,6 +636,21 @@ GET_BREAKER_BLOCKS = _tool(
     required=["symbol", "timeframe"],
 )
 
+GET_INVERTED_FVG = _tool(
+    name="get_inverted_fvg",
+    description=(
+        "Detect Inverted Fair Value Gaps (IFVG): Fair Value Gaps that were violated and closed through with displacement, "
+        "inverting their institutional polarity (broken bullish FVG becomes resistance; broken bearish FVG becomes support)."
+    ),
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M1", "M5", "M15", "H1", "H4", "D1", "W1"], "description": "Timeframe (default: 'H1')."},
+        "lookback": {"type": "integer", "description": "Lookback bars (default: 150)."}
+    },
+    required=["symbol"],
+)
+
+
 GET_JUDAS_SWING = _tool(
     name="get_judas_swing",
     description=(
@@ -727,6 +742,110 @@ GET_SURPRISE_SUMMARY = _tool(
         "Use this to determine macro momentum for a specific currency."
     ),
     properties={},
+    required=[],
+)
+
+INSPECT_ECONOMIC_REPORT = _tool(
+    name="inspect_economic_report",
+    description=(
+        "Decompose macroeconomic releases (CPI, NFP, PCE, PPI, JOLTS, ISM) into granular sub-components. "
+        "Identifies top upside/downside drivers, separates transitory noise from persistent sticky core inflation, "
+        "and evaluates labor market quality including 2-month net revisions drag and household survey divergence."
+    ),
+    properties={
+        "report_type": {"type": "string", "description": "CPI, NFP, PCE, PPI, JOLTS, ISM_MANUFACTURING, ISM_SERVICES, UMICH"},
+        "period": {"type": "string", "description": "Period string e.g. 2026-09 or 2026-Q3"},
+        "country": {"type": "string", "description": "Country code e.g. US, EU, UK, JP"},
+        "currency": {"type": "string", "description": "Currency e.g. USD, EUR, GBP, JPY"},
+    },
+    required=[],
+)
+
+DIFF_CENTRAL_BANK_DOCUMENTS = _tool(
+    name="diff_central_bank_documents",
+    description=(
+        "Perform sentence-level redline diffing between consecutive central bank monetary statements and meeting minutes "
+        "(Federal Reserve, ECB, BoE, BoJ). Extracts additions, deletions, phrase substitutions, and calculates net "
+        "hawkish vs dovish tone shift score (-1.0 to +1.0)."
+    ),
+    properties={
+        "bank": {"type": "string", "description": "Central bank: FED, ECB, BOE, BOJ"},
+        "doc_type": {"type": "string", "description": "Document type: MINUTES, STATEMENT, BEIGE_BOOK"},
+    },
+    required=[],
+)
+
+GET_MACRO_CROSS_REPORT_SYNTHESIS = _tool(
+    name="get_macro_cross_report_synthesis",
+    description=(
+        "Synthesize the complete macroeconomic pipeline: ISM Prices Paid -> PPI -> CPI -> Core PCE -> "
+        "NFP Wage Growth -> Fed Dot Plot Expectations -> Treasury Yields & US Dollar Index (DXY) direction."
+    ),
+    properties={
+        "currency": {"type": "string", "description": "Currency code e.g. USD"},
+        "lookback_days": {"type": "integer", "description": "Lookback window in days (default 30)"},
+    },
+    required=[],
+)
+
+GET_G10_MACRO_DIVERGENCE = _tool(
+    name="get_g10_macro_divergence",
+    description=(
+        "Evaluate relative macroeconomic divergence, interest rate differentials, inflation momentum, "
+        "and growth trajectory between G10 currency pairs (EURUSD, USDJPY, GBPUSD, AUDUSD)."
+    ),
+    properties={
+        "pair": {"type": "string", "description": "Currency pair symbol e.g. EURUSD, USDJPY, GBPUSD"},
+    },
+    required=["pair"],
+)
+
+GET_FED_NET_LIQUIDITY_AND_STRESS = _tool(
+    name="get_fed_net_liquidity_and_stress",
+    description=(
+        "Fetch weekly Federal Reserve Net Systemic Liquidity (WALCL - TGA - RRP), corporate credit spreads "
+        "(ICE BofA High Yield OAS), and interbank money market funding stress (SOFR). Identifies macro liquidity regimes."
+    ),
+    properties={
+        "lookback_weeks": {"type": "integer", "description": "Number of weeks to evaluate (default 8)"},
+    },
+    required=[],
+)
+
+GET_TREASURY_AUCTION_RESULTS = _tool(
+    name="get_treasury_auction_results",
+    description=(
+        "Inspect US Treasury debt auction outcomes (2Y, 5Y, 10Y, 30Y notes/bonds) including stopping yield, "
+        "auction tail spread in basis points, bid-to-cover ratio, and foreign indirect bidder demand percentage."
+    ),
+    properties={
+        "tenor": {"type": "string", "description": "Auction tenor: 2Y, 5Y, 10Y, 30Y (default 10Y)"},
+        "limit": {"type": "integer", "description": "Number of recent auctions (default 5)"},
+    },
+    required=[],
+)
+
+GET_ECB_QT_PROGRESS = _tool(
+    name="get_ecb_qt_progress",
+    description=(
+        "Track European Central Bank (ECB) total balance sheet trend, Quantitative Tightening (QT) progress, "
+        "asset contraction rate, APP passive runoff status, and PEPP reinvestment phase-out implications."
+    ),
+    properties={
+        "lookback_weeks": {"type": "integer", "description": "Number of weeks to evaluate (default 8)"},
+    },
+    required=[],
+)
+
+GET_GLOBAL_PMI_TREND = _tool(
+    name="get_global_pmi_trend",
+    description=(
+        "Track global and regional manufacturing PMIs (JPMorgan Global, US, Eurozone, UK, China Caixin), "
+        "expansion vs contraction diffusion regime (>50 vs <50), and macroeconomic manufacturing divergence."
+    ),
+    properties={
+        "period": {"type": "string", "description": "Period e.g. '2026-09' (optional)"},
+    },
     required=[],
 )
 
@@ -1125,13 +1244,13 @@ PROPOSE_ACTION = _tool(
     description=(
         "Propose an action that requires human confirmation before execution. "
         "This sends a Telegram message with inline Yes/Cancel buttons. "
-        "Use for: closing a live/paper position, closing all open positions (kill switch), pausing/resuming trading, modifying SL/TP, cancelling pending MT5 orders, cancelling pending triggers, or proposing database mutations. "
-        "NEVER for: opening arbitrary unanalyzed positions (that's the analysis pipeline's job)."
+        "Use for: closing a live/paper position, partial close and breakeven, placing orders, bulk breakeven, trailing stops, pausing/resuming trading, modifying SL/TP, cancelling pending MT5 orders, cancelling pending triggers, terminal commands, GUI automation, or proposing database mutations."
     ),
     properties={
         "action_type": {
             "type": "string",
             "enum": [
+                "place_order",
                 "close_position",
                 "close_all_positions",
                 "close_paper_trade",
@@ -1143,12 +1262,21 @@ PROPOSE_ACTION = _tool(
                 "cancel_trigger",
                 "save_market_intelligence",
                 "db_mutation",
+                "bulk_breakeven",
+                "secure_positions",
+                "set_trailing_stop",
+                "cancel_stale_pending_orders",
+                "update_config",
+                "update_user_preference",
+                "execute_terminal_command",
+                "desktop_gui_action",
+                "partial_close_and_breakeven",
             ],
             "description": "Type of action to propose.",
         },
         "params": {
             "type": "object",
-            "description": "Action parameters. For close_position: {ticket, volume (optional float for partial close)}. For close_all_positions: {reason (optional)}. For close_paper_trade: {paper_trade_id or symbol, volume (optional)}. For modify_sl_tp/modify_paper_sl_tp: {ticket or paper_trade_id, sl, tp}. For cancel_order: {ticket (integer MT5 order ticket), symbol (optional)}. For cancel_trigger: {trigger_id}. For save_market_intelligence: {title, summary, intel_type, affected_symbols, directive, target_cycle}. For db_mutation: {table_name: str, operation: 'insert'|'update'|'delete', target_id: Optional[str|int], data: Optional[dict], reason: str}.",
+            "description": "Action parameters. For place_order: {symbol, direction: 'buy'|'sell', order_type: 'market'|'limit', entry_price, stop_loss, take_profit, rationale}. For close_position: {ticket, volume (optional float for partial close)}. For partial_close_and_breakeven: {ticket, volume: float, reason}. For bulk_breakeven/secure_positions: {symbol (optional), only_profit: bool}. For set_trailing_stop: {symbol (optional), trailing_pips: float}. For close_all_positions: {reason (optional)}. For close_paper_trade: {paper_trade_id or symbol, volume (optional)}. For modify_sl_tp/modify_paper_sl_tp: {ticket or paper_trade_id, sl, tp}. For cancel_order: {ticket (integer MT5 order ticket), symbol (optional)}. For cancel_trigger: {trigger_id}. For save_market_intelligence: {title, summary, intel_type, affected_symbols, directive, target_cycle}. For db_mutation: {table_name: str, operation: 'insert'|'update'|'delete', target_id: Optional[str|int], data: Optional[dict], reason: str}. For execute_terminal_command: {command: str}. For desktop_gui_action: {action: 'screenshot'|'left_click'|'type_text'|'key_press', coordinate, text, key}.",
         },
         "reason": {
             "type": "string",
@@ -1434,6 +1562,12 @@ STAGE1_TOOLS: list[dict] = [
     LIST_ACTIVE_INTELLIGENCE,
     ARCHIVE_MARKET_INTELLIGENCE,
     SUBMIT_FUNDAMENTAL_BRIEF,
+    INSPECT_ECONOMIC_REPORT,
+    DIFF_CENTRAL_BANK_DOCUMENTS,
+    GET_MACRO_CROSS_REPORT_SYNTHESIS,
+    GET_G10_MACRO_DIVERGENCE,
+    GET_FED_NET_LIQUIDITY_AND_STRESS,
+    GET_TREASURY_AUCTION_RESULTS,
 ]
 
 STAGE1_TOOLS_WEEKEND_BTC: list[dict] = [
@@ -1638,7 +1772,8 @@ CALCULATE_POSITION_SIZE = _tool(
         "entry_price": {"type": "number", "description": "Proposed entry price"},
         "stop_loss": {"type": "number", "description": "Proposed stop loss price"},
         "direction": {"type": "string", "enum": ["buy", "sell"], "description": "Trade direction (optional)"},
-        "risk_pct": {"type": "number", "description": "Account risk percentage (default: 1.0%)"}
+        "risk_pct": {"type": "number", "description": "Account risk percentage (default: 1.0%)"},
+        "account_equity": {"type": "number", "description": "Custom account equity / capital in USD (optional, defaults to live broker equity or paper balance)"}
     },
     required=["symbol", "entry_price", "stop_loss"]
 )
@@ -2526,8 +2661,8 @@ RUN_ANALYTICAL_QUERY = _tool(
         },
         "group_by": {
             "type": "string",
-            "enum": ["session", "market_regime", "symbol", "decision_source", "risk_reward_bucket", "none"],
-            "description": "Grouping dimension (e.g. 'session', 'market_regime').",
+            "enum": ["session", "market_regime", "symbol", "decision_source", "risk_reward_bucket", "hour", "hour_wib", "hour_utc", "none"],
+            "description": "Grouping dimension (e.g. 'session', 'market_regime', 'hour', 'hour_wib').",
         },
         "days_back": {
             "type": "integer",
@@ -2676,9 +2811,116 @@ NEW_OFFICE_AND_QUANT_TOOLS = [
     GET_SYNTHETIC_CROSS_RATE,
 ]
 
-for smc_tool in [GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG]:
+SEARCH_TOOLS_TOOL = _tool(
+    name="search_tools",
+    description="Semantic and keyword discovery of available tools across the registry. Find tools by capability, indicator name, data type, or asset class without loading all schemas.",
+    properties={
+        "query": {"type": "string", "description": "Keywords or capability to search for (e.g. 'volatility', 'order flow', 'news', 'yields')."},
+        "limit": {"type": "integer", "description": "Maximum number of tools to return (default 5)."},
+    },
+    required=["query"],
+)
+
+GET_GRADUATION_STATUS_TOOL = _tool(
+    name="get_graduation_status",
+    description="Evaluate trader's paper trading graduation progress toward live qualification (trades count, win rate, profit factor, max drawdown).",
+    properties={},
+    required=[],
+)
+
+SIMULATE_PRICE_SHOCK_TOOL = _tool(
+    name="simulate_price_shock",
+    description="Simulate price shock on portfolio equity and open positions (stress test).",
+    properties={
+        "symbol": {"type": "string", "description": "Symbol to shock (e.g. 'XAUUSD', 'EURUSD')."},
+        "pct_change": {"type": "number", "description": "Percentage change to shock (e.g. -5.0 or 2.5)."},
+    },
+    required=["symbol", "pct_change"],
+)
+
+ADD_JOURNAL_ENTRY_TOOL = _tool(
+    name="add_journal_entry",
+    description="Add a qualitative trading journal entry with emotional state, lessons learned, and tags.",
+    properties={
+        "content": {"type": "string", "description": "Journal entry text."},
+        "tags": {"type": "array", "items": {"type": "string"}, "description": "Optional list of tags (e.g. ['FOMO', 'Gold', 'Discipline'])."},
+        "sentiment": {"type": "string", "description": "Emotional state (e.g. 'neutral', 'disciplined', 'fomo', 'revenge')."},
+    },
+    required=["content"],
+)
+
+GET_JOURNAL_ENTRIES_TOOL = _tool(
+    name="get_journal_entries",
+    description="Retrieve past trading journal entries with optional tag filter.",
+    properties={
+        "limit": {"type": "integer", "description": "Max entries to retrieve (default 20)."},
+        "tag": {"type": "string", "description": "Optional tag filter."},
+    },
+    required=[],
+)
+
+READ_SYSTEM_LOGS_TOOL = _tool(
+    name="read_system_logs",
+    description="Safely read recent system activity logs from monika.log with optional line count and query filter.",
+    properties={
+        "file_name": {"type": "string", "description": "Log file name (default 'monika.log')."},
+        "lines": {"type": "integer", "description": "Number of lines to read (default 50, max 200)."},
+        "filter_query": {"type": "string", "description": "Optional search term to filter log lines."},
+    },
+    required=[],
+)
+
+GET_SYMBOL_SPECIFICATION = _tool(
+    name="get_symbol_specification",
+    description="Get exact instrument specifications including contract size, pip size, pip value in USD, digits, and lot limits.",
+    properties={
+        "symbol": {"type": "string", "description": "Symbol name or shorthand (e.g. 'XAUUSD', 'EURUSD', 'BTCUSD', 'US30')."},
+    },
+    required=["symbol"],
+)
+
+RESTART_MT5_SERVICE_TOOL = _tool(
+    name="restart_mt5_service",
+    description="Safely cycle and restart the MT5 connection/service bridge to recover from hangs or timeouts.",
+    properties={
+        "force": {"type": "boolean", "description": "Force reconnect even if currently reported as connected. Default: true."},
+        "reason": {"type": "string", "description": "Reason for restarting MT5 connection (for audit logs)."},
+    },
+    required=[],
+)
+
+UPDATE_CONFIG_PARAMETER_TOOL = _tool(
+    name="update_config_parameter",
+    description="Safely update a configuration parameter in settings.yaml using atomic writes (e.g. 'trading.risk.risk_per_trade_pct').",
+    properties={
+        "key": {"type": "string", "description": "Dot-separated configuration key path (e.g. 'trading.risk.risk_per_trade_pct' or 'paper_trading.enabled')."},
+        "value": {"type": "string", "description": "New value to set (will be auto-cast to number, bool, or string)."},
+        "reason": {"type": "string", "description": "Reason for the configuration change (for audit logs)."},
+    },
+    required=["key", "value"],
+)
+
+REMEDIATION_NEW_TOOLS = [
+    SEARCH_TOOLS_TOOL,
+    GET_ECONOMIC_SURPRISE,
+    GET_GRADUATION_STATUS_TOOL,
+    SIMULATE_PRICE_SHOCK_TOOL,
+    ADD_JOURNAL_ENTRY_TOOL,
+    GET_JOURNAL_ENTRIES_TOOL,
+    READ_SYSTEM_LOGS_TOOL,
+    GET_SYMBOL_SPECIFICATION,
+    RESTART_MT5_SERVICE_TOOL,
+    UPDATE_CONFIG_PARAMETER_TOOL,
+]
+
+for t in REMEDIATION_NEW_TOOLS:
+    if t not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(t)
+
+for smc_tool in [GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG, GET_INVERTED_FVG]:
     if smc_tool not in TELEGRAM_TOOLS:
         TELEGRAM_TOOLS.append(smc_tool)
+
 
 if EXECUTE_ANALYSIS_CODE not in TELEGRAM_TOOLS:
     TELEGRAM_TOOLS.append(EXECUTE_ANALYSIS_CODE)
@@ -2691,8 +2933,505 @@ for t in NEW_OFFICE_AND_QUANT_TOOLS:
     if t not in TELEGRAM_TOOLS:
         TELEGRAM_TOOLS.append(t)
 
+QUERY_DATABASE_SQL = _tool(
+    name="query_database_sql",
+    description="Execute read-only SELECT query directly on PostgreSQL database with safety guardrails and 50 row limit (Admin only).",
+    properties={
+        "sql": {"type": "string", "description": "Read-only SELECT SQL statement (e.g. 'SELECT * FROM paper_trade_records WHERE pnl_pct > 0 ORDER BY id DESC LIMIT 10')"}
+    },
+    required=["sql"]
+)
+
+CAPTURE_TERMINAL_SCREENSHOT = _tool(
+    name="capture_terminal_screenshot",
+    description="Captures live terminal/desktop screenshot or renders high-fidelity visual status card delivered directly to chat.",
+    properties={},
+    required=[]
+)
+
+GET_SERVER_TELEMETRY = _tool(
+    name="get_server_telemetry",
+    description="Retrieve live server hardware telemetry (CPU, RAM, disk space, host uptime, top background process PIDs).",
+    properties={},
+    required=[]
+)
+
+GET_BROKER_EXPENSES_SUMMARY = _tool(
+    name="get_broker_expenses_summary",
+    description="Aggregates broker expenses (commissions, overnight swap fees, and account financing charges) over a time window.",
+    properties={
+        "days": {"type": "integer", "description": "Lookback window in days (default 30)."},
+        "symbol": {"type": "string", "description": "Optional symbol filter (e.g. 'EURUSD')."}
+    },
+    required=[]
+)
+
+GET_ACTIVE_NEGATIVE_CONSTRAINTS = _tool(
+    name="get_active_negative_constraints",
+    description="List active negative constraints ('DO NOT' rules) derived from past trade reflections to prevent recurring errors.",
+    properties={
+        "symbol": {"type": "string", "description": "Optional symbol to filter constraints (e.g. 'EURUSD')."}
+    },
+    required=[]
+)
+
+GET_SMT_DIVERGENCE = _tool(
+    name="get_smt_divergence",
+    description="Detect Smart Money Technique (SMT) divergence between correlated or inversely correlated pairs (e.g. EURUSD vs DXY).",
+    properties={
+        "symbol": {"type": "string", "description": "Primary trading symbol (e.g. 'EURUSD')."},
+        "compared_to": {"type": "string", "description": "Benchmark or correlated asset (e.g. 'DXY', 'GBPUSD')."},
+        "timeframe": {"type": "string", "description": "Candle timeframe (e.g. 'H1', 'H4')."},
+        "lookback": {"type": "integer", "description": "Lookback bars (default 30)."}
+    },
+    required=["symbol"]
+)
+
+TERMINAL_TOOL = _tool(
+    name="terminal",
+    description="Execute command line shell commands in workspace environment or check background processes.",
+    properties={
+        "command": {"type": "string", "description": "The shell command string to execute."},
+        "workdir": {"type": "string", "description": "Optional working directory."},
+        "timeout": {"type": "number", "description": "Timeout in seconds (default 60)."},
+        "background": {"type": "boolean", "description": "Run command asynchronously in background if True."}
+    },
+    required=["command"]
+)
+
+COMPUTER_USE_TOOL = _tool(
+    name="computer_use",
+    description="Interact with desktop GUI applications (MetaTrader 5 terminal) via screenshot, mouse clicks, keystrokes, and text typing.",
+    properties={
+        "action": {"type": "string", "enum": ["screenshot", "mouse_move", "left_click", "right_click", "type_text", "key_press"], "description": "GUI action to perform."},
+        "coordinate": {"type": "array", "items": {"type": "integer"}, "description": "Screen [x, y] pixel coordinates for mouse action."},
+        "text": {"type": "string", "description": "Text to type into active window."},
+        "key": {"type": "string", "description": "Key to press (e.g. 'enter', 'tab', 'f9', 'ctrl+s')."}
+    },
+    required=["action"]
+)
+
+CALCULATE_CONFLUENCE_TOOL = _tool(
+    name="calculate_confluence",
+    description="Calculates multi-layer analytical confluence score (0.0 to 1.0) and technical alignment across HTF/LTF, market regime, order blocks, and momentum.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading pair or instrument (e.g. 'EURUSD', 'XAUUSD')."},
+        "direction": {"type": "string", "enum": ["buy", "sell"], "description": "Trade setup direction to evaluate."}
+    },
+    required=["symbol", "direction"]
+)
+
+GET_SLIPPAGE_SUMMARY_TOOL = _tool(
+    name="get_slippage_summary",
+    description="Retrieve execution slippage telemetry, average positive/negative slippage, and execution drift statistics across broker fills.",
+    properties={
+        "symbol": {"type": "string", "description": "Optional symbol filter."},
+        "days_back": {"type": "integer", "description": "Lookback window in days (default: 30)."}
+    },
+    required=[]
+)
+
+BACKUP_DATABASE_TOOL = _tool(
+    name="backup_database",
+    description="Trigger an on-demand compressed PostgreSQL database backup via pg_dump to the backups/ directory (Admin only).",
+    properties={
+        "force": {"type": "boolean", "description": "Force backup even if automated backup is disabled in settings.yaml (default: true)."}
+    },
+    required=[]
+)
+
+COMPILE_MQL5_EA_TOOL = _tool(
+    name="compile_mql5_ea",
+    description="Compile an MQL5 source file (.mq5) into executable binary (.ex5) using metaeditor64.exe headless compiler.",
+    properties={
+        "source_path": {"type": "string", "description": "Path to the .mq5 source file to compile."}
+    },
+    required=["source_path"]
+)
+
+GET_MT5_BROKER_LOGS_TOOL = _tool(
+    name="get_mt5_broker_logs",
+    description="Read recent log entries from the MetaTrader 5 broker terminal text logs in the MT5 data directory.",
+    properties={
+        "lines": {"type": "integer", "description": "Number of recent lines to read (default 20)."},
+        "date": {"type": "string", "description": "Optional log date in YYYYMMDD format (defaults to current date)."}
+    },
+    required=[]
+)
+
+GET_MT5_TERMINAL_INFO_TOOL = _tool(
+    name="get_mt5_terminal_info",
+    description="Inspect MetaTrader 5 terminal status, trade permissions (Algo Trading button status: Hijau vs Merah), and broker connection.",
+    properties={},
+    required=[]
+)
+
+ENHANCEMENT_TOOLS = [
+    QUERY_DATABASE_SQL,
+    CAPTURE_TERMINAL_SCREENSHOT,
+    GET_SERVER_TELEMETRY,
+    GET_BROKER_EXPENSES_SUMMARY,
+    GET_ACTIVE_NEGATIVE_CONSTRAINTS,
+    GET_SMT_DIVERGENCE,
+    TERMINAL_TOOL,
+    COMPUTER_USE_TOOL,
+    CALCULATE_CONFLUENCE_TOOL,
+    GET_SLIPPAGE_SUMMARY_TOOL,
+    BACKUP_DATABASE_TOOL,
+    COMPILE_MQL5_EA_TOOL,
+    GET_MT5_BROKER_LOGS_TOOL,
+    GET_MT5_TERMINAL_INFO_TOOL,
+]
+
+
+for t in ENHANCEMENT_TOOLS:
+    if t not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(t)
+
+
+# =============================================================================
+# Capability Gap Remediation Tools (15 Tools)
+# =============================================================================
+
+GET_PIVOT_POINTS = _tool(
+    name="get_pivot_points",
+    description="Calculate Classic, Camarilla, and Woodie pivot points, support (S1-S4), and resistance (R1-R4) levels for a given symbol.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD'). Defaults to watchlist primary."},
+        "timeframe": {"type": "string", "enum": ["D1", "W1", "M1"], "description": "Base calculation timeframe (default: 'D1')."},
+        "method": {"type": "string", "enum": ["all", "classic", "camarilla", "woodie"], "description": "Pivot calculation formula (default: 'all')."}
+    },
+    required=[]
+)
+
+GET_ICHIMOKU = _tool(
+    name="get_ichimoku",
+    description="Compute full Ichimoku Kinko Hyo cloud indicator: Tenkan-sen (Conversion), Kijun-sen (Base), Senkou Span A/B (Cloud), and Chikou Span (Lagging).",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M15", "M30", "H1", "H4", "D1"], "description": "Chart timeframe (default: 'H1')."},
+        "tenkan": {"type": "integer", "description": "Tenkan period (default: 9)."},
+        "kijun": {"type": "integer", "description": "Kijun period (default: 26)."},
+        "senkou_b": {"type": "integer", "description": "Senkou Span B period (default: 52)."}
+    },
+    required=[]
+)
+
+SCAN_CHART_PATTERNS = _tool(
+    name="scan_chart_patterns",
+    description="Scan price action for classic and harmonic chart patterns: Double Top/Bottom, Head and Shoulders / Inverse H&S, Gartley, Bat, Butterfly, and Crab.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M15", "H1", "H4", "D1"], "description": "Chart timeframe (default: 'H1')."},
+        "lookback": {"type": "integer", "description": "Number of bars to analyze (default: 150)."}
+    },
+    required=[]
+)
+
+GET_SEASONALITY = _tool(
+    name="get_seasonality",
+    description="Calculate historical seasonality statistics: monthly returns, day-of-week win rates, and calendar tendencies across multi-year historical data.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["monthly", "day_of_week", "all"], "description": "Seasonality analysis grouping (default: 'all')."},
+        "years": {"type": "integer", "description": "Historical lookback in years (default: 5)."}
+    },
+    required=[]
+)
+
+GET_DIVERGENCES = _tool(
+    name="get_divergences",
+    description="Detect regular and hidden momentum divergences between price swings and technical oscillators (RSI, MACD, Stochastic).",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "timeframe": {"type": "string", "enum": ["M15", "H1", "H4", "D1"], "description": "Chart timeframe (default: 'H1')."},
+        "indicator": {"type": "string", "enum": ["all", "rsi", "macd", "stochastic"], "description": "Oscillator indicator to evaluate (default: 'all')."}
+    },
+    required=[]
+)
+
+GET_RECENT_TICK_FLOW = _tool(
+    name="get_recent_tick_flow",
+    description="Retrieve recent high-frequency tick data flow: Bid/Ask spread, tick volume, micro-delta, and buy/sell pressure ratio directly from MT5.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "count": {"type": "integer", "description": "Number of recent ticks to inspect (default: 100, max: 1000)."}
+    },
+    required=[]
+)
+
+EXPORT_TICK_DATA = _tool(
+    name="export_tick_data",
+    description="Export historical raw tick data to CSV file and prepare download link for quantitative tick analysis.",
+    properties={
+        "symbol": {"type": "string", "description": "Trading symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "hours": {"type": "integer", "description": "Number of hours of tick history to export (default: 4, max: 24)."},
+        "filename": {"type": "string", "description": "Optional custom export filename."}
+    },
+    required=[]
+)
+
+GET_LATENCY_BREAKDOWN = _tool(
+    name="get_latency_breakdown",
+    description="Inspect internal system latency telemetry: MT5 order round-trip ping, SQLite/PostgreSQL query timings, and LLM inference response times.",
+    properties={},
+    required=[]
+)
+
+BROWSER_TOOL = _tool(
+    name="browser",
+    description="Headless/interactive DrissionPage web browser automation. Overcomes Cloudflare, anti-bot protections, JavaScript-rendered dashboards, and paywalls.",
+    properties={
+        "action": {"type": "string", "enum": ["open", "extract", "click", "type", "screenshot", "close"], "description": "Browser action to execute."},
+        "url": {"type": "string", "description": "Target webpage URL (required for 'open')."},
+        "selector": {"type": "string", "description": "CSS selector or element text for extract, click, or type."},
+        "text": {"type": "string", "description": "Text to input for 'type' action."}
+    },
+    required=["action"]
+)
+
+SAVE_SCRIPT = _tool(
+    name="save_script",
+    description="Save a custom Python analysis, backtest, or quantitative script to persistent storage (data/user_scripts/) for re-execution across sessions.",
+    properties={
+        "script_name": {"type": "string", "description": "Unique filename for the script (e.g. 'volatility_model.py')."},
+        "code": {"type": "string", "description": "Executable Python code containing analysis logic."},
+        "description": {"type": "string", "description": "Optional brief description of what the script does."}
+    },
+    required=["script_name", "code"]
+)
+
+LIST_SAVED_SCRIPTS = _tool(
+    name="list_saved_scripts",
+    description="List all persisted custom Python quantitative and backtest scripts saved in data/user_scripts/.",
+    properties={},
+    required=[]
+)
+
+RUN_SAVED_SCRIPT = _tool(
+    name="run_saved_script",
+    description="Execute a previously saved Python script from data/user_scripts/ in the sandboxed runtime and capture output.",
+    properties={
+        "script_name": {"type": "string", "description": "Name of the script to execute (e.g. 'volatility_model.py')."}
+    },
+    required=["script_name"]
+)
+
+GET_INDONESIA_MACRO = _tool(
+    name="get_indonesia_macro",
+    description="Retrieve Bank Indonesia monetary policy indicators: BI-Rate, JISDOR USD/IDR reference rate, and BPS macroeconomic stats (Inflation YoY/MoM, Trade Balance).",
+    properties={},
+    required=[]
+)
+
+GET_EARNINGS_CALENDAR = _tool(
+    name="get_earnings_calendar",
+    description="Fetch upcoming corporate earnings releases, EPS consensus estimates, revenue forecasts, and earnings release dates from Finnhub/financial calendar.",
+    properties={
+        "symbol": {"type": "string", "description": "Optional specific stock ticker (e.g. 'AAPL', 'NVDA', 'MSFT')."},
+        "days_ahead": {"type": "integer", "description": "Lookahead horizon in days (default: 7)."}
+    },
+    required=[]
+)
+
+SEARCH_SOCIAL_SENTIMENT = _tool(
+    name="search_social_sentiment",
+    description="Search real-time financial market sentiment, retail buzz, and breaking trader commentary on Twitter/X, Reddit, or web search.",
+    properties={
+        "query": {"type": "string", "description": "Search query or ticker cashtag (e.g. '$XAUUSD', '$BTC', 'Federal Reserve')."},
+        "limit": {"type": "integer", "description": "Maximum number of sentiment items to return (default: 10)."}
+    },
+    required=["query"]
+)
+
+REMEDIATION_GAP_TOOLS = [
+    GET_PIVOT_POINTS,
+    GET_ICHIMOKU,
+    SCAN_CHART_PATTERNS,
+    GET_SEASONALITY,
+    GET_DIVERGENCES,
+    GET_RECENT_TICK_FLOW,
+    EXPORT_TICK_DATA,
+    GET_LATENCY_BREAKDOWN,
+    BROWSER_TOOL,
+    SAVE_SCRIPT,
+    LIST_SAVED_SCRIPTS,
+    RUN_SAVED_SCRIPT,
+    GET_INDONESIA_MACRO,
+    GET_EARNINGS_CALENDAR,
+    SEARCH_SOCIAL_SENTIMENT,
+]
+
+for t in REMEDIATION_GAP_TOOLS:
+    if t not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(t)
+
+# =============================================================================
+# Full Capability Upgrade Tools (12 New Tools)
+# =============================================================================
+
+SIMULATE_PORTFOLIO_DRAWDOWN_TOOL = _tool(
+    name="simulate_portfolio_drawdown",
+    description="Simulate combined margin, SL loss in USD, and correlated portfolio heat for hypothetical simultaneous positions (Q099).",
+    properties={
+        "positions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "direction": {"type": "string", "enum": ["buy", "sell"]},
+                    "lots": {"type": "number"},
+                    "entry": {"type": "number"},
+                    "sl": {"type": "number"}
+                },
+                "required": ["symbol", "direction", "lots"]
+            },
+            "description": "List of hypothetical positions to evaluate simultaneously."
+        }
+    },
+    required=["positions"]
+)
+
+CALCULATE_KELLY_CRITERION_TOOL = _tool(
+    name="calculate_kelly_criterion",
+    description="Calculates Full Kelly, Half Kelly fraction, and risk sizing from closed trade win rate and payoff ratio (Q100).",
+    properties={
+        "symbol": {"type": "string", "description": "Optional symbol filter."},
+        "horizon": {"type": "string", "enum": ["all_time", "90d", "30d"], "description": "Lookback horizon (default: 'all_time')."}
+    },
+    required=[]
+)
+
+RUN_WALK_FORWARD_OPTIMIZATION_TOOL = _tool(
+    name="run_walk_forward_optimization",
+    description="Run Walk-Forward Optimization across chronological folds with purge gaps and embargo to test for overfitting (Q102).",
+    properties={
+        "strategy": {"type": "string", "description": "Strategy identifier (e.g. 'smc_fvg', 'liquidity_sweep')."},
+        "symbol": {"type": "string", "description": "Instrument symbol (e.g. 'EURUSD', 'XAUUSD')."},
+        "n_folds": {"type": "integer", "description": "Number of rolling train/test folds (default: 4)."}
+    },
+    required=["strategy", "symbol"]
+)
+
+OPTIMIZE_STRATEGY_PARAMETERS_TOOL = _tool(
+    name="optimize_strategy_parameters",
+    description="Run a parameter grid-search backtest over a specified range to find optimal Profit Factor and Sharpe (Q111).",
+    properties={
+        "strategy": {"type": "string", "description": "Strategy name (e.g. 'smc_fvg')."},
+        "symbol": {"type": "string", "description": "Instrument symbol (e.g. 'XAUUSD')."},
+        "param_name": {"type": "string", "description": "Parameter name to optimize (e.g. 'atr_period')."},
+        "min_val": {"type": "number", "description": "Starting parameter value."},
+        "max_val": {"type": "number", "description": "Ending parameter value."},
+        "step": {"type": "number", "description": "Step increment (default: 1)."}
+    },
+    required=["strategy", "symbol", "param_name", "min_val", "max_val"]
+)
+
+RUN_MODEL_BENCHMARK_TOOL = _tool(
+    name="run_model_benchmark",
+    description="Benchmark trading LLMs head-to-head via Alpha Arena Elo tournament on decision accuracy and latency (Q112).",
+    properties={
+        "models": {"type": "array", "items": {"type": "string"}, "description": "List of model IDs to test."},
+        "rounds": {"type": "integer", "description": "Number of benchmark rounds (default: 3)."}
+    },
+    required=[]
+)
+
+EVALUATE_DEBATE_EFFICACY_TOOL = _tool(
+    name="evaluate_debate_efficacy",
+    description="Evaluate whether Bull vs Bear dialectical debate improved trade win rates and filtered out losing setups (Q140).",
+    properties={
+        "days_back": {"type": "integer", "description": "Lookback window in days (default: 90)."}
+    },
+    required=[]
+)
+
+SCAN_SMC_SETUPS_TOOL = _tool(
+    name="scan_smc_setups",
+    description="Parallel live screener scanning all pairs for active unmitigated Order Blocks, FVGs, and Liquidity Sweeps (Q060).",
+    properties={
+        "symbols": {"type": "array", "items": {"type": "string"}, "description": "Optional list of symbols to screen (default: all universe)."},
+        "timeframe": {"type": "string", "enum": ["M15", "H1", "H4", "D1"], "description": "Timeframe to scan (default: 'H4')."}
+    },
+    required=[]
+)
+
+GET_CARRY_TRADE_RANKINGS_TOOL = _tool(
+    name="get_carry_trade_rankings",
+    description="Calculate risk-adjusted carry trade attractiveness (Rate Spread / Realized Volatility) across currency pairs (Q074).",
+    properties={
+        "min_spread": {"type": "number", "description": "Minimum nominal rate spread in percent (default: 0.5)."}
+    },
+    required=[]
+)
+
+GET_COMMODITY_SPREAD_TOOL = _tool(
+    name="get_commodity_spread",
+    description="Calculates live commodity spreads (Brent vs WTI crude oil), 20-day rolling mean, and z-score for stat-arb (Q088).",
+    properties={
+        "primary_symbol": {"type": "string", "description": "Primary commodity (default: 'XBRUSD')."},
+        "secondary_symbol": {"type": "string", "description": "Secondary commodity (default: 'XTIUSD')."}
+    },
+    required=[]
+)
+
+GET_MT5_CHART_OBJECTS_TOOL = _tool(
+    name="get_mt5_chart_objects",
+    description="Extract user-drawn S/R lines, trendlines, Fibonacci levels, and indicator parameters from the active MT5 chart (Q151).",
+    properties={
+        "symbol": {"type": "string", "description": "Chart instrument symbol (default: 'XAUUSD')."}
+    },
+    required=[]
+)
+
+CAPTURE_MT5_CHART_SCREENSHOT_TOOL = _tool(
+    name="capture_mt5_chart_screenshot",
+    description="Capture an on-demand screenshot of the active MT5 chart window and prepare it for Multimodal Vision inspection (Q151).",
+    properties={
+        "symbol": {"type": "string", "description": "Chart instrument symbol (default: 'XAUUSD')."},
+        "timeframe": {"type": "string", "description": "Chart timeframe (default: 'H1')."},
+        "width": {"type": "integer", "description": "Image width in pixels (default: 1280)."},
+        "height": {"type": "integer", "description": "Image height in pixels (default: 720)."}
+    },
+    required=[]
+)
+
+PLOT_EQUITY_CURVE_TOOL = _tool(
+    name="plot_equity_curve",
+    description="Plot and deliver inline PNG equity curve chart with drawdown bands directly into Telegram chat (Q013).",
+    properties={
+        "days_back": {"type": "integer", "description": "Historical days back to plot (default: 90)."}
+    },
+    required=[]
+)
+
+NEW_CAPABILITY_UPGRADE_TOOLS = [
+    SIMULATE_PORTFOLIO_DRAWDOWN_TOOL,
+    CALCULATE_KELLY_CRITERION_TOOL,
+    RUN_WALK_FORWARD_OPTIMIZATION_TOOL,
+    OPTIMIZE_STRATEGY_PARAMETERS_TOOL,
+    RUN_MODEL_BENCHMARK_TOOL,
+    EVALUATE_DEBATE_EFFICACY_TOOL,
+    SCAN_SMC_SETUPS_TOOL,
+    GET_CARRY_TRADE_RANKINGS_TOOL,
+    GET_COMMODITY_SPREAD_TOOL,
+    GET_MT5_CHART_OBJECTS_TOOL,
+    CAPTURE_MT5_CHART_SCREENSHOT_TOOL,
+    PLOT_EQUITY_CURVE_TOOL,
+    GET_ECB_QT_PROGRESS,
+    GET_GLOBAL_PMI_TREND,
+]
+
+for t in NEW_CAPABILITY_UPGRADE_TOOLS:
+    if t not in TELEGRAM_TOOLS:
+        TELEGRAM_TOOLS.append(t)
+    if t not in STAGE2_TOOLS:
+        STAGE2_TOOLS.append(t)
+
 # All tools (for reference/testing)
-ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + NEW_OFFICE_AND_QUANT_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, SEARCH_HISTORICAL_MEMORIES, MANAGE_CRON, QUERY_SIGNAL_PERFORMANCE, GET_LATEST_RISK_VERDICT, EXPORT_DEBATE_TRANSCRIPTS, TRIGGER_LEARNING_CYCLE, RUN_SYSTEM_DOCTOR_CHECK, SET_TRAILING_STOP, EXPORT_HISTORICAL_DATA_CSV, TRIGGER_MARKET_SCAN, RUN_STRATEGY_BACKTEST, GET_PNL_SUMMARY, PLOT_PRICE_CHART, DETECT_CANDLESTICK_PATTERNS, RUN_ADHOC_SYMBOL_DEBATE, RUN_HOSTILE_STRESS_TEST, RUN_ANALYTICAL_QUERY, GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG]}.values())
+ALL_TOOLS: list[dict] = list({t["name"]: t for t in STAGE1_TOOLS + STAGE1_TOOLS_WEEKEND_BTC + STAGE2_TOOLS + TELEGRAM_TOOLS + STAGE2_ESSENTIAL_TOOLS + STAGE2_FROZEN_TOOLS + NEW_OFFICE_AND_QUANT_TOOLS + REMEDIATION_NEW_TOOLS + ENHANCEMENT_TOOLS + REMEDIATION_GAP_TOOLS + [GET_VERIFIED_MARKET_SNAPSHOT, GET_MARKET_QUOTE, EXECUTE_ANALYSIS_CODE, RETRIEVE_SPILLED_CONTEXT, DELEGATE_SPECIALIST_ANALYSIS, SKILLS_LIST_TOOL, SKILL_VIEW_TOOL, SEARCH_HISTORICAL_MEMORIES, MANAGE_CRON, QUERY_SIGNAL_PERFORMANCE, GET_LATEST_RISK_VERDICT, EXPORT_DEBATE_TRANSCRIPTS, TRIGGER_LEARNING_CYCLE, RUN_SYSTEM_DOCTOR_CHECK, SET_TRAILING_STOP, EXPORT_HISTORICAL_DATA_CSV, TRIGGER_MARKET_SCAN, RUN_STRATEGY_BACKTEST, GET_PNL_SUMMARY, PLOT_PRICE_CHART, DETECT_CANDLESTICK_PATTERNS, RUN_ADHOC_SYMBOL_DEBATE, RUN_HOSTILE_STRESS_TEST, RUN_ANALYTICAL_QUERY, GET_INDUCEMENTS, GET_BREAKER_BLOCKS, GET_JUDAS_SWING, GET_EQUAL_HIGHS_LOWS, GET_WICK_TO_WICK_FVG, GET_INVERTED_FVG]}.values())
+
 
 
 
