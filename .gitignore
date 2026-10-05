@@ -42,6 +42,8 @@ logs/
 trading-agent/logs/
 
 # Agent & Session State / Scratch files
+.monika_tier
+*/.monika_tier
 .agents/
 .agent_state/
 .freebuff/

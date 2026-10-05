@@ -93,13 +93,24 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
     return sanitized
 
 GEMINI_MODEL_ALIASES = {
-    "gemini-3.5-flash-lite": "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite": "gemini-3.1-flash-lite",
+    # Safe Gemini 3.x Models (Active)
     "gemini-3.5-flash": "gemini-3.5-flash",
     "gemini-3.6-flash": "gemini-3.6-flash",
     "gemini-3.7-flash": "gemini-3.7-flash",
     "gemini-3.8-flash": "gemini-3.8-flash",
-    "gemini-3-pro": "gemini-2.5-pro",
+    "gemini-3.1-flash-lite": "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite": "gemini-3.5-flash-lite",
+    "gemini-3.1-pro-preview": "gemini-3.1-pro-preview",
+    "gemini-3.1-pro": "gemini-3.1-pro-preview",
+    "gemini-pro": "gemini-3.1-pro-preview",
+    "gemini-2.5-pro": "gemini-3.1-pro-preview",
+    "gemini-1.5-pro": "gemini-3.1-pro-preview",
+    "gemini-3-pro": "gemini-3.1-pro-preview",
+    # Live & Audio Models
+    "gemini-3.8-live": "gemini-3.8-live",
+    "gemini-3.8-live-extended-thinking": "gemini-3.8-live-extended-thinking",
+    "gemini-3.5-transcribe-live": "gemini-3.5-transcribe-live",
+    "gemini-3-flash-live": "gemini-3-flash-live",
 }
 
 GEMINI_THINKING_LEVEL_MAP = {

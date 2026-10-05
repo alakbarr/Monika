@@ -13,6 +13,7 @@ from cli.subcommands.trading import TradingSubcommand
 from cli.subcommands.simulation import SimulationSubcommand
 from cli.subcommands.mcp import McpSubcommand
 from cli.subcommands.runcard import RunCardSubcommand
+from cli.subcommands.upgrade import UpgradeSubcommand
 
 AVAILABLE_SUBCOMMANDS: List[Subcommand] = [
     DaemonSubcommand(),
@@ -20,4 +21,5 @@ AVAILABLE_SUBCOMMANDS: List[Subcommand] = [
     SimulationSubcommand(),
     McpSubcommand(),
     RunCardSubcommand(),
+    UpgradeSubcommand(),
 ]

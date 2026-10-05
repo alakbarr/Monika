@@ -237,3 +237,15 @@ class ActiveCalendarPoller:
                 asyncio.create_task(self._news_watcher.run_once())
             except Exception as e:
                 logger.debug(f"Direct NewsWatcher trigger failed (non-fatal): {e}")
+
+        # Hook MacroTriggerRouter to immediately ingest granular decomposition / statements
+        try:
+            from scrapers.macro.macro_trigger_router import MacroTriggerRouter
+            router = MacroTriggerRouter(session)
+            for e in events:
+                ev_name = e.get("event_name") if isinstance(e, dict) else getattr(e, "event_name", "")
+                if ev_name:
+                    logger.info(f"[ActiveCalendarPoller] Routing calendar release '{ev_name}' to MacroTriggerRouter...")
+                    asyncio.create_task(router.on_calendar_event_released(ev_name))
+        except Exception as e:
+            logger.debug(f"[ActiveCalendarPoller] MacroTriggerRouter hook failed (non-fatal): {e}")

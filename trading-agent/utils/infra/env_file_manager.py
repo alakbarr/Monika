@@ -99,7 +99,7 @@ class EnvFileManager:
         """
         if env_path is None:
             # First check active process os.environ
-            has_mt5 = bool(os.environ.get("MT5_ACCOUNT"))
+            has_mt5 = bool(os.environ.get("MT5_ACCOUNT")) or bool(os.environ.get("PAPER_TRADING_MODE")) or bool(os.environ.get("EXECUTION_ADAPTER"))
             has_db = bool(os.environ.get("DATABASE_URL"))
             has_llm = any(bool(os.environ.get(k)) for k in [
                 "GEMINI_API_KEY", "GEMINI_API_KEYS", "ANTHROPIC_API_KEY",
@@ -125,7 +125,7 @@ class EnvFileManager:
         except Exception:
             return False
 
-        file_has_mt5 = "MT5_ACCOUNT" in found_keys
+        file_has_mt5 = "MT5_ACCOUNT" in found_keys or "PAPER_TRADING_MODE" in found_keys or "EXECUTION_ADAPTER" in found_keys
         file_has_db = "DATABASE_URL" in found_keys
         file_has_llm = any(k in found_keys for k in [
             "GEMINI_API_KEY", "GEMINI_API_KEYS", "ANTHROPIC_API_KEY",

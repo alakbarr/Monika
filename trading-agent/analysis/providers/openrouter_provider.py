@@ -75,7 +75,8 @@ OPENROUTER_MODEL_ALIASES = {
 
     # --- Google Pro/Preview (OpenRouter routing) ---
     "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
-    "gemini-2.5-pro": "google/gemini-2.5-pro",
+    "gemini-2.5-pro": "google/gemini-3.8-flash",
+    "gemini-2.5-flash": "google/gemini-3.5-flash",
     "gemini-3.8-flash": "google/gemini-3.8-flash",
     "google/gemini-3.8-flash": "google/gemini-3.8-flash",
     "gemini-3.7-flash": "google/gemini-3.7-flash",

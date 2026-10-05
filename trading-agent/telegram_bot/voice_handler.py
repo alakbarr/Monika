@@ -263,17 +263,32 @@ class VoiceHandler:
             try:
                 import aiohttp
                 b64_audio = base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
-                task_roles = self.settings.get("llm", {}).get("task_roles", {})
+                task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
                 voice_role = task_roles.get("voice_transcription", {})
-                model_name = (
-                    self.settings.get("telegram", {}).get("voice_transcription_model")
-                    or voice_role.get("primary")
-                    or voice_role.get("model")
-                    or task_roles.get("chat_telegram", {}).get("primary")
-                    or task_roles.get("chat_telegram", {}).get("model")
-                    or "gemini-2.5-flash"
-                )
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                candidate_models: list[str] = []
+                custom_tg_model = (self.settings or {}).get("telegram", {}).get("voice_transcription_model")
+                if custom_tg_model:
+                    candidate_models.append(custom_tg_model)
+
+                for k in ("primary", "model", "fallback_1", "fallback_2", "fallback_3", "fallback_4"):
+                    m = voice_role.get(k)
+                    if m and m not in candidate_models:
+                        candidate_models.append(m)
+
+                if not candidate_models:
+                    chat_role = task_roles.get("chat_telegram", {})
+                    chat_m = chat_role.get("primary") or chat_role.get("model")
+                    if chat_m:
+                        candidate_models.append(chat_m)
+                    for live_m in (
+                        "gemini-3.8-live",
+                        "gemini-3.8-live-extended-thinking",
+                        "gemini-3.5-transcribe-live",
+                        "gemini-3-flash-live",
+                    ):
+                        if live_m not in candidate_models:
+                            candidate_models.append(live_m)
+
                 headers = {
                     "x-goog-api-key": api_key,
                     "Content-Type": "application/json",
@@ -293,19 +308,24 @@ class VoiceHandler:
                     }]
                 }
                 async with aiohttp.ClientSession() as http_session:
-                    async with http_session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            candidates = data.get("candidates", [])
-                            if candidates:
-                                parts = candidates[0].get("content", {}).get("parts", [])
-                                text = "".join(p.get("text", "") for p in parts)
-                                if text:
-                                    return text.strip()
-                        else:
-                            err_body = await resp.text()
-                            logger.warning(f"[VoiceHandler] Direct Gemini transcription status {resp.status}: {err_body}")
+                    for model_name in candidate_models:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                        try:
+                            async with http_session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    candidates = data.get("candidates", [])
+                                    if candidates:
+                                        parts = candidates[0].get("content", {}).get("parts", [])
+                                        text = "".join(p.get("text", "") for p in parts)
+                                        if text:
+                                            return text.strip()
+                                else:
+                                    err_body = await resp.text()
+                                    logger.warning(f"[VoiceHandler] Direct Gemini transcription ({model_name}) status {resp.status}: {err_body}")
+                        except Exception as e:
+                            logger.warning(f"[VoiceHandler] Direct Gemini transcription failed for {model_name}: {e}")
             except Exception as e:
-                logger.warning(f"[VoiceHandler] Direct Gemini transcription failed: {e}")
+                logger.warning(f"[VoiceHandler] Direct Gemini transcription setup failed: {e}")
 
         return ""

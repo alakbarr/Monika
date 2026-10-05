@@ -2,6 +2,7 @@ import logging
 import asyncio
 import json
 from typing import Dict, Any
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from analysis.tools.tool_executor import ToolExecutor
 from utils.llm.caveman_compressor import compress_tool_payload
@@ -25,6 +26,10 @@ PREFETCH_KEY_TO_TOOL: dict[str, str] = {
     'bond_yield_spreads': 'get_bond_yield_spreads',
     'central_bank_expectations': 'get_central_bank_expectations',
     'prediction_market': 'get_prediction_market_odds',
+    'fed_net_liquidity_and_stress': 'get_fed_net_liquidity_and_stress',
+    'treasury_auction_results': 'get_treasury_auction_results',
+    'macro_cross_report_synthesis': 'get_macro_cross_report_synthesis',
+    'g10_macro_divergence': 'get_g10_macro_divergence',
 }
 
 class Stage1DataBundler:
@@ -59,6 +64,10 @@ class Stage1DataBundler:
             "bond_yield_spreads": self.executor.execute("get_bond_yield_spreads", {}),
             "central_bank_expectations": self.executor.execute("get_central_bank_expectations", {}),
             "prediction_market": self.executor.execute("get_prediction_market_odds", {}),
+            "fed_net_liquidity_and_stress": self.executor.execute("get_fed_net_liquidity_and_stress", {}),
+            "treasury_auction_results": self.executor.execute("get_treasury_auction_results", {"tenor": "10Y"}),
+            "macro_cross_report_synthesis": self.executor.execute("get_macro_cross_report_synthesis", {}),
+            "g10_macro_divergence": self.executor.execute("get_g10_macro_divergence", {"pair": "EURUSD"}),
         }
 
         # Extra parallel zero-browser real-time feeds

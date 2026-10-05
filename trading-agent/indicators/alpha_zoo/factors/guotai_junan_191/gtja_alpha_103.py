@@ -12,6 +12,7 @@ optional bottleneck backend used by the shared ts_argmax/ts_argmin operators.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 ALPHA_ID = "gtja191_103"
 

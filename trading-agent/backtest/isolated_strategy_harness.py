@@ -599,7 +599,7 @@ class IsolatedStrategyBacktestHarness:
                 with frozen_time(cur_time):
                     sig = await asyncio.wait_for(
                         strat_instance.evaluate(
-                            session=slice_session,  # type: ignore[arg-type]
+                            session=slice_session,
                             symbol=self.symbol,
                             settings=self.settings,
                         ),
@@ -968,7 +968,7 @@ class IsolatedStrategyBacktestHarness:
                 with frozen_time(cur_time):
                     sig = await asyncio.wait_for(
                         strat_instance.evaluate(
-                            session=slice_session,  # type: ignore[arg-type]
+                            session=slice_session,
                             symbol=self.symbol,
                             settings=self.settings,
                         ),

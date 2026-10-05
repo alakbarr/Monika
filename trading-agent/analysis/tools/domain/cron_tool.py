@@ -159,14 +159,16 @@ async def handle_manage_cron(
         try:
             from scheduler.unified_cron_engine import get_unified_cron_engine
             engine = get_unified_cron_engine()
-            engine.add_job(
-                schedule=params.cron_expression,
+            engine.register_job(
+                job_id=job.name,
+                schedule_expression=params.cron_expression,
                 prompt=params.instruction,
-                destination="telegram",
                 name=params.name,
+                target_delivery="telegram",
+                target_destination="telegram",
             )
         except Exception as e:
-            logger.debug(f"[CronTool] UnifiedCronEngine integration non-fatal: {e}")
+            logger.error(f"[CronTool] UnifiedCronEngine register_job failed: {e}")
 
         return {
             "success": True,
@@ -188,10 +190,23 @@ async def handle_manage_cron(
         ok = _cron_registry.remove_job(params.name)
         if not ok:
             return {"success": False, "error": f"Cron job '{params.name}' not found."}
+        try:
+            from scheduler.unified_cron_engine import get_unified_cron_engine
+            engine = get_unified_cron_engine()
+            engine.unregister_job(params.name)
+        except Exception as e:
+            logger.debug(f"[CronTool] UnifiedCronEngine unregister_job: {e}")
         return {"success": True, "message": f"Removed cron job '{params.name}'."}
 
     elif act == "clear":
         cleared = _cron_registry.clear()
+        try:
+            from scheduler.unified_cron_engine import get_unified_cron_engine
+            engine = get_unified_cron_engine()
+            for j in engine.list_jobs():
+                engine.unregister_job(j.job_id)
+        except Exception as e:
+            logger.debug(f"[CronTool] UnifiedCronEngine clear: {e}")
         return {"success": True, "message": f"Cleared {cleared} cron schedules."}
 
     return {"success": False, "error": f"Unknown action '{act}'. Use 'add', 'list', 'remove', or 'clear'."}

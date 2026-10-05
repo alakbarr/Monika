@@ -226,6 +226,121 @@ def _get_settings_path() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Setup & Onboarding Wizard Routes
+# ---------------------------------------------------------------------------
+
+_SETUP_HTML_PATH = Path(__file__).parent / "static_setup.html"
+
+@app.get("/setup", include_in_schema=False)
+async def serve_setup_page():
+    """Serve standalone Web Setup Wizard page."""
+    if _SETUP_HTML_PATH.exists():
+        return FileResponse(str(_SETUP_HTML_PATH))
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Setup page template not found")
+
+@app.post("/api/setup/submit")
+async def submit_setup_configuration(request: Request):
+    """Receive and persist configuration submitted from Web Onboarding Wizard."""
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid JSON payload"})
+
+    try:
+        from utils.infra.env_file_manager import EnvFileManager
+        from config.profile_applicator import ProfileApplicator
+        from config.atomic_writer import AtomicConfigWriter
+
+        env_updates: Dict[str, str] = {}
+
+        # 1. Database
+        db_type = data.get("db_type", "sqlite")
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if db_type == "sqlite":
+            data_dir = os.path.join(base_dir, "data")
+            os.makedirs(data_dir, exist_ok=True)
+            db_file = os.path.join(data_dir, "monika.db").replace("\\", "/")
+            db_url = f"sqlite+aiosqlite:///{db_file}"
+        else:
+            db_url = data.get("db_url") or "postgresql+asyncpg://postgres:postgres@localhost:5432/monika_trading"
+
+        env_updates["DATABASE_URL"] = db_url
+        os.environ["DATABASE_URL"] = db_url
+
+        # 2. AI Keys
+        gemini_keys = str(data.get("gemini_keys", "")).strip()
+        if gemini_keys:
+            env_updates["GEMINI_API_KEYS"] = gemini_keys
+            first_key = [k.strip() for k in gemini_keys.split(",") if k.strip()][0]
+            env_updates["GEMINI_API_KEY"] = first_key
+            os.environ["GEMINI_API_KEYS"] = gemini_keys
+            os.environ["GEMINI_API_KEY"] = first_key
+
+        enable_9r = data.get("enable_9router", True)
+        env_updates["ENABLE_9ROUTER"] = "true" if enable_9r else "false"
+
+        for k, env_name in [
+            ("openrouter_key", "OPENROUTER_API_KEY"),
+            ("groq_key", "GROQ_API_KEY"),
+            ("anthropic_key", "ANTHROPIC_API_KEY"),
+            ("deepseek_key", "DEEPSEEK_API_KEY"),
+        ]:
+            val = str(data.get(k, "")).strip()
+            if val:
+                env_updates[env_name] = val
+                os.environ[env_name] = val
+
+        # 3. MT5 parameters
+        mt5_acc = str(data.get("mt5_account", "")).strip()
+        mt5_pwd = str(data.get("mt5_password", "")).strip()
+        mt5_srv = str(data.get("mt5_server", "")).strip()
+        mt5_pth = str(data.get("mt5_path", "")).strip()
+
+        if mt5_acc:
+            env_updates["MT5_ACCOUNT"] = mt5_acc
+        if mt5_pwd:
+            env_updates["MT5_PASSWORD"] = mt5_pwd
+        if mt5_srv:
+            env_updates["MT5_SERVER"] = mt5_srv
+        if mt5_pth:
+            clean_path = mt5_pth.replace("\\", "/")
+            env_updates["MT5_PATH"] = clean_path
+
+        # Write .env atomically
+        EnvFileManager.update_env_values(env_updates)
+
+        # 4. Apply 49 Task Roles according to chosen profile
+        profile = data.get("profile", "low_latency_cheap")
+        settings_path = _get_settings_path()
+
+        provs = ProfileApplicator.detect_available_providers()
+        ProfileApplicator.apply_profile_to_settings(settings_path, profile, provs)
+
+        # 5. Paper trading setting
+        trade_mode = data.get("trade_mode", "paper")
+        is_paper = (trade_mode == "paper")
+        AtomicConfigWriter.update_in_place(settings_path, {
+            "paper_trading": {
+                "enabled": is_paper,
+            }
+        })
+
+        # 6. Initialize database tables
+        try:
+            from database.db import init_db
+            await init_db()
+        except Exception as dberr:
+            logger.warning(f"Database init warning during web setup: {dberr}")
+
+        return {"status": "ok", "message": "Konfigurasi Monika berhasil disimpan.", "profile": profile, "db": db_type}
+
+    except Exception as e:
+        logger.error(f"Error saving setup configuration: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+# ---------------------------------------------------------------------------
 # Static File Serving (React Frontend)
 # ---------------------------------------------------------------------------
 

@@ -184,8 +184,8 @@ class TestChatAgentHistoryMemory:
 
         row_old = MagicMock()
         row_old.role = "user"
-        row_old.message = "Pesan 13 jam lalu"
-        row_old.timestamp = now - timedelta(hours=13)
+        row_old.message = f"Pesan {SESSION_TIMEOUT_HOURS + 1} jam lalu"
+        row_old.timestamp = now - timedelta(hours=SESSION_TIMEOUT_HOURS + 1)
 
         mock_session = create_mock_async_session()
         mock_result = MagicMock()

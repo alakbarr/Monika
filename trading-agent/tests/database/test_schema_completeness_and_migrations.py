@@ -64,7 +64,8 @@ def test_alembic_migration_chain_continuity():
         curr = next_rev
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
-    assert visited[-1] == 't1a2b3c4d5e6', f"Expected head revision to be t1a2b3c4d5e6, got {visited[-1]}"
+    assert visited[0] == 't1a2b3c4d5e6', f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
+    assert visited[-1] == 'c83c5e451412', f"Expected head revision to be c83c5e451412, got {visited[-1]}"
 
 
 def test_schema_completeness_all_models():

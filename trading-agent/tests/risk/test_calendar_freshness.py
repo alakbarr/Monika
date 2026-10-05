@@ -44,10 +44,13 @@ async def test_calendar_fresh_under_4h(settings):
     mock_res_future = MagicMock()
     mock_res_future.scalar_one_or_none.return_value = 1
 
+    mock_res_pref = MagicMock()
+    mock_res_pref.scalars.return_value.all.return_value = []
+
     mock_res_upcoming = MagicMock()
     mock_res_upcoming.scalar_one_or_none.return_value = None
 
-    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_upcoming]
+    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_upcoming]
 
     ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
     assert ok
@@ -73,10 +76,13 @@ async def test_calendar_age_between_4_and_8h(settings):
     mock_res_future = MagicMock()
     mock_res_future.scalar_one_or_none.return_value = 1
 
+    mock_res_pref = MagicMock()
+    mock_res_pref.scalars.return_value.all.return_value = []
+
     mock_res_upcoming = MagicMock()
     mock_res_upcoming.scalar_one_or_none.return_value = None
 
-    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_upcoming]
+    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_upcoming]
 
     ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
     assert ok
@@ -104,10 +110,13 @@ async def test_calendar_age_over_8h_with_future_coverage(settings):
     mock_res_future = MagicMock()
     mock_res_future.scalar_one_or_none.return_value = 42
 
+    mock_res_pref = MagicMock()
+    mock_res_pref.scalars.return_value.all.return_value = []
+
     mock_res_upcoming = MagicMock()
     mock_res_upcoming.scalar_one_or_none.return_value = None
 
-    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_upcoming]
+    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_upcoming]
 
     ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
     assert ok
@@ -135,10 +144,13 @@ async def test_calendar_age_over_8h_without_future_coverage(settings):
     mock_res_future = MagicMock()
     mock_res_future.scalar_one_or_none.return_value = None
 
+    mock_res_pref = MagicMock()
+    mock_res_pref.scalars.return_value.all.return_value = []
+
     mock_res_upcoming = MagicMock()
     mock_res_upcoming.scalar_one_or_none.return_value = None
 
-    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_upcoming]
+    mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_upcoming]
 
     ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
     assert ok

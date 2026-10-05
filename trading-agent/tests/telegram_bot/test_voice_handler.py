@@ -10,7 +10,7 @@ from telegram_bot.voice_handler import VoiceHandler
 async def test_voice_handler_passes_x_goog_api_key_header():
     handler = VoiceHandler(settings={
         "api_keys": {"gemini": "test_gemini_key_123"},
-        "llm": {"task_roles": {"chat_telegram": {"model": "gemini-2.5-flash"}}}
+        "llm": {"task_roles": {"chat_telegram": {"model": "gemini-3.5-flash"}}}
     })
 
     mock_resp = MagicMock()
@@ -36,8 +36,46 @@ async def test_voice_handler_passes_x_goog_api_key_header():
         # Verify key is NOT in the URL
         url = call_args[0]
         assert "key=" not in url
-        assert url == "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+        assert url == "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
 
         # Verify key is passed in headers
         headers = call_kwargs.get("headers", {})
         assert headers.get("x-goog-api-key") == "test_gemini_key_123"
+
+
+@pytest.mark.asyncio
+async def test_voice_handler_uses_task_role_and_live_models():
+    handler = VoiceHandler(settings={
+        "api_keys": {"gemini": "test_gemini_key_live"},
+        "llm": {
+            "task_roles": {
+                "voice_transcription": {
+                    "primary": "gemini-3.8-live",
+                    "fallback_1": "gemini-3.8-live-extended-thinking",
+                    "fallback_2": "gemini-3.5-transcribe-live",
+                    "fallback_3": "gemini-3-flash-live",
+                }
+            }
+        }
+    })
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.json = AsyncMock(return_value={
+        "candidates": [{
+            "content": {"parts": [{"text": "Transcribed with Gemini 3.8 Live"}]}
+        }]
+    })
+
+    with patch("aiohttp.ClientSession.post") as mock_post, \
+         patch("analysis.providers.llm_factory.get_client_for_task", side_effect=Exception("No LLM client")):
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_resp
+        mock_post.return_value = mock_ctx
+
+        result = await handler._transcribe(b"fake_audio_bytes", "audio/ogg")
+
+        assert result == "Transcribed with Gemini 3.8 Live"
+        assert mock_post.called
+        call_args, _ = mock_post.call_args
+        assert call_args[0] == "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-live:generateContent"

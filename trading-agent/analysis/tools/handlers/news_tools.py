@@ -4,6 +4,7 @@ Handles raw news items, pre-computed news digests, categorized news slices, web 
 Direct execution without circular trampolines.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -356,13 +357,42 @@ async def handle_search_academic(args: dict, **ctx) -> dict:
         return {"success": False, "query": query, "papers": [], "error": str(e)}
 
 
+async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
+    """Search for real-time social trader sentiment on Twitter/X or financial forums, with web search fallback."""
+    query = (args.get("query") or args.get("symbol") or "XAUUSD").strip()
+    try:
+        from scrapers.social.twitter_watch import TwitterWatchScraper
+        scraper = TwitterWatchScraper(headless=True)
+        tweets = await asyncio.to_thread(scraper.fetch_tweets)
+        if tweets:
+            matching = [t.to_dict() if hasattr(t, "to_dict") else str(t) for t in tweets if query.lower() in str(t).lower()]
+            if matching:
+                return {"query": query, "source": "twitter", "items": matching[:10], "status": "success"}
+    except Exception as e:
+        logger.debug(f"Direct Twitter fetch failed for {query}: {e}")
+
+    try:
+        from data_sources.web_search import WebSearch
+        searcher = WebSearch()
+        results = await searcher.search(f"{query} sentiment twitter reddit tradingview", num_results=5)
+        return {
+            "query": query,
+            "source": "web_search_fallback",
+            "items": results,
+            "status": "fallback_success",
+            "message": "Direct Twitter scrape unavailable; retrieved latest web social sentiment via web search.",
+        }
+    except Exception as err:
+        return {"query": query, "error": str(err), "status": "error"}
+
+
 def register_news_tools():
     registry = ToolRegistry.get_instance()
     tools = [
         ToolDefinition(
             name="get_news_items",
             description="Fetch recent filtered financial news items.",
-            parameters={"type": "object", "properties": {"hours_back": {"type": "integer"}, "limit": {"type": "integer"}, "currency": {"type": "string"}}},
+            parameters={"type": "object", "properties": {"query": {"type": "string"}, "currency": {"type": "string"}, "limit": {"type": "integer"}, "hours_back": {"type": "integer"}, "min_impact": {"type": "string"}}},
             handler=handle_get_news_items,
             toolset="news",
             requires_db=True,
@@ -404,6 +434,14 @@ def register_news_tools():
             description="Search quantitative trading and macro research papers on arXiv.",
             parameters={"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer"}}},
             handler=handle_search_academic,
+            toolset="news",
+            requires_db=False,
+        ),
+        ToolDefinition(
+            name="search_social_sentiment",
+            description="Search for live social sentiment on Twitter/X or financial forums for a symbol, with fallback.",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}},
+            handler=handle_search_social_sentiment,
             toolset="news",
             requires_db=False,
         ),

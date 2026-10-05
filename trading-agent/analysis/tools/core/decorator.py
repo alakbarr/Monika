@@ -117,7 +117,7 @@ def monika_tool(
             handler=fn,
         )
 
-        fn.__monika_tool_def__ = tool_def  # type: ignore[attr-defined]
+        fn.__monika_tool_def__ = tool_def
         return fn
 
     return decorator

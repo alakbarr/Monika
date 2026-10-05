@@ -186,6 +186,15 @@ def drain_orphan_async_tasks():
 
 
 @pytest.fixture(autouse=True)
+def isolate_environment_mutations():
+    """Protect process environment from direct in-place mutations during tests."""
+    orig_env = dict(os.environ)
+    yield
+    os.environ.clear()
+    os.environ.update(orig_env)
+
+
+@pytest.fixture(autouse=True)
 def allow_tradingagent_log_propagation():
     """Memastikan log dari hierarki logger TradingAgent merambat ke root logger untuk caplog pytest."""
     import logging
@@ -197,6 +206,7 @@ def allow_tradingagent_log_propagation():
     yield
     ta_logger.propagate = prev_propagate
     ta_logger.setLevel(prev_level)
+
 
 
 

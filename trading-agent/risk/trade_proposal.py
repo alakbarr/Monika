@@ -133,7 +133,7 @@ class TradeProposal(BaseModel):
         r_hash = cls.compute_reasoning_hash(reasoning_text)
         return cls(
             symbol=symbol,
-            direction=decision.upper(),  # type: ignore[arg-type]
+            direction=decision.upper(),
             entry_price=entry_price,
             stop_loss=stop_loss,
             take_profit=take_profit,

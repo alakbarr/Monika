@@ -6,7 +6,7 @@ win_count: 5
 avg_confidence: 0.88
 total_pnl_usd: 900.00
 status: active
-last_crystallized_at: 2026-10-02T04:45:32.929127+00:00
+last_crystallized_at: 2026-10-05T01:40:13.260063+00:00
 ---
 
 # Crystallized Strategy: EURUSD (EURUSD_TREND)
@@ -20,7 +20,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 - Baseline Conviction: 88% (n=5)
 
 ## Core Tactical Directives
-- <MagicMock name='mock.chat.completions.create().choices.__getitem__().message.content' id='1794085056064'>
+- <MagicMock name='mock.chat.completions.create().choices.__getitem__().message.content' id='3116466569296'>
 
 ## Execution Invariants
 - Minimum Confluence Score: 7.5 / 14.0

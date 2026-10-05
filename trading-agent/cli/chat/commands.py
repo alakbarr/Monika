@@ -47,27 +47,63 @@ AVAILABLE_THEMES = list(THEMES.keys())
 logger = logging.getLogger("TradingAgent.CLI.Chat.Commands")
 
 def _load_model_aliases() -> Dict[str, str]:
-    aliases: Dict[str, str] = {
-        "auto": "auto",
-        "fast": "gemini-2.5-flash",
-        "balanced": "gemini-2.5-pro",
-        "reasoning": "deepseek-r1",
-        "deepseek": "deepseek-v3",
-        "opus": "claude-3-5-sonnet",
-        "claude": "claude-3-5-sonnet",
-        "claude-sonnet": "claude-3-5-sonnet",
-        "claude-opus": "claude-3-opus",
-        "gemini-flash": "gemini-2.5-flash",
-        "gemini-pro": "gemini-2.5-pro",
-    }
+    """
+    Dynamically loads model tiers and aliases from configured task_roles in settings.yaml.
+    Does not hardcode fixed models; resolves 'fast', 'balanced', 'reasoning', 'pro', etc.
+    directly from task_roles definitions.
+    """
+    aliases: Dict[str, str] = {"auto": "auto"}
     try:
         from config.settings import load_settings
         settings = load_settings()
+        task_roles = settings.get("llm", {}).get("task_roles", {})
+
+        # 1. Resolve tiers from task_roles
+        tier_candidates = {
+            "fast": ["chat_interactive_fast", "chat_fast", "chat_telegram", "stage1_shadow_check"],
+            "balanced": ["chat_interactive_balanced", "chat_balanced", "chat_telegram_medium"],
+            "reasoning": ["chat_interactive_reasoning", "chat_reasoning", "chat_telegram_complex", "deep_research"],
+            "pro": ["chat_interactive_pro", "chat_pro"],
+        }
+        for tier_name, role_list in tier_candidates.items():
+            for role_name in role_list:
+                role_cfg = task_roles.get(role_name)
+                if isinstance(role_cfg, dict) and role_cfg.get("primary"):
+                    aliases[tier_name] = role_cfg["primary"]
+                    break
+
+        # 2. Register every task_role name directly as an alias (e.g. /model chat_telegram)
+        for role_name, role_cfg in task_roles.items():
+            if isinstance(role_cfg, dict) and role_cfg.get("primary"):
+                aliases[role_name.lower()] = role_cfg["primary"]
+                if role_name.startswith("chat_interactive_"):
+                    short_tier = role_name.replace("chat_interactive_", "").lower()
+                    aliases[short_tier] = role_cfg["primary"]
+
+        # 3. Register models from model_catalog and router_matrix
         for k in settings.get("llm", {}).get("model_catalog", {}).keys():
             aliases[k.lower()] = k
-    except Exception:
-        pass
+
+        for k, v in settings.get("llm", {}).get("router_matrix", {}).items():
+            if isinstance(v, list) and v:
+                aliases[k.lower()] = v[0]
+            elif isinstance(v, str):
+                aliases[k.lower()] = v
+    except Exception as e:
+        logger.debug(f"Failed loading model aliases from settings: {e}")
+
+    # Fallback to sensible safe models only if settings were entirely unparseable
+    if "fast" not in aliases:
+        aliases["fast"] = "gemini-3.5-flash-lite"
+    if "balanced" not in aliases:
+        aliases["balanced"] = "gemini-3.7-flash"
+    if "reasoning" not in aliases:
+        aliases["reasoning"] = "gemini-3.8-flash"
+    if "pro" not in aliases:
+        aliases["pro"] = "gemini-3.1-pro-preview"
+
     return aliases
+
 
 MODEL_ALIASES: Dict[str, str] = _load_model_aliases()
 

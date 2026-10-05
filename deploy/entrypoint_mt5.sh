@@ -18,15 +18,12 @@ wineboot --init || true
 
 echo "[MT5-Wine] Shared bridge available at /shared/mt5_bridge"
 
-# If mt5server.exe is present, start the RPC bridge for Linux Python
-if [ -f "/opt/mt5/mt5server.exe" ]; then
-    echo "[MT5-Wine] Starting mt5server.exe RPC bridge on port 18812..."
-    wine /opt/mt5/mt5server.exe -p 18812 &
-elif [ -f "/wine/mt5server.exe" ]; then
-    echo "[MT5-Wine] Starting /wine/mt5server.exe RPC bridge on port 18812..."
-    wine /wine/mt5server.exe -p 18812 &
-else
-    echo "[MT5-Wine] Notice: mt5server.exe not found in /opt/mt5 or /wine. If using mt5linux RPC bridge, mount mt5server.exe into /opt/mt5."
+# Launch MT5 RPyC classic bridge if Wine Python is available
+if command -v wine &>/dev/null; then
+    if wine python --version &>/dev/null; then
+        echo "[MT5-Wine] Starting Wine Python RPyC bridge on port 18812..."
+        wine python -m rpyc.cli.rpyc_classic --port 18812 &
+    fi
 fi
 
 # If terminal64.exe is mounted or present, launch it

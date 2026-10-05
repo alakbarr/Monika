@@ -102,6 +102,69 @@ class PatternSimilarityEngine:
 
         return aggregated
 
+    async def compare_specific_date(
+        self,
+        symbol: str,
+        target_date_str: str,
+        timeframe: str = "D1",
+        window_size: int = 30,
+    ) -> str:
+        """Compares current market pattern against an exact historical date window (Q044)."""
+        import numpy as np
+        from datetime import timezone
+        from dateutil import parser
+        from database.models import PriceOHLCV
+        from sqlalchemy import select
+
+        try:
+            target_dt = parser.parse(target_date_str)
+            if target_dt.tzinfo is None:
+                target_dt = target_dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return f"Error: Invalid date format '{target_date_str}'. Use ISO format YYYY-MM-DD."
+
+        current_bars = await self._fetch_recent_bars(symbol, timeframe, window_size)
+        if current_bars is None or len(current_bars) < window_size:
+            return f"Error: Insufficient recent price history for {symbol} ({timeframe})."
+
+        stmt = (
+            select(PriceOHLCV)
+            .where(
+                PriceOHLCV.symbol == symbol,
+                PriceOHLCV.timeframe == timeframe,
+                PriceOHLCV.timestamp <= target_dt
+            )
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(window_size)
+        )
+        rows = (await self.session.execute(stmt)).scalars().all()
+        if not rows or len(rows) < window_size:
+            return f"Error: Insufficient historical price bars around {target_date_str} for {symbol} ({timeframe})."
+
+        hist_bars = list(reversed(rows))
+        cur_closes = np.array([float(b.close) for b in current_bars])
+        hist_closes = np.array([float(b.close) for b in hist_bars])
+
+        cur_norm = (cur_closes - np.mean(cur_closes)) / (np.std(cur_closes) + 1e-8)
+        hist_norm = (hist_closes - np.mean(hist_closes)) / (np.std(hist_closes) + 1e-8)
+
+        corr = float(np.corrcoef(cur_norm, hist_norm)[0, 1])
+        eucl_dist = float(np.linalg.norm(cur_norm - hist_norm))
+        similarity_score = max(0.0, 1.0 - (eucl_dist / (np.sqrt(len(cur_norm)) * 2)))
+
+        cur_ret = ((cur_closes[-1] - cur_closes[0]) / cur_closes[0]) * 100.0
+        hist_ret = ((hist_closes[-1] - hist_closes[0]) / hist_closes[0]) * 100.0
+
+        return (
+            f"=== Pattern Comparison: {symbol} ({timeframe}) ===\n"
+            f"Current Window: {current_bars[0].timestamp.strftime('%Y-%m-%d')} to {current_bars[-1].timestamp.strftime('%Y-%m-%d')} (Return: {cur_ret:+.2f}%)\n"
+            f"Target Window:  {hist_bars[0].timestamp.strftime('%Y-%m-%d')} to {hist_bars[-1].timestamp.strftime('%Y-%m-%d')} (Return: {hist_ret:+.2f}%)\n"
+            f"Correlation: {corr:.3f}\n"
+            f"Similarity Score: {similarity_score * 100:.1f}%\n"
+            f"Normalized Euclidean Distance: {eucl_dist:.2f}\n"
+            f"Interpretation: {'High Structural Match' if corr > 0.7 else ('Moderate Resemblance' if corr > 0.4 else 'Low / Divergent Structure')}"
+        )
+
     async def _screen_single_tf(self, symbol: str, timeframe: str) -> SingleTimeframeResult:
         """Screens a single timeframe for similar patterns."""
         w_size = int(self.window_sizes.get(timeframe, self.DEFAULT_WINDOW_SIZES.get(timeframe, 30)))

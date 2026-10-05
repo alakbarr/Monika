@@ -7,7 +7,7 @@ import logging
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PriceOHLCV
+from database.models import PriceOHLCV, DXYData, TreasuryYield
 
 logger = logging.getLogger('TradingAgent.DynamicCorrelation')
 
@@ -20,6 +20,18 @@ STATIC_CORRELATION_FALLBACK = {
     ('BTCUSD', 'EURUSD'): 0.30, ('BTCUSD', 'USDJPY'): -0.25, ('BTCUSD', 'GBPUSD'): 0.25,
     ('BTCUSD', 'AUDUSD'): 0.35, ('BTCUSD', 'XTIUSD'): 0.20, ('USDJPY', 'XTIUSD'): -0.40,
     ('XTIUSD', 'XBRUSD'): 0.95, ('XBRUSD', 'EURUSD'): 0.45, ('XBRUSD', 'USDJPY'): -0.40, ('XAUUSD', 'XBRUSD'): 0.45,
+    ('XAUUSD', 'US10Y'): -0.45, ('US10Y', 'XAUUSD'): -0.45,
+    ('USDJPY', 'US10Y'): 0.65, ('US10Y', 'USDJPY'): 0.65,
+    ('EURUSD', 'US10Y'): -0.50, ('US10Y', 'EURUSD'): -0.50,
+    ('XAUUSD', 'US02Y'): -0.40, ('US02Y', 'XAUUSD'): -0.40,
+    ('USDJPY', 'US02Y'): 0.60, ('US02Y', 'USDJPY'): 0.60,
+}
+
+YIELD_TENOR_MAP = {
+    "US10Y": "10Y", "10Y": "10Y",
+    "US02Y": "2Y", "US2Y": "2Y", "2Y": "2Y",
+    "US05Y": "5Y", "US5Y": "5Y", "5Y": "5Y",
+    "US30Y": "30Y", "30Y": "30Y",
 }
 
 def is_crypto_or_commodity_symbol(sym: str) -> bool:
@@ -70,14 +82,36 @@ async def get_rolling_correlation(
     if symbol1 == symbol2:
         return (1.0, 'identity')
     try:
-        q1 = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(PriceOHLCV.symbol == symbol1, PriceOHLCV.timeframe == 'D1')
-        q2 = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(PriceOHLCV.symbol == symbol2, PriceOHLCV.timeframe == 'D1')
-        if as_of is not None:
-            q1 = q1.where(PriceOHLCV.timestamp <= as_of)
-            q2 = q2.where(PriceOHLCV.timestamp <= as_of)
+        from database.models import TreasuryYield
 
-        s1_rows = (await session.execute(q1.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_bars))).all()
-        s2_rows = (await session.execute(q2.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_bars))).all()
+        def _build_stmt(sym: str):
+            sym_clean = (sym or "").upper().replace("/", "")
+            if sym_clean in ("DXY", "USDX"):
+                q = select(DXYData.date.label("timestamp"), DXYData.close.label("close"))
+                if as_of is not None:
+                    q = q.where(DXYData.date <= as_of)
+                return q.order_by(DXYData.date.desc()).limit(lookback_bars)
+            elif sym_clean in YIELD_TENOR_MAP:
+                tenor = YIELD_TENOR_MAP[sym_clean]
+                q = select(TreasuryYield.date.label("timestamp"), TreasuryYield.yield_percent.label("close")).where(
+                    TreasuryYield.tenor == tenor
+                )
+                if as_of is not None:
+                    q = q.where(TreasuryYield.date <= as_of)
+                return q.order_by(TreasuryYield.date.desc()).limit(lookback_bars)
+            else:
+                q = select(PriceOHLCV.timestamp, PriceOHLCV.close).where(
+                    PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == 'D1'
+                )
+                if as_of is not None:
+                    q = q.where(PriceOHLCV.timestamp <= as_of)
+                return q.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_bars)
+
+        q1 = _build_stmt(symbol1)
+        q2 = _build_stmt(symbol2)
+
+        s1_rows = (await session.execute(q1)).all()
+        s2_rows = (await session.execute(q2)).all()
         if len(s1_rows) < 20 or len(s2_rows) < 20:
             return (_static_fallback(symbol1, symbol2), 'static_fallback_insufficient_history')
         df1 = pd.DataFrame(s1_rows, columns=['timestamp', 'close1'])

@@ -120,7 +120,7 @@ class AgentTracer:
 
     def _init_otel(self):
         try:
-            from opentelemetry import trace  # type: ignore
+            from opentelemetry import trace
             self._otel_tracer = trace.get_tracer("tradeagent.ai")
         except ImportError:
             self._otel_tracer = None

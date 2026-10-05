@@ -501,8 +501,50 @@ class UnifiedCronEngine:
         execution_output = ""
         exit_code = 0
         try:
-            # If no callbacks, execute default isolated script runner if no_agent is set
-            if not self._execution_callbacks and job.no_agent and job.prompt:
+            if self._execution_callbacks:
+                for cb in self._execution_callbacks:
+                    try:
+                        res = cb(job)
+                        if asyncio.iscoroutine(res):
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    fut = asyncio.run_coroutine_threadsafe(res, loop)
+                                    res = fut.result(timeout=job.timeout_seconds)
+                                else:
+                                    res = loop.run_until_complete(res)
+                            except RuntimeError:
+                                res = asyncio.run(res)
+                        if isinstance(res, str) and res:
+                            execution_output = res
+                    except Exception as cb_exc:
+                        logger.error(f"[UnifiedCronEngine] Callback execution error for '{job.job_id}': {cb_exc}")
+                        exit_code = 1
+                        execution_output = str(cb_exc)
+            elif not job.no_agent and job.prompt:
+                # Default headless ChatAgent execution for conversational / analytical tasks
+                try:
+                    from config.settings import load_settings
+                    from telegram_bot.chat_agent import ChatAgent
+                    settings = load_settings()
+                    agent = ChatAgent(settings, user_id=job.target_destination or "cron_scheduler", is_admin=True)
+                    async def _run_agent():
+                        r, _ = await agent.handle(job.prompt)
+                        return r
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            fut = asyncio.run_coroutine_threadsafe(_run_agent(), loop)
+                            execution_output = fut.result(timeout=job.timeout_seconds)
+                        else:
+                            execution_output = loop.run_until_complete(_run_agent())
+                    except RuntimeError:
+                        execution_output = asyncio.run(_run_agent())
+                except Exception as agent_err:
+                    logger.error(f"[UnifiedCronEngine] Headless agent turn error: {agent_err}")
+                    exit_code = 1
+                    execution_output = f"[ERROR]: {agent_err}"
+            elif job.no_agent and job.prompt:
                 shell = ["powershell.exe", "-NoProfile", "-Command"] if sys.platform == "win32" else ["/bin/bash", "-c"]
                 res = subprocess.run(
                     shell + [job.prompt],
@@ -513,17 +555,12 @@ class UnifiedCronEngine:
                 )
                 exit_code = res.returncode
                 execution_output = res.stdout if exit_code == 0 else f"{res.stdout}\n[ERROR]: {res.stderr}"
-            else:
-                for cb in self._execution_callbacks:
-                    try:
-                        cb(job)
-                    except Exception as cb_exc:
-                        logger.error(f"[UnifiedCronEngine] Callback execution error for '{job.job_id}': {cb_exc}")
-                        exit_code = 1
-                        execution_output = str(cb_exc)
+
+            if not execution_output and getattr(job, "last_output", None):
+                execution_output = str(job.last_output)
 
             # Dispatch result to requested channel if configured via Outbox Delivery Lease
-            if self._channel_dispatcher and execution_output and job.target_delivery != "session":
+            if execution_output and job.target_delivery != "session":
                 del_id = self.enqueue_outbox_delivery(
                     job_id=job.job_id,
                     channel=job.target_delivery,
@@ -531,7 +568,21 @@ class UnifiedCronEngine:
                     payload=execution_output,
                 )
                 try:
-                    self._channel_dispatcher(job, execution_output)
+                    if self._channel_dispatcher:
+                        self._channel_dispatcher(job, execution_output)
+                    elif job.target_delivery == "telegram":
+                        from utils.infra.notifier import AgentNotifier
+                        notifier = AgentNotifier()
+                        header = f"<b>[JADWAL OTOMATIS: {job.name or job.job_id}]</b>\n\n"
+                        msg = header + execution_output
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                asyncio.run_coroutine_threadsafe(notifier.send(msg), loop)
+                            else:
+                                loop.run_until_complete(notifier.send(msg))
+                        except RuntimeError:
+                            asyncio.run(notifier.send(msg))
                     self.mark_outbox_sent(del_id)
                 except Exception as dist_exc:
                     logger.warning(f"[UnifiedCronEngine] Result dispatch error: {dist_exc}")

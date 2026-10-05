@@ -532,6 +532,36 @@ async def websocket_agent_chat(websocket: WebSocket):
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
 
+                        import base64
+                        if hasattr(agent, "pop_pending_charts"):
+                            charts = agent.pop_pending_charts()
+                            for chart_buf in charts:
+                                try:
+                                    chart_buf.seek(0)
+                                    b64_chart = base64.b64encode(chart_buf.getvalue()).decode("utf-8")
+                                    await websocket.send_json({
+                                        "type": "chart_image",
+                                        "data": b64_chart,
+                                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    })
+                                except Exception as _ch_err:
+                                    logger.warning(f"Failed to stream chart over WS: {_ch_err}")
+
+                        if hasattr(agent, "pop_pending_files"):
+                            files = agent.pop_pending_files()
+                            for filename, file_buf in files:
+                                try:
+                                    file_buf.seek(0)
+                                    b64_file = base64.b64encode(file_buf.getvalue()).decode("utf-8")
+                                    await websocket.send_json({
+                                        "type": "file_download",
+                                        "filename": filename,
+                                        "data": b64_file,
+                                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    })
+                                except Exception as _f_err:
+                                    logger.warning(f"Failed to stream file over WS: {_f_err}")
+
                         if pending:
                             await websocket.send_json({
                                 "type": "approval_request",

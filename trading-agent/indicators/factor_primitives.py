@@ -30,7 +30,7 @@ logger = logging.getLogger("TradingAgent.Indicators.FactorPrimitives")
 # Check Bottleneck availability lazily
 HAS_BOTTLENECK: bool = False
 try:
-    import bottleneck as bn  # type: ignore
+    import bottleneck as bn
     HAS_BOTTLENECK = True
 except ImportError:
     bn = None

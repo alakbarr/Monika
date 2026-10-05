@@ -306,3 +306,44 @@ def load_all_config(settings_path: str | None = None, validate: bool = True) -> 
 
 # Backward-compatible alias
 get_settings = load_settings
+
+
+def get_installation_tier(settings_or_path: Union[Dict[str, Any], str, None] = None) -> str:
+    """Return the configured installation tier ('trial', 'full', or 'unconfigured')."""
+    if isinstance(settings_or_path, dict):
+        return str(settings_or_path.get("installation_tier", "trial")).strip().lower()
+    elif isinstance(settings_or_path, str):
+        try:
+            cfg = load_settings(settings_or_path)
+            if "installation_tier" in cfg:
+                return str(cfg["installation_tier"]).strip().lower()
+        except Exception:
+            pass
+
+    env_tier = os.getenv("MONIKA_TIER")
+    if env_tier:
+        return env_tier.strip().lower()
+
+    from pathlib import Path
+    _cur = Path(__file__).resolve().parent
+    candidates = [
+        Path.cwd() / ".monika_tier",
+        Path.cwd().parent / ".monika_tier",
+        _cur.parent / ".monika_tier",
+        _cur.parent.parent / ".monika_tier",
+        _cur / ".monika_tier",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            try:
+                t = cand.read_text(encoding="utf-8").strip().lower()
+                if t:
+                    return t
+            except Exception:
+                pass
+
+    try:
+        cfg = load_settings()
+        return str(cfg.get("installation_tier", "trial")).strip().lower()
+    except Exception:
+        return "trial"

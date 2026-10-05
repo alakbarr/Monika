@@ -264,12 +264,18 @@ class PositionSizer:
                 ["Account equity is zero or negative (blown account protection)"]
             )
 
+        is_cent = False
+        if isinstance(self.settings, dict):
+            is_cent = bool(self.settings.get("trading", {}).get("risk", {}).get("is_cent_account", False))
+
         if account_equity is None:
             if self._mt5 is not None:
                 try:
                     info = await self._mt5.get_account_info()
-                    if info and "equity" in info:
-                        live_equity = float(info.get("equity") or 0.0)
+                    if info:
+                        if info.get("is_cent_account"):
+                            is_cent = True
+                        live_equity = float(info.get("normalized_equity") if is_cent else (info.get("equity") or 0.0))
                         if live_equity <= 0:
                             return self._invalid(
                                 symbol, direction, entry_price, stop_loss, take_profit,
@@ -282,6 +288,8 @@ class PositionSizer:
             if account_equity is None or account_equity <= 0:
                 raw_bal = self.settings.get("paper_trading", {}).get("initial_balance") if isinstance(self.settings, dict) else None
                 account_equity = float(raw_bal) if raw_bal is not None else 10000.0
+        elif is_cent and account_equity > 1000 and kwargs.get("normalize_cent", True):
+            account_equity = account_equity / 100.0
 
         risk_pct = risk_percent_override if risk_percent_override is not None else self.risk_percent
         
@@ -598,6 +606,11 @@ class PositionSizer:
             'Use calculate_with_session() for production trading.'
         )
         risk_pct = risk_percent_override if risk_percent_override is not None else self.risk_percent
+        is_cent = False
+        if isinstance(self.settings, dict):
+            is_cent = bool(self.settings.get("trading", {}).get("risk", {}).get("is_cent_account", False))
+        if is_cent and account_equity > 1000 and kwargs.get("normalize_cent", True):
+            account_equity = account_equity / 100.0
         try:
             entry_price = float(entry_price)
         except (TypeError, ValueError):

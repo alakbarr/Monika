@@ -143,10 +143,13 @@ class TestRiskGate:
         mock_res_future = MagicMock()
         mock_res_future.scalar_one_or_none.return_value = 1
         
+        mock_res_pref = MagicMock()
+        mock_res_pref.scalars.return_value.all.return_value = []
+
         mock_res_event = MagicMock()
         mock_res_event.scalar_one_or_none.return_value = mock_event
         
-        mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_event]
+        mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_event]
         
         ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
         assert not ok
@@ -156,7 +159,7 @@ class TestRiskGate:
         mock_res_none = MagicMock()
         mock_res_none.scalar_one_or_none.return_value = None
         
-        mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_none]
+        mock_session.execute.side_effect = [mock_res_cfg, mock_res_count, mock_res_future, mock_res_pref, mock_res_none]
         ok, reason = await gate._check_news_window(mock_session, "XAUUSD")
         assert ok
 

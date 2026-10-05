@@ -25,10 +25,13 @@ from analysis.tools.handlers import (
     trading_tools,
     smc_tools,
     db_tools,
+    execution_handlers,
     ptc_handler,
     skills_tools,
     pattern_similarity_tools,
     analytical_query_builder,
+    advanced_quant_tools,
+    chart_bridge_tools,
 )
 from analysis.tools.domain import spill_reader_tool
 from analysis.tools import domain
@@ -54,6 +57,7 @@ __all__ = [
     "trading_tools",
     "smc_tools",
     "db_tools",
+    "execution_handlers",
     "skills_tools",
     "pattern_similarity_tools",
     "analytical_query_builder",

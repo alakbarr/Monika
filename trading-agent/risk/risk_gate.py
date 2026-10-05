@@ -1280,6 +1280,46 @@ class RiskGate:
         elif calendar_age_hours > 4.0:
             stale_warning = f" [WARNING: Calendar data is {calendar_age_hours:.1f}h old — check upcoming events manually]"
 
+        # Check user-defined blacklisted events from UserPreference
+        try:
+            from database.models import UserPreference
+            pref_stmt = select(UserPreference).where(
+                UserPreference.is_active == True,
+                (UserPreference.category == "event_blacklist") | (UserPreference.key == "event_blacklist")
+            )
+            blacklists = (await session.execute(pref_stmt)).scalars().all()
+            user_blacklisted_terms = []
+            for pref in blacklists:
+                try:
+                    data = json.loads(pref.value_json)
+                    if isinstance(data, list):
+                        user_blacklisted_terms.extend([str(x).upper() for x in data])
+                    elif isinstance(data, str):
+                        user_blacklisted_terms.append(data.upper())
+                except Exception:
+                    if pref.value_json:
+                        user_blacklisted_terms.append(str(pref.value_json).upper())
+
+            if user_blacklisted_terms:
+                user_blocked = (await session.execute(
+                    select(EconomicCalendar)
+                    .where(EconomicCalendar.currency.in_(list(currencies)))
+                    .where(EconomicCalendar.event_time >= now - window)
+                    .where(EconomicCalendar.event_time <= now + window)
+                )).scalars().all()
+                for ev in user_blocked:
+                    ev_name_upper = (ev.event_name or "").upper()
+                    if any(term in ev_name_upper for term in user_blacklisted_terms):
+                        delta = abs((ev.event_time - now).total_seconds() / 60)
+                        return False, (
+                            f"Event blacklisted by user preference: '{ev.event_name}' "
+                            f"({ev.currency}) at {ev.event_time.strftime('%H:%M UTC')} "
+                            f"(~{delta:.0f}min away, window={self.news_window_minutes}min)"
+                            f"{stale_warning}"
+                        )
+        except Exception as e:
+            logger.debug(f"[RiskGate] UserPreference blacklist check error: {e}")
+
         # Check for actual upcoming high-impact events
         upcoming = (await session.execute(
             select(EconomicCalendar)

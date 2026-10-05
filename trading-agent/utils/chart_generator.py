@@ -166,11 +166,15 @@ def generate_smc_candlestick_chart(
     timeframe: str = "H1",
     fvg_list: Optional[list[dict]] = None,
     swing_points: Optional[list[dict]] = None,
+    order_blocks: Optional[list[dict]] = None,
+    volume_profile: Optional[dict] = None,
     save_to_disk: bool = True,
 ) -> tuple[io.BytesIO, Optional[str]]:
     """
     Renders dark-theme candlestick chart with SMC overlays:
     - Transparent Green/Red rectangles for Bullish/Bearish Fair Value Gaps (FVG)
+    - Transparent Order Block rectangles (Demand=Green, Supply=Red)
+    - Horizontal Volume Profile lines (POC, VAH, VAL)
     - Triangle markers for Swing Highs (red) and Swing Lows (green)
     Returns: (BytesIO buffer, Optional filepath on disk)
     """
@@ -217,7 +221,7 @@ def generate_smc_candlestick_chart(
         df,
         type="candle",
         style=DARK_STYLE,
-        title=f"\n{symbol}  •  {timeframe}  (SMC & FVG Structure)",
+        title=f"\n{symbol}  •  {timeframe}  (SMC Structure & Order Blocks)",
         volume=has_volume,
         figsize=(10, 6),
         returnfig=True,
@@ -241,6 +245,34 @@ def generate_smc_candlestick_chart(
                 linewidth=1, edgecolor=color, facecolor=color, alpha=alpha, linestyle="--"
             )
             main_ax.add_patch(rect)
+
+    # Overlay Order Blocks (Q040)
+    if order_blocks:
+        for ob in order_blocks:
+            top = float(ob.get("high", ob.get("price_high", 0)))
+            bottom = float(ob.get("low", ob.get("price_low", 0)))
+            direction = str(ob.get("direction", "bullish")).lower()
+            height = abs(top - bottom)
+            y_min = min(top, bottom)
+            is_bull = "bull" in direction or "demand" in direction
+            color = "#00e676" if is_bull else "#ff1744"
+            rect = patches.Rectangle(
+                (0, y_min), len(df), height,
+                linewidth=1.2, edgecolor=color, facecolor=color, alpha=0.25, linestyle="-"
+            )
+            main_ax.add_patch(rect)
+
+    # Overlay Volume Profile levels (POC, VAH, VAL) (Q043)
+    if volume_profile and isinstance(volume_profile, dict):
+        poc = volume_profile.get("poc")
+        vah = volume_profile.get("vah")
+        val = volume_profile.get("val")
+        if poc:
+            main_ax.axhline(float(poc), color="#ffd700", linestyle="-", linewidth=1.5, alpha=0.85, label="POC")
+        if vah:
+            main_ax.axhline(float(vah), color="#42a5f5", linestyle=":", linewidth=1.2, alpha=0.75, label="VAH")
+        if val:
+            main_ax.axhline(float(val), color="#42a5f5", linestyle=":", linewidth=1.2, alpha=0.75, label="VAL")
 
     # Overlay Swing Points
     if swing_points:
@@ -272,6 +304,82 @@ def generate_smc_candlestick_chart(
         out_dir.mkdir(parents=True, exist_ok=True)
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         saved_path = str(out_dir / f"{symbol}_{timeframe}_{ts_str}.png")
+        with open(saved_path, "wb") as f:
+            f.write(buf.getvalue())
+
+    plt.close(fig)
+    return buf, saved_path
+
+
+def generate_equity_curve_chart(
+    records: list[dict],
+    title: str = "Monika Portfolio Equity Curve",
+    save_to_disk: bool = True,
+) -> tuple[io.BytesIO, Optional[str]]:
+    """
+    Renders a dark-themed portfolio equity curve with drawdown fill band.
+    """
+    from pathlib import Path
+    if not records:
+        fig, ax = plt.subplots(figsize=(10, 5), facecolor='#131722')
+        ax.set_facecolor('#131722')
+        ax.text(0.5, 0.5, "No closed trades recorded yet", color="#888888", ha="center", va="center")
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+        buf.seek(0)
+        plt.close(fig)
+        return buf, None
+
+    df = pd.DataFrame(records)
+    if "time" in df.columns:
+        df["time"] = pd.to_datetime(df["time"])
+        df = df.sort_values("time").reset_index(drop=True)
+    else:
+        df["time"] = range(len(df))
+
+    if "equity" not in df.columns and "pnl" in df.columns:
+        initial = 10000.0
+        df["equity"] = initial + df["pnl"].cumsum()
+
+    equity = df["equity"].values
+    peak = pd.Series(equity).cummax()
+    dd_pct = (equity - peak) / peak * 100.0
+
+    fig, (ax_eq, ax_dd) = plt.subplots(
+        2, 1, figsize=(10, 6), sharex=True, gridspec_kw={'height_ratios': [3, 1]},
+        facecolor='#131722'
+    )
+    ax_eq.set_facecolor('#131722')
+    ax_dd.set_facecolor('#131722')
+
+    x_vals = df["time"] if "time" in df.columns else range(len(df))
+
+    # Plot Equity
+    ax_eq.plot(x_vals, equity, color="#00e676", lw=1.8, label="Portfolio Equity ($)")
+    ax_eq.plot(x_vals, peak, color="#ffffff", lw=0.8, ls="--", alpha=0.5, label="High Watermark")
+    ax_eq.fill_between(x_vals, equity, peak, color="#ff5252", alpha=0.15)
+    ax_eq.set_title(title, color="#ffffff", fontsize=11, fontweight="bold", pad=10)
+    ax_eq.grid(True, color="#2a2e39", linestyle=":", alpha=0.6)
+    ax_eq.tick_params(colors="#b2b5be", labelsize=8)
+    ax_eq.legend(loc="upper left", facecolor="#1e222d", edgecolor="#2a2e39", labelcolor="#ffffff", fontsize=8)
+
+    # Plot Drawdown
+    ax_dd.plot(x_vals, dd_pct, color="#ff5252", lw=1.2)
+    ax_dd.fill_between(x_vals, dd_pct, 0, color="#ff5252", alpha=0.35)
+    ax_dd.set_ylabel("Drawdown %", color="#b2b5be", fontsize=8)
+    ax_dd.grid(True, color="#2a2e39", linestyle=":", alpha=0.6)
+    ax_dd.tick_params(colors="#b2b5be", labelsize=8)
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor=fig.get_facecolor())
+    buf.seek(0)
+
+    saved_path = None
+    if save_to_disk:
+        out_dir = Path("results/charts")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        saved_path = str(out_dir / f"equity_curve_{ts_str}.png")
         with open(saved_path, "wb") as f:
             f.write(buf.getvalue())
 

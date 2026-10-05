@@ -277,6 +277,7 @@ trading:
       - H1
       - H4
       - D1
+      - W1
   indicators:
     ma_periods:
       - 20
@@ -303,6 +304,12 @@ trading:
     - BTCUSD
     - XBRUSD
 execution:
+  broker: mt5  # mt5 | ibkr | multi | simulated
+  ibkr:
+    enabled: false
+    host: 127.0.0.1
+    port: 7497
+    client_id: 1
   max_price_staleness_seconds: 120
   max_analysis_age_for_execute_minutes: 30
   max_analysis_age_hours: 0.5
@@ -502,6 +509,12 @@ data_sources:
       fed_total_assets: WALCL
       reverse_repo_level: RRPONTSYD
       treasury_general_account: WTREGEN
+      treasury_3m: DGS3MO
+      term_premium_10y: ACMTP10
+      supercore_cpi: CUSR0000SACL1E
+      us_real_gdp: A191RL1Q225SBEA
+      eurozone_real_gdp: CLVMNACSCAB1GQEA19
+      ecb_total_assets: ECBASSETSW
     update_frequency: daily
   cftc_cot:
     api_url: https://publicreporting.cftc.gov/resource
@@ -527,6 +540,10 @@ telegram:
     - circuit_breaker
     - scraper_failure
     - mt5_disconnected
+notifications:
+  discord:
+    enabled: false
+    webhook_url: ""
 claude:
   fundamental_model_escalation: claude-opus-5
   fundamental_escalation_threshold: 0.6
@@ -623,7 +640,7 @@ llm:
     track_costs: true
   providers:
     openrouter:
-      enabled: true
+      enabled: false
       api_style: openai_compatible
       base_url: https://openrouter.ai/api/v1
       timeout_seconds: 180
@@ -654,7 +671,7 @@ llm:
         thinking_budget: true
         json_mode: true
     groq:
-      enabled: true
+      enabled: false
       api_style: openai_compatible
       base_url: https://api.groq.com/openai/v1
       timeout_seconds: 180
@@ -722,7 +739,7 @@ llm:
         tool_calling: true
         json_mode: true
     ollama:
-      enabled: true
+      enabled: false
       api_style: ollama
       base_url: http://localhost:11434
       timeout_seconds: 180
@@ -732,7 +749,7 @@ llm:
         tool_calling: true
         json_mode: true
     typesafe:
-      enabled: true
+      enabled: false
       api_style: typesafe
       base_url: https://api.typesafe.ai
       timeout_seconds: 30
@@ -742,7 +759,7 @@ llm:
         tool_calling: false
         json_mode: true
     ninerouter:
-      enabled: true
+      enabled: false
       api_style: openai_compatible
       base_url: http://localhost:20128/v1
       timeout_seconds: 180
@@ -893,7 +910,7 @@ llm:
       supports_tool_calling: true
       supports_caching: false
       cost_tier: free
-    gc/gemini-2.5-flash:
+    gc/gemini-3.5-flash:
       provider: 9router
       context_window: 1048576
       supports_tool_calling: true
@@ -1591,7 +1608,40 @@ llm:
       provider: openrouter
       context_window: 2000000
       supports_tool_calling: true
+      cost_tier: high
+    deepseek-r1:
+      provider: openrouter
+      context_window: 64000
+      supports_tool_calling: true
       cost_tier: medium
+    gemini-3.8-live:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+    gemini-3.8-live-extended-thinking:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+    gemini-3.5-transcribe-live:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: false
+      cost_tier: free
+    gemini-3-flash-live:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+    gemini-3.8-flash:
+      provider: openrouter
+      context_window: 1000000
+      supports_tool_calling: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
     gemini-3.7-flash:
       provider: gemini
       context_window: 1000000
@@ -1608,14 +1658,6 @@ llm:
       rate_limits:
         rpm: 5
         rpd: 20
-    gemini-3.8-flash:
-      provider: openrouter
-      context_window: 1000000
-      supports_tool_calling: true
-      cost_tier: free
-      rate_limits:
-        rpm: 15
-        rpd: 500
     gemini-3.5-flash:
       provider: gemini
       context_window: 1000000
@@ -2736,6 +2778,78 @@ llm:
       fallback_7: gemini-3.8-flash
       fallback_8: gpt-5.6-sol
       fallback_9: gemini-3.7-flash
+    chat_interactive_fast:
+      primary: gemini-3.5-flash-lite
+      fallback_1: gemini-3.1-flash-lite
+      fallback_2: deepseek-v4-flash
+      fallback_3: openrouter/free
+      provider: gemini
+      max_tokens: 4096
+      max_tool_turns: 8
+      temperature: 0.2
+      thinking:
+        gemini: none
+        anthropic: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
+    chat_interactive_balanced:
+      primary: gemini-3.7-flash
+      fallback_1: gemini-3.6-flash
+      fallback_2: gemini-3.5-flash
+      fallback_3: claude-sonnet-5.5
+      provider: gemini
+      max_tokens: 4096
+      max_tool_turns: 10
+      temperature: 0.1
+      thinking:
+        gemini: medium
+        anthropic: medium
+        openai: medium
+        deepseek: medium
+        groq: medium
+        openrouter: medium
+        ollama: low
+        openai_compatible: medium
+    chat_interactive_reasoning:
+      primary: gemini-3.8-flash
+      fallback_1: gemini-3.7-flash
+      fallback_2: deepseek-r1
+      fallback_3: gpt-6.1-sol
+      provider: gemini
+      max_tokens: 8192
+      max_tool_turns: 12
+      temperature: 0.0
+      thinking:
+        gemini: high
+        anthropic: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
+    chat_interactive_pro:
+      primary: gemini-3.1-pro-preview
+      fallback_1: gemini-3.8-flash
+      fallback_2: claude-opus-5
+      fallback_3: gpt-6.1-sol
+      provider: gemini
+      max_tokens: 8192
+      max_tool_turns: 12
+      temperature: 0.0
+      thinking:
+        gemini: high
+        anthropic: high
+        openai: high
+        deepseek: high
+        groq: high
+        openrouter: high
+        ollama: high
+        openai_compatible: high
     deep_research:
       primary: gpt-6.1-sol
       thinking:
@@ -2934,21 +3048,22 @@ llm:
       max_tokens: 512
       temperature: 0.0
     voice_transcription:
-      primary: gemini-3.8-flash
-      fallback_1: gemini-3.7-flash
-      fallback_2: mimo-v2.6-pro
-      provider: openrouter
+      primary: gemini-3.8-live
+      fallback_1: gemini-3.8-live-extended-thinking
+      fallback_2: gemini-3.5-transcribe-live
+      fallback_3: gemini-3-flash-live
+      provider: gemini
       max_tokens: 2048
       temperature: 0.0
       thinking:
-        anthropic: max
-        gemini: max
-        openai: max
-        deepseek: max
-        groq: max
-        openrouter: max
-        ollama: max
-        openai_compatible: max
+        anthropic: none
+        gemini: none
+        openai: none
+        deepseek: none
+        groq: none
+        openrouter: none
+        ollama: none
+        openai_compatible: none
 
 pattern_similarity:
   enabled: true
@@ -3289,9 +3404,10 @@ benchmark:
       - "openrouter:anthropic/claude-3.5-sonnet"
       - "9router:anthropic/claude-3.5-sonnet"
     "gemini-flash":
+      - "gemini:gemini-3.5-flash"
       - "gemini:gemini-3.5-flash-lite"
-      - "openrouter:google/gemini-2.5-flash"
-      - "9router:google/gemini-2.5-flash"
+      - "openrouter:google/gemini-3.5-flash"
+      - "9router:google/gemini-3.5-flash"
     "qwen-27b":
       - "groq:groq-qwen3.8-27b"
       - "openrouter:qwen/qwen-2.5-72b-instruct"

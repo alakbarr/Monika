@@ -75,6 +75,7 @@ PRICING: Dict[str, Price] = {
     "claude-3-5-haiku-20241022": Price(0.80, 0.08, 4.00),
 
     # --- Google Gemini Models ---
+    "gemini-3.8-flash": Price(1.50, 0.15, 7.50),
     "gemini-3.7-flash": Price(1.50, 0.15, 7.50, "Free tier direct / Paid tier rate"),
     "gemini-3.6-flash": Price(1.50, 0.15, 7.50),
     "gemini-3.5-flash": Price(1.50, 0.15, 9.00),
@@ -82,6 +83,11 @@ PRICING: Dict[str, Price] = {
     "gemini-3.1-flash-lite": Price(0.25, 0.025, 1.50),
     "gemini-3.0-flash-preview": Price(0.50, 0.05, 3.00),
     "gemini-3.1-pro-preview": Price(2.00, 0.20, 12.00, "tier <=200K ctx; >200K = 4.00/0.40/18.00"),
+    "gemini-3.1-pro": Price(2.00, 0.20, 12.00),
+    "gemini-3.8-live": Price(1.50, 0.15, 7.50),
+    "gemini-3.8-live-extended-thinking": Price(2.00, 0.20, 10.00),
+    "gemini-3.5-transcribe-live": Price(0.30, 0.03, 2.50),
+    "gemini-3-flash-live": Price(1.50, 0.15, 7.50),
     "gemini-2.5-pro": Price(1.25, 0.125, 10.00),
     "gemini-2.5-flash": Price(0.15, 0.0375, 0.60),
     "gemini-2.0-flash": Price(0.10, 0.025, 0.40),
@@ -186,6 +192,7 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "openai/o3-mini": "o3-mini",
 
     # Google
+    "google/gemini-3.8-flash": "gemini-3.8-flash",
     "google/gemini-3.7-flash": "gemini-3.7-flash",
     "google/gemini-3.6-flash": "gemini-3.6-flash",
     "google/gemini-3.5-flash": "gemini-3.5-flash",
@@ -277,6 +284,8 @@ FREE_TIER_MODELS = {
     "if/kimi-k2", "if/qwen3-coder-plus", "if/qwen3-max", "if/qwen3-235b",
     "if/deepseek-v3.2", "if/deepseek-v3", "if/deepseek-r1", "if/glm-4.7", "if/iflow-rome-30ba3b",
     "mmf/mimo-auto",
+    "gc/gemini-3.5-flash", "gc/gemini-3.6-flash", "gc/gemini-3.7-flash", "gc/gemini-3.8-flash",
+    "gc/gemini-3.1-flash-lite", "gc/gemini-3.5-flash-lite",
     "gc/gemini-2.5-flash", "gc/gemini-2.5-pro", "gc/gemini-3-flash-preview", "gc/gemini-3.1-pro-preview",
     "af/gpt-oss-120b", "af/gpt-oss-20b", "af/kimi-k2.7-code",
     "combo/free-fallback",

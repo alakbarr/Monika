@@ -92,10 +92,22 @@ def _register_builtins():
         from execution.broker_adapter import MT5RemoteGatewayAdapter
         return MT5RemoteGatewayAdapter(**kwargs)
 
+    def _create_ibkr(**kwargs):
+        from execution.backends.ibkr_adapter import IBKRBrokerAdapter
+        return IBKRBrokerAdapter(**kwargs)
+
+    def _create_multi_account(**kwargs):
+        from execution.service.multi_account_adapter import MultiAccountBrokerAdapter
+        return MultiAccountBrokerAdapter(**kwargs)
+
     BrokerAdapterRegistry.register("mt5_live", _create_mt5)
     BrokerAdapterRegistry.register("mt5", _create_mt5)
     BrokerAdapterRegistry.register("simulated", _create_simulated)
     BrokerAdapterRegistry.register("paper", _create_simulated)
     BrokerAdapterRegistry.register("remote_gateway", _create_remote)
+    BrokerAdapterRegistry.register("ibkr", _create_ibkr)
+    BrokerAdapterRegistry.register("interactive_brokers", _create_ibkr)
+    BrokerAdapterRegistry.register("multi_account", _create_multi_account)
+    BrokerAdapterRegistry.register("copier", _create_multi_account)
 
 _register_builtins()

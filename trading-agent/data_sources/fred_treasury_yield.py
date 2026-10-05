@@ -37,7 +37,11 @@ logger = logging.getLogger("TradingAgent.FRED")
 FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 # Pemetaan FRED series ID ke tipe/label tenor
-TENOR_SERIES = {"DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE", "WALCL", "RRPONTSYD", "WTREGEN", "M2SL"}
+TENOR_SERIES = {
+    "DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE", "WALCL", "RRPONTSYD",
+    "WTREGEN", "M2SL", "GVZCLS", "OVXCLS", "DGS3MO", "ACMTP10", "CUSR0000SACL1E",
+    "A191RL1Q225SBEA", "CLVMNACSCAB1GQEA19", "ECBASSETSW"
+}
 INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR", "BOERUKM", "IRSTCB01JPM156N", "IRSTCB01AUM156N"}
 
 # Nama tenor yang mudah dibaca
@@ -46,12 +50,20 @@ SERIES_TO_TENOR = {
     "DGS5": "5Y",
     "DGS10": "10Y",
     "DGS30": "30Y",
+    "DGS3MO": "3M",
+    "ACMTP10": "10Y_TERM_PREMIUM",
+    "CUSR0000SACL1E": "SUPERCORE_CPI",
     "DFII10": "10Y_REAL",
     "T10YIE": "10Y_INFLATION",
     "WALCL": "FED_TOTAL_ASSETS",
     "RRPONTSYD": "REVERSE_REPO",
     "WTREGEN": "TGA_BALANCE",
     "M2SL": "M2_MONEY_SUPPLY",
+    "GVZCLS": "GOLD_IV",
+    "OVXCLS": "OIL_IV",
+    "A191RL1Q225SBEA": "US_REAL_GDP",
+    "CLVMNACSCAB1GQEA19": "EUROZONE_REAL_GDP",
+    "ECBASSETSW": "ECB_TOTAL_ASSETS",
 }
 
 # Label bank untuk suku bunga

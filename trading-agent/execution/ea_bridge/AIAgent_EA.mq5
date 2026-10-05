@@ -86,6 +86,9 @@ void OnTimer()
     {
         EnforceSLOnAIPositions();
     }
+
+    // Export user-drawn chart objects for AI assistant (Q151)
+    ExportActiveChartObjects();
 }
 
 //+------------------------------------------------------------------+
@@ -343,4 +346,55 @@ void OnTick()
 {
     // EA does not make trading decisions on ticks.
     // All decisions come from the Python backend.
+}
+
+//+------------------------------------------------------------------+
+//| Export user chart graphical objects to shared JSON file (Q151)   |
+//+------------------------------------------------------------------+
+void ExportActiveChartObjects()
+{
+    string sym = _Symbol;
+    string fileName = "chart_objects_" + sym + ".json";
+    int handle = FileOpen(fileName, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    if(handle == INVALID_HANDLE) return;
+
+    string json = "{\n";
+    json += "  \"symbol\": \"" + sym + "\",\n";
+    json += "  \"timeframe\": \"" + EnumToString((ENUM_TIMEFRAMES)_Period) + "\",\n";
+    json += "  \"timestamp\": " + IntegerToString((long)TimeGMT()) + ",\n";
+    json += "  \"objects\": [\n";
+
+    int total = ObjectsTotal(0, -1, -1);
+    bool first = true;
+    for(int i = 0; i < total; i++)
+    {
+        string name = ObjectName(0, i, -1, -1);
+        ENUM_OBJECT type = (ENUM_OBJECT)ObjectGetInteger(0, name, OBJPROP_TYPE);
+
+        if(type == OBJ_HLINE || type == OBJ_TREND || type == OBJ_FIBO || type == OBJ_RECTANGLE)
+        {
+            if(!first) json += ",\n";
+            first = false;
+
+            double p1 = ObjectGetDouble(0, name, OBJPROP_PRICE, 0);
+            double p2 = ObjectGetDouble(0, name, OBJPROP_PRICE, 1);
+            datetime t1 = (datetime)ObjectGetInteger(0, name, OBJPROP_TIME, 0);
+            datetime t2 = (datetime)ObjectGetInteger(0, name, OBJPROP_TIME, 1);
+            color clr = (color)ObjectGetInteger(0, name, OBJPROP_COLOR);
+
+            json += "    {\n";
+            json += "      \"name\": \"" + name + "\",\n";
+            json += "      \"type\": \"" + EnumToString(type) + "\",\n";
+            json += "      \"price1\": " + DoubleToString(p1, _Digits) + ",\n";
+            json += "      \"price2\": " + DoubleToString(p2, _Digits) + ",\n";
+            json += "      \"time1\": " + IntegerToString((long)t1) + ",\n";
+            json += "      \"time2\": " + IntegerToString((long)t2) + ",\n";
+            json += "      \"color\": \"" + ColorToString(clr, true) + "\"\n";
+            json += "    }";
+        }
+    }
+    json += "\n  ]\n}";
+
+    FileWriteString(handle, json);
+    FileClose(handle);
 }

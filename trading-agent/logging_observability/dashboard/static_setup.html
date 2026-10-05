@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monika Setup & Onboarding Wizard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --accent: #d29922;
+      --accent-bright: #e3b341;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-red: #f85149;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --text-bright: #f0f6fc;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    header h1 {
+      color: var(--accent);
+      font-size: 28px;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 12px;
+      background: rgba(210, 153, 34, 0.2);
+      color: var(--accent);
+      margin-top: 8px;
+    }
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      font-size: 15px;
+    }
+    .step-title {
+      font-size: 18px;
+      color: var(--text-bright);
+      font-weight: 600;
+    }
+    .info-box {
+      background: rgba(88, 166, 255, 0.1);
+      border-left: 4px solid var(--accent-blue);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 13px;
+      color: #b0d3f8;
+      margin: 12px 0 16px;
+    }
+    .warn-box {
+      background: rgba(210, 153, 34, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 13px;
+      color: #ebd39c;
+      margin: 12px 0 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-bright);
+      font-size: 14px;
+    }
+    .label-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: normal;
+      margin-left: 6px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0d1117;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text-bright);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(210, 153, 34, 0.2);
+    }
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      font-size: 13px;
+      color: var(--accent-blue);
+      text-decoration: none;
+      margin-top: 6px;
+    }
+    .btn-link:hover {
+      text-decoration: underline;
+    }
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .profile-card {
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+      background: #0d1117;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .profile-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .profile-card.selected {
+      border-color: var(--accent);
+      background: rgba(210, 153, 34, 0.08);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .profile-card input[type="radio"] {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      accent-color: var(--accent);
+    }
+    .profile-title {
+      font-weight: 600;
+      color: var(--text-bright);
+      font-size: 14px;
+      padding-right: 24px;
+      margin-bottom: 6px;
+    }
+    .profile-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .radio-pill-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .radio-pill {
+      flex: 1;
+      border: 1px solid var(--card-border);
+      padding: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .radio-pill.selected {
+      border-color: var(--accent-green);
+      background: rgba(63, 185, 80, 0.08);
+    }
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .submit-btn:hover {
+      background: var(--accent-bright);
+    }
+    .submit-btn:disabled {
+      background: #484f58;
+      cursor: not-allowed;
+      color: #8b949e;
+    }
+    .mt5-fields {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--card-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>MONIKA</h1>
+      <p>Autonomous AI Trading Agent & Market Research Framework</p>
+      <span class="badge">ONBOARDING SETUP WIZARD</span>
+    </header>
+
+    <form id="setupForm">
+      <!-- 1. DATABASE -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">1</div>
+          <div class="step-title">Database Storage</div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted);">Choose a database engine for market analytics, debate logs, reflections, and trade records.</p>
+        
+        <div class="radio-pill-group">
+          <label class="radio-pill selected" id="pillSqlite">
+            <input type="radio" name="db_type" value="sqlite" checked onchange="toggleDbFields()">
+            <div>
+              <strong>SQLite (Default — Zero-Config)</strong>
+              <div style="font-size: 12px; color: var(--text-muted);">Saved locally in monika.db. Zero server installation required.</div>
+            </div>
+          </label>
+          <label class="radio-pill" id="pillPostgres">
+            <input type="radio" name="db_type" value="postgres" onchange="toggleDbFields()">
+            <div>
+              <strong>PostgreSQL 16+</strong>
+              <div style="font-size: 12px; color: var(--text-muted);">For high-volume production or shared team infrastructure.</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="postgresFields" style="display: none; margin-top: 14px;">
+          <label>PostgreSQL Connection URL (asyncpg)</label>
+          <input type="text" id="db_url" name="db_url" value="postgresql+asyncpg://postgres:postgres@localhost:5432/monika_trading">
+        </div>
+      </div>
+
+      <!-- 2. AI PROVIDER & API KEYS -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">2</div>
+          <div class="step-title">AI Provider & API Credentials</div>
+        </div>
+        <div class="info-box">
+          💡 <strong>Only 1 active LLM provider is required</strong> to run all Monika reasoning modules. Google Gemini is recommended for its free tier and simple setup.
+        </div>
+
+        <div class="form-group">
+          <label>Google Gemini API Key(s) <span class="label-hint">(Provide multiple keys separated by commas for automated round-robin rotation)</span></label>
+          <input type="password" id="gemini_keys" name="gemini_keys" placeholder="AIzaSy...">
+          <a class="btn-link" href="https://aistudio.google.com/apikey" target="_blank">↗ Get a Free Gemini API Key at Google AI Studio</a>
+        </div>
+
+        <div class="warn-box">
+          ⚠️ <strong>Gemini Free-Tier Rate Limits (RPD):</strong><br>
+          A single free tier account is limited to <strong>20 Requests/Day</strong> on Flash models and <strong>500 Requests/Day</strong> on Flash-Lite models. For sustained or frequent analysis cycles, adding 2–3 Gemini API keys or enabling 9Router is recommended.
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="enable_9router" name="enable_9router" checked style="accent-color: var(--accent);">
+          <label for="enable_9router" style="margin-bottom: 0; cursor: pointer;">
+            Enable 9Router Gateway as an automated fallback (localhost:20128)
+          </label>
+        </div>
+
+        <details style="margin-top: 14px; font-size: 13px;">
+          <summary style="cursor: pointer; color: var(--accent-blue); font-weight: 500;">+ Configure Alternative Providers (Optional: OpenRouter, Groq, Claude, DeepSeek)</summary>
+          <div style="margin-top: 12px; display: grid; gap: 12px;">
+            <div>
+              <label>OpenRouter API Key <a class="btn-link" href="https://openrouter.ai/keys" target="_blank" style="margin-left: 8px;">(Sign up ↗)</a></label>
+              <input type="password" id="openrouter_key" name="openrouter_key" placeholder="sk-or-v1-...">
+            </div>
+            <div>
+              <label>Groq API Key <a class="btn-link" href="https://console.groq.com/keys" target="_blank" style="margin-left: 8px;">(Sign up ↗)</a></label>
+              <input type="password" id="groq_key" name="groq_key" placeholder="gsk_...">
+            </div>
+            <div>
+              <label>Anthropic Claude API Key <a class="btn-link" href="https://console.anthropic.com/settings/keys" target="_blank" style="margin-left: 8px;">(Sign up ↗)</a></label>
+              <input type="password" id="anthropic_key" name="anthropic_key" placeholder="sk-ant-...">
+            </div>
+            <div>
+              <label>DeepSeek API Key <a class="btn-link" href="https://platform.deepseek.com/api_keys" target="_blank" style="margin-left: 8px;">(Sign up ↗)</a></label>
+              <input type="password" id="deepseek_key" name="deepseek_key" placeholder="sk-...">
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- 3. MODEL CONFIGURATION PROFILE -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">3</div>
+          <div class="step-title">Model Operational Profile (49 Task Roles)</div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted);">Select your operational cadence. Monika automatically maps all 49 LLM task roles based on your selected profile and available keys:</p>
+
+        <div class="profiles-grid">
+          <!-- 1 -->
+          <div class="profile-card" onclick="selectProfile('high_analysis_high_freq')">
+            <input type="radio" name="profile" value="high_analysis_high_freq">
+            <div class="profile-title">High Analysis — High Frequency</div>
+            <div class="profile-desc">Active scalping and intraday trading. Deep multi-step reasoning with rapid turnover. Requires multi-key or higher rate limits.</div>
+          </div>
+          <!-- 2 -->
+          <div class="profile-card" onclick="selectProfile('high_analysis_low_freq')">
+            <input type="radio" name="profile" value="high_analysis_low_freq">
+            <div class="profile-title">High Analysis — Low Frequency</div>
+            <div class="profile-desc">Swing trading and macro overview. Rigorous reasoning at wider evaluation intervals (4–8h). Conserves daily quota.</div>
+          </div>
+          <!-- 3 -->
+          <div class="profile-card" onclick="selectProfile('simple_task_high_freq')">
+            <input type="radio" name="profile" value="simple_task_high_freq">
+            <div class="profile-title">Simple Tasks — High Frequency</div>
+            <div class="profile-desc">Rapid technical screening and continuous indicator polling. Quota-friendly using Flash-Lite (500 RPD).</div>
+          </div>
+          <!-- 4 -->
+          <div class="profile-card" onclick="selectProfile('simple_task_low_freq')">
+            <input type="radio" name="profile" value="simple_task_low_freq">
+            <div class="profile-title">Simple Tasks — Low Frequency</div>
+            <div class="profile-desc">Passive market monitoring with 1–2 periodic checks per day. Fully sustainable on a single free Gemini API key.</div>
+          </div>
+          <!-- 5 -->
+          <div class="profile-card" onclick="selectProfile('low_latency_smart')">
+            <input type="radio" name="profile" value="low_latency_smart">
+            <div class="profile-title">Low Latency — Smart</div>
+            <div class="profile-desc">Fast response to price spikes, news catalysts, and trailing stops with sharp validation logic.</div>
+          </div>
+          <!-- 6 (Default) -->
+          <div class="profile-card selected" onclick="selectProfile('low_latency_cheap')">
+            <input type="radio" name="profile" value="low_latency_cheap" checked>
+            <div class="profile-title">Low Latency — Cost-Optimized (Default)</div>
+            <div class="profile-desc">100% free-tier friendly, fast execution. Ideal for testing, demonstration, and initial evaluation.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. TRADING MODE & BROKER -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">4</div>
+          <div class="step-title">Execution Mode & Broker Connection</div>
+        </div>
+
+        <div class="radio-pill-group">
+          <label class="radio-pill selected" id="pillPaper">
+            <input type="radio" name="trade_mode" value="paper" checked onchange="toggleMt5Fields()">
+            <div>
+              <strong>Paper Trading Sandbox (Risk-Free — Recommended)</strong>
+              <div style="font-size: 12px; color: var(--text-muted);">Simulate all market signals, debate loops, and executions without an active broker account.</div>
+            </div>
+          </label>
+          <label class="radio-pill" id="pillLive">
+            <input type="radio" name="trade_mode" value="live" onchange="toggleMt5Fields()">
+            <div>
+              <strong>MetaTrader 5 Live / Demo</strong>
+              <div style="font-size: 12px; color: var(--text-muted);">Connect to a MetaTrader 5 terminal on Windows or remote VPS gateway.</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="mt5Fields" class="mt5-fields">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>MT5 Account Number</label>
+              <input type="text" id="mt5_account" name="mt5_account" placeholder="12345678">
+            </div>
+            <div class="form-group">
+              <label>MT5 Account Password</label>
+              <input type="password" id="mt5_password" name="mt5_password">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>MT5 Broker Server</label>
+            <input type="text" id="mt5_server" name="mt5_server" placeholder="MetaQuotes-Demo / FBS-Real">
+          </div>
+          <div class="form-group">
+            <label>MT5 Terminal Binary Path <span class="label-hint">(Leave blank for auto-detection on Windows)</span></label>
+            <input type="text" id="mt5_path" name="mt5_path" placeholder="C:/Program Files/MetaTrader 5/terminal64.exe">
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. SUBMIT -->
+      <div style="text-align: center; margin-top: 24px; margin-bottom: 48px;">
+        <button type="button" class="submit-btn" id="btnSubmit" onclick="submitSetup()">
+          🚀 Save Settings & Launch Monika
+        </button>
+        <div id="statusMsg" style="margin-top: 14px; font-weight: 500;"></div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function toggleDbFields() {
+      const isPostgres = document.querySelector('input[name="db_type"]:checked').value === 'postgres';
+      document.getElementById('postgresFields').style.display = isPostgres ? 'block' : 'none';
+      document.getElementById('pillSqlite').classList.toggle('selected', !isPostgres);
+      document.getElementById('pillPostgres').classList.toggle('selected', isPostgres);
+    }
+
+    function toggleMt5Fields() {
+      const isLive = document.querySelector('input[name="trade_mode"]:checked').value === 'live';
+      document.getElementById('mt5Fields').style.display = isLive ? 'block' : 'none';
+      document.getElementById('pillPaper').classList.toggle('selected', !isLive);
+      document.getElementById('pillLive').classList.toggle('selected', isLive);
+    }
+
+    function selectProfile(val) {
+      document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('selected'));
+      const target = document.querySelector(`input[name="profile"][value="${val}"]`);
+      if (target) {
+        target.checked = true;
+        target.closest('.profile-card').classList.add('selected');
+      }
+    }
+
+    async function submitSetup() {
+      const btn = document.getElementById('btnSubmit');
+      const status = document.getElementById('statusMsg');
+      btn.disabled = true;
+      btn.innerText = "⏳ Saving Configuration...";
+      status.style.color = "var(--accent)";
+      status.innerText = "Applying 49 task roles and initializing database schema...";
+
+      const payload = {
+        db_type: document.querySelector('input[name="db_type"]:checked').value,
+        db_url: document.getElementById('db_url').value,
+        gemini_keys: document.getElementById('gemini_keys').value,
+        enable_9router: document.getElementById('enable_9router').checked,
+        openrouter_key: document.getElementById('openrouter_key').value,
+        groq_key: document.getElementById('groq_key').value,
+        anthropic_key: document.getElementById('anthropic_key').value,
+        deepseek_key: document.getElementById('deepseek_key').value,
+        profile: document.querySelector('input[name="profile"]:checked').value,
+        trade_mode: document.querySelector('input[name="trade_mode"]:checked').value,
+        mt5_account: document.getElementById('mt5_account').value,
+        mt5_password: document.getElementById('mt5_password').value,
+        mt5_server: document.getElementById('mt5_server').value,
+        mt5_path: document.getElementById('mt5_path').value,
+      };
+
+      try {
+        const resp = await fetch('/api/setup/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if (resp.ok && res.status === 'ok') {
+          status.style.color = "var(--accent-green)";
+          status.innerText = "✅ Configuration saved successfully. Redirecting to Trading Dashboard in 3 seconds...";
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 3000);
+        } else {
+          status.style.color = "var(--accent-red)";
+          status.innerText = "❌ Failed: " + (res.message || "An error occurred while saving configuration.");
+          btn.disabled = false;
+          btn.innerText = "🚀 Save Settings & Launch Monika";
+        }
+      } catch (err) {
+        status.style.color = "var(--accent-red)";
+        status.innerText = "❌ Connection error: " + err.message;
+        btn.disabled = false;
+        btn.innerText = "🚀 Save Settings & Launch Monika";
+      }
+    }
+  </script>
+</body>
+</html>

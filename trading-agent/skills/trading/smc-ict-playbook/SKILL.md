@@ -4,7 +4,7 @@ description: "Stage 2 SMC/ICT institutional playbook, order blocks, FVG, and con
 category: TRADING
 version: 1.0.0
 platforms: [windows, linux, macos]
-tags: [smc, ict, order_block, fvg, market_structure, liquidity, stage2]
+tags: [smc, ict, order_block, fvg, market_structure, liquidity, stage2, bos, choch, fair_value_gap, liquidity_sweep]
 ---
 
 # SMC/ICT Playbook (smc_ict_playbook) — Stage 2 Per-Asset Analysis

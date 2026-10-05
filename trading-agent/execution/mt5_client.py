@@ -75,7 +75,7 @@ def _resolve_broker_symbol(symbol: str) -> str:
             return clean_sym
 
         # 2. Check known common broker suffixes
-        common_suffixes = ["m", ".pro", ".raw", "+", ".a", ".ecn", "_i", ".s"]
+        common_suffixes = ["m", ".pro", ".raw", "+", ".a", ".ecn", "_i", ".s", "c", ".c", "_c", "cent", ".cent"]
         for sfx in common_suffixes:
             candidate = f"{clean_sym}{sfx}"
             if mt5.symbol_info(candidate) is not None:
@@ -360,6 +360,17 @@ class MT5Client:
         info = await self._run(_get_account_info, priority=PRIORITY_STANDARD)
         if info is None:
             return None
+        curr_str = str(getattr(info, "currency", "")).upper()
+        server_str = str(getattr(info, "server", "")).lower()
+        cfg_cent = False
+        if hasattr(self, "settings") and isinstance(self.settings, dict):
+            cfg_cent = bool(self.settings.get("trading", {}).get("risk", {}).get("is_cent_account", False))
+        is_cent = cfg_cent or (curr_str in ("USC", "EUCC", "GBPC", "CENT", "GLD")) or ("cent" in server_str)
+        norm_factor = 100.0 if is_cent else 1.0
+
+        margin_mode_raw = getattr(info, "margin_mode", 2)
+        margin_mode_str = "hedging" if margin_mode_raw == 2 else ("netting" if margin_mode_raw in (0, 1) else "hedging")
+
         return {
             "login": info.login,
             "balance": info.balance,
@@ -369,7 +380,12 @@ class MT5Client:
             "margin_level": info.margin_level,
             "currency": info.currency,
             "leverage": info.leverage,
+            "margin_mode": margin_mode_str,
+            "allow_hedging": (margin_mode_str == "hedging"),
             "server": info.server,
+            "is_cent_account": is_cent,
+            "normalized_balance": float(info.balance) / norm_factor,
+            "normalized_equity": float(info.equity) / norm_factor,
         }
 
     # ------------------------------------------------------------------
@@ -421,6 +437,16 @@ class MT5Client:
             return await self._run(_get_last_tick, symbol, priority=PRIORITY_STANDARD)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _get_last_tick, symbol)
+
+    async def copy_ticks_range(self, symbol: str, date_from: datetime, date_to: datetime, flags: int = 1) -> list[dict]:
+        """Ambil array ticks historis dalam rentang waktu tertentu dari MT5."""
+        if not await self.ensure_connected():
+            return []
+        from unittest.mock import AsyncMock
+        if hasattr(self, '_run') and not isinstance(self._run, AsyncMock):
+            return await self._run(_copy_ticks_range, symbol, date_from, date_to, flags, priority=PRIORITY_STANDARD)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _copy_ticks_range, symbol, date_from, date_to, flags)
 
     async def get_broker_utc_offset_seconds(self) -> int:
         """
@@ -1153,6 +1179,50 @@ class MT5Client:
         """Alias for modify_position (Priority 0)."""
         return await self.modify_position(ticket=ticket, sl=sl, tp=tp)
 
+    async def capture_chart_screenshot(
+        self,
+        symbol: str,
+        timeframe: str = "H1",
+        width: int = 1280,
+        height: int = 720,
+        filepath: Optional[str] = None,
+    ) -> dict:
+        """Takes an on-demand screenshot of the active MT5 chart window via mt5.chart_screenshot()."""
+        if not await self.ensure_connected():
+            return {"success": False, "error": "MT5 disconnected"}
+
+        from pathlib import Path
+        if not filepath:
+            out_dir = Path("results/charts/mt5_screenshots")
+            out_dir.mkdir(parents=True, exist_ok=True)
+            ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = str(out_dir / f"{symbol}_{timeframe}_{ts_str}.png")
+
+        tf_val = self._timeframe_to_mt5(timeframe)
+        res = await self._run(_capture_chart_screenshot, symbol, tf_val, width, height, filepath)
+        return res
+
+    def get_chart_objects(self, symbol: str) -> dict:
+        """Reads exported user chart objects from shared MT5 FILE_COMMON (Q151)."""
+        from execution.ea_bridge.heartbeat_writer import HeartbeatManager
+        import json
+        from pathlib import Path
+
+        common_path = HeartbeatManager().get_common_path()
+        if not common_path:
+            return {"symbol": symbol, "objects": [], "status": "unavailable", "message": "MT5 common directory not found"}
+
+        obj_file = Path(common_path) / f"chart_objects_{symbol}.json"
+        if not obj_file.exists():
+            return {"symbol": symbol, "objects": [], "status": "not_found", "message": f"No chart_objects_{symbol}.json found in MT5 common folder. Ensure AIAgent_EA is attached to the chart."}
+
+        try:
+            with open(obj_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {"status": "success", **data}
+        except Exception as e:
+            return {"symbol": symbol, "objects": [], "status": "error", "error": str(e)}
+
     async def sync_positions_from_mt5(
         self,
         session: AsyncSession,
@@ -1509,6 +1579,18 @@ def _get_last_tick(symbol: str):
     import MetaTrader5 as _mt5
     mt5: Any = _mt5
     return mt5.symbol_info_tick(symbol)
+
+
+def _copy_ticks_range(symbol: str, date_from: datetime, date_to: datetime, flags: int = 1):
+    import MetaTrader5 as _mt5
+    ticks = _mt5.copy_ticks_range(symbol, date_from, date_to, flags)
+    if ticks is None or len(ticks) == 0:
+        return []
+    import pandas as pd
+    df = pd.DataFrame(ticks)
+    if "time" in df.columns:
+        df["time"] = pd.to_datetime(df["time"], unit="s", utc=True).dt.strftime("%Y-%m-%d %H:%M:%S")
+    return df.to_dict(orient="records")
 
 
 def _calculate_dom_vwap(symbol: str, direction: str, volume: float) -> dict:
@@ -2090,6 +2172,30 @@ def _get_order_history(ticket: Any):
         ticket_id = 0
     orders = mt5.history_orders_get(ticket=ticket_id)
     return orders if orders else []
+
+
+def _capture_chart_screenshot(symbol: str, tf: int, width: int, height: int, filepath: str) -> dict:
+    from typing import Any
+    import MetaTrader5 as _mt5
+    mt5: Any = _mt5
+
+    charts = mt5.charts_get() or []
+    target_chart_id = None
+    for c in charts:
+        if getattr(c, "symbol", "") == symbol:
+            target_chart_id = getattr(c, "chart_id", None) or getattr(c, "id", None)
+            break
+
+    if target_chart_id is None:
+        target_chart_id = mt5.chart_open(symbol, tf)
+
+    if target_chart_id is None:
+        return {"success": False, "error": f"Could not find or open MT5 chart for {symbol}"}
+
+    success = mt5.chart_screenshot(target_chart_id, filepath, width, height)
+    if success:
+        return {"success": True, "chart_id": target_chart_id, "symbol": symbol, "filepath": filepath}
+    return {"success": False, "error": f"chart_screenshot returned False for chart_id {target_chart_id}"}
 
 
 _default_mt5_client: Optional[MT5Client] = None

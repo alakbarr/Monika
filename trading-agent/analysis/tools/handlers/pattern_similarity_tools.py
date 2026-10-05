@@ -53,6 +53,11 @@ class ScanPatternSimilarityHandler(ToolHandler):
             settings = getattr(executor, "settings", {}) or {}
             engine = PatternSimilarityEngine(session=session, settings=settings)
 
+            compare_to_date = args.get("compare_to_date")
+            if compare_to_date:
+                tf = timeframes[0] if timeframes else "D1"
+                return await engine.compare_specific_date(symbol=symbol, target_date_str=compare_to_date, timeframe=tf)
+
             result = await engine.screen(symbol=symbol, timeframes=timeframes)
             return result.format_for_prompt()
         except Exception as e:

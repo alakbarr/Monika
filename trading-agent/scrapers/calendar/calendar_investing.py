@@ -277,6 +277,29 @@ class InvestingCalendarScraper(BaseScraper):
                 return events
             return self._fallback_forexfactory()
 
+        # Normal Mode: jika time_filter diberikan gunakan filter tersebut, jika tidak gunakan default This Week & Next Week
+        time_filters = [time_filter] if time_filter else ["This Week", "Next Week"]
+        
+        for filter_label in time_filters:
+            if getattr(self, 'is_closed', False):
+                break
+            filter_success = self._apply_time_filter_human_like(filter_label)
+            if not filter_success:
+                logger.warning(f"Failed to apply time filter: {filter_label}")
+
+            self._load_all_calendar_rows()
+
+            table_ele = self._find_calendar_table()
+            if not table_ele:
+                logger.warning(f"Could not find table element after applying filter {filter_label}")
+                continue
+                
+            table_html = table_ele.inner_html
+            soup = BeautifulSoup(table_html, "html.parser")
+            self._parse_table_html(soup, all_events_dict)
+
+        return list(all_events_dict.values())
+
     def _fallback_forexfactory(self) -> List[CalendarEvent]:
         """Secondary seamless failover if Investing.com is unreachable or throttled."""
         try:
@@ -289,29 +312,6 @@ class InvestingCalendarScraper(BaseScraper):
         except Exception as e:
             logger.error(f"Secondary ForexFactory calendar failover error: {e}")
         return []
-
-        # Normal Mode: jika time_filter diberikan gunakan filter tersebut, jika tidak gunakan default This Week & Next Week
-        time_filters = [time_filter] if time_filter else ["This Week", "Next Week"]
-        
-        for time_filter in time_filters:
-            if getattr(self, 'is_closed', False):
-                break
-            filter_success = self._apply_time_filter_human_like(time_filter)
-            if not filter_success:
-                logger.warning(f"Failed to apply time filter: {time_filter}")
-
-            self._load_all_calendar_rows()
-
-            table_ele = self._find_calendar_table()
-            if not table_ele:
-                logger.warning(f"Could not find table element after applying filter {time_filter}")
-                continue
-                
-            table_html = table_ele.inner_html
-            soup = BeautifulSoup(table_html, "html.parser")
-            self._parse_table_html(soup, all_events_dict)
-
-        return list(all_events_dict.values())
 
     def _parse_table_html(self, soup: BeautifulSoup, all_events_dict: dict) -> List[CalendarEvent]:
         _MONTH_RE = re.compile(r"\s*\((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Q\d|H\d)\)", re.IGNORECASE)

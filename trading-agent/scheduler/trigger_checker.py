@@ -171,6 +171,10 @@ class TriggerChecker:
                         except Exception as alert_notify_err:
                             logger.error(f"Failed to send user alert notification: {alert_notify_err}")
 
+                        if trigger_cond.get("trigger_reanalysis") and symbol and self._per_asset:
+                            logger.info(f"User alert #{trigger.id} requested background re-analysis for {symbol}")
+                            self._spawn_background_reanalysis(symbol)
+
                     preplanned_order = trigger_cond.get("preplanned_order") if isinstance(trigger_cond, dict) else None
 
                     if preplanned_order and self._execution_service:
@@ -693,12 +697,45 @@ class TriggerChecker:
             return await self._check_indicator(trigger, condition)
         elif trigger_type in ("time", "force_close", "cancel_pending", "order_ttl", "cancel_pending_order"):
             return self._check_time(trigger, condition)
+        elif trigger_type in ("macro_event", "macro", "post_news"):
+            return self._check_macro_event(trigger, condition)
         elif trigger_type == "news":
             # News triggers are processed via NewsWatcher or expired by TTL
             return False
         else:
             logger.debug(f"Unknown trigger type: {trigger_type}")
             return "invalid"
+
+    def _check_macro_event(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
+        """
+        Evaluates macro_event triggers (e.g. post-NFP/CPI settlement).
+        Fires only after the post-event settlement window (default 15 minutes) has elapsed.
+        """
+        raw_time = condition.get("event_time") or condition.get("time") or condition.get("release_time")
+        if not raw_time:
+            return False
+
+        try:
+            if isinstance(raw_time, (int, float)):
+                event_dt = datetime.fromtimestamp(raw_time, tz=timezone.utc)
+            else:
+                import dateutil.parser as dparser
+                event_dt = dparser.parse(str(raw_time))
+                if event_dt.tzinfo is None:
+                    event_dt = event_dt.replace(tzinfo=timezone.utc)
+
+            settlement_mins = float(condition.get("settlement_minutes", 15.0))
+            fire_dt = event_dt + timedelta(minutes=settlement_mins)
+            now_dt = clock.now()
+
+            if now_dt >= fire_dt:
+                if (now_dt - fire_dt).total_seconds() > 7200:
+                    return "expired"
+                return True
+            return False
+        except Exception as e:
+            logger.debug(f"Error checking macro_event trigger {trigger.id}: {e}")
+            return False
 
     async def _check_price_level(self, trigger: TradeTrigger, condition: dict) -> 'bool | str':
         """Evaluasi harga crossing level (above/below)."""
@@ -760,10 +797,25 @@ class TriggerChecker:
             except (ValueError, TypeError):
                 return False
 
+            is_met = False
             if direction == "above":
-                return current_price >= price
+                is_met = current_price >= price
             elif direction == "below":
-                return current_price <= price
+                is_met = current_price <= price
+
+            if not is_met:
+                return False
+
+            min_vol = condition.get("min_volume")
+            if min_vol is not None:
+                try:
+                    vol = float(getattr(last_bar, "volume", 0.0) or 0.0)
+                    if vol < float(min_vol):
+                        return False
+                except (ValueError, TypeError):
+                    pass
+
+            return True
 
         return False
 

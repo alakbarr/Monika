@@ -1,6 +1,7 @@
 """Domain-specific tool handlers for modular tool execution."""
 
 from analysis.tools.domain import (
+    browser_tool,
     clarify_tool,
     code_execution_tool,
     code_search_tool,
@@ -13,12 +14,14 @@ from analysis.tools.domain import (
     multimodal_tools,
     skill_tools,
     spill_reader_tool,
+    terminal_tools,
     todo_tool,
     tool_search_tools,
     web_tools,
 )
 
 __all__ = [
+    "browser_tool",
     "clarify_tool",
     "code_execution_tool",
     "code_search_tool",

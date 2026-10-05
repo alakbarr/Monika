@@ -48,6 +48,39 @@ class ComputerUseInput(BaseModel):
     )
 
 
+def focus_mt5_window() -> bool:
+    """Attempt to find and bring MetaTrader 5 window to foreground on Windows."""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd_target = None
+
+        def enum_windows_callback(hwnd, extra):
+            nonlocal hwnd_target
+            if user32.IsWindowVisible(hwnd):
+                length = user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buff = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, buff, length + 1)
+                    title = buff.value
+                    if "MetaTrader 5" in title or "MetaTrader" in title:
+                        hwnd_target = hwnd
+                        return False
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        user32.EnumWindows(WNDENUMPROC(enum_windows_callback), 0)
+
+        if hwnd_target:
+            user32.ShowWindow(hwnd_target, 9)  # SW_RESTORE
+            user32.SetForegroundWindow(hwnd_target)
+            time.sleep(0.1)
+            return True
+    except Exception as e:
+        logger.debug(f"[ComputerUse] Could not focus MT5 window: {e}")
+    return False
+
+
 @unified_tool_registry.register(
     name="computer_use",
     category="SYSTEM_AUTOMATION",
@@ -90,7 +123,11 @@ async def handle_computer_use(
             screenshot.save(file_path, "PNG")
             return f"[SCREENSHOT CAPTURED]: Saved to {file_path} ({screen_w}x{screen_h})"
 
-        elif action in {"mouse_move", "left_click", "right_click"}:
+        # For interactive actions, snap focus to MT5 if available
+        if action in {"mouse_move", "left_click", "right_click", "type_text", "key_press"}:
+            focus_mt5_window()
+
+        if action in {"mouse_move", "left_click", "right_click"}:
             if not params.coordinate or len(params.coordinate) != 2:
                 return f"Error: Action '{action}' requires [x, y] coordinates."
             x, y = params.coordinate

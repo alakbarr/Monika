@@ -1,8 +1,8 @@
 try:
-    from DrissionPage import ChromiumPage, ChromiumOptions  # type: ignore[import-untyped, import-not-found]
+    from DrissionPage import ChromiumPage, ChromiumOptions
 except ImportError:
-    ChromiumPage = None  # type: ignore[assignment, misc]
-    ChromiumOptions = None  # type: ignore[assignment, misc]
+    ChromiumPage = None
+    ChromiumOptions = None
 
 import os
 import signal

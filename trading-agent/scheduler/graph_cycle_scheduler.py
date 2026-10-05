@@ -177,7 +177,7 @@ class GraphCycleScheduler(CycleScheduler):
             except Exception:
                 pass
         try:
-            from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+            from langgraph.checkpoint.memory import MemorySaver
             self.graph.checkpointer = MemorySaver()
         except ImportError:
             pass

@@ -22,6 +22,7 @@ BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 BINANCE_DAPI_URL = "https://dapi.binance.com/dapi/v1/premiumIndex"
 BINANCE_OI_URL = "https://fapi.binance.com/fapi/v1/openInterest"
 BYBIT_TICKERS_URL = "https://api.bybit.com/v5/market/tickers"
+OKX_FUNDING_URL = "https://www.okx.com/api/v5/public/funding-rate"
 COINGLASS_URL = "https://open-api.coinglass.com/public/v2/funding"
 
 class CoinglasFundingFetcher:
@@ -127,7 +128,31 @@ class CoinglasFundingFetcher:
         except Exception as by_err:
             logger.debug(f"Bybit funding rate fetch non-fatal: {by_err}")
 
-        # 3. Tertiary Fallback: Coinglass API
+        # 3. OKX Public API
+        try:
+            okx_data = await fetch_with_retry(
+                OKX_FUNDING_URL,
+                params={"instId": "BTC-USDT-SWAP"},
+                timeout=15
+            )
+            if okx_data and isinstance(okx_data, dict) and okx_data.get("code") == "0":
+                okx_items = okx_data.get("data", [])
+                if okx_items and isinstance(okx_items, list):
+                    item = okx_items[0]
+                    okx_rate_str = item.get("fundingRate")
+                    if okx_rate_str is not None:
+                        okx_rate = float(okx_rate_str)
+                        okx_next_str = item.get("nextFundingRate")
+                        okx_next = float(okx_next_str) if okx_next_str else okx_rate
+                        rates.append({
+                            "exchange": "OKX",
+                            "rate": round(okx_rate, 6),
+                            "next_rate": round(okx_next, 6)
+                        })
+        except Exception as okx_err:
+            logger.debug(f"OKX funding rate fetch non-fatal: {okx_err}")
+
+        # 4. Tertiary Fallback: Coinglass API
         if not rates:
             try:
                 cg_data = await fetch_with_retry(

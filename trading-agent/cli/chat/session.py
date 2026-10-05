@@ -10,11 +10,13 @@ thinking scrubber, tool tree cards, and single-turn interrupt handling.
 """
 
 import asyncio
+import base64
 import json
 import logging
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -331,6 +333,27 @@ class ChatReplSession:
                     self.renderer.render_approval_card(action)
                     break
 
+                elif etype == "chart_image":
+                    filename = data.get("filename", f"chart_{int(time.time())}.png")
+                    caption = data.get("caption", "")
+                    img_b64 = data.get("image_base64", "")
+                    if img_b64:
+                        out_dir = Path("data/charts")
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        out_path = out_dir / filename
+                        out_path.write_bytes(base64.b64decode(img_b64))
+                        self.renderer.render_notice(f"Chart saved: {out_path} ({caption})", level="info")
+
+                elif etype == "file_download":
+                    filename = data.get("filename", f"export_{int(time.time())}.bin")
+                    file_b64 = data.get("file_base64", "")
+                    if file_b64:
+                        out_dir = Path("data/exports")
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        out_path = out_dir / filename
+                        out_path.write_bytes(base64.b64decode(file_b64))
+                        self.renderer.render_notice(f"File saved: {out_path}", level="info")
+
                 elif etype == "complete":
                     sys.stdout.write("\n")
                     sys.stdout.flush()
@@ -421,6 +444,22 @@ class ChatReplSession:
                 self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time)
 
             self.history.append({"sender": "agent", "text": final_text})
+
+            if hasattr(self.local_agent, "pop_pending_charts"):
+                for chart in self.local_agent.pop_pending_charts():
+                    out_dir = Path("data/charts")
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    out_path = out_dir / chart.get("filename", f"chart_{int(time.time())}.png")
+                    out_path.write_bytes(chart["data"])
+                    self.renderer.render_notice(f"Chart saved: {out_path} ({chart.get('caption', '')})", level="info")
+
+            if hasattr(self.local_agent, "pop_pending_files"):
+                for f in self.local_agent.pop_pending_files():
+                    out_dir = Path("data/exports")
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    out_path = out_dir / f.get("filename", f"export_{int(time.time())}.bin")
+                    out_path.write_bytes(f["data"])
+                    self.renderer.render_notice(f"File saved: {out_path}", level="info")
 
             if pending:
                 action_dict = {

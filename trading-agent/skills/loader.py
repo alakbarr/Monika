@@ -211,6 +211,15 @@ def list_skills() -> list[str]:
             if p.name != "SKILL.md":
                 _collect_skill_identifiers(p)
 
+    # 4. General skills directory
+    gen_dir = _SKILLS_DIR.parent / "general"
+    if gen_dir.exists():
+        for p in gen_dir.glob("*/SKILL.md"):
+            _collect_skill_identifiers(p)
+        for p in gen_dir.glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+
     return list(dict.fromkeys(skills))
 
 
@@ -359,6 +368,9 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
     elif sym in ("XAUUSD", "XTIUSD", "BRENT", "XAGUSD") or "commodity" in sym.lower():
         if "commodity_analysis" not in skills:
             skills.insert(1, "commodity_analysis")
+    elif sym in ("USDIDR", "IDR") or "idr" in sym.lower():
+        if "emerging-markets-idr" not in skills:
+            skills.insert(1, "emerging-markets-idr")
 
     # Dynamic autonomous micro-playbook routing
     regime = str(ctx.get("regime") or ctx.get("macro_regime") or "").lower().strip()

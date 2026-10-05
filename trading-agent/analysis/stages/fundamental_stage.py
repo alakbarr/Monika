@@ -88,7 +88,13 @@ CORE CENTRAL BANK & CURRENCY ATTRACTIVENESS DIRECTIVES:
    - Safe-haven surges (USD, CHF, JPY during VIX > 25) vs Risk-on cyclical beta weakness (AUD, GBP).
    - Fiscal / Sovereign debt sustainability (Gilt yields/twin deficits depressing GBP despite high nominal rates).
    - Terms of Trade & Commodity Shocks (Iron Ore moves AUD without RBA intervention; energy import costs pressure EUR/JPY).
-   - Carry trade unwind squeezes (JPY appreciating aggressively in risk-off despite lowest nominal yields).
+    - Carry trade unwind squeezes (JPY appreciating aggressively in risk-off despite lowest nominal yields).
+5. SYSTEMIC LIQUIDITY, TREASURY AUCTIONS & CREDIT RISK DIRECTIVES:
+   - Fed Net Liquidity: Inspect `fed_net_liquidity_and_stress` in [PRE-FETCHED DATA]. Formula: Net Liquidity = WALCL - TGA - RRP. Note whether systemic liquidity is EXPANSIONARY (supportive of risk assets & Bitcoin, headwind for USD cash demand) or CONTRACTIONARY (liquidity drain, supportive for USD cash).
+   - Corporate Credit Spreads (HY OAS): Benchmark threshold is 450 bps. If HY OAS is < 380 bps, credit risk is BENIGN, favoring carry trades. If > 450 bps, CRITICAL STRESS is present.
+   - Treasury Auction Tails: Inspect `treasury_auction_results` (10Y/2Y). A negative tail and >65% indirect bidding denote robust foreign debt demand. A positive tail (>1.2 bps) denotes soft absorption and yields tailing out higher.
+6. GRANULAR REPORT BREAKDOWN & SIGNAL-TO-NOISE:
+   - When evaluating recent macro surprises (CPI, NFP, PCE), do NOT rely on headlines alone. Distinguish transitory noise (e.g. volatile energy, used car declines) from persistent structural pressure (shelter, OER, supercore services). Cite whether the surprise alters the reaction function or is mere noise.
 
 IMPORTANT FOR currency_bias:
 - Required: USD, EUR, GBP, JPY, AUD, XAU
@@ -101,6 +107,7 @@ IMPORTANT FOR currency_bias:
 MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_fundamental_brief):
 [ ] Did I analyze DXY and clearly state the USD bias?
 [ ] Did I evaluate the relative central bank policy divergence (Fed vs ECB/BoE/BoJ/RBA)?
+[ ] Did I inspect Fed Net Liquidity and credit stress in the pre-fetched bundle and cite them in macro_narrative?
 [ ] Did I analyze VIX and clearly state risk sentiment (Risk On/Off/Neutral)?
 [ ] Did I review the news digest for specific currency nuances?
 [ ] Did I provide a clear directional bias for ALL requested pairs?

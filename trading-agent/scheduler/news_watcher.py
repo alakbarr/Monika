@@ -316,6 +316,15 @@ class NewsWatcher:
             result["affected_symbols"] = affected
             result["reanalysis_triggered"] = True
 
+            try:
+                from utils.infra.notifier import AgentNotifier
+                top_items_text = "\n".join([f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]])
+                symbols_text = f"Simbol terdampak: {', '.join(affected)}" if affected else "Simbol: Multi-aset/Makro"
+                notif_msg = f"[BREAKING NEWS] Terdeteksi berita berdampak tinggi:\n{top_items_text}\n{symbols_text}\nEvaluasi risiko dan re-analisis otomatis dipicu."
+                asyncio.create_task(AgentNotifier().send_warning(notif_msg))
+            except Exception as notif_err:
+                logger.debug(f"Failed to send breaking news notification: {notif_err}")
+
             async with get_session() as session:
                 await self._log(
                     session,

@@ -8,6 +8,8 @@ from database.models import (
     TelegramConversation,
     TelegramTopicBinding,
     RiskState,
+    UserPreference,
+    UserJournalEntry,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "TelegramConversation",
     "TelegramTopicBinding",
     "RiskState",
+    "UserPreference",
+    "UserJournalEntry",
 ]

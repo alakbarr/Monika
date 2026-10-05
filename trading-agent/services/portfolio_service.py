@@ -126,7 +126,7 @@ class PortfolioService:
             vol = float(p.volume or 0.0)
             pnl = float(p.pnl or 0.0)
             total_unrealized_pnl += pnl
-            side = (p.side or "").lower()
+            side = (getattr(p, "direction", None) or getattr(p, "side", "") or "").lower()
             if sym not in by_symbol:
                 by_symbol[sym] = {"long_lots": 0.0, "short_lots": 0.0, "net_lots": 0.0, "unrealized_pnl": 0.0, "count": 0}
             by_symbol[sym]["count"] += 1
@@ -139,6 +139,33 @@ class PortfolioService:
                 total_short_lots += vol
             by_symbol[sym]["net_lots"] = round(by_symbol[sym]["long_lots"] - by_symbol[sym]["short_lots"], 2)
 
+        # Calculate Net Currency Exposure (e.g. USD, EUR, GBP, XAU)
+        from utils.market.instrument_identity import resolve_instrument_identity
+        by_currency: Dict[str, Dict[str, float]] = {}
+        for p in positions:
+            sym = p.symbol or "UNKNOWN"
+            vol = float(p.volume or 0.0)
+            side = (getattr(p, "direction", None) or getattr(p, "side", "") or "").lower()
+            is_long = side in ("buy", "long")
+
+            ident = resolve_instrument_identity(sym)
+            base = ident.base_currency or "UNKNOWN"
+            quote = ident.quote_currency or "USD"
+
+            for c_curr in (base, quote):
+                if c_curr not in by_currency:
+                    by_currency[c_curr] = {"long_lots": 0.0, "short_lots": 0.0, "net_lots": 0.0}
+
+            if is_long:
+                by_currency[base]["long_lots"] = round(by_currency[base]["long_lots"] + vol, 2)
+                by_currency[quote]["short_lots"] = round(by_currency[quote]["short_lots"] + vol, 2)
+            else:
+                by_currency[base]["short_lots"] = round(by_currency[base]["short_lots"] + vol, 2)
+                by_currency[quote]["long_lots"] = round(by_currency[quote]["long_lots"] + vol, 2)
+
+        for c_curr, data in by_currency.items():
+            data["net_lots"] = round(data["long_lots"] - data["short_lots"], 2)
+
         return {
             "open_positions_count": len(positions),
             "total_gross_lots": round(total_long_lots + total_short_lots, 2),
@@ -147,5 +174,6 @@ class PortfolioService:
             "total_short_lots": round(total_short_lots, 2),
             "total_unrealized_pnl": round(total_unrealized_pnl, 2),
             "by_symbol": by_symbol,
+            "by_currency": by_currency,
         }
 
