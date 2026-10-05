@@ -1,0 +1,29 @@
+{
+  "fast_query": {
+    "user_message": "Berapa floating PnL dan status posisi Gold kita sekarang Monika?",
+    "context_state": {
+      "symbol": "XAUUSD",
+      "floating_pnl_usd": 420.5,
+      "entry": 2650.0,
+      "current": 2658.5
+    },
+    "expected_tone": "Concise, friendly, institutional trader tone with precise numeric metrics."
+  },
+  "medium_query": {
+    "user_message": "Kenapa trade EURUSD kemarin ditutup BE Monika? Tolong evaluasi alasannya.",
+    "context_state": {
+      "symbol": "EURUSD",
+      "closed_reason": "M15 wick rejection near H1 resistance while waiting for NFP."
+    },
+    "expected_tone": "Analytical, disciplined, explaining risk preservation without emotion."
+  },
+  "complex_query": {
+    "user_message": "Jelaskan dampak un-inverting US 10Y-2Y yield curve terhadap strategi carry trade USDJPY kita minggu ini!",
+    "context_state": {
+      "us10y": 3.82,
+      "us02y": 3.65,
+      "spread_bps": 17
+    },
+    "expected_tone": "Quantitative senior strategist tone breaking down funding costs and BOJ policy shifts."
+  }
+}

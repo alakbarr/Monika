@@ -1,0 +1,13 @@
+{
+  "current_utc_hour": 14,
+  "active_sessions": [
+    "London",
+    "New York"
+  ],
+  "is_overlap": true,
+  "symbol": "EURUSD",
+  "near_tier1_event": false,
+  "minutes_to_next_tier1": 180,
+  "timing_allowed": true,
+  "liquidity_tier": 4
+}

@@ -1,0 +1,9 @@
+{
+  "symbol": "EURUSD",
+  "decision": "BUY",
+  "outcome_pnl_usd": -280.0,
+  "holding_hours": 3.5,
+  "exit_reason": "STOP_LOSS_HIT",
+  "reflection_text": "Stop loss placed too tight inside M15 liquidity pool rather than behind H4 structural swing low.",
+  "lesson_crystallized": "Always buffer Stop Loss beyond higher timeframe liquidity sweeps."
+}

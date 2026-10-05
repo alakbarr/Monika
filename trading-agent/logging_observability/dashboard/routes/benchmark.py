@@ -30,7 +30,9 @@ benchmark_router = APIRouter(prefix="/api/benchmark", tags=["Benchmark"])
 
 class BenchmarkRunRequest(BaseModel):
     tasks: Optional[List[str]] = Field(default=None, description="Subset task IDs to evaluate")
+    task_id: Optional[str] = Field(default=None, description="Single task role ID to evaluate")
     models: Optional[List[str]] = Field(default=None, description="Subset model names/IDs to evaluate")
+    provider_route: Optional[str] = Field(default=None, description="Provider router/prefix: direct, openrouter, 9router, groq, gemini, etc.")
     tier: Optional[str] = Field(default=None, description="Tier filter: system_one, cheap_efficient, cheap_smart, high_intelligence")
     symbols: Optional[List[str]] = Field(default=None, description="Asset symbols for per-asset analysis")
     judge_model: Optional[str] = Field(default=None, description="Judge model name")
@@ -93,12 +95,19 @@ async def list_benchmark_runs(
 ) -> Dict[str, Any]:
     """List past benchmark runs."""
     try:
+        eff_limit = limit if isinstance(limit, int) else getattr(limit, "default", 20)
+        eff_offset = offset if isinstance(offset, int) else getattr(offset, "default", 0)
+        if not isinstance(eff_limit, int):
+            eff_limit = 20
+        if not isinstance(eff_offset, int):
+            eff_offset = 0
+
         async with get_session() as session:
             stmt = (
                 select(BenchmarkRun)
                 .order_by(desc(BenchmarkRun.started_at))
-                .offset(offset)
-                .limit(limit)
+                .offset(eff_offset)
+                .limit(eff_limit)
             )
             runs = (await session.execute(stmt)).scalars().all()
 
@@ -169,8 +178,13 @@ async def get_benchmark_run_detail(
                     "category": item.category,
                     "model_name": item.model_name,
                     "provider": item.provider,
+                    "provider_route": getattr(item, "provider_route", "direct") or "direct",
                     "context_key": item.context_key,
                     "cost_usd": item.cost_usd,
+                    "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd) if getattr(item, "cost_usd_no_cache", None) is not None else item.cost_usd,
+                    "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd) if getattr(item, "cost_usd_with_cache", None) is not None else item.cost_usd,
+                    "cached_tokens": getattr(item, "cached_tokens", 0) or 0,
+                    "thinking_tokens": getattr(item, "thinking_tokens", 0) or 0,
                     "latency_s": item.latency_s,
                     "input_tokens": item.input_tokens,
                     "output_tokens": item.output_tokens,
@@ -183,6 +197,70 @@ async def get_benchmark_run_detail(
                 }
                 for item in items
             ]
+        }
+
+
+@benchmark_router.get("/compare")
+@require_role(Role.VIEWER)
+async def compare_task_benchmarks(
+    request: Request,
+    task_id: str = Query(..., description="Target task role ID to compare"),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> Dict[str, Any]:
+    """Compare all models evaluated on a specific task_role across benchmark runs,
+    providing quality score, speed/latency, and dual cost (with vs without cache hit)."""
+    try:
+        eff_limit = limit if isinstance(limit, int) else getattr(limit, "default", 50)
+        if not isinstance(eff_limit, int):
+            eff_limit = 50
+
+        async with get_session() as session:
+            stmt = (
+                select(BenchmarkResult)
+                .where(BenchmarkResult.task_id == task_id)
+                .order_by(desc(BenchmarkResult.overall_score), BenchmarkResult.latency_s.asc())
+                .limit(eff_limit)
+            )
+            items = (await session.execute(stmt)).scalars().all()
+
+            comparisons = []
+            for item in items:
+                comparisons.append({
+                    "id": item.id,
+                    "run_id": item.run_id,
+                    "task_id": item.task_id,
+                    "category": item.category,
+                    "model_name": item.model_name,
+                    "provider": item.provider,
+                    "provider_route": getattr(item, "provider_route", "direct") or "direct",
+                    "score": round(item.overall_score, 3) if item.overall_score is not None else None,
+                    "deterministic_score": item.deterministic_score,
+                    "judge_overall": item.judge_overall,
+                    "latency_s": item.latency_s or 0.0,
+                    "cost_usd": item.cost_usd or 0.0,
+                    "cost_usd_no_cache": getattr(item, "cost_usd_no_cache", item.cost_usd) if getattr(item, "cost_usd_no_cache", None) is not None else (item.cost_usd or 0.0),
+                    "cost_usd_with_cache": getattr(item, "cost_usd_with_cache", item.cost_usd) if getattr(item, "cost_usd_with_cache", None) is not None else (item.cost_usd or 0.0),
+                    "input_tokens": item.input_tokens or 0,
+                    "output_tokens": item.output_tokens or 0,
+                    "cached_tokens": getattr(item, "cached_tokens", 0) or 0,
+                    "thinking_tokens": getattr(item, "thinking_tokens", 0) or 0,
+                    "schema_valid": item.schema_valid,
+                    "error": item.error,
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
+                })
+
+            return {
+                "task_id": task_id,
+                "total_evaluations": len(comparisons),
+                "comparisons": comparisons,
+            }
+    except Exception as e:
+        logger.warning(f"Error querying benchmark comparisons: {e}")
+        return {
+            "task_id": task_id,
+            "total_evaluations": 0,
+            "comparisons": [],
+            "error": str(e),
         }
 
 
@@ -361,6 +439,18 @@ async def trigger_benchmark_run(
 
     models = req.models
     tasks = req.tasks
+    if not tasks and req.task_id:
+        tasks = [req.task_id]
+
+    # Route models via selected provider if specified
+    if req.provider_route and req.provider_route != "direct" and models:
+        routed = []
+        for m in models:
+            if ":" not in m:
+                routed.append(f"{req.provider_route}:{m}")
+            else:
+                routed.append(m)
+        models = routed
 
     if req.compare_routers:
         router_mat = get_router_matrix(settings)

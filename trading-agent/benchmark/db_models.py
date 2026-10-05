@@ -41,3 +41,8 @@ class BenchmarkResult(Base):
     raw_output: Mapped[str] = mapped_column(Text, nullable=True)
     error: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    cached_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd_no_cache: Mapped[float] = mapped_column(Float, default=0.0)
+    cost_usd_with_cache: Mapped[float] = mapped_column(Float, default=0.0)
+    thinking_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    provider_route: Mapped[str] = mapped_column(String(80), default="direct")

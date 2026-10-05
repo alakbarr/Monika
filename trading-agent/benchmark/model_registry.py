@@ -94,4 +94,5 @@ def make_role_config(max_tokens: int = 8192, max_tool_turns: int = 10,
         "temperature": temperature,
         "seed": seed,
         "thinking": {p: thinking for p in providers},
+        "_benchmark_mode": True,
     }

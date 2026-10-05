@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-10-01T14:00:00Z",
+  "market_status": {
+    "vix": 16.7,
+    "vix_regime": "NORMAL",
+    "trading_paused": false,
+    "macro_regime": "RISK_OFF"
+  },
+  "assets": [
+    {
+      "symbol": "EURUSD",
+      "price": 1.1065,
+      "atr_m15": 0.0012,
+      "adx_h1": 28.5,
+      "spread_points": 1.1,
+      "tier1_news_countdown_min": 240,
+      "decision": "YES",
+      "reason": "Active London/NY volume, clean pullback to H4 FVG."
+    },
+    {
+      "symbol": "GBPUSD",
+      "price": 1.332,
+      "atr_m15": 0.0018,
+      "adx_h1": 31.0,
+      "spread_points": 1.4,
+      "tier1_news_countdown_min": 180,
+      "decision": "YES",
+      "reason": "Sustained trend displacement following UK open."
+    },
+    {
+      "symbol": "USDJPY",
+      "price": 144.2,
+      "atr_m15": 0.18,
+      "adx_h1": 29.2,
+      "spread_points": 1.2,
+      "tier1_news_countdown_min": 360,
+      "decision": "YES",
+      "reason": "US-JP 10Y yield spread breakout above 265bps."
+    },
+    {
+      "symbol": "XAUUSD",
+      "price": 2658.5,
+      "atr_m15": 3.8,
+      "adx_h1": 34.1,
+      "spread_points": 2.5,
+      "tier1_news_countdown_min": 120,
+      "decision": "YES",
+      "reason": "Geopolitical safe-haven momentum, high liquidity."
+    },
+    {
+      "symbol": "XTIUSD",
+      "price": 71.85,
+      "atr_m15": 0.35,
+      "adx_h1": 38.0,
+      "spread_points": 3.0,
+      "tier1_news_countdown_min": 90,
+      "decision": "YES",
+      "reason": "Middle East naval catalyst breakout above 200 EMA."
+    },
+    {
+      "symbol": "BTCUSD",
+      "price": 84200.0,
+      "atr_m15": 180.0,
+      "adx_h1": 22.0,
+      "spread_points": 12.0,
+      "tier1_news_countdown_min": 999,
+      "decision": "YES",
+      "reason": "Consolidation above $84,000 institutional support."
+    }
+  ]
+}

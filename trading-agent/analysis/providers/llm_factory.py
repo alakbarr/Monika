@@ -328,8 +328,9 @@ class LLMFactory:
         
         # In a real scenario, we might want to fail gracefully, but for now we assume enabled
         if provider_config and not provider_config.get("enabled", True):
-            logger.warning(f"Provider {provider_name} is disabled.")
-            return None
+            if not role_config.get("_benchmark_mode") and not (":" in model_name):
+                logger.warning(f"Provider {provider_name} is disabled.")
+                return None
 
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)

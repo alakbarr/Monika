@@ -136,6 +136,7 @@ STRUKTUR*.md
 
 # Cost & Benchmark Analysis Files
 ai_cost_analysis*.md
+benchmark_report*.md
 model_*.csv
 model_quadrant_analysis.html
 

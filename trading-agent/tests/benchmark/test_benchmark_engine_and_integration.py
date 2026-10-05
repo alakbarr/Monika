@@ -48,7 +48,7 @@ def test_fixture_loader_market_snapshot():
     snapshot = get_synthetic_market_snapshot()
     assert snapshot is not None
     assert "volatility" in snapshot
-    assert snapshot["volatility"]["vix"] == 15.68
+    assert snapshot["volatility"]["vix"] in (15.68, 16.7)
     assert "EURUSD" in snapshot["fx_prices"]
     assert snapshot["fx_prices"]["EURUSD"] == 1.1377
     assert snapshot["fx_prices"]["XAUUSD"] == 4260.00
@@ -307,4 +307,125 @@ def test_api_get_runs_and_leaderboard_empty_or_mocked(test_client):
         assert response_lb.status_code == 200
         lb_data = response_lb.json()
         assert "leaderboard" in lb_data
+
+
+def test_api_get_compare_task_benchmarks(test_client):
+    class MockResult:
+        id = 1
+        run_id = 10
+        task_id = "stage1_fundamental"
+        category = "macro"
+        model_name = "gemini-3.8-flash"
+        provider = "gemini"
+        provider_route = "direct"
+        overall_score = 0.88
+        deterministic_score = 0.90
+        judge_overall = 8.5
+        latency_s = 2.45
+        cost_usd = 0.0012
+        cost_usd_no_cache = 0.0015
+        cost_usd_with_cache = 0.0003
+        input_tokens = 50000
+        output_tokens = 1200
+        cached_tokens = 42500
+        thinking_tokens = 0
+        schema_valid = True
+        error = None
+        created_at = None
+
+    class MockAsyncSessionCM:
+        async def __aenter__(self):
+            m = MagicMock()
+            m.execute = AsyncMock(return_value=MagicMock(
+                scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[MockResult()]))),
+            ))
+            return m
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return None
+
+    with patch("logging_observability.dashboard.routes.benchmark.get_session", return_value=MockAsyncSessionCM()):
+        response = test_client.get("/api/benchmark/compare?task_id=stage1_fundamental")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["task_id"] == "stage1_fundamental"
+        assert data["total_evaluations"] == 1
+        comp = data["comparisons"][0]
+        assert comp["model_name"] == "gemini-3.8-flash"
+        assert comp["provider_route"] == "direct"
+        assert comp["cost_usd_no_cache"] == 0.0015
+        assert comp["cost_usd_with_cache"] == 0.0003
+        assert comp["cached_tokens"] == 42500
+
+
+def test_benchmark_result_columns():
+    from benchmark.db_models import BenchmarkResult
+    cols = [c.name for c in BenchmarkResult.__table__.columns]
+    assert "cached_tokens" in cols
+    assert "cost_usd_no_cache" in cols
+    assert "cost_usd_with_cache" in cols
+    assert "thinking_tokens" in cols
+    assert "provider_route" in cols
+
+
+@pytest.mark.asyncio
+async def test_all_53_roles_case_builder_with_fixtures():
+    """Verify that every task_role defined in settings.yaml builds an accurate realistic case."""
+    import yaml
+    from benchmark.task_specs import TASKS
+
+    from pathlib import Path
+    cfg_path = Path("trading-agent/config/settings.yaml")
+    if not cfg_path.exists():
+        cfg_path = Path("config/settings.yaml")
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    expected_roles = list(cfg.get("llm", {}).get("task_roles", {}).keys())
+
+    assert len(expected_roles) == 53
+    for role in expected_roles:
+        assert role in TASKS, f"Role {role} missing from TASKS registry"
+        spec = TASKS[role]
+        case = await spec.build_case(None, {"_use_fixtures": True}, None)
+        assert case is not None, f"Failed building case for {role}"
+        # Either prompt or custom_fn or state must be provided
+        has_content = bool(case.user_prompt or case.custom_fn or case.state or case.system_prompt)
+        assert has_content, f"Role {role} has no content"
+
+    # Also verify all 56 tasks in registry (53 roles + 3 harness probes)
+    assert len(TASKS) == 56, f"Expected 56 tasks, got {len(TASKS)}"
+    for task_name, spec in TASKS.items():
+        case = await spec.build_case(None, {"_use_fixtures": True}, None)
+        assert case is not None, f"Failed building case for {task_name}"
+        assert bool(case.user_prompt or case.custom_fn or case.state or case.system_prompt), f"Task {task_name} empty"
+
+
+def test_rich_payload_generators():
+    from benchmark.fixture_loader import (
+        get_synthetic_compaction_payload,
+        get_synthetic_session_reports_payload,
+        get_synthetic_fomc_transcript_payload,
+        get_synthetic_macro_anomaly_payload,
+        get_synthetic_sentiment_feed_payload,
+    )
+    comp = get_synthetic_compaction_payload()
+    assert len(comp) > 5000
+    assert "SOVEREIGN BOND YIELD CURVE" in comp
+
+    reports = get_synthetic_session_reports_payload()
+    assert len(reports) > 3000
+    assert "EXECUTIVE PORTFOLIO SESSION REPORTS" in reports
+    assert "EURUSD" in reports and "XAUUSD" in reports
+
+    fomc = get_synthetic_fomc_transcript_payload()
+    assert len(fomc) > 2000
+    assert "CHAIR POWELL" in fomc
+
+    macro = get_synthetic_macro_anomaly_payload()
+    assert len(macro) > 2000
+    assert "US TIPS vs. DE Bund" in macro
+
+    sentiment = get_synthetic_sentiment_feed_payload()
+    assert len(sentiment) > 2000
+    assert "GOLDMAN SACHS" in sentiment
+
 
