@@ -1,0 +1,14 @@
+{
+  "symbol": "EURUSD",
+  "setup_appearance": "Textbook M15 Bullish Breakout above previous day high with strong green momentum candle.",
+  "hidden_traps": [
+    "Breakout occurs directly into unmitigated H4 Supply Order Block at 1.1110.",
+    "US ISM Manufacturing Employment release scheduled in 12 minutes.",
+    "Retail crowd is 81% net long in breakout direction."
+  ],
+  "expected_adversarial_verdict": {
+    "veto_trade": true,
+    "trap_type": "INSTITUTIONAL_LIQUIDITY_ENGINEERING_SWEEP",
+    "rationale": "High likelihood of false breakout sweep designed to induce retail liquidity before downward expansion."
+  }
+}

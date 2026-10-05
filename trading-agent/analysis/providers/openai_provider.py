@@ -609,8 +609,8 @@ class OpenAIProvider(BaseLLMClient):
                     affordable = max(512, int(m.group(1)) - 64)
                     logger.warning(f"OpenRouter 402 credit clamp for {self.model}: retrying with max_tokens={affordable}")
                     try:
-                        kwargs["max_tokens"] = affordable
-                        response = await self._create_chat_completion(kwargs)
+                        call_kwargs["max_tokens"] = affordable
+                        response = await self._create_chat_completion(call_kwargs)
                         if not response:
                             return None
                         if hasattr(response, 'usage') and response.usage:

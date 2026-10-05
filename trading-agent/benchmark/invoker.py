@@ -53,6 +53,7 @@ async def invoke_text(model_name, settings, system_prompt, prompt, **role_kwargs
     t0 = time.monotonic()
     try:
         out = await client.generate(prompt, system=system_prompt)
+        err = "Provider returned empty response (API call failed or quota exhausted)" if out is None else None
         return InvokeResult(
             model_name=model_name,
             provider=client.__class__.__name__,
@@ -62,6 +63,7 @@ async def invoke_text(model_name, settings, system_prompt, prompt, **role_kwargs
             cached_tokens=usage.get("cached_tokens", 0),
             thinking_tokens=usage.get("thinking_tokens", 0),
             latency_s=time.monotonic() - t0,
+            error=err,
         )
     except Exception as e:
         return InvokeResult(
@@ -83,6 +85,7 @@ async def invoke_json(model_name, settings, system_prompt, prompt, schema, **rol
     t0 = time.monotonic()
     try:
         out = await client.classify_json(prompt, system_prompt=system_prompt, schema=schema)
+        err = "Provider returned empty response (classification failed or quota exhausted)" if out is None else None
         return InvokeResult(
             model_name=model_name,
             provider=client.__class__.__name__,
@@ -92,6 +95,7 @@ async def invoke_json(model_name, settings, system_prompt, prompt, schema, **rol
             cached_tokens=usage.get("cached_tokens", 0),
             thinking_tokens=usage.get("thinking_tokens", 0),
             latency_s=time.monotonic() - t0,
+            error=err,
         )
     except Exception as e:
         return InvokeResult(

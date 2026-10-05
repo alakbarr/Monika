@@ -1,0 +1,56 @@
+{
+  "raw_macro_summary": {
+    "dxy": {
+      "value": 101.48,
+      "change_24h": -0.28,
+      "trend": "BEARISH_PULLBACK_RETEST"
+    },
+    "us10y_yield": {
+      "value": 3.82,
+      "change_bps": -4.1,
+      "curve_status": "NORMALIZING_UNINVERTING"
+    },
+    "us02y_yield": {
+      "value": 3.65,
+      "change_bps": -3.8
+    },
+    "vix": {
+      "value": 16.7,
+      "regime": "NORMAL_VOLATILITY"
+    },
+    "wti_crude": {
+      "value": 71.85,
+      "change_pct": 2.4,
+      "regime": "GEOPOLITICAL_PREMIUM"
+    },
+    "fedwatch": {
+      "pause_prob": 0.82,
+      "cut_25bps_prob": 0.18,
+      "next_meeting_date": "2026-11-05"
+    }
+  },
+  "proposed_draft_brief": {
+    "macro_bias": "STRONG_USD_BEARISH",
+    "currency_bias": {
+      "USD": "BEARISH",
+      "EUR": "STRONGLY_BULLISH",
+      "JPY": "NEUTRAL",
+      "XAU": "BEARISH"
+    },
+    "geopolitical_risk": "MINIMAL_CALM",
+    "trading_posture": "AGGRESSIVE_RISK_ON"
+  },
+  "flaw_injection_notes": [
+    "Draft asserts USD Bearish while ignoring US yield resilience and Middle East safe haven bid.",
+    "Draft asserts XAU Bearish during gold all-time high consolidation and geopolitical turmoil."
+  ],
+  "expected_audit_verdict": {
+    "approved": false,
+    "agreement_pct": 0.35,
+    "flagged_currencies": [
+      "USD",
+      "XAU",
+      "EUR"
+    ]
+  }
+}

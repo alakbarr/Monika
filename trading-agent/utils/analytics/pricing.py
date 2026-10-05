@@ -94,6 +94,7 @@ PRICING: Dict[str, Price] = {
 
     # --- OpenAI Models ---
     "gpt-6.1-sol": Price(2.00, 0.10, 10.00),
+    "gpt-sol-6.1": Price(2.00, 0.10, 10.00),
     "gpt-6-sol": Price(2.00, 0.10, 10.00),
     "gpt-6-luna": Price(0.10, 0.01, 0.50),
     "gpt-6-luna-xhigh": Price(0.10, 0.01, 0.50),
@@ -103,6 +104,7 @@ PRICING: Dict[str, Price] = {
     "gpt-5.6-sol-high": Price(5.00, 0.50, 30.00),
     "gpt-5.6-sol-medium": Price(5.00, 0.50, 30.00),
     "gpt-5.6-sol": Price(5.00, 0.50, 30.00),
+    "gpt-sol-5.6": Price(5.00, 0.50, 30.00),
     "gpt-5.6-terra": Price(2.00, 0.20, 12.00),
     "gpt-5.6-luna": Price(0.20, 0.02, 1.20),
     "gpt-5.5": Price(5.00, 0.50, 30.00),
@@ -177,6 +179,9 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "deepseek/deepseek-reasoner": "deepseek-reasoner",
 
     # OpenAI
+    "openai/gpt-6.1-sol": "gpt-6.1-sol",
+    "openai/gpt-sol-6.1": "gpt-6.1-sol",
+    "openai/gpt-sol-5.6": "gpt-5.6-sol",
     "openai/gpt-5.6-sol": "gpt-5.6-sol",
     "openai/gpt-5.6-terra": "gpt-5.6-terra",
     "openai/gpt-5.6-luna": "gpt-5.6-luna",

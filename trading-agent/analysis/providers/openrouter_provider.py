@@ -105,7 +105,9 @@ OPENROUTER_MODEL_ALIASES = {
 
     # --- OpenAI ---
     "gpt-6.1-sol": "openai/gpt-6.1-sol",
+    "gpt-sol-6.1": "openai/gpt-6.1-sol",
     "gpt-6-sol": "openai/gpt-6-sol",
+    "gpt-sol-6": "openai/gpt-6-sol",
     "gpt-6-luna": "openai/gpt-6-luna",
     "gpt-6-luna-xhigh": "openai/gpt-6-luna",
     "gpt-6-luna-max": "openai/gpt-6-luna",
@@ -113,6 +115,7 @@ OPENROUTER_MODEL_ALIASES = {
     "gpt-5.6-luna-max": "openai/gpt-5.6-luna",
     "gpt-5.6-sol-high": "openai/gpt-5.6-sol",
     "gpt-5.6-sol": "openai/gpt-5.6-sol",
+    "gpt-sol-5.6": "openai/gpt-5.6-sol",
     "gpt-5.6-terra": "openai/gpt-5.6-terra",
     "gpt-5.6-luna": "openai/gpt-5.6-luna",
     "gpt-5.5": "openai/gpt-5.5",

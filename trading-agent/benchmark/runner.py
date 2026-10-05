@@ -12,7 +12,7 @@ from database.models import Base
 from .db_models import BenchmarkRun, BenchmarkResult
 from .db_access import BenchmarkToolExecutor, guarded_tool_executor
 from .task_specs import TASKS
-from .invoker import invoke_text, invoke_json, invoke_agent, invoke_chat, invoke_custom, invoke_system_one
+from .invoker import invoke_text, invoke_json, invoke_agent, invoke_chat, invoke_custom, invoke_system_one, InvokeResult
 from .pricing import cost_usd
 from .judge import judge_output
 from .deterministic import score_trade_payload
@@ -37,9 +37,26 @@ async def ensure_tables():
         logger.warning("ensure_tables failed (DB might be offline or unmigrated): %s", e)
 
 
+def _detect_route(model_name: str) -> str:
+    m_lower = str(model_name).lower()
+    if m_lower.startswith("openrouter:") or m_lower.startswith("openrouter/") or "/openrouter" in m_lower:
+        return "openrouter"
+    if m_lower.startswith("9router:") or m_lower.startswith("9router/") or "ninerouter" in m_lower:
+        return "9router"
+    if m_lower.startswith("groq:") or "groq" in m_lower:
+        return "groq"
+    if m_lower.startswith("gemini:") or "gemini" in m_lower:
+        return "gemini"
+    if m_lower.startswith("anthropic:") or "claude" in m_lower:
+        return "anthropic"
+    if m_lower.startswith("deepseek:") or "deepseek" in m_lower:
+        return "deepseek"
+    return "direct"
+
+
 def _err_row(run_id, task_id, category, model_name, msg):
     return BenchmarkResult(run_id=run_id, task_id=task_id, category=category, model_name=model_name,
-                            provider="?", context_key="?", error=msg)
+                            provider="?", context_key="?", error=msg, provider_route=_detect_route(model_name))
 
 
 async def _build_case_once(task_id, symbol, base_settings):
@@ -60,14 +77,32 @@ async def _build_case_once(task_id, symbol, base_settings):
 
 
 async def run_one_model_for_case(run_id, task_id, category, mode, model_name, case, settings,
-                                  judge_model, semaphore, judge_models: list[str] | None = None):
+                                  judge_model, semaphore, judge_models: list[str] | None = None,
+                                  mock_llm: bool = False):
     async with semaphore:
         async with get_session() as session:
             role_kwargs = case.role_kwargs
             captured = None
             try:
                 try:
-                    if mode == "agent":
+                    if mock_llm:
+                        if mode == "agent":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"decision": "wait", "confidence": 0.85}, input_tokens=1500, output_tokens=300, latency_s=0.05)
+                            captured = {"tool": "submit_asset_analysis", "payload": {"decision": "wait", "confidence": 0.85, "rationale": "Mock analysis verified with SMC FVG structure.", "symbol": getattr(case, "context_key", "EURUSD") or "EURUSD"}}
+                        elif mode == "chat":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock chat response based on account status.", input_tokens=800, output_tokens=150, latency_s=0.04)
+                            captured = {"tool": "answer_user_query", "payload": {"answer": "Mock chat response."}}
+                        elif mode == "json":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"status": "approved", "confidence": 0.85, "reasoning": "Mock verification pass"}, input_tokens=1200, output_tokens=250, latency_s=0.05)
+                        elif mode == "text":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock synthesized macro report based on golden fixtures.", input_tokens=2500, output_tokens=500, latency_s=0.06)
+                        elif mode == "system_one":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output=case.expected_answers or {"status": "ok"}, input_tokens=400, output_tokens=80, latency_s=0.02)
+                        elif mode == "custom":
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output={"passed": True, "verdict": "PROCEED", "risk_pct": 1.0}, input_tokens=1000, output_tokens=200, latency_s=0.04)
+                        else:
+                            inv = InvokeResult(model_name=model_name, provider="mock", raw_output="Mock default.", input_tokens=500, output_tokens=100, latency_s=0.03)
+                    elif mode == "agent":
                         async with _AGENT_LOCK:
                             with guarded_tool_executor() as box:
                                 inv = await invoke_agent(model_name, settings, session, case.system_prompt,
@@ -124,7 +159,11 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                         logger.debug(f"deterministic score gagal: {e}")
 
                 judge_scores, judge_overall = ({}, None)
-                if mode == "system_one" and inv.error is None and case.expected_answers:
+                if mock_llm:
+                    judge_scores = {"overall": 9.0, "mock_evaluation": True}
+                    judge_overall = 9.0
+                    det_pass = 1.0
+                elif mode == "system_one" and inv.error is None and case.expected_answers:
                     # System One deterministic evaluation (Zero LLM judge call)
                     s1_res = score_system_one(
                         output=inv.raw_output if isinstance(inv.raw_output, dict) else {},
@@ -159,22 +198,51 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 elif det_pass is not None:
                     overall = det_pass * 10
 
+                actual_cached = getattr(inv, "cached_tokens", 0) or 0
+                thinking_tok = getattr(inv, "thinking_tokens", 0) or 0
+                route = _detect_route(model_name)
+
                 try:
-                    cost = cost_usd(
+                    cost_no_cache = cost_usd(
                         model_name,
                         inv.input_tokens or 0,
                         inv.output_tokens or 0,
-                        cached_tokens=getattr(inv, "cached_tokens", 0) or 0,
+                        cached_tokens=0,
                     )
                 except Exception as e:
-                    logger.warning(f"Cost calculation failed for {model_name}: {e}")
-                    cost = 0.0
+                    logger.warning(f"Cost calculation (no-cache) failed for {model_name}: {e}")
+                    cost_no_cache = 0.0
+
+                try:
+                    if actual_cached > 0:
+                        cost_with_cache = cost_usd(
+                            model_name,
+                            inv.input_tokens or 0,
+                            inv.output_tokens or 0,
+                            cached_tokens=actual_cached,
+                        )
+                    else:
+                        simulated_cached = int((inv.input_tokens or 0) * 0.85)
+                        cost_with_cache = cost_usd(
+                            model_name,
+                            inv.input_tokens or 0,
+                            inv.output_tokens or 0,
+                            cached_tokens=simulated_cached,
+                        )
+                except Exception as e:
+                    logger.warning(f"Cost calculation (with-cache) failed for {model_name}: {e}")
+                    cost_with_cache = cost_no_cache
+
+                cost = cost_with_cache if actual_cached > 0 else cost_no_cache
 
                 row = BenchmarkResult(
                     run_id=run_id, task_id=task_id, category=category, model_name=model_name,
                     provider=inv.provider, context_key=case.context_key,
                     input_tokens=inv.input_tokens or 0, output_tokens=inv.output_tokens or 0,
+                    cached_tokens=actual_cached, thinking_tokens=thinking_tok, provider_route=route,
                     cost_usd=round(cost, 6),
+                    cost_usd_no_cache=round(cost_no_cache, 6),
+                    cost_usd_with_cache=round(cost_with_cache, 6),
                     latency_s=round(inv.latency_s, 2), schema_valid=schema_valid,
                     deterministic_score=det_pass, judge_scores_json=json.dumps(judge_scores),
                     judge_overall=judge_overall, overall_score=overall,
@@ -183,8 +251,29 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 )
                 session.add(row)
                 await session.commit()
-                logger.info(f"[{task_id}] {model_name}: cost=${cost:.5f} tok={inv.input_tokens}/{inv.output_tokens} "
-                            f"score={overall} err={inv.error}")
+                logger.info(f"[{task_id}] {model_name}: cost=${cost:.5f} (no-cache=${cost_no_cache:.5f}, with-cache=${cost_with_cache:.5f}) "
+                            f"tok={inv.input_tokens}/{inv.output_tokens} score={overall} err={inv.error}")
+
+                try:
+                    from logging_observability.dashboard.routes.common import broadcast_live_event
+                    asyncio.create_task(broadcast_live_event("benchmark_model_done", {
+                        "run_id": run_id,
+                        "task_id": task_id,
+                        "model_name": model_name,
+                        "provider_route": route,
+                        "score": round(overall, 3) if overall is not None else None,
+                        "latency_s": round(inv.latency_s, 2),
+                        "cost_usd_no_cache": round(cost_no_cache, 6),
+                        "cost_usd_with_cache": round(cost_with_cache, 6),
+                        "input_tokens": inv.input_tokens or 0,
+                        "output_tokens": inv.output_tokens or 0,
+                        "cached_tokens": actual_cached,
+                        "schema_valid": schema_valid,
+                        "error": inv.error,
+                    }))
+                except Exception:
+                    pass
+
                 return row
             except Exception as e:
                 logger.exception(f"[{task_id}] unhandled error in benchmark post-processing for {model_name}")
@@ -197,10 +286,11 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                 return row
 
 
-async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: list[str] | None,
-                         judge_model: str, reference_model: str, concurrency: int = 4,
+async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: list[str] | None = None,
+                         judge_model: str = "claude-sonnet-5", reference_model: str = "claude-sonnet-5", concurrency: int = 4,
                          judge_models: list[str] | None = None,
-                         use_fixtures: bool = False) -> int:
+                         use_fixtures: bool = False,
+                         mock_llm: bool = False) -> int:
     from config.settings import load_all_config
     base_settings = load_all_config()
     base_settings["_benchmark_reference_model"] = reference_model
@@ -231,7 +321,7 @@ async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: li
             for model_name in model_names:
                 jobs.append(run_one_model_for_case(run_id, task_id, task.category, task.mode,
                                                     model_name, case, per_settings, judge_model, semaphore,
-                                                    judge_models=judge_models))
+                                                    judge_models=judge_models, mock_llm=mock_llm))
     results = await asyncio.gather(*jobs, return_exceptions=True)
     for idx, res in enumerate(results):
         if isinstance(res, Exception):

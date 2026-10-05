@@ -458,6 +458,8 @@ export const api = {
     get<{ run_id: number; leaderboard: any[] }>(runId ? `/benchmark/leaderboard?run_id=${runId}` : '/benchmark/leaderboard'),
   benchmarkRunTrigger: (req: any) =>
     post<{ status: string; message: string; tasks_count: number; models_count: number }>('/benchmark/run', req),
+  benchmarkCompare: (taskId: string, limit = 50) =>
+    get<{ task_id: string; total_evaluations: number; comparisons: any[] }>(`/benchmark/compare?task_id=${encodeURIComponent(taskId)}&limit=${limit}`),
 };
 
 

@@ -23,6 +23,8 @@ def parse_args():
                    default=None, help="Pilih kelompok tier model & task.")
     p.add_argument("--use-fixtures", action="store_true", default=False,
                    help="Gunakan synthetic market fixtures September 2026 (tanpa perlu DB live terisi).")
+    p.add_argument("--mock-llm", action="store_true", default=False,
+                   help="Gunakan mock LLM responses untuk dry run instan tanpa biaya API.")
     p.add_argument("--compare-routers", action="store_true", default=False,
                    help="Bandingkan model yang sama di direct provider vs OpenRouter vs 9router.")
     p.add_argument("--symbols", nargs="*", default=None,
@@ -63,9 +65,11 @@ async def main():
         if not tasks and isinstance(tier_cfg, dict) and tier_cfg.get("target_tasks"):
             tasks = tier_cfg["target_tasks"]
 
-    if not models:
+    if args.mock_llm and not models:
+        models = ["mock-model"]
+    elif not models:
         models = get_candidate_models(settings)
-    if not tasks:
+    if not tasks or tasks == ["all"] or "all" in tasks:
         tasks = list(TASKS.keys())
 
     unknown = [t for t in tasks if t not in TASKS]
@@ -81,6 +85,7 @@ async def main():
     print(f"Models ({len(models)}): {models}")
     print(f"Tier: {args.tier or 'Custom/All'}")
     print(f"Use Fixtures: {use_fixtures}")
+    print(f"Mock LLM: {args.mock_llm}")
     print(f"Concurrency: {args.concurrency}")
     print(f"=============================\n")
 
@@ -93,6 +98,7 @@ async def main():
         concurrency=args.concurrency,
         judge_models=args.judge_models,
         use_fixtures=use_fixtures,
+        mock_llm=args.mock_llm,
     )
     report = await build_report(run_id)
     with open(args.output, "w", encoding="utf-8") as f:

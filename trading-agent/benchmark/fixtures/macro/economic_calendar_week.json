@@ -1,0 +1,4682 @@
+[
+  {
+    "datetime_utc": "2026-09-27T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Corporate Services Price Index (CSPI) (YoY)",
+    "impact": "low",
+    "actual": "3.7%",
+    "forecast": "3.6%",
+    "previous": "3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-27T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Monetary Policy Meeting Minutes",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-27T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "SPPI y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "3.6%",
+    "previous": "3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-28T01:30:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Chinese Industrial profit YTD",
+    "impact": "low",
+    "actual": "15.7%",
+    "forecast": null,
+    "previous": "17.6%"
+  },
+  {
+    "datetime_utc": "2026-09-28T09:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Elderson Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T10:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "MPC Member Ramsden Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T12:15:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Bowman Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 6-Month BTF Auction",
+    "impact": "low",
+    "actual": "2.920%",
+    "forecast": null,
+    "previous": "2.898%"
+  },
+  {
+    "datetime_utc": "2026-09-28T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 3-Month BTF Auction",
+    "impact": "low",
+    "actual": "2.700%",
+    "forecast": null,
+    "previous": "2.639%"
+  },
+  {
+    "datetime_utc": "2026-09-28T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 12-Month BTF Auction",
+    "impact": "low",
+    "actual": "3.240%",
+    "forecast": null,
+    "previous": "3.161%"
+  },
+  {
+    "datetime_utc": "2026-09-28T13:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB President Lagarde Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Dallas Fed Mfg Business Index",
+    "impact": "low",
+    "actual": "9.8",
+    "forecast": null,
+    "previous": "11.6"
+  },
+  {
+    "datetime_utc": "2026-09-28T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "6-Month Bill Auction",
+    "impact": "low",
+    "actual": "4.285%",
+    "forecast": null,
+    "previous": "4.155%"
+  },
+  {
+    "datetime_utc": "2026-09-28T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "3-Month Bill Auction",
+    "impact": "low",
+    "actual": "4.110%",
+    "forecast": null,
+    "previous": "4.015%"
+  },
+  {
+    "datetime_utc": "2026-09-28T17:25:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T17:25:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Governor Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T17:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Barkin Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-28T23:01:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "BRC Shop Price Index y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.5%",
+    "previous": "1.5%"
+  },
+  {
+    "datetime_utc": "2026-09-28T23:01:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BRC Shop Price Index (YoY)",
+    "impact": "low",
+    "actual": "1.4%",
+    "forecast": "1.5%",
+    "previous": "1.5%"
+  },
+  {
+    "datetime_utc": "2026-09-29T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Household Spending m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.3%",
+    "previous": "1.1%"
+  },
+  {
+    "datetime_utc": "2026-09-29T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "RBA Rate Statement",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T04:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Cash Rate",
+    "impact": "high",
+    "actual": null,
+    "forecast": "4.60%",
+    "previous": "4.35%"
+  },
+  {
+    "datetime_utc": "2026-09-29T04:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "RBA Rate Statement",
+    "impact": "high",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T04:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "RBA Interest Rate Decision",
+    "impact": "high",
+    "actual": "4.60%",
+    "forecast": "4.60%",
+    "previous": "4.35%"
+  },
+  {
+    "datetime_utc": "2026-09-29T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Coincident Indicator (MoM)",
+    "impact": "low",
+    "actual": "1.7%",
+    "forecast": "1.7%",
+    "previous": "0.6%"
+  },
+  {
+    "datetime_utc": "2026-09-29T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Leading Index (MoM)",
+    "impact": "low",
+    "actual": "1.5%",
+    "forecast": "1.7%",
+    "previous": "0.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Leading Index",
+    "impact": "low",
+    "actual": "117.7",
+    "forecast": "118.1",
+    "previous": "116.5"
+  },
+  {
+    "datetime_utc": "2026-09-29T05:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "RBA Press Conference",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T07:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "KOF Economic Barometer",
+    "impact": "low",
+    "actual": null,
+    "forecast": "106.0",
+    "previous": "106.7"
+  },
+  {
+    "datetime_utc": "2026-09-29T07:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "KOF Leading Indicators",
+    "impact": "medium",
+    "actual": "109.1",
+    "forecast": "106.0",
+    "previous": "107.5"
+  },
+  {
+    "datetime_utc": "2026-09-29T07:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Spanish Flash CPI y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "4.6%",
+    "previous": "4.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Net Lending to Individuals m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "6.2B",
+    "previous": "6.3B"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE Consumer Credit",
+    "impact": "low",
+    "actual": "2.464B",
+    "forecast": "1.900B",
+    "previous": "2.097B"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "M4 Money Supply m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.1%",
+    "previous": "-0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Mortgage Lending",
+    "impact": "low",
+    "actual": "4.41B",
+    "forecast": null,
+    "previous": "4.08B"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "M4 Money Supply (MoM)",
+    "impact": "low",
+    "actual": "0.4%",
+    "forecast": "0.1%",
+    "previous": "-0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "M3 Money Supply",
+    "impact": "low",
+    "actual": "3,306.5B",
+    "forecast": null,
+    "previous": "3,298.5B"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Net Lending to Individuals",
+    "impact": "low",
+    "actual": "6.874B",
+    "forecast": "6.200B",
+    "previous": "6.300B"
+  },
+  {
+    "datetime_utc": "2026-09-29T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Mortgage Approvals",
+    "impact": "low",
+    "actual": "54.92K",
+    "forecast": "56K",
+    "previous": "56K"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Business and Consumer Survey",
+    "impact": "low",
+    "actual": "97.9",
+    "forecast": "99.0",
+    "previous": "98.4"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Consumer Confidence",
+    "impact": "low",
+    "actual": "-16.5",
+    "forecast": "-16.5",
+    "previous": "-16.5"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Services Sentiment",
+    "impact": "low",
+    "actual": "6.1",
+    "forecast": "6.5",
+    "previous": "5.6"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Selling Price Expectations",
+    "impact": "low",
+    "actual": "20.3",
+    "forecast": null,
+    "previous": "16.9"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Business Climate",
+    "impact": "low",
+    "actual": "-0.06",
+    "forecast": null,
+    "previous": "-0.24"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Consumer Inflation Expectation",
+    "impact": "low",
+    "actual": "35.2",
+    "forecast": null,
+    "previous": "33.0"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Industrial Sentiment",
+    "impact": "low",
+    "actual": "-3.8",
+    "forecast": "-4.8",
+    "previous": "-5.0"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:02:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "10-y Bond Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "5.16|3.6"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:04:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian 10-y Bond Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "4.10|1.6"
+  },
+  {
+    "datetime_utc": "2026-09-29T09:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "10-Year Treasury Gilt Auction",
+    "impact": "low",
+    "actual": "5.383%",
+    "forecast": null,
+    "previous": "5.155%"
+  },
+  {
+    "datetime_utc": "2026-09-29T10:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "France Jobseekers Total",
+    "impact": "medium",
+    "actual": "3,081.7K",
+    "forecast": null,
+    "previous": "3,143.0K"
+  },
+  {
+    "datetime_utc": "2026-09-29T10:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Buba President Nagel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T10:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Buba Mauderer Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T11:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB President Lagarde Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T12:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "GDP m/m",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "0.0%",
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T12:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "GDP (MoM)",
+    "impact": "medium",
+    "actual": "0.2%",
+    "forecast": "0.0%",
+    "previous": "0.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T12:55:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Redbook (YoY)",
+    "impact": "low",
+    "actual": "8.2%",
+    "forecast": null,
+    "previous": "7.6%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P/CS HPI Composite - 20 s.a. (MoM)",
+    "impact": "low",
+    "actual": "0.3%",
+    "forecast": null,
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P/CS HPI Composite - 20 n.s.a. (MoM)",
+    "impact": "medium",
+    "actual": "0.0%",
+    "forecast": null,
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P/CS HPI Composite - 20 n.s.a. (YoY)",
+    "impact": "medium",
+    "actual": "2.5%",
+    "forecast": "2.2%",
+    "previous": "2.2%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "House Price Index (MoM)",
+    "impact": "low",
+    "actual": "0.3%",
+    "forecast": "0.1%",
+    "previous": "0.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P/CS Composite-20 HPI y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "2.2%",
+    "previous": "2.1%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "HPI m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.1%",
+    "previous": "0.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "House Price Index",
+    "impact": "low",
+    "actual": "443.5",
+    "forecast": null,
+    "previous": "442.3"
+  },
+  {
+    "datetime_utc": "2026-09-29T13:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "House Price Index (YoY)",
+    "impact": "low",
+    "actual": "2.6%",
+    "forecast": null,
+    "previous": "2.3%"
+  },
+  {
+    "datetime_utc": "2026-09-29T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CB Consumer Confidence",
+    "impact": "high",
+    "actual": "81.9",
+    "forecast": "89.2",
+    "previous": "89.4"
+  },
+  {
+    "datetime_utc": "2026-09-29T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "JOLTS Job Openings",
+    "impact": "high",
+    "actual": "7.079M",
+    "forecast": "7.23M",
+    "previous": "7.27M"
+  },
+  {
+    "datetime_utc": "2026-09-29T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Dallas Fed Services Revenues",
+    "impact": "low",
+    "actual": "-0.9",
+    "forecast": null,
+    "previous": "6.6"
+  },
+  {
+    "datetime_utc": "2026-09-29T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Texas Services Sector Outlook",
+    "impact": "low",
+    "actual": "-1.8",
+    "forecast": null,
+    "previous": "4.2"
+  },
+  {
+    "datetime_utc": "2026-09-29T15:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "MPC Member Mann Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T15:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Bowman Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T15:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE MPC Member Mann Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T15:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "MPC Member Taylor Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T16:40:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Barr Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T16:40:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Vice Chair for Supervision Barr Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T17:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Goolsbee Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T17:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Goolsbee Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T17:20:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "Gov Council Member Gravelle Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T17:20:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "BoC Deputy Governor Gravelle Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T17:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Musalem Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T18:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Williams Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T18:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Lane Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T19:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Waller Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T19:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Waller Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T20:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "API Weekly Crude Oil Stock",
+    "impact": "medium",
+    "actual": "1.019M",
+    "forecast": "-1.900M",
+    "previous": "1.786M"
+  },
+  {
+    "datetime_utc": "2026-09-29T20:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "API Weekly Statistical Bulletin",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Prelim Industrial Production m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.4%",
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production forecast 2m ahead (MoM)",
+    "impact": "low",
+    "actual": "3.1%",
+    "forecast": null,
+    "previous": "-4.2%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Large Retailers' Sales (MoM)",
+    "impact": "low",
+    "actual": "-1.2%",
+    "forecast": null,
+    "previous": "2.1%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production forecast 1m ahead (MoM)",
+    "impact": "low",
+    "actual": "3.2%",
+    "forecast": null,
+    "previous": "6.4%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Retail Sales (YoY)",
+    "impact": "low",
+    "actual": "2.7%",
+    "forecast": "3.3%",
+    "previous": "3.7%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Large Scale Retail Sales YoY (YoY)",
+    "impact": "low",
+    "actual": "1.0%",
+    "forecast": null,
+    "previous": "2.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Retail Sales y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "3.3%",
+    "previous": "4.0%"
+  },
+  {
+    "datetime_utc": "2026-09-29T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production (MoM)",
+    "impact": "medium",
+    "actual": "-1.7%",
+    "forecast": "1.4%",
+    "previous": "-0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:00:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "ANZ Business Confidence",
+    "impact": "low",
+    "actual": "51.9",
+    "forecast": null,
+    "previous": "53.7"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:00:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "NBNZ Own Activity",
+    "impact": "low",
+    "actual": "47.9%",
+    "forecast": null,
+    "previous": "48.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:20:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "API Weekly Crude Oil Stock",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "-1.900M",
+    "previous": "1.786M"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Large Scale Retail Sales YoY (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Retail Sales (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": "3.3%",
+    "previous": "4.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production forecast 1m ahead (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "6.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production forecast 2m ahead (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-4.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Industrial Production (MoM)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "1.4%",
+    "previous": "-0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:21:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Large Retailers' Sales (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T00:29:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Williams Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T00:29:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Lane Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Monthly CPI Indicator (YoY)",
+    "impact": "low",
+    "actual": "4.00%",
+    "forecast": "4.10%",
+    "previous": "3.50%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Building Approvals (YoY)",
+    "impact": "low",
+    "actual": "10.30%",
+    "forecast": null,
+    "previous": "10.90%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Private House Approvals",
+    "impact": "low",
+    "actual": "3.7%",
+    "forecast": null,
+    "previous": "-1.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Housing Credit",
+    "impact": "low",
+    "actual": "0.4%",
+    "forecast": null,
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Private Sector Credit (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": "0.5%",
+    "previous": "0.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Building Approvals (MoM)",
+    "impact": "medium",
+    "actual": "-6.1%",
+    "forecast": "-1.6%",
+    "previous": "-1.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "RBA Chart Pack Release",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Trimmed Mean CPI (YoY)",
+    "impact": "low",
+    "actual": "3.6%",
+    "forecast": "3.6%",
+    "previous": "3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Chinese Composite PMI",
+    "impact": "medium",
+    "actual": "50.7",
+    "forecast": null,
+    "previous": "49.5"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Weighted mean CPI (YoY)",
+    "impact": "low",
+    "actual": "3.6%",
+    "forecast": null,
+    "previous": "3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "CPI y/y",
+    "impact": "high",
+    "actual": null,
+    "forecast": "4.1%",
+    "previous": "3.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Non-Manufacturing PMI",
+    "impact": "medium",
+    "actual": "50.2",
+    "forecast": "49.2",
+    "previous": "49.0"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "CPI m/m",
+    "impact": "high",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "1.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Private Sector Credit m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "0.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Building Approvals m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-1.6%",
+    "previous": "-3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Trimmed Mean CPI m/m",
+    "impact": "high",
+    "actual": null,
+    "forecast": "0.3%",
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:30:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Manufacturing PMI",
+    "impact": "high",
+    "actual": "50.1",
+    "forecast": "50.1",
+    "previous": "49.8"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:45:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "RatingDog Services PMI",
+    "impact": "medium",
+    "actual": "51.6",
+    "forecast": "51.3",
+    "previous": "51.4"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:45:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "RatingDog Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "51.7",
+    "previous": "51.5"
+  },
+  {
+    "datetime_utc": "2026-09-30T01:45:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "RatingDog Manufacturing PMI (MoM)",
+    "impact": "medium",
+    "actual": "52.1",
+    "forecast": "51.7",
+    "previous": "51.5"
+  },
+  {
+    "datetime_utc": "2026-09-30T02:00:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "M3 Money Supply",
+    "impact": "low",
+    "actual": "454.7B",
+    "forecast": null,
+    "previous": "458.5B"
+  },
+  {
+    "datetime_utc": "2026-09-30T02:20:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Elderson Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T03:35:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "2-Year JGB Auction",
+    "impact": "low",
+    "actual": "1.964%",
+    "forecast": null,
+    "previous": "1.708%"
+  },
+  {
+    "datetime_utc": "2026-09-30T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Housing Starts y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "6.9%",
+    "previous": "8.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Construction Orders (YoY)",
+    "impact": "low",
+    "actual": "-3.6%",
+    "forecast": null,
+    "previous": "-13.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Housing Starts (YoY)",
+    "impact": "low",
+    "actual": "6.1%",
+    "forecast": "6.9%",
+    "previous": "8.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Business Investment (YoY)",
+    "impact": "low",
+    "actual": "5.2%",
+    "forecast": "0.8%",
+    "previous": "1.8%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Retail Sales (YoY)",
+    "impact": "low",
+    "actual": "-0.4%",
+    "forecast": "0.1%",
+    "previous": "-2.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Import Price Index (MoM)",
+    "impact": "low",
+    "actual": "1.0%",
+    "forecast": "0.6%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Import Price Index (YoY)",
+    "impact": "low",
+    "actual": "8.3%",
+    "forecast": "8.0%",
+    "previous": "6.8%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Retail Sales (MoM)",
+    "impact": "medium",
+    "actual": "1.3%",
+    "forecast": "1.6%",
+    "previous": "-3.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Import Prices m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.6%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Final GDP q/q",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.4%",
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "GDP (QoQ)",
+    "impact": "high",
+    "actual": "0.5%",
+    "forecast": "0.4%",
+    "previous": "0.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "GDP (YoY)",
+    "impact": "high",
+    "actual": "1.4%",
+    "forecast": "1.2%",
+    "previous": "0.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Current Account",
+    "impact": "medium",
+    "actual": "-19.9B",
+    "forecast": "-25.6B",
+    "previous": "-22.1B"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Nationwide HPI (YoY)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "1.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Nationwide HPI (MoM)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Revised Business Investment q/q",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.7%",
+    "previous": "1.7%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Retail Sales m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.6%",
+    "previous": "-3.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Business Investment (QoQ)",
+    "impact": "medium",
+    "actual": "1.8%",
+    "forecast": "1.7%",
+    "previous": "3.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:29:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Prelim CPI m/m",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French HICP (MoM)",
+    "impact": "medium",
+    "actual": "-0.4%",
+    "forecast": "-0.5%",
+    "previous": "0.7%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French CPI (MoM)",
+    "impact": "medium",
+    "actual": "-0.3%",
+    "forecast": "-0.5%",
+    "previous": "0.7%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French PPI (MoM)",
+    "impact": "low",
+    "actual": "1.0%",
+    "forecast": null,
+    "previous": "1.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "French Consumer Spending m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.0%",
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "PPI (YoY)",
+    "impact": "low",
+    "actual": "4.80%",
+    "forecast": null,
+    "previous": "3.50%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French HICP (YoY)",
+    "impact": "low",
+    "actual": "3.4%",
+    "forecast": "3.1%",
+    "previous": "2.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French CPI (YoY)",
+    "impact": "low",
+    "actual": "3.0%",
+    "forecast": "2.8%",
+    "previous": "2.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French Consumer Spending (MoM)",
+    "impact": "medium",
+    "actual": "-0.5%",
+    "forecast": "0.0%",
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T06:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "French Prelim CPI m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-0.5%",
+    "previous": "0.7%"
+  },
+  {
+    "datetime_utc": "2026-09-30T07:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "Official Reserves Assets",
+    "impact": "low",
+    "actual": "901.6B",
+    "forecast": null,
+    "previous": "889.6B"
+  },
+  {
+    "datetime_utc": "2026-09-30T07:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "European Central Bank Non-monetary Policy Meeting",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Unemployment Change",
+    "impact": "medium",
+    "actual": "12K",
+    "forecast": "1K",
+    "previous": "4K"
+  },
+  {
+    "datetime_utc": "2026-09-30T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Unemployment Rate",
+    "impact": "medium",
+    "actual": "6.4%",
+    "forecast": "6.4%",
+    "previous": "6.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Unemployment n.s.a.",
+    "impact": "low",
+    "actual": "2.994M",
+    "forecast": null,
+    "previous": "3.061M"
+  },
+  {
+    "datetime_utc": "2026-09-30T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Unemployment",
+    "impact": "low",
+    "actual": "3.012M",
+    "forecast": null,
+    "previous": "2.996M"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "UBS Economic Expectations",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "12.1"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Saxony CPI (YoY)",
+    "impact": "low",
+    "actual": "3.4%",
+    "forecast": null,
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "North Rhine Westphalia CPI (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": null,
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Bavaria CPI (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": null,
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "North Rhine Westphalia CPI (YoY)",
+    "impact": "low",
+    "actual": "3.3%",
+    "forecast": null,
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Baden Wuerttemberg CPI (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": null,
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Baden Wuerttemberg CPI (YoY)",
+    "impact": "low",
+    "actual": "2.9%",
+    "forecast": null,
+    "previous": "2.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Brandenburg CPI (MoM)",
+    "impact": "low",
+    "actual": "0.5%",
+    "forecast": null,
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Brandenburg CPI (YoY)",
+    "impact": "low",
+    "actual": "3.6%",
+    "forecast": null,
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Saxony CPI (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": null,
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "ZEW Expectations",
+    "impact": "low",
+    "actual": "2.6",
+    "forecast": null,
+    "previous": "12.1"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Hesse CPI (YoY)",
+    "impact": "low",
+    "actual": "3.4%",
+    "forecast": null,
+    "previous": "3.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Hesse CPI (MoM)",
+    "impact": "low",
+    "actual": "0.5%",
+    "forecast": null,
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T08:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "Bavaria CPI (YoY)",
+    "impact": "low",
+    "actual": "3.2%",
+    "forecast": null,
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian Prelim CPI m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.2%",
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T09:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "FPC Statement",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T09:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE FPC Meeting Minutes",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T09:30:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German 10-Year Bund Auction",
+    "impact": "medium",
+    "actual": "3.580%",
+    "forecast": null,
+    "previous": "3.390%"
+  },
+  {
+    "datetime_utc": "2026-09-30T09:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "FPC Meeting Minutes",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T09:42:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German 10-y Bond Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "3.39|1.5"
+  },
+  {
+    "datetime_utc": "2026-09-30T11:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Mortgage Refinance Index",
+    "impact": "low",
+    "actual": "557.8",
+    "forecast": null,
+    "previous": "611.0"
+  },
+  {
+    "datetime_utc": "2026-09-30T11:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "MBA Purchase Index",
+    "impact": "low",
+    "actual": "148.2",
+    "forecast": null,
+    "previous": "154.9"
+  },
+  {
+    "datetime_utc": "2026-09-30T11:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Mortgage Market Index",
+    "impact": "low",
+    "actual": "213.6",
+    "forecast": null,
+    "previous": "227.3"
+  },
+  {
+    "datetime_utc": "2026-09-30T11:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "MBA 30-Year Mortgage Rate",
+    "impact": "low",
+    "actual": "7.30%",
+    "forecast": null,
+    "previous": "7.12%"
+  },
+  {
+    "datetime_utc": "2026-09-30T11:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "MBA Mortgage Applications (WoW)",
+    "impact": "low",
+    "actual": "-6.0%",
+    "forecast": null,
+    "previous": "-1.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German HICP (YoY)",
+    "impact": "low",
+    "actual": "3.3%",
+    "forecast": "3.2%",
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:00:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "Bank Holiday",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T12:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German CPI (MoM)",
+    "impact": "high",
+    "actual": "0.6%",
+    "forecast": "0.5%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German HICP (MoM)",
+    "impact": "low",
+    "actual": "0.6%",
+    "forecast": "0.5%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:00:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German CPI (YoY)",
+    "impact": "medium",
+    "actual": "3.3%",
+    "forecast": "3.1%",
+    "previous": "2.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:15:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ADP Nonfarm Employment Change",
+    "impact": "high",
+    "actual": "90K",
+    "forecast": "73K",
+    "previous": "36K"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:15:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ADP Non-Farm Employment Change",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "73K",
+    "previous": "38K"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Wholesale Inventories (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "1.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Retail Inventories Ex Auto",
+    "impact": "medium",
+    "actual": "0.1%",
+    "forecast": null,
+    "previous": "0.8%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Personal Spending m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.8%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Prelim Wholesale Inventories m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "1.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Core PCE Prices",
+    "impact": "medium",
+    "actual": "3.30%",
+    "forecast": "3.60%",
+    "previous": "4.40%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Personal Income (MoM)",
+    "impact": "low",
+    "actual": "0.2%",
+    "forecast": "0.5%",
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "GDP Price Index (QoQ)",
+    "impact": "medium",
+    "actual": "6.1%",
+    "forecast": "6.4%",
+    "previous": "3.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Core PCE Price Index (MoM)",
+    "impact": "high",
+    "actual": "0.2%",
+    "forecast": "0.3%",
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "GDP (QoQ)",
+    "impact": "high",
+    "actual": "2.2%",
+    "forecast": "1.5%",
+    "previous": "2.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Personal Spending (MoM)",
+    "impact": "medium",
+    "actual": "0.9%",
+    "forecast": "0.8%",
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "PCE price index (MoM)",
+    "impact": "medium",
+    "actual": "0.3%",
+    "forecast": "0.4%",
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "PCE Price index (YoY)",
+    "impact": "medium",
+    "actual": "3.4%",
+    "forecast": "3.7%",
+    "previous": "3.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Goods Trade Balance",
+    "impact": "medium",
+    "actual": "-132.60B",
+    "forecast": "-116.3B",
+    "previous": "-118.8B"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Real Personal Consumption (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Core PCE Price Index m/m",
+    "impact": "high",
+    "actual": null,
+    "forecast": "0.3%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Final GDP Price Index q/q",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "6.4%",
+    "previous": "6.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Personal Income m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.5%",
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "PCE Prices",
+    "impact": "low",
+    "actual": "5.0%",
+    "forecast": "5.3%",
+    "previous": "4.6%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "GDP Sales",
+    "impact": "low",
+    "actual": "2.8%",
+    "forecast": "2.2%",
+    "previous": "1.9%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Core PCE Price Index (YoY)",
+    "impact": "high",
+    "actual": "3.0%",
+    "forecast": "3.3%",
+    "previous": "3.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Real Consumer Spending",
+    "impact": "low",
+    "actual": "3.8%",
+    "forecast": "3.4%",
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Final GDP q/q",
+    "impact": "high",
+    "actual": null,
+    "forecast": "1.5%",
+    "previous": "1.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Corporate Profits (QoQ)",
+    "impact": "low",
+    "actual": "7.7%",
+    "forecast": "8.2%",
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T13:00:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "SNB Quarterly Bulletin",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Chicago PMI",
+    "impact": "high",
+    "actual": null,
+    "forecast": "51.2",
+    "previous": "47.1"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Dallas Fed PCE",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.20%"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Atlanta Fed GDPNow",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "5.0%",
+    "previous": "5.0%"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Crude Oil Imports",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.369M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Cushing Crude Oil Inventories",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.266M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Heating Oil Stockpiles",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.346M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Gasoline Production",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-0.054M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Distillate Fuel Production",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-0.068M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Gasoline Inventories",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-0.500M",
+    "previous": "-1.686M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "EIA Weekly Distillates Stocks",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-0.200M",
+    "previous": "-0.428M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "EIA Refinery Crude Runs  (WoW)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-0.519M"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "EIA Weekly Refinery Utilization Rates (WoW)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-2.8%"
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "Gov Board Member Tschudin Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Crude Oil Inventories",
+    "impact": "high",
+    "actual": "0.922M",
+    "forecast": "-0.7M",
+    "previous": "3.0M"
+  },
+  {
+    "datetime_utc": "2026-09-30T15:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Schnabel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T17:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Barkin Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T19:25:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T19:25:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Governor Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "U.S. President Trump Speaks",
+    "impact": "high",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "President Trump Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T21:10:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Goolsbee Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T21:10:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Goolsbee Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T21:45:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "Building Consents (MoM)",
+    "impact": "low",
+    "actual": "5.6%",
+    "forecast": null,
+    "previous": "-4.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T21:45:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "Building Consents m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-4.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T22:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Kashkari Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T23:00:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "low",
+    "actual": "49.6",
+    "forecast": "49.3",
+    "previous": "52.0"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:01:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Bank Holiday",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Manufacturing Index",
+    "impact": "low",
+    "actual": null,
+    "forecast": "25",
+    "previous": "22"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Non-Manufacturing Index",
+    "impact": "low",
+    "actual": null,
+    "forecast": "36",
+    "previous": "37"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Foreign Bonds Buying",
+    "impact": "low",
+    "actual": "-684.5B",
+    "forecast": null,
+    "previous": "-1,904.9B"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Large Non-Manufacturers Diffusion Index",
+    "impact": "low",
+    "actual": "30",
+    "forecast": "30",
+    "previous": "28"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Small Manufacturers Diffusion Index",
+    "impact": "low",
+    "actual": "12",
+    "forecast": null,
+    "previous": "2"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Small Non-Manufacturing Index",
+    "impact": "low",
+    "actual": "15",
+    "forecast": null,
+    "previous": "15"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Large Manufacturers Index",
+    "impact": "medium",
+    "actual": "24",
+    "forecast": "25",
+    "previous": "22"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Large Non-Manufacturers Index",
+    "impact": "medium",
+    "actual": "35",
+    "forecast": "36",
+    "previous": "37"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Big Manufacturing Outlook Index",
+    "impact": "medium",
+    "actual": "21",
+    "forecast": "22",
+    "previous": "17"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan All Big Industry CAPEX",
+    "impact": "medium",
+    "actual": "11.3%",
+    "forecast": "12.3%",
+    "previous": "11.5%"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Foreign Investments in Japanese Stocks",
+    "impact": "low",
+    "actual": "-362.0B",
+    "forecast": null,
+    "previous": "-4,942.5B"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan All Small Industry CAPEX",
+    "impact": "low",
+    "actual": "-4.7%",
+    "forecast": null,
+    "previous": "-8.3%"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "BoJ Summary of Opinions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Small Manufacturing Index",
+    "impact": "low",
+    "actual": "14",
+    "forecast": "11",
+    "previous": "9"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tankan Small Non-Manufacturers Diffusion Index",
+    "impact": "low",
+    "actual": "10",
+    "forecast": null,
+    "previous": "8"
+  },
+  {
+    "datetime_utc": "2026-09-30T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "BOJ Summary of Opinions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T00:20:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "U.S. President Trump Speaks",
+    "impact": "high",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T00:23:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "Building Consents (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-4.3%"
+  },
+  {
+    "datetime_utc": "2026-10-01T00:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "54.1",
+    "previous": "54.1"
+  },
+  {
+    "datetime_utc": "2026-10-01T00:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "low",
+    "actual": "54.1",
+    "forecast": "54.1",
+    "previous": "54.9"
+  },
+  {
+    "datetime_utc": "2026-10-01T00:33:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "49.3",
+    "previous": "52.0"
+  },
+  {
+    "datetime_utc": "2026-10-01T00:38:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Kashkari Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T00:52:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Goolsbee Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "RBA Financial Stability Review",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "RBA Financial Stability Review",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Imports (MoM)",
+    "impact": "low",
+    "actual": "5.8%",
+    "forecast": null,
+    "previous": "-2.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Exports (MoM)",
+    "impact": "low",
+    "actual": "3.7%",
+    "forecast": null,
+    "previous": "-3.6%"
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Trade Balance",
+    "impact": "medium",
+    "actual": "0.495B",
+    "forecast": "2.000B",
+    "previous": "1.351B"
+  },
+  {
+    "datetime_utc": "2026-10-01T01:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Goods Trade Balance",
+    "impact": "low",
+    "actual": null,
+    "forecast": "2.00B",
+    "previous": "1.92B"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Nationwide HPI (YoY)",
+    "impact": "medium",
+    "actual": "0.8%",
+    "forecast": "1.3%",
+    "previous": "1.6%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Nationwide HPI m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.0%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Nationwide HPI (MoM)",
+    "impact": "medium",
+    "actual": "-0.2%",
+    "forecast": "0.0%",
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "CPI (YoY)",
+    "impact": "low",
+    "actual": "1.0%",
+    "forecast": "1.0%",
+    "previous": "0.8%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Commodity Prices y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "15.5%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "Retail Sales y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "2.1%",
+    "previous": "2.3%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "CPI (MoM)",
+    "impact": "medium",
+    "actual": "0.0%",
+    "forecast": "0.0%",
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "Retail Sales (YoY)",
+    "impact": "low",
+    "actual": "3.2%",
+    "forecast": "2.1%",
+    "previous": "2.6%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "CPI m/m",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "0.0%",
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T06:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "Commodity Prices (YoY)",
+    "impact": "low",
+    "actual": "15.5%",
+    "forecast": null,
+    "previous": "15.5%"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:15:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Spanish Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "50.2",
+    "previous": "49.5"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "procure.ch Manufacturing PMI",
+    "impact": "medium",
+    "actual": "55.3",
+    "forecast": "56.3",
+    "previous": "57.1"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "56.3",
+    "previous": "57.1"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "50.1",
+    "previous": "49.6"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:50:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "HCOB France Manufacturing PMI",
+    "impact": "medium",
+    "actual": "50.6",
+    "forecast": "50.3",
+    "previous": "51.1"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:50:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "French Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "50.3",
+    "previous": "50.3"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "HCOB Germany Manufacturing PMI",
+    "impact": "medium",
+    "actual": "53.9",
+    "forecast": "53.8",
+    "previous": "54.3"
+  },
+  {
+    "datetime_utc": "2026-10-01T07:55:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "53.8",
+    "previous": "53.8"
+  },
+  {
+    "datetime_utc": "2026-10-01T08:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE Gov Bailey Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T08:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "BOE Gov Bailey Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "HCOB Eurozone Manufacturing PMI",
+    "impact": "medium",
+    "actual": "52.9",
+    "forecast": "52.7",
+    "previous": "52.7"
+  },
+  {
+    "datetime_utc": "2026-10-01T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "52.7",
+    "previous": "52.7"
+  },
+  {
+    "datetime_utc": "2026-10-01T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian Monthly Unemployment Rate",
+    "impact": "low",
+    "actual": null,
+    "forecast": "5.8%",
+    "previous": "5.8%"
+  },
+  {
+    "datetime_utc": "2026-10-01T08:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "52.0",
+    "previous": "52.0"
+  },
+  {
+    "datetime_utc": "2026-10-01T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "medium",
+    "actual": "51.9",
+    "forecast": "52.0",
+    "previous": "51.7"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Unemployment Rate",
+    "impact": "medium",
+    "actual": "6.4%",
+    "forecast": "6.4%",
+    "previous": "6.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:03:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Spanish 10-y Bond Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "3.96|1.7"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:18:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "French 10-y Bond Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "4.23|2.3"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Challenger Job Cuts (YoY)",
+    "impact": "low",
+    "actual": "-19.9%",
+    "forecast": null,
+    "previous": "-38.5%"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Challenger Job Cuts",
+    "impact": "low",
+    "actual": "43.281K",
+    "forecast": null,
+    "previous": "52.881K"
+  },
+  {
+    "datetime_utc": "2026-10-01T09:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Challenger Job Cuts y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-38.5%"
+  },
+  {
+    "datetime_utc": "2026-10-01T10:35:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Buba President Nagel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T12:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE MPC Member Mann Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T12:00:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "MPC Member Mann Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Unemployment Claims",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "201K",
+    "previous": "197K"
+  },
+  {
+    "datetime_utc": "2026-10-01T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Initial Jobless Claims",
+    "impact": "high",
+    "actual": "197K",
+    "forecast": "201K",
+    "previous": "198K"
+  },
+  {
+    "datetime_utc": "2026-10-01T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Continuing Jobless Claims",
+    "impact": "medium",
+    "actual": "1,701K",
+    "forecast": "1,730K",
+    "previous": "1,712K"
+  },
+  {
+    "datetime_utc": "2026-10-01T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Jobless Claims 4-Week Avg.",
+    "impact": "low",
+    "actual": "200.00K",
+    "forecast": null,
+    "previous": "202.50K"
+  },
+  {
+    "datetime_utc": "2026-10-01T12:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "BoE MPC Member Pill Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:05:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Collins Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:05:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Schmid Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:05:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Schmid Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:05:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Collins Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:05:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Barkin Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "53.0"
+  },
+  {
+    "datetime_utc": "2026-10-01T13:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB President Lagarde Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T13:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "low",
+    "actual": "51.5",
+    "forecast": null,
+    "previous": "53.0"
+  },
+  {
+    "datetime_utc": "2026-10-01T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Final Manufacturing PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "56.9",
+    "previous": "57.0"
+  },
+  {
+    "datetime_utc": "2026-10-01T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P Global Manufacturing PMI",
+    "impact": "high",
+    "actual": "55.9",
+    "forecast": "57.0",
+    "previous": "53.9"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Waller Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Manufacturing PMI",
+    "impact": "high",
+    "actual": "54.5",
+    "forecast": "54.8",
+    "previous": "54.6"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Construction Spending m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.0%",
+    "previous": "-0.5%"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Waller Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Manufacturing New Orders Index",
+    "impact": "low",
+    "actual": "55.3",
+    "forecast": "54.7",
+    "previous": "53.7"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Construction Spending (MoM)",
+    "impact": "medium",
+    "actual": "0.9%",
+    "forecast": "0.0%",
+    "previous": "-0.1%"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Manufacturing Employment",
+    "impact": "medium",
+    "actual": "52.7",
+    "forecast": "52.0",
+    "previous": "51.2"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Manufacturing Prices",
+    "impact": "high",
+    "actual": "77.9",
+    "forecast": "72.9",
+    "previous": "71.1"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:15:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Omdia Total Vehicle Sales",
+    "impact": "low",
+    "actual": null,
+    "forecast": "16.3M",
+    "previous": "16.8M"
+  },
+  {
+    "datetime_utc": "2026-10-01T14:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Natural Gas Storage",
+    "impact": "low",
+    "actual": "64B",
+    "forecast": "63B",
+    "previous": "53B"
+  },
+  {
+    "datetime_utc": "2026-10-01T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "8-Week Bill Auction",
+    "impact": "low",
+    "actual": "3.990%",
+    "forecast": null,
+    "previous": "3.990%"
+  },
+  {
+    "datetime_utc": "2026-10-01T15:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Schnabel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Atlanta Fed GDPNow",
+    "impact": "medium",
+    "actual": "3.7%",
+    "forecast": "3.7%",
+    "previous": "3.7%"
+  },
+  {
+    "datetime_utc": "2026-10-01T15:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "SNB Chairman Schlegel Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "4-Week Bill Auction",
+    "impact": "low",
+    "actual": "3.890%",
+    "forecast": null,
+    "previous": "3.850%"
+  },
+  {
+    "datetime_utc": "2026-10-01T17:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Jefferson Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T17:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Governor Jefferson Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Bowman Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:05:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "BoC Senior Deputy Governor Rogers Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:05:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "Gov Council Member Rogers Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Williams Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Governor Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T20:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed's Balance Sheet",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "6,748B"
+  },
+  {
+    "datetime_utc": "2026-10-01T20:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Reserve Balances with Federal Reserve Banks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.969T"
+  },
+  {
+    "datetime_utc": "2026-10-01T22:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Logan Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T22:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Logan Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T23:01:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Bank Holiday",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tokyo Core CPI (YoY)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "2.4%",
+    "previous": "1.8%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tokyo Core CPI y/y",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "2.4%",
+    "previous": "1.8%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Unemployment Rate",
+    "impact": "low",
+    "actual": null,
+    "forecast": "2.4%",
+    "previous": "2.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Tokyo CPI (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "1.9%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Jobs/applications ratio",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.18",
+    "previous": "1.18"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "CPI Tokyo Ex Food & Energy (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "1.4%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "CPI Tokyo Ex Food and Energy (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.7%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Monetary Base (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-16.3%",
+    "previous": "-15.7%"
+  },
+  {
+    "datetime_utc": "2026-10-01T23:50:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Monetary Base y/y",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-16.3%",
+    "previous": "-15.7%"
+  },
+  {
+    "datetime_utc": "2026-10-02T00:01:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "BoC Senior Deputy Governor Rogers Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-02T00:26:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Williams Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-02T00:26:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Governor Cook Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-02T07:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Spanish Unemployment Change",
+    "impact": "low",
+    "actual": null,
+    "forecast": "17.6K",
+    "previous": "44.4K"
+  },
+  {
+    "datetime_utc": "2026-10-02T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian Retail Sales m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "-0.1%",
+    "previous": "-0.4%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "CPI (MoM)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.4%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Core CPI (YoY)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "2.5%",
+    "previous": "2.4%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "HICP ex Energy and Food (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "CPI, n.s.a",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "103.69"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Core CPI Flash Estimate y/y",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "2.5%",
+    "previous": "2.4%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "CPI Flash Estimate y/y",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "3.7%",
+    "previous": "3.3%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Core CPI (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.2%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "HICP ex Energy & Food (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.1%"
+  },
+  {
+    "datetime_utc": "2026-10-02T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "CPI (YoY)",
+    "impact": "high",
+    "actual": null,
+    "forecast": "3.7%",
+    "previous": "3.2%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Participation Rate",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "61.6%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Manufacturing Payrolls",
+    "impact": "low",
+    "actual": null,
+    "forecast": "10K",
+    "previous": "16K"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Average Weekly Hours",
+    "impact": "low",
+    "actual": null,
+    "forecast": "34.3",
+    "previous": "34.4"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Government Payrolls",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "35.0K"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Average Hourly Earnings m/m",
+    "impact": "high",
+    "actual": null,
+    "forecast": "0.3%",
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "U6 Unemployment Rate",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "7.7%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Average Hourly Earnings (YoY) (YoY)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "3.1%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Private Nonfarm Payrolls",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "82K",
+    "previous": "127K"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Non-Farm Employment Change",
+    "impact": "high",
+    "actual": null,
+    "forecast": "89K",
+    "previous": "162K"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Nonfarm Payrolls",
+    "impact": "high",
+    "actual": null,
+    "forecast": "89K",
+    "previous": "162K"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Average Hourly Earnings (MoM)",
+    "impact": "high",
+    "actual": null,
+    "forecast": "0.3%",
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-10-02T12:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Unemployment Rate",
+    "impact": "high",
+    "actual": null,
+    "forecast": "4.1%",
+    "previous": "4.1%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Factory orders ex transportation (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.6%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Fed Logan Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Factory Orders (MoM)",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "0.1%",
+    "previous": "0.9%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Durables Excluding Defense (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.1%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Durables Excluding Transport (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.3%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Factory Orders m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "0.1%",
+    "previous": "0.9%"
+  },
+  {
+    "datetime_utc": "2026-10-02T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "FOMC Member Logan Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-02T16:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French Car Registration (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "7.4%"
+  },
+  {
+    "datetime_utc": "2026-10-02T17:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "U.S. Baker Hughes Oil Rig Count",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "455"
+  },
+  {
+    "datetime_utc": "2026-10-02T17:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "U.S. Baker Hughes Total Rig Count",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "599"
+  },
+  {
+    "datetime_utc": "2026-10-02T18:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Total Vehicle Sales",
+    "impact": "low",
+    "actual": null,
+    "forecast": "16.60M",
+    "previous": "16.80M"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Natural Gas speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-216.5K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "CFTC AUD speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "-46.8K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "CFTC CAD speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-53.2K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "CFTC GBP speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "-82.6K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC S&P 500 speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "-133.2K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Nasdaq 100 speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "56.2K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Gold speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "225.9K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Crude Oil speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "141.1K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "CFTC EUR speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "-52.3K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Aluminium speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-0.8K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Copper speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "90.5K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "CFTC NZD speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-11.4K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "CFTC JPY speculative net positions",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "72.0K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Silver speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "25.4K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Corn speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "535.8K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Wheat speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-7.4K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "CH",
+    "currency": "CHF",
+    "event": "CFTC CHF speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-26.8K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CFTC Soybeans speculative net positions",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "281.6K"
+  },
+  {
+    "datetime_utc": "2026-10-02T19:35:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "German Buba President Nagel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-03T16:00:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Daylight Saving Time Shift",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-04T09:15:00+00:00",
+    "country": "AL",
+    "currency": "ALL",
+    "event": "OPEC-JMMC Meetings",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-04T10:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "OPEC Meeting",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-04T20:00:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "Bank Holiday",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-04T22:00:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "S&P Global Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "51.4",
+    "previous": "51.4"
+  },
+  {
+    "datetime_utc": "2026-10-04T22:00:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "S&P Global Manufacturing & Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "50.80",
+    "previous": "50.80"
+  },
+  {
+    "datetime_utc": "2026-10-04T23:01:00+00:00",
+    "country": "CN",
+    "currency": "CNY",
+    "event": "Bank Holiday",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-05T00:00:00+00:00",
+    "country": "AU",
+    "currency": "AU",
+    "event": "MI Inflation Gauge (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-10-05T00:00:00+00:00",
+    "country": "AU",
+    "currency": "AUD",
+    "event": "MI Inflation Gauge m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "0.5%"
+  },
+  {
+    "datetime_utc": "2026-10-05T00:00:00+00:00",
+    "country": "NZ",
+    "currency": "NZD",
+    "event": "ANZ Commodity Prices m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "-0.4%"
+  },
+  {
+    "datetime_utc": "2026-10-05T00:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "S&P Global Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "51.6",
+    "previous": "51.6"
+  },
+  {
+    "datetime_utc": "2026-10-05T00:30:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Manufacturing & Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "52.50",
+    "previous": "52.50"
+  },
+  {
+    "datetime_utc": "2026-10-05T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Consumer Confidence",
+    "impact": "low",
+    "actual": null,
+    "forecast": "35.3",
+    "previous": "35.5"
+  },
+  {
+    "datetime_utc": "2026-10-05T05:00:00+00:00",
+    "country": "JP",
+    "currency": "JPY",
+    "event": "Household Confidence",
+    "impact": "low",
+    "actual": null,
+    "forecast": "35.3",
+    "previous": "35.5"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:15:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Spanish Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "57.1",
+    "previous": "57.8"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Buba President Nagel Speaks",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-05T07:45:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Italian Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "54.6",
+    "previous": "55.2"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:50:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "HCOB France Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "51.4",
+    "previous": "51.4"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:50:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "HCOB France Composite PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "51.2",
+    "previous": "51.2"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:50:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "French Final Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "51.4",
+    "previous": "51.4"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "HCOB Germany Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "52.9",
+    "previous": "52.9"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:55:00+00:00",
+    "country": "DE",
+    "currency": "EUR",
+    "event": "HCOB Germany Composite PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "53.8",
+    "previous": "53.8"
+  },
+  {
+    "datetime_utc": "2026-10-05T07:55:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "German Final Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "52.9",
+    "previous": "52.9"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "Car Registration (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "13.7%"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Final Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "53.0",
+    "previous": "53.0"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "HCOB Eurozone Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "53.0",
+    "previous": "53.0"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "HCOB Eurozone Composite PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "53.1",
+    "previous": "53.1"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "United Kingdom New Passenger Cars Registration",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "94,236.0"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Lane Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-05T08:30:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "Sentix Investor Confidence",
+    "impact": "low",
+    "actual": null,
+    "forecast": "4.5",
+    "previous": "5.1"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "S&P Global Composite PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "51.7",
+    "previous": "51.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:30:00+00:00",
+    "country": "UK",
+    "currency": "GBP",
+    "event": "S&P Global Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "51.7",
+    "previous": "51.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T08:30:00+00:00",
+    "country": "GB",
+    "currency": "GBP",
+    "event": "Final Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "51.7",
+    "previous": "51.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "PPI (YoY)",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "5.8%"
+  },
+  {
+    "datetime_utc": "2026-10-05T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "PPI (MoM)",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.9%",
+    "previous": "1.6%"
+  },
+  {
+    "datetime_utc": "2026-10-05T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "PPI m/m",
+    "impact": "low",
+    "actual": null,
+    "forecast": "1.9%",
+    "previous": "1.6%"
+  },
+  {
+    "datetime_utc": "2026-10-05T09:00:00+00:00",
+    "country": "EU",
+    "currency": "EUR",
+    "event": "ECB's Schnabel Speaks",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": null
+  },
+  {
+    "datetime_utc": "2026-10-05T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 12-Month BTF Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "3.240%"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 6-Month BTF Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.920%"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:00:00+00:00",
+    "country": "FR",
+    "currency": "EUR",
+    "event": "French 3-Month BTF Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "2.700%"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:30:00+00:00",
+    "country": "CA",
+    "currency": "CAD",
+    "event": "S&P Global Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "49.10"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P Global Composite PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "58.4",
+    "previous": "58.4"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "Final Services PMI",
+    "impact": "low",
+    "actual": null,
+    "forecast": "58.7",
+    "previous": "58.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T13:45:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "S&P Global Services PMI",
+    "impact": "high",
+    "actual": null,
+    "forecast": "58.7",
+    "previous": "58.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Non-Manufacturing Prices",
+    "impact": "high",
+    "actual": null,
+    "forecast": null,
+    "previous": "72.6"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Non-Manufacturing New Orders",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "60.9"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Non-Manufacturing Business Activity",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "61.7"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Services PMI",
+    "impact": "medium",
+    "actual": null,
+    "forecast": "55.1",
+    "previous": "55.4"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "CB Employment Trends Index",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "108.53"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Non-Manufacturing Employment",
+    "impact": "medium",
+    "actual": null,
+    "forecast": null,
+    "previous": "47.8"
+  },
+  {
+    "datetime_utc": "2026-10-05T14:00:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "ISM Non-Manufacturing PMI",
+    "impact": "high",
+    "actual": null,
+    "forecast": "55.7",
+    "previous": "55.4"
+  },
+  {
+    "datetime_utc": "2026-10-05T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "6-Month Bill Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "4.285%"
+  },
+  {
+    "datetime_utc": "2026-10-05T15:30:00+00:00",
+    "country": "US",
+    "currency": "USD",
+    "event": "3-Month Bill Auction",
+    "impact": "low",
+    "actual": null,
+    "forecast": null,
+    "previous": "4.110%"
+  }
+]
