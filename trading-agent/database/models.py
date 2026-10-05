@@ -443,7 +443,7 @@ class FundamentalBrief(Base):
     debate_escalation_required: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     # Relationship
-    analyses = relationship("AssetAnalysis", back_populates="brief", lazy="noload")
+    analyses = relationship("AssetAnalysis", back_populates="brief", lazy="raise")
 
     @property
     def currency_bias(self) -> dict:
@@ -543,8 +543,8 @@ class AssetAnalysis(Base):
     direction_correct_24h: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     # Relationships
-    brief = relationship("FundamentalBrief", back_populates="analyses", lazy="noload")
-    triggers = relationship("TradeTrigger", back_populates="analysis", lazy="noload")
+    brief = relationship("FundamentalBrief", back_populates="analyses", lazy="raise")
+    triggers = relationship("TradeTrigger", back_populates="analysis", lazy="raise")
 
     @property
     def entry_price(self) -> Optional[float]:
@@ -618,7 +618,7 @@ class TradeTrigger(Base):
     fired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationship
-    analysis = relationship("AssetAnalysis", back_populates="triggers", lazy="noload")
+    analysis = relationship("AssetAnalysis", back_populates="triggers", lazy="raise")
 
     __table_args__ = (
         Index('idx_trigger_status', 'status'),
@@ -640,7 +640,7 @@ class MT5Signal(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationship
-    analysis = relationship("AssetAnalysis", backref="mt5_signals", lazy="noload")
+    analysis = relationship("AssetAnalysis", backref="mt5_signals", lazy="raise")
 
 
 # =============================================================================
@@ -779,7 +779,7 @@ class Order(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
-    analysis = relationship("AssetAnalysis", backref="orders", lazy="noload")
+    analysis = relationship("AssetAnalysis", backref="orders", lazy="raise")
     events = relationship("OrderEvent", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
 
     def __init__(self, **kwargs):
@@ -876,7 +876,7 @@ class OrderEvent(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationship
-    order = relationship("Order", back_populates="events", lazy="noload")
+    order = relationship("Order", back_populates="events", lazy="raise")
 
 
 class Position(Base):
@@ -912,7 +912,7 @@ class Position(Base):
     market_regime: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Relationship
-    order = relationship("Order", backref="positions", lazy="noload")
+    order = relationship("Order", backref="positions", lazy="raise")
 
     @property
     def lots(self) -> float:
