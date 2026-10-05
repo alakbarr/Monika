@@ -36,6 +36,20 @@ jobs:
   python-test:
     name: Test Suite (Pytest)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: market_intelligence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,8 +68,10 @@ jobs:
       - name: Run Pytest
         env:
           PYTHONPATH: trading-agent
+          DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
         run: |
           python -m pytest trading-agent/tests -v
+
 
   frontend-build:
     name: Dashboard Frontend Build

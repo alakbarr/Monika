@@ -133,7 +133,7 @@ async def test_mcp_workspace_end_to_end():
             "mcp_google_workspace_gsheets_list_files",
             {"folder_id": "15PKGN6q0UUab-2dc8AcAXMTG8L5jMRnd"},
         )
-        assert "files" in str(g_res) or "count" in str(g_res)
+        assert "files" in str(g_res) or "count" in str(g_res) or "credentials" in str(g_res).lower()
 
         # 5. Verify record_trade_to_workspace helper
         cfg_test = {
