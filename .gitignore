@@ -109,6 +109,7 @@ prompt_benchmark.md
 # AI Assistant Rules & Instructions
 GEMINI.md
 AGENTS.md
+AGENT.md
 .geminiignore
 
 # Internal Design & Developer Notes
