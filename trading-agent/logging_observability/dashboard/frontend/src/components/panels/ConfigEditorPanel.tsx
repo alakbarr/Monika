@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ConfigDiffModal, type DiffItem } from './config/ConfigDiffModal';
 import { ConfigSection, type ConfigSectionType } from './config/ConfigSection';
+import YAML from 'yaml';
 
 export const ConfigEditorPanel: React.FC = () => {
   const { userRole, fetchUserRole } = useDashboardStore();
@@ -81,6 +82,17 @@ export const ConfigEditorPanel: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasChanges]);
 
+  // If user is editing raw YAML, parse it to reflect in diff and payload
+  const effectiveTargetConfig = useMemo(() => {
+    if (activeSection === 'raw' && rawViewMode === 'yaml' && rawYaml !== initialRawYaml) {
+      try {
+        const parsed = YAML.parse(rawYaml);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch {}
+    }
+    return config;
+  }, [activeSection, rawViewMode, rawYaml, initialRawYaml, config]);
+
   // Compute key-by-key differences between initial and current config
   const diffItems = useMemo(() => {
     const diffs: DiffItem[] = [];
@@ -105,9 +117,9 @@ export const ConfigEditorPanel: React.FC = () => {
         }
       }
     };
-    walk(initialConfig, config);
+    walk(initialConfig, effectiveTargetConfig);
     return diffs;
-  }, [initialConfig, config]);
+  }, [initialConfig, effectiveTargetConfig]);
 
   // Helper to get nested field value safely
   const getFieldValue = (path: string[], fallback: unknown = ''): unknown => {
@@ -148,13 +160,31 @@ export const ConfigEditorPanel: React.FC = () => {
     setSaving(true);
     setFeedback(null);
     try {
-      const payload = config;
+      let payload = config;
+      if (activeSection === 'raw' && rawViewMode === 'yaml' && rawYaml !== initialRawYaml) {
+        try {
+          const parsed = YAML.parse(rawYaml);
+          if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Root of YAML document must be a dictionary/object.');
+          }
+          payload = parsed;
+        } catch (yamlErr: any) {
+          setFeedback({
+            type: 'error',
+            message: `Invalid YAML syntax: ${yamlErr.message}`,
+          });
+          setShowDiffModal(false);
+          setSaving(false);
+          return;
+        }
+      }
       const res = await api.updateConfigSettings(payload, 'Updated via Dashboard Config Editor');
       setFeedback({
         type: 'success',
         message: `Success: Configuration persisted and backed up to ${res.backup_path || 'settings.yaml.bak'}. Hot-reloaded: ${res.reloaded ? 'YES' : 'NO'}.`,
       });
-      setInitialConfig(JSON.parse(JSON.stringify(config)));
+      setInitialConfig(JSON.parse(JSON.stringify(payload)));
+      setConfig(JSON.parse(JSON.stringify(payload)));
       setShowDiffModal(false);
       // Reload raw yaml from backend
       api.configSettings().then(r => {
@@ -346,6 +376,7 @@ export const ConfigEditorPanel: React.FC = () => {
             rawViewMode={rawViewMode}
             setRawViewMode={setRawViewMode}
             rawYaml={rawYaml}
+            setRawYaml={setRawYaml}
             schema={schema}
           />
         </Card>
@@ -358,7 +389,7 @@ export const ConfigEditorPanel: React.FC = () => {
         onConfirm={handleSave}
         saving={saving}
         diffItems={diffItems}
-        targetConfig={config}
+        targetConfig={effectiveTargetConfig}
       />
     </div>
   );

@@ -268,6 +268,45 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             elif isinstance(settings.get("scheduler"), dict):
                 settings["scheduler"]["trigger_check_minutes"] = trigger_mins
 
+        # Sinkronisasi cron_expression: trading.schedule.cron_expression <-> scheduler.cron_expression
+        cron_expr = None
+        if isinstance(trading_sched, dict) and "cron_expression" in trading_sched:
+            cron_expr = trading_sched["cron_expression"]
+        elif isinstance(sched_root, dict) and "cron_expression" in sched_root:
+            cron_expr = sched_root["cron_expression"]
+
+        if cron_expr is not None:
+            if isinstance(trading_sched, dict):
+                trading_sched["cron_expression"] = cron_expr
+            if isinstance(sched_root, dict):
+                sched_root["cron_expression"] = cron_expr
+            elif isinstance(settings.get("scheduler"), dict):
+                settings["scheduler"]["cron_expression"] = cron_expr
+
+        # Sinkronisasi trading.symbols <-> trading.asset_universe
+        if isinstance(trading_cfg, dict):
+            syms = trading_cfg.get("symbols")
+            universe = trading_cfg.get("asset_universe")
+            if syms and not universe:
+                trading_cfg["asset_universe"] = list(syms)
+            elif universe and not syms:
+                trading_cfg["symbols"] = list(universe)
+
+        # Sinkronisasi risk: max_daily_drawdown_percent <-> daily_drawdown_limit
+        risk_cfg = None
+        if isinstance(trading_cfg, dict) and isinstance(trading_cfg.get("risk"), dict):
+            risk_cfg = trading_cfg["risk"]
+        elif isinstance(settings.get("risk"), dict):
+            risk_cfg = settings["risk"]
+
+        if isinstance(risk_cfg, dict):
+            dd_pct = risk_cfg.get("max_daily_drawdown_percent")
+            dd_limit = risk_cfg.get("daily_drawdown_limit")
+            if dd_pct is not None and dd_limit is None:
+                risk_cfg["daily_drawdown_limit"] = float(dd_pct)
+            elif dd_limit is not None and dd_pct is None:
+                risk_cfg["max_daily_drawdown_percent"] = float(dd_limit)
+
     # Apply schema versioning and migrations
     if isinstance(settings, dict):
         settings, _ = migrate_config(settings)

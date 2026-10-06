@@ -23,6 +23,7 @@ interface ConfigSectionProps {
   rawViewMode: 'yaml' | 'schema';
   setRawViewMode: (mode: 'yaml' | 'schema') => void;
   rawYaml: string;
+  setRawYaml?: (val: string) => void;
   schema: Record<string, unknown> | null;
 }
 
@@ -170,6 +171,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
   rawViewMode,
   setRawViewMode,
   rawYaml,
+  setRawYaml,
   schema,
 }) => {
   return (
@@ -642,24 +644,37 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
             </div>
           </div>
 
-          <textarea
-            readOnly
-            value={rawViewMode === 'yaml' ? rawYaml : JSON.stringify(schema || {}, null, 2)}
-            rows={24}
-            style={{
-              width: '100%',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '2px',
-              color: 'var(--color-ink)',
-              fontFamily: 'var(--font-precision)',
-              fontSize: '12px',
-              lineHeight: 1.5,
-              padding: '14px',
-              outline: 'none',
-              resize: 'vertical',
-            }}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {rawViewMode === 'yaml' && isAdmin && (
+              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+                Editable YAML buffer. Changes will be validated against TradingAgentConfig schema prior to persistence.
+              </div>
+            )}
+            <textarea
+              readOnly={rawViewMode === 'schema' || !isAdmin}
+              value={rawViewMode === 'yaml' ? rawYaml : JSON.stringify(schema || {}, null, 2)}
+              onChange={(e) => {
+                if (rawViewMode === 'yaml' && setRawYaml) {
+                  setRawYaml(e.target.value);
+                }
+              }}
+              rows={24}
+              style={{
+                width: '100%',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '2px',
+                color: 'var(--color-ink)',
+                fontFamily: 'var(--font-precision)',
+                fontSize: '12px',
+                lineHeight: 1.5,
+                padding: '14px',
+                outline: 'none',
+                resize: 'vertical',
+                cursor: (rawViewMode === 'yaml' && isAdmin) ? 'text' : 'default',
+              }}
+            />
+          </div>
         </div>
       )}
     </>

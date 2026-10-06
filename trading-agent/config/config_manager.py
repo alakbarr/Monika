@@ -25,7 +25,17 @@ class ConfigManager:
     _watch_task: Optional[asyncio.Task] = None
 
     def __init__(self, config_paths: Optional[List[str]] = None):
-        self.config_paths = config_paths or ["config/settings.yaml"]
+        if config_paths is None:
+            resolved_paths: List[str] = []
+            for cand in ["config/settings.yaml", "trading-agent/config/settings.yaml"]:
+                if os.path.exists(cand):
+                    resolved_paths.append(cand)
+            if not resolved_paths:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                resolved_paths.append(os.path.join(base_dir, "config", "settings.yaml"))
+            self.config_paths = resolved_paths
+        else:
+            self.config_paths = config_paths
         self._record_mtimes()
 
     @classmethod
@@ -86,6 +96,11 @@ class ConfigManager:
         # Broadcast domain-specific topics
         if "trading" in new_settings and "risk" in new_settings["trading"]:
             self.publish("risk", new_settings["trading"]["risk"])
+        elif "risk" in new_settings:
+            self.publish("risk", new_settings["risk"])
+
+        if "trading" in new_settings:
+            self.publish("trading", new_settings["trading"])
 
         if "llm" in new_settings:
             self.publish("llm", new_settings["llm"])
@@ -123,3 +138,7 @@ class ConfigManager:
             self._watch_task.cancel()
             self._watch_task = None
         logger.info("ConfigManager file watcher stopped")
+
+    def stop(self) -> None:
+        """Standard lifecycle stop alias."""
+        self.stop_watcher()

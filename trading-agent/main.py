@@ -235,6 +235,7 @@ class TradingAgent:
     event_bus: Optional[Any]
     mt5_health_checker: Optional[Any]
     risk_parameter_reloader: Optional[Any]
+    config_manager: Optional[Any]
     task_registry: Optional[Any]
     plugin_loader: Optional[Any]
     _recovery_task: Optional[asyncio.Task]
@@ -288,6 +289,7 @@ class TradingAgent:
         self.mt5_client = None
         self.mt5_health_checker = None
         self.risk_parameter_reloader = None
+        self.config_manager = None
         self.position_supervisor = None
         self.task_registry = None
         self.container = None
@@ -496,6 +498,43 @@ class TradingAgent:
             )
         else:
             self.risk_parameter_reloader = None
+
+        # Universal ConfigManager Pub/Sub Subscriptions
+        from config.config_manager import ConfigManager
+        self.config_manager = ConfigManager.get_instance()
+
+        def _on_config_risk_update(payload: dict):
+            if rg and hasattr(rg, "update_parameters"):
+                try:
+                    rg.update_parameters(payload)
+                    logger.info("ConfigManager dispatched risk parameter reload to RiskGate")
+                except Exception as ex:
+                    logger.warning(f"Error applying ConfigManager risk update: {ex}")
+
+        def _on_config_scheduler_update(payload: dict):
+            cs = getattr(self, "cycle_scheduler", None)
+            if cs:
+                if "analysis_cycle_hours" in payload:
+                    try:
+                        cs.cycle_interval_hours = float(payload["analysis_cycle_hours"])
+                        logger.info(f"ConfigManager updated cycle_interval_hours to {cs.cycle_interval_hours}")
+                    except Exception:
+                        pass
+                elif "cycle_interval_hours" in payload:
+                    try:
+                        cs.cycle_interval_hours = float(payload["cycle_interval_hours"])
+                        logger.info(f"ConfigManager updated cycle_interval_hours to {cs.cycle_interval_hours}")
+                    except Exception:
+                        pass
+
+        def _on_config_all_update(payload: dict):
+            if isinstance(payload, dict):
+                self.settings.clear()
+                self.settings.update(payload)
+
+        self.config_manager.subscribe("risk", _on_config_risk_update)
+        self.config_manager.subscribe("scheduler", _on_config_scheduler_update)
+        self.config_manager.subscribe("all", _on_config_all_update)
 
         # Wire EventBus subscribers for sub-second reactive protection & live observability
         if self.event_bus:
@@ -1308,6 +1347,8 @@ class TradingAgent:
             _launch_task("PlaybookCurator", self.playbook_curator.start, "playbook_curator")
         if hasattr(self, "universal_cron") and self.universal_cron:
             self.universal_cron.start()
+        if hasattr(self, "config_manager") and self.config_manager:
+            _launch_task("ConfigManagerWatcher", self.config_manager.start_watcher, "config_manager_watcher")
 
         if self.telegram_bot:
             self._tg_task = _launch_task("TelegramBot", self.telegram_bot.start, "telegram_bot")
@@ -1753,6 +1794,7 @@ class TradingAgent:
             (self._active_scraper_runner, "ActiveScraperRunner"),
             (getattr(self, "execution_service", None), "ExecutionService"),
             (getattr(self, "mt5_health_checker", None), "MT5HealthChecker"),
+            (getattr(self, "config_manager", None), "ConfigManager"),
         ]:
             try:
                 if comp and hasattr(comp, "stop"):
