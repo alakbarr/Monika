@@ -56,8 +56,10 @@ class AnalysisCycleTree(Widget):
     }
 
     PIPELINE_STEPS = [
+        "macro_brief",
         "fundamental_brief",
         "prefetch_data",
+        "per_asset_analysis",
         "bull_advocate",
         "bear_dissent",
         "debate_judge",
@@ -66,8 +68,10 @@ class AnalysisCycleTree(Widget):
     ]
 
     STEP_LABELS = {
+        "macro_brief": "Macro Brief",
         "fundamental_brief": "Fundamental Brief",
         "prefetch_data": "Prefetch Data",
+        "per_asset_analysis": "Per-Asset Analysis",
         "bull_advocate": "Bull Advocate",
         "bear_dissent": "Bear Dissent",
         "debate_judge": "Debate Judge",
@@ -76,15 +80,20 @@ class AnalysisCycleTree(Widget):
     }
 
     STEP_ALIASES = {
+        "macro": "macro_brief",
+        "macro_analysis": "macro_brief",
         "fundamental_analysis": "fundamental_brief",
         "fundamental": "fundamental_brief",
         "data_gathering": "prefetch_data",
         "fetch_data": "prefetch_data",
         "prefetch": "prefetch_data",
-        "per_asset_analysis": "bull_advocate",
-        "per_asset": "bull_advocate",
-        "debate": "debate_judge",
+        "per_asset_analysis": "per_asset_analysis",
+        "per_asset": "per_asset_analysis",
+        "bull": "bull_advocate",
+        "bear": "bear_dissent",
         "rebuttal": "bear_dissent",
+        "debate": "debate_judge",
+        "judge": "debate_judge",
         "risk": "risk_gate",
     }
 
@@ -130,7 +139,7 @@ class AnalysisCycleTree(Widget):
         output_tokens: Optional[int] = None,
         token_history: Optional[List[float]] = None,
     ) -> None:
-        """Update status and metrics for a specific pipeline step."""
+        """Update status and metrics for a specific pipeline step with diff-check."""
         target_step = self.STEP_ALIASES.get(step_name, step_name)
         if not self.cycle_data:
             self.cycle_data = {
@@ -142,6 +151,26 @@ class AnalysisCycleTree(Widget):
 
         steps = dict(self.cycle_data.get("steps", {}))
         current_step = dict(steps.get(target_step, {}))
+
+        # Differential check: skip redundant assignment if nothing changed
+        prev_status = current_step.get("status")
+        prev_dur = current_step.get("duration_s")
+        prev_in = current_step.get("input_tokens")
+        prev_out = current_step.get("output_tokens")
+
+        new_dur = float(duration_s) if duration_s is not None else prev_dur
+        new_in = int(input_tokens) if input_tokens is not None else prev_in
+        new_out = int(output_tokens) if output_tokens is not None else prev_out
+
+        if (
+            prev_status == status
+            and prev_dur == new_dur
+            and prev_in == new_in
+            and prev_out == new_out
+            and token_history is None
+        ):
+            return
+
         current_step["status"] = status
         if duration_s is not None:
             current_step["duration_s"] = float(duration_s)

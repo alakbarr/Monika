@@ -254,6 +254,17 @@ class ChatRenderer:
         )
         self.console.print(panel)
 
+    def render_thinking_spinner(self, text: str = "Thinking...") -> None:
+        """Render in-progress thinking status indicator before first token."""
+        p = self.palette
+        sys.stdout.write(f"\r  [dim {p.thinking}]{GLYPH_THINK} {text}[/] ")
+        sys.stdout.flush()
+
+    def clear_thinking_spinner(self) -> None:
+        """Clear active in-progress thinking status indicator line."""
+        sys.stdout.write("\r\033[K")
+        sys.stdout.flush()
+
     def render_tool_start(self, tool_name: str, tool_args: Dict[str, Any]) -> None:
         """Render tool invocation tree header."""
         p = self.palette
