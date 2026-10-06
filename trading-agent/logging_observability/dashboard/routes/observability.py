@@ -61,22 +61,7 @@ def _build_graph_state_for_cycle(
             seen.add(cid)
             discovered_cycles.append(cid)
 
-    target_cycle = cycle_id if cycle_id else (discovered_cycles[0] if discovered_cycles else None)
-
-    if not target_cycle:
-        return {
-            "cycle_id": None,
-            "status": "idle",
-            "started_at": None,
-            "completed_at": None,
-            "total_duration_ms": 0.0,
-            "total_tokens": {"input": 0, "output": 0, "total": 0, "cost_usd": 0.0},
-            "available_cycles": [],
-            "available_symbols": [],
-            "selected_symbol": None,
-            "nodes": [],
-            "edges": [],
-        }
+    target_cycle = cycle_id if cycle_id else (discovered_cycles[0] if discovered_cycles else "cycle-standby")
 
     cycle_spans = [
         s for s in global_trace_store._spans
@@ -87,6 +72,10 @@ def _build_graph_state_for_cycle(
         {"cycle_id": cid, "label": f"Cycle #{cid.split('-')[-1] if '-' in cid else cid[:12]}", "status": "completed"}
         for cid in discovered_cycles
     ]
+    if not available_cycles:
+        available_cycles = [
+            {"cycle_id": "cycle-standby", "label": "Pipeline Standby (Ready)", "status": "idle"}
+        ]
 
     def find_span(aliases: List[str]):
         for s in cycle_spans:
@@ -372,7 +361,7 @@ def _build_graph_state_for_cycle(
     elif all(st in ("done", "skipped") for st in statuses):
         overall_status = "completed"
     elif all(st == "pending" for st in statuses):
-        overall_status = "pending"
+        overall_status = "idle" if target_cycle == "cycle-standby" else "pending"
     else:
         overall_status = "completed" if cycle_finished else "running"
 

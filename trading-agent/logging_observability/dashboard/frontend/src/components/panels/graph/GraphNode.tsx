@@ -68,7 +68,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
       />
 
       {/* Node Header: Icon + Title */}
-      <foreignObject x="10" y="12" width={nodeWidth - 20} height={nodeHeight - 20}>
+      <foreignObject x="8" y="10" width={nodeWidth - 16} height={nodeHeight - 18}>
         <div
           style={{
             display: 'flex',
@@ -80,12 +80,12 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
           }}
         >
           {/* Title Row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
               <div
                 style={{
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   borderRadius: '3px',
                   background: 'var(--color-paper)',
                   border: '1.5px solid var(--color-rule)',
@@ -96,18 +96,19 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                   flexShrink: 0,
                 }}
               >
-                <Icon size={14} />
+                <Icon size={13} />
               </div>
+
               <span
                 style={{
-                  fontSize: '12px',
+                  fontSize: '10.5px',
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   color: 'var(--color-ink)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
+                  letterSpacing: '0.01em',
                 }}
                 title={node.name}
               >
@@ -120,18 +121,18 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '1px 6px',
-                borderRadius: '3px',
+                gap: '3px',
+                padding: '1px 5px',
+                borderRadius: '2px',
                 background: 'var(--color-paper)',
-                border: `1.5px solid ${statusColor}`,
+                border: `1px solid ${statusColor}`,
                 flexShrink: 0,
               }}
             >
               <span
                 style={{
-                  width: 5,
-                  height: 5,
+                  width: 4,
+                  height: 4,
                   borderRadius: 1,
                   backgroundColor: statusColor,
                   display: 'inline-block',
@@ -139,7 +140,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               />
               <span
                 style={{
-                  fontSize: '9px',
+                  fontSize: '8.5px',
                   fontWeight: 800,
                   textTransform: 'uppercase',
                   color: statusColor,

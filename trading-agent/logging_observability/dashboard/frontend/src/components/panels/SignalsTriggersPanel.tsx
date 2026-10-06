@@ -39,6 +39,223 @@ const formatTimeAgo = (isoString?: string | null): string => {
   return `${Math.floor(diffHours / 24)}d ago`;
 };
 
+interface ParsedConditionSummary {
+  symbol?: string;
+  badgeLabel: string;
+  badgeColor: string;
+  badgeBg: string;
+  badgeBorder: string;
+  headline: string;
+  subDetail?: string;
+  fireAtFormatted?: string;
+  rawJson: string;
+}
+
+const resolveStrategyName = (rawSlug?: string | null): string => {
+  if (!rawSlug) return 'System Default';
+  const slug = rawSlug.trim().toLowerCase();
+  const knownMap: Record<string, string> = {
+    xti_pairs_readiness: 'XTI Pairs Readiness',
+    smc_fvg: 'SMC Fair Value Gap',
+    tri_convergent_alpha: 'Tri-Convergent Alpha',
+    session_breakout: 'Session Breakout',
+    macro_trend: 'Macro Trend',
+    mean_reversion: 'Mean Reversion',
+    momentum: 'Momentum Factor',
+  };
+  if (knownMap[slug]) return knownMap[slug];
+
+  return slug
+    .split('_')
+    .map((w) => {
+      const up = w.toUpperCase();
+      if (['SMC', 'FVG', 'XTI', 'XBR', 'ADR', 'POC', 'SL', 'TP', 'RSI', 'EMA', 'ATR', 'MACD', 'NFP'].includes(up)) {
+        return up;
+      }
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+};
+
+const formatDurationMinutes = (minutes: number): string => {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = minutes / 60;
+  if (hours < 24) {
+    const rem = minutes % 60;
+    return rem === 0 ? `${hours}h` : `${Math.floor(hours)}h ${rem}m`;
+  }
+  const days = (minutes / 1440).toFixed(1).replace(/\.0$/, '');
+  return `${minutes.toLocaleString()}m (~${days}d)`;
+};
+
+const formatUtcSchedule = (isoString?: string | null): string | undefined => {
+  if (!isoString) return undefined;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return undefined;
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getUTCMonth()];
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const mins = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${day} ${month}, ${hours}:${mins} UTC`;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseTriggerCondition = (
+  triggerType: string,
+  condition: any
+): ParsedConditionSummary => {
+  const rawJson =
+    typeof condition === 'object' && condition !== null
+      ? JSON.stringify(condition, null, 2)
+      : String(condition || '—');
+
+  let condObj: Record<string, any> = {};
+  if (typeof condition === 'object' && condition !== null) {
+    condObj = condition;
+  } else if (typeof condition === 'string') {
+    try {
+      condObj = JSON.parse(condition);
+    } catch {
+      condObj = { detail: condition };
+    }
+  }
+
+  const type = (triggerType || condObj.type || '').toLowerCase();
+  const symbol = condObj.symbol ? String(condObj.symbol).toUpperCase() : undefined;
+  const fireAtFormatted = formatUtcSchedule(condObj.fire_at);
+
+  // 1. Force Close / Max Hold Stop
+  if (type === 'force_close' || (typeof condObj.reason === 'string' && condObj.reason.includes('max_hold'))) {
+    const reasonStr = String(condObj.reason || '');
+    const match = reasonStr.match(/^([a-z0-9_]+)\s+max_hold_minutes=(\d+)/i);
+    const strategySlug = match ? match[1] : reasonStr.split(' ')[0];
+    const holdMins = match ? parseInt(match[2], 10) : undefined;
+    const strategyName = resolveStrategyName(strategySlug);
+    const holdFormatted = holdMins ? formatDurationMinutes(holdMins) : '';
+
+    return {
+      symbol,
+      badgeLabel: 'Time Stop',
+      badgeColor: '#FAF7F2',
+      badgeBg: 'var(--color-win-coral)',
+      badgeBorder: 'var(--color-rule)',
+      headline: holdFormatted ? `Max Hold Limit Reached (${holdFormatted})` : 'Max Hold Limit Reached',
+      subDetail: `↳ Strategy: ${strategyName}${reasonStr.includes('force_session_close=True') ? ' • Session Force Close' : ''}`,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // 2. Cancel Pending / TTL Expiry
+  if (type === 'cancel_pending' || (typeof condObj.reason === 'string' && condObj.reason.includes('ttl_minutes'))) {
+    const reasonStr = String(condObj.reason || '');
+    const match = reasonStr.match(/^([a-z0-9_]+)\s+ttl_minutes=(\d+)/i);
+    const strategySlug = match ? match[1] : reasonStr.split(' ')[0];
+    const ttlMins = match ? parseInt(match[2], 10) : undefined;
+    const strategyName = resolveStrategyName(strategySlug);
+    const ttlFormatted = ttlMins ? formatDurationMinutes(ttlMins) : '';
+
+    return {
+      symbol,
+      badgeLabel: 'TTL Expired',
+      badgeColor: '#1C1917',
+      badgeBg: 'var(--color-win-yellow)',
+      badgeBorder: 'var(--color-rule)',
+      headline: ttlFormatted ? `Order Validity Expired (TTL: ${ttlFormatted})` : 'Order Validity Expired',
+      subDetail: `↳ Strategy: ${strategyName}`,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // 3. Price Level Trigger
+  if (type === 'price_level' || (condObj.price !== undefined && condObj.price !== null)) {
+    const priceVal = typeof condObj.price === 'number' ? condObj.price : parseFloat(condObj.price);
+    const priceStr = !isNaN(priceVal) ? priceVal.toFixed(5).replace(/(\.\d\d\d)0+$/, '$1') : '';
+    const dir = (condObj.direction || '').toLowerCase();
+    const dirLabel = dir.includes('above') ? 'Crosses Above' : dir.includes('below') ? 'Crosses Below' : 'Reaches';
+    const detail = condObj.detail ? String(condObj.detail) : '';
+
+    return {
+      symbol,
+      badgeLabel: 'Price Level',
+      badgeColor: 'cyan',
+      badgeBg: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
+      badgeBorder: 'color-mix(in srgb, cyan 40%, var(--color-border))',
+      headline: priceStr ? `Price ${dirLabel} ${priceStr}` : 'Price Level Milestone',
+      subDetail: detail ? `↳ ${detail}` : undefined,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // 4. Indicator Trigger
+  if (type === 'indicator') {
+    const detail = condObj.detail ? String(condObj.detail) : 'Wait for indicator confirmation';
+    return {
+      symbol,
+      badgeLabel: 'Indicator',
+      badgeColor: 'var(--color-ink-soft)',
+      badgeBg: 'var(--color-paper-raised)',
+      badgeBorder: 'var(--color-rule)',
+      headline: 'Structural Indicator Signal',
+      subDetail: `↳ ${detail}`,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // 5. Time Trigger
+  if (type === 'time') {
+    const detail = condObj.detail ? String(condObj.detail) : 'Scheduled re-evaluation';
+    return {
+      symbol,
+      badgeLabel: 'Time Reval',
+      badgeColor: '#1C1917',
+      badgeBg: 'var(--color-win-yellow)',
+      badgeBorder: 'var(--color-rule)',
+      headline: 'Scheduled Thesis Re-evaluation',
+      subDetail: `↳ ${detail}`,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // 6. News Trigger
+  if (type === 'news') {
+    const detail = condObj.detail ? String(condObj.detail) : 'Macro event catalyst';
+    return {
+      symbol,
+      badgeLabel: 'Macro Catalyst',
+      badgeColor: '#1C1917',
+      badgeBg: 'var(--color-win-green)',
+      badgeBorder: 'var(--color-rule)',
+      headline: 'Macro Event / News Re-evaluation',
+      subDetail: `↳ ${detail}`,
+      fireAtFormatted,
+      rawJson,
+    };
+  }
+
+  // Fallback
+  const fallbackDetail = condObj.detail || condObj.reason || rawJson;
+  return {
+    symbol,
+    badgeLabel: triggerType || 'Trigger',
+    badgeColor: 'var(--color-ink-soft)',
+    badgeBg: 'var(--color-paper-raised)',
+    badgeBorder: 'var(--color-rule)',
+    headline: String(fallbackDetail).slice(0, 50),
+    subDetail: String(fallbackDetail).length > 50 ? `↳ ${String(fallbackDetail).slice(50, 120)}...` : undefined,
+    fireAtFormatted,
+    rawJson,
+  };
+};
+
 export const SignalsTriggersPanel: React.FC = () => {
   const [panelTab, setPanelTab] = useState<'signals' | 'orders'>('signals');
   const [loading, setLoading] = useState<boolean>(true);
@@ -477,10 +694,7 @@ export const SignalsTriggersPanel: React.FC = () => {
             <tbody>
               {filteredTriggers.length > 0 ? (
                 filteredTriggers.map((t) => {
-                  const condStr =
-                    typeof t.condition === 'object' && t.condition !== null
-                      ? JSON.stringify(t.condition)
-                      : String(t.condition || '—');
+                  const condSummary = parseTriggerCondition(t.trigger_type, t.condition);
                   const statusLower = t.status?.toLowerCase();
                   const isPending = statusLower === 'pending';
 
@@ -527,18 +741,89 @@ export const SignalsTriggersPanel: React.FC = () => {
                           ) : null}
                         </div>
                       </td>
-                      <td style={{ maxWidth: '320px' }}>
+                      <td style={{ maxWidth: '420px', minWidth: '240px' }}>
                         <div
                           style={{
-                            fontSize: '11px',
-                            color: 'var(--color-ink-muted)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                            cursor: 'help',
                           }}
-                          title={condStr}
+                          title={condSummary.rawJson}
                         >
-                          {condStr}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                            {condSummary.symbol && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontFamily: 'var(--font-precision)',
+                                  fontWeight: 'bold',
+                                  padding: '1px 5px',
+                                  borderRadius: '2px',
+                                  background: 'var(--color-paper-raised)',
+                                  color: 'var(--color-ink)',
+                                  border: '1px solid var(--color-rule)',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {condSummary.symbol}
+                              </span>
+                            )}
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontFamily: 'var(--font-precision)',
+                                fontWeight: 'bold',
+                                letterSpacing: '0.04em',
+                                textTransform: 'uppercase',
+                                padding: '1px 5px',
+                                borderRadius: '2px',
+                                background: condSummary.badgeBg,
+                                color: condSummary.badgeColor,
+                                border: `1px solid ${condSummary.badgeBorder}`,
+                                whiteSpace: 'nowrap',
+                                lineHeight: '1.2',
+                              }}
+                            >
+                              {condSummary.badgeLabel}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: 'var(--color-ink)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {condSummary.headline}
+                            </span>
+                          </div>
+
+                          {condSummary.subDetail && (
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: 'var(--color-ink-muted)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {condSummary.subDetail}
+                              </span>
+                              {condSummary.fireAtFormatted && (
+                                <span style={{ color: 'var(--color-warning)', fontWeight: 500, flexShrink: 0 }}>
+                                  • Fires: {condSummary.fireAtFormatted}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
