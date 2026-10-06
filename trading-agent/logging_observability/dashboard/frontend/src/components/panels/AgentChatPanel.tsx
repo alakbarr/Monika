@@ -34,6 +34,7 @@ export const AgentChatPanel: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>('auto');
   const [modalRequest, setModalRequest] = useState<TradeApprovalRequest | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isOperatorOrAdmin = userRole === 'operator' || userRole === 'admin';
 
@@ -63,6 +64,15 @@ export const AgentChatPanel: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, activeToolEvents]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      const nextH = Math.min(Math.max(scrollH, 44), 140);
+      textareaRef.current.style.height = `${nextH}px`;
+    }
+  }, [inputText]);
 
   useEffect(() => {
     fetchUserRole();
@@ -478,6 +488,7 @@ export const AgentChatPanel: React.FC = () => {
         }}
       >
         <textarea
+          ref={textareaRef}
           value={inputText}
           disabled={!wsConnected}
           aria-label="Ketik instruksi trading atau analisis agen"

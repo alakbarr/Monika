@@ -3,6 +3,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { NAV_ITEMS } from '../layout/navigation';
 import { sounds } from '../../lib/soundEffects';
 import { api } from '../../lib/api';
+import { ConfirmModal } from './ConfirmModal';
 
 interface CommandItem {
   id: string;
@@ -20,8 +21,18 @@ interface CommandPaletteProps {
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showKillConfirm, setShowKillConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { setActiveTab, theme, setTheme } = useDashboardStore();
+
+  const handleExecuteKill = async () => {
+    setShowKillConfirm(false);
+    try {
+      await api.emergencyKill();
+      sounds.playAlert();
+    } catch {}
+    onClose();
+  };
 
   const commands: CommandItem[] = useMemo(() => {
     const navCommands: CommandItem[] = NAV_ITEMS.map((item) => ({
@@ -85,14 +96,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         id: 'act-kill',
         title: '🚨 Emergency Kill Switch (Liquidate & Halt)',
         category: 'Action',
-        run: async () => {
-          if (window.confirm('Are you sure you want to execute emergency liquidation?')) {
-            try {
-              await api.emergencyKill();
-              sounds.playAlert();
-            } catch {}
-          }
-          onClose();
+        run: () => {
+          setShowKillConfirm(true);
         },
       },
     ];
@@ -200,6 +205,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={filteredCommands.length > 0}
+            aria-controls="command-palette-listbox"
+            aria-activedescendant={filteredCommands[selectedIndex] ? `cmd-${filteredCommands[selectedIndex].id}` : undefined}
             aria-label="Cari perintah atau tab navigasi"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -221,6 +231,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         </div>
 
         <div
+          role="listbox"
+          id="command-palette-listbox"
+          aria-label="Available commands"
           style={{
             maxHeight: '360px',
             overflowY: 'auto',
@@ -248,6 +261,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               return (
                 <div
                   key={item.id}
+                  id={`cmd-${item.id}`}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={item.run}
                   style={{
                     padding: '8px 12px',
@@ -297,6 +313,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showKillConfirm}
+        title="Emergency Kill Switch"
+        actionSummary="Liquidate all open positions and halt autonomous execution daemon immediately."
+        confirmLabel="EXECUTE KILL"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={handleExecuteKill}
+        onCancel={() => setShowKillConfirm(false)}
+      />
     </div>
   );
 };

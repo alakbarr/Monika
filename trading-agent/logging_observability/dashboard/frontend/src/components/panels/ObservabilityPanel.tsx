@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
@@ -264,7 +264,7 @@ export const ObservabilityPanel: React.FC = () => {
   const [lineageLoading, setLineageLoading] = useState<boolean>(false);
   const [selectedSeq, setSelectedSeq] = useState<number | null>(null);
 
-  const fetchOverviewData = async () => {
+  const fetchOverviewData = useCallback(async () => {
     try {
       const [treeRes, cacheRes, toolsRes, graphRes] = await Promise.all([
         api.playbookTree().catch(() => null),
@@ -287,9 +287,9 @@ export const ObservabilityPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchTraces = async () => {
+  const fetchTraces = useCallback(async () => {
     setTracesLoading(true);
     try {
       const [searchRes, slowRes] = await Promise.all([
@@ -310,9 +310,9 @@ export const ObservabilityPanel: React.FC = () => {
     } finally {
       setTracesLoading(false);
     }
-  };
+  }, [filterKind, filterStatus, filterMinDuration, filterProvider, filterModel]);
 
-  const fetchTrajectories = async () => {
+  const fetchTrajectories = useCallback(async () => {
     setTrajLoading(true);
     try {
       const res = await api.tradeTrajectories(50);
@@ -325,9 +325,9 @@ export const ObservabilityPanel: React.FC = () => {
     } finally {
       setTrajLoading(false);
     }
-  };
+  }, [selectedTraj]);
 
-  const fetchLineage = async (cycleId?: string, seq?: number) => {
+  const fetchLineage = useCallback(async (cycleId?: string, seq?: number) => {
     const cid = cycleId || lineageCycleId;
     if (!cid) return;
     setLineageLoading(true);
@@ -340,11 +340,11 @@ export const ObservabilityPanel: React.FC = () => {
     } finally {
       setLineageLoading(false);
     }
-  };
+  }, [lineageCycleId]);
 
   useEffect(() => {
     fetchOverviewData();
-  }, []);
+  }, [fetchOverviewData]);
 
   useEffect(() => {
     if (activeTab === 'traces') {
@@ -354,7 +354,7 @@ export const ObservabilityPanel: React.FC = () => {
     } else if (activeTab === 'lineage') {
       fetchLineage();
     }
-  }, [activeTab, filterKind, filterStatus]);
+  }, [activeTab, fetchTraces, fetchTrajectories, fetchLineage]);
 
   const handleInspectTrace = async (traceId: string) => {
     setSelectedTraceId(traceId);

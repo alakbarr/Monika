@@ -257,20 +257,16 @@ class KillConfirmModalScreen(ModalScreen[bool]):
     #kill_dialog {
         width: 64;
         height: auto;
-        background: #1C1917;
-        border: double #8B261E;
         padding: 1 2;
     }
     #kill_title {
         text-align: center;
         width: 100%;
-        color: #8B261E;
         text-style: bold;
         padding-bottom: 1;
     }
     #kill_msg {
         text-align: center;
-        color: #D8D2C2;
         padding: 1 0;
     }
     #kill_buttons {

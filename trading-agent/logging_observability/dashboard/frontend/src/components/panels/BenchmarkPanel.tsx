@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { sounds } from '../../lib/soundEffects';
 import { StatusIndicator } from '../ui/StatusIndicator';
@@ -91,21 +91,8 @@ export const BenchmarkPanel: React.FC = () => {
 
   const pollIntervalRef = useRef<any>(null);
 
-  // Initial load
-  useEffect(() => {
-    loadMetadata();
-    loadRuns();
-    loadLeaderboard();
-  }, []);
-
-  // When selected task changes, reload comparisons
-  useEffect(() => {
-    if (selectedTask) {
-      loadTaskComparisons(selectedTask);
-    }
-  }, [selectedTask]);
-
-  const loadMetadata = async () => {
+  // Metadata loaders
+  const loadMetadata = useCallback(async () => {
     try {
       const [tRes, mRes] = await Promise.all([
         api.benchmarkTasks(),
@@ -117,34 +104,18 @@ export const BenchmarkPanel: React.FC = () => {
     } catch (err) {
       console.error('Failed to load benchmark metadata', err);
     }
-  };
+  }, []);
 
-  const loadTaskComparisons = async (taskId: string) => {
-    setLoadingComparisons(true);
+  const loadLeaderboard = useCallback(async (runId?: number) => {
     try {
-      const res = await api.benchmarkCompare(taskId);
-      setTaskComparisons(res.comparisons || []);
+      const res = await api.benchmarkLeaderboard(runId);
+      setLeaderboard(res.leaderboard || []);
     } catch (err) {
-      console.error(`Failed to load comparisons for ${taskId}`, err);
-    } finally {
-      setLoadingComparisons(false);
+      console.error('Failed to load leaderboard', err);
     }
-  };
+  }, []);
 
-  const loadRuns = async () => {
-    try {
-      const res = await api.benchmarkRuns(20, 0);
-      setRuns(res.runs || []);
-      if (res.runs && res.runs.length > 0 && !selectedRunId) {
-        setSelectedRunId(res.runs[0].id);
-        loadRunDetail(res.runs[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load runs', err);
-    }
-  };
-
-  const loadRunDetail = async (runId: number) => {
+  const loadRunDetail = useCallback(async (runId: number) => {
     setLoadingRun(true);
     try {
       const res = await api.benchmarkRunDetail(runId);
@@ -155,16 +126,46 @@ export const BenchmarkPanel: React.FC = () => {
     } finally {
       setLoadingRun(false);
     }
-  };
+  }, [loadLeaderboard]);
 
-  const loadLeaderboard = async (runId?: number) => {
+  const loadRuns = useCallback(async () => {
     try {
-      const res = await api.benchmarkLeaderboard(runId);
-      setLeaderboard(res.leaderboard || []);
+      const res = await api.benchmarkRuns(20, 0);
+      setRuns(res.runs || []);
+      if (res.runs && res.runs.length > 0 && !selectedRunId) {
+        setSelectedRunId(res.runs[0].id);
+        loadRunDetail(res.runs[0].id);
+      }
     } catch (err) {
-      console.error('Failed to load leaderboard', err);
+      console.error('Failed to load runs', err);
     }
-  };
+  }, [selectedRunId, loadRunDetail]);
+
+  const loadTaskComparisons = useCallback(async (taskId: string) => {
+    setLoadingComparisons(true);
+    try {
+      const res = await api.benchmarkCompare(taskId);
+      setTaskComparisons(res.comparisons || []);
+    } catch (err) {
+      console.error(`Failed to load comparisons for ${taskId}`, err);
+    } finally {
+      setLoadingComparisons(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadMetadata();
+    loadRuns();
+    loadLeaderboard();
+  }, [loadMetadata, loadRuns, loadLeaderboard]);
+
+  // When selected task changes, reload comparisons
+  useEffect(() => {
+    if (selectedTask) {
+      loadTaskComparisons(selectedTask);
+    }
+  }, [selectedTask, loadTaskComparisons]);
 
   // Model selection helpers
   const toggleModel = (model: string) => {
