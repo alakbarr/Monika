@@ -599,31 +599,35 @@ export const GraphVisualizerPanel: React.FC = () => {
 
             {/* Root SVG Transform Group */}
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
-              {/* Subgraph container box: Dialectic Arbitration */}
-              <rect
-                x={layoutMode === 'compact' ? '565' : '865'}
-                y={layoutMode === 'compact' ? '15' : '80'}
-                width={layoutMode === 'compact' ? '545' : '555'}
-                height={layoutMode === 'compact' ? '370' : '435'}
-                rx="4"
-                fill="var(--color-subgraph-bg)"
-                stroke="var(--color-brass)"
-                strokeWidth="1.5"
-                strokeDasharray="6 4"
-              />
-              <text
-                x={layoutMode === 'compact' ? '580' : '880'}
-                y={layoutMode === 'compact' ? '35' : '102'}
-                fill="var(--color-brass)"
-                fontSize={layoutMode === 'compact' ? '11' : '12'}
-                fontWeight="800"
-                letterSpacing="0.08em"
-                fontFamily="var(--font-precision)"
-              >
-                {layoutMode === 'compact'
-                  ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
-                  : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
-              </text>
+              {/* Subgraph container box: Dialectic Arbitration (rendered only when graph nodes exist) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && (
+                <>
+                  <rect
+                    x={layoutMode === 'compact' ? '565' : '865'}
+                    y={layoutMode === 'compact' ? '15' : '80'}
+                    width={layoutMode === 'compact' ? '545' : '555'}
+                    height={layoutMode === 'compact' ? '370' : '435'}
+                    rx="4"
+                    fill="var(--color-subgraph-bg)"
+                    stroke="var(--color-brass)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                  />
+                  <text
+                    x={layoutMode === 'compact' ? '580' : '880'}
+                    y={layoutMode === 'compact' ? '35' : '102'}
+                    fill="var(--color-brass)"
+                    fontSize={layoutMode === 'compact' ? '11' : '12'}
+                    fontWeight="800"
+                    letterSpacing="0.08em"
+                    fontFamily="var(--font-precision)"
+                  >
+                    {layoutMode === 'compact'
+                      ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
+                      : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
+                  </text>
+                </>
+              )}
 
               {/* Edge Bezier Connectors */}
               {graphData?.edges.map((edge, idx) => {
