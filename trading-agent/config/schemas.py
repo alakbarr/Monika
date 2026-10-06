@@ -40,6 +40,7 @@ class RiskConfig(SubscriptableConfig):
     consecutive_loss_pause_threshold: Optional[int] = Field(default=3, ge=1, le=20)
     max_consecutive_losses_per_symbol: Optional[int] = Field(default=3, ge=1, le=20)
     min_rr_ratio: Optional[float] = Field(default=1.3, ge=0.5, le=10.0)
+    daily_drawdown_limit: Optional[float] = Field(default=None, ge=0.5, le=15.0)
 
 
 class PaperTradingConfig(SubscriptableConfig):
@@ -86,6 +87,7 @@ class SchedulerConfig(SubscriptableConfig):
     cycle_interval_hours: Optional[float] = Field(default=8.0, ge=0.1, le=72.0)
     news_check_minutes: Optional[int] = Field(default=5, ge=1, le=120)
     trigger_check_minutes: Optional[int] = Field(default=2, ge=1, le=60)
+    cron_expression: Optional[str] = Field(default=None)
 
 
 class ExecutionConfig(SubscriptableConfig):
@@ -128,6 +130,8 @@ class TradingConfig(SubscriptableConfig):
     min_paper_trades_before_live: Optional[int] = Field(default=50, ge=0, le=1000)
     min_paper_win_rate_pct: Optional[float] = Field(default=55.0, ge=0.0, le=100.0)
     asset_universe: Optional[List[str]] = None
+    symbols: Optional[List[str]] = None
+    lot_size: Optional[float] = Field(default=None, ge=0.01, le=100.0)
     risk: Optional[RiskConfig] = None
     paper_trading: Optional[PaperTradingConfig] = None
     indicators: Optional[IndicatorsConfig] = None

@@ -274,6 +274,13 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
         runtime_settings.update(merged_settings)
 
     try:
+        from config.config_manager import ConfigManager
+        ConfigManager.get_instance().check_for_updates()
+        reloaded = True
+    except Exception as e:
+        logger.debug(f"ConfigManager check_for_updates failed: {e}")
+
+    try:
         async with AsyncSessionLocal() as session:
             session.add(ActivityLog(
                 category="system",
