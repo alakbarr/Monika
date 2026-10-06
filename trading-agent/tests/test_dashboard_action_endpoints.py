@@ -271,3 +271,65 @@ def test_market_structure_with_timesfm(client):
             assert "timesfm_cone" in data
             assert data["timesfm_cone"]["quantiles"]["q50"] == [1.086, 1.087]
 
+
+def test_decision_dossier_endpoint(client):
+    """Verify GET /api/analysis/decision-dossier/{analysis_id} returns 5-stage audit lineage."""
+    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        mock_session = create_mock_async_session()
+        mock_session_ctx.return_value.__aenter__.return_value = mock_session
+
+        # Mock AssetAnalysis
+        mock_analysis = MagicMock()
+        mock_analysis.id = 42
+        mock_analysis.symbol = "XAUUSD"
+        mock_analysis.decision = "buy"
+        mock_analysis.confidence = 0.85
+        mock_analysis.entry_zone = "2650.5"
+        mock_analysis.stop_loss = 2640.0
+        mock_analysis.take_profit = 2675.0
+        mock_analysis.invalidation_level = 2638.0
+        mock_analysis.price_at_analysis = 2652.0
+        mock_analysis.rationale = "Bullish liquidity sweep and FVG tap"
+        mock_analysis.confluence_score = 82
+        mock_analysis.priced_in_score = 25
+        mock_analysis.ssvp_cds_score_at_analysis = 78.5
+        mock_analysis.ssvp_suppressed = False
+        mock_analysis.market_regime = "trending_bullish"
+        mock_analysis.execution_status = "approved"
+        mock_analysis.execution_notes = "RiskGate passed position sizing"
+        mock_analysis.factors = ["FVG", "OB_H4", "RSI_DIV"]
+        mock_analysis.macro_brief_summary = "Fed dovish tone supporting gold"
+        mock_analysis.active_client_name = "gemini-2.5-pro"
+        mock_analysis.debate_verdict = {
+            "verdict": "buy",
+            "modified": False,
+            "bull_thesis": "Strong structure",
+            "bear_thesis": "Overbought condition",
+            "judge_reason": "Risk-reward asymmetry in favor of longs",
+        }
+        mock_analysis.created_at = None
+
+        mock_session.get = AsyncMock(return_value=mock_analysis)
+
+        # Mock queries for AssetAnalysis, Signal, Position, TradingCycleEventLog
+        mock_scalars = MagicMock()
+        mock_scalars.first.return_value = None
+        mock_scalars.all.return_value = []
+        mock_exec = MagicMock()
+        mock_exec.scalar_one_or_none.return_value = mock_analysis
+        mock_exec.scalars.return_value = mock_scalars
+        mock_session.execute = AsyncMock(return_value=mock_exec)
+
+        resp = client.get("/api/analysis/decision-dossier/42")
+        assert resp.status_code == 200
+        dossier = resp.json()
+        assert dossier["status"] == "success"
+        assert dossier["analysis_id"] == 42
+        assert dossier["symbol"] == "XAUUSD"
+        assert dossier["decision"] == "buy"
+        assert dossier["stage1_macro"]["risk_sentiment"] is not None
+        assert dossier["stage2_tactical"]["confluence_score"] == 82
+        assert dossier["stage3_debate"]["judge_verdict"] == "buy"
+        assert dossier["stage4_riskgate"]["execution_status"] == "approved"
+        assert dossier["stage5_execution"]["integrity_valid"] is True
+

@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Timer,
 } from 'lucide-react';
+import { DecisionDossierModal } from './DecisionDossierModal';
 
 const formatLatency = (created?: string | null, executed?: string | null): string => {
   if (!created || !executed) return '—';
@@ -52,6 +53,7 @@ export const SignalsTriggersPanel: React.FC = () => {
   const [orderActionFilter, setOrderActionFilter] = useState<string>('all');
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [approveMsg, setApproveMsg] = useState<string | null>(null);
+  const [dossierTarget, setDossierTarget] = useState<{ id?: number | string; symbol?: string; ticket?: number } | null>(null);
 
   const handleApproveTrigger = async (id: number) => {
     setApprovingId(id);
@@ -501,7 +503,29 @@ export const SignalsTriggersPanel: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ color: 'var(--color-ink-muted)' }}>
-                        {t.asset_analysis_id ? `#${t.asset_analysis_id}` : '—'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{t.asset_analysis_id ? `#${t.asset_analysis_id}` : '—'}</span>
+                          {t.asset_analysis_id ? (
+                            <button
+                              type="button"
+                              onClick={() => setDossierTarget({ id: t.asset_analysis_id ?? undefined })}
+                              style={{
+                                padding: '1px 5px',
+                                fontSize: '10px',
+                                fontFamily: 'var(--font-precision)',
+                                fontWeight: 'bold',
+                                background: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
+                                color: 'cyan',
+                                border: '1px solid color-mix(in srgb, cyan 40%, var(--color-border))',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                              }}
+                              title="Inspect Decision Dossier"
+                            >
+                              🔍 DOSSIER
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                       <td style={{ maxWidth: '320px' }}>
                         <div
@@ -651,6 +675,25 @@ export const SignalsTriggersPanel: React.FC = () => {
                             {isBuy ? <ArrowUpRight size={10} style={{ marginRight: 2 }} /> : <ArrowDownRight size={10} style={{ marginRight: 2 }} />}
                             {s.action?.toUpperCase() ?? 'N/A'}
                           </Badge>
+                          <button
+                            type="button"
+                            onClick={() => setDossierTarget({ id: (s as any).asset_analysis_id || undefined, symbol: s.symbol, ticket: s.mt5_ticket || undefined })}
+                            style={{
+                              padding: '1px 5px',
+                              fontSize: '10px',
+                              fontFamily: 'var(--font-precision)',
+                              fontWeight: 'bold',
+                              background: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
+                              color: 'cyan',
+                              border: '1px solid color-mix(in srgb, cyan 40%, var(--color-border))',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                              marginLeft: '2px',
+                            }}
+                            title="Inspect Decision Dossier for this signal"
+                          >
+                            🔍 DOSSIER
+                          </button>
                         </div>
                       </td>
                       <td>
@@ -710,6 +753,15 @@ export const SignalsTriggersPanel: React.FC = () => {
       </Card>
       </>
       )}
+
+      {/* Decision Dossier Modal */}
+      <DecisionDossierModal
+        isOpen={Boolean(dossierTarget)}
+        onClose={() => setDossierTarget(null)}
+        analysisId={dossierTarget?.id}
+        symbol={dossierTarget?.symbol}
+        ticket={dossierTarget?.ticket}
+      />
     </div>
   );
 };

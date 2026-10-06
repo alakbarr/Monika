@@ -498,6 +498,12 @@ export const api = {
     post<{ status: string; message: string; ticket?: number; price?: number }>('/orders/submit', req),
   closeBatchPositions: (req: { symbol?: string; tickets?: number[]; close_all?: boolean; filter_type?: string; reason?: string }) =>
     post<{ status: string; message: string; closed_count?: number; failed_count?: number }>('/actions/close-batch', req),
+
+  // Phase 4: 1-Click Decision Dossier
+  decisionDossier: (analysisId: number | string, ticket?: number) =>
+    get<import('../types/api').DecisionDossierData>(
+      `/analysis/decision-dossier/${encodeURIComponent(String(analysisId))}${ticket ? `?ticket=${ticket}` : ''}`
+    ),
 };
 
 

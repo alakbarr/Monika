@@ -11,6 +11,7 @@ import { api } from '../../lib/api';
 import type { Position } from '../../types/api';
 
 import { sounds } from '../../lib/soundEffects';
+import { DecisionDossierModal } from './DecisionDossierModal';
 
 type SortField = 'symbol' | 'direction' | 'volume' | 'entry_price' | 'price_current' | 'sl' | 'tp' | 'swap' | 'pnl' | 'opened_at';
 
@@ -54,6 +55,7 @@ export const PositionsTable: React.FC = () => {
   const [orderDrawerSymbol, setOrderDrawerSymbol] = useState('EURUSD');
   const [isBatchClosing, setIsBatchClosing] = useState(false);
   const [batchCloseConfirmOpen, setBatchCloseConfirmOpen] = useState(false);
+  const [dossierPos, setDossierPos] = useState<Position | null>(null);
 
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
@@ -457,6 +459,7 @@ export const PositionsTable: React.FC = () => {
                   onCloseClick={(target) => handleOpenClose(target)}
                   onEditClick={(target) => handleOpenEdit(target)}
                   onBreakevenClick={(target) => handleBreakeven(target)}
+                  onDossierClick={(target) => setDossierPos(target)}
                 />
               ))}
             </tbody>
@@ -635,6 +638,15 @@ export const PositionsTable: React.FC = () => {
         onClose={() => setIsOrderDrawerOpen(false)}
         onOrderSuccess={fetchAll}
       />
+
+      {/* 1-Click Decision Dossier Modal */}
+      <DecisionDossierModal
+        isOpen={Boolean(dossierPos)}
+        onClose={() => setDossierPos(null)}
+        analysisId={dossierPos?.analysis_id}
+        symbol={dossierPos?.symbol}
+        ticket={dossierPos?.mt5_ticket}
+      />
     </WindowFrame>
   );
 };
@@ -698,7 +710,8 @@ const PositionRow: React.FC<{
   onCloseClick: (pos: Position) => void;
   onEditClick: (pos: Position) => void;
   onBreakevenClick: (pos: Position) => void;
-}> = ({ pos, isEven, showClosed, pnlUnit, onCloseClick, onEditClick, onBreakevenClick }) => {
+  onDossierClick: (pos: Position) => void;
+}> = ({ pos, isEven, showClosed, pnlUnit, onCloseClick, onEditClick, onBreakevenClick, onDossierClick }) => {
   const slDist = pos.entry_price && pos.sl ? Math.abs(pos.entry_price - pos.sl) : null;
   const tpDist = pos.entry_price && pos.tp ? Math.abs(pos.entry_price - pos.tp) : null;
   const rr = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
@@ -723,8 +736,27 @@ const PositionRow: React.FC<{
           </Badge>
         </div>
         {pos.mt5_ticket && (
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-            #{pos.mt5_ticket}
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', display: 'flex', alignItems: 'center', marginTop: '2px' }}>
+            <span>#{pos.mt5_ticket}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDossierClick(pos); }}
+              style={{
+                marginLeft: '6px',
+                padding: '1px 5px',
+                fontSize: '10px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
+                color: 'cyan',
+                border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+              title="Inspect 1-Click Decision Dossier (Why was this trade taken?)"
+            >
+              🔍 DOSSIER
+            </button>
           </div>
         )}
       </td>
@@ -766,6 +798,25 @@ const PositionRow: React.FC<{
       </td>
       {!showClosed && (
         <td style={{ padding: '6px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <button
+            type="button"
+            onClick={() => onDossierClick(pos)}
+            style={{
+              padding: '2px 8px',
+              marginRight: '4px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 'bold',
+              background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
+              color: 'cyan',
+              border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            title="Inspect 1-Click Decision Dossier"
+          >
+            🔍
+          </button>
           <button
             type="button"
             onClick={() => onBreakevenClick(pos)}
