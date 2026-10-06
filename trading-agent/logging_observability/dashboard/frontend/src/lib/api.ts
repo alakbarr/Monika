@@ -205,6 +205,10 @@ export const api = {
     post<{ status: string; message: string }>('/actions/override-risk', payload),
   emergencyKill: () =>
     post<{ status: string; message: string }>('/actions/emergency-kill', {}),
+  resumeTrading: () =>
+    post<{ status: string; message: string }>('/actions/resume-trading', {}),
+  createWsTicket: () =>
+    post<{ status: string; ticket: string; expires_in_seconds: number; role: string }>('/ws/ticket', {}),
   closePosition: (ticketOrId: { ticket?: number; position_id?: number; volume?: number; percentage?: number; reason?: string }) =>
     post<{ status: string; result: unknown }>('/actions/close-position', ticketOrId),
   breakevenPosition: (ticket: number) =>

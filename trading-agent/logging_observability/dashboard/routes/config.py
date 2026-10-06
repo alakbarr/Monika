@@ -46,9 +46,18 @@ class ConfigUpdateRequest(BaseModel):
 
 
 SENSITIVE_KEY_PATTERN = re.compile(
-    r"(key|secret|token|password|credential|private|auth|passphrase|webhook)",
+    r"(^|_)("
+    r"api_key|secret_key|secret|password|credential|passwd|"
+    r"private_key|auth_token|passphrase|webhook_url"
+    r")($|_)",
     re.IGNORECASE,
 )
+
+NON_SENSITIVE_KEYS = {
+    "max_tokens", "token_limit", "max_output_tokens", "token_budget", "tokens",
+    "prompt_tokens", "completion_tokens", "reasoning_tokens", "total_tokens",
+    "tokens_per_second", "tps", "token_coalescing_ms", "max_token_budget",
+}
 
 
 def _mask_sensitive_data(obj: Any) -> Any:
@@ -56,10 +65,13 @@ def _mask_sensitive_data(obj: Any) -> Any:
     if isinstance(obj, dict):
         masked = {}
         for k, v in obj.items():
-            if isinstance(k, str) and SENSITIVE_KEY_PATTERN.search(k):
+            if isinstance(k, str) and k.lower() in NON_SENSITIVE_KEYS:
+                masked[k] = _mask_sensitive_data(v)
+            elif isinstance(v, (int, float, bool)):
+                # Never mask numerical configuration parameters or booleans
+                masked[k] = v
+            elif isinstance(k, str) and SENSITIVE_KEY_PATTERN.search(k):
                 if isinstance(v, str) and v.strip():
-                    masked[k] = "********"
-                elif isinstance(v, (int, float)):
                     masked[k] = "********"
                 elif isinstance(v, dict):
                     masked[k] = _mask_sensitive_data(v)
@@ -78,7 +90,7 @@ def _mask_yaml_text(text: str) -> str:
     if not text:
         return text
     pattern = re.compile(
-        r"^(\s*[\w\.\-_]*(?:key|secret|token|password|credential|auth)[\w\.\-_]*\s*:\s*)(['\"]?)(.+?)\2(\s*(?:#.*)?)$",
+        r"^(\s*[\w\.\-_]*(?:api_key|secret_key|password|credential|private_key|auth_token)[\w\.\-_]*\s*:\s*)(['\"]?)(.+?)\2(\s*(?:#.*)?)$",
         re.IGNORECASE | re.MULTILINE,
     )
     return pattern.sub(r"\1\2********\2\4", text)
@@ -191,8 +203,26 @@ async def update_config_settings(payload: ConfigUpdateRequest, request: Request)
         except Exception as e:
             logger.warning(f"Failed to read existing settings for merge: {e}")
 
+    def _unmask_against_existing(incoming: Any, baseline: Any) -> Any:
+        if isinstance(incoming, dict) and isinstance(baseline, dict):
+            unmasked: Dict[str, Any] = {}
+            for k, v in incoming.items():
+                base_v = baseline.get(k)
+                unmasked[k] = _unmask_against_existing(v, base_v)
+            return unmasked
+        elif isinstance(incoming, list) and isinstance(baseline, list):
+            return [
+                _unmask_against_existing(item, baseline[i] if i < len(baseline) else None)
+                for i, item in enumerate(incoming)
+            ]
+        elif incoming == "********" and baseline is not None:
+            return baseline
+        return incoming
+
+    clean_payload_settings = _unmask_against_existing(payload.settings, existing_settings) if existing_settings else payload.settings
+
     # Merge payload settings into existing settings to avoid wiping unmanaged sections
-    merged_settings = _deep_merge(existing_settings, payload.settings) if existing_settings else payload.settings
+    merged_settings = _deep_merge(existing_settings, clean_payload_settings) if existing_settings else clean_payload_settings
 
     try:
         validate_config(merged_settings)

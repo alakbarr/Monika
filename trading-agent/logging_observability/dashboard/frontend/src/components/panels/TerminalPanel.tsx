@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
+import { api, getStoredToken } from '../../lib/api';
 
 interface TerminalPanelProps {
   className?: string;
@@ -16,6 +17,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
 
   useEffect(() => {
     if (!containerRef.current) return;
+    let isCancelled = false;
 
     const term = new Terminal({
       cursorBlink: true,
@@ -44,46 +46,67 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
     fitAddonRef.current = fitAddon;
 
     term.writeln('\x1b[1;33mMonika Institutional PTY Terminal Bridge\x1b[0m');
-    term.writeln('Connecting to gateway terminal socket...\r\n');
+    term.writeln('Authenticating and connecting to terminal socket...\r\n');
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host || '127.0.0.1:8000';
-    const wsUrl = `${protocol}//${host}/ws/terminal`;
-
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      term.writeln('\x1b[1;32m[CONNECTED] OS Terminal Subprocess Ready.\x1b[0m\r\n');
+    const initWs = async () => {
+      let authParam = '';
       try {
-        fitAddon.fit();
-        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-      } catch {}
-    };
-
-    ws.onmessage = (event) => {
-      term.write(event.data);
-    };
-
-    ws.onerror = () => {
-      term.writeln('\r\n\x1b[1;31m[ERROR] Terminal connection interrupted.\x1b[0m');
-    };
-
-    ws.onclose = () => {
-      term.writeln('\r\n\x1b[1;33m[DISCONNECTED] Terminal session closed.\x1b[0m');
-    };
-
-    term.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(data);
+        const ticketRes = await api.createWsTicket();
+        if (ticketRes?.ticket) {
+          authParam = `?ticket=${encodeURIComponent(ticketRes.ticket)}`;
+        }
+      } catch {
+        const token = getStoredToken();
+        if (token) authParam = `?token=${encodeURIComponent(token)}`;
       }
-    });
+
+      if (isCancelled) return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host || '127.0.0.1:8000';
+      const wsUrl = `${protocol}//${host}/ws/terminal${authParam}`;
+
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        term.writeln('\x1b[1;32m[CONNECTED] OS Terminal Subprocess Ready.\x1b[0m\r\n');
+        try {
+          fitAddon.fit();
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        } catch {}
+      };
+
+      ws.onmessage = (event) => {
+        term.write(event.data);
+      };
+
+      ws.onerror = () => {
+        term.writeln('\r\n\x1b[1;31m[ERROR] Terminal connection interrupted.\x1b[0m');
+      };
+
+      ws.onclose = (event) => {
+        if (event.code === 1008) {
+          term.writeln('\r\n\x1b[1;31m[ACCESS DENIED] Admin role required to access terminal shell.\x1b[0m');
+        } else {
+          term.writeln('\r\n\x1b[1;33m[DISCONNECTED] Terminal session closed.\x1b[0m');
+        }
+      };
+
+      term.onData((data) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+    };
+
+    initWs();
 
     const handleResize = () => {
       try {
         fitAddon.fit();
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
         }
       } catch {}
     };
@@ -91,9 +114,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
     window.addEventListener('resize', handleResize);
 
     return () => {
+      isCancelled = true;
       window.removeEventListener('resize', handleResize);
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        wsRef.current.close();
       }
       term.dispose();
     };

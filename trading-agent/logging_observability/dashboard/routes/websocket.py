@@ -747,8 +747,47 @@ async def get_session_messages(
 @router.websocket("/ws/terminal")
 @router.websocket("/ws/pty/{session_id}")
 async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str] = None):
-    """Interactive bidirectional PTY terminal console streaming via PtyBridgeManager."""
+    """Interactive bidirectional PTY terminal console streaming via PtyBridgeManager with admin verification."""
     from logging_observability.dashboard.pty_bridge import get_pty_bridge_manager
+    from logging_observability.dashboard.ws_ticket import get_ws_ticket_manager
+
+    client_host = websocket.client.host if websocket.client else "127.0.0.1"
+    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    if not _is_origin_allowed(websocket, is_localhost):
+        logger.warning(f"[PtyBridge] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        return
+
+    ticket_mgr = get_ws_ticket_manager()
+    role = None
+    authenticated = False
+
+    ticket_param = websocket.query_params.get("ticket")
+    if ticket_param:
+        ticket_payload = ticket_mgr.validate_and_consume(ticket_param)
+        if ticket_payload:
+            role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+            authenticated = True
+
+    if not authenticated:
+        token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
+        auth_header = websocket.headers.get("authorization", "")
+        bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+        client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+
+        try:
+            role = resolve_role(str(client_key), is_localhost=is_localhost)
+            authenticated = True
+        except PermissionError:
+            logger.warning(f"[PtyBridge] Unauthorized terminal connection attempt from {client_host}")
+            await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+            return
+
+    if role != Role.ADMIN:
+        logger.warning(f"[PtyBridge] Forbidden: Role '{role}' cannot access terminal shell from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: ADMIN role required for terminal shell")
+        return
 
     await websocket.accept()
     sid = session_id or str(uuid.uuid4())
