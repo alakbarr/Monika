@@ -947,6 +947,7 @@ Monika/
     │   │   │   │   │   └── vite.svg
     │   │   │   │   ├── components
     │   │   │   │   │   ├── charts
+    │   │   │   │   │   │   ├── CandlestickChart.tsx
     │   │   │   │   │   │   ├── DecisionDistribution.tsx
     │   │   │   │   │   │   ├── EquityChart.tsx
     │   │   │   │   │   │   ├── FactorHeatmap.tsx
@@ -1008,6 +1009,7 @@ Monika/
     │   │   │   │   │       ├── Icons.tsx
     │   │   │   │   │       ├── KeyboardShortcutsPanel.tsx
     │   │   │   │   │       ├── LedgerTable.tsx
+    │   │   │   │   │       ├── ManualOrderDrawer.tsx
     │   │   │   │   │       ├── MarkdownRenderer.tsx
     │   │   │   │   │       ├── MetricCard.tsx
     │   │   │   │   │       ├── MonikaInfiniteIcon.tsx
