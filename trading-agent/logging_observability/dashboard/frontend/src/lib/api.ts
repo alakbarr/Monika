@@ -470,6 +470,34 @@ export const api = {
     post<{ status: string; message: string; tasks_count: number; models_count: number }>('/benchmark/run', req),
   benchmarkCompare: (taskId: string, limit = 50) =>
     get<{ task_id: string; total_evaluations: number; comparisons: any[] }>(`/benchmark/compare?task_id=${encodeURIComponent(taskId)}&limit=${limit}`),
+
+  // Market Candles (OHLCV) & Structure Levels (SMC + TimesFM)
+  marketCandles: (symbol: string, timeframe = 'H4', count = 150) =>
+    get<{ symbol: string; timeframe: string; count: number; candles: Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }> }>(
+      `/market/candles/${encodeURIComponent(symbol)}?timeframe=${encodeURIComponent(timeframe)}&count=${count}`
+    ),
+
+  // Manual Order Management & Batch Liquidation
+  previewManualOrder: (req: { symbol: string; direction: 'buy' | 'sell' | 'BUY' | 'SELL'; volume?: number; price?: number; sl?: number; tp?: number }) =>
+    post<{
+      symbol: string;
+      direction: string;
+      entry_price: number;
+      sl?: number;
+      tp?: number;
+      volume: number;
+      sl_distance_pips?: number;
+      tp_distance_pips?: number;
+      estimated_risk_usd?: number;
+      estimated_reward_usd?: number;
+      rr_ratio?: number;
+      risk_gate_allowed: boolean;
+      risk_gate_reason: string;
+    }>('/orders/preview', req),
+  submitManualOrder: (req: { symbol: string; direction: 'buy' | 'sell' | 'BUY' | 'SELL'; volume: number; price?: number; sl?: number; tp?: number; comment?: string; order_type?: string }) =>
+    post<{ status: string; message: string; ticket?: number; price?: number }>('/orders/submit', req),
+  closeBatchPositions: (req: { symbol?: string; tickets?: number[]; close_all?: boolean; filter_type?: string; reason?: string }) =>
+    post<{ status: string; message: string; closed_count?: number; failed_count?: number }>('/actions/close-batch', req),
 };
 
 

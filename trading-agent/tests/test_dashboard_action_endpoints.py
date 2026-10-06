@@ -168,3 +168,106 @@ def test_approve_trade_not_found(client):
 
         resp = client.post("/api/actions/approve-trade/99999")
         assert resp.status_code == 404
+
+
+def test_batch_close_positions(client):
+    """Verify POST /api/actions/close-batch liquidates tickets."""
+    mock_emergency = MagicMock()
+    mock_emergency.close_positions_batch = AsyncMock(return_value={"closed": [101, 102], "success": True})
+    set_dashboard_dependencies(emergency_manager=mock_emergency)
+
+    payload = {"tickets": [101, 102], "reason": "Test emergency liquidation"}
+    resp = client.post("/api/actions/close-batch", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
+    mock_emergency.close_positions_batch.assert_awaited_once_with(
+        tickets=[101, 102],
+        requested_by="dashboard_batch_close",
+        reason="Test emergency liquidation",
+    )
+
+
+def test_manual_order_preview(client):
+    """Verify POST /api/orders/preview returns risk and RR calculation."""
+    payload = {
+        "symbol": "EURUSD",
+        "direction": "buy",
+        "price": 1.0850,
+        "sl": 1.0825,
+        "tp": 1.0900,
+        "volume": 0.2,
+    }
+    resp = client.post("/api/orders/preview", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["symbol"] == "EURUSD"
+    assert data["direction"] == "buy"
+    assert data["volume"] == 0.2
+    assert data["sl_distance_pips"] == 25.0
+    assert data["tp_distance_pips"] == 50.0
+    assert data["rr_ratio"] == 2.0
+
+
+def test_manual_order_submit(client):
+    """Verify POST /api/orders/submit executes order to MT5 and logs position."""
+    mock_mt5 = MagicMock()
+    mock_mt5.place_order = AsyncMock(return_value={"success": True, "ticket": 888777, "price": 1.0850})
+    set_dashboard_dependencies(mt5_client=mock_mt5)
+
+    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_session_ctx.return_value.__aenter__.return_value = mock_session
+
+        payload = {
+            "symbol": "EURUSD",
+            "direction": "buy",
+            "order_type": "buy",
+            "volume": 0.1,
+            "price": 1.0850,
+            "sl": 1.0800,
+            "tp": 1.0950,
+            "comment": "Test:manual",
+        }
+        resp = client.post("/api/orders/submit", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["result"]["ticket"] == 888777
+
+
+def test_market_candles_endpoint(client):
+    """Verify GET /api/market/candles/{symbol} returns synthetic or live OHLCV bars."""
+    resp = client.get("/api/market/candles/EURUSD?timeframe=H4&count=20")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["symbol"] == "EURUSD"
+    assert data["timeframe"] == "H4"
+    assert len(data["candles"]) == 20
+    assert "open" in data["candles"][0]
+    assert "close" in data["candles"][0]
+
+
+def test_market_structure_with_timesfm(client):
+    """Verify GET /api/market/structure/{symbol} returns structure levels and timesfm cone."""
+    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        mock_session = create_mock_async_session()
+        mock_exec_res = MagicMock()
+        mock_exec_res.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_exec_res)
+        mock_session_ctx.return_value.__aenter__.return_value = mock_session
+
+        with patch("indicators.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock) as mock_fc:
+            mock_fc.return_value = {
+                "generated_at": "2026-10-06T12:00:00Z",
+                "quantiles": {"q50": [1.086, 1.087]},
+                "horizon_steps": 12,
+            }
+            resp = client.get("/api/market/structure/EURUSD?timeframe=H4")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["symbol"] == "EURUSD"
+            assert "timesfm_cone" in data
+            assert data["timesfm_cone"]["quantiles"]["q50"] == [1.086, 1.087]
+

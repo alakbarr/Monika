@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { VixSparkline } from '../charts/VixSparkline';
+import { CandlestickChart } from '../charts/CandlestickChart';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { vixSentiment } from '../../lib/formatters';
 import { api } from '../../lib/api';
@@ -56,16 +57,12 @@ export const MarketDataPanel: React.FC = () => {
   const [sentimentComp, setSentimentComp] = useState<SentimentCompositeResponse | null>(null);
 
   // Technical Indicators & SMC Structure State (FASE 3B)
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>('EURUSD');
   const [indicators, setIndicators] = useState<Record<string, any> | null>(null);
   const [structure, setStructure] = useState<import('../../types/api').MarketStructureResponse | null>(null);
   const [techLoading, setTechLoading] = useState(false);
 
   const handleSelectSymbol = async (symbol: string) => {
-    if (selectedSymbol === symbol) {
-      setSelectedSymbol(null);
-      return;
-    }
     setSelectedSymbol(symbol);
     setTechLoading(true);
     try {
@@ -92,6 +89,7 @@ export const MarketDataPanel: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
+    handleSelectSymbol('EURUSD');
     const fetchData = async () => {
       try {
         const [calRes, fwRes, yRes, fgRes, scRes] = await Promise.allSettled([
@@ -260,114 +258,6 @@ export const MarketDataPanel: React.FC = () => {
           </div>
         </Card>
 
-        {/* Technical Indicators & SMC Market Structure Drawer (FASE 3B) */}
-        {selectedSymbol && (
-          <Card
-            title={`TECHNICAL INDICATORS & SMC MARKET STRUCTURE // ${selectedSymbol}`}
-            variant="blue"
-          >
-            {techLoading ? (
-              <div style={{ padding: '16px', color: 'var(--color-ink-muted)' }}>
-                Fetching technical snapshot and market structure for {selectedSymbol}...
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* 1. Indicators Grid */}
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '8px' }}>
-                    [ TECHNICAL INDICATORS (H1) ]
-                  </div>
-                  {indicators && Object.keys(indicators).length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
-                      {Object.entries(indicators).map(([k, v]) => (
-                        <div key={k} style={{ padding: '8px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                          <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>{k}</span>
-                          <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ink)' }}>
-                            {typeof v === 'number' ? v.toFixed(typeof v === 'number' && v > 100 ? 2 : 4) : String(v)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
-                      No indicator snapshot available for {selectedSymbol}.
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. SMC Market Structure */}
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '8px' }}>
-                    [ SMART MONEY CONCEPTS (SMC) STRUCTURE (H4) ]
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                    {/* Order Blocks */}
-                    <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
-                        Order Blocks ({structure?.order_blocks?.length || 0})
-                      </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                        {structure?.order_blocks && structure.order_blocks.length > 0 ? (
-                          structure.order_blocks.slice(0, 3).map((ob, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                              <Badge variant={ob.direction === 'bullish' ? 'profit' : 'loss'} size="sm">
-                                {ob.direction.toUpperCase()}
-                              </Badge>
-                              <span className="tabular-nums">{ob.price_low?.toFixed(4)} - {ob.price_high?.toFixed(4)}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No active order blocks</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Structure Breaks (BOS / CHoCH) */}
-                    <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
-                        Structure Breaks ({structure?.structure_breaks?.length || 0})
-                      </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                        {structure?.structure_breaks && structure.structure_breaks.length > 0 ? (
-                          structure.structure_breaks.slice(0, 3).map((sb, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                              <Badge variant="warn" size="sm">{sb.type} {sb.direction}</Badge>
-                              <span className="tabular-nums">@{sb.price?.toFixed(4)}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No structure breaks detected</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Fair Value Gaps (FVG) */}
-                    <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
-                        Fair Value Gaps ({structure?.fair_value_gaps?.length || 0})
-                      </span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                        {structure?.fair_value_gaps && structure.fair_value_gaps.length > 0 ? (
-                          structure.fair_value_gaps.slice(0, 3).map((fvg, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                              <Badge variant="neutral" size="sm">{fvg.direction}</Badge>
-                              <span className="tabular-nums">
-                                {(fvg.gap_low ?? fvg.bottom_price)?.toFixed(4)} - {(fvg.gap_high ?? fvg.top_price)?.toFixed(4)}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No unfilled FVGs</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-        )}
-
         {/* VIX Volatility Gauge & Chart */}
         <Card
           title="IMPLIED VOLATILITY INDEX (CBOE VIX)"
@@ -415,6 +305,121 @@ export const MarketDataPanel: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Institutional Financial Candlestick Station */}
+      <CandlestickChart
+        initialSymbol={selectedSymbol || 'EURUSD'}
+        initialTimeframe="H4"
+        height={520}
+      />
+
+      {/* Technical Indicators & SMC Market Structure Drawer (FASE 3B) */}
+      {selectedSymbol && (
+        <Card
+          title={`TECHNICAL INDICATORS & SMC MARKET STRUCTURE // ${selectedSymbol}`}
+          variant="blue"
+        >
+          {techLoading ? (
+            <div style={{ padding: '16px', color: 'var(--color-ink-muted)' }}>
+              Fetching technical snapshot and market structure for {selectedSymbol}...
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* 1. Indicators Grid */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '8px' }}>
+                  [ TECHNICAL INDICATORS (H1) ]
+                </div>
+                {indicators && Object.keys(indicators).length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+                    {Object.entries(indicators).map(([k, v]) => (
+                      <div key={k} style={{ padding: '8px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>{k}</span>
+                        <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ink)' }}>
+                          {typeof v === 'number' ? v.toFixed(typeof v === 'number' && v > 100 ? 2 : 4) : String(v)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
+                    No indicator snapshot available for {selectedSymbol}.
+                  </div>
+                )}
+              </div>
+
+              {/* 2. SMC Market Structure */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '8px' }}>
+                  [ SMART MONEY CONCEPTS (SMC) STRUCTURE (H4) ]
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  {/* Order Blocks */}
+                  <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
+                      Order Blocks ({structure?.order_blocks?.length || 0})
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                      {structure?.order_blocks && structure.order_blocks.length > 0 ? (
+                        structure.order_blocks.slice(0, 3).map((ob, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                            <Badge variant={ob.direction === 'bullish' ? 'profit' : 'loss'} size="sm">
+                              {ob.direction.toUpperCase()}
+                            </Badge>
+                            <span className="tabular-nums">{ob.price_low?.toFixed(4)} - {ob.price_high?.toFixed(4)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No active order blocks</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Structure Breaks (BOS / CHoCH) */}
+                  <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
+                      Structure Breaks ({structure?.structure_breaks?.length || 0})
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                      {structure?.structure_breaks && structure.structure_breaks.length > 0 ? (
+                        structure.structure_breaks.slice(0, 3).map((sb, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                            <Badge variant="warn" size="sm">{sb.type} {sb.direction}</Badge>
+                            <span className="tabular-nums">@{sb.price?.toFixed(4)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No structure breaks detected</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Fair Value Gaps (FVG) */}
+                  <div style={{ padding: '10px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)' }}>
+                      Fair Value Gaps ({structure?.fair_value_gaps?.length || 0})
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                      {structure?.fair_value_gaps && structure.fair_value_gaps.length > 0 ? (
+                        structure.fair_value_gaps.slice(0, 3).map((fvg, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                            <Badge variant="neutral" size="sm">{fvg.direction}</Badge>
+                            <span className="tabular-nums">
+                              {(fvg.gap_low ?? fvg.bottom_price)?.toFixed(4)} - {(fvg.gap_high ?? fvg.top_price)?.toFixed(4)}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>No unfilled FVGs</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Bottom Grid: Macro News Events & Currency Bias Matrix */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>

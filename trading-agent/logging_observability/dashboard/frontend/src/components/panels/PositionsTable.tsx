@@ -4,6 +4,7 @@ import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { FloppyDiskIcon } from '../ui/Icons';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { ManualOrderDrawer } from '../ui/ManualOrderDrawer';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 import { api } from '../../lib/api';
@@ -49,6 +50,10 @@ export const PositionsTable: React.FC = () => {
   const [editTp, setEditTp] = useState('');
   const [isModifying, setIsModifying] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
+  const [orderDrawerSymbol, setOrderDrawerSymbol] = useState('EURUSD');
+  const [isBatchClosing, setIsBatchClosing] = useState(false);
+  const [batchCloseConfirmOpen, setBatchCloseConfirmOpen] = useState(false);
 
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
@@ -160,6 +165,25 @@ export const PositionsTable: React.FC = () => {
     }
   };
 
+  const handleConfirmBatchClose = async () => {
+    setIsBatchClosing(true);
+    setActionMsg(null);
+    sounds.playClick('toggle');
+    try {
+      const res = await api.closeBatchPositions({
+        filter_type: 'all',
+        reason: 'Emergency Close All from Dashboard',
+      });
+      setActionMsg(`Closed ${(res as any).result?.closed_count ?? res.closed_count ?? 0} positions successfully.`);
+      await fetchAll();
+    } catch (err: any) {
+      setActionMsg(`Batch close failed: ${err.message}`);
+    } finally {
+      setIsBatchClosing(false);
+      setBatchCloseConfirmOpen(false);
+    }
+  };
+
   const sorted = [...displayed].sort((a, b) => {
     const aVal = a[sortField];
     const bVal = b[sortField];
@@ -178,6 +202,62 @@ export const PositionsTable: React.FC = () => {
       variant="blue"
       actions={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playClick('typewriter');
+              setOrderDrawerSymbol(open[0]?.symbol || 'EURUSD');
+              setIsOrderDrawerOpen(true);
+            }}
+            style={{
+              padding: '3px 10px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 800,
+              background: 'var(--color-ledger-green)',
+              color: '#FFFFFF',
+              border: '1.5px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            title="Create and execute a new manual market or limit trade order"
+          >
+            ⚡ NEW ORDER
+          </button>
+
+          {open.length > 0 && (
+            <button
+              type="button"
+              disabled={isBatchClosing}
+              onClick={() => {
+                sounds.playClick('toggle');
+                setBatchCloseConfirmOpen(true);
+              }}
+              style={{
+                padding: '3px 10px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 800,
+                background: 'var(--color-ledger-red)',
+                color: '#FFFFFF',
+                border: '1.5px solid var(--color-rule)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '1px 1px 0 var(--color-rule)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Liquidate all open positions across all instruments immediately"
+            >
+              {isBatchClosing ? 'CLOSING...' : '🚨 CLOSE ALL'}
+            </button>
+          )}
+
           <Badge variant={open.length > 0 ? 'active' : 'neutral'}>
             {open.length} POSITIONS
           </Badge>
@@ -516,6 +596,44 @@ export const PositionsTable: React.FC = () => {
         danger={true}
         onConfirm={handleConfirmClose}
         onCancel={() => setClosingPos(null)}
+      />
+
+      {/* Emergency Batch Close All Confirmation Modal */}
+      <ConfirmModal
+        isOpen={batchCloseConfirmOpen}
+        title="EMERGENCY CLOSE ALL POSITIONS"
+        actionSummary={`LIQUIDATE ALL ${open.length} ACTIVE POSITIONS NOW`}
+        details={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: 'var(--text-body-sm)' }}>
+            <p style={{ margin: 0, color: 'var(--color-ledger-red)', fontWeight: 700 }}>
+              Are you sure you want to execute a batch market liquidation on all {open.length} open tickets?
+            </p>
+            <div style={{ background: 'var(--color-paper)', padding: '8px', border: '1px solid var(--color-rule)', maxHeight: '120px', overflowY: 'auto' }}>
+              {open.map((p) => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', padding: '2px 0' }}>
+                  <span>#{p.mt5_ticket || p.id} {p.symbol} ({p.direction.toUpperCase()}) {p.volume}L</span>
+                  <span className="tabular-nums">{p.pnl !== null && p.pnl !== undefined ? fmt.usd(p.pnl) : '—'}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+              This action calls the broker liquidation gateway to cleanly close all positions.
+            </p>
+          </div>
+        }
+        confirmLabel={isBatchClosing ? "LIQUIDATING..." : "CONFIRM EMERGENCY CLOSE ALL"}
+        cancelLabel="ABORT"
+        danger={true}
+        onConfirm={handleConfirmBatchClose}
+        onCancel={() => setBatchCloseConfirmOpen(false)}
+      />
+
+      {/* Manual Order Entry Drawer */}
+      <ManualOrderDrawer
+        isOpen={isOrderDrawerOpen}
+        initialSymbol={orderDrawerSymbol}
+        onClose={() => setIsOrderDrawerOpen(false)}
+        onOrderSuccess={fetchAll}
       />
     </WindowFrame>
   );

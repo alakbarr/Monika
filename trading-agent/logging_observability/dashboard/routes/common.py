@@ -163,23 +163,28 @@ class BulkBreakevenRequest(BaseModel):
 class BatchCloseRequest(BaseModel):
     filter_type: str = Field(default="all", description="'all', 'profit_only', or 'loss_only'")
     symbol: Optional[str] = Field(default=None, description="Optional symbol filter")
+    tickets: List[int] = Field(default_factory=list, description="Specific MT5 position tickets to close")
     reason: str = Field(default="Batch close from Dashboard")
 
 
 class ManualOrderPreviewRequest(BaseModel):
     symbol: str = Field(..., min_length=1, description="Trading instrument symbol")
-    direction: str = Field(..., description="'buy' or 'sell'")
+    direction: str = Field(default="buy", description="'buy' or 'sell'")
     entry_price: Optional[float] = Field(default=None, description="Entry price (or current market price)")
+    price: Optional[float] = Field(default=None, description="Alias for entry_price")
     sl: Optional[float] = Field(default=None, description="Stop loss price")
     tp: Optional[float] = Field(default=None, description="Take profit price")
     risk_percent: Optional[float] = Field(default=None, ge=0.1, le=5.0, description="Risk percentage override")
     fixed_lots: Optional[float] = Field(default=None, gt=0.0, description="Fixed lots override")
+    volume: Optional[float] = Field(default=None, gt=0.0, description="Alias for fixed_lots")
 
 
 class ManualOrderSubmitRequest(BaseModel):
     symbol: str = Field(..., min_length=1)
-    order_type: str = Field(..., description="'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'")
-    lots: float = Field(..., gt=0.0, description="Order volume in lots")
+    direction: str = Field(default="buy", description="'buy' or 'sell'")
+    order_type: str = Field(default="buy", description="'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'")
+    lots: Optional[float] = Field(default=None, gt=0.0, description="Order volume in lots")
+    volume: Optional[float] = Field(default=None, gt=0.0, description="Order volume alias")
     price: Optional[float] = Field(default=None, description="Order execution/limit/stop price")
     sl: Optional[float] = Field(default=None, description="Stop loss price")
     tp: Optional[float] = Field(default=None, description="Take profit price")
