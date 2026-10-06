@@ -44,6 +44,195 @@ interface ToolStat {
   buckets: Record<string, number>;
 }
 
+const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
+  const [showJson, setShowJson] = useState(false);
+  const [selectedSpan, setSelectedSpan] = useState<any | null>(null);
+
+  const roots = data?.roots || (Array.isArray(data) ? data : (data?.span_id ? [data] : []));
+
+  const flatSpans: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    start: number;
+    end: number;
+    duration: number;
+    depth: number;
+    status: string;
+    attributes: Record<string, any>;
+  }> = [];
+
+  let minTime = Infinity;
+  let maxTime = -Infinity;
+
+  const traverse = (node: any, depth = 0) => {
+    if (!node) return;
+    const start = new Date(node.start_time || 0).getTime();
+    const dur = Number(node.duration_ms || 0);
+    const end = node.end_time ? new Date(node.end_time).getTime() : start + dur;
+
+    if (start > 0) {
+      if (start < minTime) minTime = start;
+      if (end > maxTime) maxTime = end;
+    }
+
+    flatSpans.push({
+      id: node.span_id || node.id || String(Math.random()),
+      name: node.name || 'unnamed',
+      kind: node.kind || 'span',
+      start,
+      end,
+      duration: dur,
+      depth,
+      status: node.status || 'ok',
+      attributes: node.attributes || {},
+    });
+
+    if (Array.isArray(node.children)) {
+      node.children.forEach((c: any) => traverse(c, depth + 1));
+    }
+  };
+
+  roots.forEach((r: any) => traverse(r, 0));
+
+  const totalRange = Math.max(1, maxTime - minTime);
+
+  const getKindColor = (kind: string) => {
+    switch (kind.toLowerCase()) {
+      case 'cycle':
+        return '#a855f7';
+      case 'node':
+        return '#06b6d4';
+      case 'llm':
+        return '#eab308';
+      case 'tool':
+        return '#10b981';
+      default:
+        return '#64748b';
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <button
+          type="button"
+          onClick={() => setShowJson(!showJson)}
+          style={{
+            padding: '3px 10px',
+            fontSize: '11px',
+            fontFamily: 'var(--font-precision)',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-rule)',
+            color: 'var(--color-ink)',
+            borderRadius: '2px',
+            cursor: 'pointer',
+          }}
+        >
+          {showJson ? '📊 SWITCH TO WATERFALL' : '{ } VIEW RAW JSON'}
+        </button>
+      </div>
+
+      {showJson ? (
+        <pre style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '2px', fontSize: '11px', overflowX: 'auto', maxHeight: '350px' }}>
+          <code>{JSON.stringify(data, null, 2)}</code>
+        </pre>
+      ) : flatSpans.length === 0 ? (
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-ink-muted)', fontSize: '12px' }}>
+          No span nodes found in trace tree.
+        </div>
+      ) : (
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', padding: '12px', maxHeight: '380px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {flatSpans.map((span) => {
+              const relStart = span.start > 0 && minTime < Infinity ? Math.max(0, span.start - minTime) : 0;
+              const leftPct = totalRange > 0 ? (relStart / totalRange) * 100 : 0;
+              const widthPct = totalRange > 0 ? Math.max(1.5, (span.duration / totalRange) * 100) : 100;
+              const isSelected = selectedSpan?.id === span.id;
+              const barColor = getKindColor(span.kind);
+
+              return (
+                <div
+                  key={span.id}
+                  onClick={() => setSelectedSpan(isSelected ? null : span)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '4px 6px',
+                    borderRadius: '2px',
+                    background: isSelected ? 'var(--color-surface-active, rgba(232, 185, 74, 0.08))' : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-precision)',
+                  }}
+                >
+                  <div style={{ width: '240px', minWidth: '240px', display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: `${span.depth * 14}px`, overflow: 'hidden' }}>
+                    <span
+                      style={{
+                        padding: '1px 4px',
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        borderRadius: '2px',
+                        background: barColor,
+                        color: '#000',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {span.kind}
+                    </span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={span.name}>
+                      {span.name}
+                    </span>
+                  </div>
+
+                  <div style={{ flex: 1, height: '14px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '2px', position: 'relative', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${leftPct}%`,
+                        width: `${Math.min(100 - leftPct, widthPct)}%`,
+                        height: '100%',
+                        background: barColor,
+                        opacity: 0.85,
+                        borderRadius: '2px',
+                        transition: 'width 0.2s ease',
+                      }}
+                      title={`${span.name} (${span.duration.toFixed(1)}ms)`}
+                    />
+                  </div>
+
+                  <div style={{ width: '110px', minWidth: '110px', textAlign: 'right', color: 'var(--color-ink-muted)', fontSize: '10px' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
+                      {span.duration < 1000 ? `${span.duration.toFixed(0)}ms` : `${(span.duration / 1000).toFixed(2)}s`}
+                    </span>
+                    {span.attributes?.total_tokens ? (
+                      <span style={{ marginLeft: '4px', color: 'var(--color-win-yellow)' }}>
+                        {span.attributes.total_tokens}t
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedSpan && (
+            <div style={{ marginTop: '12px', padding: '10px', borderTop: '1px solid var(--color-rule)', background: 'var(--color-paper-raised)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--color-ink)', marginBottom: '6px' }}>
+                Span: {selectedSpan.name} [{selectedSpan.kind}] — Duration: {selectedSpan.duration}ms
+              </div>
+              <pre style={{ margin: 0, fontSize: '10px', maxHeight: '160px', overflowY: 'auto' }}>
+                <code>{JSON.stringify(selectedSpan.attributes, null, 2)}</code>
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ObservabilityPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'traces' | 'trajectories' | 'lineage'>('overview');
   const [playbookTree, setPlaybookTree] = useState<PlaybookNode | null>(null);
@@ -70,20 +259,29 @@ export const ObservabilityPanel: React.FC = () => {
 
   // Lineage & SHA-256 Event Chain State (FASE 5B)
   const [lineageCycleId, setLineageCycleId] = useState<string>('cycle-live-847');
+  const [availableCycles, setAvailableCycles] = useState<string[]>([]);
   const [lineageData, setLineageData] = useState<CycleLineageResponse | null>(null);
   const [lineageLoading, setLineageLoading] = useState<boolean>(false);
   const [selectedSeq, setSelectedSeq] = useState<number | null>(null);
 
   const fetchOverviewData = async () => {
     try {
-      const [treeRes, cacheRes, toolsRes] = await Promise.all([
+      const [treeRes, cacheRes, toolsRes, graphRes] = await Promise.all([
         api.playbookTree().catch(() => null),
         api.promptCacheMetrics(10).catch(() => null),
         api.toolLatencies().catch(() => null),
+        api.graphState().catch(() => null),
       ]);
       if (treeRes) setPlaybookTree(treeRes);
       if (cacheRes) setCacheMetrics(cacheRes);
       if (toolsRes?.tools) setToolLatencies(toolsRes.tools);
+      if (graphRes?.available_cycles && Array.isArray(graphRes.available_cycles)) {
+        const cids = graphRes.available_cycles.map((c: any) => c.cycle_id || c);
+        if (cids.length > 0) {
+          setAvailableCycles(cids);
+          setLineageCycleId(cids[0]);
+        }
+      }
     } catch (err) {
       console.error('Failed to load observability data:', err);
     } finally {
@@ -404,9 +602,7 @@ export const ObservabilityPanel: React.FC = () => {
                 </div>
               }
             >
-              <pre style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '2px', fontSize: '11px', overflowX: 'auto', maxHeight: '300px' }}>
-                <code>{JSON.stringify(traceTreeData || { trace_id: selectedTraceId, status: 'loading...' }, null, 2)}</code>
-              </pre>
+              <TraceWaterfallTimeline data={traceTreeData || { trace_id: selectedTraceId, status: 'loading...' }} />
             </Card>
           )}
         </div>
@@ -576,22 +772,48 @@ export const ObservabilityPanel: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-ink-muted)' }}>CYCLE ID:</span>
-                <input
-                  type="text"
-                  value={lineageCycleId}
-                  onChange={(e) => setLineageCycleId(e.target.value)}
-                  placeholder="e.g. cycle-live-847"
-                  style={{
-                    padding: '6px 10px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-rule)',
-                    color: 'var(--color-ink)',
-                    fontSize: '12px',
-                    fontFamily: 'var(--font-precision)',
-                    borderRadius: '2px',
-                    minWidth: '220px',
-                  }}
-                />
+                {availableCycles.length > 0 ? (
+                  <select
+                    value={lineageCycleId}
+                    onChange={(e) => {
+                      setLineageCycleId(e.target.value);
+                      fetchLineage(e.target.value);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-rule)',
+                      color: 'var(--color-ink)',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-precision)',
+                      borderRadius: '2px',
+                      minWidth: '220px',
+                    }}
+                  >
+                    {availableCycles.map((cid) => (
+                      <option key={cid} value={cid}>
+                        {cid}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={lineageCycleId}
+                    onChange={(e) => setLineageCycleId(e.target.value)}
+                    placeholder="e.g. cycle-live-847"
+                    style={{
+                      padding: '6px 10px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-rule)',
+                      color: 'var(--color-ink)',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-precision)',
+                      borderRadius: '2px',
+                      minWidth: '220px',
+                    }}
+                  />
+                )}
                 <TypewriterButton size="sm" onClick={() => fetchLineage(lineageCycleId)} disabled={lineageLoading}>
                   <Search size={12} /> [ TRACE LINEAGE ]
                 </TypewriterButton>

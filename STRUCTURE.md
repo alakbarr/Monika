@@ -968,6 +968,7 @@ Monika/
     │   │   │   │   │   │   ├── BenchmarkPanel.tsx
     │   │   │   │   │   │   ├── CockpitBar.tsx
     │   │   │   │   │   │   ├── ConfigEditorPanel.tsx
+    │   │   │   │   │   │   ├── DecisionDossierModal.tsx
     │   │   │   │   │   │   ├── DebateOutcomesPanel.tsx
     │   │   │   │   │   │   ├── EdgeMetricsPanel.tsx
     │   │   │   │   │   │   ├── GraphVisualizerPanel.tsx

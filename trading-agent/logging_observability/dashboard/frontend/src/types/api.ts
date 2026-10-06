@@ -57,6 +57,7 @@ export interface Position {
   mae_pips?: number;
   mfe_pips?: number;
   slippage_pips?: number;
+  analysis_id?: number | null;
 }
 
 export interface ActivityLog {
@@ -1065,5 +1066,111 @@ export interface PluginInstallResponse {
   package_name: string;
   output: string;
   plugins: PluginItem[];
+}
+
+export interface DecisionDossierData {
+  analysis_id: number;
+  symbol: string;
+  decision: string;
+  confidence: number;
+  generated_at?: string | null;
+  market_regime: string;
+  price_at_analysis?: number | null;
+  stop_loss?: number | null;
+  take_profit?: number | null;
+  invalidation_price?: number | null;
+  invalidation?: string | null;
+  rationale?: string | null;
+
+  stage1_macro: {
+    brief_id?: number | null;
+    risk_sentiment: string;
+    volatility_regime: string;
+    dxy_bias: string;
+    brief_age_hours?: number | null;
+    summary?: string | null;
+    generated_at?: string | null;
+  };
+
+  stage2_tactical: {
+    confluence_score?: number | null;
+    priced_in_score?: number | null;
+    priced_in_override?: string | null;
+    entry_condition?: any;
+    reevaluation_trigger?: any;
+    factors: string[];
+    specialist_biases: Record<string, any>;
+    adr_at_analysis?: number | null;
+    ssvp_cds_score?: number | null;
+  };
+
+  stage3_debate: {
+    bull_thesis?: string | null;
+    bear_dissent?: string | null;
+    judge_verdict: string;
+    judge_reason?: string | null;
+    was_modified: boolean;
+    arbitration_reason?: string | null;
+  };
+
+  stage4_riskgate: {
+    execution_status: string;
+    execution_notes?: string | null;
+    risk_multiplier: number;
+    was_ssvp_suppressed: boolean;
+    decision_source: string;
+  };
+
+  stage5_execution: {
+    position?: {
+      id: number;
+      ticket?: number | null;
+      direction: string;
+      volume: number;
+      entry_price: number;
+      sl?: number | null;
+      tp?: number | null;
+      slippage_pips?: number | null;
+      pnl?: number | null;
+      status: string;
+      opened_at?: string | null;
+    } | null;
+    paper_trade?: {
+      id: number;
+      decision: string;
+      entry_price: number;
+      pnl?: number | null;
+      reason?: string | null;
+      timestamp?: string | null;
+    } | null;
+    triggers: Array<{
+      id: number;
+      type: string;
+      status: string;
+      condition: any;
+      created_at?: string | null;
+      fired_at?: string | null;
+    }>;
+    signals: Array<{
+      id: number;
+      action: string;
+      status: string;
+      ticket?: number | null;
+      error?: string | null;
+      created_at?: string | null;
+      executed_at?: string | null;
+    }>;
+    cycle_id: string;
+    integrity_valid: boolean;
+    integrity_error?: string | null;
+    sha256_chain_hash?: string | null;
+    event_count: number;
+    events_sample: Array<{
+      seq: number;
+      event_type: string;
+      timestamp: string;
+      chain_hash: string;
+    }>;
+  };
 }
 

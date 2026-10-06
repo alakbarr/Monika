@@ -1014,6 +1014,20 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                         analysis.priced_in_score = verified["priced_in_score"]
                     if verified.get("decision"):
                         analysis.decision = verified["decision"]
+                    curr_notes = analysis.execution_notes or ""
+                    corr_note = f"[OutputVerifier] Corrected: {', '.join(corrections)}"
+                    analysis.execution_notes = f"{curr_notes}\n{corr_note}".strip()
+                    if str(analysis.decision).lower() in ("wait", "avoid", "rejected"):
+                        try:
+                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                            TradeTrajectoryLogger().log_trajectory(
+                                symbol=symbol,
+                                decision="REJECTED",
+                                risk_decision={"approved": False, "reason": f"output_verifier: {corrections}"},
+                                execution_details={"analysis_id": analysis.id, "decision": "REJECTED", "stage": "output_verifier"}
+                            )
+                        except Exception as traj_err:
+                            logger.debug(f"[{symbol}] OutputVerifier trajectory log error: {traj_err}")
                     await session.commit()
             except Exception as e:
                 logger.debug(f"[{symbol}] Output verifier non-fatal execution: {e}")

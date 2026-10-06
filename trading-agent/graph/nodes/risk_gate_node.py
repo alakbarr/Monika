@@ -510,6 +510,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                 if removed_trades:
                     for sym, r in removed_trades:
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": ["portfolio_synthesis: heat reduced"]})
+                        try:
+                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                            TradeTrajectoryLogger().log_trajectory(
+                                symbol=sym,
+                                decision="REJECTED",
+                                risk_decision={"approved": False, "reason": "portfolio_synthesis_reduced"},
+                                execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "portfolio_synthesis"}
+                            )
+                        except Exception as traj_err:
+                            logger.debug(f"Portfolio synthesis trajectory log error: {traj_err}")
                     try:
                         from analysis.memory.decision_log import DecisionLogger
                         from database.models import AssetAnalysis
@@ -725,6 +735,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                                 )
                             except Exception as whatif_err:
                                 logger.debug(f"RiskGate whatif log error: {whatif_err}")
+                            try:
+                                from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                                TradeTrajectoryLogger().log_trajectory(
+                                    symbol=sym,
+                                    decision="REJECTED",
+                                    risk_decision={"approved": False, "reasons": reasons},
+                                    execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "risk_gate"}
+                                )
+                            except Exception as traj_err:
+                                logger.debug(f"RiskGate trajectory log error: {traj_err}")
                     except Exception as prop_err:
                         logger.warning(f"[RiskGate] Proposal error for {sym}: {prop_err}")
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"proposal_error: {prop_err}"]})
@@ -787,6 +807,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             )
                         except Exception as whatif_err:
                             logger.debug(f"Precommit whatif log error: {whatif_err}")
+                        try:
+                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                            TradeTrajectoryLogger().log_trajectory(
+                                symbol=sym,
+                                decision="REJECTED",
+                                risk_decision={"approved": False, "reasons": failures},
+                                execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "precommit_gate"}
+                            )
+                        except Exception as traj_err:
+                            logger.debug(f"Precommit trajectory log error: {traj_err}")
                             
             actionable = precommit_approved
         except Exception as e:

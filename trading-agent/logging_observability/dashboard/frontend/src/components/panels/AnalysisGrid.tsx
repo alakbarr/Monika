@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WindowFrame } from '../ui/WindowFrame';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { MagnifierDeskIcon } from '../ui/Icons';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
+import { DecisionDossierModal } from './DecisionDossierModal';
 
 export const AnalysisGrid: React.FC = () => {
   const { analyses, loading, setSelectedSymbol } = useDashboardStore();
+  const [dossierTarget, setDossierTarget] = useState<any | null>(null);
 
   return (
     <WindowFrame
@@ -35,15 +37,32 @@ export const AnalysisGrid: React.FC = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
           {analyses.map((a) => (
-            <AnalysisCard key={a.id} analysis={a} onClick={() => setSelectedSymbol(a.symbol)} />
+            <AnalysisCard
+              key={a.id}
+              analysis={a}
+              onClick={() => setSelectedSymbol(a.symbol)}
+              onDossierClick={(target) => setDossierTarget(target)}
+            />
           ))}
         </div>
       )}
+
+      {/* Decision Dossier Modal */}
+      <DecisionDossierModal
+        isOpen={Boolean(dossierTarget)}
+        onClose={() => setDossierTarget(null)}
+        analysisId={dossierTarget?.id}
+        symbol={dossierTarget?.symbol}
+      />
     </WindowFrame>
   );
 };
 
-const AnalysisCard: React.FC<{ analysis: any; onClick: () => void }> = ({ analysis, onClick }) => {
+const AnalysisCard: React.FC<{
+  analysis: any;
+  onClick: () => void;
+  onDossierClick: (analysis: any) => void;
+}> = ({ analysis, onClick, onDossierClick }) => {
   const rawConf = analysis.confidence;
   const conf = rawConf !== null && rawConf !== undefined
     ? (rawConf <= 1 && rawConf > 0 ? rawConf * 100 : rawConf)
@@ -112,13 +131,59 @@ const AnalysisCard: React.FC<{ analysis: any; onClick: () => void }> = ({ analys
             <span style={{ color: 'var(--color-ledger-red)' }}>SL: {fmt.price(analysis.stop_loss, analysis.symbol)}</span>
             <span style={{ color: 'var(--color-ledger-green)' }}>TP: {fmt.price(analysis.take_profit, analysis.symbol)}</span>
           </div>
-          <div className="tabular-nums" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-            {fmt.ago(analysis.generated_at)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="tabular-nums" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
+              {fmt.ago(analysis.generated_at)}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDossierClick(analysis);
+              }}
+              style={{
+                padding: '2px 8px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
+                color: 'cyan',
+                border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+              title="Inspect Decision Dossier (Why was this trade proposed?)"
+            >
+              🔍 DOSSIER
+            </button>
           </div>
         </div>
       ) : (
-        <div className="tabular-nums" style={{ marginTop: 'auto', paddingTop: '8px', fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-          {fmt.ago(analysis.generated_at)}
+        <div style={{ marginTop: 'auto', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="tabular-nums" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
+            {fmt.ago(analysis.generated_at)}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDossierClick(analysis);
+            }}
+            style={{
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 'bold',
+              background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
+              color: 'cyan',
+              border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            title="Inspect Decision Dossier (Why was this trade proposed?)"
+          >
+            🔍 DOSSIER
+          </button>
         </div>
       )}
     </div>

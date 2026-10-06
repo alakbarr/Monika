@@ -138,6 +138,43 @@ def _is_node_skipped(node_name: str, res: Any, state: Any) -> bool:
     return False
 
 
+def _record_cycle_event(node_name: str, cycle_id: Optional[str], res: Any, state: Any, dur_s: float, inp: int, out: int):
+    """Records cryptographic event in TradingCycleEventLog for immutable lineage."""
+    if not cycle_id:
+        return
+    try:
+        from logging_observability.trading_cycle_event_log import get_cycle_event_log, CycleEventType
+        event_log = get_cycle_event_log()
+        payload = _build_node_payload_summary(node_name, res, state) or {}
+        payload.update({
+            "duration_ms": round(dur_s * 1000, 2),
+            "input_tokens": inp,
+            "output_tokens": out,
+            "is_skipped": _is_node_skipped(node_name, res, state),
+        })
+
+        if "fundamental" in node_name:
+            ev_type = CycleEventType.STAGE_FUNDAMENTAL
+        elif "per_asset" in node_name:
+            ev_type = CycleEventType.STAGE_PER_ASSET
+        elif "debate" in node_name or node_name in ("bull_advocate", "bear_dissent", "debate_judge", "rebuttal"):
+            ev_type = CycleEventType.STAGE_DEBATE
+        elif "risk_gate" in node_name:
+            ev_type = CycleEventType.RISK_GATE_CHECK
+        elif "execution" in node_name:
+            ev_type = CycleEventType.ORDER_DISPATCH
+        else:
+            ev_type = f"node/{node_name}"
+
+        event_log.record_event(
+            cycle_id=str(cycle_id),
+            event_type=ev_type,
+            payload=payload,
+        )
+    except Exception as e:
+        logger.debug(f"[Workflow] EventLog record error for {node_name}: {e}")
+
+
 def _wrap_traced_node(node_name: str, node_fn: Any):
     """Wraps a LangGraph node function with distributed tracing, token tracking, and live event broadcasting."""
     if not callable(node_fn) or hasattr(node_fn, "astream") or hasattr(node_fn, "ainvoke"):
@@ -182,6 +219,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
                     "output_tokens": out,
                 },
             )
+            _record_cycle_event(node_name, cycle_id, res, state, dur_s, inp, out)
             return res
 
         return _traced_async_node_fn
@@ -224,6 +262,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
                     "output_tokens": out,
                 },
             )
+            _record_cycle_event(node_name, cycle_id, res, state, dur_s, inp, out)
             return res
 
         return _traced_sync_node_fn
