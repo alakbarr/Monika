@@ -85,7 +85,14 @@ export const GraphVisualizerPanel: React.FC = () => {
       if (p.y + NODE_HEIGHT > maxY) maxY = p.y + NODE_HEIGHT;
     });
 
-    const padding = 32;
+    if (mode === 'compact') {
+      minX = Math.min(minX, 40);
+      minY = Math.min(minY, 50);
+      maxX = Math.max(maxX, 1275);
+      maxY = Math.max(maxY, 550);
+    }
+
+    const padding = 28;
     const graphWidth = (maxX - minX) + padding * 2;
     const graphHeight = (maxY - minY) + padding * 2;
 
@@ -603,10 +610,10 @@ export const GraphVisualizerPanel: React.FC = () => {
               {graphData && graphData.nodes && graphData.nodes.length > 0 && (
                 <>
                   <rect
-                    x={layoutMode === 'compact' ? '565' : '865'}
-                    y={layoutMode === 'compact' ? '15' : '80'}
-                    width={layoutMode === 'compact' ? '545' : '555'}
-                    height={layoutMode === 'compact' ? '370' : '435'}
+                    x={layoutMode === 'compact' ? '515' : '865'}
+                    y={layoutMode === 'compact' ? '50' : '80'}
+                    width={layoutMode === 'compact' ? '495' : '555'}
+                    height={layoutMode === 'compact' ? '395' : '435'}
                     rx="4"
                     fill="var(--color-subgraph-bg)"
                     stroke="var(--color-brass)"
@@ -614,10 +621,10 @@ export const GraphVisualizerPanel: React.FC = () => {
                     strokeDasharray="6 4"
                   />
                   <text
-                    x={layoutMode === 'compact' ? '580' : '880'}
-                    y={layoutMode === 'compact' ? '35' : '102'}
+                    x={layoutMode === 'compact' ? '530' : '880'}
+                    y={layoutMode === 'compact' ? '70' : '102'}
                     fill="var(--color-brass)"
-                    fontSize={layoutMode === 'compact' ? '11' : '12'}
+                    fontSize={layoutMode === 'compact' ? '10.5' : '12'}
                     fontWeight="800"
                     letterSpacing="0.08em"
                     fontFamily="var(--font-precision)"
@@ -625,6 +632,34 @@ export const GraphVisualizerPanel: React.FC = () => {
                     {layoutMode === 'compact'
                       ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
                       : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
+                  </text>
+                </>
+              )}
+
+              {/* Subgraph container box: Fortress & Execution Waterfall (compact mode) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'compact' && (
+                <>
+                  <rect
+                    x="1025"
+                    y="50"
+                    width="250"
+                    height="500"
+                    rx="4"
+                    fill="rgba(34, 197, 94, 0.03)"
+                    stroke="var(--color-ledger-green)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                  />
+                  <text
+                    x="1038"
+                    y="70"
+                    fill="var(--color-ledger-green)"
+                    fontSize="10"
+                    fontWeight="800"
+                    letterSpacing="0.08em"
+                    fontFamily="var(--font-precision)"
+                  >
+                    [ FORTRESS & EXECUTION WATERFALL ]
                   </text>
                 </>
               )}
