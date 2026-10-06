@@ -469,6 +469,16 @@ KillConfirmModalScreen {{
     color: {t.text};
     padding: 1 0;
 }}
+
+#kill_buttons {{
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}}
+
+#kill_buttons Button {{
+    margin: 0 1;
+}}
 """
 
 

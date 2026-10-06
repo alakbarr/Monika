@@ -404,6 +404,8 @@ export const RiskPanel: React.FC = () => {
                 {['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD', 'BTCUSD'].map((s) => (
                   <button
                     key={s}
+                    type="button"
+                    className="touch-target-expand"
                     onClick={() => setScorecardSymbol(s)}
                     style={{
                       padding: '2px 6px',

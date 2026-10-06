@@ -241,6 +241,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   <button
                     key={s}
                     type="button"
+                    className="touch-target-expand"
                     onClick={() => setSymbol(s)}
                     style={{
                       fontSize: '10px',

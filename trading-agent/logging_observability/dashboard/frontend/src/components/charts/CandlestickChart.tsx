@@ -22,6 +22,23 @@ interface CandlestickChartProps {
 const POPULAR_SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'BTCUSD', 'XTIUSD'];
 const TIMEFRAMES = ['M15', 'H1', 'H4', 'D1'];
 
+const getChartPalette = (isLight: boolean) => ({
+  background: isLight ? '#FAF7F2' : '#1A1715',
+  textColor: isLight ? '#1C1917' : '#ADA296',
+  gridColor: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)',
+  borderScale: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+  upColor: isLight ? '#2E7D32' : '#4CAF50',
+  downColor: isLight ? '#D32F2F' : '#EF5350',
+  obBull: isLight ? '#2E7D32' : '#4CAF50',
+  obBear: isLight ? '#D32F2F' : '#EF5350',
+  fvgBull: isLight ? '#3BA4C4' : '#2A7991',
+  fvgBear: isLight ? '#E86C53' : '#B04A36',
+  chochColor: isLight ? '#E0962B' : '#D98C28',
+  bosColor: isLight ? '#1B365D' : '#3D6B9E', // Anti-slop Navy
+  timesfmMedian: isLight ? '#3BA4C4' : '#5BC3E0',
+  timesfmCone: isLight ? 'rgba(59, 164, 196, 0.35)' : 'rgba(91, 195, 224, 0.3)',
+});
+
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   initialSymbol = 'EURUSD',
   initialTimeframe = 'H4',
@@ -35,6 +52,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const priceLinesRef = useRef<any[]>([]);
 
   const { theme } = useDashboardStore();
+  const isLight = theme === 'light';
+  const palette = getChartPalette(isLight);
 
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [timeframe, setTimeframe] = useState<string>(initialTimeframe);
@@ -121,12 +140,14 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     clearOverlays();
 
     const candleSeries = candleSeriesRef.current;
+    const isLight = theme === 'light';
+    const palette = getChartPalette(isLight);
 
     // 1. Order Blocks (horizontal price lines)
     if (showOrderBlocks && structureData.order_blocks) {
       for (const ob of structureData.order_blocks.slice(0, 4)) {
         const isBullish = ob.direction?.toLowerCase() === 'bullish';
-        const color = isBullish ? '#10b981' : '#ef4444';
+        const color = isBullish ? palette.obBull : palette.obBear;
         try {
           const highLine = candleSeries.createPriceLine({
             price: ob.price_high,
@@ -153,7 +174,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     if (showFVG && structureData.fair_value_gaps) {
       for (const fvg of structureData.fair_value_gaps.slice(0, 3)) {
         const isBullish = fvg.direction?.toLowerCase() === 'bullish';
-        const color = isBullish ? '#38bdf8' : '#fb923c';
+        const color = isBullish ? palette.fvgBull : palette.fvgBear;
         try {
           const fvgHigh = candleSeries.createPriceLine({
             price: fvg.gap_high,
@@ -179,7 +200,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     // 3. Structure Breaks (BOS / CHoCH)
     if (showBOS && structureData.structure_breaks) {
       for (const sb of structureData.structure_breaks.slice(0, 3)) {
-        const color = sb.type === 'CHoCH' ? '#eab308' : '#a855f7';
+        const color = sb.type === 'CHoCH' ? palette.chochColor : palette.bosColor;
         try {
           const sbLine = candleSeries.createPriceLine({
             price: sb.price,
@@ -206,7 +227,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       try {
         const q50Line = candleSeries.createPriceLine({
           price: q50Val,
-          color: '#38bdf8',
+          color: palette.timesfmMedian,
           lineWidth: 2,
           lineStyle: 1,
           axisLabelVisible: true,
@@ -214,7 +235,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         });
         const q90Line = candleSeries.createPriceLine({
           price: q90Val,
-          color: 'rgba(56, 189, 248, 0.4)',
+          color: palette.timesfmCone,
           lineWidth: 1,
           lineStyle: 2,
           axisLabelVisible: true,
@@ -222,7 +243,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         });
         const q10Line = candleSeries.createPriceLine({
           price: q10Val,
-          color: 'rgba(56, 189, 248, 0.4)',
+          color: palette.timesfmCone,
           lineWidth: 1,
           lineStyle: 2,
           axisLabelVisible: true,
@@ -231,25 +252,26 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         priceLinesRef.current.push(q50Line, q90Line, q10Line);
       } catch {}
     }
-  }, [structureData, showOrderBlocks, showFVG, showBOS, showTimesFM, lastPrice, clearOverlays]);
+  }, [structureData, showOrderBlocks, showFVG, showBOS, showTimesFM, lastPrice, clearOverlays, theme]);
 
   // Initialize Canvas Chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
     const isLight = theme === 'light';
+    const palette = getChartPalette(isLight);
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth || 800,
       height,
       layout: {
-        background: { type: ColorType.Solid, color: isLight ? '#FAF7F2' : '#1A1715' },
-        textColor: isLight ? '#1C1917' : '#ADA296',
+        background: { type: ColorType.Solid, color: palette.background },
+        textColor: palette.textColor,
         fontSize: 11,
         fontFamily: 'var(--font-precision), monospace',
       },
       grid: {
-        vertLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
-        horzLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
+        vertLines: { color: palette.gridColor },
+        horzLines: { color: palette.gridColor },
       },
       crosshair: {
         mode: 1,
@@ -257,22 +279,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         horzLine: { color: 'rgba(224, 150, 43, 0.6)', width: 1, style: 3 },
       },
       rightPriceScale: {
-        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
-        textColor: isLight ? '#1C1917' : '#ADA296',
+        borderColor: palette.borderScale,
+        textColor: palette.textColor,
       },
       timeScale: {
-        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+        borderColor: palette.borderScale,
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: isLight ? '#2E7D32' : '#4CAF50',
-      downColor: isLight ? '#D32F2F' : '#EF5350',
+      upColor: palette.upColor,
+      downColor: palette.downColor,
       borderVisible: false,
-      wickUpColor: isLight ? '#2E7D32' : '#4CAF50',
-      wickDownColor: isLight ? '#D32F2F' : '#EF5350',
+      wickUpColor: palette.upColor,
+      wickDownColor: palette.downColor,
     });
 
     chartInstanceRef.current = chart;
@@ -298,34 +320,35 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       chartInstanceRef.current = null;
       candleSeriesRef.current = null;
     };
-  }, [height, clearOverlays, loadData]);
+  }, [height, clearOverlays, loadData, theme]);
 
   // Reactive theme options update
   useEffect(() => {
     if (!chartInstanceRef.current || !candleSeriesRef.current) return;
     const isLight = theme === 'light';
+    const palette = getChartPalette(isLight);
     chartInstanceRef.current.applyOptions({
       layout: {
-        background: { type: ColorType.Solid, color: isLight ? '#FAF7F2' : '#1A1715' },
-        textColor: isLight ? '#1C1917' : '#ADA296',
+        background: { type: ColorType.Solid, color: palette.background },
+        textColor: palette.textColor,
       },
       grid: {
-        vertLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
-        horzLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
+        vertLines: { color: palette.gridColor },
+        horzLines: { color: palette.gridColor },
       },
       rightPriceScale: {
-        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
-        textColor: isLight ? '#1C1917' : '#ADA296',
+        borderColor: palette.borderScale,
+        textColor: palette.textColor,
       },
       timeScale: {
-        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+        borderColor: palette.borderScale,
       },
     });
     candleSeriesRef.current.applyOptions({
-      upColor: isLight ? '#2E7D32' : '#4CAF50',
-      downColor: isLight ? '#D32F2F' : '#EF5350',
-      wickUpColor: isLight ? '#2E7D32' : '#4CAF50',
-      wickDownColor: isLight ? '#D32F2F' : '#EF5350',
+      upColor: palette.upColor,
+      downColor: palette.downColor,
+      wickUpColor: palette.upColor,
+      wickDownColor: palette.downColor,
     });
   }, [theme]);
 
@@ -413,8 +436,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
+                className="touch-target-expand"
                 style={{
-                  padding: '3px 8px',
+                  padding: '4px 8px',
                   fontSize: '11px',
                   fontWeight: 600,
                   fontFamily: 'var(--font-precision)',
@@ -435,14 +459,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button
               onClick={() => setShowOrderBlocks((v) => !v)}
+              className="touch-target-expand"
               style={{
                 padding: '4px 8px',
                 borderRadius: '2px',
                 fontSize: '10px',
                 fontWeight: 600,
-                border: `1px solid ${showOrderBlocks ? '#10b981' : 'var(--color-border)'}`,
-                background: showOrderBlocks ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                color: showOrderBlocks ? '#10b981' : 'var(--color-ink-muted)',
+                border: `1px solid ${showOrderBlocks ? palette.obBull : 'var(--color-border)'}`,
+                background: showOrderBlocks ? 'var(--color-profit-soft)' : 'transparent',
+                color: showOrderBlocks ? palette.obBull : 'var(--color-ink-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -450,14 +475,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </button>
             <button
               onClick={() => setShowFVG((v) => !v)}
+              className="touch-target-expand"
               style={{
                 padding: '4px 8px',
                 borderRadius: '2px',
                 fontSize: '10px',
                 fontWeight: 600,
-                border: `1px solid ${showFVG ? '#38bdf8' : 'var(--color-border)'}`,
-                background: showFVG ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
-                color: showFVG ? '#38bdf8' : 'var(--color-ink-muted)',
+                border: `1px solid ${showFVG ? palette.fvgBull : 'var(--color-border)'}`,
+                background: showFVG ? 'rgba(59, 164, 196, 0.12)' : 'transparent',
+                color: showFVG ? palette.fvgBull : 'var(--color-ink-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -465,14 +491,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </button>
             <button
               onClick={() => setShowBOS((v) => !v)}
+              className="touch-target-expand"
               style={{
                 padding: '4px 8px',
                 borderRadius: '2px',
                 fontSize: '10px',
                 fontWeight: 600,
-                border: `1px solid ${showBOS ? '#a855f7' : 'var(--color-border)'}`,
-                background: showBOS ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                color: showBOS ? '#a855f7' : 'var(--color-ink-muted)',
+                border: `1px solid ${showBOS ? palette.bosColor : 'var(--color-border)'}`,
+                background: showBOS ? 'rgba(27, 54, 93, 0.12)' : 'transparent',
+                color: showBOS ? palette.bosColor : 'var(--color-ink-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -480,14 +507,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </button>
             <button
               onClick={() => setShowTimesFM((v) => !v)}
+              className="touch-target-expand"
               style={{
                 padding: '4px 8px',
                 borderRadius: '2px',
                 fontSize: '10px',
                 fontWeight: 600,
-                border: `1px solid ${showTimesFM ? '#f59e0b' : 'var(--color-border)'}`,
-                background: showTimesFM ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                color: showTimesFM ? '#f59e0b' : 'var(--color-ink-muted)',
+                border: `1px solid ${showTimesFM ? 'var(--color-brass)' : 'var(--color-border)'}`,
+                background: showTimesFM ? 'rgba(224, 150, 43, 0.12)' : 'transparent',
+                color: showTimesFM ? 'var(--color-brass)' : 'var(--color-ink-muted)',
                 cursor: 'pointer',
               }}
             >
@@ -499,6 +527,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           <button
             onClick={() => loadData()}
             disabled={loading}
+            className="touch-target-expand"
             style={{
               padding: '6px',
               borderRadius: '2px',

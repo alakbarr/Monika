@@ -407,6 +407,8 @@ body {
 .win-control-btn {
   width: 26px;
   height: 26px;
+  position: relative;
+  touch-action: manipulation;
   box-sizing: border-box;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--color-rule);
@@ -421,6 +423,17 @@ body {
   cursor: pointer;
   padding: 0;
   box-shadow: 1px 1px 0 var(--color-rule);
+}
+
+.win-control-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  pointer-events: auto;
 }
 
 .win-control-btn:active {
@@ -498,6 +511,33 @@ body {
 /* Greenbar / Tabular Listview Table Rows */
 .greenbar-row:nth-child(even) {
   background: color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-win-green)) !important;
+}
+
+/* Fitts's Law Hit-Slop Utility (Invisible touch box >= 44x44px for compact desktop UI) */
+.touch-target-expand,
+.table-action-btn {
+  position: relative;
+  touch-action: manipulation;
+}
+
+.touch-target-expand::after,
+.table-action-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  pointer-events: auto;
+}
+
+/* Touch Device Row Padding Expansion */
+@media (pointer: coarse) {
+  .table-responsive tr td {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
 }
 
 /* Rubber Stamp Badges */

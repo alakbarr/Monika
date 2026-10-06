@@ -740,6 +740,7 @@ const PositionRow: React.FC<{
             <span>#{pos.mt5_ticket}</span>
             <button
               type="button"
+              className="table-action-btn"
               onClick={(e) => { e.stopPropagation(); onDossierClick(pos); }}
               style={{
                 marginLeft: '8px',
@@ -805,6 +806,7 @@ const PositionRow: React.FC<{
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <button
               type="button"
+              className="table-action-btn"
               onClick={() => onDossierClick(pos)}
               aria-label={`Buka decision dossier untuk ${pos.symbol}`}
               style={{
@@ -829,6 +831,7 @@ const PositionRow: React.FC<{
             </button>
             <button
               type="button"
+              className="table-action-btn"
               onClick={() => onBreakevenClick(pos)}
               aria-label={`Break even untuk ${pos.symbol}`}
               style={{
@@ -852,6 +855,7 @@ const PositionRow: React.FC<{
             </button>
             <button
               type="button"
+              className="table-action-btn"
               onClick={() => onEditClick(pos)}
               aria-label={`Edit SL/TP untuk ${pos.symbol}`}
               style={{
@@ -875,6 +879,7 @@ const PositionRow: React.FC<{
             </button>
             <button
               type="button"
+              className="table-action-btn"
               onClick={() => onCloseClick(pos)}
               aria-label={`Tutup posisi ${pos.symbol}`}
               style={{

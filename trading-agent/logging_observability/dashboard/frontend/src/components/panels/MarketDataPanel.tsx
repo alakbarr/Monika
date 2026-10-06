@@ -115,7 +115,7 @@ export const MarketDataPanel: React.FC = () => {
         if (scRes.status === 'fulfilled' && scRes.value) {
           setSentimentComp(scRes.value);
         }
-      } catch (e) {
+      } catch {
         // Fallback gracefully
       }
     };

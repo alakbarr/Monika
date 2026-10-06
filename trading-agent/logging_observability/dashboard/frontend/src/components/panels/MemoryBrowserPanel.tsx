@@ -3,7 +3,7 @@
 // Description: Autonomous Memory Vault — Post-Trade Reflections & Empirical Playbook Lessons
 // ==============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { TypewriterButton } from '../ui/TypewriterButton';
@@ -99,7 +99,7 @@ export const MemoryBrowserPanel: React.FC = () => {
     );
   };
 
-  const fetchMemory = async () => {
+  const fetchMemory = useCallback(async () => {
     setLoading(true);
     try {
       if (searchQuery.trim().length >= 2) {
@@ -131,11 +131,11 @@ export const MemoryBrowserPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, selectedSymbol, viewMode]);
 
   useEffect(() => {
     fetchMemory();
-  }, [viewMode, selectedSymbol]);
+  }, [fetchMemory]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
