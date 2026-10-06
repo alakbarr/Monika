@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, ClassVar
 
 import aiohttp
+from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
@@ -49,6 +50,7 @@ from config.settings import load_settings
 from cli.sparklines import braille_sparkline, bar_gauge
 from cli.analysis_tree import AnalysisCycleTree
 from cli.busy_input import BusyInputBuffer, InputDelivery
+from cli.width_budget import compute_progressive_width_budget, ColumnSpec
 from cli.theme import (
     get_theme,
     ThemePack,
@@ -201,6 +203,7 @@ class StatusBar(Static):
         cache_hit_rate: float = 0.0,
         busy_status: str = "",
         budget_tier: str = "T1 (100%)",
+        terminal_width: int = 100,
     ) -> None:
         hours, rem = divmod(uptime_seconds, 3600)
         minutes, seconds = divmod(rem, 60)
@@ -209,7 +212,7 @@ class StatusBar(Static):
         tok_str = f"↑{input_tokens / 1000:.1f}k ↓{output_tokens / 1000:.1f}k"
 
         # Context window gauge
-        gauge_bar, gauge_color = bar_gauge(context_used, context_max, width=10)
+        gauge_bar, gauge_color = bar_gauge(context_used, context_max, width=8 if terminal_width < 110 else 10)
         pct = (context_used / context_max * 100) if context_max > 0 else 0.0
         ctx_str = f"[{gauge_color}]{gauge_bar}[/] [{PAPER}]{pct:.0f}%[/]"
 
@@ -223,15 +226,24 @@ class StatusBar(Static):
         # Busy input indicator
         busy_str = f"  │  [{PHOSPHOR_AMBER}]{busy_status}[/]" if busy_status else ""
 
-        content = (
-            f"[dim {MUTED}]Tokens:[/] [{PAPER}]{tok_str}[/]  │  "
-            f"[dim {MUTED}]Cache:[/] {cache_str}  │  "
-            f"[dim {MUTED}]Context:[/] {ctx_str}  │  "
-            f"[dim {MUTED}]Cost:[/] [{BRASS}]${cost_usd:.4f}[/]  │  "
-            f"[dim {MUTED}]Uptime:[/] [{PAPER}]{uptime_str}[/]"
-            f"{budget_str}  │  "
-            f"[dim {MUTED}]Feed:[/] {ws_status}{busy_str}"
-        )
+        # Width-budget aware formatting: compact when terminal is constrained (< 90 cols)
+        if terminal_width < 90:
+            content = (
+                f"[dim {MUTED}]Tok:[/] [{PAPER}]{tok_str}[/] │ "
+                f"[dim {MUTED}]Hit:[/] {cache_str} │ "
+                f"[dim {MUTED}]Cost:[/] [{BRASS}]${cost_usd:.3f}[/] │ "
+                f"[dim {MUTED}]Feed:[/] {ws_status}{busy_str}"
+            )
+        else:
+            content = (
+                f"[dim {MUTED}]Tokens:[/] [{PAPER}]{tok_str}[/]  │  "
+                f"[dim {MUTED}]Cache:[/] {cache_str}  │  "
+                f"[dim {MUTED}]Context:[/] {ctx_str}  │  "
+                f"[dim {MUTED}]Cost:[/] [{BRASS}]${cost_usd:.4f}[/]  │  "
+                f"[dim {MUTED}]Uptime:[/] [{PAPER}]{uptime_str}[/]"
+                f"{budget_str}  │  "
+                f"[dim {MUTED}]Feed:[/] {ws_status}{busy_str}"
+            )
         self.update(content)
 
 
@@ -401,6 +413,7 @@ class TradingDashboard(App):
         self._tabs_mounted: bool = False
         self._refresh_lock = asyncio.Lock()
         self._inline_chat_agent: Optional[Any] = None
+        self.terminal_width: int = 100
 
     def _is_input_focused(self) -> bool:
         """Check if any input or textarea currently has keyboard focus."""
@@ -570,6 +583,11 @@ class TradingDashboard(App):
         """Cleanup WebSocket task on exit."""
         if self._ws_task and not self._ws_task.done():
             self._ws_task.cancel()
+
+    def on_resize(self, event: events.Resize) -> None:
+        """Handle dynamic terminal resize using progressive width budget."""
+        self.terminal_width = event.size.width
+        self._refresh_status_bar()
 
     # ---------------------------------------------------------------------------
     # Tab Navigation Actions
@@ -922,6 +940,7 @@ class TradingDashboard(App):
                     scorecard_res = await session.get(f"{self.api_url}/api/risk/scorecard")
                     yields_res = await session.get(f"{self.api_url}/api/market/yields")
                     fg_res = await session.get(f"{self.api_url}/api/market/fear-greed")
+                    calendar_res = await session.get(f"{self.api_url}/api/calendar/events?days_ahead=3&limit=25")
 
                     if overview_res.status == 200 and positions_res.status == 200:
                         ov = await overview_res.json()
@@ -933,6 +952,7 @@ class TradingDashboard(App):
                         sc = await scorecard_res.json() if scorecard_res.status == 200 else []
                         yd = await yields_res.json() if yields_res.status == 200 else {}
                         fg = await fg_res.json() if fg_res.status == 200 else {}
+                        cal = await calendar_res.json() if calendar_res.status == 200 else []
                         return {
                             "source": "api",
                             "overview": ov,
@@ -944,6 +964,7 @@ class TradingDashboard(App):
                             "scorecard": sc,
                             "yields": yd,
                             "fear_greed": fg,
+                            "calendar": cal,
                         }
             except Exception:
                 pass
@@ -1121,6 +1142,31 @@ class TradingDashboard(App):
                 except Exception as sc_err:
                     logger.debug(f"[TUI] Scorecard DB fetch note: {sc_err}")
                     res_data["scorecard"] = []
+
+                # 10. Economic Calendar
+                try:
+                    from database.models import EconomicCalendar
+                    from datetime import timedelta
+                    now_utc = datetime.now(timezone.utc)
+                    cal_q = select(EconomicCalendar).where(
+                        EconomicCalendar.event_time >= now_utc - timedelta(hours=6),
+                        EconomicCalendar.event_time <= now_utc + timedelta(days=3),
+                    ).order_by(EconomicCalendar.event_time.asc()).limit(25)
+                    cal_rows = (await session.execute(cal_q)).scalars().all()
+                    res_data["calendar"] = [
+                        {
+                            "event_time": c.event_time.isoformat() if c.event_time else "",
+                            "currency": c.currency or "USD",
+                            "event_name": c.event_name or "",
+                            "impact": (c.impact or "MEDIUM").upper(),
+                            "forecast": c.forecast or "—",
+                            "actual": c.actual or "—",
+                        }
+                        for c in cal_rows
+                    ]
+                except Exception as cal_err:
+                    logger.debug(f"[TUI] Calendar DB fetch note: {cal_err}")
+                    res_data["calendar"] = []
         except Exception as e:
             logger.debug(f"[TUI] DB fetch error: {e}")
 
@@ -1399,7 +1445,34 @@ class TradingDashboard(App):
                 for y in yields_info.get("treasury_yields", [])[:3]:
                     m_rates.add_row(f"US Treasury {y.get('tenor')}", f"{float(y.get('yield_percent', 0.0)):.2f}%", "Yield Benchmark", "[dim]BENCHMARK[/]")
         except Exception as m_err:
-            logger.debug(f"[TUI] Market update error: {m_err}")
+            logger.debug(f"[TUI] Market rates update error: {m_err}")
+
+        # 10. Update Macro Calendar Table (#market_table)
+        try:
+            m_cal = self.query_one("#market_table", DataTable)
+            cal_events = data.get("calendar", [])
+            if cal_events:
+                m_cal.clear()
+                for ev in cal_events:
+                    raw_time = str(ev.get("event_time", ""))
+                    if "T" in raw_time:
+                        time_display = raw_time.split("T")[1][:5] + " UTC"
+                    else:
+                        time_display = raw_time[:10] if raw_time else "—"
+                    curr = str(ev.get("currency", "USD")).upper()
+                    event_name = str(ev.get("event_name", "Macro Event"))
+                    imp = str(ev.get("impact", "LOW")).upper()
+                    if imp in ("HIGH", "RED"):
+                        imp_styled = f"[bold {BEAR_LOSS}]HIGH[/]"
+                    elif imp in ("MED", "MEDIUM", "ORANGE"):
+                        imp_styled = f"[bold {BRASS}]MED[/]"
+                    else:
+                        imp_styled = f"[dim]LOW[/]"
+                    fcast = str(ev.get("forecast") or "—")
+                    act = str(ev.get("actual") or "—")
+                    m_cal.add_row(time_display, curr, event_name, imp_styled, fcast, act)
+        except Exception as cal_err:
+            logger.debug(f"[TUI] Calendar table update error: {cal_err}")
 
         # Determine token budget degradation tier
         if self._cost_usd > 5.0:
@@ -1427,6 +1500,7 @@ class TradingDashboard(App):
                 cache_hit_rate=self._cache_hit_rate,
                 busy_status=self.busy_buffer.status_text,
                 budget_tier=getattr(self, "_budget_tier", "T1 (100%)"),
+                terminal_width=getattr(self, "terminal_width", 100),
             )
         except Exception:
             pass

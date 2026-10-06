@@ -49,6 +49,68 @@ def _is_ws_alive(ws: Optional[aiohttp.ClientWebSocketResponse]) -> bool:
     return True
 
 
+def acquire_cli_session_lock(session_id: str) -> Optional[int]:
+    """Ensure only one CLI chat session runs with this session_id.
+
+    Returns existing PID if locked by another active process, or None if lock acquired.
+    """
+    import psutil
+    import atexit
+    import re
+
+    safe_id = re.sub(r"[^a-zA-Z0-9_\-]", "_", session_id)
+    lock_file = Path("data/locks") / f"cli_chat_{safe_id}.pid"
+    current_pid = os.getpid()
+
+    if lock_file.exists():
+        try:
+            content = lock_file.read_text(encoding="utf-8").strip()
+            if content:
+                existing_pid = int(content)
+                if existing_pid != current_pid and psutil.pid_exists(existing_pid):
+                    try:
+                        proc = psutil.Process(existing_pid)
+                        if proc.is_running() and "python" in proc.name().lower():
+                            return existing_pid
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+        except Exception:
+            pass
+
+    try:
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        lock_file.write_text(str(current_pid), encoding="utf-8")
+
+        def _cleanup():
+            try:
+                if lock_file.exists():
+                    c = lock_file.read_text(encoding="utf-8").strip()
+                    if c == str(current_pid):
+                        lock_file.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+        atexit.register(_cleanup)
+        return None
+    except Exception:
+        return None
+
+
+def release_cli_session_lock(session_id: str) -> None:
+    """Release the CLI chat session lockfile."""
+    import re
+
+    safe_id = re.sub(r"[^a-zA-Z0-9_\-]", "_", session_id)
+    lock_file = Path("data/locks") / f"cli_chat_{safe_id}.pid"
+    try:
+        if lock_file.exists():
+            c = lock_file.read_text(encoding="utf-8").strip()
+            if c == str(os.getpid()):
+                lock_file.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 class ChatReplSession:
     """Institutional-grade CLI Chat REPL session for Monika Trading Desk."""
 
@@ -196,6 +258,16 @@ class ChatReplSession:
 
     async def run(self) -> None:
         """Run the interactive chat REPL loop."""
+        # 0. Check lock-twin: prevent concurrent overlapping instances on same session
+        existing_pid = acquire_cli_session_lock(self.session_id)
+        if existing_pid:
+            self.renderer.render_notice(
+                f"Another CLI Chat session (PID: {existing_pid}) is actively using session '{self.session_id}'.\n"
+                f"Please terminate PID {existing_pid} or pass --session-id to start an isolated session.",
+                level="error",
+            )
+            return
+
         # 1. Attempt connection
         is_connected = await self._connect_ws()
         if not is_connected:
@@ -309,6 +381,7 @@ class ChatReplSession:
         tokens_out_est = 0
 
         self.renderer.render_agent_header(model)
+        self.renderer.render_thinking_spinner("Formulating response...")
 
         await self.ws.send_json({
             "type": "message",
@@ -328,7 +401,9 @@ class ChatReplSession:
                 if etype == "connection_established":
                     continue
 
-                elif etype == "thought_delta":
+                self.renderer.clear_thinking_spinner()
+
+                if etype == "thought_delta":
                     thought_chunk = data.get("content", "")
                     if thought_chunk:
                         full_thinking_chunks.append(thought_chunk)
@@ -442,6 +517,7 @@ class ChatReplSession:
 
         scrubber = ThinkingScrubber()
         self.renderer.render_agent_header(f"{model} (local)")
+        self.renderer.render_thinking_spinner("Processing local analytical pipeline...")
 
         full_content_chunks: List[str] = []
         full_thinking_chunks: List[str] = []
@@ -451,6 +527,7 @@ class ChatReplSession:
         # Stream callback for local engine
         def _token_push(token: str):
             nonlocal tokens_out_est, thinking_rendered
+            self.renderer.clear_thinking_spinner()
             tokens_out_est += 1
             think_part, content_part = scrubber.process_chunk(token)
             if think_part:
@@ -469,6 +546,7 @@ class ChatReplSession:
             handle_fn = getattr(self.local_agent, "handle", None)
             is_mock = type(handle_fn).__name__ in ("AsyncMock", "MagicMock", "Mock")
             if is_mock:
+                self.renderer.clear_thinking_spinner()
                 reply_text, pending = await self.local_agent.handle(text)
                 if reply_text and not full_content_chunks:
                     sys.stdout.write(reply_text)
@@ -586,3 +664,6 @@ class ChatReplSession:
             except Exception:
                 pass
         self.http_session = None
+
+        # Release session lockfile
+        release_cli_session_lock(self.session_id)
