@@ -480,6 +480,7 @@ export const AgentChatPanel: React.FC = () => {
         <textarea
           value={inputText}
           disabled={!wsConnected}
+          aria-label="Ketik instruksi trading atau analisis agen"
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

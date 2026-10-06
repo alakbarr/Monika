@@ -8,6 +8,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 import { api } from '../../lib/api';
+import { useDashboardStore } from '../../store/dashboardStore';
 import { Badge } from '../ui/Badge';
 import { RefreshCw } from 'lucide-react';
 
@@ -32,6 +33,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const overlaySeriesRef = useRef<Array<ISeriesApi<'Line'>>>([]);
   const priceLinesRef = useRef<any[]>([]);
+
+  const { theme } = useDashboardStore();
 
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [timeframe, setTimeframe] = useState<string>(initialTimeframe);
@@ -234,41 +237,42 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const isLight = theme === 'light';
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth || 800,
       height,
       layout: {
-        background: { type: ColorType.Solid, color: '#131722' },
-        textColor: '#94a3b8',
+        background: { type: ColorType.Solid, color: isLight ? '#FAF7F2' : '#1A1715' },
+        textColor: isLight ? '#1C1917' : '#ADA296',
         fontSize: 11,
-        fontFamily: 'Consolas, "Fira Code", monospace',
+        fontFamily: 'var(--font-precision), monospace',
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.04)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.04)' },
+        vertLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
+        horzLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
       },
       crosshair: {
         mode: 1,
-        vertLine: { color: 'rgba(217, 119, 6, 0.5)', width: 1, style: 3 },
-        horzLine: { color: 'rgba(217, 119, 6, 0.5)', width: 1, style: 3 },
+        vertLine: { color: 'rgba(224, 150, 43, 0.6)', width: 1, style: 3 },
+        horzLine: { color: 'rgba(224, 150, 43, 0.6)', width: 1, style: 3 },
       },
       rightPriceScale: {
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-        textColor: '#94a3b8',
+        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+        textColor: isLight ? '#1C1917' : '#ADA296',
       },
       timeScale: {
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10b981',
-      downColor: '#ef4444',
+      upColor: isLight ? '#2E7D32' : '#4CAF50',
+      downColor: isLight ? '#D32F2F' : '#EF5350',
       borderVisible: false,
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
+      wickUpColor: isLight ? '#2E7D32' : '#4CAF50',
+      wickDownColor: isLight ? '#D32F2F' : '#EF5350',
     });
 
     chartInstanceRef.current = chart;
@@ -294,7 +298,36 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       chartInstanceRef.current = null;
       candleSeriesRef.current = null;
     };
-  }, [height, clearOverlays]);
+  }, [height, clearOverlays, loadData]);
+
+  // Reactive theme options update
+  useEffect(() => {
+    if (!chartInstanceRef.current || !candleSeriesRef.current) return;
+    const isLight = theme === 'light';
+    chartInstanceRef.current.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: isLight ? '#FAF7F2' : '#1A1715' },
+        textColor: isLight ? '#1C1917' : '#ADA296',
+      },
+      grid: {
+        vertLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
+        horzLines: { color: isLight ? 'rgba(28, 25, 23, 0.08)' : 'rgba(246, 241, 234, 0.06)' },
+      },
+      rightPriceScale: {
+        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+        textColor: isLight ? '#1C1917' : '#ADA296',
+      },
+      timeScale: {
+        borderColor: isLight ? 'rgba(28, 25, 23, 0.15)' : 'rgba(246, 241, 234, 0.12)',
+      },
+    });
+    candleSeriesRef.current.applyOptions({
+      upColor: isLight ? '#2E7D32' : '#4CAF50',
+      downColor: isLight ? '#D32F2F' : '#EF5350',
+      wickUpColor: isLight ? '#2E7D32' : '#4CAF50',
+      wickDownColor: isLight ? '#D32F2F' : '#EF5350',
+    });
+  }, [theme]);
 
   // Re-fetch data on symbol or timeframe change
   useEffect(() => {

@@ -142,6 +142,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command Palette"
       style={{
         position: 'fixed',
         top: 0,
@@ -166,7 +169,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           background: 'var(--color-paper-raised)',
           border: '2px solid var(--color-rule)',
           borderRadius: 'var(--radius-card)',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          boxShadow: 'var(--shadow-modal)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -197,6 +200,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           <input
             ref={inputRef}
             type="text"
+            aria-label="Cari perintah atau tab navigasi"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -205,7 +209,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               width: '100%',
               padding: '10px 14px',
               fontSize: 'var(--text-body-md)',
-              background: 'var(--color-paper)',
+              background: 'var(--color-paper-sunken)',
               color: 'var(--color-ink)',
               border: '1.5px solid var(--color-rule)',
               borderRadius: 'var(--radius-control)',

@@ -193,6 +193,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Tutup form order"
             style={{
               background: 'transparent',
               border: 'none',
@@ -200,6 +201,11 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+              padding: '10px',
+              margin: '-10px -4px -10px 0',
             }}
           >
             <X size={18} />
