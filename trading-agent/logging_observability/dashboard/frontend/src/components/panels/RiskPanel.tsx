@@ -74,7 +74,7 @@ export const RiskPanel: React.FC = () => {
       setToggling(true);
       setToggleMsg(null);
       try {
-        await api.overrideRisk({ system_paused: false });
+        await api.resumeTrading();
         setToggleMsg('System successfully restored. Trade execution resumed.');
         await fetchAll();
       } catch (err: any) {

@@ -118,7 +118,9 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   fetchAll: async () => {
-    set({ loading: true });
+    if (get().overview === null) {
+      set({ loading: true });
+    }
     try {
       const [
         overview, positions, activity, analyses,

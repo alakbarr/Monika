@@ -4657,7 +4657,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `websocket.py`
   - **Classes**: `TokenCoalescingBuffer`
     - *Methods*: `push()`, `flush()`, `stream_text()`
-  - **Functions**: `websocket_live_feed()`, `websocket_agent_chat()`, `list_sessions()`, `get_session_messages()`
+  - **Functions**: `websocket_live_feed()`, `websocket_agent_chat()`, `websocket_terminal_session()`, `websocket_pty_session()`, `create_ws_ticket()`, `list_sessions()`, `get_session_messages()`
 
 ##### Folder: `trading-agent/logging_observability/reporting`
 

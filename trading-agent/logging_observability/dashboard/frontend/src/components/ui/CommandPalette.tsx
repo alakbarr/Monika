@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { NAV_ITEMS } from '../layout/navigation';
 import { sounds } from '../../lib/soundEffects';
+import { api } from '../../lib/api';
 
 interface CommandItem {
   id: string;
@@ -62,11 +63,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         category: 'Action',
         run: async () => {
           try {
-            await fetch('/api/actions/trigger-cycle', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ force: true, context: 'Command Palette' }),
-            });
+            await api.triggerCycle(true, 'Command Palette');
             sounds.playClick('typewriter');
           } catch {}
           onClose();
@@ -78,7 +75,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         category: 'Action',
         run: async () => {
           try {
-            await fetch('/api/actions/resume', { method: 'POST' });
+            await api.resumeTrading();
             sounds.playClick('typewriter');
           } catch {}
           onClose();
@@ -91,7 +88,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         run: async () => {
           if (window.confirm('Are you sure you want to execute emergency liquidation?')) {
             try {
-              await fetch('/api/actions/kill', { method: 'POST' });
+              await api.emergencyKill();
               sounds.playAlert();
             } catch {}
           }

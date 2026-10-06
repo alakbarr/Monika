@@ -32,6 +32,7 @@ import { PluginManagerPanel } from './components/panels/PluginManagerPanel';
 import { BenchmarkPanel } from './components/panels/BenchmarkPanel';
 import { TerminalPanel } from './components/panels/TerminalPanel';
 import { CommandPalette } from './components/ui/CommandPalette';
+import { MarkdownRenderer } from './components/ui/MarkdownRenderer';
 import { useDashboardStore } from './store/dashboardStore';
 import { usePolling } from './hooks/usePolling';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -123,39 +124,7 @@ const BriefTab: React.FC = () => {
           </div>
         </div>
         <div style={{ padding: '20px' }}>
-        <div
-          style={{
-            fontSize: 'var(--text-body-md)',
-            color: 'var(--color-ink)',
-            lineHeight: 1.8,
-            whiteSpace: 'pre-wrap',
-            fontFamily: 'var(--font-precision)',
-          }}
-        >
-          {brief.content_markdown.split('```').map((block, i) => {
-            if (i % 2 === 1) {
-              return (
-                <pre
-                  key={i}
-                  style={{
-                    background: 'var(--color-console-bg)',
-                    color: 'var(--color-console-phosphor)',
-                    padding: '14px',
-                    borderRadius: 'var(--radius-card)',
-                    border: '1px solid var(--color-console-border)',
-                    overflowX: 'auto',
-                    margin: '14px 0',
-                    fontFamily: 'var(--font-precision)',
-                    fontSize: 'var(--text-body-sm)',
-                  }}
-                >
-                  <code>{block.replace(/^[a-z]+\n/, '')}</code>
-                </pre>
-              );
-            }
-            return <span key={i}>{block}</span>;
-          })}
-        </div>
+          <MarkdownRenderer content={brief.content_markdown || ''} />
         </div>
       </div>
     </div>
