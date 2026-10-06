@@ -238,6 +238,36 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             elif "scheduler" not in settings or not isinstance(settings.get("scheduler"), dict):
                 settings["scheduler"] = {"cycle_interval_hours": cycle_hours}
 
+        # Sinkronisasi news_check_minutes: trading.schedule.news_check_minutes <-> scheduler.news_check_minutes
+        news_mins = None
+        if isinstance(trading_sched, dict) and "news_check_minutes" in trading_sched:
+            news_mins = trading_sched["news_check_minutes"]
+        elif isinstance(sched_root, dict) and "news_check_minutes" in sched_root:
+            news_mins = sched_root["news_check_minutes"]
+
+        if news_mins is not None:
+            if isinstance(trading_sched, dict):
+                trading_sched["news_check_minutes"] = news_mins
+            if isinstance(sched_root, dict):
+                sched_root["news_check_minutes"] = news_mins
+            elif "scheduler" not in settings or not isinstance(settings.get("scheduler"), dict):
+                settings["scheduler"] = {"news_check_minutes": news_mins}
+
+        # Sinkronisasi trigger_check_minutes: trading.schedule.trigger_check_minutes <-> scheduler.trigger_check_minutes
+        trigger_mins = None
+        if isinstance(trading_sched, dict) and "trigger_check_minutes" in trading_sched:
+            trigger_mins = trading_sched["trigger_check_minutes"]
+        elif isinstance(sched_root, dict) and "trigger_check_minutes" in sched_root:
+            trigger_mins = sched_root["trigger_check_minutes"]
+
+        if trigger_mins is not None:
+            if isinstance(trading_sched, dict):
+                trading_sched["trigger_check_minutes"] = trigger_mins
+            if isinstance(sched_root, dict):
+                sched_root["trigger_check_minutes"] = trigger_mins
+            elif isinstance(settings.get("scheduler"), dict):
+                settings["scheduler"]["trigger_check_minutes"] = trigger_mins
+
     # Apply schema versioning and migrations
     if isinstance(settings, dict):
         settings, _ = migrate_config(settings)

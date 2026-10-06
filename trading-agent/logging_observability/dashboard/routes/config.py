@@ -5,6 +5,7 @@
 
 import logging
 import os
+import re
 import shutil
 import tempfile
 from datetime import datetime, timezone
@@ -44,10 +45,49 @@ class ConfigUpdateRequest(BaseModel):
     reason: Optional[str] = Field(default="Config updated via Dashboard", description="Reason for activity audit log")
 
 
+SENSITIVE_KEY_PATTERN = re.compile(
+    r"(key|secret|token|password|credential|private|auth|passphrase|webhook)",
+    re.IGNORECASE,
+)
+
+
+def _mask_sensitive_data(obj: Any) -> Any:
+    """Recursively mask sensitive values in dicts, lists, or primitives with '********'."""
+    if isinstance(obj, dict):
+        masked = {}
+        for k, v in obj.items():
+            if isinstance(k, str) and SENSITIVE_KEY_PATTERN.search(k):
+                if isinstance(v, str) and v.strip():
+                    masked[k] = "********"
+                elif isinstance(v, (int, float)):
+                    masked[k] = "********"
+                elif isinstance(v, dict):
+                    masked[k] = _mask_sensitive_data(v)
+                else:
+                    masked[k] = "********"
+            else:
+                masked[k] = _mask_sensitive_data(v)
+        return masked
+    elif isinstance(obj, list):
+        return [_mask_sensitive_data(item) for item in obj]
+    return obj
+
+
+def _mask_yaml_text(text: str) -> str:
+    """Mask sensitive values in raw YAML string representation."""
+    if not text:
+        return text
+    pattern = re.compile(
+        r"^(\s*[\w\.\-_]*(?:key|secret|token|password|credential|auth)[\w\.\-_]*\s*:\s*)(['\"]?)(.+?)\2(\s*(?:#.*)?)$",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    return pattern.sub(r"\1\2********\2\4", text)
+
+
 @router.get("/api/config/settings", tags=["Config"])
 @require_role(Role.VIEWER)
 async def get_config_settings(request: Request):
-    """Return full settings.yaml as structured JSON along with raw YAML text."""
+    """Return full settings.yaml as structured JSON along with raw YAML text with secrets masked."""
     from config.settings import load_settings
 
     settings_path = _resolve_settings_path()
@@ -59,10 +99,14 @@ async def get_config_settings(request: Request):
                 raw_yaml = f.read()
         except Exception as e:
             logger.warning(f"Failed reading raw settings yaml from {settings_path}: {e}")
+
+    masked_settings = _mask_sensitive_data(settings)
+    masked_yaml = _mask_yaml_text(raw_yaml)
+
     return {
         "status": "success",
-        "settings": settings,
-        "raw_yaml": raw_yaml,
+        "settings": masked_settings,
+        "raw_yaml": masked_yaml,
         "file_path": settings_path,
     }
 

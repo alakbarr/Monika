@@ -50,7 +50,13 @@ export interface Position {
   status: 'open' | 'closed';
   pnl: number | null;
   current_price?: number;
+  price_current?: number;
   floating_pnl?: number;
+  is_paper?: boolean;
+  swap?: number;
+  mae_pips?: number;
+  mfe_pips?: number;
+  slippage_pips?: number;
 }
 
 export interface ActivityLog {

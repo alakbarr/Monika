@@ -205,8 +205,14 @@ export const api = {
     post<{ status: string; message: string }>('/actions/override-risk', payload),
   emergencyKill: () =>
     post<{ status: string; message: string }>('/actions/emergency-kill', {}),
-  closePosition: (ticketOrId: { ticket?: number; position_id?: number; reason?: string }) =>
+  closePosition: (ticketOrId: { ticket?: number; position_id?: number; volume?: number; percentage?: number; reason?: string }) =>
     post<{ status: string; result: unknown }>('/actions/close-position', ticketOrId),
+  breakevenPosition: (ticket: number) =>
+    post<{ status: string; message: string }>(`/positions/${ticket}/breakeven`, {}),
+  bulkBreakeven: (onlyProfit = true, symbol?: string) =>
+    post<{ status: string; message: string }>('/actions/bulk-breakeven', { only_profit: onlyProfit, symbol }),
+  killSymbol: (symbol: string) =>
+    post<{ status: string; message: string }>(`/actions/kill-symbol/${symbol}`, {}),
   approveTrade: (tradeId: number) =>
     post<{ status: string; message?: string }>(`/actions/approve-trade/${tradeId}`),
 

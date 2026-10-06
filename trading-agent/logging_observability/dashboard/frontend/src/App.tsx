@@ -30,6 +30,8 @@ import { BacktestPanel } from './components/panels/BacktestPanel';
 import { SkillManagerPanel } from './components/panels/SkillManagerPanel';
 import { PluginManagerPanel } from './components/panels/PluginManagerPanel';
 import { BenchmarkPanel } from './components/panels/BenchmarkPanel';
+import { TerminalPanel } from './components/panels/TerminalPanel';
+import { CommandPalette } from './components/ui/CommandPalette';
 import { useDashboardStore } from './store/dashboardStore';
 import { usePolling } from './hooks/usePolling';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -175,6 +177,7 @@ const BacktestTab: React.FC = () => <BacktestPanel />;
 const SkillsTab: React.FC = () => <SkillManagerPanel />;
 const PluginsTab: React.FC = () => <PluginManagerPanel />;
 const BenchmarkTab: React.FC = () => <BenchmarkPanel />;
+const TerminalTab: React.FC = () => <TerminalPanel />;
 
 const TAB_MAP: Record<string, React.FC> = {
   overview: OverviewTab,
@@ -191,6 +194,7 @@ const TAB_MAP: Record<string, React.FC> = {
   signals: SignalsTriggersTab,
   debates: DebateOutcomesTab,
   chat: ChatTab,
+  terminal: TerminalTab,
   sessions: SessionsTab,
   config: ConfigTab,
   system: SystemTab,
@@ -222,6 +226,7 @@ const App: React.FC = () => {
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
     if (error) {
@@ -234,6 +239,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        sounds.playClick('typewriter');
+        setCommandPaletteOpen((prev) => !prev);
+        return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (
@@ -354,7 +365,10 @@ const App: React.FC = () => {
       )}
 
       {/* 3. Header Taskbar */}
-      <Header onToggleMobileNav={() => setMobileNavOpen(true)} />
+      <Header
+        onToggleMobileNav={() => setMobileNavOpen(true)}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+      />
 
       {/* 4. Real-time Ticker Tape Ribbon */}
       {tickerItems.length > 0 && <TickerTape items={tickerItems} />}
@@ -366,14 +380,32 @@ const App: React.FC = () => {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <main style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 42px', position: 'relative' }}>
-          <WeekendGapBanner />
-          <Suspense fallback={<SkeletonFallback />}>
-            <div key={activeTab}>
+          <div style={{ maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+            <WeekendGapBanner />
+
+            {/* Persistent background panels so WebSocket & PTY sessions stay alive on tab change */}
+            <div style={{ display: activeTab === 'chat' ? 'block' : 'none' }}>
               <ErrorBoundary>
-                <TabComponent />
+                <AgentChatPanel />
               </ErrorBoundary>
             </div>
-          </Suspense>
+            <div style={{ display: activeTab === 'terminal' ? 'block' : 'none' }}>
+              <ErrorBoundary>
+                <TerminalPanel />
+              </ErrorBoundary>
+            </div>
+
+            {/* All other dynamic tabs */}
+            {activeTab !== 'chat' && activeTab !== 'terminal' && (
+              <Suspense fallback={<SkeletonFallback />}>
+                <div key={activeTab}>
+                  <ErrorBoundary>
+                    <TabComponent />
+                  </ErrorBoundary>
+                </div>
+              </Suspense>
+            )}
+          </div>
         </main>
       </div>
 
@@ -387,6 +419,12 @@ const App: React.FC = () => {
         tabs={NAV_ITEMS}
         onSelectTab={(id) => setActiveTab(id)}
         onClose={() => setMobileNavOpen(false)}
+      />
+
+      {/* 9. Global Command Palette (Cmd+K / Ctrl+K) */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
       />
     </div>
   );

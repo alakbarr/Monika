@@ -237,6 +237,31 @@ class ChatReplSession:
                     await self._submit_decision(cmd_result.action_payload)
                 continue
 
+            # Support single-key quick decisions when pending trade authorization is active
+            if self.pending_action_id:
+                choice = clean_text.lower()
+                if choice in ("1", "o", "allow", "yes", "y"):
+                    await self._submit_decision({
+                        "type": "approval_response",
+                        "action_id": self.pending_action_id,
+                        "decision": "allow_once",
+                    })
+                    continue
+                elif choice in ("2", "s", "session"):
+                    await self._submit_decision({
+                        "type": "approval_response",
+                        "action_id": self.pending_action_id,
+                        "decision": "allow_session",
+                    })
+                    continue
+                elif choice in ("3", "d", "deny", "no", "n"):
+                    await self._submit_decision({
+                        "type": "approval_response",
+                        "action_id": self.pending_action_id,
+                        "decision": "deny",
+                    })
+                    continue
+
             # Standard chat message turn
             self.history.append({"sender": "user", "text": clean_text})
             self.renderer.render_user_prompt(clean_text)
@@ -280,6 +305,7 @@ class ChatReplSession:
         scrubber = ThinkingScrubber()
         full_content_chunks: List[str] = []
         full_thinking_chunks: List[str] = []
+        thinking_rendered = False
         tokens_out_est = 0
 
         self.renderer.render_agent_header(model)
@@ -302,6 +328,12 @@ class ChatReplSession:
                 if etype == "connection_established":
                     continue
 
+                elif etype == "thought_delta":
+                    thought_chunk = data.get("content", "")
+                    if thought_chunk:
+                        full_thinking_chunks.append(thought_chunk)
+                        tokens_out_est += max(1, len(thought_chunk.split()))
+
                 elif etype == "delta":
                     delta_text = data.get("text", "")
                     tokens_out_est += max(1, len(delta_text.split()))
@@ -310,6 +342,11 @@ class ChatReplSession:
                     if think_part:
                         full_thinking_chunks.append(think_part)
                     if content_part:
+                        if not thinking_rendered and (full_thinking_chunks or scrubber.get_full_thinking()):
+                            thinking_rendered = True
+                            th_text = "".join(full_thinking_chunks) or scrubber.get_full_thinking()
+                            self.renderer.render_thinking_card(th_text, scrubber.elapsed_time or (time.time() - t0))
+
                         full_content_chunks.append(content_part)
                         sys.stdout.write(content_part)
                         sys.stdout.flush()
@@ -359,9 +396,10 @@ class ChatReplSession:
                     sys.stdout.flush()
 
                     full_reply = "".join(full_content_chunks).strip() or data.get("text", "")
-                    thinking_text = scrubber.get_full_thinking()
-                    if thinking_text:
-                        self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time)
+                    if not thinking_rendered:
+                        thinking_text = "".join(full_thinking_chunks) or scrubber.get_full_thinking()
+                        if thinking_text:
+                            self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time or (time.time() - t0))
 
                     self.history.append({"sender": "agent", "text": full_reply})
 
@@ -406,14 +444,23 @@ class ChatReplSession:
         self.renderer.render_agent_header(f"{model} (local)")
 
         full_content_chunks: List[str] = []
+        full_thinking_chunks: List[str] = []
+        thinking_rendered = False
         tokens_out_est = 0
 
         # Stream callback for local engine
         def _token_push(token: str):
-            nonlocal tokens_out_est
+            nonlocal tokens_out_est, thinking_rendered
             tokens_out_est += 1
             think_part, content_part = scrubber.process_chunk(token)
+            if think_part:
+                full_thinking_chunks.append(think_part)
             if content_part:
+                if not thinking_rendered and (full_thinking_chunks or scrubber.get_full_thinking()):
+                    thinking_rendered = True
+                    th_text = "".join(full_thinking_chunks) or scrubber.get_full_thinking()
+                    self.renderer.render_thinking_card(th_text, scrubber.elapsed_time or (time.time() - t0))
+
                 full_content_chunks.append(content_part)
                 sys.stdout.write(content_part)
                 sys.stdout.flush()
@@ -439,9 +486,10 @@ class ChatReplSession:
             sys.stdout.flush()
 
             final_text = reply_text if reply_text else "".join(full_content_chunks).strip()
-            thinking_text = scrubber.get_full_thinking()
-            if thinking_text:
-                self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time)
+            if not thinking_rendered:
+                thinking_text = "".join(full_thinking_chunks) or scrubber.get_full_thinking()
+                if thinking_text:
+                    self.renderer.render_thinking_card(thinking_text, scrubber.elapsed_time or (time.time() - t0))
 
             self.history.append({"sender": "agent", "text": final_text})
 

@@ -44,6 +44,23 @@ def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
     return origin in allowed
 
 
+@router.post("/api/ws/ticket", tags=["WebSocket"])
+@require_role(Role.VIEWER)
+async def create_ws_ticket(request: Request):
+    """Generate an ephemeral, single-use ticket for secure WebSocket connection."""
+    from logging_observability.dashboard.ws_ticket import get_ws_ticket_manager
+    manager = get_ws_ticket_manager()
+    role_val = getattr(request.state, "role", Role.VIEWER)
+    role_str = role_val.value if isinstance(role_val, Role) else str(role_val)
+    ticket = manager.create_ticket(role=role_str)
+    return {
+        "status": "success",
+        "ticket": ticket,
+        "expires_in_seconds": 30,
+        "role": role_str,
+    }
+
+
 @router.websocket("/ws/live-feed")
 async def websocket_live_feed(websocket: WebSocket):
     """Real-time WebSocket stream untuk push updates tick, posisi, dan activity logs with auth verification."""
@@ -55,26 +72,37 @@ async def websocket_live_feed(websocket: WebSocket):
         await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
         return
 
-    token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
-    auth_header = websocket.headers.get("authorization", "")
-    bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
-    client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+    from logging_observability.dashboard.ws_ticket import get_ws_ticket_manager
+    ticket_mgr = get_ws_ticket_manager()
 
     role = None
     authenticated = False
 
-    if token_param:
-        logger.warning("[Dashboard WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use initial handshake message {'type': 'authenticate', 'token': '...'}")
+    ticket_param = websocket.query_params.get("ticket")
+    if ticket_param:
+        ticket_payload = ticket_mgr.validate_and_consume(ticket_param)
+        if ticket_payload:
+            role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+            authenticated = True
 
-    try:
-        role = resolve_role(str(client_key), is_localhost=is_localhost)
-        authenticated = True
-    except PermissionError:
-        if client_key:
-            logger.warning(f"[Dashboard WS] Unauthorized connection attempt from {client_host}")
-            await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
-            return
-        authenticated = False
+    if not authenticated:
+        token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
+        auth_header = websocket.headers.get("authorization", "")
+        bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+        client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+
+        if token_param:
+            logger.warning("[Dashboard WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message.")
+
+        try:
+            role = resolve_role(str(client_key), is_localhost=is_localhost)
+            authenticated = True
+        except PermissionError:
+            if client_key:
+                logger.warning(f"[Dashboard WS] Unauthorized connection attempt from {client_host}")
+                await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                return
+            authenticated = False
 
     await websocket.accept()
 
@@ -83,9 +111,18 @@ async def websocket_live_feed(websocket: WebSocket):
             raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
             auth_msg = json.loads(raw_auth)
             if auth_msg.get("type") == "authenticate":
-                token = auth_msg.get("token") or auth_msg.get("api_key") or ""
-                role = resolve_role(str(token), is_localhost=is_localhost)
-                authenticated = True
+                if auth_msg.get("ticket"):
+                    ticket_payload = ticket_mgr.validate_and_consume(auth_msg["ticket"])
+                    if ticket_payload:
+                        role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        authenticated = True
+                    else:
+                        await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        return
+                else:
+                    token = auth_msg.get("token") or auth_msg.get("api_key") or ""
+                    role = resolve_role(str(token), is_localhost=is_localhost)
+                    authenticated = True
             else:
                 await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
                 return
@@ -235,12 +272,23 @@ class TokenCoalescingBuffer:
         self._last_flush: float = 0.0
         self.has_streamed: bool = False
         self.scrubber: Optional[StatefulStreamScrubber] = StatefulStreamScrubber() if scrub else None
+        self._last_thought_idx: int = 0
 
     async def push(self, token: str):
         if not token:
             return
         if self.scrubber is not None:
             token = self.scrubber.process_delta(token)
+            curr_thought_len = len(self.scrubber._accumulated_thinking)
+            if curr_thought_len > self._last_thought_idx:
+                new_parts = self.scrubber._accumulated_thinking[self._last_thought_idx:]
+                self._last_thought_idx = curr_thought_len
+                thought_str = "".join(new_parts)
+                if thought_str:
+                    try:
+                        await self.websocket.send_json({"type": "thought_delta", "text": thought_str})
+                    except Exception:
+                        pass
             if not token:
                 return
         self.has_streamed = True
@@ -298,26 +346,37 @@ async def websocket_agent_chat(websocket: WebSocket):
         await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
         return
 
-    token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
-    auth_header = websocket.headers.get("authorization", "")
-    bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
-    client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+    from logging_observability.dashboard.ws_ticket import get_ws_ticket_manager
+    ticket_mgr = get_ws_ticket_manager()
 
     role = None
     authenticated = False
 
-    if token_param:
-        logger.warning("[AgentChat WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use initial handshake message {'type': 'authenticate', 'token': '...'}")
+    ticket_param = websocket.query_params.get("ticket")
+    if ticket_param:
+        ticket_payload = ticket_mgr.validate_and_consume(ticket_param)
+        if ticket_payload:
+            role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+            authenticated = True
 
-    try:
-        role = resolve_role(str(client_key), is_localhost=is_localhost)
-        authenticated = True
-    except PermissionError as e:
-        if client_key:
-            logger.warning(f"[AgentChat WS] Unauthorized attempt from {client_host}: {e}")
-            await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
-            return
-        authenticated = False
+    if not authenticated:
+        token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
+        auth_header = websocket.headers.get("authorization", "")
+        bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+        client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+
+        if token_param:
+            logger.warning("[AgentChat WS] DeprecationWarning: Query parameter auth ('?token=...') is deprecated. Use ephemeral ticket or handshake authenticate message.")
+
+        try:
+            role = resolve_role(str(client_key), is_localhost=is_localhost)
+            authenticated = True
+        except PermissionError as e:
+            if client_key:
+                logger.warning(f"[AgentChat WS] Unauthorized attempt from {client_host}: {e}")
+                await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                return
+            authenticated = False
 
     await websocket.accept()
 
@@ -326,9 +385,18 @@ async def websocket_agent_chat(websocket: WebSocket):
             raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
             auth_msg = json.loads(raw_auth)
             if auth_msg.get("type") == "authenticate":
-                token = auth_msg.get("token") or auth_msg.get("api_key") or ""
-                role = resolve_role(str(token), is_localhost=is_localhost)
-                authenticated = True
+                if auth_msg.get("ticket"):
+                    ticket_payload = ticket_mgr.validate_and_consume(auth_msg["ticket"])
+                    if ticket_payload:
+                        role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+                        authenticated = True
+                    else:
+                        await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        return
+                else:
+                    token = auth_msg.get("token") or auth_msg.get("api_key") or ""
+                    role = resolve_role(str(token), is_localhost=is_localhost)
+                    authenticated = True
             else:
                 await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
                 return
@@ -694,6 +762,7 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
             while not pty_session.is_closed:
                 try:
                     data = await websocket.receive_text()
+                    await pty_session.write_input(data)
                     responses = pty_session.append_output(data)
                     for resp in responses:
                         await websocket.send_bytes(resp)
@@ -704,11 +773,22 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
                     break
 
         async def _flusher():
-            while not pty_session.is_closed:
-                await asyncio.sleep(0.05)
-                buffered = pty_session.drain_output()
-                if buffered:
-                    await websocket.send_text(buffered)
+            # If real subprocess is attached, stream its stdout chunks
+            if pty_session.process and pty_session.process.stdout:
+                while not pty_session.is_closed:
+                    try:
+                        chunk = await pty_session.process.stdout.read(1024)
+                        if not chunk:
+                            break
+                        await websocket.send_text(chunk.decode("utf-8", errors="replace"))
+                    except Exception:
+                        break
+            else:
+                while not pty_session.is_closed:
+                    await asyncio.sleep(0.05)
+                    buffered = pty_session.drain_output()
+                    if buffered:
+                        await websocket.send_text(buffered)
 
         await asyncio.gather(_receiver(), _flusher(), return_exceptions=True)
     except Exception as e:

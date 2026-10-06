@@ -210,6 +210,26 @@ class ChatCommandRouter:
                 action_payload={"type": "approval_response", "action_id": target_id, "decision": "deny"},
             )
 
+        if cmd == "/mode":
+            await self._handle_mode_command(arg)
+            return CommandResult(handled=True)
+
+        if cmd == "/close":
+            await self._handle_close_command(arg)
+            return CommandResult(handled=True)
+
+        if cmd == "/be":
+            await self._handle_be_command(arg)
+            return CommandResult(handled=True)
+
+        if cmd in ("/unsuspend", "/resume"):
+            await self._handle_unsuspend_command()
+            return CommandResult(handled=True)
+
+        if cmd == "/cycle":
+            await self._handle_cycle_command(arg)
+            return CommandResult(handled=True)
+
         if cmd == "/export":
             self._handle_export(arg, history_records or [])
             return CommandResult(handled=True)
@@ -247,6 +267,11 @@ class ChatCommandRouter:
             ("/theme", "[theme_name]", "Switch UI color palette (retro_vintage, cyberpunk_neon, etc.)"),
             ("/status", "None", "Display live system health, DB connection & MT5 status"),
             ("/positions", "None", "List current open trading positions with PnL & targets"),
+            ("/mode", "[paper | live]", "Inspect or toggle trading desk execution mode"),
+            ("/close", "[ticket | all | symbol]", "Close specific position ticket, symbol or all positions"),
+            ("/be", "[ticket | all]", "Move stop loss to breakeven for ticket or all profitable trades"),
+            ("/unsuspend", "None", "Resume trading operations and clear emergency kill-switch / pause"),
+            ("/cycle", "[symbol?]", "Trigger manual analysis & trading cycle immediately"),
             ("/allow", "[action_id?]", "Authorize proposed trade execution (single-trade)"),
             ("/session", "[action_id?]", "Grant 4-hour trade execution window for active session"),
             ("/deny", "[action_id?]", "Reject proposed trade execution"),
@@ -546,4 +571,113 @@ class ChatCommandRouter:
                 self.renderer.render_notice("Usage: /cron [list | add <name> <expr> <prompt> | remove <name>]", level="info")
         except Exception as exc:
             self.renderer.render_notice(f"Error managing cron schedules: {exc}", level="error")
+
+    async def _post_api(self, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
+        """Send HTTP POST request to dashboard API."""
+        url = f"{self.api_url}{endpoint}"
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4.0)) as session:
+                async with session.post(url, json=payload or {}, headers=headers) as resp:
+                    try:
+                        data = await resp.json()
+                        msg = data.get("message") or data.get("detail") or f"HTTP {resp.status}"
+                    except Exception:
+                        msg = await resp.text() or f"HTTP {resp.status}"
+                    return resp.status < 400, str(msg)
+        except Exception as e:
+            return False, str(e)
+
+    async def _handle_mode_command(self, arg: str) -> None:
+        """Inspect or toggle trading execution mode (PAPER vs LIVE)."""
+        target_mode = arg.strip().lower()
+        if target_mode in ("paper", "live"):
+            mode_upper = target_mode.upper()
+        elif not target_mode:
+            current = self.prompt_manager.active_mode.upper()
+            mode_upper = "LIVE" if current == "PAPER" else "PAPER"
+        else:
+            self.renderer.render_notice("Usage: /mode [paper | live]", level="warn")
+            return
+
+        self.prompt_manager.update_telemetry(mode=mode_upper)
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3.0)) as session:
+                await session.put(
+                    f"{self.api_url}/api/config/settings",
+                    json={"paper_trading": {"enabled": (mode_upper == "PAPER")}},
+                    headers=headers,
+                )
+        except Exception:
+            pass
+        self.renderer.render_notice(f"Trading execution mode switched to [bold]{mode_upper}[/].", level="success")
+
+    async def _handle_close_command(self, arg: str) -> None:
+        """Close specific position ticket, all positions, or positions for a symbol."""
+        target = arg.strip()
+        if not target:
+            self.renderer.render_notice("Usage: /close <ticket | all | SYMBOL>", level="warn")
+            return
+
+        if target.lower() == "all":
+            ok, msg = await self._post_api("/api/actions/close-batch", {"reason": "Manual close all from CLI"})
+            if ok:
+                self.renderer.render_notice("All active positions queued for closure.", level="success")
+            else:
+                self.renderer.render_notice(f"Failed to close all positions: {msg}", level="error")
+        elif target.isdigit():
+            ticket = int(target)
+            ok, msg = await self._post_api("/api/actions/close-position", {"ticket": ticket, "reason": "Manual close from CLI"})
+            if ok:
+                self.renderer.render_notice(f"Position ticket #{ticket} closed successfully.", level="success")
+            else:
+                self.renderer.render_notice(f"Failed to close ticket #{ticket}: {msg}", level="error")
+        else:
+            symbol = target.upper()
+            ok, msg = await self._post_api(f"/api/actions/kill-symbol/{symbol}", {})
+            if ok:
+                self.renderer.render_notice(f"All positions for {symbol} liquidated.", level="success")
+            else:
+                self.renderer.render_notice(f"Failed to close positions for {symbol}: {msg}", level="error")
+
+    async def _handle_be_command(self, arg: str) -> None:
+        """Apply breakeven stop loss for ticket or all profitable positions."""
+        target = arg.strip()
+        if not target or target.lower() == "all":
+            ok, msg = await self._post_api("/api/actions/bulk-breakeven", {"only_profit": True})
+            if ok:
+                self.renderer.render_notice("Bulk breakeven applied to all profitable positions.", level="success")
+            else:
+                self.renderer.render_notice(f"Bulk breakeven failed: {msg}", level="error")
+        elif target.isdigit():
+            ticket = int(target)
+            ok, msg = await self._post_api(f"/api/positions/{ticket}/breakeven", {})
+            if ok:
+                self.renderer.render_notice(f"Stop loss moved to breakeven for ticket #{ticket}.", level="success")
+            else:
+                self.renderer.render_notice(f"Breakeven failed for ticket #{ticket}: {msg}", level="error")
+        else:
+            self.renderer.render_notice("Usage: /be [ticket | all]", level="warn")
+
+    async def _handle_unsuspend_command(self) -> None:
+        """Resume trading operations and clear emergency kill/pause flags."""
+        ok, msg = await self._post_api("/api/actions/resume", {})
+        if ok:
+            self.renderer.render_notice("Trading desk resumed. Emergency pause/kill flags cleared.", level="success")
+        else:
+            self.renderer.render_notice(f"Failed to resume trading desk: {msg}", level="error")
+
+    async def _handle_cycle_command(self, arg: str) -> None:
+        """Trigger immediate analysis and trading cycle."""
+        symbol = arg.strip().upper() if arg.strip() else None
+        payload: Dict[str, Any] = {"force": True, "context": "Triggered via CLI /cycle"}
+        if symbol:
+            payload["symbol"] = symbol
+        ok, msg = await self._post_api("/api/actions/trigger-cycle", payload)
+        if ok:
+            sym_desc = f" for {symbol}" if symbol else ""
+            self.renderer.render_notice(f"Analysis & trading cycle triggered{sym_desc}.", level="success")
+        else:
+            self.renderer.render_notice(f"Failed to trigger cycle: {msg}", level="error")
 

@@ -423,8 +423,21 @@ class TelegramBot:
 
     async def _cmd_start(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
-        if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        name = (update.effective_user.first_name if update.effective_user else None) or "Trader"
+        user = update.effective_user
+        name = (user.first_name if user else None) or "Trader"
+        if not self._is_authorized(update):
+            uid = user.id if user else "N/A"
+            await update.message.reply_text(
+                f"Halo *{name}*!\n\n"
+                f"Selamat datang di *Monika Algorithmic Trading Desk*.\n"
+                f"Akun Telegram Anda (`{uid}`) belum terhubung dengan akun trading.\n\n"
+                f"Untuk menghubungkan akun, silakan kirimkan perintah:\n"
+                f"`/pair` untuk membuat kode challenge atau `/pair <KODE_OTP>` untuk verifikasi.\n"
+                f"Kode OTP dapat diperoleh dari konsol CLI atau web dashboard admin.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
         await update.message.reply_text(
             f"[SALAM] Halo *{name}*!\n\n"
             f"Halo! Saya *Monika* — MT5 Trading Agent otonom berbasis multi-agent LLM.\n\n"
@@ -691,8 +704,42 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        text = await self._build_positions_text()
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        from database.db import get_session
+        from database.models import Position
+        from sqlalchemy import select
+        from telegram_bot.message_formatter import format_positions_slip
+
+        positions = []
+        try:
+            async with get_session() as session:
+                positions = (await session.execute(
+                    select(Position).where(Position.status == "open")
+                    .order_by(Position.opened_at.desc())
+                )).scalars().all()
+        except Exception as e:
+            await update.message.reply_text(f"[ GAGAL ] Error: {e}")
+            return
+
+        text = format_positions_slip(positions)
+        reply_markup = None
+        if positions and self._is_admin(update):
+            keyboard = []
+            for p in positions[:8]:
+                ticket = getattr(p, "mt5_ticket", getattr(p, "ticket", None))
+                if ticket:
+                    keyboard.append([
+                        InlineKeyboardButton(f"❌ Tutup #{ticket}", callback_data=f"close:{ticket}"),
+                        InlineKeyboardButton(f"🛡️ Set BE #{ticket}", callback_data=f"be:{ticket}"),
+                    ])
+            if len(positions) > 1:
+                keyboard.append([
+                    InlineKeyboardButton("🛡️ Bulk BE (Semua Profit)", callback_data="bulk_be"),
+                    InlineKeyboardButton("🚨 Tutup Semua Posisi", callback_data="closeall"),
+                ])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
 
     async def _cmd_brief(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -3253,6 +3300,33 @@ class TelegramBot:
                 await query.edit_message_text("[PERINGATAN] ExecutionService tidak terhubung.")
             return
 
+        if data.startswith("be:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True)
+                return
+            ticket = int(data.split(":", 1)[1])
+            await query.edit_message_text(f"[MEMPROSES] Menggeser Stop Loss #{ticket} ke breakeven...")
+            from execution.service.position_synchronizer import PositionSynchronizer
+            sync = PositionSynchronizer(self.settings)
+            res = await sync.apply_immediate_breakeven(ticket=ticket)
+            if res.get("status") == "success":
+                await query.edit_message_text(f"[BERHASIL] SL #{ticket} dipindahkan ke breakeven.")
+            else:
+                await query.edit_message_text(f"[GAGAL] Gagal breakeven #{ticket}: {res.get('message', 'Unknown')}")
+            return
+
+        if data == "bulk_be":
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True)
+                return
+            await query.edit_message_text("[MEMPROSES] Menggeser seluruh posisi profit ke breakeven...")
+            from execution.service.position_synchronizer import PositionSynchronizer
+            sync = PositionSynchronizer(self.settings)
+            res = await sync.apply_immediate_breakeven(only_profit=True)
+            cnt = res.get("breakeven_count", 0)
+            await query.edit_message_text(f"[BERHASIL] Bulk Breakeven diterapkan pada {cnt} posisi.")
+            return
+
         if data.startswith("confirm:"):
             if not self._is_admin(update):
                 await query.answer("[AKSES DITOLAK] Action confirmation only permitted for Admin.", show_alert=True)
@@ -4353,6 +4427,25 @@ class TelegramBot:
             html_text = tearsheet.to_telegram_html()
             for chunk in self._chunk_text(html_text, is_html=True):
                 await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+
+            # Generate and send graphical equity curve snapshot
+            try:
+                from utils.chart_generator import generate_equity_curve_chart
+                trade_records = []
+                for t in trades:
+                    t_time = getattr(t, "closed_at", getattr(t, "opened_at", None))
+                    pnl_val = float(getattr(t, "pnl", getattr(t, "realized_pnl", 0.0)) or 0.0)
+                    trade_records.append({"time": t_time, "pnl": pnl_val})
+                if trade_records:
+                    chart_buf, _ = generate_equity_curve_chart(
+                        trade_records,
+                        title=f"Portfolio Performance & Drawdown ({days}D)",
+                        save_to_disk=False,
+                    )
+                    chart_buf.seek(0)
+                    await update.message.reply_photo(photo=chart_buf, caption=f"📈 Equity Curve & Drawdown Profile ({days}D)")
+            except Exception as chart_err:
+                logger.debug(f"Equity chart generation omitted: {chart_err}")
         except Exception as e:
             logger.error(f"Error executing /tearsheet: {e}")
             await update.message.reply_text(f"[GAGAL] Error generating tearsheet: {e}")

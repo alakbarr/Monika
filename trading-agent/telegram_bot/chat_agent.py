@@ -766,6 +766,15 @@ class ChatAgent:
                     status_callback=status_callback,
                 )
 
+            if token_callback and not is_action_query and not image_bytes:
+                return await self._handle_token_callback_stream(
+                    user_message=text,
+                    token_callback=token_callback,
+                    session_id=session_id,
+                    typing_callback=typing_callback,
+                    status_callback=status_callback,
+                )
+
             return await self._handle_internal(
                 user_message=text,
                 typing_callback=typing_callback,
@@ -861,6 +870,80 @@ class ChatAgent:
                 )
 
             final_text = await self._stream_response(update, context, generator)
+            await self._save_message(session, "assistant", final_text, session_id=session_id)
+            self._last_turn_streamed = True
+            self.was_last_turn_streamed = True
+            return final_text, None
+
+    async def _handle_token_callback_stream(
+        self,
+        user_message: str,
+        token_callback: Any,
+        session_id: Optional[str] = None,
+        typing_callback: Optional[Any] = None,
+        status_callback: Optional[Any] = None,
+    ) -> tuple[str, Optional[PendingAction]]:
+        """Stream real LLM tokens to WebSocket/caller callback with thought tag handling."""
+        async with get_session() as session:
+            history = await self._load_history(session, session_id=session_id)
+            await self._save_message(session, "user", user_message, session_id=session_id)
+            system_prompt = await self._build_system_prompt(session)
+
+            preference = self._detect_model_preference(user_message)
+            clean_message = user_message
+            if preference == 'deep_research':
+                clean_message = re.sub(r'^/research\s*', '', user_message, flags=re.IGNORECASE)
+            elif preference in ('tier_lite', 'gemini_lite'):
+                preference = 'tier_lite'
+                clean_message = re.sub(r'^/(fast|quick)\s+', '', user_message, flags=re.IGNORECASE)
+            elif preference in ('tier_medium', 'groq_medium'):
+                preference = 'tier_medium'
+                clean_message = re.sub(r'^/(medium|mid)\s+', '', user_message, flags=re.IGNORECASE)
+            elif preference in ('tier_deep', 'claude_sonnet'):
+                preference = 'tier_deep'
+                clean_message = re.sub(r'^/(analyze|analisis)\s+', '', user_message, flags=re.IGNORECASE)
+
+            if preference == 'auto':
+                complexity = await self._classify_query_complexity(clean_message)
+                if complexity == 'deep_research':
+                    preference = 'deep_research'
+                elif complexity == 'complex':
+                    preference = 'tier_deep'
+                else:
+                    preference = 'tier_lite'
+
+            if preference == 'deep_research':
+                return await self._handle_internal(
+                    user_message=clean_message,
+                    session_id=session_id,
+                    typing_callback=typing_callback,
+                    status_callback=status_callback,
+                )
+
+            system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
+
+            if preference in ("tier_deep", "claude_sonnet"):
+                generator = await self._run_with_claude(
+                    system_prompt, history, clean_message, stream=True
+                )
+            else:
+                generator = await self._run_with_gemini(
+                    system_prompt, history, clean_message, stream=True
+                )
+
+            buffer = []
+            async for delta in generator:
+                text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
+                buffer.append(text_chunk)
+                if token_callback:
+                    res = token_callback(text_chunk)
+                    if asyncio.iscoroutine(res):
+                        await res
+
+            final_text = "".join(buffer)
+            if not final_text.strip():
+                final_text = "[PERINGATAN] Tidak ada respons yang dihasilkan."
+
             await self._save_message(session, "assistant", final_text, session_id=session_id)
             self._last_turn_streamed = True
             self.was_last_turn_streamed = True

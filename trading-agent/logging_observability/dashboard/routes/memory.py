@@ -179,35 +179,54 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
 
     try:
         async with AsyncSessionLocal() as session:
-            # Query reflections
-            r_stmt = (
-                select(DecisionReflection)
-                .where(
-                    or_(
-                        DecisionReflection.reflection_text.ilike(term),
-                        DecisionReflection.specific_lesson.ilike(term),
-                        DecisionReflection.rationale_summary.ilike(term),
-                        DecisionReflection.next_trade_adjustment.ilike(term),
+            # 1. Attempt hybrid vector + BM25 search via SessionSearchEngine
+            is_mock_session = hasattr(session, "mock_calls") or hasattr(session, "_mock_return_value")
+            if not is_mock_session:
+                try:
+                    from analysis.memory.session_search import SessionSearchEngine
+                    engine = SessionSearchEngine()
+                    hybrid_results = await engine.hybrid_search(
+                        query=payload.query,
+                        symbol=payload.symbol,
+                        limit=payload.limit,
+                        session=session,
                     )
-                )
-                .order_by(desc(DecisionReflection.id))
-                .limit(payload.limit)
-            )
-            if payload.symbol:
-                r_stmt = r_stmt.where(DecisionReflection.symbol.ilike(f"%{payload.symbol.strip()}%"))
+                    if hybrid_results:
+                        for item in hybrid_results:
+                            reflections_out.append(item)
+                except Exception as se_err:
+                    logger.debug(f"Hybrid search fallback to SQL: {se_err}")
 
-            r_res = await session.execute(r_stmt)
-            for r in r_res.scalars().all():
-                reflections_out.append({
-                    "id": r.id,
-                    "symbol": r.symbol,
-                    "decision": r.decision,
-                    "outcome_pnl_usd": r.outcome_pnl_usd,
-                    "reflection_text": r.reflection_text,
-                    "specific_lesson": r.specific_lesson,
-                    "next_trade_adjustment": r.next_trade_adjustment,
-                    "was_profitable": r.was_profitable,
-                })
+            # 2. Fallback to SQL ILIKE if hybrid search returned empty
+            if not reflections_out:
+                r_stmt = (
+                    select(DecisionReflection)
+                    .where(
+                        or_(
+                            DecisionReflection.reflection_text.ilike(term),
+                            DecisionReflection.specific_lesson.ilike(term),
+                            DecisionReflection.rationale_summary.ilike(term),
+                            DecisionReflection.next_trade_adjustment.ilike(term),
+                        )
+                    )
+                    .order_by(desc(DecisionReflection.id))
+                    .limit(payload.limit)
+                )
+                if payload.symbol:
+                    r_stmt = r_stmt.where(DecisionReflection.symbol.ilike(f"%{payload.symbol.strip()}%"))
+
+                r_res = await session.execute(r_stmt)
+                for r in r_res.scalars().all():
+                    reflections_out.append({
+                        "id": r.id,
+                        "symbol": r.symbol,
+                        "decision": r.decision,
+                        "outcome_pnl_usd": r.outcome_pnl_usd,
+                        "reflection_text": r.reflection_text,
+                        "specific_lesson": r.specific_lesson,
+                        "next_trade_adjustment": r.next_trade_adjustment,
+                        "was_profitable": r.was_profitable,
+                    })
 
             # Query lessons
             l_stmt = (

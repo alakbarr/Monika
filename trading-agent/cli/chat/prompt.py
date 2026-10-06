@@ -82,26 +82,25 @@ class ChatPromptManager:
         self.completer = ChatCommandCompleter()
         self.key_bindings = self._create_key_bindings()
 
-        # Prompt session initialization with headless fallback support
-        session_factory = None
+        # Prompt session initialization with robust fallback
         try:
-            import cli.tui_chat
-            session_factory = getattr(cli.tui_chat, "_get_prompt_session", None)
+            self.session = PromptSession(
+                history=FileHistory(self.history_path),
+                completer=self.completer,
+                key_bindings=self.key_bindings,
+                style=self._create_style(),
+                bottom_toolbar=self._get_bottom_toolbar,
+                multiline=False,  # Single-line by default; multiline enabled via Shift+Enter/Alt+Enter
+                complete_while_typing=True,
+            )
         except Exception:
-            session_factory = None
-
-        if session_factory is not None:
-            self.session = session_factory()
-        else:
             try:
+                from prompt_toolkit.history import InMemoryHistory
                 self.session = PromptSession(
-                    history=FileHistory(self.history_path),
+                    history=InMemoryHistory(),
                     completer=self.completer,
                     key_bindings=self.key_bindings,
                     style=self._create_style(),
-                    bottom_toolbar=self._get_bottom_toolbar,
-                    multiline=False,  # Single-line by default; multiline enabled via Shift+Enter/Alt+Enter
-                    complete_while_typing=True,
                 )
             except Exception:
                 self.session = None
@@ -167,6 +166,11 @@ class ChatPromptManager:
                 buf.complete_state = None
             else:
                 buf.validate_and_handle()
+
+        # Ctrl+G: External $EDITOR handoff
+        @kb.add("c-g")
+        def _open_external_editor(event):
+            event.current_buffer.open_in_editor()
 
         # Ctrl+C handler: Interrupt generation or reset buffer
         @kb.add("c-c")

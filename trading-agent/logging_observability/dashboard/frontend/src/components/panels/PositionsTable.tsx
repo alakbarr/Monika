@@ -11,7 +11,7 @@ import type { Position } from '../../types/api';
 
 import { sounds } from '../../lib/soundEffects';
 
-type SortField = 'symbol' | 'direction' | 'volume' | 'entry_price' | 'sl' | 'tp' | 'pnl' | 'opened_at';
+type SortField = 'symbol' | 'direction' | 'volume' | 'entry_price' | 'price_current' | 'sl' | 'tp' | 'swap' | 'pnl' | 'opened_at';
 
 interface ColumnDef {
   key: SortField;
@@ -22,9 +22,11 @@ const COLUMNS: ColumnDef[] = [
   { key: 'symbol', label: 'Symbol' },
   { key: 'direction', label: 'Side' },
   { key: 'volume', label: 'Volume' },
-  { key: 'entry_price', label: 'Entry Price' },
+  { key: 'entry_price', label: 'Entry' },
+  { key: 'price_current', label: 'Market' },
   { key: 'sl', label: 'Stop Loss' },
   { key: 'tp', label: 'Take Profit' },
+  { key: 'swap', label: 'Swap' },
   { key: 'pnl', label: 'P&L' },
   { key: 'opened_at', label: 'Opened' },
 ];
@@ -36,8 +38,12 @@ export const PositionsTable: React.FC = () => {
   const [showClosed, setShowClosed] = useState(false);
   const [sortField, setSortField] = useState<SortField>('opened_at');
   const [sortAsc, setSortAsc] = useState(false);
+  const [pnlUnit, setPnlUnit] = useState<'usd' | 'pips' | 'r'>('usd');
   const [closingPos, setClosingPos] = useState<Position | null>(null);
+  const [closePercentage, setClosePercentage] = useState<number>(100);
+  const [closeVolume, setCloseVolume] = useState<string>('');
   const [isClosing, setIsClosing] = useState(false);
+  const [isBulkBeRunning, setIsBulkBeRunning] = useState(false);
   const [editingPos, setEditingPos] = useState<Position | null>(null);
   const [editSl, setEditSl] = useState('');
   const [editTp, setEditTp] = useState('');
@@ -93,18 +99,58 @@ export const PositionsTable: React.FC = () => {
     }
   };
 
+  const handleBreakeven = async (pos: Position) => {
+    const ticket = pos.mt5_ticket;
+    if (!ticket) {
+      setActionMsg(`Position #${pos.id} has no MT5 ticket.`);
+      return;
+    }
+    sounds.playClick('toggle');
+    try {
+      await api.breakevenPosition(ticket);
+      setActionMsg(`Moved SL to Break-Even for ${pos.symbol} (#${ticket}).`);
+      await fetchAll();
+    } catch (err: any) {
+      setActionMsg(`Failed to set Break-Even: ${err.message}`);
+    }
+  };
+
+  const handleBulkBreakeven = async () => {
+    setIsBulkBeRunning(true);
+    sounds.playClick('toggle');
+    try {
+      const res = await api.bulkBreakeven(true);
+      setActionMsg(res.message || 'Set Break-Even on profitable positions.');
+      await fetchAll();
+    } catch (err: any) {
+      setActionMsg(`Bulk Break-Even failed: ${err.message}`);
+    } finally {
+      setIsBulkBeRunning(false);
+    }
+  };
+
+  const handleOpenClose = (pos: Position) => {
+    sounds.playClick('typewriter');
+    setClosingPos(pos);
+    setClosePercentage(100);
+    setCloseVolume(String(pos.volume));
+  };
+
   const handleConfirmClose = async () => {
     if (!closingPos) return;
     setIsClosing(true);
     setActionMsg(null);
     try {
       sounds.playClick('toggle');
+      const volNum = closeVolume ? Number(closeVolume) : undefined;
       await api.closePosition({
         ticket: closingPos.mt5_ticket ?? undefined,
         position_id: closingPos.id,
-        reason: 'Manual close from Dashboard',
+        percentage: closePercentage < 100 ? closePercentage : undefined,
+        volume: volNum && volNum < closingPos.volume ? volNum : undefined,
+        reason: closePercentage < 100 ? `Manual partial close (${closePercentage}%)` : 'Manual close from Dashboard',
       });
-      setActionMsg(`Closed position ${closingPos.symbol} (#${closingPos.mt5_ticket || closingPos.id}) successfully.`);
+      setActionMsg(`Closed ${closePercentage}% of position ${closingPos.symbol} (#${closingPos.mt5_ticket || closingPos.id}) successfully.`);
       await fetchAll();
     } catch (err: any) {
       setActionMsg(`Failed to close position: ${err.message}`);
@@ -135,6 +181,60 @@ export const PositionsTable: React.FC = () => {
           <Badge variant={open.length > 0 ? 'active' : 'neutral'}>
             {open.length} POSITIONS
           </Badge>
+
+          {/* P&L Unit Selector */}
+          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+            {(['usd', 'pips', 'r'] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => {
+                  sounds.playClick('toggle');
+                  setPnlUnit(u);
+                }}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: pnlUnit === u ? 700 : 500,
+                  background: pnlUnit === u ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                  color: pnlUnit === u ? '#1C1917' : 'var(--color-ink-soft)',
+                  border: 'none',
+                  borderRight: u !== 'r' ? '1.5px solid var(--color-rule)' : 'none',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {u === 'usd' ? '$ USD' : u.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Bulk Break-Even */}
+          {open.length > 0 && (
+            <button
+              type="button"
+              disabled={isBulkBeRunning}
+              onClick={handleBulkBreakeven}
+              style={{
+                padding: '3px 9px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 700,
+                background: 'var(--color-paper-raised)',
+                color: 'var(--color-ink)',
+                border: '1.5px solid var(--color-rule)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '1px 1px 0 var(--color-rule)',
+                cursor: 'pointer',
+              }}
+              title="Set Break-Even on all currently profitable positions"
+            >
+              {isBulkBeRunning ? 'SETTING...' : '🛡️ BULK BE'}
+            </button>
+          )}
+
+          {/* Active vs Historical */}
           <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
             <button
               type="button"
@@ -273,8 +373,10 @@ export const PositionsTable: React.FC = () => {
                   pos={pos}
                   isEven={i % 2 === 1}
                   showClosed={showClosed}
-                  onCloseClick={(target) => setClosingPos(target)}
+                  pnlUnit={pnlUnit}
+                  onCloseClick={(target) => handleOpenClose(target)}
                   onEditClick={(target) => handleOpenEdit(target)}
+                  onBreakevenClick={(target) => handleBreakeven(target)}
                 />
               ))}
             </tbody>
@@ -343,22 +445,73 @@ export const PositionsTable: React.FC = () => {
       {/* Close Position Confirmation Modal */}
       <ConfirmModal
         isOpen={Boolean(closingPos)}
-        title="CLOSE POSITION ORDER"
+        title={closePercentage < 100 ? `PARTIAL CLOSE (${closePercentage}%)` : "CLOSE POSITION ORDER"}
         actionSummary={`CLOSE: ${closingPos?.symbol} (${closingPos?.direction?.toUpperCase()})`}
         details={
           closingPos && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-body-sm)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: 'var(--text-body-sm)' }}>
               <div><strong>Ticket:</strong> #{closingPos.mt5_ticket || closingPos.id}</div>
-              <div><strong>Volume:</strong> {fmt.lots(closingPos.volume)} lots</div>
+              <div><strong>Total Open Volume:</strong> {fmt.lots(closingPos.volume)} lots</div>
               <div><strong>Entry:</strong> {fmt.price(closingPos.entry_price, closingPos.symbol)}</div>
               <div><strong>Current Floating P&L:</strong> {closingPos.pnl !== null ? fmt.usd(closingPos.pnl) : '—'}</div>
-              <p style={{ margin: '8px 0 0', color: 'var(--color-ledger-red)', fontSize: 'var(--text-xs)' }}>
-                This will submit a market close order to MT5 and liquidate this ticket immediately.
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}>
+                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>PORTION:</span>
+                {[25, 50, 100].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setClosePercentage(pct);
+                      setCloseVolume(((closingPos.volume * pct) / 100).toFixed(2));
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-precision)',
+                      fontWeight: closePercentage === pct ? 700 : 500,
+                      background: closePercentage === pct ? 'var(--color-win-yellow)' : 'var(--color-paper)',
+                      color: closePercentage === pct ? '#1C1917' : 'var(--color-ink)',
+                      border: '1px solid var(--color-rule)',
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {pct}%
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>VOLUME TO CLOSE (LOTS):</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={closingPos.volume}
+                  value={closeVolume}
+                  onChange={(e) => setCloseVolume(e.target.value)}
+                  style={{
+                    padding: '6px 8px',
+                    fontFamily: 'var(--font-precision)',
+                    fontSize: 'var(--text-xs)',
+                    border: '1.5px solid var(--color-rule)',
+                    borderRadius: '2px',
+                    background: 'var(--color-paper)',
+                    color: 'var(--color-ink)',
+                  }}
+                />
+              </div>
+
+              <p style={{ margin: '4px 0 0', color: 'var(--color-ledger-red)', fontSize: 'var(--text-xs)' }}>
+                {closePercentage < 100
+                  ? `Submitting partial liquidation order for ${closeVolume || ((closingPos.volume * closePercentage) / 100).toFixed(2)} lots to MT5.`
+                  : 'This will submit a market close order to MT5 and liquidate this ticket immediately.'}
               </p>
             </div>
           )
         }
-        confirmLabel={isClosing ? "CLOSING..." : "CONFIRM CLOSE"}
+        confirmLabel={isClosing ? "CLOSING..." : (closePercentage < 100 ? `CLOSE ${closePercentage}%` : "CONFIRM CLOSE")}
         cancelLabel="KEEP OPEN"
         danger={true}
         onConfirm={handleConfirmClose}
@@ -368,17 +521,70 @@ export const PositionsTable: React.FC = () => {
   );
 };
 
+const renderPnl = (pos: Position, unit: 'usd' | 'pips' | 'r') => {
+  const pnlVal = pos.pnl ?? pos.floating_pnl ?? 0;
+  const isPos = pnlVal >= 0;
+
+  if (unit === 'usd') {
+    return (
+      <span style={{ color: isPos ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+        {isPos ? '▲ +' : '▼ '}
+        {fmt.usd(Math.abs(pnlVal))}
+      </span>
+    );
+  }
+
+  const isJpy = pos.symbol.toUpperCase().includes('JPY');
+  const isGold = pos.symbol.toUpperCase().includes('XAU');
+  const pipMultiplier = isJpy ? 100 : (isGold ? 10 : 10000);
+  const currentPrice = pos.price_current ?? pos.current_price ?? pos.entry_price;
+  const priceDiff = pos.direction === 'buy' ? (currentPrice - pos.entry_price) : (pos.entry_price - currentPrice);
+  const pips = priceDiff * pipMultiplier;
+
+  if (unit === 'pips') {
+    const pipsPositive = pips >= 0;
+    return (
+      <span style={{ color: pipsPositive ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+        {pipsPositive ? '▲ +' : '▼ '}
+        {Math.abs(pips).toFixed(1)} pips
+      </span>
+    );
+  }
+
+  // unit === 'r'
+  if (pos.sl && Math.abs(pos.entry_price - pos.sl) > 0) {
+    const riskDistance = Math.abs(pos.entry_price - pos.sl);
+    const rMultiple = priceDiff / riskDistance;
+    const rPos = rMultiple >= 0;
+    return (
+      <span style={{ color: rPos ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+        {rPos ? '▲ +' : '▼ '}
+        {Math.abs(rMultiple).toFixed(2)} R
+      </span>
+    );
+  }
+
+  return (
+    <span style={{ color: isPos ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+      {isPos ? '▲ +' : '▼ '}
+      {fmt.usd(Math.abs(pnlVal))}
+    </span>
+  );
+};
+
 const PositionRow: React.FC<{
   pos: Position;
   isEven: boolean;
   showClosed: boolean;
+  pnlUnit: 'usd' | 'pips' | 'r';
   onCloseClick: (pos: Position) => void;
   onEditClick: (pos: Position) => void;
-}> = ({ pos, isEven, showClosed, onCloseClick, onEditClick }) => {
+  onBreakevenClick: (pos: Position) => void;
+}> = ({ pos, isEven, showClosed, pnlUnit, onCloseClick, onEditClick, onBreakevenClick }) => {
   const slDist = pos.entry_price && pos.sl ? Math.abs(pos.entry_price - pos.sl) : null;
   const tpDist = pos.entry_price && pos.tp ? Math.abs(pos.entry_price - pos.tp) : null;
   const rr = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
-  const pnlIsPositive = pos.pnl !== null && pos.pnl >= 0;
+  const marketPrice = pos.price_current ?? pos.current_price ?? pos.entry_price;
 
   return (
     <tr
@@ -392,7 +598,12 @@ const PositionRow: React.FC<{
       }}
     >
       <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)' }}>
-        <div style={{ fontWeight: 'bold', color: 'var(--color-ink)' }}>{pos.symbol}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontWeight: 'bold', color: 'var(--color-ink)' }}>{pos.symbol}</span>
+          <Badge variant={pos.is_paper ? 'neutral' : 'active'}>
+            {pos.is_paper ? 'PAPER' : 'LIVE'}
+          </Badge>
+        </div>
         {pos.mt5_ticket && (
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
             #{pos.mt5_ticket}
@@ -410,28 +621,21 @@ const PositionRow: React.FC<{
       <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
         {fmt.price(pos.entry_price, pos.symbol)}
       </td>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
+        {fmt.price(marketPrice, pos.symbol)}
+      </td>
       <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ledger-red)' }}>
         {fmt.price(pos.sl, pos.symbol)}
       </td>
       <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ledger-green)' }}>
         {fmt.price(pos.tp, pos.symbol)}
       </td>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
+        {pos.swap !== undefined && pos.swap !== null ? fmt.usd(pos.swap) : '—'}
+      </td>
       <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)' }}>
-        <div
-          className="tabular-nums"
-          style={{
-            fontWeight: 'bold',
-            color: pos.pnl !== null ? (pnlIsPositive ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)') : 'var(--color-ink-soft)',
-          }}
-        >
-          {pos.pnl !== null ? (
-            <>
-              {pnlIsPositive ? '▲ +' : '▼ '}
-              {fmt.usd(Math.abs(pos.pnl))}
-            </>
-          ) : (
-            '—'
-          )}
+        <div className="tabular-nums" style={{ fontWeight: 'bold' }}>
+          {renderPnl(pos, pnlUnit)}
         </div>
         {rr && (
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
@@ -446,10 +650,29 @@ const PositionRow: React.FC<{
         <td style={{ padding: '6px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
           <button
             type="button"
+            onClick={() => onBreakevenClick(pos)}
+            style={{
+              padding: '2px 8px',
+              marginRight: '4px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              fontWeight: 'bold',
+              background: 'var(--color-paper-raised)',
+              color: 'var(--color-win-yellow)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+            title="Set Stop Loss to Break-Even (entry price)"
+          >
+            BE
+          </button>
+          <button
+            type="button"
             onClick={() => onEditClick(pos)}
             style={{
               padding: '2px 8px',
-              marginRight: '6px',
+              marginRight: '4px',
               fontSize: '11px',
               fontFamily: 'var(--font-precision)',
               fontWeight: 'bold',
@@ -477,7 +700,7 @@ const PositionRow: React.FC<{
               borderRadius: '2px',
               cursor: 'pointer',
             }}
-            title="Liquidate this open position immediately in MT5"
+            title="Liquidate or partially close this position"
           >
             CLOSE
           </button>
