@@ -850,13 +850,33 @@ class ChatAgent:
                 else:
                     preference = 'tier_lite'
 
-            if preference == 'deep_research':
-                return await self._handle_internal(
+            selected_tools = self._tool_router.route_tools_for_query(clean_message)
+            needs_tools = bool(selected_tools) or bool(
+                re.search(
+                    r'\b(posisi|order|orders|harga|price|chart|saldo|equity|balance|pnl|profit|loss|close|buy|sell|debat|analisis|analisa|setup|market|vix|dxy|cot|fedwatch|alpha|factor|factors)\b',
+                    clean_message,
+                    re.IGNORECASE,
+                )
+            )
+
+            if preference == 'deep_research' or needs_tools:
+                reply, pending = await self._handle_internal(
                     user_message=clean_message,
                     session_id=session_id,
                     typing_callback=typing_callback,
                     status_callback=status_callback,
                 )
+
+                async def _text_chunk_gen():
+                    chunk_size = 30
+                    for i in range(0, len(reply), chunk_size):
+                        yield reply[i:i + chunk_size]
+                        await asyncio.sleep(0.01)
+
+                streamed_res = await self._stream_response(update, context, _text_chunk_gen())
+                self._last_turn_streamed = True
+                self.was_last_turn_streamed = True
+                return (streamed_res or reply), pending
 
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
@@ -912,13 +932,31 @@ class ChatAgent:
                 else:
                     preference = 'tier_lite'
 
-            if preference == 'deep_research':
-                return await self._handle_internal(
+            selected_tools = self._tool_router.route_tools_for_query(clean_message)
+            needs_tools = bool(selected_tools) or bool(
+                re.search(
+                    r'\b(posisi|order|orders|harga|price|chart|saldo|equity|balance|pnl|profit|loss|close|buy|sell|debat|analisis|analisa|setup|market|vix|dxy|cot|fedwatch|alpha|factor|factors)\b',
+                    clean_message,
+                    re.IGNORECASE,
+                )
+            )
+
+            if preference == 'deep_research' or needs_tools:
+                reply, pending = await self._handle_internal(
                     user_message=clean_message,
                     session_id=session_id,
                     typing_callback=typing_callback,
                     status_callback=status_callback,
                 )
+                if token_callback:
+                    chunk_size = 30
+                    for i in range(0, len(reply), chunk_size):
+                        res = token_callback(reply[i:i + chunk_size])
+                        if asyncio.iscoroutine(res):
+                            await res
+                self._last_turn_streamed = True
+                self.was_last_turn_streamed = True
+                return reply, pending
 
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
@@ -955,80 +993,51 @@ class ChatAgent:
         context: Any,
         response_generator: Any,
     ) -> str:
-        """Stream LLM tokens via Telegram edit_message_text.
- 
-        Enforces prefix-stability (frame N is strict prefix of N+1).
-        Throttle edits to max 1 every 1200ms to respect Telegram rate limits.
-        Final message removes streaming cursor and applies full HTML sanitization.
-        """
-        import time
+        """Stream LLM tokens via OmnichannelStreamer with adaptive throttle, 3-strikes 429 flood control, and splitting."""
+        from gateway.omnichannel_streamer import OmnichannelStreamer
         from telegram_bot.sanitizer import sanitize_telegram_html
 
-        message = None
+        initial_msg: Optional[Any] = None
         if hasattr(update, "message") and update.message:
-            message = await update.message.reply_text("[PROSES] Thinking...")
+            try:
+                initial_msg = await update.message.reply_text("[PROSES] Thinking...")
+            except Exception:
+                pass
         elif hasattr(update, "reply_text"):
-            message = await update.reply_text("[PROSES] Thinking...")
+            try:
+                initial_msg = await update.reply_text("[PROSES] Thinking...")
+            except Exception:
+                pass
 
-        buffer = ""
-        last_edit = 0.0
+        async def _send_next_bubble(txt: str) -> Any:
+            display = sanitize_telegram_html(txt)
+            if hasattr(update, "message") and update.message:
+                return await update.message.reply_text(display, parse_mode="HTML")
+            elif hasattr(update, "reply_text"):
+                return await update.reply_text(display, parse_mode="HTML")
+            return None
+
+        async def _edit_bubble(msg: Any, txt: str) -> None:
+            display = sanitize_telegram_html(txt)
+            if len(display) <= 4096:
+                await msg.edit_text(display, parse_mode="HTML")
+
+        streamer = OmnichannelStreamer(
+            send_message_fn=_send_next_bubble,
+            edit_message_fn=_edit_bubble,
+            initial_interval=1.2,
+            max_interval=4.0,
+            max_chars_per_message=3850,
+        )
+        if initial_msg is not None:
+            streamer._active_message = initial_msg
 
         async for delta in response_generator:
             text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
-            buffer += text_chunk
-            now = time.monotonic()
-            if now - last_edit >= 1.2 and len(buffer) > 20:
-                if message:
-                    try:
-                        cursor_text = _sanitize_telegram_format(buffer) + " ▌"
-                        display = sanitize_telegram_html(cursor_text)
-                        if len(display) <= 4096:
-                            await message.edit_text(display, parse_mode="HTML")
-                            last_edit = now
-                    except RetryAfter as e:
-                        val = getattr(e, "retry_after", 1.2)
-                        retry_delay = float(val.total_seconds()) if hasattr(val, "total_seconds") else float(val)
-                        await asyncio.sleep(retry_delay)
-                        last_edit = time.monotonic()
-                    except BadRequest:
-                        pass
-                    except Exception as e:
-                        logger.debug(f"[ChatAgent] Stream edit error: {e}")
+            await streamer.feed_token(text_chunk)
 
-        # Final message: remove cursor, apply full HTML sanitization
-        final_clean = _sanitize_telegram_format(buffer)
-        if not final_clean.strip():
-            final_clean = "[PERINGATAN] Tidak ada respons yang dihasilkan."
-
-        final = sanitize_telegram_html(final_clean)
-        if message:
-            if len(final) <= 4096:
-                try:
-                    await message.edit_text(final, parse_mode="HTML")
-                except Exception:
-                    try:
-                        await message.edit_text(final_clean)
-                    except Exception as e:
-                        logger.debug(f"[ChatAgent] Final stream edit error: {e}")
-            else:
-                from telegram_bot.bot import TelegramBot
-                chunks = TelegramBot._chunk_text(final_clean, max_len=4000)
-                first_chunk = chunks[0] if chunks else final_clean[:4000]
-                first_html = sanitize_telegram_html(first_chunk)
-                try:
-                    await message.edit_text(first_html, parse_mode="HTML")
-                except Exception:
-                    await message.edit_text(first_chunk)
-
-                if len(chunks) > 1 and hasattr(update, "message") and update.message:
-                    for rem_chunk in chunks[1:]:
-                        rem_html = sanitize_telegram_html(rem_chunk)
-                        try:
-                            await update.message.reply_text(rem_html, parse_mode="HTML")
-                        except Exception:
-                            await update.message.reply_text(rem_chunk)
-
-        return buffer
+        final_buffer = await streamer.finish()
+        return final_buffer
 
     async def _handle_internal(
         self,

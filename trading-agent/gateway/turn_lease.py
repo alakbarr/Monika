@@ -37,6 +37,7 @@ class TurnLeaseManager:
     def __init__(self, default_ttl: float = DEFAULT_LEASE_TTL):
         self.default_ttl = default_ttl
         self._leases: Dict[str, LeaseRecord] = {}
+        self._events: Dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
 
     async def acquire_lease(
@@ -44,31 +45,52 @@ class TurnLeaseManager:
         conversation_id: str,
         holder_id: str,
         ttl_seconds: Optional[float] = None,
+        wait_timeout: float = 0.0,
     ) -> bool:
         """
         Attempts to acquire an exclusive turn lease for a conversation.
-        Returns True if acquired, False if currently held by another active turn.
+        If held by another active turn and wait_timeout > 0, waits up to wait_timeout
+        seconds for the lease to be released before returning False.
+        Returns True if acquired, False otherwise.
         """
         ttl = ttl_seconds or self.default_ttl
-        now = time.time()
+        deadline = time.time() + max(wait_timeout, 0.0)
 
-        async with self._lock:
-            existing = self._leases.get(conversation_id)
-            if existing:
-                if now < existing.expires_at and existing.holder_id != holder_id:
-                    logger.debug(
-                        f"[TurnLease] Lease rejected for '{conversation_id}': held by '{existing.holder_id}' (expires in {existing.expires_at - now:.1f}s)"
+        while True:
+            now = time.time()
+            event_to_wait: Optional[asyncio.Event] = None
+            async with self._lock:
+                existing = self._leases.get(conversation_id)
+                if existing:
+                    if now < existing.expires_at and existing.holder_id != holder_id:
+                        if now >= deadline:
+                            logger.debug(
+                                f"[TurnLease] Lease rejected for '{conversation_id}': held by '{existing.holder_id}' (expires in {existing.expires_at - now:.1f}s)"
+                            )
+                            return False
+                        # Prepare event to wait
+                        if conversation_id not in self._events:
+                            self._events[conversation_id] = asyncio.Event()
+                        event_to_wait = self._events[conversation_id]
+                    else:
+                        # Existing lease expired or held by same holder -> free to reacquire
+                        pass
+
+                if event_to_wait is None:
+                    self._leases[conversation_id] = LeaseRecord(
+                        conversation_id=conversation_id,
+                        holder_id=holder_id,
+                        acquired_at=now,
+                        expires_at=now + ttl,
                     )
-                    return False
+                    logger.debug(f"[TurnLease] Acquired lease for '{conversation_id}' by '{holder_id}' (TTL: {ttl}s)")
+                    return True
 
-            self._leases[conversation_id] = LeaseRecord(
-                conversation_id=conversation_id,
-                holder_id=holder_id,
-                acquired_at=now,
-                expires_at=now + ttl,
-            )
-            logger.debug(f"[TurnLease] Acquired lease for '{conversation_id}' by '{holder_id}' (TTL: {ttl}s)")
-            return True
+            rem = max(deadline - time.time(), 0.01)
+            try:
+                await asyncio.wait_for(event_to_wait.wait(), timeout=rem)
+            except (asyncio.TimeoutError, TimeoutError):
+                pass
 
     async def renew_lease(
         self,
@@ -88,14 +110,20 @@ class TurnLeaseManager:
             return True
 
     async def release_lease(self, conversation_id: str, holder_id: str) -> bool:
-        """Releases the turn lease if held by the caller."""
+        """Releases the turn lease if held by the caller and notifies waiting turns."""
+        event_to_notify: Optional[asyncio.Event] = None
         async with self._lock:
             existing = self._leases.get(conversation_id)
             if existing and existing.holder_id == holder_id:
                 del self._leases[conversation_id]
+                event_to_notify = self._events.pop(conversation_id, None)
                 logger.debug(f"[TurnLease] Released lease for '{conversation_id}' by '{holder_id}'")
-                return True
-            return False
+            else:
+                return False
+
+        if event_to_notify:
+            event_to_notify.set()
+        return True
 
     async def is_lease_active(self, conversation_id: str) -> bool:
         """Checks if a valid, unexpired lease exists for a conversation."""
@@ -106,4 +134,7 @@ class TurnLeaseManager:
                 return True
             if existing and now >= existing.expires_at:
                 del self._leases[conversation_id]
+                ev = self._events.pop(conversation_id, None)
+                if ev:
+                    ev.set()
             return False

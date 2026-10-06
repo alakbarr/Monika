@@ -221,6 +221,11 @@ class TelegramBot:
         app.add_handler(CommandHandler("account",     self._cmd_account))
         app.add_handler(CommandHandler("tasks",       self._cmd_tasks))
         app.add_handler(CommandHandler("debate",      self._cmd_debate))
+        app.add_handler(CommandHandler("chart",       self._cmd_chart))
+        app.add_handler(CommandHandler("smc",         self._cmd_smc))
+        app.add_handler(CommandHandler("orders",      self._cmd_orders))
+        app.add_handler(CommandHandler("factors",     self._cmd_factors))
+        app.add_handler(CommandHandler("alpha",       self._cmd_alpha))
         # Model override commands → routed to chat with prefix intact
         for cmd in ("fast", "quick", "medium", "mid", "analyze", "analisis", "research"):
             app.add_handler(CommandHandler(cmd, self._handle_chat))
@@ -782,21 +787,41 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         text = await self._build_risk_text()
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(sanitize_telegram_html(text), parse_mode=ParseMode.HTML)
 
     async def _cmd_risk_deep(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         text = await self._build_risk_deep_text()
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(sanitize_telegram_html(text), parse_mode=ParseMode.HTML)
 
     async def _cmd_approvals(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
         if not self._is_admin(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
-        text = await self._build_approvals_text()
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        from risk.approval_hub import ApprovalHub
+        from telegram_bot.message_formatter import format_approvals_slip
+        try:
+            hub = ApprovalHub.get_instance()
+            open_reqs = hub.get_open_requests()
+            raw_text = format_approvals_slip(open_reqs)
+            safe_text = sanitize_telegram_html(raw_text)
+
+            kb = []
+            for req in open_reqs:
+                token = getattr(req, "token", getattr(req, "request_id", ""))
+                short_id = token[:6]
+                kb.append([
+                    InlineKeyboardButton(f"✅ Setujui #{short_id}", callback_data=f"appr_yes:{token}"),
+                    InlineKeyboardButton(f"❌ Tolak #{short_id}", callback_data=f"appr_no:{token}"),
+                ])
+
+            markup = InlineKeyboardMarkup(kb) if kb else None
+            await update.message.reply_text(safe_text, parse_mode=ParseMode.HTML, reply_markup=markup)
+        except Exception as e:
+            await update.message.reply_text(f"[GAGAL] Error memuat approvals: {html.escape(str(e))}", parse_mode=ParseMode.HTML)
 
     async def _cmd_trailing(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
@@ -805,7 +830,7 @@ class TelegramBot:
 
         if not ctx.args:
             text = await self._build_trailing_text()
-            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+            await update.message.reply_text(sanitize_telegram_html(text), parse_mode=ParseMode.HTML)
             return
 
         # Handle per-ticket override: /trailing <ticket> <trail_mult> [be_mult]
@@ -819,11 +844,11 @@ class TelegramBot:
         if not ticket_str.isdigit():
             await update.message.reply_text(
                 "Penggunaan:\n"
-                "- `/trailing` : Lihat status trailing semua posisi\n"
-                "- `/trailing <ticket> <trail_mult> [be_mult]` : Atur trailing kustom\n"
-                "- `/trailing <ticket> disable` : Matikan trailing tiket ini\n"
-                "- `/trailing <ticket> reset` : Kembalikan ke default global",
-                parse_mode=ParseMode.MARKDOWN,
+                "- <code>/trailing</code> : Lihat status trailing semua posisi\n"
+                "- <code>/trailing &lt;ticket&gt; &lt;trail_mult&gt; [be_mult]</code> : Atur trailing kustom\n"
+                "- <code>/trailing &lt;ticket&gt; disable</code> : Matikan trailing tiket ini\n"
+                "- <code>/trailing &lt;ticket&gt; reset</code> : Kembalikan ke default global",
+                parse_mode=ParseMode.HTML,
             )
             return
 
@@ -1294,7 +1319,13 @@ class TelegramBot:
                     lines.append(f"{marker} <b>{r}</b>:\n  Primary: <code>{cur_primary}</code>\n  Fallback: <code>{cur_fallback}</code>")
 
                 lines.append("\n<b>Penggunaan:</b>\n• <code>/model set &lt;role&gt; &lt;model_name&gt; [primary|fallback_1]</code>\n• <code>/model reset [role]</code>")
-                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+                kb = [
+                    [
+                        InlineKeyboardButton("🔄 Ganti Role Model", callback_data="mdl:menu"),
+                        InlineKeyboardButton("♻️ Reset Overrides", callback_data="mdl:reset_all"),
+                    ]
+                ]
+                await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
                 return
 
             subcmd = args[0].lower()
@@ -1326,6 +1357,307 @@ class TelegramBot:
         except Exception as exc:
             logger.error(f"Error handling /model command: {exc}", exc_info=True)
             await update.message.reply_text(f"[GAGAL] Error mengevaluasi /model: {exc}")
+
+    async def _cmd_chart(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Render and send candlestick PNG chart (/chart <symbol> [timeframe])."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.UPLOAD_PHOTO)
+
+        args = ctx.args or []
+        sym = args[0].strip().upper().replace("/", "") if args else "XAUUSD"
+        tf = args[1].strip().upper() if len(args) > 1 else "H1"
+
+        try:
+            from database.db import get_session
+            from database.models import OHLCVData
+            from sqlalchemy import select
+            from utils.chart_generator import generate_candlestick_chart_async
+
+            rows = []
+            async with get_session() as session:
+                stmt = (
+                    select(OHLCVData)
+                    .where(OHLCVData.symbol == sym)
+                    .order_by(OHLCVData.timestamp.desc())
+                    .limit(80)
+                )
+                db_rows = (await session.execute(stmt)).scalars().all()
+                if db_rows:
+                    rows = list(reversed(db_rows))
+
+            if not rows and self.execution_service and hasattr(self.execution_service, "mt5_client"):
+                client = self.execution_service.mt5_client
+                if hasattr(client, "copy_rates_from_pos"):
+                    raw_rates = client.copy_rates_from_pos(sym, tf, 0, 80)
+                    if raw_rates:
+                        rows = raw_rates
+
+            if not rows or len(rows) < 2:
+                await update.message.reply_text(
+                    f"[PERINGATAN] Data OHLCV untuk <code>{sym}</code> ({tf}) belum tersedia di database atau broker MT5.",
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+
+            ohlcv_data = [
+                {
+                    "timestamp": getattr(r, "timestamp", getattr(r, "time", None)),
+                    "open": float(getattr(r, "open", 0.0)),
+                    "high": float(getattr(r, "high", 0.0)),
+                    "low": float(getattr(r, "low", 0.0)),
+                    "close": float(getattr(r, "close", 0.0)),
+                    "volume": float(getattr(r, "volume", getattr(r, "tick_volume", 0.0))),
+                }
+                for r in rows
+            ]
+
+            buf = await generate_candlestick_chart_async(ohlcv_data, symbol=sym, timeframe=tf)
+            buf.seek(0)
+            await update.message.reply_photo(
+                photo=buf,
+                caption=f"📊 <b>Candlestick Chart: {sym} ({tf})</b>\nTotal: {len(ohlcv_data)} candles | Moving Averages (20, 50)",
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            logger.error(f"Error generating /chart for {sym}: {exc}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Gagal membuat grafik {sym}: {exc}", parse_mode=ParseMode.HTML)
+
+    async def _cmd_smc(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Render and send Smart Money Concepts (SMC) overlay PNG chart (/smc <symbol> [timeframe])."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.UPLOAD_PHOTO)
+
+        args = ctx.args or []
+        sym = args[0].strip().upper().replace("/", "") if args else "XAUUSD"
+        tf = args[1].strip().upper() if len(args) > 1 else "H1"
+
+        try:
+            from database.db import get_session
+            from database.models import OHLCVData, OrderBlock, FVGZone
+            from sqlalchemy import select
+            from utils.chart_generator import generate_smc_candlestick_chart
+
+            rows = []
+            fvg_list = []
+            ob_list = []
+            async with get_session() as session:
+                stmt = select(OHLCVData).where(OHLCVData.symbol == sym).order_by(OHLCVData.timestamp.desc()).limit(80)
+                db_rows = (await session.execute(stmt)).scalars().all()
+                if db_rows:
+                    rows = list(reversed(db_rows))
+
+                # FVGs
+                fvg_stmt = select(FVGZone).where(FVGZone.symbol == sym).order_by(FVGZone.formed_at.desc()).limit(10)
+                fvg_rows = (await session.execute(fvg_stmt)).scalars().all()
+                for f in fvg_rows:
+                    fvg_list.append({"top": float(f.top_price), "bottom": float(f.bottom_price), "type": f.direction})
+
+                # Order Blocks
+                ob_stmt = select(OrderBlock).where(OrderBlock.symbol == sym).order_by(OrderBlock.formed_at.desc()).limit(10)
+                ob_rows = (await session.execute(ob_stmt)).scalars().all()
+                for o in ob_rows:
+                    ob_list.append({"high": float(o.price_high), "low": float(o.price_low), "type": o.direction})
+
+            if not rows or len(rows) < 2:
+                await update.message.reply_text(
+                    f"[PERINGATAN] Data OHLCV untuk <code>{sym}</code> ({tf}) belum tersedia untuk pemetaan SMC.",
+                    parse_mode=ParseMode.HTML,
+                )
+                return
+
+            ohlcv_data = [
+                {
+                    "timestamp": getattr(r, "timestamp", getattr(r, "time", None)),
+                    "open": float(getattr(r, "open", 0.0)),
+                    "high": float(getattr(r, "high", 0.0)),
+                    "low": float(getattr(r, "low", 0.0)),
+                    "close": float(getattr(r, "close", 0.0)),
+                    "volume": float(getattr(r, "volume", getattr(r, "tick_volume", 0.0))),
+                }
+                for r in rows
+            ]
+
+            buf, _ = await asyncio.to_thread(
+                generate_smc_candlestick_chart,
+                ohlcv_data,
+                symbol=sym,
+                timeframe=tf,
+                fvg_list=fvg_list,
+                order_blocks=ob_list,
+                save_to_disk=False,
+            )
+            buf.seek(0)
+            await update.message.reply_photo(
+                photo=buf,
+                caption=(
+                    f"🏛️ <b>Smart Money Concepts (SMC): {sym} ({tf})</b>\n"
+                    f"• Order Blocks Terdeteksi: {len(ob_list)}\n"
+                    f"• Fair Value Gaps (FVG): {len(fvg_list)}\n"
+                    f"<i>Kotak hijau: Demand/Bullish | Kotak merah: Supply/Bearish</i>"
+                ),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            logger.error(f"Error generating /smc for {sym}: {exc}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Gagal membuat grafik SMC {sym}: {exc}", parse_mode=ParseMode.HTML)
+
+    async def _cmd_orders(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Display pending limit/stop orders in MT5 (/orders)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        try:
+            from execution.mt5_client import _get_orders
+            orders = _get_orders()
+        except Exception:
+            orders = []
+
+        if not orders:
+            await update.message.reply_text("[ INFO ] Tidak ada pending order yang aktif di broker MT5.", parse_mode=ParseMode.HTML)
+            return
+
+        lines = ["📋 <b>DAFTAR PENDING ORDERS MT5</b>\n"]
+        kb = []
+        for o in orders:
+            ticket = o.get("ticket")
+            sym = o.get("symbol", "")
+            direction = str(o.get("direction", "")).upper()
+            vol = o.get("volume", 0.0)
+            price_open = o.get("price_open", 0.0)
+            sl = o.get("sl") or "-"
+            tp = o.get("tp") or "-"
+            lines.append(
+                f"• <b>#{ticket}</b> | <code>{sym}</code> {direction} {vol} lot\n"
+                f"  Open: <code>{price_open}</code> | SL: <code>{sl}</code> | TP: <code>{tp}</code>"
+            )
+            if ticket:
+                kb.append([InlineKeyboardButton(f"❌ Batalkan #{ticket} ({sym})", callback_data=f"cancel:{ticket}")])
+
+        markup = InlineKeyboardMarkup(kb) if kb else None
+        await update.message.reply_text("\n\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=markup)
+
+    async def _cmd_factors(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Inspect available Alpha Factor Zoo formulas (/factors)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        try:
+            from indicators.micro_alpha_zoo import MicroAlphaZoo
+            factors = MicroAlphaZoo.list_factors()
+            if not factors:
+                await update.message.reply_text("[ INFO ] Belum ada faktor terdaftar di MicroAlphaZoo.", parse_mode=ParseMode.HTML)
+                return
+
+            by_cat: dict[str, list[Any]] = {}
+            for f in factors:
+                by_cat.setdefault(f.category, []).append(f)
+
+            lines = ["🧬 <b>MONIKA ALPHA FACTOR ZOO (20 Formulasi Kuantitatif)</b>\n"]
+            for cat, flist in by_cat.items():
+                lines.append(f"<b>📂 {cat.upper()} ({len(flist)} Faktor):</b>")
+                for f in flist:
+                    lines.append(f"• <code>{f.name}</code> (Lookback: {f.lookback}b, {f.direction})\n  <i>{html.escape(f.description)}</i>")
+                lines.append("")
+
+            lines.append("<b>Inspeksi Real-Time:</b>\n• <code>/alpha &lt;symbol&gt; &lt;factor_name&gt;</code> (Contoh: <code>/alpha XAUUSD alpha_001</code>)")
+            full_text = "\n".join(lines)
+            for chunk in self._chunk_text(full_text, max_len=4000, is_html=True):
+                await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            logger.error(f"Error evaluating /factors: {exc}", exc_info=True)
+            await update.message.reply_text(f"[GAGAL] Gagal mengambil daftar faktor: {exc}", parse_mode=ParseMode.HTML)
+
+    async def _cmd_alpha(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Calculate and inspect a quantitative alpha factor (/alpha <symbol> <factor>)."""
+        if not update.message: return
+        if not self._is_authorized(update): return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        args = ctx.args or []
+        if len(args) < 2:
+            await update.message.reply_text(
+                "Penggunaan: <code>/alpha &lt;symbol&gt; &lt;factor_name&gt;</code>\nContoh: <code>/alpha XAUUSD alpha_001</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        sym = args[0].strip().upper().replace("/", "")
+        factor_name = args[1].strip().lower()
+
+        try:
+            from indicators.micro_alpha_zoo import MicroAlphaZoo
+            import pandas as pd
+            from database.db import get_session
+            from database.models import OHLCVData
+            from sqlalchemy import select
+
+            async with get_session() as session:
+                rows = (await session.execute(
+                    select(OHLCVData)
+                    .where(OHLCVData.symbol == sym)
+                    .order_by(OHLCVData.timestamp.desc())
+                    .limit(100)
+                )).scalars().all()
+
+            if not rows:
+                await update.message.reply_text(f"[GAGAL] Data OHLCV untuk <code>{sym}</code> tidak ditemukan di database.", parse_mode=ParseMode.HTML)
+                return
+
+            rows = list(reversed(rows))
+            df = pd.DataFrame([{
+                "open": float(r.open), "high": float(r.high), "low": float(r.low),
+                "close": float(r.close), "volume": float(r.volume or 0)
+            } for r in rows])
+
+            score_series = MicroAlphaZoo.compute_factor(factor_name, df)
+            latest_val = float(score_series.iloc[-1]) if not score_series.empty else 0.0
+
+            meta = next((m for m in MicroAlphaZoo.list_factors() if m.name == factor_name), None)
+            desc = meta.description if meta else "Custom Alpha Factor"
+            cat = meta.category if meta else "general"
+
+            bias = "BULLISH" if latest_val > 0 else ("BEARISH" if latest_val < 0 else "NEUTRAL")
+            color_dot = "🟢" if latest_val > 0 else ("🔴" if latest_val < 0 else "⚪")
+
+            resp = (
+                f"🧬 <b>Alpha Factor Evaluation: {factor_name.upper()}</b>\n\n"
+                f"• Simbol: <code>{sym}</code>\n"
+                f"• Kategori: <code>{cat}</code>\n"
+                f"• Nilai Z-Score / Raw: <code>{latest_val:+.4f}</code>\n"
+                f"• Implikasi: {color_dot} <b>{bias}</b>\n\n"
+                f"<i>{html.escape(desc)}</i>"
+            )
+            await update.message.reply_text(resp, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            logger.error(f"Error computing /alpha {factor_name} on {sym}: {exc}", exc_info=True)
+            await update.message.reply_text(f"[ERROR] Gagal menghitung alpha <code>{factor_name}</code>: {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
+
+    async def _monitor_pending_expiry(self, msg: Any, action_id: str, agent: Any, timeout: float = 90.0) -> None:
+        """Monitors pending action expiration and revokes inline keyboard after timeout."""
+        try:
+            await asyncio.sleep(timeout)
+            action = await agent.get_pending_action(action_id)
+            if action and not getattr(action, "is_confirmed", False):
+                agent._pending_actions.pop(action_id, None)
+                await agent._delete_persisted_pending_action(action_id)
+                try:
+                    await msg.edit_text(
+                        f"⏱️ <b>[EXPIRED] Usulan Tindakan #{action_id}</b>\n\n"
+                        f"<s>{html.escape(action.description)}</s>\n\n"
+                        f"<i>Batas waktu konfirmasi 90 detik telah berakhir. Keyboard dicabut demi keselamatan finansial.</i>",
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=None,
+                    )
+                except Exception as edit_err:
+                    logger.debug(f"[Bot] Could not edit expired action msg: {edit_err}")
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.debug(f"[Bot] Pending expiry monitor error: {e}")
 
     async def _cmd_pair(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Interactive DM pairing via out-of-band console OTP (/pair [code])."""
@@ -2722,16 +3054,21 @@ class TelegramBot:
                 except Exception as e:
                     logger.warning(f"Failed sending document {filename} to user {user_id}: {e}")
 
-        # If AI proposed an action, send confirm keyboard
+        # If AI proposed an action, send confirm keyboard with live expiry monitor
         if pending:
             from telegram_bot.command_router import CommandRouter
             keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
-            await update.message.reply_text(
-                f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n"
-                f"_Berlaku selama 90 detik._",
-                parse_mode=ParseMode.MARKDOWN,
+            prop_text = (
+                f"<b>AI Mengusulkan Tindakan:</b>\n\n"
+                f"{html.escape(pending.description)}\n\n"
+                f"<i>Berlaku selama 90 detik (hitung mundur otomatis).</i>"
+            )
+            sent_prop = await update.message.reply_text(
+                prop_text,
+                parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
             )
+            asyncio.create_task(self._monitor_pending_expiry(sent_prop, pending.action_id, agent, timeout=90.0))
 
     async def _handle_photo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming image/photo from user for multimodal vision analysis."""
@@ -3325,6 +3662,73 @@ class TelegramBot:
             res = await sync.apply_immediate_breakeven(only_profit=True)
             cnt = res.get("breakeven_count", 0)
             await query.edit_message_text(f"[BERHASIL] Bulk Breakeven diterapkan pada {cnt} posisi.")
+            return
+
+        if data.startswith("appr_yes:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Approval hanya diizinkan untuk Admin.", show_alert=True)
+                return
+            token = data.split(":", 1)[1]
+            from risk.approval_hub import ApprovalHub
+            hub = ApprovalHub.get_instance()
+            success, msg = await hub.approve(token, operator=f"tg_{user_id}")
+            icon = "✅ [DISETUJUI]" if success else "⚠️ [GAGAL]"
+            await query.edit_message_text(f"{icon} {msg}")
+            return
+
+        if data.startswith("appr_no:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Penolakan hanya diizinkan untuk Admin.", show_alert=True)
+                return
+            token = data.split(":", 1)[1]
+            from risk.approval_hub import ApprovalHub
+            hub = ApprovalHub.get_instance()
+            success, msg = await hub.reject(token, operator=f"tg_{user_id}", reason="Ditolak via tombol Telegram")
+            await query.edit_message_text(f"❌ [DITOLAK] Permintaan approval #{token[:8]} dibatalkan.")
+            return
+
+        if data == "mdl:menu":
+            roles = [
+                ("jev_telegram_chat", "Chat Bot Assistant"),
+                ("debate_judge", "Debate Judge"),
+                ("bull_advocate", "Bull Specialist"),
+                ("bear_dissent", "Bear Specialist"),
+                ("macro_analyst", "Macro Analyst"),
+            ]
+            kb = [[InlineKeyboardButton(label, callback_data=f"mdl:r:{r}")] for r, label in roles]
+            kb.append([InlineKeyboardButton("« Kembali", callback_data="cmd:model")])
+            await query.edit_message_text("Pilih <b>Role</b> yang ingin diubah modelnya:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+            return
+
+        if data.startswith("mdl:r:"):
+            role = data.split(":", 2)[2]
+            models = [
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "claude-3-7-sonnet",
+                "llama-3.3-70b-versatile",
+            ]
+            kb = [[InlineKeyboardButton(m, callback_data=f"mdl:s:{role}:{m}")] for m in models]
+            kb.append([InlineKeyboardButton("« Batal", callback_data="mdl:menu")])
+            await query.edit_message_text(f"Pilih <b>Model</b> untuk role <code>{role}</code>:", parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(kb))
+            return
+
+        if data.startswith("mdl:s:"):
+            parts = data.split(":", 3)
+            role = parts[2]
+            model_name = parts[3]
+            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            RuntimeModelRegistry.get_instance().set_role_model(role, model_name, slot="primary")
+            await query.edit_message_text(
+                f"✅ <b>Model Berhasil Diganti</b>\nRole: <code>{role}</code>\nPrimary Model: <code>{model_name}</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        if data == "mdl:reset_all":
+            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            RuntimeModelRegistry.get_instance().clear_overrides()
+            await query.edit_message_text("♻️ Seluruh model override telah direset ke default settings.yaml.", parse_mode=ParseMode.HTML)
             return
 
         if data.startswith("confirm:"):
@@ -4189,6 +4593,35 @@ class TelegramBot:
         return chunk
 
     @staticmethod
+    def _balance_html_chunk(chunk: str) -> tuple[str, str]:
+        """Balances unclosed HTML tags for a split chunk, returning (balanced_chunk, resume_prefix)."""
+        tag_pattern = re.compile(r"<\s*(/?)\s*([a-zA-Z0-9]+)(?:\s+[^>]*)?>")
+        stack: list[str] = []
+        VOID_TAGS = {"br", "hr", "img"}
+
+        for m in tag_pattern.finditer(chunk):
+            is_close = bool(m.group(1))
+            tag_name = m.group(2).lower()
+            if tag_name in VOID_TAGS:
+                continue
+
+            if not is_close:
+                stack.append(tag_name)
+            else:
+                if tag_name in stack:
+                    for idx in range(len(stack) - 1, -1, -1):
+                        if stack[idx] == tag_name:
+                            stack.pop(idx)
+                            break
+
+        if not stack:
+            return chunk, ""
+
+        closers = "".join(f"</{t}>" for t in reversed(stack))
+        openers = "".join(f"<{t}>" for t in stack)
+        return chunk + closers, openers
+
+    @staticmethod
     def _chunk_text(
         text: str,
         max_len: int = 4000,
@@ -4232,7 +4665,11 @@ class TelegramBot:
             chunk = remaining[:split_len].rstrip()
             next_remaining = remaining[split_len:].lstrip()
 
-            if not is_html:
+            if is_html:
+                chunk, reopen_prefix = TelegramBot._balance_html_chunk(chunk)
+                if reopen_prefix:
+                    next_remaining = reopen_prefix + next_remaining
+            else:
                 # Balance code blocks (```)
                 cb_matches = re.findall(r"```(\w*)", chunk)
                 if len(cb_matches) % 2 == 1:

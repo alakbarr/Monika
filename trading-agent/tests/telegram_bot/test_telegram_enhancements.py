@@ -192,7 +192,7 @@ class TestStreamingMessageEdit:
         mock_update.message.reply_text = AsyncMock()
 
         reply, pending = await agent.handle(
-            "Analisa EURUSD",
+            "Halo Monika!",
             stream=True,
             update=mock_update,
         )
