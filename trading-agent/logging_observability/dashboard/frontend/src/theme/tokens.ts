@@ -57,6 +57,30 @@ export const colors = {
   paused: 'var(--color-paused)',
   info: 'var(--color-info)',
 
+  // High-Contrast Text Tokens (WCAG 2.1 AA >= 4.5:1)
+  textWarn: 'var(--color-text-warn)',
+  textInfo: 'var(--color-text-info)',
+  textAccent: 'var(--color-text-accent)',
+  textProfit: 'var(--color-text-profit)',
+  textLoss: 'var(--color-text-loss)',
+
+  // Harmonized Vintage Palette Additions
+  navy: 'var(--color-navy)',
+  moss: 'var(--color-moss)',
+  mossSubtle: 'var(--color-moss-subtle)',
+  coral: 'var(--color-coral)',
+  coralSubtle: 'var(--color-coral-subtle)',
+  ochre: 'var(--color-ochre)',
+  ochreSubtle: 'var(--color-ochre-subtle)',
+  paperSubtle: 'var(--color-paper-subtle)',
+  paperSunken: 'var(--color-paper-sunken)',
+  paperHighlight: 'var(--color-paper-highlight)',
+  surfaceActive: 'var(--color-surface-active)',
+  tableHeader: 'var(--color-table-header)',
+  ruleSoft: 'var(--color-rule-soft)',
+  winBorder: 'var(--color-win-border)',
+  accentSubtle: 'var(--color-accent-subtle)',
+
   // Console Phosphor Terminal
   consoleBg: 'var(--color-console-bg)',
   consolePhosphor: 'var(--color-console-phosphor)',
@@ -67,6 +91,8 @@ export const colors = {
 export const fonts = {
   precision: 'var(--font-precision)',
   narrative: 'var(--font-narrative)',
+  body: 'var(--font-body)',
+  heading: 'var(--font-heading)',
 } as const;
 
 export const typography = {
@@ -81,6 +107,8 @@ export const typography = {
   bodyLg: 'var(--text-body-lg)',
   bodyMd: 'var(--text-body-md)',
   bodySm: 'var(--text-body-sm)',
+  body: 'var(--text-body)',
+  sm: 'var(--text-sm)',
   caption: 'var(--text-caption)',
   xs: 'var(--text-xs)',
 } as const;
@@ -90,12 +118,17 @@ export const shadows = {
   elevated: 'var(--shadow-elevated)',
   btn: 'var(--shadow-btn)',
   dropdown: 'var(--shadow-dropdown)',
+  modal: 'var(--shadow-modal)',
 } as const;
 
 export const radii = {
+  xs: 'var(--radius-xs)',
   sm: 'var(--radius-sm)',
+  md: 'var(--radius-md)',
+  lg: 'var(--radius-lg)',
   card: 'var(--radius-card)',
   pill: 'var(--radius-pill)',
+  control: 'var(--radius-control)',
 } as const;
 
 export const tokens = {

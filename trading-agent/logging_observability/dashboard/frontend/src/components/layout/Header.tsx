@@ -78,8 +78,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             className="win-btn"
             style={{
               display: 'none',
-              padding: '2px 8px',
-              fontSize: 'var(--text-xs)',
+              padding: '6px 12px',
+              minHeight: '36px',
+              minWidth: '36px',
+              fontSize: 'var(--text-body-md)',
+              cursor: 'pointer',
             }}
             id="mobile-nav-toggle"
             aria-label="Open Navigation Menu"
@@ -198,17 +201,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '30px',
-            height: '30px',
+            minWidth: '36px',
+            minHeight: '36px',
             boxSizing: 'border-box',
-            padding: 0,
+            padding: '4px',
             border: '2px solid var(--color-rule)',
             boxShadow: '2px 2px 0 var(--color-rule)',
+            cursor: 'pointer',
           }}
           title={isMuted ? 'Unmute Audio Feedback' : 'Mute Audio Feedback'}
           aria-label="Toggle Typewriter Sound"
         >
-          <AudioToggleIcon size={16} muted={isMuted} />
+          <AudioToggleIcon size={18} muted={isMuted} />
         </button>
 
         {/* Retro Toggle Switch (Light / Dark) */}
@@ -226,14 +230,17 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '30px',
+            minHeight: '36px',
             boxSizing: 'border-box',
-            padding: '0 8px',
-            fontSize: 'var(--text-xs)',
+            padding: '0 10px',
+            fontSize: 'var(--text-body-sm)',
+            fontWeight: 700,
             border: '2px solid var(--color-rule)',
             boxShadow: '2px 2px 0 var(--color-rule)',
+            cursor: 'pointer',
           }}
           title="Command Palette (Cmd+K / Ctrl+K)"
+          aria-label="Open Command Palette"
         >
           ⌘K
         </button>
@@ -250,14 +257,17 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '30px',
+            minHeight: '36px',
             boxSizing: 'border-box',
-            padding: '0 10px',
-            fontSize: 'var(--text-xs)',
+            padding: '0 12px',
+            fontSize: 'var(--text-body-sm)',
+            fontWeight: 700,
             border: '2px solid var(--color-rule)',
             boxShadow: '2px 2px 0 var(--color-rule)',
+            cursor: 'pointer',
           }}
           title="Keyboard Shortcuts Reference (?)"
+          aria-label="Open Keyboard Shortcuts Reference"
         >
           [ ? ]
         </button>

@@ -40,11 +40,11 @@ export const GlobalStatusBar: React.FC = () => {
           </span>
         </div>
 
-        <span style={{ opacity: 0.4 }}>│</span>
+        <span className="status-bar-secondary" style={{ opacity: 0.4 }}>│</span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="status-bar-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ color: 'var(--color-ink-soft)' }}>MODE:</span>
-          <span style={{ fontWeight: 800, color: 'var(--color-win-yellow)' }}>
+          <span style={{ fontWeight: 800, color: 'var(--color-text-warn)' }}>
             PAPER TRADING
           </span>
         </div>
@@ -67,7 +67,7 @@ export const GlobalStatusBar: React.FC = () => {
             className="tabular-nums"
             style={{
               fontWeight: 800,
-              color: isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
+              color: isProfit ? 'var(--color-text-profit)' : 'var(--color-text-loss)',
             }}
           >
             {isProfit ? '▲ +' : '▼ '}
@@ -77,14 +77,14 @@ export const GlobalStatusBar: React.FC = () => {
 
         {paperStats && (
           <>
-            <span style={{ opacity: 0.4 }}>│</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="status-bar-secondary" style={{ opacity: 0.4 }}>│</span>
+            <div className="status-bar-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--color-ink-soft)' }}>WIN RATE:</span>
               <span
                 className="tabular-nums"
                 style={{
                   fontWeight: 800,
-                  color: paperStats.win_rate_pct >= 55 ? 'var(--color-ledger-green)' : 'var(--color-brass)',
+                  color: paperStats.win_rate_pct >= 55 ? 'var(--color-text-profit)' : 'var(--color-text-warn)',
                 }}
               >
                 {paperStats.win_rate_pct.toFixed(1)}%

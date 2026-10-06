@@ -79,14 +79,24 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
           <span>NAVIGATION // WORKSPACES</span>
           <button
             onClick={onClose}
+            aria-label="Tutup menu navigasi"
             className="win-control-btn"
-            style={{ width: '20px', height: '20px', fontSize: '12px' }}
+            style={{
+              minWidth: '44px',
+              minHeight: '44px',
+              padding: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              cursor: 'pointer',
+            }}
           >
             ×
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 0', gap: '2px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 0', gap: '4px' }}>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -102,7 +112,8 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  padding: '8px 14px',
+                  padding: '12px 14px',
+                  minHeight: '44px',
                   margin: '1px 8px',
                   borderRadius: 'var(--radius-md)',
                   background: isActive ? 'var(--color-paper)' : 'transparent',

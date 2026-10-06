@@ -442,6 +442,33 @@ Footer {{
     background: {t.surface};
     color: {t.muted};
 }}
+
+KillConfirmModalScreen {{
+    align: center middle;
+    background: rgba(0, 0, 0, 0.7);
+}}
+
+#kill_dialog {{
+    width: 60;
+    height: auto;
+    background: {t.surface};
+    border: double {t.stamp_err_color};
+    padding: 1 2;
+}}
+
+#kill_title {{
+    text-align: center;
+    width: 100%;
+    color: {t.stamp_err_color};
+    text-style: bold;
+    padding-bottom: 1;
+}}
+
+#kill_msg {{
+    text-align: center;
+    color: {t.text};
+    padding: 1 0;
+}}
 """
 
 

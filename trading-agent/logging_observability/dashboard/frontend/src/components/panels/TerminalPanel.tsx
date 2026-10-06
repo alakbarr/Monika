@@ -21,15 +21,15 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: 'Consolas, "Fira Code", Monaco, monospace',
+      fontFamily: 'var(--font-precision), Consolas, "Fira Code", monospace',
       fontSize: 13,
       lineHeight: 1.2,
       theme: {
-        background: '#131722',
-        foreground: '#d1d4dc',
-        cursor: '#ffb300',
-        cursorAccent: '#131722',
-        selectionBackground: 'rgba(255, 179, 0, 0.3)',
+        background: '#0B0906',
+        foreground: '#E8B94A',
+        cursor: '#F5BD38',
+        cursorAccent: '#0B0906',
+        selectionBackground: 'rgba(232, 185, 74, 0.3)',
       },
     });
 
@@ -139,7 +139,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
         flexDirection: 'column',
         height: '100%',
         minHeight: '520px',
-        background: '#131722',
+        background: 'var(--color-console-bg)',
         border: '2px solid var(--color-rule)',
         borderRadius: 'var(--radius-card)',
         overflow: 'hidden',

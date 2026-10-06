@@ -290,7 +290,7 @@ class KillConfirmModalScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Container(id="kill_dialog"):
-            yield Label("[DARURAT] EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
+            yield Label("[EMERGENCY] EMERGENCY KILL SWITCH CONFIRMATION", id="kill_title")
             yield Label("Are you sure you want to trigger the KILL SWITCH?\nThis will close all open positions and halt trading.", id="kill_msg")
             with Horizontal(id="kill_buttons"):
                 yield Button("CONFIRM [Y]", variant="error", id="btn_confirm")
@@ -385,7 +385,7 @@ class TradingDashboard(App):
         self._start_time = time.time()
         self._seen_activity_ids: set[Any] = set()
         self._seen_analysis_ids: set[Any] = set()
-        self._ws_status = "[WASPADA] Disconnected"
+        self._ws_status = "[OFFLINE] Disconnected"
         self._ws_task: Optional[asyncio.Task] = None
         self._quotes: Dict[str, float] = {}
         self._cached_tokens: int = 0
@@ -490,9 +490,13 @@ class TradingDashboard(App):
 
     async def on_mount(self) -> None:
         """Initialize UI widgets, start WebSocket listener and polling timer."""
-        # Setup DataTable
+        # Setup DataTable with progressive width budgeting
         table = self.query_one("#positions_table", DataTable)
-        table.add_columns("ID", "Type", "Symbol", "Side", "Lots", "Entry", "SL", "TP", "PnL")
+        self._positions_narrow_mode = getattr(self, "terminal_width", 100) < 90
+        if self._positions_narrow_mode:
+            table.add_columns("Symbol", "Side", "Lots", "Entry", "PnL")
+        else:
+            table.add_columns("ID", "Type", "Symbol", "Side", "Lots", "Entry", "SL", "TP", "PnL")
 
         # Setup Signals Table
         signals_table = self.query_one("#signals_table", DataTable)
@@ -588,6 +592,20 @@ class TradingDashboard(App):
         """Handle dynamic terminal resize using progressive width budget."""
         self.terminal_width = event.size.width
         self._refresh_status_bar()
+        new_narrow = event.size.width < 90
+        if getattr(self, "_positions_narrow_mode", None) != new_narrow:
+            self._positions_narrow_mode = new_narrow
+            try:
+                table = self.query_one("#positions_table", DataTable)
+                table.clear(columns=True)
+                if new_narrow:
+                    table.add_columns("Symbol", "Side", "Lots", "Entry", "PnL")
+                else:
+                    table.add_columns("ID", "Type", "Symbol", "Side", "Lots", "Entry", "SL", "TP", "PnL")
+                if self.is_running:
+                    asyncio.create_task(self.refresh_data())
+            except Exception:
+                pass
 
     # ---------------------------------------------------------------------------
     # Tab Navigation Actions
@@ -1250,7 +1268,10 @@ class TradingDashboard(App):
             pnl_sign = "+" if pnl_val >= 0 else ""
             pnl_styled = f"[{pnl_color}]{pnl_sign}${pnl_val:,.2f}[/]"
 
-            row_vals = [pos_id, pos_type, sym, dir_styled, vol, entry, sl, tp, pnl_styled]
+            if getattr(self, "_positions_narrow_mode", False):
+                row_vals = [sym, dir_styled, vol, entry, pnl_styled]
+            else:
+                row_vals = [pos_id, pos_type, sym, dir_styled, vol, entry, sl, tp, pnl_styled]
             if pos_id in current_row_map:
                 r_key = current_row_map[pos_id]
                 for c_idx, val in enumerate(row_vals):
@@ -1517,12 +1538,12 @@ class TradingDashboard(App):
 
         while True:
             try:
-                self._ws_status = "[WASPADA] Connecting..."
+                self._ws_status = "[WARNING] Connecting..."
                 self._refresh_status_bar()
 
                 async with aiohttp.ClientSession() as session:
                     async with session.ws_connect(ws_url) as ws:
-                        self._ws_status = "[AKTIF] Live (WS)"
+                        self._ws_status = "[ACTIVE] Live (WS)"
                         self._refresh_status_bar()
 
                         activity_log = self.query_one("#activity_log", RichLog)
@@ -1541,7 +1562,7 @@ class TradingDashboard(App):
                 break
             except Exception as e:
                 logger.debug(f"[TUI WS] Connection error: {e}")
-                self._ws_status = "[KRITIS] Offline (Polling)"
+                self._ws_status = "[ERROR] Offline (Polling)"
                 self._refresh_status_bar()
                 await asyncio.sleep(3)
 
@@ -1699,7 +1720,7 @@ class TradingDashboard(App):
     async def _execute_kill(self) -> None:
         """Execute emergency kill switch after confirmation."""
         activity_log = self.query_one("#activity_log", RichLog)
-        activity_log.write("[bold red][DARURAT] TRIGGERING EMERGENCY KILL SWITCH...[/]")
+        activity_log.write("[bold red][EMERGENCY] TRIGGERING EMERGENCY KILL SWITCH...[/]")
         from cli.main import _cmd_kill
 
         class DummyArgs:

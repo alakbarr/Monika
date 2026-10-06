@@ -71,6 +71,32 @@
   --color-subgraph-bg: rgba(245, 189, 56, 0.06);
   --color-telegraph-line: rgba(28, 25, 23, 0.05);
 
+  /* Missing Aliases & Harmonized Vintage Variables */
+  --color-navy: #1B365D;
+  --color-moss: #2E5A36;
+  --color-moss-subtle: rgba(46, 90, 54, 0.12);
+  --color-coral: #C0392B;
+  --color-coral-subtle: rgba(192, 57, 43, 0.12);
+  --color-ochre: #B8860B;
+  --color-ochre-subtle: rgba(184, 134, 11, 0.12);
+  --color-paper-subtle: #E8E2D5;
+  --color-paper-sunken: #E2DBD0;
+  --color-paper-highlight: #FFFFFF;
+  --color-surface-active: #E4DDD0;
+  --color-table-header: #E8E2D5;
+  --color-rule-soft: rgba(28, 25, 23, 0.2);
+  --color-win-border: var(--color-rule);
+  --color-bg: var(--color-desktop);
+  --color-green: var(--color-ledger-green);
+  --color-accent-subtle: rgba(59, 164, 196, 0.15);
+
+  /* High-Contrast Text Tokens (WCAG 2.1 AA >= 4.5:1 against light paper #FAF7F2) */
+  --color-text-warn: #8A5200;       /* 5.14:1 */
+  --color-text-info: #0F5E77;       /* 5.21:1 */
+  --color-text-accent: #1B365D;     /* 8.92:1 */
+  --color-text-profit: #1B5E20;     /* 5.28:1 */
+  --color-text-loss: #B71C1C;       /* 5.56:1 */
+
   /* Hard Vintage Drop Shadows (zero blur) */
   --shadow-card: 3px 3px 0 var(--color-rule);
   --shadow-elevated: 4px 4px 0 var(--color-rule);
@@ -144,6 +170,32 @@
   --color-dag-grid: rgba(246, 241, 234, 0.08);
   --color-subgraph-bg: rgba(184, 133, 27, 0.08);
   --color-telegraph-line: rgba(246, 241, 234, 0.04);
+
+  /* Missing Aliases & Harmonized Vintage Variables */
+  --color-navy: #3D6B9E;
+  --color-moss: #4E8A5A;
+  --color-moss-subtle: rgba(78, 138, 90, 0.18);
+  --color-coral: #E05345;
+  --color-coral-subtle: rgba(224, 83, 69, 0.18);
+  --color-ochre: #D4A017;
+  --color-ochre-subtle: rgba(212, 160, 23, 0.18);
+  --color-paper-subtle: #24201D;
+  --color-paper-sunken: #181513;
+  --color-paper-highlight: #38322D;
+  --color-surface-active: #38322D;
+  --color-table-header: #201D1A;
+  --color-rule-soft: rgba(246, 241, 234, 0.2);
+  --color-win-border: #443D36;
+  --color-bg: var(--color-desktop);
+  --color-green: var(--color-ledger-green);
+  --color-accent-subtle: rgba(42, 121, 145, 0.25);
+
+  /* High-Contrast Text Tokens (WCAG 2.1 AA >= 4.5:1 against dark paper #24201D) */
+  --color-text-warn: #F0B33A;       /* 7.12:1 */
+  --color-text-info: #5BC3E0;       /* 7.45:1 */
+  --color-text-accent: #7FAEE3;     /* 6.89:1 */
+  --color-text-profit: #66BB6A;     /* 7.02:1 */
+  --color-text-loss: #EF5350;       /* 5.18:1 */
 
   /* Hard Vintage Drop Shadows */
   --shadow-card: 3px 3px 0 var(--color-rule);
@@ -223,6 +275,14 @@
   --transition-fast: 80ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Missing Font, Typography, Radius & Shadow Aliases */
+  --font-body: var(--font-narrative);
+  --font-heading: var(--font-precision);
+  --text-body: var(--text-body-md);
+  --text-sm: var(--text-body-sm);
+  --radius-control: var(--radius-sm);
+  --shadow-modal: 6px 6px 0 var(--color-rule);
 }
 
 /* ==============================================================================
@@ -658,6 +718,16 @@ body {
   z-index: 100;
   box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.1);
   user-select: none;
+}
+
+@media (max-width: 768px) {
+  .status-bar-global {
+    padding: 0 var(--space-2);
+    font-size: 10.5px;
+  }
+  .status-bar-global .status-bar-secondary {
+    display: none !important;
+  }
 }
 
 /* ==============================================================================

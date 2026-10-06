@@ -736,22 +736,26 @@ const PositionRow: React.FC<{
           </Badge>
         </div>
         {pos.mt5_ticket && (
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', display: 'flex', alignItems: 'center', marginTop: '2px' }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', display: 'flex', alignItems: 'center', marginTop: '4px' }}>
             <span>#{pos.mt5_ticket}</span>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onDossierClick(pos); }}
               style={{
-                marginLeft: '6px',
-                padding: '1px 5px',
-                fontSize: '10px',
+                marginLeft: '8px',
+                padding: '3px 8px',
+                minHeight: '26px',
+                fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 'bold',
-                background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
-                color: 'cyan',
-                border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
-                borderRadius: '2px',
+                background: 'var(--color-info-dim)',
+                color: 'var(--color-text-info)',
+                border: '1px solid var(--color-rule)',
+                borderRadius: 'var(--radius-xs)',
                 cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
               title="Inspect 1-Click Decision Dossier (Why was this trade taken?)"
             >
@@ -774,10 +778,10 @@ const PositionRow: React.FC<{
       <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
         {fmt.price(marketPrice, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ledger-red)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-loss)' }}>
         {fmt.price(pos.sl, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ledger-green)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-profit)' }}>
         {fmt.price(pos.tp, pos.symbol)}
       </td>
       <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
@@ -797,82 +801,102 @@ const PositionRow: React.FC<{
         {fmt.datetime(pos.opened_at)}
       </td>
       {!showClosed && (
-        <td style={{ padding: '6px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-          <button
-            type="button"
-            onClick={() => onDossierClick(pos)}
-            style={{
-              padding: '2px 8px',
-              marginRight: '4px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-precision)',
-              fontWeight: 'bold',
-              background: 'color-mix(in srgb, var(--color-paper-raised) 70%, cyan)',
-              color: 'cyan',
-              border: '1px solid color-mix(in srgb, cyan 40%, var(--color-rule))',
-              borderRadius: '2px',
-              cursor: 'pointer',
-            }}
-            title="Inspect 1-Click Decision Dossier"
-          >
-            🔍
-          </button>
-          <button
-            type="button"
-            onClick={() => onBreakevenClick(pos)}
-            style={{
-              padding: '2px 8px',
-              marginRight: '4px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-precision)',
-              fontWeight: 'bold',
-              background: 'var(--color-paper-raised)',
-              color: 'var(--color-win-yellow)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: '2px',
-              cursor: 'pointer',
-            }}
-            title="Set Stop Loss to Break-Even (entry price)"
-          >
-            BE
-          </button>
-          <button
-            type="button"
-            onClick={() => onEditClick(pos)}
-            style={{
-              padding: '2px 8px',
-              marginRight: '4px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-precision)',
-              fontWeight: 'bold',
-              background: 'var(--color-paper)',
-              color: 'var(--color-ink)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: '2px',
-              cursor: 'pointer',
-            }}
-            title="Modify Stop Loss and Take Profit in MT5"
-          >
-            EDIT
-          </button>
-          <button
-            type="button"
-            onClick={() => onCloseClick(pos)}
-            style={{
-              padding: '2px 8px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-precision)',
-              fontWeight: 'bold',
-              background: 'var(--color-loss-dim)',
-              color: 'var(--color-ledger-red)',
-              border: '1px solid var(--color-ledger-red)',
-              borderRadius: '2px',
-              cursor: 'pointer',
-            }}
-            title="Liquidate or partially close this position"
-          >
-            CLOSE
-          </button>
+        <td style={{ padding: '6px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={() => onDossierClick(pos)}
+              aria-label={`Buka decision dossier untuk ${pos.symbol}`}
+              style={{
+                padding: '4px 8px',
+                minHeight: '32px',
+                minWidth: '32px',
+                fontSize: '12px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'var(--color-info-dim)',
+                color: 'var(--color-text-info)',
+                border: '1px solid var(--color-rule)',
+                borderRadius: 'var(--radius-xs)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Inspect 1-Click Decision Dossier"
+            >
+              🔍
+            </button>
+            <button
+              type="button"
+              onClick={() => onBreakevenClick(pos)}
+              aria-label={`Break even untuk ${pos.symbol}`}
+              style={{
+                padding: '4px 8px',
+                minHeight: '32px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'var(--color-warn-dim)',
+                color: 'var(--color-text-warn)',
+                border: '1px solid var(--color-rule)',
+                borderRadius: 'var(--radius-xs)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Set Stop Loss to Break-Even (entry price)"
+            >
+              BE
+            </button>
+            <button
+              type="button"
+              onClick={() => onEditClick(pos)}
+              aria-label={`Edit SL/TP untuk ${pos.symbol}`}
+              style={{
+                padding: '4px 8px',
+                minHeight: '32px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'var(--color-paper)',
+                color: 'var(--color-ink)',
+                border: '1px solid var(--color-rule)',
+                borderRadius: 'var(--radius-xs)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Modify Stop Loss and Take Profit in MT5"
+            >
+              EDIT
+            </button>
+            <button
+              type="button"
+              onClick={() => onCloseClick(pos)}
+              aria-label={`Tutup posisi ${pos.symbol}`}
+              style={{
+                padding: '4px 8px',
+                minHeight: '32px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 'bold',
+                background: 'var(--color-loss-dim)',
+                color: 'var(--color-text-loss)',
+                border: '1px solid var(--color-ledger-red)',
+                borderRadius: 'var(--radius-xs)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Liquidate or partially close this position"
+            >
+              CLOSE
+            </button>
+          </div>
         </td>
       )}
     </tr>
