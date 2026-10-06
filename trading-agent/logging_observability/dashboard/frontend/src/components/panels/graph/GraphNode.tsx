@@ -101,7 +101,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
 
               <span
                 style={{
-                  fontSize: '10.5px',
+                  fontSize: node.name.length > 18 ? '8.5px' : '10.5px',
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',

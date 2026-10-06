@@ -54,15 +54,15 @@ export const getStatusColor = (status: GraphNodeStatus) => {
 };
 
 export const COMPACT_POSITIONS: Record<string, { x: number; y: number }> = {
-  prefetch_data: { x: 30, y: 40 },
-  fundamental_brief: { x: 30, y: 240 },
-  per_asset_analysis: { x: 310, y: 140 },
-  bull_advocate: { x: 590, y: 40 },
-  bear_dissent: { x: 590, y: 240 },
-  debate_judge: { x: 870, y: 140 },
-  reflection: { x: 1150, y: 140 },
-  risk_gate: { x: 1430, y: 140 },
-  execution: { x: 1710, y: 140 },
+  prefetch_data: { x: 40, y: 100 },
+  fundamental_brief: { x: 40, y: 265 },
+  per_asset_analysis: { x: 290, y: 190 },
+  bull_advocate: { x: 540, y: 80 },
+  bear_dissent: { x: 540, y: 300 },
+  debate_judge: { x: 790, y: 190 },
+  reflection: { x: 1045, y: 80 },
+  risk_gate: { x: 1045, y: 245 },
+  execution: { x: 1045, y: 410 },
 };
 
 export const WIDE_POSITIONS: Record<string, { x: number; y: number }> = {
