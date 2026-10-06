@@ -113,8 +113,16 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
 
     window.addEventListener('resize', handleResize);
 
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
       isCancelled = true;
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
         wsRef.current.close();

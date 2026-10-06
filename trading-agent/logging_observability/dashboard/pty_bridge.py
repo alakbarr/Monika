@@ -36,11 +36,14 @@ class PtySession:
     session_id: str
     created_at: float
     last_active: float
+    cols: int = 80
+    rows: int = 24
     process: Optional[asyncio.subprocess.Process] = None
     query_responder: PtyQueryResponder = field(default_factory=PtyQueryResponder)
     _output_buffer: List[str] = field(default_factory=list)
     _max_buffer_lines: int = 2000
     is_closed: bool = False
+    _h_pc: Any = None
 
     def append_output(self, data: str) -> List[bytes]:
         """
@@ -59,12 +62,33 @@ class PtySession:
         responses = self.query_responder.process_output(data)
         return responses
 
+    def get_history(self) -> str:
+        """Returns the full accumulated terminal history buffer without clearing it."""
+        return "".join(self._output_buffer)
+
     def drain_output(self) -> str:
         """Drains and returns accumulated output buffer."""
         self.last_active = time.time()
         out = "".join(self._output_buffer)
         self._output_buffer.clear()
         return out
+
+    async def resize(self, cols: int, rows: int) -> None:
+        """Resizes terminal dimensions and synchronizes ConPTY if attached."""
+        self.cols = max(10, min(cols, 500))
+        self.rows = max(5, min(rows, 200))
+        self.last_active = time.time()
+
+        if self._h_pc is not None and sys.platform == "win32":
+            try:
+                import ctypes
+                from ctypes import wintypes
+                class COORD(ctypes.Structure):
+                    _fields_ = [("X", wintypes.SHORT), ("Y", wintypes.SHORT)]
+                coord = COORD(self.cols, self.rows)
+                ctypes.windll.kernel32.ResizePseudoConsole(self._h_pc, coord)
+            except Exception as e:
+                logger.debug(f"[PtySession] ResizePseudoConsole error: {e}")
 
     async def write_input(self, data: str) -> None:
         """Writes user input/keystrokes to the underlying subprocess stdin."""
@@ -79,6 +103,14 @@ class PtySession:
     async def close_process(self) -> None:
         """Terminate underlying subprocess cleanly."""
         self.is_closed = True
+        if self._h_pc is not None and sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.kernel32.ClosePseudoConsole(self._h_pc)
+            except Exception:
+                pass
+            self._h_pc = None
+
         if self.process:
             try:
                 self.process.terminate()
@@ -103,7 +135,20 @@ class PtyBridgeManager:
         self._sessions: Dict[str, PtySession] = {}
         self._lock = asyncio.Lock()
 
-    async def create_session(self, session_id: Optional[str] = None) -> PtySession:
+    async def get_or_create_session(
+        self, session_id: Optional[str] = None, cols: int = 80, rows: int = 24
+    ) -> PtySession:
+        """Retrieves existing active session or creates a new one with session preservation."""
+        sid = session_id or str(uuid.uuid4())
+        async with self._lock:
+            existing = self._sessions.get(sid)
+            if existing and not existing.is_closed:
+                return existing
+        return await self.create_session(session_id=sid, cols=cols, rows=rows)
+
+    async def create_session(
+        self, session_id: Optional[str] = None, cols: int = 80, rows: int = 24
+    ) -> PtySession:
         """Creates or registers a new PTY bridge session with an OS shell subprocess."""
         sid = session_id or str(uuid.uuid4())
         now = time.time()
@@ -111,12 +156,20 @@ class PtyBridgeManager:
         shell_cmd = "powershell.exe -NoLogo" if sys.platform == "win32" else "/bin/bash"
         proc = None
         try:
+            env = os.environ.copy()
+            env["TERM"] = "xterm-256color"
+            env["COLORTERM"] = "truecolor"
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONUTF8"] = "1"
+            env["COLUMNS"] = str(cols)
+            env["LINES"] = str(rows)
             proc = await asyncio.create_subprocess_shell(
                 shell_cmd,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 cwd=os.getcwd(),
+                env=env,
             )
         except Exception as e:
             logger.warning(f"[PtyBridge] Failed to spawn shell '{shell_cmd}': {e}")
@@ -125,6 +178,8 @@ class PtyBridgeManager:
             session_id=sid,
             created_at=now,
             last_active=now,
+            cols=cols,
+            rows=rows,
             process=proc,
         )
         async with self._lock:

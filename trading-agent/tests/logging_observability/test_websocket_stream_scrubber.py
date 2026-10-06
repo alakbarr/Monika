@@ -64,3 +64,35 @@ def test_scrub_text_classmethod():
     assert "sk-1234567890" not in sanitized
     assert "Here is the trade setup." in sanitized
     assert "[REDACTED_SECRET]" in sanitized or "[REDACTED_API_KEY]" in sanitized
+
+
+@pytest.mark.asyncio
+async def test_pty_bridge_session_persistence_and_resize():
+    """Verify PtyBridgeManager get_or_create_session preserves session state and handles resize."""
+    from logging_observability.dashboard.pty_bridge import PtyBridgeManager
+
+    mgr = PtyBridgeManager()
+    sid = "test-persistent-session-123"
+
+    session1 = await mgr.get_or_create_session(sid, cols=100, rows=30)
+    assert session1.session_id == sid
+    assert session1.cols == 100
+    assert session1.rows == 30
+
+    # Write output to buffer
+    session1.append_output("Monika shell ready\r\n")
+    assert "Monika shell ready" in session1.get_history()
+
+    # Re-retrieve session: must preserve same instance and history
+    session2 = await mgr.get_or_create_session(sid)
+    assert session2 is session1
+    assert "Monika shell ready" in session2.get_history()
+
+    # Test resize
+    await session2.resize(cols=140, rows=45)
+    assert session2.cols == 140
+    assert session2.rows == 45
+
+    # Cleanup
+    await mgr.close_session(sid)
+    assert await mgr.get_session(sid) is None

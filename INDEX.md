@@ -4336,7 +4336,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `pty_bridge.py`
   - **Docstring**: PTY Console Bridge & Real-Time Terminal WebSocket Coordinator providing live bidirectional terminal session streaming between backend and web dashboard UI.
   - **Classes**: `PtySession`, `PtyBridgeManager`
-    - *Methods*: `append_output()`, `drain_output()`, `create_session()`, `get_session()`, `close_session()`, `reap_idle_sessions()`
+    - *Methods*: `append_output()`, `drain_output()`, `get_history()`, `resize()`, `write_input()`, `close_process()`, `create_session()`, `get_session()`, `get_or_create_session()`, `close_session()`, `reap_stale_sessions()`
 
 **File:** `rbac.py`
   - **Classes**:
