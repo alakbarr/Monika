@@ -73,6 +73,7 @@ export const WORKSPACES: WorkspaceItem[] = [
     defaultTab: 'chat',
     subTabs: [
       { id: 'chat', label: 'Chat' },
+      { id: 'terminal', label: 'Terminal (PTY)' },
       { id: 'sessions', label: 'Session History' },
       { id: 'observability', label: 'Dispatch Audit Log' },
     ],

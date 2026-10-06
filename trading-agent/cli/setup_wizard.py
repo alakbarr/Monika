@@ -676,7 +676,7 @@ class SetupWizard:
                 settings_updates.setdefault("trading", {}).setdefault("risk", {})
                 settings_updates["trading"]["risk"]["risk_percent_per_trade"] = risk_pct
                 settings_updates["trading"]["risk"]["max_daily_drawdown_percent"] = max_dd
-                settings_updates["trading"]["risk"]["max_open_positions"] = max_pos
+                settings_updates["trading"]["risk"]["max_concurrent_positions"] = max_pos
                 console.print(f"  {stamp_ok('RISK SET')} Risk: {risk_pct}% | Max DD: {max_dd}% | Max Positions: {max_pos}")
 
                 current_step += 1

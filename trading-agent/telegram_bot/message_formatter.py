@@ -17,6 +17,25 @@ from typing import Any, Dict, List, Optional, Sequence
 from datetime import datetime, timezone
 
 DEFAULT_USD_IDR_RATE = 16250.0
+DEFAULT_SLIP_WIDTH = 34
+
+
+def get_fintech_badge(text: str) -> str:
+    """Format market state or direction with recognizable smart fintech badges."""
+    t = text.strip().upper()
+    if t in ("BUY", "LONG"):
+        return "🟢 LONG"
+    elif t in ("SELL", "SHORT"):
+        return "🔴 SHORT"
+    elif t in ("PROFIT", "WIN", "UP"):
+        return "📈 PROFIT"
+    elif t in ("LOSS", "DOWN"):
+        return "📉 LOSS"
+    elif t in ("WARNING", "WARN"):
+        return "⚠️ WARN"
+    elif t in ("KILL", "EMERGENCY", "HALT"):
+        return "🚨 KILL"
+    return f"[ {t} ]"
 
 
 def convert_usd_to_idr(usd_amount: float, exchange_rate: float = DEFAULT_USD_IDR_RATE) -> float:
@@ -49,7 +68,7 @@ def format_currency_dual(usd_amount: float, exchange_rate: float = DEFAULT_USD_I
         return f"${usd_amount}"
 
 
-def make_header(title: str, width: int = 46) -> str:
+def make_header(title: str, width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Create a telegraph dispatch slip header."""
     bar = "=" * width
     title_line = f"MONIKA DISPATCH // {title.upper()}"
@@ -58,7 +77,7 @@ def make_header(title: str, width: int = 46) -> str:
     return f"{bar}\n{title_line}\n{bar}"
 
 
-def make_footer(width: int = 46) -> str:
+def make_footer(width: int = DEFAULT_SLIP_WIDTH) -> str:
     return "=" * width
 
 
@@ -72,7 +91,7 @@ def format_status_slip(
     balance: Optional[str] = None,
     equity: Optional[str] = None,
     margin_level: Optional[str] = None,
-    width: int = 46,
+    width: int = DEFAULT_SLIP_WIDTH,
 ) -> str:
     """Format agent status as teletype slip."""
     if not now_str:
@@ -104,7 +123,7 @@ def format_status_slip(
     return "\n".join(lines)
 
 
-def format_positions_slip(positions: Sequence[Any], width: int = 46) -> str:
+def format_positions_slip(positions: Sequence[Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format open positions as fixed-width ledger."""
     if not positions:
         return "```\n" + make_header("OPEN POSITIONS", width) + "\n[ NONE ] No open positions at this time.\n" + make_footer(width) + "\n```"
@@ -120,7 +139,7 @@ def format_positions_slip(positions: Sequence[Any], width: int = 46) -> str:
         ticket = getattr(p, "mt5_ticket", getattr(p, "ticket", "N/A"))
         lines.extend([
             f"[{side}] #{ticket} {p.symbol} | {p.volume} LOT",
-            f"  Open : {p.entry_price} | SL: {p.sl or '-'} | TP: {p.tp or '-'}",
+            f"  Open : {p.entry_price} | SL: {p.sl or '-'}",
             f"  Time : {opened} | PnL: {pnl}",
             "-" * width,
         ])
@@ -138,7 +157,7 @@ def format_risk_slip(
     drawdown: Optional[str] = None,
     reason: Optional[str] = None,
     circuit_breaker: Optional[str] = None,
-    width: int = 46,
+    width: int = DEFAULT_SLIP_WIDTH,
 ) -> str:
     """Format risk state as teletype slip."""
     susp_str = ", ".join(suspended_symbols) if suspended_symbols else "NONE"
@@ -166,7 +185,7 @@ def format_risk_slip(
     return "\n".join(lines)
 
 
-def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, Any]] = None, width: int = 46) -> str:
+def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, Any]] = None, width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format paper trading performance as telegraph slip."""
     if not stats or stats.get("total_trades", 0) == 0:
         return "```\n" + make_header("PERFORMANCE STATS", width) + "\n[ NONE ] No trading records found.\n" + make_footer(width) + "\n```"
@@ -202,7 +221,7 @@ def format_stats_slip(stats: Dict[str, Any], equity_curve: Optional[Dict[str, An
     return "\n".join(lines)
 
 
-def format_alert_slip(title: str, detail: str, severity: str = "WARNING", width: int = 46) -> str:
+def format_alert_slip(title: str, detail: str, severity: str = "WARNING", width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format system dispatch alert."""
     lines = [
         "```",
@@ -216,7 +235,7 @@ def format_alert_slip(title: str, detail: str, severity: str = "WARNING", width:
     return "\n".join(lines)
 
 
-def format_help_slip(commands: Dict[str, str], width: int = 46) -> str:
+def format_help_slip(commands: Dict[str, str], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format bot command index with logical section grouping."""
     lines = [
         "```",
@@ -282,7 +301,7 @@ def format_risk_deep_slip(
     scorecard: Any,
     edge_summary: Optional[Dict[str, Any]] = None,
     token_budget: Optional[Dict[str, Any]] = None,
-    width: int = 46,
+    width: int = DEFAULT_SLIP_WIDTH,
 ) -> str:
     """Format 22-point deterministic risk scorecard as teletype slip."""
     items: List[Dict[str, Any]] = []
@@ -346,7 +365,7 @@ def format_risk_deep_slip(
     return "\n".join(lines)
 
 
-def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = 46) -> str:
+def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format open approval requests as teletype slip."""
     if not open_requests:
         return "```\n" + make_header("APPROVAL QUEUE", width) + "\n[ NONE ] No proposals pending approval.\n" + make_footer(width) + "\n```"
@@ -374,7 +393,7 @@ def format_approvals_slip(open_requests: List[Dict[str, Any]], width: int = 46) 
     return "\n".join(lines)
 
 
-def format_trailing_slip(positions: List[Dict[str, Any]], width: int = 46) -> str:
+def format_trailing_slip(positions: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format trailing stop positions as teletype slip."""
     if not positions:
         return "```\n" + make_header("TRAILING STOP STATUS", width) + "\n[ NONE ] No positions with active trailing stop.\n" + make_footer(width) + "\n```"
@@ -401,7 +420,7 @@ def format_trailing_slip(positions: List[Dict[str, Any]], width: int = 46) -> st
     return "\n".join(lines)
 
 
-def format_reconcile_slip(stats: Dict[str, Any], width: int = 46) -> str:
+def format_reconcile_slip(stats: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format MT5 vs DB reconciliation report as teletype slip."""
     lines = [
         "```",
@@ -426,7 +445,7 @@ def format_reconcile_slip(stats: Dict[str, Any], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_fedwatch_slip(data: Dict[str, Any], width: int = 46) -> str:
+def format_fedwatch_slip(data: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format CME FedWatch outlook as teletype slip."""
     lines = [
         "```",
@@ -460,7 +479,7 @@ def format_fedwatch_slip(data: Dict[str, Any], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_yields_slip(data: Dict[str, Any], width: int = 46) -> str:
+def format_yields_slip(data: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format US Treasury Yield Curve and 2s10s spread as teletype slip."""
     spread = data.get("spread_2s10s")
     inverted = data.get("is_inverted", False)
@@ -492,7 +511,7 @@ def format_yields_slip(data: Dict[str, Any], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_fear_greed_slip(data: Dict[str, Any], width: int = 46) -> str:
+def format_fear_greed_slip(data: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format Fear & Greed sentiment index as teletype slip."""
     val = data.get("current_value", 50)
     classification = str(data.get("classification", "Neutral")).upper()
@@ -514,7 +533,7 @@ def format_fear_greed_slip(data: Dict[str, Any], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_cot_slip(data: List[Dict[str, Any]], width: int = 46) -> str:
+def format_cot_slip(data: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format CFTC COT institutional positioning as teletype slip."""
     lines = [
         "```",
@@ -538,7 +557,7 @@ def format_cot_slip(data: List[Dict[str, Any]], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_playbooks_slip(playbooks: List[Dict[str, Any]], width: int = 46) -> str:
+def format_playbooks_slip(playbooks: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format trading playbooks and FSM lifecycle status as teletype slip."""
     lines = [
         "```",
@@ -565,7 +584,7 @@ def format_playbooks_slip(playbooks: List[Dict[str, Any]], width: int = 46) -> s
     return "\n".join(lines)
 
 
-def format_crystallized_slip(skills: List[Dict[str, Any]], width: int = 46) -> str:
+def format_crystallized_slip(skills: List[Dict[str, Any]], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format autonomously crystallized procedural skills as teletype slip."""
     lines = [
         "```",
@@ -591,7 +610,7 @@ def format_crystallized_slip(skills: List[Dict[str, Any]], width: int = 46) -> s
     return "\n".join(lines)
 
 
-def format_rollback_slip(result: Dict[str, Any], width: int = 46) -> str:
+def format_rollback_slip(result: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format playbook rollback result as teletype slip."""
     st = result.get("status", "UNKNOWN").upper()
     name = result.get("name", "Unknown")
@@ -610,7 +629,7 @@ def format_rollback_slip(result: Dict[str, Any], width: int = 46) -> str:
     return "\n".join(lines)
 
 
-def format_pipeline_slip(data: Dict[str, Any], width: int = 46) -> str:
+def format_pipeline_slip(data: Dict[str, Any], width: int = DEFAULT_SLIP_WIDTH) -> str:
     """Format LangGraph Analysis Pipeline DAG execution flow as teletype slip."""
     status = data.get("status", "IDLE").upper()
     stage = data.get("current_stage", "STAGE 1").upper()

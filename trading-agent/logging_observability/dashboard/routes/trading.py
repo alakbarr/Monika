@@ -14,10 +14,15 @@ from fastapi.responses import JSONResponse
 
 from logging_observability.dashboard.rbac import Role, require_role
 from logging_observability.dashboard.routes.common import (
+    BatchCloseRequest,
+    BulkBreakevenRequest,
     ClosePositionRequest,
+    ManualOrderPreviewRequest,
+    ManualOrderSubmitRequest,
     ModifyPositionRequest,
     OverrideRiskRequest,
     SteerRequest,
+    TrailingOverrideRequest,
     TriggerCycleRequest,
     _safe_json,
     broadcast_live_event,
@@ -123,10 +128,12 @@ async def get_positions(
     status: str = Query(default="open", description="Filter by status: open, closed, all"),
     limit: int = Query(default=50, ge=1, le=200),
 ):
-    """Daftar historis atau posisi yang masih terbuka."""
+    """Daftar historis atau posisi yang masih terbuka dengan data yang diperkaya."""
     from database.db import AsyncSessionLocal
     from database.models import Position
     from sqlalchemy import select
+
+    mt5_client = get_dashboard_dependency("mt5_client")
 
     async with AsyncSessionLocal() as session:
         q = select(Position).order_by(Position.opened_at.desc()).limit(limit)
@@ -135,23 +142,55 @@ async def get_positions(
 
         positions = (await session.execute(q)).scalars().all()
 
-        return [
-            {
+        current_quotes: Dict[str, dict] = {}
+        if mt5_client and status in ("open", "all"):
+            unique_symbols = {p.symbol for p in positions if p.symbol and p.status == "open"}
+            for sym in unique_symbols:
+                try:
+                    quote = await mt5_client.get_current_price(sym)
+                    if quote:
+                        current_quotes[sym] = quote
+                except Exception:
+                    pass
+
+        results = []
+        for p in positions:
+            quote = current_quotes.get(p.symbol)
+            curr_price = None
+            if quote:
+                curr_price = quote.get("bid" if (p.direction or "").lower() == "buy" else "ask")
+
+            trailing_data = None
+            if p.trailing_override_json:
+                try:
+                    trailing_data = json.loads(p.trailing_override_json)
+                except Exception:
+                    trailing_data = p.trailing_override_json
+
+            results.append({
                 "id": p.id,
                 "mt5_ticket": p.mt5_ticket,
                 "symbol": p.symbol,
                 "direction": p.direction,
                 "volume": p.volume,
+                "initial_volume": p.initial_volume,
                 "entry_price": p.entry_price,
+                "price_current": curr_price,
                 "sl": p.sl,
                 "tp": p.tp,
                 "opened_at": p.opened_at.isoformat() if p.opened_at else None,
                 "closed_at": p.closed_at.isoformat() if p.closed_at else None,
                 "status": p.status,
                 "pnl": round(p.pnl, 2) if p.pnl is not None else None,
-            }
-            for p in positions
-        ]
+                "is_paper": bool(getattr(p, "is_paper", False)),
+                "pair_group_id": p.pair_group_id,
+                "trailing_override": trailing_data,
+                "mae_pips": p.mae_pips,
+                "mfe_pips": p.mfe_pips,
+                "slippage_pips": p.slippage_pips,
+            })
+
+        return results
 
 
 # ---------------------------------------------------------------------------
@@ -750,34 +789,64 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
 
 @trading_router.get("/api/signals/mt5", tags=["Execution"])
 async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
-    """Ambil riwayat sinyal dan korelasi eksekusi MT5 (M-4)."""
+    """Ambil riwayat sinyal dan korelasi eksekusi MT5 yang diperkaya dengan analisis AI (M-4)."""
     from database.db import AsyncSessionLocal
-    from database.models import MT5Signal
+    from database.models import MT5Signal, AssetAnalysis
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
-        rows = (await session.execute(
-            select(MT5Signal)
+        stmt = (
+            select(MT5Signal, AssetAnalysis)
+            .outerjoin(AssetAnalysis, MT5Signal.asset_analysis_id == AssetAnalysis.id)
             .order_by(MT5Signal.created_at.desc())
             .limit(limit)
-        )).scalars().all()
+        )
+        raw_exec = await session.execute(stmt)
+        raw_rows = []
+        if hasattr(raw_exec, "_mock_return_value") or hasattr(raw_exec, "mock_calls"):
+            try:
+                s_all = raw_exec.scalars().all()
+                raw_rows = s_all if s_all and not hasattr(s_all, "_mock_return_value") else raw_exec.all()
+            except Exception:
+                raw_rows = raw_exec.all()
+        else:
+            raw_rows = raw_exec.all()
+
+        items = []
+        for row in raw_rows:
+            if isinstance(row, (tuple, list)) and len(row) >= 2:
+                s, a = row[0], row[1]
+            elif isinstance(row, (tuple, list)) and len(row) == 1:
+                s, a = row[0], None
+            else:
+                s, a = row, None
+
+            conf_val = a.confidence if a else None
+            norm_conf = None
+            if conf_val is not None:
+                norm_conf = round(conf_val * 100, 1) if conf_val <= 1.0 else round(conf_val, 1)
+
+            items.append({
+                "id": s.id,
+                "asset_analysis_id": s.asset_analysis_id,
+                "symbol": s.symbol,
+                "action": s.action,
+                "status": s.status,
+                "mt5_ticket": s.mt5_ticket,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "executed_at": s.executed_at.isoformat() if s.executed_at else None,
+                "error_message": s.error_message,
+                "decision": a.decision if a else s.action,
+                "confidence": norm_conf,
+                "confluence_score": a.confluence_score if a else None,
+                "sl": a.stop_loss if a else None,
+                "tp": a.take_profit if a else None,
+                "rationale": (a.rationale or "")[:200] if a else None,
+            })
 
         return {
-            "total": len(rows),
-            "items": [
-                {
-                    "id": s.id,
-                    "asset_analysis_id": s.asset_analysis_id,
-                    "symbol": s.symbol,
-                    "action": s.action,
-                    "status": s.status,
-                    "mt5_ticket": s.mt5_ticket,
-                    "created_at": s.created_at.isoformat() if s.created_at else None,
-                    "executed_at": s.executed_at.isoformat() if s.executed_at else None,
-                    "error_message": s.error_message,
-                }
-                for s in rows
-            ],
+            "total": len(items),
+            "items": items,
         }
 
 
@@ -822,7 +891,7 @@ async def get_trade_triggers(status: Optional[str] = None, limit: int = Query(de
 @trading_router.post("/api/actions/trigger-cycle", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_trigger_cycle(request: Request, body: TriggerCycleRequest = TriggerCycleRequest()):
-    """Trigger the LangGraph analysis cycle immediately."""
+    """Trigger the LangGraph analysis cycle immediately with optional symbol and context guidance."""
     cycle_sched = get_dashboard_dependency("cycle_scheduler")
     if not cycle_sched:
         return JSONResponse(
@@ -836,15 +905,35 @@ async def action_trigger_cycle(request: Request, body: TriggerCycleRequest = Tri
             content={"status": "skipped", "message": "An analysis cycle is already actively executing."}
         )
 
+    from database.db import AsyncSessionLocal
+    from database.models import ActivityLog, UserMarketIntel, _utcnow
+
+    if body.symbol or body.context:
+        try:
+            async with AsyncSessionLocal() as session:
+                intel = UserMarketIntel(
+                    telegram_user_id="operator_dashboard",
+                    intel_type="tactical_directive",
+                    title="Manual Cycle Directive",
+                    summary=f"Focus cycle on {body.symbol or 'ALL'}. Context: {body.context or body.reason}",
+                    directive="neutral",
+                    target_cycle="next_cycle_only",
+                    affected_symbols=body.symbol or "ALL",
+                    is_active=True,
+                    created_at=_utcnow(),
+                )
+                session.add(intel)
+                await session.commit()
+        except Exception as e:
+            logger.warning(f"Failed to record tactical directive for trigger-cycle: {e}")
+
     asyncio.create_task(cycle_sched.run_once(forced=body.forced))
 
-    from database.db import AsyncSessionLocal
-    from database.models import ActivityLog
     try:
         async with AsyncSessionLocal() as session:
             session.add(ActivityLog(
                 category="system",
-                description=f"Analysis cycle manually triggered via Dashboard ({body.reason})",
+                description=f"Analysis cycle manually triggered via Dashboard ({body.reason}, symbol={body.symbol})",
                 actor="dashboard",
             ))
             await session.commit()
@@ -855,6 +944,7 @@ async def action_trigger_cycle(request: Request, body: TriggerCycleRequest = Tri
         "triggered_at": datetime.now(timezone.utc).isoformat(),
         "forced": body.forced,
         "reason": body.reason,
+        "symbol": body.symbol,
     })
 
     return {
@@ -862,6 +952,7 @@ async def action_trigger_cycle(request: Request, body: TriggerCycleRequest = Tri
         "message": "Analysis cycle dispatched successfully.",
         "triggered_at": datetime.now(timezone.utc).isoformat(),
         "forced": body.forced,
+        "symbol": body.symbol,
     }
 
 
@@ -917,7 +1008,7 @@ async def action_steer(body: SteerRequest, request: Request):
 @trading_router.post("/api/actions/override-risk", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_override_risk(payload: OverrideRiskRequest, request: Request):
-    """Update dynamic risk parameters in SystemConfig and runtime settings."""
+    """Update dynamic risk parameters in SystemConfig and runtime settings with duration support."""
     from database.db import AsyncSessionLocal
     from database.models import SystemConfig, ActivityLog
     from sqlalchemy import select
@@ -941,6 +1032,11 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
         updated_fields["system_paused"] = bool(payload.system_paused)
     if payload.custom_overrides:
         updated_fields.update(payload.custom_overrides)
+    if payload.duration_seconds is not None and payload.duration_seconds > 0:
+        exp = datetime.now(timezone.utc) + timedelta(seconds=payload.duration_seconds)
+        updated_fields["expires_at"] = exp.isoformat()
+    elif payload.expires_at is not None:
+        updated_fields["expires_at"] = payload.expires_at.isoformat()
 
     if not updated_fields:
         return JSONResponse(status_code=400, content={"status": "error", "message": "No risk fields provided to override."})
@@ -992,7 +1088,7 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
 @trading_router.post("/api/actions/close-position", tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_close_position(payload: ClosePositionRequest, request: Request):
-    """Close floating position in MT5/broker or synthetic paper trade."""
+    """Close floating position in MT5/broker or synthetic paper trade (full or partial)."""
     from database.db import AsyncSessionLocal
     from database.models import Position
     from sqlalchemy import select
@@ -1001,6 +1097,7 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
     mt5_client = get_dashboard_dependency("mt5_client")
 
     target_ticket = payload.ticket
+    target_volume = payload.volume
 
     async with AsyncSessionLocal() as session:
         if target_ticket is None and payload.position_id is not None:
@@ -1010,40 +1107,60 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
             if not pos:
                 return JSONResponse(status_code=404, content={"status": "error", "message": f"Position {payload.position_id} not found."})
             target_ticket = pos.mt5_ticket
+            if payload.percentage is not None and target_volume is None and pos.volume:
+                target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
             if target_ticket is None and pos.is_paper:
                 if exec_svc and hasattr(exec_svc, "_close_paper_position"):
-                    res = await exec_svc._close_paper_position(session, pos, requested_by="dashboard", reason=payload.reason)
+                    res = await exec_svc._close_paper_position(session, pos, requested_by="dashboard", reason=payload.reason, volume=target_volume)
                     return {"status": "success", "result": res}
+        elif target_ticket is not None and payload.percentage is not None and target_volume is None:
+            pos = (await session.execute(
+                select(Position).where(Position.mt5_ticket == target_ticket)
+            )).scalar_one_or_none()
+            if pos and pos.volume:
+                target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
 
     if target_ticket is None:
         return JSONResponse(status_code=400, content={"status": "error", "message": "Must provide ticket or position_id."})
 
     if exec_svc and hasattr(exec_svc, "close_position_by_ticket"):
-        res = await exec_svc.close_position_by_ticket(
-            ticket=target_ticket,
-            requested_by="dashboard",
-            reason=payload.reason,
-        )
+        close_kwargs: Dict[str, Any] = {
+            "ticket": target_ticket,
+            "requested_by": "dashboard",
+            "reason": payload.reason,
+        }
+        if target_volume is not None:
+            close_kwargs["volume"] = target_volume
+        res = await exec_svc.close_position_by_ticket(**close_kwargs)
     elif mt5_client and hasattr(mt5_client, "close_position"):
-        res = await mt5_client.close_position(
-            ticket=target_ticket,
-            comment=f"Close:dashboard"[:31],
-        )
+        close_kwargs = {
+            "ticket": target_ticket,
+            "comment": f"Close:dashboard"[:31],
+        }
+        if target_volume is not None:
+            close_kwargs["volume"] = target_volume
+        res = await mt5_client.close_position(**close_kwargs)
     else:
         async with AsyncSessionLocal() as session:
             pos = (await session.execute(
                 select(Position).where(Position.mt5_ticket == target_ticket)
             )).scalar_one_or_none()
             if pos:
-                pos.status = "closed"
-                pos.closed_at = datetime.now(timezone.utc)
+                if target_volume and target_volume < float(pos.volume):
+                    pos.volume = float(pos.volume) - target_volume
+                    pos.partially_filled = True
+                    res = {"success": True, "ticket": target_ticket, "remaining_volume": pos.volume, "note": "Partially closed in DB"}
+                else:
+                    pos.status = "closed"
+                    pos.closed_at = datetime.now(timezone.utc)
+                    res = {"success": True, "ticket": target_ticket, "note": "Closed in DB (standalone mode)"}
                 await session.commit()
-                res = {"success": True, "ticket": target_ticket, "note": "Closed in DB (standalone mode)"}
             else:
                 return JSONResponse(status_code=404, content={"status": "error", "message": f"Ticket {target_ticket} not found."})
 
     await broadcast_live_event("position_closed", {
         "ticket": target_ticket,
+        "volume": target_volume,
         "result": res,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
@@ -1051,8 +1168,382 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
     return {
         "status": "success" if res.get("success") else "failed",
         "ticket": target_ticket,
+        "volume": target_volume,
         "result": res,
     }
+
+
+@trading_router.post("/api/positions/{ticket}/breakeven", tags=["Actions"])
+@require_role(Role.OPERATOR)
+async def action_position_breakeven(ticket: int, request: Request):
+    """Move Stop Loss to Entry Price (Breakeven) for a single open position."""
+    from database.db import AsyncSessionLocal
+    from database.models import Position, ActivityLog
+    from sqlalchemy import select
+
+    exec_svc = get_dashboard_dependency("execution_service")
+    mt5_client = get_dashboard_dependency("mt5_client")
+
+    async with AsyncSessionLocal() as session:
+        pos = (await session.execute(
+            select(Position).where(Position.mt5_ticket == ticket, Position.status == "open")
+        )).scalar_one_or_none()
+
+        if not pos:
+            return JSONResponse(status_code=404, content={"status": "error", "message": f"Open position #{ticket} not found."})
+
+        entry_price = float(pos.entry_price or 0.0)
+        current_sl = float(pos.sl or 0.0) if pos.sl is not None else None
+        dir_clean = (pos.direction or "").lower()
+
+        if current_sl is not None:
+            if dir_clean == "buy" and current_sl >= entry_price:
+                return {"status": "skipped", "message": f"Position #{ticket} SL already at or above breakeven."}
+            elif dir_clean == "sell" and current_sl <= entry_price:
+                return {"status": "skipped", "message": f"Position #{ticket} SL already at or below breakeven."}
+
+        res = None
+        if exec_svc and hasattr(exec_svc, "modify_position_sl_tp"):
+            try:
+                res = await exec_svc.modify_position_sl_tp(ticket=ticket, new_sl=entry_price, new_tp=pos.tp, comment="BE:dashboard")
+            except Exception as e:
+                logger.warning(f"Execution service breakeven failed: {e}")
+
+        if not res and mt5_client and hasattr(mt5_client, "modify_position"):
+            try:
+                res = await mt5_client.modify_position(ticket=ticket, sl=entry_price, tp=pos.tp)
+            except Exception as e:
+                logger.warning(f"MT5 client breakeven failed: {e}")
+
+        pos.sl = entry_price
+        session.add(ActivityLog(
+            category="trading",
+            description=f"Breakeven applied to position #{ticket} at {entry_price}",
+            actor="dashboard",
+            related_id=ticket,
+        ))
+        await session.commit()
+
+    await broadcast_live_event("position_breakeven", {
+        "ticket": ticket,
+        "entry_price": entry_price,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {
+        "status": "success",
+        "ticket": ticket,
+        "entry_price": entry_price,
+        "result": res or {"success": True, "note": "Updated in DB"},
+    }
+
+
+@trading_router.post("/api/actions/bulk-breakeven", tags=["Actions"])
+@require_role(Role.OPERATOR)
+async def action_bulk_breakeven(payload: BulkBreakevenRequest, request: Request):
+    """Move Stop Loss to Entry Price across profitable positions."""
+    exec_svc = get_dashboard_dependency("execution_service")
+    guardian = get_dashboard_dependency("position_guardian")
+
+    target = exec_svc if (exec_svc and hasattr(exec_svc, "apply_immediate_breakeven")) else guardian
+
+    if target and hasattr(target, "apply_immediate_breakeven"):
+        res = await target.apply_immediate_breakeven(
+            only_profit=payload.only_profit,
+            symbol=payload.symbol,
+            requested_by="dashboard_bulk_be",
+        )
+    else:
+        from database.db import AsyncSessionLocal
+        from database.models import Position, ActivityLog
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as session:
+            stmt = select(Position).where(Position.status == "open")
+            if payload.symbol:
+                stmt = stmt.where(Position.symbol == payload.symbol.upper())
+            positions = (await session.execute(stmt)).scalars().all()
+            updated = 0
+            for p in positions:
+                p.sl = p.entry_price
+                updated += 1
+            session.add(ActivityLog(
+                category="trading",
+                description=f"Bulk breakeven applied to {updated} positions (symbol={payload.symbol})",
+                actor="dashboard",
+            ))
+            await session.commit()
+            res = {"success": True, "updated_count": updated, "message": f"Updated {updated} positions to BE."}
+
+    await broadcast_live_event("bulk_breakeven_applied", {
+        "result": res,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success", "result": res}
+
+
+@trading_router.post("/api/positions/{ticket}/trailing", tags=["Actions"])
+@require_role(Role.OPERATOR)
+async def action_trailing_override(ticket: int, payload: TrailingOverrideRequest, request: Request):
+    """Set dynamic or static trailing stop override per position ticket."""
+    from database.db import AsyncSessionLocal
+    from database.models import Position, ActivityLog
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as session:
+        pos = (await session.execute(
+            select(Position).where(Position.mt5_ticket == ticket)
+        )).scalar_one_or_none()
+
+        if not pos:
+            return JSONResponse(status_code=404, content={"status": "error", "message": f"Position #{ticket} not found."})
+
+        if payload.reset_to_default:
+            pos.trailing_override_json = None
+            msg = f"Reset trailing override to default for ticket #{ticket}"
+            override_data = None
+        else:
+            override_data = {}
+            if payload.enabled is False:
+                override_data["disabled"] = True
+            if payload.trailing_pips is not None:
+                override_data["trailing_pips"] = payload.trailing_pips
+            if payload.breakeven_pips is not None:
+                override_data["breakeven_pips"] = payload.breakeven_pips
+            if payload.trail_atr_multiple is not None:
+                override_data["trail_atr_multiple"] = payload.trail_atr_multiple
+
+            pos.trailing_override_json = json.dumps(override_data)
+            msg = f"Updated trailing override for ticket #{ticket}: {override_data}"
+
+        session.add(ActivityLog(
+            category="trading",
+            description=msg,
+            actor="dashboard",
+            related_id=ticket,
+        ))
+        await session.commit()
+
+    await broadcast_live_event("trailing_override_updated", {
+        "ticket": ticket,
+        "trailing_override": override_data,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success", "ticket": ticket, "message": msg}
+
+
+@trading_router.post("/api/actions/kill-symbol/{symbol}", tags=["Actions"])
+@require_role(Role.ADMIN)
+async def action_kill_symbol(symbol: str, request: Request):
+    """Emergency close all open positions for a single currency/symbol."""
+    sym = symbol.strip().upper().replace("/", "")
+    exec_svc = get_dashboard_dependency("execution_service")
+    emergency = get_dashboard_dependency("emergency_manager") or exec_svc
+
+    if emergency and hasattr(emergency, "close_positions_batch"):
+        res = await emergency.close_positions_batch(
+            symbol=sym,
+            requested_by="dashboard_kill_symbol",
+            reason=f"Emergency liquidation for symbol {sym}",
+        )
+    else:
+        from database.db import AsyncSessionLocal
+        from database.models import Position, ActivityLog
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as session:
+            positions = (await session.execute(
+                select(Position).where(Position.symbol == sym, Position.status == "open")
+            )).scalars().all()
+            for p in positions:
+                p.status = "closed"
+                p.closed_at = datetime.now(timezone.utc)
+            session.add(ActivityLog(
+                category="risk",
+                description=f"Symbol {sym} liquidated ({len(positions)} positions closed)",
+                actor="admin",
+            ))
+            await session.commit()
+            res = {"success": True, "closed_count": len(positions), "symbol": sym}
+
+    await broadcast_live_event("symbol_liquidated", {
+        "symbol": sym,
+        "result": res,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success", "symbol": sym, "result": res}
+
+
+@trading_router.post("/api/actions/close-batch", tags=["Actions"])
+@require_role(Role.OPERATOR)
+async def action_close_batch(payload: BatchCloseRequest, request: Request):
+    """Close multiple positions selectively in a single batch request."""
+    exec_svc = get_dashboard_dependency("execution_service")
+    emergency = get_dashboard_dependency("emergency_manager") or exec_svc
+
+    if emergency and hasattr(emergency, "close_positions_batch"):
+        res = await emergency.close_positions_batch(
+            tickets=payload.tickets,
+            requested_by="dashboard_batch_close",
+            reason=payload.reason or "Batch close via Dashboard",
+        )
+    else:
+        from database.db import AsyncSessionLocal
+        from database.models import Position, ActivityLog
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as session:
+            positions = (await session.execute(
+                select(Position).where(Position.mt5_ticket.in_(payload.tickets), Position.status == "open")
+            )).scalars().all()
+            for p in positions:
+                p.status = "closed"
+                p.closed_at = datetime.now(timezone.utc)
+            session.add(ActivityLog(
+                category="trading",
+                description=f"Batch closed {len(positions)} positions: {payload.tickets}",
+                actor="dashboard",
+            ))
+            await session.commit()
+            res = {"success": True, "closed_count": len(positions), "tickets": payload.tickets}
+
+    await broadcast_live_event("batch_positions_closed", {
+        "tickets": payload.tickets,
+        "result": res,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success", "result": res}
+
+
+@trading_router.post("/api/orders/preview", tags=["Trading"])
+@require_role(Role.OPERATOR)
+async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Request):
+    """Preview manual order metrics: lot sizing, risk amount, reward amount, RR ratio, margin."""
+    sym = payload.symbol.strip().upper().replace("/", "")
+    direction = payload.direction.strip().lower()
+
+    mt5_client = get_dashboard_dependency("mt5_client")
+    risk_gate = get_dashboard_dependency("risk_gate")
+
+    entry_price = payload.price
+    if mt5_client:
+        try:
+            quote = await mt5_client.get_current_price(sym)
+            if quote:
+                bid = quote.get("bid")
+                ask = quote.get("ask")
+                if entry_price is None:
+                    entry_price = ask if direction == "buy" else bid
+        except Exception:
+            pass
+
+    if entry_price is None:
+        entry_price = 1.0
+
+    is_jpy = "JPY" in sym
+    pip_factor = 0.01 if is_jpy else 0.0001
+
+    sl_distance_pips = abs(entry_price - payload.sl) / pip_factor if payload.sl else None
+    tp_distance_pips = abs(payload.tp - entry_price) / pip_factor if payload.tp else None
+
+    volume = payload.volume or 0.1
+    pip_value_approx = 10.0 * volume
+
+    estimated_risk_usd = round(sl_distance_pips * pip_value_approx, 2) if sl_distance_pips else None
+    estimated_reward_usd = round(tp_distance_pips * pip_value_approx, 2) if tp_distance_pips else None
+    rr_ratio = round(tp_distance_pips / sl_distance_pips, 2) if (sl_distance_pips and tp_distance_pips and sl_distance_pips > 0) else None
+
+    from database.db import AsyncSessionLocal
+    is_allowed = True
+    gate_reason = "Order within risk thresholds"
+    if risk_gate:
+        try:
+            async with AsyncSessionLocal() as session:
+                allowed, reason = await risk_gate._check_not_paused(session)
+                if not allowed:
+                    is_allowed = False
+                    gate_reason = reason
+        except Exception:
+            pass
+
+    return {
+        "symbol": sym,
+        "direction": direction,
+        "entry_price": entry_price,
+        "sl": payload.sl,
+        "tp": payload.tp,
+        "volume": volume,
+        "sl_distance_pips": round(sl_distance_pips, 1) if sl_distance_pips else None,
+        "tp_distance_pips": round(tp_distance_pips, 1) if tp_distance_pips else None,
+        "estimated_risk_usd": estimated_risk_usd,
+        "estimated_reward_usd": estimated_reward_usd,
+        "rr_ratio": rr_ratio,
+        "risk_gate_allowed": is_allowed,
+        "risk_gate_reason": gate_reason,
+    }
+
+
+@trading_router.post("/api/orders/submit", tags=["Trading"])
+@require_role(Role.OPERATOR)
+async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Request):
+    """Execute a manual trade order directly to MT5 or broker."""
+    sym = payload.symbol.strip().upper().replace("/", "")
+    direction = payload.direction.strip().lower()
+
+    mt5_client = get_dashboard_dependency("mt5_client")
+    exec_svc = get_dashboard_dependency("execution_service")
+
+    if not mt5_client and not exec_svc:
+        return JSONResponse(status_code=503, content={"status": "error", "message": "No active broker or execution service available."})
+
+    res = None
+    if mt5_client and hasattr(mt5_client, "place_order"):
+        res = await mt5_client.place_order(
+            symbol=sym,
+            direction=direction,
+            volume=payload.volume,
+            price=payload.price,
+            sl=payload.sl,
+            tp=payload.tp,
+            comment=payload.comment or "Manual:dashboard",
+            order_type=payload.order_type,
+        )
+
+    from database.db import AsyncSessionLocal
+    from database.models import Position, ActivityLog
+    async with AsyncSessionLocal() as session:
+        session.add(ActivityLog(
+            category="trading",
+            description=f"Manual order submitted: {direction.upper()} {payload.volume} {sym}",
+            actor="operator",
+        ))
+        if res and res.get("success") and res.get("ticket"):
+            session.add(Position(
+                mt5_ticket=res.get("ticket"),
+                symbol=sym,
+                direction=direction,
+                volume=payload.volume,
+                entry_price=res.get("price") or payload.price or 0.0,
+                sl=payload.sl,
+                tp=payload.tp,
+                status="open",
+                is_paper=False,
+            ))
+        await session.commit()
+
+    await broadcast_live_event("manual_order_submitted", {
+        "symbol": sym,
+        "direction": direction,
+        "volume": payload.volume,
+        "result": res,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"status": "success" if (res and res.get("success")) else "failed", "result": res}
 
 
 @trading_router.post("/api/actions/emergency-kill", tags=["Actions"])

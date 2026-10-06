@@ -27,12 +27,16 @@ from analysis.tools.environments.pty_query_responder import PtyQueryResponder
 logger = logging.getLogger("TradingAgent.Dashboard.PtyBridge")
 
 
+import os
+import sys
+
 @dataclass
 class PtySession:
     """Represents an active interactive terminal session connected via WebSocket."""
     session_id: str
     created_at: float
     last_active: float
+    process: Optional[asyncio.subprocess.Process] = None
     query_responder: PtyQueryResponder = field(default_factory=PtyQueryResponder)
     _output_buffer: List[str] = field(default_factory=list)
     _max_buffer_lines: int = 2000
@@ -62,6 +66,30 @@ class PtySession:
         self._output_buffer.clear()
         return out
 
+    async def write_input(self, data: str) -> None:
+        """Writes user input/keystrokes to the underlying subprocess stdin."""
+        self.last_active = time.time()
+        if self.process and self.process.stdin and not self.is_closed:
+            try:
+                self.process.stdin.write(data.encode("utf-8"))
+                await self.process.stdin.drain()
+            except Exception as e:
+                logger.debug(f"[PtySession] Stdin write error: {e}")
+
+    async def close_process(self) -> None:
+        """Terminate underlying subprocess cleanly."""
+        self.is_closed = True
+        if self.process:
+            try:
+                self.process.terminate()
+                await asyncio.wait_for(self.process.wait(), timeout=1.0)
+            except Exception:
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+            self.process = None
+
     def close(self) -> None:
         self.is_closed = True
         self._output_buffer.clear()
@@ -76,17 +104,32 @@ class PtyBridgeManager:
         self._lock = asyncio.Lock()
 
     async def create_session(self, session_id: Optional[str] = None) -> PtySession:
-        """Creates or registers a new PTY bridge session."""
+        """Creates or registers a new PTY bridge session with an OS shell subprocess."""
         sid = session_id or str(uuid.uuid4())
         now = time.time()
+
+        shell_cmd = "powershell.exe -NoLogo" if sys.platform == "win32" else "/bin/bash"
+        proc = None
+        try:
+            proc = await asyncio.create_subprocess_shell(
+                shell_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                cwd=os.getcwd(),
+            )
+        except Exception as e:
+            logger.warning(f"[PtyBridge] Failed to spawn shell '{shell_cmd}': {e}")
+
         session = PtySession(
             session_id=sid,
             created_at=now,
             last_active=now,
+            process=proc,
         )
         async with self._lock:
             self._sessions[sid] = session
-        logger.info(f"[PtyBridge] Created terminal session '{sid}'.")
+        logger.info(f"[PtyBridge] Created terminal session '{sid}' (PID: {proc.pid if proc else 'none'}).")
         return session
 
     async def get_session(self, session_id: str) -> Optional[PtySession]:
@@ -99,6 +142,7 @@ class PtyBridgeManager:
         async with self._lock:
             session = self._sessions.pop(session_id, None)
             if session:
+                await session.close_process()
                 session.close()
                 logger.info(f"[PtyBridge] Closed session '{session_id}'.")
                 return True

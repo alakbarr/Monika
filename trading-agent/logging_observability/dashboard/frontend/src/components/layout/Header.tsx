@@ -15,9 +15,10 @@ import { MonikaInfiniteIcon } from '../ui/MonikaInfiniteIcon';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommandPalette }) => {
   const { health, overview, wsConnected } = useDashboardStore();
   const [clock, setClock] = useState(new Date());
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -212,6 +213,30 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav }) => {
 
         {/* Retro Toggle Switch (Light / Dark) */}
         <ThemeToggle />
+
+        {/* Command Palette Launcher */}
+        <button
+          type="button"
+          onClick={() => {
+            sounds.playClick('typewriter');
+            onOpenCommandPalette?.();
+          }}
+          className="win-btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '30px',
+            boxSizing: 'border-box',
+            padding: '0 8px',
+            fontSize: 'var(--text-xs)',
+            border: '2px solid var(--color-rule)',
+            boxShadow: '2px 2px 0 var(--color-rule)',
+          }}
+          title="Command Palette (Cmd+K / Ctrl+K)"
+        >
+          ⌘K
+        </button>
 
         {/* Shortcuts Helper Key */}
         <button

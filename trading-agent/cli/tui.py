@@ -577,6 +577,8 @@ class TradingDashboard(App):
 
     def action_switch_tab(self) -> None:
         """Switch to next tab."""
+        if self._is_input_focused():
+            return
         tabs = self.query_one("#main_tabs", TabbedContent)
         tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
         curr = tabs.active
@@ -586,6 +588,8 @@ class TradingDashboard(App):
 
     def action_prev_tab(self) -> None:
         """Switch to previous tab."""
+        if self._is_input_focused():
+            return
         tabs = self.query_one("#main_tabs", TabbedContent)
         tab_ids = ["tab_overview", "tab_analysis", "tab_signals", "tab_risk", "tab_performance", "tab_market", "tab_plugins", "tab_benchmark", "tab_chat"]
         curr = tabs.active
@@ -594,27 +598,43 @@ class TradingDashboard(App):
             tabs.active = tab_ids[prev_idx]
 
     def action_tab_overview(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_overview"
 
     def action_tab_analysis(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_analysis"
 
     def action_tab_signals(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_signals"
 
     def action_tab_risk(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_risk"
 
     def action_tab_performance(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_performance"
 
     def action_tab_market(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_market"
 
     def action_tab_chat(self) -> None:
+        if self._is_input_focused():
+            return
         self.query_one("#main_tabs", TabbedContent).active = "tab_chat"
 
     def action_tab_plugins(self) -> None:
+        if self._is_input_focused():
+            return
         try:
             self.query_one("#main_tabs", TabbedContent).active = "tab_plugins"
             asyncio.create_task(self.refresh_plugins_table())
@@ -622,6 +642,8 @@ class TradingDashboard(App):
             pass
 
     def action_tab_benchmark(self) -> None:
+        if self._is_input_focused():
+            return
         try:
             self.query_one("#main_tabs", TabbedContent).active = "tab_benchmark"
             asyncio.create_task(self.refresh_benchmark_table())

@@ -547,9 +547,11 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         filter_type: str = "all",
         requested_by: str = "user_chat",
         reason: str = "Batch close positions",
+        symbol: Optional[str] = None,
     ) -> dict:
         """
-        Menutup posisi secara batch dengan filter ('all', 'profit_only', 'loss_only').
+        Menutup posisi secara batch dengan filter ('all', 'profit_only', 'loss_only')
+        dan opsi filter simbol spesifik.
         Berbeda dari kill_switch: TIDAK mem-pause trading daemon dan TIDAK memicu emergency lockout.
         """
         closed_tickets = []
@@ -566,6 +568,9 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
         for pos in live_positions:
             ticket = pos.get("ticket")
+            sym = pos.get("symbol")
+            if symbol and sym and sym.strip().upper() != symbol.strip().upper():
+                continue
             profit = float(pos.get("profit", 0.0) or 0.0)
             if filter_type == "profit_only" and profit <= 0:
                 continue
@@ -582,6 +587,8 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         # 2. Ambil posisi paper DB jika ada
         async with get_session() as session:
             paper_query = select(Position).where(Position.status == "open")
+            if symbol:
+                paper_query = paper_query.where(Position.symbol == symbol.strip().upper())
             db_positions = (await session.execute(paper_query)).scalars().all()
             for db_pos in db_positions:
                 if getattr(db_pos, "is_paper", False):

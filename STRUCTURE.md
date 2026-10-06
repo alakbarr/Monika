@@ -981,6 +981,7 @@ Monika/
     │   │   │   │   │   │   ├── SignalsTriggersPanel.tsx
     │   │   │   │   │   │   ├── SkillManagerPanel.tsx
     │   │   │   │   │   │   ├── SystemPanel.tsx
+    │   │   │   │   │   │   ├── TerminalPanel.tsx
     │   │   │   │   │   │   ├── TokenAuditPanel.tsx
     │   │   │   │   │   │   ├── config
     │   │   │   │   │   │   │   ├── ConfigDiffModal.tsx
@@ -1000,6 +1001,7 @@ Monika/
     │   │   │   │   │       ├── Badge.tsx
     │   │   │   │   │       ├── BootSequence.tsx
     │   │   │   │   │       ├── Card.tsx
+    │   │   │   │   │       ├── CommandPalette.tsx
     │   │   │   │   │       ├── ConfirmModal.tsx
     │   │   │   │   │       ├── EmptyState.tsx
     │   │   │   │   │       ├── ErrorBoundary.tsx

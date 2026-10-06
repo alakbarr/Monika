@@ -120,6 +120,8 @@ class OverrideRiskRequest(BaseModel):
     max_risk_amount_usd: Optional[float] = Field(None, ge=10.0, le=50000.0)
     auto_execute: Optional[bool] = None
     system_paused: Optional[bool] = None
+    duration_seconds: Optional[int] = Field(default=None, description="TTL duration in seconds before override reverts")
+    expires_at: Optional[str] = Field(default=None, description="ISO timestamp when override expires")
     reason: Optional[str] = Field(None, description="Audit reason for risk override")
 
 
@@ -128,6 +130,8 @@ class ClosePositionRequest(BaseModel):
     position_id: Optional[int] = Field(default=None, description="Database Position record ID")
     paper_trade_id: Optional[int] = Field(default=None, description="PaperTradeRecord ID")
     symbol: Optional[str] = Field(default=None, description="Currency symbol")
+    volume: Optional[float] = Field(default=None, gt=0.0, description="Partial volume/lots to close")
+    percentage: Optional[float] = Field(default=None, ge=1.0, le=100.0, description="Percentage of position to close (1-100)")
     reason: str = Field(default="Manual close from Dashboard", description="Closure reason")
 
 
@@ -143,6 +147,45 @@ class ModifyPositionRequest(BaseModel):
     comment: Optional[str] = Field(default="Mod:dashboard", description="Audit note or comment")
 
 
+class TrailingOverrideRequest(BaseModel):
+    atr_multiplier: Optional[float] = Field(default=None, gt=0.0, description="Trailing stop ATR multiplier (e.g. 1.5)")
+    breakeven_atr_multiple: Optional[float] = Field(default=None, gt=0.0, description="ATR multiple to trigger BE")
+    trailing_pips: Optional[float] = Field(default=None, gt=0.0, description="Fixed trailing distance in pips")
+    breakeven_pips: Optional[float] = Field(default=None, gt=0.0, description="Fixed profit in pips to trigger BE")
+    enabled: bool = Field(default=True, description="Enable or disable trailing stop")
+
+
+class BulkBreakevenRequest(BaseModel):
+    only_profit: bool = Field(default=True, description="Only move positions currently in profit to breakeven")
+    symbol: Optional[str] = Field(default=None, description="Optional symbol filter, e.g. EURUSD")
+
+
+class BatchCloseRequest(BaseModel):
+    filter_type: str = Field(default="all", description="'all', 'profit_only', or 'loss_only'")
+    symbol: Optional[str] = Field(default=None, description="Optional symbol filter")
+    reason: str = Field(default="Batch close from Dashboard")
+
+
+class ManualOrderPreviewRequest(BaseModel):
+    symbol: str = Field(..., min_length=1, description="Trading instrument symbol")
+    direction: str = Field(..., description="'buy' or 'sell'")
+    entry_price: Optional[float] = Field(default=None, description="Entry price (or current market price)")
+    sl: Optional[float] = Field(default=None, description="Stop loss price")
+    tp: Optional[float] = Field(default=None, description="Take profit price")
+    risk_percent: Optional[float] = Field(default=None, ge=0.1, le=5.0, description="Risk percentage override")
+    fixed_lots: Optional[float] = Field(default=None, gt=0.0, description="Fixed lots override")
+
+
+class ManualOrderSubmitRequest(BaseModel):
+    symbol: str = Field(..., min_length=1)
+    order_type: str = Field(..., description="'buy', 'sell', 'buy_limit', 'sell_limit', 'buy_stop', 'sell_stop'")
+    lots: float = Field(..., gt=0.0, description="Order volume in lots")
+    price: Optional[float] = Field(default=None, description="Order execution/limit/stop price")
+    sl: Optional[float] = Field(default=None, description="Stop loss price")
+    tp: Optional[float] = Field(default=None, description="Take profit price")
+    comment: str = Field(default="Manual:Dashboard", description="Order comment")
+
+
 class DeprecateSkillRequest(BaseModel):
     reason: Optional[str] = Field(default="Operator manual deprecation", description="Reason for deprecating skill")
 
@@ -156,12 +199,30 @@ OverrideRiskRequest.model_rebuild()
 ClosePositionRequest.model_rebuild()
 SteerRequest.model_rebuild()
 ModifyPositionRequest.model_rebuild()
+TrailingOverrideRequest.model_rebuild()
+BulkBreakevenRequest.model_rebuild()
+BatchCloseRequest.model_rebuild()
+ManualOrderPreviewRequest.model_rebuild()
+ManualOrderSubmitRequest.model_rebuild()
 DeprecateSkillRequest.model_rebuild()
 CrystallizeSkillRequest.model_rebuild()
 
 
 def _get_settings_path() -> str:
-    """Resolve absolute path to settings.yaml."""
+    """Resolve absolute path to settings.yaml with active profile support."""
+    # Check for active profile marker first
+    for p_cand in ("profiles/active_profile", "trading-agent/profiles/active_profile"):
+        if os.path.exists(p_cand):
+            try:
+                with open(p_cand, "r", encoding="utf-8") as pf:
+                    p_name = pf.read().strip()
+                    if p_name and p_name != "default":
+                        for cand_cfg in (f"profiles/{p_name}/settings.yaml", f"trading-agent/profiles/{p_name}/settings.yaml"):
+                            if os.path.exists(cand_cfg):
+                                return os.path.abspath(cand_cfg)
+            except Exception:
+                pass
+
     candidates = [
         os.getenv("SETTINGS_PATH"),
         "config/settings.yaml",
