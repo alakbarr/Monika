@@ -266,8 +266,8 @@ This document provides an exhaustive structural index of all directories, files,
 
 ### Folder: `docs`
 
-  - **Description**: Documentation repository, system guides, and UI showcase screenshot assets.
-  - **Note**: Collapsed directory containing 11 internal files.
+  - **Description**: Documentation repository, system guides, and comprehensive UI showcase screenshot assets (28 views across all workspaces, modals, and themes).
+  - **Note**: Collapsed directory containing documentation and image assets.
 
 ### Folder: `scripts`
 

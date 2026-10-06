@@ -38,16 +38,36 @@ Monika/
 │   ├── SETUP_GUIDE.md
 │   └── images
 │       ├── 01_trading_desk_overview.png
-│       ├── 02_trading_desk_signals.png
-│       ├── 03_trading_desk_market.png
-│       ├── 04_market_intelligence_pipeline_dag.png
-│       ├── 05_market_intelligence_macro_brief.png
-│       ├── 06_ledger_risk_limits.png
-│       ├── 07_ledger_llm_token_audit.png
-│       ├── 08_telegraph_desk_console_chat.png
-│       ├── 09_system_configuration.png
+│       ├── 02_trading_desk_positions.png
+│       ├── 03_trading_desk_signals.png
+│       ├── 04_trading_desk_market.png
+│       ├── 05_market_intel_pipeline_dag.png
+│       ├── 06_market_intel_debate_arbitration.png
+│       ├── 07_market_intel_market_analysis.png
+│       ├── 08_market_intel_macro_brief.png
+│       ├── 09_market_intel_memory_vault.png
+│       ├── 10_market_intel_crystallized_skills.png
+│       ├── 11_market_intel_benchmark_lab.png
+│       ├── 12_ledger_risk_pnl_performance.png
+│       ├── 13_ledger_risk_edge_expectancy.png
+│       ├── 14_ledger_risk_limits_fortress.png
+│       ├── 15_ledger_risk_token_audit.png
+│       ├── 16_ledger_risk_historical_backtest.png
+│       ├── 17_telegraph_desk_agent_chat.png
+│       ├── 18_telegraph_desk_terminal_pty.png
+│       ├── 19_telegraph_desk_session_history.png
+│       ├── 20_telegraph_desk_dispatch_audit_log.png
+│       ├── 21_system_config_settings.png
+│       ├── 22_system_config_plugin_marketplace.png
+│       ├── 23_system_config_host_diagnostics.png
+│       ├── 24_setup_onboarding_wizard.png
+│       ├── 25_overlay_command_palette.png
+│       ├── 26_modal_decision_dossier.png
+│       ├── 27_theme_dark_crt_overview.png
+│       ├── 28_overlay_boot_sequence.png
 │       ├── 10_terminal_ui_tui.png
-│       └── 10_terminal_ui_tui.svg
+│       ├── 10_terminal_ui_tui.svg
+│       └── dashboard
 ├── pyproject.toml
 ├── pyrightconfig.json
 ├── pytest.ini
