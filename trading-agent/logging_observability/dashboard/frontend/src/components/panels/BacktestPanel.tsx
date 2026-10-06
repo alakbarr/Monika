@@ -109,8 +109,10 @@ export const BacktestPanel: React.FC = () => {
     const sortino = downsideDev > 0 ? (meanReturn / downsideDev) * Math.sqrt(252) : null;
 
     const run = runDetails.run;
-    const totalReturnPct = run.initial_equity > 0 ? (run.final_equity - run.initial_equity) / run.initial_equity : 0;
-    const maxDdPct = run.max_drawdown_pct > 0 ? run.max_drawdown_pct : 0.001;
+    const initialEq = run.initial_equity || 10000;
+    const finalEq = run.final_equity != null ? run.final_equity : initialEq;
+    const totalReturnPct = initialEq > 0 ? (finalEq - initialEq) / initialEq : 0;
+    const maxDdPct = run.max_drawdown_pct != null && run.max_drawdown_pct > 0 ? run.max_drawdown_pct : 0.001;
     const calmar = totalReturnPct / maxDdPct;
 
     const sortedReturns = [...returns].sort((a, b) => a - b);
@@ -386,7 +388,9 @@ export const BacktestPanel: React.FC = () => {
                 <tbody>
                   {runs.map((r) => {
                     const isSelected = selectedRunId === r.id;
-                    const pnl = r.final_equity - r.initial_equity;
+                    const initialEq = r.initial_equity ?? 0;
+                    const finalEq = r.final_equity != null ? r.final_equity : initialEq;
+                    const pnl = finalEq - initialEq;
                     return (
                       <tr
                         key={r.id}
@@ -406,23 +410,25 @@ export const BacktestPanel: React.FC = () => {
                         </td>
                         <td style={{ padding: '8px' }}>
                           <div style={{ fontWeight: 700, color: pnl >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}>
-                            ${r.final_equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {r.final_equity != null
+                              ? `$${r.final_equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : 'In Progress'}
                           </div>
                           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-                            Start: ${r.initial_equity.toLocaleString()}
+                            Start: ${initialEq.toLocaleString()}
                           </div>
                         </td>
                         <td style={{ padding: '8px', fontWeight: 700 }}>
-                          {(r.win_rate * 100).toFixed(1)}%
+                          {r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : '—'}
                         </td>
                         <td style={{ padding: '8px' }}>
-                          {r.sharpe_ratio ? r.sharpe_ratio.toFixed(2) : '—'}
+                          {r.sharpe_ratio != null ? r.sharpe_ratio.toFixed(2) : '—'}
                         </td>
                         <td style={{ padding: '8px', color: 'var(--color-loss)' }}>
-                          {(r.max_drawdown_pct * 100).toFixed(1)}%
+                          {r.max_drawdown_pct != null ? `${(r.max_drawdown_pct * 100).toFixed(1)}%` : '—'}
                         </td>
                         <td style={{ padding: '8px', fontWeight: 700 }}>
-                          {r.total_trades}
+                          {r.total_trades ?? '—'}
                         </td>
                       </tr>
                     );
