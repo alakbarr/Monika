@@ -185,7 +185,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `.gitignore`
 
 **File:** `AGENTS.md`
-  - **Description**: Universal engineering directives and system invariants for autonomous AI coding agents (Claude, Cursor, Codex, etc.) detailing navigation protocols, surgical engineering standards, /grill-me design alignment, doc sync mandates, triple quality gates (pytest/ruff/pyright zero-defect mandate), atomic git commit protocol, GitHub Actions CI surveillance, safety boundaries, and CLI workflows.
+  - **Description**: Universal engineering directives and system invariants for autonomous AI coding agents (Claude, Cursor, Codex, etc.) detailing navigation protocols, surgical engineering standards, large-codebase systemic integration & blast-radius tracing, /grill-me design alignment, doc sync mandates, triple quality gates (pytest/ruff/pyright zero-defect mandate), atomic git commit protocol, GitHub Actions CI surveillance, safety boundaries, and CLI workflows.
 
 **File:** `CHANGELOG.md`
 
@@ -200,7 +200,7 @@ This document provides an exhaustive structural index of all directories, files,
 **File:** `Dockerfile`
 
 **File:** `GEMINI.md`
-  - **Description**: Engineering directives and system invariants tailored for Google Gemini CLI and Antigravity agents detailing navigation protocols, surgical engineering standards, /grill-me design alignment, doc sync mandates, triple quality gates (pytest/ruff/pyright zero-defect mandate), atomic git commit protocol, GitHub Actions CI surveillance, safety boundaries, and CLI workflows.
+  - **Description**: Engineering directives and system invariants tailored for Google Gemini CLI and Antigravity agents detailing navigation protocols, surgical engineering standards, large-codebase systemic integration & blast-radius tracing, /grill-me design alignment, doc sync mandates, triple quality gates (pytest/ruff/pyright zero-defect mandate), atomic git commit protocol, GitHub Actions CI surveillance, safety boundaries, and CLI workflows.
 
 **File:** `INDEX.md`
 
