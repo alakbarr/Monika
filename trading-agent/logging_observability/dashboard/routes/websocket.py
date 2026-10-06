@@ -792,15 +792,34 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
     await websocket.accept()
     sid = session_id or str(uuid.uuid4())
     manager = get_pty_bridge_manager()
-    pty_session = await manager.create_session(sid)
+    pty_session = await manager.get_or_create_session(sid)
 
     try:
         await websocket.send_text(f"\x1b[33m[Monika PTY Bridge] Connected session {sid}\x1b[0m\r\n")
+        # Replay history buffer if returning to active session
+        history = pty_session.get_history()
+        if history:
+            await websocket.send_text(history)
 
         async def _receiver():
             while not pty_session.is_closed:
                 try:
                     data = await websocket.receive_text()
+                    if not data:
+                        continue
+                    # Parse control frames (resize or structured input)
+                    if data.startswith("{") and data.endswith("}"):
+                        try:
+                            msg = json.loads(data)
+                            if msg.get("type") == "resize":
+                                cols = int(msg.get("cols", 80))
+                                rows = int(msg.get("rows", 24))
+                                await pty_session.resize(cols, rows)
+                                continue
+                            elif msg.get("type") == "input":
+                                data = msg.get("data", "")
+                        except Exception:
+                            pass
                     await pty_session.write_input(data)
                     responses = pty_session.append_output(data)
                     for resp in responses:
@@ -812,14 +831,16 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
                     break
 
         async def _flusher():
-            # If real subprocess is attached, stream its stdout chunks
+            # If real subprocess is attached, stream its stdout chunks and record into buffer
             if pty_session.process and pty_session.process.stdout:
                 while not pty_session.is_closed:
                     try:
                         chunk = await pty_session.process.stdout.read(1024)
                         if not chunk:
                             break
-                        await websocket.send_text(chunk.decode("utf-8", errors="replace"))
+                        text = chunk.decode("utf-8", errors="replace")
+                        pty_session.append_output(text)
+                        await websocket.send_text(text)
                     except Exception:
                         break
             else:
@@ -833,7 +854,8 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
     except Exception as e:
         logger.warning(f"[PtyBridge] WebSocket error: {e}")
     finally:
-        await manager.close_session(sid)
+        if pty_session.process and pty_session.process.returncode is not None:
+            await manager.close_session(sid)
         try:
             await websocket.close()
         except Exception:
