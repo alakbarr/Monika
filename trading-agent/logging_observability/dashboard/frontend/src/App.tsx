@@ -42,15 +42,7 @@ import { sounds } from './lib/soundEffects';
 const OverviewTab: React.FC = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
     <CockpitBar />
-    <div
-      className="overview-grid"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 380px',
-        gap: '14px',
-        alignItems: 'stretch',
-      }}
-    >
+    <div className="overview-grid">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <PositionsTable />
         <AnalysisGrid />

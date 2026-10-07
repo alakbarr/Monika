@@ -8,7 +8,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 
 export const GlobalStatusBar: React.FC = () => {
-  const { wsConnected, health, overview, paperStats, positions } = useDashboardStore();
+  const { wsConnected, health, overview, positions } = useDashboardStore();
   const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
@@ -17,8 +17,6 @@ export const GlobalStatusBar: React.FC = () => {
   }, []);
 
   const openCount = positions.filter((p) => p.status === 'open').length;
-  const dailyPnl = overview?.daily_pnl ?? 0;
-  const isProfit = dailyPnl >= 0;
   const isPaused = overview?.trading_paused ?? false;
 
   return (
@@ -44,8 +42,8 @@ export const GlobalStatusBar: React.FC = () => {
 
         <div className="status-bar-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ color: 'var(--color-ink-soft)' }}>MODE:</span>
-          <span style={{ fontWeight: 800, color: 'var(--color-text-warn)' }}>
-            PAPER TRADING
+          <span style={{ fontWeight: 800, color: overview?.is_live ? 'var(--color-ledger-red)' : 'var(--color-text-warn)' }}>
+            {overview?.is_live ? 'LIVE TRADING' : 'PAPER TRADING'}
           </span>
         </div>
 
@@ -59,35 +57,21 @@ export const GlobalStatusBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Center: Live P&L & Win Rate Metrics */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Center: System Telemetry & Heartbeat */}
+      <div className="status-bar-secondary" style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: 'var(--text-xs)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: 'var(--color-ink-soft)' }}>DAILY P&L:</span>
-          <span
-            className="tabular-nums"
-            style={{
-              fontWeight: 800,
-              color: isProfit ? 'var(--color-text-profit)' : 'var(--color-text-loss)',
-            }}
-          >
-            {isProfit ? '▲ +' : '▼ '}
-            {fmt.usd(Math.abs(dailyPnl))}
+          <span style={{ color: 'var(--color-ink-soft)' }}>HEARTBEAT:</span>
+          <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-ink)' }}>
+            {overview?.timestamp ? fmt.time(overview.timestamp) : 'SYNCING...'}
           </span>
         </div>
-
-        {paperStats && (
+        {overview?.vix && (
           <>
-            <span className="status-bar-secondary" style={{ opacity: 0.4 }}>│</span>
-            <div className="status-bar-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ color: 'var(--color-ink-soft)' }}>WIN RATE:</span>
-              <span
-                className="tabular-nums"
-                style={{
-                  fontWeight: 800,
-                  color: paperStats.win_rate_pct >= 55 ? 'var(--color-text-profit)' : 'var(--color-text-warn)',
-                }}
-              >
-                {paperStats.win_rate_pct.toFixed(1)}%
+            <span style={{ opacity: 0.4 }}>│</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: 'var(--color-ink-soft)' }}>VIX REGIME:</span>
+              <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-brass)' }}>
+                {overview.vix.toFixed(1)}
               </span>
             </div>
           </>
@@ -98,7 +82,7 @@ export const GlobalStatusBar: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <span
           style={{
-            fontSize: '10px',
+            fontSize: '11px',
             padding: '1px 5px',
             borderRadius: '2px',
             border: '1px solid var(--color-rule)',
@@ -112,7 +96,7 @@ export const GlobalStatusBar: React.FC = () => {
 
         <span
           style={{
-            fontSize: '10px',
+            fontSize: '11px',
             padding: '1px 5px',
             borderRadius: '2px',
             border: '1px solid var(--color-rule)',
