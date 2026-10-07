@@ -266,13 +266,13 @@ This document provides an exhaustive structural index of all directories, files,
 
 ### Folder: `docs`
 
-  - **Description**: Documentation repository, system guides, and comprehensive UI showcase screenshot assets (28 views across all workspaces, modals, and themes).
-  - **Note**: Collapsed directory containing documentation and image assets.
+  - **Description**: Documentation repository, system guides, comprehensive UI showcase screenshot assets, and the persistent `docs/ux-audit/` workstation evaluation ledger.
+  - **Note**: Collapsed directory containing documentation, screenshots, and UX audit files.
 
 ### Folder: `scripts`
 
-  - **Description**: Installation, testing, and operational utility scripts.
-  - **Note**: Collapsed directory containing 9 internal files.
+  - **Description**: Installation, testing, operational utility scripts, and `ux_audit_baseline_scan.py` automated baseline verification harness.
+  - **Note**: Collapsed directory containing utility and verification scripts.
 
 ### Folder: `trading-agent`
 

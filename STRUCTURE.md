@@ -36,7 +36,19 @@ Monika/
 ├── docker-compose.yml
 ├── docs
 │   ├── SETUP_GUIDE.md
-│   └── images
+│   ├── images
+│   └── ux-audit
+│       ├── COVERAGE.md
+│       ├── DECISIONS.md
+│       ├── FINDINGS.md
+│       ├── PLAN.md
+│       ├── STATE.md
+│       ├── SURFACES.md
+│       ├── SYSTEM-MAP.md
+│       ├── iterations
+│       │   └── 01
+│       │       └── summary.md
+│       └── surfaces
 │       ├── 01_trading_desk_overview.png
 │       ├── 02_trading_desk_positions.png
 │       ├── 03_trading_desk_signals.png
@@ -108,6 +120,7 @@ Monika/
 │   ├── test_pipeline.py
 │   ├── update_benchmark_table.py
 │   ├── update_index_toc.py
+│   ├── ux_audit_baseline_scan.py
 │   ├── verify_e2e_match.py
 │   ├── verify_latency_match.py
 │   └── verify_tokens_match.py
