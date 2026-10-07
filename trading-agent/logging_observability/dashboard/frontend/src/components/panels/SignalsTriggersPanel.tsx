@@ -18,6 +18,26 @@ import {
   Timer,
 } from 'lucide-react';
 import { DecisionDossierModal } from './DecisionDossierModal';
+import { fmt } from '../../lib/formatters';
+
+interface AggregatedSignalGroup {
+  primary: MT5SignalItem;
+  items: MT5SignalItem[];
+  count: number;
+  firstCreatedAt: string | null;
+  lastCreatedAt: string | null;
+}
+
+const isSignalExpired = (s: MT5SignalItem): boolean => {
+  const st = s.status?.toLowerCase();
+  if (st === 'expired') return true;
+  if (s.error_message?.toLowerCase().includes('expired')) return true;
+  if (st === 'pending' && s.created_at) {
+    const ageMs = Date.now() - new Date(s.created_at).getTime();
+    if (ageMs > 24 * 60 * 60 * 1000) return true;
+  }
+  return false;
+};
 
 const formatLatency = (created?: string | null, executed?: string | null): string => {
   if (!created || !executed) return '—';
@@ -367,6 +387,50 @@ export const SignalsTriggersPanel: React.FC = () => {
     return st === signalStatusFilter.toLowerCase();
   });
 
+  const { expiredSignals, aggregatedSignals } = useMemo(() => {
+    const active: MT5SignalItem[] = [];
+    const expired: MT5SignalItem[] = [];
+
+    for (const s of filteredSignals) {
+      if (isSignalExpired(s)) {
+        expired.push(s);
+      } else {
+        active.push(s);
+      }
+    }
+
+    const groups: { [key: string]: AggregatedSignalGroup } = {};
+    for (const s of active) {
+      const key = `${s.symbol.toUpperCase()}_${(s.action || '').toUpperCase()}_${(s.status || '').toUpperCase()}_${s.mt5_ticket || ''}`;
+      if (!groups[key]) {
+        groups[key] = {
+          primary: s,
+          items: [s],
+          count: 1,
+          firstCreatedAt: s.created_at,
+          lastCreatedAt: s.created_at,
+        };
+      } else {
+        groups[key].items.push(s);
+        groups[key].count += 1;
+        if (s.created_at) {
+          if (!groups[key].firstCreatedAt || new Date(s.created_at).getTime() < new Date(groups[key].firstCreatedAt!).getTime()) {
+            groups[key].firstCreatedAt = s.created_at;
+          }
+          if (!groups[key].lastCreatedAt || new Date(s.created_at).getTime() > new Date(groups[key].lastCreatedAt!).getTime()) {
+            groups[key].lastCreatedAt = s.created_at;
+          }
+        }
+      }
+    }
+
+    return {
+      activeSignals: active,
+      expiredSignals: expired,
+      aggregatedSignals: Object.values(groups),
+    };
+  }, [filteredSignals]);
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -522,14 +586,36 @@ export const SignalsTriggersPanel: React.FC = () => {
                         <div>By: {o.requested_by || 'system'}</div>
                         {o.approved_by && <div style={{ color: 'var(--color-brass)' }}>Appr: {o.approved_by}</div>}
                       </td>
-                      <td style={{ maxWidth: '200px', fontSize: '11px', fontFamily: 'monospace' }}>
-                        {typeof o.params === 'object' ? JSON.stringify(o.params) : String(o.params || '—')}
+                      <td style={{ maxWidth: '240px', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
+                        {o.params ? (
+                          <details style={{ cursor: 'pointer' }}>
+                            <summary style={{ fontSize: '11px', fontFamily: 'var(--font-precision)', fontWeight: 700, color: 'var(--color-win-blue)' }}>
+                              [PAYLOAD ▸]
+                            </summary>
+                            <pre style={{ margin: '4px 0 0 0', padding: '4px 6px', background: 'var(--color-paper-sunken)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', maxHeight: '140px', overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                              {typeof o.params === 'object' ? JSON.stringify(o.params, null, 2) : String(o.params)}
+                            </pre>
+                          </details>
+                        ) : (
+                          <span style={{ color: 'var(--color-ink-muted)' }}>—</span>
+                        )}
                       </td>
-                      <td style={{ maxWidth: '240px', fontSize: '11px', fontFamily: 'monospace' }}>
-                        {typeof o.result === 'object' ? JSON.stringify(o.result) : String(o.result || '—')}
+                      <td style={{ maxWidth: '260px', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
+                        {o.result ? (
+                          <details style={{ cursor: 'pointer' }}>
+                            <summary style={{ fontSize: '11px', fontFamily: 'var(--font-precision)', fontWeight: 700, color: 'var(--color-win-blue)' }}>
+                              [RESULT ▸]
+                            </summary>
+                            <pre style={{ margin: '4px 0 0 0', padding: '4px 6px', background: 'var(--color-paper-sunken)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', maxHeight: '140px', overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                              {typeof o.result === 'object' ? JSON.stringify(o.result, null, 2) : String(o.result)}
+                            </pre>
+                          </details>
+                        ) : (
+                          <span style={{ color: 'var(--color-ink-muted)' }}>—</span>
+                        )}
                       </td>
-                      <td style={{ textAlign: 'right', fontSize: '11px', color: 'var(--color-ink-muted)' }}>
-                        {o.timestamp ? new Date(o.timestamp).toLocaleString() : '—'}
+                      <td style={{ textAlign: 'right', fontSize: '11px', color: 'var(--color-ink-muted)', whiteSpace: 'nowrap' }}>
+                        <span title={fmt.localTooltip(o.timestamp)}>{fmt.utc(o.timestamp)}</span>
                       </td>
                     </tr>
                   ))}
@@ -826,14 +912,14 @@ export const SignalsTriggersPanel: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
-                        <div>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</div>
+                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        <div title={fmt.localTooltip(t.created_at)}>{fmt.utc(t.created_at)}</div>
                         <div style={{ fontSize: '11px', color: isPending ? 'var(--color-warning)' : 'var(--color-ink-muted)', marginTop: '2px' }}>
                           {formatTimeAgo(t.created_at)}
                         </div>
                       </td>
-                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
-                        {t.fired_at ? new Date(t.fired_at).toLocaleString() : '—'}
+                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        <span title={fmt.localTooltip(t.fired_at)}>{fmt.utc(t.fired_at)}</span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
@@ -942,8 +1028,9 @@ export const SignalsTriggersPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredSignals.length > 0 ? (
-                filteredSignals.map((s) => {
+              {aggregatedSignals.length > 0 ? (
+                aggregatedSignals.map((group) => {
+                  const s = group.primary;
                   const isBuy = s.action?.toLowerCase() === 'buy';
                   const statusLower = s.status?.toLowerCase();
                   const latency = formatLatency(s.created_at, s.executed_at);
@@ -951,7 +1038,26 @@ export const SignalsTriggersPanel: React.FC = () => {
                   return (
                     <tr key={s.id}>
                       <td style={{ color: 'var(--color-ink-muted)' }}>
-                        #{s.id}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>#{s.id}</span>
+                          {group.count > 1 && (
+                            <span
+                              style={{
+                                padding: '1px 5px',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                fontFamily: 'var(--font-precision)',
+                                background: 'var(--color-win-yellow)',
+                                color: 'var(--color-on-win-yellow)',
+                                borderRadius: 'var(--radius-xs)',
+                                border: '1px solid var(--color-rule)',
+                              }}
+                              title={`Aggregated ${group.count} identical signals (#${group.items.map((i) => i.id).join(', #')})`}
+                            >
+                              ×{group.count}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -988,11 +1094,20 @@ export const SignalsTriggersPanel: React.FC = () => {
                           <span style={{ color: 'var(--color-ink-muted)' }}>—</span>
                         )}
                       </td>
-                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
-                        {s.created_at ? new Date(s.created_at).toLocaleString() : '—'}
+                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        <span title={fmt.localTooltip(s.created_at)}>
+                          {fmt.utc(s.created_at)}
+                        </span>
+                        {group.count > 1 && group.firstCreatedAt !== group.lastCreatedAt && (
+                          <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+                            to {fmt.utc(group.lastCreatedAt)}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
-                        {s.executed_at ? new Date(s.executed_at).toLocaleString() : '—'}
+                      <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        <span title={fmt.localTooltip(s.executed_at)}>
+                          {fmt.utc(s.executed_at)}
+                        </span>
                       </td>
                       <td style={{ fontSize: '11px', color: latency !== '—' ? 'var(--color-ink)' : 'var(--color-ink-muted)' }}>
                         {latency}
@@ -1035,6 +1150,59 @@ export const SignalsTriggersPanel: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {expiredSignals.length > 0 && (
+          <div
+            style={{
+              margin: '12px',
+              border: '1.5px dashed var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
+            }}
+          >
+            <details>
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-precision)',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: 'var(--color-ink-muted)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                [ ⚠ EXPIRED / STALE SIGNALS ({expiredSignals.length}) ▸ ]
+              </summary>
+              <div style={{ marginTop: '8px', overflowX: 'auto' }}>
+                <table className="ledger-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', opacity: 0.85 }}>
+                  <thead>
+                    <tr>
+                      <th>Signal ID</th>
+                      <th>Symbol / Action</th>
+                      <th>Created</th>
+                      <th>Error / Reason</th>
+                      <th style={{ textAlign: 'right' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expiredSignals.map((s) => (
+                      <tr key={s.id}>
+                        <td style={{ color: 'var(--color-ink-muted)' }}>#{s.id}</td>
+                        <td>{s.symbol} {s.action?.toUpperCase()}</td>
+                        <td title={fmt.localTooltip(s.created_at)} style={{ whiteSpace: 'nowrap' }}>{fmt.utc(s.created_at)}</td>
+                        <td style={{ color: 'var(--color-loss)' }}>{s.error_message || 'TTL Expired without broker fill'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <Badge variant="loss">{s.status || 'EXPIRED'}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        )}
       </Card>
       </>
       )}
