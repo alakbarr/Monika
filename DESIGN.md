@@ -72,6 +72,8 @@ The Monika Web Dashboard transforms complex quantitative trading telemetry into 
 | `--color-win-coral` | `#E25B45` | Risk Management, Errors, Emergency Halts |
 | `--color-win-green` | `#48A9A6` | Performance, Order Executions, Verified Gains |
 | `--color-win-gray` | `#C4BCB1` | Inactive windows, Dialog footers |
+| `--color-edge` | `#1C1917` | Structural window/card edge outline |
+| `--color-on-win-*` | Contextual | High-contrast titlebar text (black/white tuned for >=4.5:1 WCAG AA) |
 
 ### 3.2 Dark Mode — Night Station
 
@@ -82,7 +84,9 @@ The Monika Web Dashboard transforms complex quantitative trading telemetry into 
 | `--color-paper-raised` | `#2D2824` | Raised dark window face |
 | `--color-ink` | `#F6F1EA` | Light parchment text |
 | `--color-ink-soft` | `#ADA296` | Muted captions |
-| `--color-rule` | `#0F0D0C` | Deep dark border outlines |
+| `--color-rule` | `#332D28` | Window interior borders and dividers |
+| `--color-edge` | `#5C5248` | Visible structural window outlines (3.2:1 contrast against canvas) |
+| `--color-on-win-*` | Contextual | High-contrast titlebar text (black/white tuned for >=4.5:1 WCAG AA) |
 
 ---
 
@@ -91,6 +95,7 @@ The Monika Web Dashboard transforms complex quantitative trading telemetry into 
 - **Precision Monospace**: `"Courier Prime", "SF Pro Mono", monospace` for financial values, ledger rows, timestamps, and tickets.
 - **System Display**: `system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif` for window titlebars, folder names, and action buttons.
 - **Tabular Numerics**: `font-variant-numeric: tabular-nums` enforced across all prices, deltas, and P&L metrics to eliminate cumulative layout shifts (CLS).
+- **Minimum Font Floor**: Enforced `--text-xs: 11px` floor across all views to eliminate sub-10px illegibility.
 
 ---
 
@@ -112,7 +117,16 @@ The Monika Web Dashboard transforms complex quantitative trading telemetry into 
 - Padding: `6px 10px`
 - Border-bottom: `2px solid var(--color-rule)`
 - Left: Window icon (16x16) + Bold window title
-- Right: Window control buttons `[ _ ] [ □ ] [ × ]`
+- Right: Window control buttons `[ _ ] [ □ ]` (minimize/collapse and maximize)
+- Focus State: Active windows display vivid categorical titlebars; inactive windows reflect softened `--color-win-gray`.
+
+### 5.3 Dedicated Window Toolbar (`.win-toolbar`)
+- Sub-bar mounted directly below the title bar.
+- Dedicated slot for action buttons, category filters, and view toggles, leaving the title bar uncluttered.
+
+### 5.4 Retro Modal Scrim (`.retro-modal-scrim`)
+- Replaces modern Gaussian blur (`backdrop-filter: blur()`) with a high-opacity solid stipple scrim (`rgba(15, 13, 12, 0.72)`).
+- Preserves 1990s retro workstation authenticity while maintaining modal focus and keyboard escape isolation.
 
 ---
 
@@ -142,11 +156,13 @@ The Monika Web Dashboard transforms complex quantitative trading telemetry into 
 
 ---
 
-## 7. Status Badges & Progress Bars
+## 7. Status Badges, Indicators & Semantics
 
 - **Status Badges (`.win-badge`)**: `1.5px solid var(--color-rule)`, `3px` radius, bold uppercase text, `1px 1px 0 var(--color-rule)` shadow.
-- **Segmented Progress Bar**: Multi-segment pill block track (`8` segments) with coral/yellow block fills.
-- **Status LED**: `8px x 8px` square with `1.5px solid var(--color-rule)`.
+- **Dual-Channel Status Indicators**: Every LED / status pip combines color with distinct shape glyphs (`●` connected/healthy, `×` error/disconnected, `~` degraded/stale, `?` unknown) and ARIA attributes for non-color-reliant accessibility.
+- **Neutral Zero Semantics**: `$0.00` and `0.0%` deltas are rendered strictly neutral (`FLAT` / neutral color) without false `+` prefixes or green profit badges. Zero-trade win rates are rendered as `—` (em-dash) rather than misleading `0.0%`.
+- **Safety Mode Pill**: Safety mode (Paper vs. Live) is prominently badged with warning hazard stripes and tactile confirmation guarding live operations.
+- **Timezone Toggle**: Workstation clocks allow one-click toggling between canonical `UTC` and operator workstation `LOCAL` time.
 
 ---
 
