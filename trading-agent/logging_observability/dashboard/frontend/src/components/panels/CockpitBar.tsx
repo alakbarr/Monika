@@ -27,41 +27,59 @@ export const CockpitBar: React.FC = () => {
 
   return (
     <div
-      className="win-window ledger-card cockpit-bar"
+      className="win-window ledger-card"
       style={{
         background: 'var(--color-paper-raised)',
         border: '2px solid var(--color-rule)',
         borderRadius: 'var(--radius-card)',
         boxShadow: 'var(--shadow-card)',
-        padding: '10px 14px',
+        overflow: 'hidden',
         fontFamily: 'var(--font-precision)',
       }}
     >
-      {!wsConnected && (
-        <div
-          style={{
-            gridColumn: '1 / -1',
-            padding: '4px 10px',
-            marginBottom: '6px',
-            background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
-            border: '1.5px solid var(--color-ledger-red)',
-            borderRadius: 'var(--radius-xs)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '11px',
-            fontWeight: 800,
-            color: 'var(--color-ledger-red)',
-            letterSpacing: '0.04em',
-          }}
-        >
-          <span>[ ⚠ STALE FEED — WEBSOCKET DISCONNECTED · VALUES REPRESENT LAST RECORDED SNAPSHOT ]</span>
-          <span style={{ fontSize: '11px', opacity: 0.8 }}>RECONNECTING...</span>
-        </div>
-      )}
+      <div
+        className="win-titlebar win-titlebar--yellow"
+        style={{
+          padding: '4px 10px',
+          borderBottom: '2px solid var(--color-rule)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '11px',
+          letterSpacing: '0.05em',
+          fontWeight: 800,
+        }}
+      >
+        <span className="win-titlebar-title">INSTRUMENT CLUSTER // COCKPIT TELEMETRY</span>
+        <span style={{ fontSize: '11px', color: 'var(--color-on-win-yellow)', opacity: 0.85 }}>LIVE SENSORS</span>
+      </div>
 
-      {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
-      <div className="cockpit-item">
+      <div style={{ padding: '10px 14px' }}>
+        {!wsConnected && (
+          <div
+            style={{
+              padding: '4px 10px',
+              marginBottom: '10px',
+              background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
+              border: '1.5px solid var(--color-ledger-red)',
+              borderRadius: 'var(--radius-xs)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: 'var(--color-ledger-red)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            <span>[ ⚠ STALE FEED — WEBSOCKET DISCONNECTED · VALUES REPRESENT LAST RECORDED SNAPSHOT ]</span>
+            <span style={{ fontSize: '11px', opacity: 0.8 }}>RECONNECTING...</span>
+          </div>
+        )}
+
+        <div className="cockpit-bar">
+          {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
+          <div className="cockpit-item">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             DAILY P&L
@@ -205,5 +223,7 @@ export const CockpitBar: React.FC = () => {
         </div>
       </div>
     </div>
+  </div>
+</div>
   );
 };

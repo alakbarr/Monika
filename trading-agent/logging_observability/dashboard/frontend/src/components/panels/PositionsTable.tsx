@@ -18,19 +18,20 @@ type SortField = 'symbol' | 'direction' | 'volume' | 'entry_price' | 'price_curr
 interface ColumnDef {
   key: SortField;
   label: string;
+  align?: 'left' | 'right' | 'center';
 }
 
 const COLUMNS: ColumnDef[] = [
-  { key: 'symbol', label: 'Symbol' },
-  { key: 'direction', label: 'Side' },
-  { key: 'volume', label: 'Volume' },
-  { key: 'entry_price', label: 'Entry' },
-  { key: 'price_current', label: 'Market' },
-  { key: 'sl', label: 'Stop Loss' },
-  { key: 'tp', label: 'Take Profit' },
-  { key: 'swap', label: 'Swap' },
-  { key: 'pnl', label: 'P&L' },
-  { key: 'opened_at', label: 'Opened' },
+  { key: 'symbol', label: 'Symbol', align: 'left' },
+  { key: 'direction', label: 'Side', align: 'left' },
+  { key: 'volume', label: 'Volume', align: 'right' },
+  { key: 'entry_price', label: 'Entry', align: 'right' },
+  { key: 'price_current', label: 'Market', align: 'right' },
+  { key: 'sl', label: 'Stop Loss', align: 'right' },
+  { key: 'tp', label: 'Take Profit', align: 'right' },
+  { key: 'swap', label: 'Swap', align: 'right' },
+  { key: 'pnl', label: 'P&L', align: 'right' },
+  { key: 'opened_at', label: 'Opened', align: 'left' },
 ];
 
 import { EmptyState } from '../ui/EmptyState';
@@ -196,6 +197,10 @@ export const PositionsTable: React.FC = () => {
     }
     return sortAsc ? (Number(aVal) - Number(bVal)) : (Number(bVal) - Number(aVal));
   });
+
+  const totalLots = displayed.reduce((acc, p) => acc + (p.volume || 0), 0);
+  const totalSwap = displayed.reduce((acc, p) => acc + (p.swap || 0), 0);
+  const totalPnlUsd = displayed.reduce((acc, p) => acc + (p.pnl ?? 0), 0);
 
   return (
     <WindowFrame
@@ -434,9 +439,10 @@ export const PositionsTable: React.FC = () => {
                     <th
                       key={col.key}
                       onClick={() => handleSort(col.key)}
+                      aria-sort={isSorted ? (sortAsc ? 'ascending' : 'descending') : 'none'}
                       style={{
                         padding: '8px 12px',
-                        textAlign: 'left',
+                        textAlign: col.align || 'left',
                         fontSize: 'var(--text-xs)',
                         fontWeight: 'bold',
                         color: isSorted ? 'var(--color-win-yellow)' : 'var(--color-ink)',
@@ -489,6 +495,56 @@ export const PositionsTable: React.FC = () => {
                 />
               ))}
             </tbody>
+            <tfoot
+              style={{
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 8,
+                background: 'var(--color-paper-raised)',
+                borderTop: '2px solid var(--color-rule)',
+              }}
+            >
+              <tr style={{ background: 'var(--color-paper-raised)', fontWeight: 'bold' }}>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', fontWeight: 800 }}>
+                  TOTAL ({displayed.length})
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)' }}>
+                  —
+                </td>
+                <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right' }}>
+                  {fmt.lots(totalLots)}
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right', color: 'var(--color-ink-soft)' }}>
+                  —
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right', color: 'var(--color-ink-soft)' }}>
+                  —
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right', color: 'var(--color-ink-soft)' }}>
+                  —
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right', color: 'var(--color-ink-soft)' }}>
+                  —
+                </td>
+                <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right', fontSize: 'var(--text-xs)' }}>
+                  {fmt.usd(totalSwap)}
+                </td>
+                <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right' }}>
+                  <span style={{ color: totalPnlUsd >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+                    {totalPnlUsd >= 0 ? '▲ +' : '▼ '}
+                    {fmt.usd(Math.abs(totalPnlUsd))}
+                  </span>
+                </td>
+                <td style={{ padding: '8px 12px', borderRight: !showClosed ? '1px solid var(--color-rule)' : 'none', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
+                  —
+                </td>
+                {!showClosed && (
+                  <td style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--color-ink-soft)' }}>
+                    —
+                  </td>
+                )}
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -796,25 +852,25 @@ const PositionRow: React.FC<{
           {pos.direction.toUpperCase()}
         </Badge>
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)', textAlign: 'right' }}>
         {fmt.lots(pos.volume)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)', textAlign: 'right' }}>
         {fmt.price(pos.entry_price, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink)', textAlign: 'right' }}>
         {fmt.price(marketPrice, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-loss)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-loss)', textAlign: 'right' }}>
         {fmt.price(pos.sl, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-profit)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-text-profit)', textAlign: 'right' }}>
         {fmt.price(pos.tp, pos.symbol)}
       </td>
-      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)' }}>
+      <td className="tabular-nums" style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', color: 'var(--color-ink-soft)', fontSize: 'var(--text-xs)', textAlign: 'right' }}>
         {pos.swap !== undefined && pos.swap !== null ? fmt.usd(pos.swap) : '—'}
       </td>
-      <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)' }}>
+      <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)', textAlign: 'right' }}>
         <div className="tabular-nums" style={{ fontWeight: 'bold' }}>
           {renderPnl(pos, pnlUnit)}
         </div>
