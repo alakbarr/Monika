@@ -15,6 +15,7 @@ Includes:
   4. daylight: Warm parchment light mode for bright ambient environments.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -161,11 +162,37 @@ THEMES: Dict[str, ThemePack] = {
         gauge_warn="#A16207",
         gauge_critical="#991B1B",
     ),
+    "no_color": ThemePack(
+        name="no_color",
+        primary="#CCCCCC",
+        accent="#FFFFFF",
+        profit="#FFFFFF",
+        loss="#888888",
+        muted="#888888",
+        dim="#555555",
+        text="#FFFFFF",
+        background="#000000",
+        surface="#000000",
+        border="#FFFFFF",
+        stamp_ok_color="#FFFFFF",
+        stamp_err_color="#888888",
+        stamp_warn_color="#CCCCCC",
+        stamp_exec_color="#FFFFFF",
+        step_running="#FFFFFF",
+        step_completed="#FFFFFF",
+        step_failed="#888888",
+        step_waiting="#555555",
+        gauge_ok="#FFFFFF",
+        gauge_warn="#CCCCCC",
+        gauge_critical="#888888",
+    ),
 }
 
 
 def get_theme(name: Optional[str] = None) -> ThemePack:
-    """Retrieve ThemePack by name; defaults to retro_vintage."""
+    """Retrieve ThemePack by name; defaults to retro_vintage; honors NO_COLOR."""
+    if os.environ.get("NO_COLOR"):
+        return THEMES["no_color"]
     if not name:
         return THEMES["retro_vintage"]
     normalized = name.strip().lower().replace("-", "_")
