@@ -46,7 +46,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '1.5px solid var(--color-rule)',
+          border: '1px solid var(--color-rule)',
           boxShadow: '1px 1px 0 var(--color-rule)',
           fontSize: '11px',
           fontWeight: 900,

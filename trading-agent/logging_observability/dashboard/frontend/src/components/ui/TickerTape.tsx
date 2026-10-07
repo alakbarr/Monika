@@ -55,7 +55,7 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
             color: 'var(--color-on-win-yellow)',
             padding: '1px 6px',
             fontSize: '11px',
-            border: '1.5px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             borderRadius: '2px',
           }}
         >

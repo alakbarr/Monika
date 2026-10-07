@@ -154,7 +154,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
               padding: '8px 10px',
               background: 'var(--color-console-bg)',
               color: 'var(--color-console-phosphor)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               fontSize: '11px',
               lineHeight: 1.4,

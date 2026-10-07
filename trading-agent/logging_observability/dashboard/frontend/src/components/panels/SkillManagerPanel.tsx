@@ -191,7 +191,7 @@ export const SkillManagerPanel: React.FC = () => {
                 fontWeight: 700,
                 background: 'var(--color-win-yellow)',
                 color: 'var(--color-on-win-yellow)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 cursor: crystallizing ? 'not-allowed' : 'pointer',
               }}
@@ -215,7 +215,7 @@ export const SkillManagerPanel: React.FC = () => {
                 fontWeight: 700,
                 background: 'var(--color-paper-raised)',
                 color: 'var(--color-ink)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 cursor: curating ? 'not-allowed' : 'pointer',
               }}
@@ -236,7 +236,7 @@ export const SkillManagerPanel: React.FC = () => {
                 fontSize: 'var(--text-xs)',
                 background: 'var(--color-paper-raised)',
                 color: 'var(--color-ink)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 cursor: 'pointer',
               }}
@@ -253,7 +253,7 @@ export const SkillManagerPanel: React.FC = () => {
             style={{
               padding: '8px 14px',
               background: actionMsg.type === 'ok' ? 'var(--color-profit-bg)' : 'var(--color-loss-bg)',
-              borderBottom: '1.5px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
               fontSize: 'var(--text-xs)',
               fontFamily: 'var(--font-precision)',
               fontWeight: 600,

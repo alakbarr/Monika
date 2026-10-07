@@ -88,7 +88,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                   height: 22,
                   borderRadius: '3px',
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

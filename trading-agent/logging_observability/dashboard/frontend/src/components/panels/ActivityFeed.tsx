@@ -99,7 +99,7 @@ export const ActivityFeed: React.FC = () => {
                 fontWeight: 800,
                 background: isPaused ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
                 color: isPaused ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: '1px 1px 0 var(--color-rule)',
                 cursor: 'pointer',

@@ -299,8 +299,8 @@ export const GraphVisualizerPanel: React.FC = () => {
             height: 34,
             borderRadius: '4px',
             background: 'var(--color-win-yellow)',
-            border: '1.5px solid var(--color-rule)',
-            boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+            border: '1px solid var(--color-rule)',
+            boxShadow: '1px 1px 0 var(--color-rule)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -336,7 +336,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                       : graphData.status === 'running'
                         ? 'var(--color-brass)'
                         : 'var(--color-ledger-red)',
-                    border: `1.5px solid ${
+                    border: `1px solid ${
                       graphData.status === 'completed'
                         ? 'var(--color-ledger-green)'
                         : graphData.status === 'running'
@@ -358,7 +358,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 onChange={(e) => setSelectedCycle(e.target.value)}
                 style={{
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   color: 'var(--color-ink)',
                   borderRadius: 'var(--radius-sm)',
                   padding: '3px 8px',
@@ -383,7 +383,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 onChange={(e) => setSelectedSymbol(e.target.value)}
                 style={{
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   color: 'var(--color-ink)',
                   borderRadius: 'var(--radius-sm)',
                   padding: '3px 8px',
@@ -414,9 +414,9 @@ export const GraphVisualizerPanel: React.FC = () => {
               flexDirection: 'column',
               padding: '4px 10px',
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
             }}>
               <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
@@ -429,9 +429,9 @@ export const GraphVisualizerPanel: React.FC = () => {
               flexDirection: 'column',
               padding: '4px 10px',
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
             }}>
               <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-win-blue)' }}>
@@ -444,9 +444,9 @@ export const GraphVisualizerPanel: React.FC = () => {
               flexDirection: 'column',
               padding: '4px 10px',
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
             }}>
               <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ledger-green)' }}>
@@ -468,12 +468,12 @@ export const GraphVisualizerPanel: React.FC = () => {
               padding: '7px 12px',
               background: 'var(--color-surface)',
               color: 'var(--color-ink)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               fontWeight: 700,
               fontSize: 'var(--text-xs)',
               cursor: 'pointer',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
               fontFamily: 'var(--font-precision)',
             }}
           >
@@ -739,9 +739,9 @@ export const GraphVisualizerPanel: React.FC = () => {
             bottom: 16,
             left: 16,
             background: 'var(--color-paper-raised)',
-            border: '1.5px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             borderRadius: 'var(--radius-sm)',
-            boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+            boxShadow: '1px 1px 0 var(--color-rule)',
             padding: '6px 12px',
             display: 'flex',
             alignItems: 'center',
@@ -842,7 +842,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 style={{
                   width: '100%',
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: 'var(--radius-sm)',
                   padding: '10px',
                   color: 'var(--color-ink)',
@@ -864,7 +864,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                   onChange={e => setSteerMode(e.target.value)}
                   style={{
                     background: 'var(--color-paper)',
-                    border: '1.5px solid var(--color-rule)',
+                    border: '1px solid var(--color-rule)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '8px',
                     color: 'var(--color-ink)',
@@ -889,7 +889,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                   placeholder="EURUSD, XAUUSD"
                   style={{
                     background: 'var(--color-paper)',
-                    border: '1.5px solid var(--color-rule)',
+                    border: '1px solid var(--color-rule)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '8px 10px',
                     color: 'var(--color-ink)',
@@ -923,7 +923,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 style={{
                   padding: '8px 20px',
                   background: 'var(--color-brass)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: 'var(--radius-sm)',
                   fontSize: 'var(--text-body-sm)',
                   fontWeight: 'bold',

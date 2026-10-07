@@ -136,7 +136,7 @@ export const Sidebar: React.FC = () => {
                   width: '100%',
                   fontWeight: isWsActive ? 800 : 600,
                   fontFamily: 'var(--font-precision)',
-                  borderBottom: isWsActive && !collapsed ? '1.5px solid var(--color-rule)' : 'none',
+                  borderBottom: isWsActive && !collapsed ? '1px solid var(--color-rule)' : 'none',
                 }}
               >
                 <span style={{ display: 'inline-flex', flexShrink: 0, color: isWsActive ? 'var(--color-on-win-yellow)' : 'var(--color-brass)' }}>
@@ -200,7 +200,7 @@ export const Sidebar: React.FC = () => {
                           alignItems: 'center',
                           gap: '6px',
                           padding: '5px 8px',
-                          border: isSubActive ? '1.5px solid var(--color-rule)' : '1.5px solid transparent',
+                          border: isSubActive ? '1px solid var(--color-rule)' : '1px solid transparent',
                           borderLeft: isSubActive ? '4px solid var(--color-win-yellow)' : '4px solid transparent',
                           borderRadius: '3px',
                           background: isSubActive ? 'var(--color-paper)' : 'transparent',
@@ -209,7 +209,7 @@ export const Sidebar: React.FC = () => {
                           fontSize: 'var(--text-xs)',
                           cursor: 'pointer',
                           textAlign: 'left',
-                          boxShadow: isSubActive ? '1.5px 1.5px 0 var(--color-rule)' : 'none',
+                          boxShadow: isSubActive ? '1px 1px 0 var(--color-rule)' : 'none',
                           transform: isSubActive ? 'translate(-1px, -1px)' : 'none',
                         }}
                       >
@@ -252,7 +252,7 @@ export const Sidebar: React.FC = () => {
               style={{
                 color: 'var(--color-on-win-coral)',
                 background: 'var(--color-win-coral)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 fontSize: '11px',
                 padding: '2px 4px',
               }}

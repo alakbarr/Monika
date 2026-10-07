@@ -61,3 +61,61 @@ File ini mencatat seluruh keputusan pemilik (`D-xx`) yang dihasilkan dari wawanc
   1. Tambahkan tombol `[ 🚨 EMERGENCY HALT ]` pada tepi paling kanan `Header.tsx` dengan margin kiri ≥12px.
   2. Menekan tombol memicu `ConfirmModal` yang merinci jumlah posisi terbuka dan peringatan likuidasi pasar instan.
   3. Setelah dieksekusi, persistent banner `[ SYSTEM HALTED: TRADING SUSPENDED ]` muncul di atas seluruh workspace dengan panduan resume.
+
+---
+
+## D-05: Penanganan L0 Safety Mode Pill di Header Taskbar
+- **Tanggal**: 2026-10-07
+- **Dasar Temuan**: UX-019 (Mode Paper/Live hanya ada di statusbar bawah, tidak terlihat di Header taskbar atas), Lens C / P3.
+- **Opsi Dipertimbangkan**:
+  - A: L0 Mode Pill permanen dengan border hazard retro 2px dithered/coral pada chrome taskbar saat LIVE.
+  - B (Dipilih): Tampilkan pill teks ringkas `[ PAPER ]` / `[ LIVE ]` di Header tanpa garis hazard khusus pada bingkai taskbar.
+  - C: Tambahkan banner ribbon kuning/merah 20px terdedikasi di bawah Header saat LIVE.
+- **Keputusan**: **Opsi B** (Owner).
+- **Konsekuensi Implementasi**:
+  1. Tambahkan L0 Mode Pill ringkas di sebelah kiri `Header.tsx` samping logo: `[ 🟢 PAPER ]` atau `[ 🔴 LIVE ]`.
+  2. Tanpa border hazard pada seluruh frame; cukup visual pill yang jelas dan akurat terhadap `tradingMode`.
+
+---
+
+## D-06: Hierarki Tipografi L1 Hero Net Daily P&L di CockpitBar
+- **Tanggal**: 2026-10-07
+- **Dasar Temuan**: UX-020 (Net P&L Cockpit hanya 17px, setara metrik sekunder, gagal squint test L1 primacy), Lens A / P16.
+- **Opsi Dipertimbangkan**:
+  - A (Dipilih): Tingkatkan Net P&L menjadi L1 Display Numeral 28px (font-precision bold tabular) dengan label stacked di atas 'NET DAILY P&L' (11px caps), dan kelompokkan metrik sekunder ke recessed instrument well tersendiri.
+  - B: Tingkatkan menjadi 22px tetap satu baris.
+  - C: Pertahankan ukuran seragam 16px.
+- **Keputusan**: **Opsi A** (Owner).
+- **Konsekuensi Implementasi**:
+  1. Di `CockpitBar.tsx`, hero number Net Daily P&L diatur ke font 28px `fontFamily: 'var(--font-precision)'`, `fontWeight: 800`.
+  2. Label `NET DAILY P&L` diletakkan di atas hero value dengan ukuran 11px uppercase `var(--color-ink-muted)`.
+  3. Metrik sekunder (Win Rate, Exposure, Sharpe) dikelompokkan dalam recessed well terpisah di sebelah kanan.
+
+---
+
+## D-07: Alokasi Ruang & Compact Ribbon saat Ledger Posisi Kosong
+- **Tanggal**: 2026-10-07
+- **Dasar Temuan**: UX-022 (Empty state tabel posisi memakan ~170px, mendesak sinyal dan feed ke bawah lipatan layar), Lens A / P16.
+- **Opsi Dipertimbangkan**:
+  - A (Dipilih): Kolaps badan tabel menjadi compact ribbon ~44px ('LEDGER CLEAR // 0 OPEN EXPOSURE' + tombol '+ NEW ORDER') saat kosong; luaskan otomatis ke tabel grid penuh saat ada posisi aktif.
+  - B: Header tabel penuh dengan 1 baris kosong ~36px.
+  - C: Pertahankan kotak empty state tinggi ~170px.
+- **Keputusan**: **Opsi A** (Owner).
+- **Konsekuensi Implementasi**:
+  1. Di `PositionsTable.tsx`, jika `openPositions.length === 0`, render compact sunken ribbon baris tunggal setinggi ~44px dengan teks `LEDGER CLEAR // NO OPEN EXPOSURE` dan tombol aksi cepat `[ + NEW ORDER ]`.
+  2. Jika `openPositions.length > 0`, render tabel lengkap dengan pagination, sorting, dan pinned footer totals.
+
+---
+
+## D-08: Tata Letak Responsif TUI 80×24 & Function-Key Bar
+- **Tanggal**: 2026-10-07
+- **Dasar Temuan**: UX-024 (Pada terminal 80×24, split horizontal tui.py terpotong dan tidak ada panduan tombol fungsi F-keys), Lens M / P17.
+- **Opsi Dipertimbangkan**:
+  - A (Dipilih): Pada lebar <100 kolom, susun panel secara bertumpuk (stacked) agar tidak terpotong, serta tambahkan persistent Function-Key Bar bergaya retro di baris paling bawah: [F1 Help] [F2 Desk] [F3 Intel] [F8 Pause] [F9 Kill] [F10 Quit].
+  - B: Hanya tambahkan F-Key bar tanpa layout adaptif.
+  - C: Pertahankan status quo.
+- **Keputusan**: **Opsi A** (Owner).
+- **Konsekuensi Implementasi**:
+  1. Di `trading-agent/cli/tui.py`, deteksi lebar terminal dan susun panel overview secara vertikal jika kolom < 100.
+  2. Tambahkan persistent bottom strip widget `FunctionKeyBar` berisi panduan shortcut F1 s.d. F10 bergaya Norton Commander / DOS.
+

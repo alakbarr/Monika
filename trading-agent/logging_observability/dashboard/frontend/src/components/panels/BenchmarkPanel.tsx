@@ -272,7 +272,7 @@ export const BenchmarkPanel: React.FC = () => {
                 fontSize: 'var(--text-body-sm)',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 background: activeTab === 'task_compare' ? 'var(--color-moss)' : 'var(--color-paper)',
                 color: activeTab === 'task_compare' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
@@ -287,7 +287,7 @@ export const BenchmarkPanel: React.FC = () => {
                 fontSize: 'var(--text-body-sm)',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 background: activeTab === 'global_leaderboard' ? 'var(--color-moss)' : 'var(--color-paper)',
                 color: activeTab === 'global_leaderboard' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
@@ -302,7 +302,7 @@ export const BenchmarkPanel: React.FC = () => {
                 fontSize: 'var(--text-body-sm)',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 background: activeTab === 'run_history' ? 'var(--color-moss)' : 'var(--color-paper)',
                 color: activeTab === 'run_history' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
@@ -455,7 +455,7 @@ export const BenchmarkPanel: React.FC = () => {
                               fontSize: 'var(--text-xs)',
                               fontFamily: 'var(--font-precision)',
                               fontWeight: isSelected ? 'bold' : 'normal',
-                              border: isSelected ? '1.5px solid var(--color-moss)' : '1px solid var(--color-rule)',
+                              border: isSelected ? '1px solid var(--color-moss)' : '1px solid var(--color-rule)',
                               background: isSelected ? 'var(--color-moss-subtle)' : 'var(--color-paper-raised)',
                               color: isSelected ? 'var(--color-ink)' : 'var(--color-ink-soft)',
                               cursor: 'pointer',
@@ -485,7 +485,7 @@ export const BenchmarkPanel: React.FC = () => {
                     style={{
                       flex: 1,
                       padding: '6px 12px',
-                      border: '1.5px solid var(--color-rule)',
+                      border: '1px solid var(--color-rule)',
                       borderRadius: '4px',
                       fontFamily: 'var(--font-precision)',
                       fontSize: 'var(--text-body-sm)',
@@ -623,7 +623,7 @@ export const BenchmarkPanel: React.FC = () => {
                 className="win-window ledger-card"
                 style={{
                   background: 'var(--color-paper-raised)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '4px',
                   padding: '12px 16px',
                 }}
@@ -644,7 +644,7 @@ export const BenchmarkPanel: React.FC = () => {
                 className="win-window ledger-card"
                 style={{
                   background: 'var(--color-paper-raised)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '4px',
                   padding: '12px 16px',
                 }}
@@ -665,7 +665,7 @@ export const BenchmarkPanel: React.FC = () => {
                 className="win-window ledger-card"
                 style={{
                   background: 'var(--color-paper-raised)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '4px',
                   padding: '12px 16px',
                 }}
@@ -723,7 +723,7 @@ export const BenchmarkPanel: React.FC = () => {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-body-sm)', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'var(--color-table-header)', borderBottom: '1.5px solid var(--color-rule)' }}>
+                    <tr style={{ background: 'var(--color-table-header)', borderBottom: '1px solid var(--color-rule)' }}>
                       <th style={{ padding: '10px 14px' }}>Rank</th>
                       <th style={{ padding: '10px 14px' }}>Model</th>
                       <th style={{ padding: '10px 14px' }}>Router / Provider</th>
@@ -873,7 +873,7 @@ export const BenchmarkPanel: React.FC = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-body-sm)', textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: 'var(--color-table-header)', borderBottom: '1.5px solid var(--color-rule)' }}>
+                <tr style={{ background: 'var(--color-table-header)', borderBottom: '1px solid var(--color-rule)' }}>
                   <th style={{ padding: '10px 14px' }}>Rank</th>
                   <th style={{ padding: '10px 14px' }}>Model</th>
                   <th style={{ padding: '10px 14px' }}>Rata-rata Skor</th>

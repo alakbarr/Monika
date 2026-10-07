@@ -102,3 +102,44 @@ Rencana kerja terstruktur hasil audit Iterasi 1 dan keputusan `/grill-me` (D-01 
 ## Milestone 5 (M5): Hardening, Verifikasi Gates & Dokumentasi
 - **M5-01**: Eksekusi seluruh gerbang verifikasi (G1 scan, G2 contrast, G3 type floor, G4 affordance, oxlint, build, dan pytest).
 - **M5-02**: Sinkronisasi dokumentasi `INDEX.md`, `STRUCTURE.md`, dan eksekusi `python scripts/update_index_toc.py`.
+
+---
+
+## Milestone 6 (M6): Safety Mode Chrome & Hierarki Tipografi Cockpit
+- **M6-01 (UX-019, D-05): L0 Trading Mode Pill di Header Taskbar**
+  - *Files*: `trading-agent/logging_observability/dashboard/frontend/src/components/layout/Header.tsx`.
+  - *Action*: Tampilkan L0 Mode Pill ringkas `[ 🟢 PAPER ]` atau `[ 🔴 LIVE ]` di sebelah logo Monika.
+  - *Verify Gate*: G12, visual inspection.
+- **M6-02 (UX-020, D-06): L1 Hero Net Daily P&L di CockpitBar**
+  - *Files*: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/CockpitBar.tsx`.
+  - *Action*: Tingkatkan Net Daily P&L ke L1 Display Numeral 28px (`fontFamily: 'var(--font-precision)'`, `fontWeight: 800`) dengan label bertingkat di atasnya `NET DAILY P&L` (11px caps), serta isolasi secondary metrics (Win Rate, Exposure, Sharpe) ke dalam recessed instrument well terpisah.
+  - *Verify Gate*: G12, squint test.
+
+---
+
+## Milestone 7 (M7): Geometri Border Retro Integer, Empty Ledger Ribbon & Reduced Motion
+- **M7-01 (UX-021): Pembersihan Border Non-Integer 1.5px ke Standar 1px / 2px**
+  - *Files*: Seluruh file komponen frontend (`App.tsx`, `Sidebar.tsx`, `PositionsTable.tsx`, `AnalysisGrid.tsx`, `AgentChatPanel.tsx`, `BenchmarkPanel.tsx`, `GraphVisualizerPanel.tsx`, `index.css`, dll.).
+  - *Action*: Ganti deklarasi `1.5px solid` menjadi `1px solid var(--color-rule)` untuk garis partisi atau `2px solid var(--color-rule)` untuk kontur panel.
+  - *Verify Gate*: G1 (0 border 1.5px tersisa di codebase).
+- **M7-02 (UX-022, D-07): Compact Ribbon saat Ledger Posisi Kosong**
+  - *Files*: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx`.
+  - *Action*: Saat `openPositions.length === 0`, kolaps badan tabel menjadi compact sunken ribbon ~44px: `[ ⚡ LEDGER CLEAR // NO OPEN EXPOSURE ]` + tombol `[ + NEW ORDER ]`.
+  - *Verify Gate*: G12, responsiveness check.
+- **M7-03 (UX-025): Accessibility Reduced Motion Media Query**
+  - *Files*: `trading-agent/logging_observability/dashboard/frontend/src/index.css`.
+  - *Action*: Tambahkan blok `@media (prefers-reduced-motion: reduce)` yang mematikan transisi/animasi durasi panjang bagi pengguna sensitif.
+  - *Verify Gate*: G9 (WCAG 2.3.3 / reduced-motion emulation).
+
+---
+
+## Milestone 8 (M8): Telemetri Activity Buffer & TUI 80×24 Responsive Stack
+- **M8-01 (UX-023): Buffer Virtualization & Cap pada ActivityFeed**
+  - *Files*: `trading-agent/logging_observability/dashboard/frontend/src/components/panels/ActivityFeed.tsx`.
+  - *Action*: Batasi entri buffer log in-memory maksimal 200 baris untuk menjaga scroll frame rate 60 FPS saat tick burst.
+  - *Verify Gate*: G10 (Render performance).
+- **M8-02 (UX-024, D-08): TUI Responsive Stacked Layout & Function-Key Bar**
+  - *Files*: `trading-agent/cli/tui.py`.
+  - *Action*: Pada terminal `<100` kolom, susun panel overview secara vertikal bertumpuk (stacked). Tambahkan persistent Function-Key Bar di baris paling bawah: `[F1 Help] [F2 Desk] [F3 Intel] [F8 Pause] [F9 Kill] [F10 Quit]`.
+  - *Verify Gate*: G11, `pytest trading-agent/tests/cli -v`.
+

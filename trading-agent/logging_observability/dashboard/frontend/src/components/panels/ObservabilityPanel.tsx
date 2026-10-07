@@ -634,7 +634,7 @@ export const ObservabilityPanel: React.FC = () => {
                       style={{
                         padding: '10px 14px',
                         background: isSelected ? 'var(--color-surface-active, rgba(232, 185, 74, 0.08))' : 'var(--color-surface)',
-                        border: isSelected ? '1.5px solid var(--color-brass)' : '1px solid var(--color-rule)',
+                        border: isSelected ? '1px solid var(--color-brass)' : '1px solid var(--color-rule)',
                         borderRadius: '2px',
                         cursor: 'pointer',
                         display: 'flex',
@@ -829,7 +829,7 @@ export const ObservabilityPanel: React.FC = () => {
                 <div style={{
                   padding: '12px 16px',
                   background: lineageData.integrity_valid ? 'rgba(74, 185, 120, 0.08)' : 'rgba(235, 87, 87, 0.08)',
-                  border: `1.5px solid ${lineageData.integrity_valid ? 'var(--color-profit)' : 'var(--color-loss)'}`,
+                  border: `1px solid ${lineageData.integrity_valid ? 'var(--color-profit)' : 'var(--color-loss)'}`,
                   borderRadius: '2px',
                   display: 'flex',
                   alignItems: 'center',

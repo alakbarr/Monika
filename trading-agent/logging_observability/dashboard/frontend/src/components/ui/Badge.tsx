@@ -49,7 +49,7 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, siz
         borderRadius: 'var(--radius-sm)',
         background: v.bg,
         color: v.color,
-        border: `1.5px solid ${v.border}`,
+        border: `1px solid ${v.border}`,
         fontSize: size === 'sm' ? 'var(--text-xs)' : 'var(--text-body-sm)',
         fontWeight: 'var(--weight-bold)',
         fontFamily: 'var(--font-precision)',

@@ -213,7 +213,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               fontSize: 'var(--text-body-md)',
               background: 'var(--color-paper-sunken)',
               color: 'var(--color-ink)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-control)',
               outline: 'none',
               fontFamily: 'var(--font-precision)',

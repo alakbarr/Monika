@@ -482,7 +482,7 @@ export const MarketDataPanel: React.FC = () => {
                     borderRadius: '2px',
                     padding: '8px',
                     textAlign: 'center',
-                    border: `1.5px solid ${
+                    border: `1px solid ${
                       bias === 'bullish' ? 'var(--color-ledger-green)' : bias === 'bearish' ? 'var(--color-ledger-red)' : 'var(--color-rule)'
                     }`,
                     display: 'flex',
@@ -518,7 +518,7 @@ export const MarketDataPanel: React.FC = () => {
                     borderRadius: '2px',
                     padding: '8px',
                     textAlign: 'center',
-                    border: `1.5px solid ${b === 'bullish' ? 'var(--color-ledger-green)' : b === 'bearish' ? 'var(--color-ledger-red)' : 'var(--color-rule)'}`,
+                    border: `1px solid ${b === 'bullish' ? 'var(--color-ledger-green)' : b === 'bearish' ? 'var(--color-ledger-red)' : 'var(--color-rule)'}`,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',

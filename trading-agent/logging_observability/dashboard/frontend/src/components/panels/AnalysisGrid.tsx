@@ -38,7 +38,7 @@ export const AnalysisGrid: React.FC = () => {
       variant="salmon"
       toolbar={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
-          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
             <button
               type="button"
               onClick={() => setViewMode('unique')}
@@ -50,7 +50,7 @@ export const AnalysisGrid: React.FC = () => {
                 background: viewMode === 'unique' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
                 color: viewMode === 'unique' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
-                borderRight: '1.5px solid var(--color-rule)',
+                borderRight: '1px solid var(--color-rule)',
                 cursor: 'pointer',
               }}
             >
@@ -257,7 +257,7 @@ const AnalysisCard: React.FC<{
                 fontWeight: 'bold',
                 background: 'var(--color-paper)',
                 color: 'var(--color-win-blue)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: '1px 1px 0 var(--color-rule)',
                 cursor: 'pointer',
@@ -286,7 +286,7 @@ const AnalysisCard: React.FC<{
               fontWeight: 'bold',
               background: 'var(--color-paper)',
               color: 'var(--color-win-blue)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               boxShadow: '1px 1px 0 var(--color-rule)',
               cursor: 'pointer',

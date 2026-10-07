@@ -774,7 +774,7 @@ export const SignalsTriggersPanel: React.FC = () => {
             style={{
               padding: '8px 14px',
               background: 'var(--color-paper)',
-              borderBottom: '1.5px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
               fontSize: '11px',
               color: 'var(--color-ink)',
               fontFamily: 'var(--font-precision)',
@@ -1184,7 +1184,7 @@ export const SignalsTriggersPanel: React.FC = () => {
           <div
             style={{
               margin: '12px',
-              border: '1.5px dashed var(--color-rule)',
+              border: '1px dashed var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               padding: '8px 12px',
               background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',

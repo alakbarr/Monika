@@ -290,7 +290,7 @@ const App: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 900,
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 flexShrink: 0,
               }}
             >

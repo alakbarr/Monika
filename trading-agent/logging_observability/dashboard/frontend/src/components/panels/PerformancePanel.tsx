@@ -93,7 +93,7 @@ export const PerformancePanel: React.FC = () => {
                 width: '100%',
                 height: '14px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '3px',
                 overflow: 'hidden',
                 position: 'relative',
@@ -118,7 +118,7 @@ export const PerformancePanel: React.FC = () => {
               style={{
                 padding: '10px 14px',
                 background: 'var(--color-surface-card)',
-                border: `1.5px solid ${tradesPassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                border: `1px solid ${tradesPassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
                 borderRadius: '3px',
                 display: 'flex',
                 alignItems: 'center',
@@ -140,7 +140,7 @@ export const PerformancePanel: React.FC = () => {
               style={{
                 padding: '10px 14px',
                 background: 'var(--color-surface-card)',
-                border: `1.5px solid ${winRatePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                border: `1px solid ${winRatePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
                 borderRadius: '3px',
                 display: 'flex',
                 alignItems: 'center',
@@ -162,7 +162,7 @@ export const PerformancePanel: React.FC = () => {
               style={{
                 padding: '10px 14px',
                 background: 'var(--color-surface-card)',
-                border: `1.5px solid ${edgePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                border: `1px solid ${edgePassed ? 'var(--color-profit)' : 'var(--color-rule)'}`,
                 borderRadius: '3px',
                 display: 'flex',
                 alignItems: 'center',
@@ -184,7 +184,7 @@ export const PerformancePanel: React.FC = () => {
               style={{
                 padding: '10px 14px',
                 background: isGraduated ? 'var(--color-profit-dim, rgba(22, 163, 74, 0.1))' : 'var(--color-surface-card)',
-                border: `1.5px solid ${isGraduated ? 'var(--color-profit)' : 'var(--color-rule)'}`,
+                border: `1px solid ${isGraduated ? 'var(--color-profit)' : 'var(--color-rule)'}`,
                 borderRadius: '3px',
                 display: 'flex',
                 alignItems: 'center',

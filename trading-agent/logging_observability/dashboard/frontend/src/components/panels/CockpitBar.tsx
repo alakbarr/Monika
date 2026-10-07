@@ -61,7 +61,7 @@ export const CockpitBar: React.FC = () => {
               padding: '4px 10px',
               marginBottom: '10px',
               background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
-              border: '1.5px solid var(--color-ledger-red)',
+              border: '2px solid var(--color-ledger-red)',
               borderRadius: 'var(--radius-xs)',
               display: 'flex',
               alignItems: 'center',
@@ -79,10 +79,10 @@ export const CockpitBar: React.FC = () => {
 
         <div className="cockpit-bar">
           {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
-          <div className="cockpit-item">
+          <div className="cockpit-item cockpit-item--hero">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            DAILY P&L
+          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            NET DAILY P&L
           </span>
           <span
             className="stamp-badge"
@@ -102,9 +102,11 @@ export const CockpitBar: React.FC = () => {
           className="tabular-nums"
           style={{
             fontSize: 'var(--text-display-md)',
+            fontFamily: 'var(--font-precision)',
             fontWeight: 800,
             color: pnlColor,
-            lineHeight: 1.1,
+            lineHeight: 1.15,
+            letterSpacing: '-0.02em',
           }}
         >
           {loading ? '...' : fmt.usd(dailyPnl, true)}

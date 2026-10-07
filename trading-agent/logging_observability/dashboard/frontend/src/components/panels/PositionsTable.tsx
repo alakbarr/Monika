@@ -230,7 +230,7 @@ export const PositionsTable: React.FC = () => {
           {/* Left: View & Unit Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* Active vs Historical */}
-            <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
               <button
                 type="button"
                 onClick={() => setShowClosed(false)}
@@ -242,7 +242,7 @@ export const PositionsTable: React.FC = () => {
                   background: !showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
                   color: !showClosed ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                   border: 'none',
-                  borderRight: '1.5px solid var(--color-rule)',
+                  borderRight: '1px solid var(--color-rule)',
                   cursor: 'pointer',
                 }}
               >
@@ -267,7 +267,7 @@ export const PositionsTable: React.FC = () => {
             </div>
 
             {/* P&L Unit Selector */}
-            <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
               {(['usd', 'pips', 'r'] as const).map((u) => (
                 <button
                   key={u}
@@ -284,7 +284,7 @@ export const PositionsTable: React.FC = () => {
                     background: pnlUnit === u ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
                     color: pnlUnit === u ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                     border: 'none',
-                    borderRight: u !== 'r' ? '1.5px solid var(--color-rule)' : 'none',
+                    borderRight: u !== 'r' ? '1px solid var(--color-rule)' : 'none',
                     cursor: 'pointer',
                     textTransform: 'uppercase',
                   }}
@@ -307,7 +307,7 @@ export const PositionsTable: React.FC = () => {
                   fontFamily: 'var(--font-precision)',
                   background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 3px, transparent 3px, transparent 6px)',
                   color: 'var(--color-ledger-red)',
-                  border: '1.5px solid var(--color-ledger-red)',
+                  border: '2px solid var(--color-ledger-red)',
                   borderRadius: 'var(--radius-xs)',
                   letterSpacing: '0.04em',
                 }}
@@ -334,7 +334,7 @@ export const PositionsTable: React.FC = () => {
                 fontWeight: 800,
                 background: 'var(--color-ledger-green)',
                 color: 'var(--color-on-win-green)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: '1px 1px 0 var(--color-rule)',
                 cursor: 'pointer',
@@ -360,7 +360,7 @@ export const PositionsTable: React.FC = () => {
                   fontWeight: 700,
                   background: 'var(--color-paper-raised)',
                   color: 'var(--color-ink)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: 'var(--radius-sm)',
                   boxShadow: '1px 1px 0 var(--color-rule)',
                   cursor: 'pointer',
@@ -386,7 +386,7 @@ export const PositionsTable: React.FC = () => {
                   fontWeight: 800,
                   background: 'var(--color-ledger-red)',
                   color: 'var(--color-on-win-coral)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: 'var(--radius-sm)',
                   boxShadow: '1px 1px 0 var(--color-rule)',
                   cursor: 'pointer',
@@ -409,7 +409,7 @@ export const PositionsTable: React.FC = () => {
           style={{
             padding: '8px 14px',
             background: 'var(--color-paper)',
-            borderBottom: '1.5px solid var(--color-rule)',
+            borderBottom: '1px solid var(--color-rule)',
             fontSize: 'var(--text-xs)',
             color: 'var(--color-ink)',
             fontFamily: 'var(--font-precision)',
@@ -427,9 +427,16 @@ export const PositionsTable: React.FC = () => {
       ) : sorted.length === 0 ? (
         <EmptyState
           compact
-          title="LEDGER CLEAR"
-          message={showClosed ? "No closed historical positions in MT5." : "No active market positions in MT5 — watching target symbols."}
+          title="LEDGER CLEAR // 0 OPEN EXPOSURE"
+          message={showClosed ? "No closed historical positions in MT5." : "No active market exposure in MT5 — watching target symbols."}
           icon={<FloppyDiskIcon size={16} />}
+          actionLabel="+ NEW ORDER"
+          onAction={() => {
+            sounds.playClick('typewriter');
+            setOrderDrawerSymbol('EURUSD');
+            setIsOrderDrawerOpen(true);
+          }}
+          style={{ minHeight: '44px', padding: '10px 14px' }}
         />
       ) : (
         <div
@@ -597,7 +604,7 @@ export const PositionsTable: React.FC = () => {
                     padding: '6px 8px',
                     fontFamily: 'var(--font-precision)',
                     fontSize: 'var(--text-xs)',
-                    border: '1.5px solid var(--color-rule)',
+                    border: '1px solid var(--color-rule)',
                     borderRadius: '2px',
                     background: 'var(--color-paper)',
                     color: 'var(--color-ink)',
@@ -616,7 +623,7 @@ export const PositionsTable: React.FC = () => {
                     padding: '6px 8px',
                     fontFamily: 'var(--font-precision)',
                     fontSize: 'var(--text-xs)',
-                    border: '1.5px solid var(--color-rule)',
+                    border: '1px solid var(--color-rule)',
                     borderRadius: '2px',
                     background: 'var(--color-paper)',
                     color: 'var(--color-ink)',
@@ -686,7 +693,7 @@ export const PositionsTable: React.FC = () => {
                     padding: '6px 8px',
                     fontFamily: 'var(--font-precision)',
                     fontSize: 'var(--text-xs)',
-                    border: '1.5px solid var(--color-rule)',
+                    border: '1px solid var(--color-rule)',
                     borderRadius: '2px',
                     background: 'var(--color-paper)',
                     color: 'var(--color-ink)',

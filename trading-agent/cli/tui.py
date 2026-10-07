@@ -589,6 +589,15 @@ class TradingDashboard(App):
         self.terminal_width = event.size.width
         self._refresh_status_bar()
         new_narrow = event.size.width < 90
+        try:
+            panels = self.query_one("#main_panels")
+            if event.size.width < 100:
+                panels.add_class("stacked-panels")
+            else:
+                panels.remove_class("stacked-panels")
+        except Exception:
+            pass
+
         if getattr(self, "_positions_narrow_mode", None) != new_narrow:
             self._positions_narrow_mode = new_narrow
             try:

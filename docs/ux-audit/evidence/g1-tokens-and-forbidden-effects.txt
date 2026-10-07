@@ -1,109 +1,21 @@
 ================================================================================
 === Raw Hex in TSX ===
 ================================================================================
-trading-agent/logging_observability/dashboard/frontend/src/App.tsx:290:              color: '#FAF7F2',
-trading-agent/logging_observability/dashboard/frontend/src/App.tsx:320:                color: '#FAF7F2',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:26:  background: isLight ? '#FAF7F2' : '#1A1715',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:27:  textColor: isLight ? '#1C1917' : '#ADA296',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:30:  upColor: isLight ? '#2E7D32' : '#4CAF50',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:31:  downColor: isLight ? '#D32F2F' : '#EF5350',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:32:  obBull: isLight ? '#2E7D32' : '#4CAF50',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:33:  obBear: isLight ? '#D32F2F' : '#EF5350',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:30:  upColor: isLight ? '#1B5E20' : '#4CAF50',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:31:  downColor: isLight ? '#B71C1C' : '#F46A6A',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:32:  obBull: isLight ? '#1B5E20' : '#4CAF50',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:33:  obBear: isLight ? '#B71C1C' : '#F46A6A',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:34:  fvgBull: isLight ? '#3BA4C4' : '#2A7991',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:35:  fvgBear: isLight ? '#E86C53' : '#B04A36',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:36:  chochColor: isLight ? '#E0962B' : '#D98C28',
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:37:  bosColor: isLight ? '#1B365D' : '#3D6B9E', // Anti-slop Navy
 trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:38:  timesfmMedian: isLight ? '#3BA4C4' : '#5BC3E0',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:78:                color: viewMode === 'matrix' ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:98:                color: viewMode === 'list' ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:132:                  color: isWsActive ? '#1C1917' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:142:                <span style={{ display: 'inline-flex', flexShrink: 0, color: isWsActive ? '#1C1917' : 'var(--color-brass)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:154:                        color: isWsActive ? '#1C1917' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:168:                          color: '#FAF7F2',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:253:                color: '#FAF7F2',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:199:              color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:277:                color: activeTab === 'task_compare' ? '#fff' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:292:                color: activeTab === 'global_leaderboard' ? '#fff' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:307:                color: activeTab === 'run_history' ? '#fff' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:360:                <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:419:                  <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:509:                <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/DecisionDossierModal.tsx:267:                      color: isActive ? '#FFFFFF' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:307:            color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:931:                  color: '#000',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:448:                  <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-win-yellow)', background: '#1C1917', padding: '2px 5px', borderRadius: '2px' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:169:                color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:103:        return '#a855f7';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:105:        return '#06b6d4';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:107:        return '#eab308';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:109:        return '#10b981';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:111:        return '#64748b';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:178:                        color: '#000',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:1090:                        const color = bucket === '<50ms' ? 'var(--color-profit)' : bucket === '50-200ms' ? 'var(--color-brass)' : bucket === '200-500ms' ? '#c47d2b' : 'var(--color-loss)';
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:107:                    ? 'linear-gradient(90deg, var(--color-profit-dim, #16a34a) 0%, var(--color-profit, #22c55e) 100%)'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:108:                    : 'linear-gradient(90deg, var(--color-brass, #b45309) 0%, var(--color-warning, #f59e0b) 100%)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:188:            Active: <strong style={{ color: 'var(--color-green, #10b981)' }}>{activeCount}</strong> / {plugins.length}
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:412:                              ? '#fef3c7'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:414:                              ? '#d1fae5'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:415:                              : '#f3f4f6',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:417:                              ? '#92400e'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:419:                              ? '#065f46'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:420:                              : '#6b7280',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:422:                              isDegraded ? '#f59e0b' : isActive ? '#10b981' : '#d1d5db'
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:462:                          background: '#fffbeb',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:463:                          border: '1px solid #fde68a',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:466:                          color: '#b45309',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:494:                            background: '#fee2e2',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:495:                            color: '#b91c1c',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:496:                            border: '1px solid #f87171',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:517:                        background: isActive ? '#059669' : 'var(--color-paper)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:518:                        color: isActive ? '#ffffff' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:519:                        border: `1px solid ${isActive ? '#047857' : 'var(--color-rule)'}`,
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:665:                        background: isInstalled ? '#f3f4f6' : 'var(--color-paper-raised)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:666:                        color: isInstalled ? '#4b5563' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:812:                color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PluginManagerPanel.tsx:825:                  color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:220:              color: '#FFFFFF',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:248:                color: '#FFFFFF',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:283:                  color: pnlUnit === u ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:330:                color: !showClosed ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:347:                color: showClosed ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:557:                      color: closePercentage === pct ? '#1C1917' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:130:              color: '#FAF7F2',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:413:                      color: scorecardSymbol === s ? '#000' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:143:      badgeColor: '#FAF7F2',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:165:      badgeColor: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:218:      badgeColor: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:234:      badgeColor: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:862:                                color: 'var(--color-ledger-green, #16a34a)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:863:                                border: '1px solid var(--color-ledger-green, #16a34a)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:193:                color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:295:                    color: filterSymbol === sym ? '#1C1917' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:321:                  color: filterStatus === st ? '#1C1917' : 'var(--color-ink)',
 trading-agent/logging_observability/dashboard/frontend/src/components/panels/TerminalPanel.tsx:28:        background: '#0B0906',
 trading-agent/logging_observability/dashboard/frontend/src/components/panels/TerminalPanel.tsx:29:        foreground: '#E8B94A',
 trading-agent/logging_observability/dashboard/frontend/src/components/panels/TerminalPanel.tsx:30:        cursor: '#F5BD38',
 trading-agent/logging_observability/dashboard/frontend/src/components/panels/TerminalPanel.tsx:31:        cursorAccent: '#0B0906',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:621:                  color: rawViewMode === 'yaml' ? '#000' : 'var(--color-text-secondary)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:636:                  color: rawViewMode === 'schema' ? '#000' : 'var(--color-text-secondary)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:45:            color: layoutMode === 'compact' ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:66:            color: layoutMode === 'wide' ? '#1C1917' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:178:          color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ApprovalModal.tsx:141:            color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ApprovalModal.tsx:164:              color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:10:  active:   { color: '#1C1917', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:11:  paused:   { color: '#1C1917', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:12:  error:    { color: '#FAF7F2', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:14:  profit:   { color: '#1C1917', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:15:  loss:     { color: '#FAF7F2', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:16:  warn:     { color: '#1C1917', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:17:  info:     { color: '#1C1917', bg: 'var(--color-win-blue)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:18:  buy:      { color: '#1C1917', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:19:  sell:     { color: '#FAF7F2', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:22:  trading:  { color: '#1C1917', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:23:  analysis: { color: '#1C1917', bg: 'var(--color-win-salmon)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/Badge.tsx:24:  risk:     { color: '#FAF7F2', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ConfirmModal.tsx:117:                color: '#1C1917',
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:27:      fill="#E5A823"
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:28:      stroke="var(--color-win-border, #1C1917)"
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:33:    <rect x="6" y="4" width="10" height="7" rx="1" fill="#FAF7F2" stroke="var(--color-win-border, #1C1917)" strokeWidth="1.5" />
@@ -166,131 +78,13 @@ trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.t
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:285:      stroke="#88D4D0"
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:292:      stroke="var(--color-win-border, #1C1917)"
 trading-agent/logging_observability/dashboard/frontend/src/components/ui/Icons.tsx:298:      stroke="#E5A823"
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:186:            color: '#FFFFFF',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:200:              color: '#FFFFFF',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:250:                      color: symbol === s ? '#FFFFFF' : 'var(--color-ink-soft)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:274:                    color: direction === 'BUY' ? '#FFFFFF' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:293:                    color: direction === 'SELL' ? '#FFFFFF' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:326:                      color: volume === v ? '#1C1917' : 'var(--color-ink)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:578:                color: '#FFFFFF',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/SegmentedProgressBar.tsx:19:  salmon: '#E86C53',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/SegmentedProgressBar.tsx:20:  yellow: '#F5BD38',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/SegmentedProgressBar.tsx:21:  blue: '#3BA4C4',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/SegmentedProgressBar.tsx:22:  green: '#48A9A6',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/TickerTape.tsx:55:            color: '#1C1917',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/WeekendGapBanner.tsx:164:              color: isUrgent ? '#FAF7F2' : '#1C1917',
 
 ================================================================================
 === Forbidden Effects (blur, rounded-full) ===
 ================================================================================
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/DecisionDossierModal.tsx:155:        backdropFilter: 'blur(3px)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigDiffModal.tsx:51:        backdropFilter: 'blur(4px)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/CommandPalette.tsx:160:        backdropFilter: 'blur(3px)',
+(None found)
 
 ================================================================================
 === 1.5px Non-integer Borders ===
 ================================================================================
-trading-agent/logging_observability/dashboard/frontend/src/App.tsx:325:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:65:          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:80:                borderRight: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:203:                          border: isSubActive ? '1.5px solid var(--color-rule)' : '1.5px solid transparent',
-trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:255:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/ActivityFeed.tsx:39:          borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:131:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:162:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:198:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:227:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:362:                        border: '1.5px solid var(--color-brass)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:429:                        border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:462:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:194:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:275:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:290:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:305:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:488:                      border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:626:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:647:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:668:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:726:                    <tr style={{ background: 'var(--color-table-header)', borderBottom: '1.5px solid var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:876:                <tr style={{ background: 'var(--color-table-header)', borderBottom: '1.5px solid var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/EdgeMetricsPanel.tsx:117:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:302:            border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:361:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:386:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:417:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:432:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:447:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:471:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:742:            border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:845:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:867:                    border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:892:                    border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:926:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:164:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:291:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:320:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:96:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:221:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:249:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:268:          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:308:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:320:          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:332:                borderRight: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:364:            borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:492:                    border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:511:                    border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:581:                    border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:180:            border: '1.5px solid var(--color-win-yellow)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:361:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:673:              borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:194:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:218:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:239:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:256:              borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:33:          border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:90:          border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphControls.tsx:179:          border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:66:                border: '1.5px solid var(--color-brass)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:91:            border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:130:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:160:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:183:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:224:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:250:              border: '1.5px solid var(--color-ledger-red)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:288:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:329:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:347:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:387:              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:391:              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:408:            <div style={{ background: 'var(--color-paper)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphNode.tsx:91:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ApprovalModal.tsx:218:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/BootSequence.tsx:147:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/CommandPalette.tsx:224:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ErrorBoundary.tsx:54:                border: '1.5px solid var(--color-ledger-red)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/KeyboardShortcutsPanel.tsx:102:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/KeyboardShortcutsPanel.tsx:114:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:231:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:267:              <div style={{ display: 'flex', height: '34px', border: '1.5px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:348:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:373:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:411:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:447:                  border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:471:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:561:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:579:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:59:        border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:158:                borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:271:                border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:293:                borderBottom: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:354:                borderTop: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/StatusIndicator.tsx:46:          border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ThemeToggle.tsx:48:          border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/ThemeToggle.tsx:63:            border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/TickerTape.tsx:58:            border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/VuMeter.tsx:70:        border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/components/ui/WeekendGapBanner.tsx:163:              border: '1.5px solid var(--color-rule)',
-trading-agent/logging_observability/dashboard/frontend/src/index.css:414:  border: 1.5px solid var(--color-rule);
-trading-agent/logging_observability/dashboard/frontend/src/index.css:555:  border: 1.5px solid var(--color-rule);
-trading-agent/logging_observability/dashboard/frontend/src/index.css:677:  border-right: 1.5px dashed var(--color-rule);
-trading-agent/logging_observability/dashboard/frontend/src/index.css:706:    border-bottom: 1.5px dashed var(--color-rule);
+(None found)
