@@ -78,6 +78,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
 
   return (
     <div
+      data-focused={isFocused ? 'true' : 'false'}
       className={`win-window ${isFocused ? 'win-window--active' : isFocused === false ? 'win-window--inactive' : ''} ${className}`}
       onClick={onFocus}
       style={{
@@ -111,13 +112,14 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
           cursor: 'default',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, position: 'relative', zIndex: 1 }}>
           {icon && (
             <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
               {icon}
             </span>
           )}
           <span
+            className="win-titlebar-title"
             style={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',

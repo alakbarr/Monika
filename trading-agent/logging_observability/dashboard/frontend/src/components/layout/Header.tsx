@@ -12,6 +12,8 @@ import { sounds } from '../../lib/soundEffects';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { fmt } from '../../lib/formatters';
 import { MonikaInfiniteIcon } from '../ui/MonikaInfiniteIcon';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { api } from '../../lib/api';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
@@ -19,10 +21,37 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommandPalette }) => {
-  const { health, overview, wsConnected, timeZoneDisplay, setTimeZoneDisplay } = useDashboardStore();
+  const { health, overview, wsConnected, timeZoneDisplay, setTimeZoneDisplay, fetchAll } = useDashboardStore();
   const [clock, setClock] = useState(new Date());
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(sounds.getMuted());
+  const [showHaltModal, setShowHaltModal] = useState(false);
+  const [halting, setHalting] = useState(false);
+
+  const isHalted = overview?.trading_paused ?? false;
+
+  const handleHaltClick = () => {
+    sounds.playClick('toggle');
+    if (isHalted) {
+      setHalting(true);
+      api.resumeTrading()
+        .then(() => fetchAll())
+        .catch((err) => console.error('Failed to resume trading:', err))
+        .finally(() => setHalting(false));
+    } else {
+      setShowHaltModal(true);
+    }
+  };
+
+  const handleConfirmHalt = () => {
+    setShowHaltModal(false);
+    setHalting(true);
+    sounds.playClick('shutter');
+    api.emergencyKill()
+      .then(() => fetchAll())
+      .catch((err) => console.error('Emergency kill failed:', err))
+      .finally(() => setHalting(false));
+  };
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
@@ -306,7 +335,61 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             ? `${clock.toUTCString().slice(17, 25)} UTC`
             : `${clock.toTimeString().slice(0, 8)} LOC`}
         </button>
+
+        {/* Persistent Emergency Kill Switch (D-04, Fitts' Edge) */}
+        <button
+          type="button"
+          onClick={handleHaltClick}
+          disabled={halting}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            height: '30px',
+            boxSizing: 'border-box',
+            padding: '0 10px',
+            fontSize: 'var(--text-caption)',
+            fontWeight: 800,
+            fontFamily: 'var(--font-precision)',
+            background: isHalted ? 'var(--color-win-yellow)' : 'var(--color-win-salmon)',
+            color: isHalted ? 'var(--color-on-win-yellow)' : 'var(--color-on-win-salmon)',
+            border: '2px solid var(--color-rule)',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: '2px 2px 0 var(--color-rule)',
+            cursor: halting ? 'wait' : 'pointer',
+            marginLeft: '12px',
+            letterSpacing: '0.04em',
+            flexShrink: 0,
+          }}
+          title={isHalted ? 'Click to resume automated trading engine' : 'CRITICAL SAFETY: Click to immediately HALT automated execution'}
+          aria-label={isHalted ? 'Resume Trading' : 'Emergency Kill Switch'}
+        >
+          <span>{isHalted ? '▶' : '🚨'}</span>
+          <span>{isHalted ? 'RESUME TRADING' : 'EMERGENCY HALT'}</span>
+        </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showHaltModal}
+        title="EMERGENCY SYSTEM HALT // KILL SWITCH"
+        actionSummary="You are engaging the unbypassable Mechanical Fortress Emergency Halt."
+        details={
+          <div>
+            <p style={{ margin: '0 0 8px 0' }}>
+              This will immediately suspend all automated agent cycles, prevent order generation,
+              and freeze active broker communications.
+            </p>
+            <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-loss)' }}>
+              Open positions in MT5 will be subject to emergency stop safeguards.
+            </p>
+          </div>
+        }
+        confirmLabel="HALT ALL TRADING NOW"
+        cancelLabel="ABORT // RETURN"
+        danger={true}
+        onConfirm={handleConfirmHalt}
+        onCancel={() => setShowHaltModal(false)}
+      />
 
       <KeyboardShortcutsPanel
         isOpen={shortcutsOpen}

@@ -36,7 +36,7 @@ const COLUMNS: ColumnDef[] = [
 import { EmptyState } from '../ui/EmptyState';
 
 export const PositionsTable: React.FC = () => {
-  const { positions, loading, fetchAll } = useDashboardStore();
+  const { positions, loading, fetchAll, wsConnected } = useDashboardStore();
   const [showClosed, setShowClosed] = useState(false);
   const [sortField, setSortField] = useState<SortField>('opened_at');
   const [sortAsc, setSortAsc] = useState(false);
@@ -274,6 +274,25 @@ export const PositionsTable: React.FC = () => {
             <Badge variant={open.length > 0 ? 'active' : 'neutral'}>
               {open.length} OPEN
             </Badge>
+
+            {!wsConnected && (
+              <span
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-precision)',
+                  background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 3px, transparent 3px, transparent 6px)',
+                  color: 'var(--color-ledger-red)',
+                  border: '1.5px solid var(--color-ledger-red)',
+                  borderRadius: 'var(--radius-xs)',
+                  letterSpacing: '0.04em',
+                }}
+                title="WebSocket disconnected. Live prices and unbooked P&L show last known recorded values."
+              >
+                ⚠ STALE (OFFLINE)
+              </span>
+            )}
           </div>
 
           {/* Right: Operational Action Triggers */}
