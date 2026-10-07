@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommandPalette }) => {
-  const { health, overview, wsConnected } = useDashboardStore();
+  const { health, overview, wsConnected, timeZoneDisplay, setTimeZoneDisplay } = useDashboardStore();
   const [clock, setClock] = useState(new Date());
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(sounds.getMuted());
@@ -113,6 +113,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
               OS
             </span>
           </div>
+        </div>
+
+        {/* L0 Safety Mode Pill */}
+        <div
+          className={`monika-mode-pill ${overview?.is_live ? 'monika-mode-pill--live' : 'monika-mode-pill--paper'}`}
+          title={overview?.is_live ? 'LIVE REAL-CAPITAL TRADING ACTIVE' : 'Simulated Paper Trading Mode'}
+        >
+          <span style={{ fontSize: '9px' }}>■</span>
+          <span>{overview?.is_live ? 'LIVE TRADING' : 'PAPER TRADING'}</span>
         </div>
       </div>
 
@@ -272,8 +281,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
           [ ? ]
         </button>
 
-        {/* Clock UTC */}
-        <div
+        {/* Interactive Clock UTC / LOCAL Switcher */}
+        <button
+          type="button"
+          onClick={() => {
+            sounds.playClick('toggle');
+            const nextTz = timeZoneDisplay === 'UTC' ? 'LOCAL' : 'UTC';
+            setTimeZoneDisplay(nextTz);
+          }}
           className="tabular-nums"
           style={{
             display: 'inline-flex',
@@ -288,10 +303,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             border: '2px solid var(--color-rule)',
             borderRadius: 'var(--radius-md)',
             boxShadow: '2px 2px 0 var(--color-rule)',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-precision)',
           }}
+          title={`Click to toggle UTC / Local time (Active: ${timeZoneDisplay})`}
+          aria-label={`Current time zone: ${timeZoneDisplay}. Click to toggle.`}
         >
-          {clock.toUTCString().slice(17, 25)} UTC
-        </div>
+          {timeZoneDisplay === 'UTC'
+            ? `${clock.toUTCString().slice(17, 25)} UTC`
+            : `${clock.toTimeString().slice(0, 8)} LOC`}
+        </button>
       </div>
 
       <KeyboardShortcutsPanel

@@ -21,6 +21,7 @@ export const colors = {
 
   // Borders & Rules
   rule: 'var(--color-rule)',
+  edge: 'var(--color-edge)',
   border: 'var(--color-border)',
   borderThick: 'var(--color-border-thick)',
   borderFocus: 'var(--color-border-focus)',
@@ -35,6 +36,12 @@ export const colors = {
   winDim: 'var(--color-win-dim)',
   titlebar: 'var(--color-titlebar)',
   titlebarText: 'var(--color-titlebar-text)',
+  onWinBlue: 'var(--color-on-win-blue)',
+  onWinYellow: 'var(--color-on-win-yellow)',
+  onWinSalmon: 'var(--color-on-win-salmon)',
+  onWinCoral: 'var(--color-on-win-coral)',
+  onWinGreen: 'var(--color-on-win-green)',
+  onWinGray: 'var(--color-on-win-gray)',
 
   // Accents & Financial Indicators
   brass: 'var(--color-brass)',
@@ -127,7 +134,6 @@ export const radii = {
   md: 'var(--radius-md)',
   lg: 'var(--radius-lg)',
   card: 'var(--radius-card)',
-  pill: 'var(--radius-pill)',
   control: 'var(--radius-control)',
 } as const;
 
