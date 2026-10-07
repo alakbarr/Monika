@@ -1,0 +1,128 @@
+Total Tiny Type Violations (<11px):
+
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:466:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:482:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:498:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/CandlestickChart.tsx:514:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:200:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:210:                    <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:216:                    <div style={{ fontSize: '10px', fontWeight: 800, color: ic >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:220:                      <div style={{ fontSize: '9px', color: 'var(--color-ink-muted)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:231:                        fontSize: '9px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:302:                          fontSize: '9px',
+trading-agent/logging_observability/dashboard/frontend/src/components/charts/FactorHeatmap.tsx:330:                    <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/layout/BreadcrumbBar.tsx:28:        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/layout/GlobalStatusBar.tsx:101:            fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/layout/GlobalStatusBar.tsx:115:            fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:165:                          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/layout/Sidebar.tsx:256:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ActivityFeed.tsx:54:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:157:              fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:183:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:252:          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/AgentChatPanel.tsx:426:                        fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:472:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>SORTINO (ANN.)</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:476:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Downside penalty</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:480:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CALMAR RATIO</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:484:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Return / Max DD</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:488:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CVaR (95%)</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:492:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Tail expected shortfall</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:496:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>WILSON 95% CI</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:500:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>True WR confidence</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:504:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>PAYOFF RATIO</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:508:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Avg Win / Avg Loss</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:512:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>EXPECTANCY</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BacktestPanel.tsx:516:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Per trade edge</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:758:                              <span style={{ marginLeft: '6px', fontSize: '10px', background: 'var(--color-moss-subtle)', color: 'var(--color-moss)', padding: '2px 4px', borderRadius: '3px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/BenchmarkPanel.tsx:763:                              <span style={{ marginLeft: '6px', fontSize: '10px', background: 'var(--color-ochre-subtle)', color: 'var(--color-ochre)', padding: '2px 4px', borderRadius: '3px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/CockpitBar.tsx:44:              fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/CockpitBar.tsx:120:              fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ConfigEditorPanel.tsx:359:                      <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>{sec.desc}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:328:                    fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:421:              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:436:              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/GraphVisualizerPanel.tsx:451:              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:229:                        <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{row.name}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:337:                        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>{k}</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:496:                  <div style={{ fontSize: '10px', color: BIAS_COLOR[bias as string] || 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:530:                  <div style={{ fontSize: '10px', color: BIAS_COLOR[b], fontWeight: 'bold', textTransform: 'uppercase' }}>{b}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:642:            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 600 }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:703:                  <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 700 }}>{t.tenor}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:713:              <div style={{ display: 'flex', gap: '8px', fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:736:                  <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>CME FedWatch Tool</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:741:                      <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:753:                  <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>Target Probabilities</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:757:                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>HOLD RATE</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:761:                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>25 BPS CUT</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:765:                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>50 BPS CUT</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:789:                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:806:              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-soft)', fontSize: '10px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:820:                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:829:                <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MarketDataPanel.tsx:835:            <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:96:      <span className="stamp-badge" style={{ fontSize: '9px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:529:                    <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--color-ink-muted)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/MemoryBrowserPanel.tsx:603:                                  <span style={{ fontSize: '10px', color: 'var(--color-ledger-green)', fontWeight: 800 }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:174:                        fontSize: '9px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:205:                  <div style={{ width: '110px', minWidth: '110px', textAlign: 'right', color: 'var(--color-ink-muted)', fontSize: '10px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:225:              <pre style={{ margin: 0, fontSize: '10px', maxHeight: '160px', overflowY: 'auto' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:567:                            <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{span.span_id}</div>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:679:                            <span key={t} style={{ fontSize: '9px', padding: '1px 5px', background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: '2px', color: 'var(--color-ink-soft)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:709:                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>TIMESTAMP</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:713:                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>PNL REALIZED</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:719:                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>MAE / MFE</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:917:                          <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '10px', color: 'var(--color-ink-soft)' }} title={ev.chain_hash || ''}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:924:                                  <span key={s} style={{ fontSize: '10px', padding: '1px 4px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/ObservabilityPanel.tsx:930:                              <span style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>origin</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:130:                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:152:                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:174:                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/PerformancePanel.tsx:196:                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/PositionsTable.tsx:427:                      <span style={{ marginLeft: '4px', fontSize: '10px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:416:                      fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:462:                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal.reason}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:493:                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', textAlign: 'center' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/RiskPanel.tsx:539:                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SessionBrowserPanel.tsx:261:            fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SessionBrowserPanel.tsx:323:                      fontSize: '9px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SessionBrowserPanel.tsx:350:                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SessionBrowserPanel.tsx:473:                          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:728:                                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:758:                                  fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:774:                                fontSize: '9px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:807:                                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:831:                        <div style={{ fontSize: '10px', color: isPending ? 'var(--color-warning)' : 'var(--color-ink-muted)', marginTop: '2px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SignalsTriggersPanel.tsx:968:                              fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:423:                          <div style={{ fontSize: '10px', color: 'var(--color-ledger-red)', marginTop: '2px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/SkillManagerPanel.tsx:522:                          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/TokenAuditPanel.tsx:508:                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/TokenAuditPanel.tsx:578:                      <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:240:                          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:329:                        fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:477:                      <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-ink-muted)', background: 'var(--color-desktop)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--color-rule)', whiteSpace: 'nowrap' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/config/ConfigSection.tsx:539:                    <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:63:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:133:            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:163:            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Duration</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:186:            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:227:            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Est. Cost</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:272:              fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:311:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/graph/GraphInspector.tsx:333:                fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/panels/tokens/TokenRoleTable.tsx:188:                        <span style={{ color: 'var(--color-warning)', fontSize: '10px', marginLeft: '4px' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ApprovalModal.tsx:226:            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.04em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ApprovalModal.tsx:309:          <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textAlign: 'center' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:247:                      fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:323:                      fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:394:                      style={{ fontSize: '9px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:430:                      style={{ fontSize: '9px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:493:              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-ink-soft)', letterSpacing: '0.05em' }}>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:496:              {loadingPreview && <span style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>Calculating...</span>}
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:501:                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. RISK</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:507:                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. REWARD</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/ManualOrderDrawer.tsx:513:                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>R:R RATIO</span>
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/MarkdownRenderer.tsx:93:            fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/TickerTape.tsx:57:            fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/VuMeter.tsx:81:          fontSize: '10px',
+trading-agent/logging_observability/dashboard/frontend/src/components/ui/VuMeter.tsx:204:        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+trading-agent/logging_observability/dashboard/frontend/src/index.css:237:  --text-xs: 10px;
