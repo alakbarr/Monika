@@ -104,8 +104,8 @@ export const PerformancePanel: React.FC = () => {
                   width: `${tradeProgress}%`,
                   height: '100%',
                   background: isGraduated
-                    ? 'linear-gradient(90deg, var(--color-profit-dim, #16a34a) 0%, var(--color-profit, #22c55e) 100%)'
-                    : 'linear-gradient(90deg, var(--color-brass, #b45309) 0%, var(--color-warning, #f59e0b) 100%)',
+                    ? 'var(--color-profit)'
+                    : 'var(--color-brass)',
                   transition: 'width 0.4s ease',
                 }}
               />
@@ -127,7 +127,7 @@ export const PerformancePanel: React.FC = () => {
             >
               {tradesPassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Target Sample Size
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: tradesPassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
@@ -149,7 +149,7 @@ export const PerformancePanel: React.FC = () => {
             >
               {winRatePassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Win Rate Benchmark
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: winRatePassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
@@ -171,7 +171,7 @@ export const PerformancePanel: React.FC = () => {
             >
               {edgePassed ? <CheckCircle2 size={18} color="var(--color-profit)" /> : <AlertTriangle size={18} color="var(--color-warning)" />}
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Positive Edge
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: edgePassed ? 'var(--color-profit)' : 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
@@ -193,7 +193,7 @@ export const PerformancePanel: React.FC = () => {
             >
               {isGraduated ? <Unlock size={18} color="var(--color-profit)" /> : <Lock size={18} color="var(--color-warning)" />}
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Live Mode Lock Status
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: isGraduated ? 'var(--color-profit)' : 'var(--color-warning)', fontFamily: 'var(--font-precision)' }}>

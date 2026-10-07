@@ -61,7 +61,7 @@ export const DecisionDistChart: React.FC<DecisionDistChartProps> = ({ data }) =>
       <BarChart data={chartData} barSize={12} barGap={2}>
         <XAxis
           dataKey="symbol"
-          tick={{ fill: 'var(--color-ink-soft)', fontSize: 10, fontFamily: 'var(--font-precision)' }}
+          tick={{ fill: 'var(--color-ink-soft)', fontSize: 11, fontFamily: 'var(--font-precision)' }}
           axisLine={{ stroke: 'var(--color-rule)' }}
           tickLine={false}
         />

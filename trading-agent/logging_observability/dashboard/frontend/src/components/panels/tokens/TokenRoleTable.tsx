@@ -185,7 +185,7 @@ export const TokenRoleTable: React.FC<TokenRoleTableProps> = ({
                     <td style={{ color: 'var(--color-ink-muted)' }}>
                       {r.calls}
                       {r.fallback_calls > 0 && (
-                        <span style={{ color: 'var(--color-warning)', fontSize: '10px', marginLeft: '4px' }}>
+                        <span style={{ color: 'var(--color-warning)', fontSize: '11px', marginLeft: '4px' }}>
                           ({r.fallback_calls} fb)
                         </span>
                       )}

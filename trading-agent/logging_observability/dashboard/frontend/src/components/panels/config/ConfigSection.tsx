@@ -237,7 +237,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                       </label>
                       <span
                         style={{
-                          fontSize: '10px',
+                          fontSize: '11px',
                           fontFamily: 'var(--font-mono)',
                           fontWeight: 600,
                           color: 'var(--color-ink-muted)',
@@ -326,7 +326,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                     </span>
                     <span
                       style={{
-                        fontSize: '10px',
+                        fontSize: '11px',
                         fontFamily: 'var(--font-mono)',
                         color: 'var(--color-ink-muted)',
                         marginLeft: 'auto',
@@ -474,7 +474,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                       <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink)', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'var(--font-precision)' }}>
                         {param.label}
                       </label>
-                      <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-ink-muted)', background: 'var(--color-desktop)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--color-rule)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-ink-muted)', background: 'var(--color-desktop)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--color-rule)', whiteSpace: 'nowrap' }}>
                         {param.rangeText}
                       </span>
                     </div>
@@ -536,7 +536,7 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                     >
                       {param.unit}
                     </span>
-                    <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                       def: {param.defaultVal} {param.unit}
                     </span>
                   </div>
@@ -615,10 +615,10 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                 onClick={() => setRawViewMode('yaml')}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: 'var(--radius-pill)',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--color-border)',
-                  background: rawViewMode === 'yaml' ? 'var(--color-primary)' : 'rgba(255,255,255,0.04)',
-                  color: rawViewMode === 'yaml' ? '#000' : 'var(--color-text-secondary)',
+                  background: rawViewMode === 'yaml' ? 'var(--color-primary)' : 'var(--color-paper)',
+                  color: rawViewMode === 'yaml' ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
                   fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -630,10 +630,10 @@ export const ConfigSection: React.FC<ConfigSectionProps> = ({
                 onClick={() => setRawViewMode('schema')}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: 'var(--radius-pill)',
+                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--color-border)',
-                  background: rawViewMode === 'schema' ? 'var(--color-primary)' : 'rgba(255,255,255,0.04)',
-                  color: rawViewMode === 'schema' ? '#000' : 'var(--color-text-secondary)',
+                  background: rawViewMode === 'schema' ? 'var(--color-primary)' : 'var(--color-paper)',
+                  color: rawViewMode === 'schema' ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
                   fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',

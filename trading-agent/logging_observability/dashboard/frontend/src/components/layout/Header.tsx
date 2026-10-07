@@ -118,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
           className={`monika-mode-pill ${overview?.is_live ? 'monika-mode-pill--live' : 'monika-mode-pill--paper'}`}
           title={overview?.is_live ? 'LIVE REAL-CAPITAL TRADING ACTIVE' : 'Simulated Paper Trading Mode'}
         >
-          <span style={{ fontSize: '9px' }}>■</span>
+          <span style={{ fontSize: '11px' }}>■</span>
           <span>{overview?.is_live ? 'LIVE TRADING' : 'PAPER TRADING'}</span>
         </div>
       </div>

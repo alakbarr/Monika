@@ -25,7 +25,7 @@ export const BreadcrumbBar: React.FC = () => {
         {activeSubTab?.label || activeTab}
       </span>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', letterSpacing: '0.04em' }}>
           MONIKA OS // WORKSPACE {activeWorkspace.code}
         </span>
       </div>

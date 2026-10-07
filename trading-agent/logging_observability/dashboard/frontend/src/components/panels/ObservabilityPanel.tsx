@@ -100,15 +100,15 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
   const getKindColor = (kind: string) => {
     switch (kind.toLowerCase()) {
       case 'cycle':
-        return '#a855f7';
+        return 'var(--color-win-salmon)';
       case 'node':
-        return '#06b6d4';
+        return 'var(--color-win-blue)';
       case 'llm':
-        return '#eab308';
+        return 'var(--color-win-yellow)';
       case 'tool':
-        return '#10b981';
+        return 'var(--color-win-green)';
       default:
-        return '#64748b';
+        return 'var(--color-win-gray)';
     }
   };
 
@@ -171,11 +171,11 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
                     <span
                       style={{
                         padding: '1px 4px',
-                        fontSize: '9px',
+                        fontSize: '11px',
                         fontWeight: 700,
                         borderRadius: '2px',
                         background: barColor,
-                        color: '#000',
+                        color: 'var(--color-ink)',
                         textTransform: 'uppercase',
                       }}
                     >
@@ -202,7 +202,7 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
                     />
                   </div>
 
-                  <div style={{ width: '110px', minWidth: '110px', textAlign: 'right', color: 'var(--color-ink-muted)', fontSize: '10px' }}>
+                  <div style={{ width: '110px', minWidth: '110px', textAlign: 'right', color: 'var(--color-ink-muted)', fontSize: '11px' }}>
                     <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
                       {span.duration < 1000 ? `${span.duration.toFixed(0)}ms` : `${(span.duration / 1000).toFixed(2)}s`}
                     </span>
@@ -222,7 +222,7 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
               <div style={{ fontWeight: 700, color: 'var(--color-ink)', marginBottom: '6px' }}>
                 Span: {selectedSpan.name} [{selectedSpan.kind}] — Duration: {selectedSpan.duration}ms
               </div>
-              <pre style={{ margin: 0, fontSize: '10px', maxHeight: '160px', overflowY: 'auto' }}>
+              <pre style={{ margin: 0, fontSize: '11px', maxHeight: '160px', overflowY: 'auto' }}>
                 <code>{JSON.stringify(selectedSpan.attributes, null, 2)}</code>
               </pre>
             </div>
@@ -564,7 +564,7 @@ export const ObservabilityPanel: React.FC = () => {
                         <tr key={span.span_id} style={{ borderBottom: '1px solid var(--color-rule)' }}>
                           <td style={{ padding: '6px' }}>
                             <div style={{ fontWeight: 700 }}>{span.name}</div>
-                            <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{span.span_id}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>{span.span_id}</div>
                           </td>
                           <td style={{ padding: '6px' }}>
                             <Badge variant="neutral">{span.kind.toUpperCase()}</Badge>
@@ -676,7 +676,7 @@ export const ObservabilityPanel: React.FC = () => {
                       {traj.reflection_tags && traj.reflection_tags.length > 0 && (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
                           {traj.reflection_tags.map(t => (
-                            <span key={t} style={{ fontSize: '9px', padding: '1px 5px', background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: '2px', color: 'var(--color-ink-soft)' }}>
+                            <span key={t} style={{ fontSize: '11px', padding: '1px 5px', background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: '2px', color: 'var(--color-ink-soft)' }}>
                               #{t}
                             </span>
                           ))}
@@ -706,17 +706,17 @@ export const ObservabilityPanel: React.FC = () => {
                 {/* Meta Bar */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '12px' }}>
                   <div>
-                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>TIMESTAMP</span>
+                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '11px' }}>TIMESTAMP</span>
                     <b>{new Date(selectedTraj.timestamp).toLocaleString()}</b>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>PNL REALIZED</span>
+                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '11px' }}>PNL REALIZED</span>
                     <b style={{ color: (selectedTraj.pnl_pct || 0) >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}>
                       {selectedTraj.pnl_pct !== null && selectedTraj.pnl_pct !== undefined ? `${selectedTraj.pnl_pct.toFixed(2)}%` : 'PENDING'}
                     </b>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '10px' }}>MAE / MFE</span>
+                    <span style={{ color: 'var(--color-ink-muted)', display: 'block', fontSize: '11px' }}>MAE / MFE</span>
                     <b>{selectedTraj.mae_points ?? '-'} / {selectedTraj.mfe_points ?? '-'}</b>
                   </div>
                 </div>
@@ -914,20 +914,20 @@ export const ObservabilityPanel: React.FC = () => {
                           <td style={{ padding: '8px 10px', color: 'var(--color-ink-muted)', fontVariantNumeric: 'tabular-nums' }}>
                             {new Date(ev.timestamp).toLocaleTimeString()}
                           </td>
-                          <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '10px', color: 'var(--color-ink-soft)' }} title={ev.chain_hash || ''}>
+                          <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--color-ink-soft)' }} title={ev.chain_hash || ''}>
                             {ev.chain_hash ? `${ev.chain_hash.slice(0, 10)}...${ev.chain_hash.slice(-6)}` : '-'}
                           </td>
                           <td style={{ padding: '8px 10px' }}>
                             {ev.source_event_seqs && ev.source_event_seqs.length > 0 ? (
                               <div style={{ display: 'flex', gap: '4px' }}>
                                 {ev.source_event_seqs.map(s => (
-                                  <span key={s} style={{ fontSize: '10px', padding: '1px 4px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                                  <span key={s} style={{ fontSize: '11px', padding: '1px 4px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
                                     #{s}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>origin</span>
+                              <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>origin</span>
                             )}
                           </td>
                           <td style={{ padding: '8px 10px', textAlign: 'right' }}>
@@ -1087,7 +1087,7 @@ export const ObservabilityPanel: React.FC = () => {
                       {Object.entries(tool.buckets || {}).map(([bucket, count]) => {
                         const pct = tool.call_count > 0 ? (count / tool.call_count) * 100 : 0;
                         if (pct <= 0) return null;
-                        const color = bucket === '<50ms' ? 'var(--color-profit)' : bucket === '50-200ms' ? 'var(--color-brass)' : bucket === '200-500ms' ? '#c47d2b' : 'var(--color-loss)';
+                        const color = bucket === '<50ms' ? 'var(--color-profit)' : bucket === '50-200ms' ? 'var(--color-brass)' : bucket === '200-500ms' ? 'var(--color-warn)' : 'var(--color-loss)';
                         return (
                           <div
                             key={bucket}

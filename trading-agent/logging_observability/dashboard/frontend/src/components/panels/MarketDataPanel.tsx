@@ -226,7 +226,7 @@ export const MarketDataPanel: React.FC = () => {
                             </Badge>
                           )}
                         </div>
-                        <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{row.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>{row.name}</div>
                       </td>
                       <td className="tabular-nums" style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 700, color: 'var(--color-ink)' }}>
                         {row.bid.toLocaleString(undefined, { minimumFractionDigits: row.symbol === 'XAUUSD' ? 2 : row.symbol === 'BTCUSD' ? 1 : 5 })}
@@ -334,7 +334,7 @@ export const MarketDataPanel: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
                     {Object.entries(indicators).map(([k, v]) => (
                       <div key={k} style={{ padding: '8px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>{k}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', display: 'block' }}>{k}</span>
                         <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ink)' }}>
                           {typeof v === 'number' ? v.toFixed(typeof v === 'number' && v > 100 ? 2 : 4) : String(v)}
                         </span>
@@ -445,7 +445,7 @@ export const MarketDataPanel: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-win-yellow)', background: '#1C1917', padding: '2px 5px', borderRadius: '2px' }}>
+                  <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-win-yellow)', background: 'var(--color-rule)', padding: '2px 5px', borderRadius: '2px' }}>
                     {evt.time}
                   </span>
                   <span style={{ fontWeight: 800, color: 'var(--color-ink)' }}>[{evt.currency}]</span>
@@ -493,7 +493,7 @@ export const MarketDataPanel: React.FC = () => {
                 >
                   <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--color-ink)' }}>{currency}</div>
                   <div>{BIAS_ICON[bias as string] || <Minus size={16} color="var(--color-ink-soft)" />}</div>
-                  <div style={{ fontSize: '10px', color: BIAS_COLOR[bias as string] || 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '11px', color: BIAS_COLOR[bias as string] || 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
                     {bias as string}
                   </div>
                 </div>
@@ -527,7 +527,7 @@ export const MarketDataPanel: React.FC = () => {
                 >
                   <div style={{ fontWeight: 800, fontSize: '12px', color: 'var(--color-ink)' }}>{c}</div>
                   <div>{BIAS_ICON[b]}</div>
-                  <div style={{ fontSize: '10px', color: BIAS_COLOR[b], fontWeight: 'bold', textTransform: 'uppercase' }}>{b}</div>
+                  <div style={{ fontSize: '11px', color: BIAS_COLOR[b], fontWeight: 'bold', textTransform: 'uppercase' }}>{b}</div>
                 </div>
               ))}
             </div>
@@ -639,7 +639,7 @@ export const MarketDataPanel: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 600 }}>
               <span>0 (EXTREME FEAR)</span>
               <span>50 (NEUTRAL)</span>
               <span>100 (EXTREME GREED)</span>
@@ -700,7 +700,7 @@ export const MarketDataPanel: React.FC = () => {
                     textAlign: 'center',
                   }}
                 >
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 700 }}>{t.tenor}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 700 }}>{t.tenor}</div>
                   <div style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
                     {typeof t.yield_percent === 'number' ? `${t.yield_percent.toFixed(2)}%` : String(t.yield_percent)}
                   </div>
@@ -710,7 +710,7 @@ export const MarketDataPanel: React.FC = () => {
 
             {/* Global Sovereign Bonds */}
             {yields?.global_bonds && yields.global_bonds.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+              <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
                 {yields.global_bonds.slice(0, 3).map((b, idx) => (
                   <div key={idx} style={{ background: 'var(--color-paper)', padding: '4px 6px', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
                     <strong>{b.country_tenor}:</strong> {typeof b.yield_percent === 'number' ? `${b.yield_percent.toFixed(2)}%` : b.yield_percent}
@@ -733,12 +733,12 @@ export const MarketDataPanel: React.FC = () => {
                   <span style={{ fontWeight: 800, color: 'var(--color-brass)' }}>
                     Next FOMC Meeting: {fedwatch.fedwatch[0].meeting_date}
                   </span>
-                  <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>CME FedWatch Tool</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>CME FedWatch Tool</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
                   {Object.entries(fedwatch.fedwatch[0].probabilities || {}).slice(0, 3).map(([key, val]) => (
                     <div key={key} style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</div>
                       <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
                         {typeof val === 'number' ? `${val.toFixed(1)}%` : String(val)}
                       </div>
@@ -750,19 +750,19 @@ export const MarketDataPanel: React.FC = () => {
               <div style={{ background: 'var(--color-paper)', padding: '10px', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span style={{ fontWeight: 800, color: 'var(--color-brass)' }}>Next FOMC: Target Rate 5.25% - 5.50%</span>
-                  <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>Target Probabilities</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Target Probabilities</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
                   <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>HOLD RATE</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>HOLD RATE</div>
                     <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>85.2%</div>
                   </div>
                   <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>25 BPS CUT</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>25 BPS CUT</div>
                     <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>14.8%</div>
                   </div>
                   <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>50 BPS CUT</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>50 BPS CUT</div>
                     <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>0.0%</div>
                   </div>
                 </div>
@@ -786,7 +786,7 @@ export const MarketDataPanel: React.FC = () => {
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>
                     {typeof cb.current_rate === 'number' ? `${cb.current_rate.toFixed(2)}%` : cb.current_rate}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
                     Cut: {typeof cb.prob_cut === 'number' ? `${cb.prob_cut.toFixed(0)}%` : '—'}
                   </div>
                 </div>
@@ -803,7 +803,7 @@ export const MarketDataPanel: React.FC = () => {
               <div style={{ fontWeight: 800, color: 'var(--color-ink)', marginBottom: '4px' }}>
                 Retail Crowd Positioning (Contrarian Lens)
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-soft)', fontSize: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-soft)', fontSize: '11px' }}>
                 <span>Crypto (Binance): {sentimentComp?.crypto?.ratios?.BTCUSDT?.long_pct != null ? `${sentimentComp.crypto.ratios.BTCUSDT.long_pct}% Long` : '62% Long'}</span>
                 <span>Forex (FXSSI): {sentimentComp?.forex_fxssi?.EURUSD?.long_pct != null ? `${sentimentComp.forex_fxssi.EURUSD.long_pct}% Long` : '44% Long'}</span>
               </div>
@@ -817,7 +817,7 @@ export const MarketDataPanel: React.FC = () => {
               {sentimentComp?.institutional_cot && sentimentComp.institutional_cot.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   {sentimentComp.institutional_cot.slice(0, 3).map((cot, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
                       <span>Market {cot.market_code}:</span>
                       <span style={{ color: cot.net_position >= 0 ? 'var(--color-profit)' : 'var(--color-loss)', fontWeight: 700 }}>
                         {cot.net_position >= 0 ? '+' : ''}{cot.net_position.toLocaleString()} contracts
@@ -826,13 +826,13 @@ export const MarketDataPanel: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
                   Institutional positioning aligned with macro cyclical bias.
                 </div>
               )}
             </div>
 
-            <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
               Contrarian rule: Extreme retail crowding (&gt;75%) triggers counter-trend screening.
             </div>
           </div>

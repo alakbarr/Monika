@@ -60,7 +60,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               style={{
                 padding: '2px 6px',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 border: '1.5px solid var(--color-brass)',
@@ -130,7 +130,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               border: '1.5px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</span>
+            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</span>
             <div
               style={{
                 display: 'flex',
@@ -160,7 +160,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               border: '1.5px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Duration</span>
+            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Duration</span>
             <div
               className="tabular-nums"
               style={{
@@ -183,7 +183,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               border: '1.5px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
               Tokens (In / Out)
             </span>
             <div
@@ -224,7 +224,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               border: '1.5px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Est. Cost</span>
+            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Est. Cost</span>
             <div
               className="tabular-nums"
               style={{
@@ -269,7 +269,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
         <div>
           <span
             style={{
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               color: 'var(--color-ink-soft)',
               textTransform: 'uppercase',
@@ -308,7 +308,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           >
             <span
               style={{
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 800,
                 color: 'var(--color-ink-soft)',
                 textTransform: 'uppercase',
@@ -330,7 +330,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 borderRadius: 'var(--radius-sm)',
                 padding: '2px 8px',
                 color: copied ? 'var(--color-ledger-green)' : 'var(--color-ink)',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 700,
                 fontFamily: 'var(--font-precision)',
                 cursor: 'pointer',

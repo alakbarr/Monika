@@ -258,7 +258,7 @@ export const SessionBrowserPanel: React.FC = () => {
           </div>
 
           <div style={{
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 700,
             color: 'var(--color-ink-muted)',
             textTransform: 'uppercase',
@@ -320,7 +320,7 @@ export const SessionBrowserPanel: React.FC = () => {
                     </div>
 
                     <span style={{
-                      fontSize: '9px',
+                      fontSize: '11px',
                       padding: '2px 5px',
                       borderRadius: '1px',
                       border: '1px solid var(--color-border)',
@@ -347,7 +347,7 @@ export const SessionBrowserPanel: React.FC = () => {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Clock size={10} />
                       <span>{formatTimestamp(sess.last_active || sess.first_active)}</span>
@@ -470,7 +470,7 @@ export const SessionBrowserPanel: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
-                          fontSize: '10px',
+                          fontSize: '11px',
                           color: 'var(--color-ink-muted)',
                           fontFamily: 'var(--font-precision)',
                         }}>

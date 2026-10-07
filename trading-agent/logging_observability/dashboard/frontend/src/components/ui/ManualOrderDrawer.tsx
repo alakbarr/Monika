@@ -190,7 +190,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
             justifyContent: 'space-between',
             padding: '10px 14px',
             background: 'var(--color-navy)',
-            color: '#FFFFFF',
+            color: 'var(--color-paper-raised)',
             fontWeight: 800,
             fontSize: '13px',
             letterSpacing: '0.05em',
@@ -204,7 +204,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#FFFFFF',
+              color: 'var(--color-paper-raised)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -251,10 +251,10 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                     className="touch-target-expand"
                     onClick={() => setSymbol(s)}
                     style={{
-                      fontSize: '10px',
+                      fontSize: '11px',
                       padding: '2px 5px',
                       background: symbol === s ? 'var(--color-navy)' : 'var(--color-paper)',
-                      color: symbol === s ? '#FFFFFF' : 'var(--color-ink-soft)',
+                      color: symbol === s ? 'var(--color-paper-raised)' : 'var(--color-ink-soft)',
                       border: '1px solid var(--color-rule)',
                       borderRadius: '2px',
                       cursor: 'pointer',
@@ -278,7 +278,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   style={{
                     flex: 1,
                     background: direction === 'BUY' ? 'var(--color-ledger-green)' : 'var(--color-paper)',
-                    color: direction === 'BUY' ? '#FFFFFF' : 'var(--color-ink)',
+                    color: direction === 'BUY' ? 'var(--color-on-win-green)' : 'var(--color-ink)',
                     fontWeight: 800,
                     fontSize: '12px',
                     border: 'none',
@@ -297,7 +297,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   style={{
                     flex: 1,
                     background: direction === 'SELL' ? 'var(--color-ledger-red)' : 'var(--color-paper)',
-                    color: direction === 'SELL' ? '#FFFFFF' : 'var(--color-ink)',
+                    color: direction === 'SELL' ? 'var(--color-on-win-coral)' : 'var(--color-ink)',
                     fontWeight: 800,
                     fontSize: '12px',
                     border: 'none',
@@ -327,10 +327,10 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                     type="button"
                     onClick={() => setVolume(v)}
                     style={{
-                      fontSize: '10px',
+                      fontSize: '11px',
                       padding: '2px 6px',
                       background: volume === v ? 'var(--color-win-yellow)' : 'var(--color-paper)',
-                      color: volume === v ? '#1C1917' : 'var(--color-ink)',
+                      color: volume === v ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                       border: '1px solid var(--color-rule)',
                       borderRadius: '2px',
                       cursor: 'pointer',
@@ -398,7 +398,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                       key={p}
                       type="button"
                       onClick={() => handleAddPips('sl', p)}
-                      style={{ fontSize: '9px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
+                      style={{ fontSize: '11px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
                     >
                       {p}p
                     </button>
@@ -434,7 +434,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                       key={p}
                       type="button"
                       onClick={() => handleAddPips('tp', p)}
-                      style={{ fontSize: '9px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
+                      style={{ fontSize: '11px', padding: '1px 4px', border: '1px solid var(--color-rule)', background: 'var(--color-paper)', cursor: 'pointer' }}
                     >
                       {p}p
                     </button>
@@ -497,27 +497,27 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-ink-soft)', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-ink-soft)', letterSpacing: '0.05em' }}>
                 REAL-TIME RISK & REWARD METRICS
               </span>
-              {loadingPreview && <span style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>Calculating...</span>}
+              {loadingPreview && <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>Calculating...</span>}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
               <div>
-                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. RISK</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. RISK</span>
                 <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ledger-red)' }}>
                   {preview?.risk_amount != null ? `$${preview.risk_amount.toFixed(2)}` : '—'}
                 </span>
               </div>
               <div>
-                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. REWARD</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', display: 'block' }}>EST. REWARD</span>
                 <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ledger-green)' }}>
                   {preview?.reward_amount != null ? `$${preview.reward_amount.toFixed(2)}` : '—'}
                 </span>
               </div>
               <div>
-                <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>R:R RATIO</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', display: 'block' }}>R:R RATIO</span>
                 <span className="tabular-nums" style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-ink)' }}>
                   {preview?.risk_reward_ratio != null ? `1:${preview.risk_reward_ratio.toFixed(2)}` : '—'}
                 </span>
@@ -582,7 +582,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 flex: 2,
                 padding: '9px',
                 background: direction === 'BUY' ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
-                color: '#FFFFFF',
+                color: direction === 'BUY' ? 'var(--color-on-win-green)' : 'var(--color-on-win-coral)',
                 border: '1.5px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontWeight: 800,

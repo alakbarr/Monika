@@ -93,7 +93,7 @@ export const MemoryBrowserPanel: React.FC = () => {
       return <Badge variant="neutral">🔴 DESERVED LOSS (Flawed Process + Loss)</Badge>;
     }
     return (
-      <span className="stamp-badge" style={{ fontSize: '9px' }}>
+      <span className="stamp-badge" style={{ fontSize: '11px' }}>
         [{classification.toUpperCase()}]
       </span>
     );
@@ -166,7 +166,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#1C1917',
+                color: 'var(--color-on-win-yellow)',
               }}
             >
               <Brain size={22} />
@@ -526,7 +526,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                   )}
 
                   {rule.last_triggered_at && (
-                    <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--color-ink-muted)' }}>
+                    <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--color-ink-muted)' }}>
                       Last Triggered: {new Date(rule.last_triggered_at).toLocaleString()}
                     </div>
                   )}
@@ -600,7 +600,7 @@ export const MemoryBrowserPanel: React.FC = () => {
 
                               <div>
                                 {idx === 0 ? (
-                                  <span style={{ fontSize: '10px', color: 'var(--color-ledger-green)', fontWeight: 800 }}>
+                                  <span style={{ fontSize: '11px', color: 'var(--color-ledger-green)', fontWeight: 800 }}>
                                     [ ACTIVE HEAD ]
                                   </span>
                                 ) : (

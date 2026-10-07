@@ -185,7 +185,7 @@ export const PluginManagerPanel: React.FC = () => {
               border: '1px solid var(--color-rule)',
             }}
           >
-            Active: <strong style={{ color: 'var(--color-green, #10b981)' }}>{activeCount}</strong> / {plugins.length}
+            Active: <strong style={{ color: 'var(--color-ledger-green)' }}>{activeCount}</strong> / {plugins.length}
           </div>
 
           <button
@@ -409,17 +409,17 @@ export const PluginManagerPanel: React.FC = () => {
                             padding: '2px 8px',
                             borderRadius: '3px',
                             background: isDegraded
-                              ? '#fef3c7'
+                              ? 'var(--color-warn-dim)'
                               : isActive
-                              ? '#d1fae5'
-                              : '#f3f4f6',
+                              ? 'var(--color-profit-dim)'
+                              : 'var(--color-paper-subtle)',
                             color: isDegraded
-                              ? '#92400e'
+                              ? 'var(--color-text-warn)'
                               : isActive
-                              ? '#065f46'
-                              : '#6b7280',
+                              ? 'var(--color-text-profit)'
+                              : 'var(--color-ink-soft)',
                             border: `1px solid ${
-                              isDegraded ? '#f59e0b' : isActive ? '#10b981' : '#d1d5db'
+                              isDegraded ? 'var(--color-warn)' : isActive ? 'var(--color-profit)' : 'var(--color-rule)'
                             }`,
                           }}
                         >
@@ -459,11 +459,11 @@ export const PluginManagerPanel: React.FC = () => {
                           marginTop: '8px',
                           padding: '6px 8px',
                           borderRadius: '4px',
-                          background: '#fffbeb',
-                          border: '1px solid #fde68a',
+                          background: 'var(--color-warn-dim)',
+                          border: '1px solid var(--color-warn)',
                           fontFamily: 'var(--font-mono, monospace)',
                           fontSize: '0.74rem',
-                          color: '#b45309',
+                          color: 'var(--color-text-warn)',
                         }}
                       >
                         ⚠️ {plugin.status_message}
@@ -485,15 +485,16 @@ export const PluginManagerPanel: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {plugin.can_uninstall && (
                         <button
+                          type="button"
                           onClick={() => handleUninstall(plugin.id)}
                           disabled={isPending}
                           style={{
                             fontFamily: 'var(--font-precision)',
                             fontSize: '0.74rem',
                             padding: '3px 8px',
-                            background: '#fee2e2',
-                            color: '#b91c1c',
-                            border: '1px solid #f87171',
+                            background: 'var(--color-loss-dim)',
+                            color: 'var(--color-text-loss)',
+                            border: '1px solid var(--color-loss)',
                             borderRadius: '3px',
                             cursor: 'pointer',
                           }}
@@ -505,6 +506,7 @@ export const PluginManagerPanel: React.FC = () => {
 
                     {/* Instant ON/OFF Switch */}
                     <button
+                      type="button"
                       onClick={() => handleToggle(plugin)}
                       disabled={isPending || !plugin.can_toggle}
                       style={{
@@ -514,9 +516,9 @@ export const PluginManagerPanel: React.FC = () => {
                         padding: '6px 14px',
                         borderRadius: '4px',
                         cursor: plugin.can_toggle && !isPending ? 'pointer' : 'not-allowed',
-                        background: isActive ? '#059669' : 'var(--color-paper)',
-                        color: isActive ? '#ffffff' : 'var(--color-ink-soft)',
-                        border: `1px solid ${isActive ? '#047857' : 'var(--color-rule)'}`,
+                        background: isActive ? 'var(--color-profit)' : 'var(--color-paper)',
+                        color: isActive ? 'var(--color-paper-raised)' : 'var(--color-ink-soft)',
+                        border: `1px solid ${isActive ? 'var(--color-profit)' : 'var(--color-rule)'}`,
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -662,8 +664,8 @@ export const PluginManagerPanel: React.FC = () => {
                         fontWeight: 700,
                         padding: '6px 16px',
                         cursor: installing ? 'not-allowed' : 'pointer',
-                        background: isInstalled ? '#f3f4f6' : 'var(--color-paper-raised)',
-                        color: isInstalled ? '#4b5563' : 'var(--color-ink)',
+                        background: isInstalled ? 'var(--color-paper-subtle)' : 'var(--color-paper-raised)',
+                        color: isInstalled ? 'var(--color-ink-soft)' : 'var(--color-ink)',
                       }}
                     >
                       {isInstalled ? '✓ Reinstall / Update' : '📥 1-Click Install'}
@@ -809,20 +811,21 @@ export const PluginManagerPanel: React.FC = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 background: 'var(--color-win-yellow)',
-                color: '#1C1917',
+                color: 'var(--color-on-win-yellow)',
               }}
             >
               <span id="plugin-console-title" style={{ fontFamily: 'var(--font-precision)', fontSize: 'var(--text-body-sm)', fontWeight: 700, letterSpacing: '0.05em' }}>
                 {installing ? '⏳ [INSTALLING PLUGIN VIA PIP...]' : '[TERMINAL INSTALLATION OUTPUT]'}
               </span>
               <button
+                type="button"
                 onClick={() => setShowConsoleModal(false)}
                 disabled={installing}
                 aria-label="Close terminal output"
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#1C1917',
+                  color: 'var(--color-on-win-yellow)',
                   fontSize: '1rem',
                   fontWeight: 'bold',
                   cursor: installing ? 'not-allowed' : 'pointer',

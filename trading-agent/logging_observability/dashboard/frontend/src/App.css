@@ -126,8 +126,8 @@ nav[role="navigation"], .sidebar {
 /* Print ledger format */
 @media print {
   body {
-    background: #FFFFFF !important;
-    color: #000000 !important;
+    background: white !important;
+    color: black !important;
   }
   nav[role="navigation"], .sidebar, .no-print {
     display: none !important;
@@ -137,7 +137,7 @@ nav[role="navigation"], .sidebar {
     max-width: none !important;
   }
   .ledger-card {
-    border: 1px solid #999999 !important;
+    border: 1px solid black !important;
     box-shadow: none !important;
   }
 }

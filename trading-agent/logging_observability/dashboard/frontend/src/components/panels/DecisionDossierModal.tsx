@@ -270,7 +270,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
                       fontFamily: 'var(--font-precision)',
                       fontWeight: isActive ? 700 : 400,
                       background: isActive ? 'var(--color-win-blue)' : 'var(--color-paper-raised)',
-                      color: isActive ? '#FFFFFF' : 'var(--color-ink)',
+                      color: isActive ? 'var(--color-on-win-blue)' : 'var(--color-ink)',
                       border: '1px solid var(--color-rule)',
                       boxShadow: isActive ? 'none' : 'var(--shadow-btn)',
                       transform: isActive ? 'translate(1px, 1px)' : 'none',

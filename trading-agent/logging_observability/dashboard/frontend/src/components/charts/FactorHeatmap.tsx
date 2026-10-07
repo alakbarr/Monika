@@ -75,7 +75,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: viewMode === 'matrix' ? 800 : 500,
                 background: viewMode === 'matrix' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: viewMode === 'matrix' ? '#1C1917' : 'var(--color-ink-soft)',
+                color: viewMode === 'matrix' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
                 borderRight: '1.5px solid var(--color-rule)',
                 cursor: 'pointer',
@@ -95,7 +95,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: viewMode === 'list' ? 800 : 500,
                 background: viewMode === 'list' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: viewMode === 'list' ? '#1C1917' : 'var(--color-ink-soft)',
+                color: viewMode === 'list' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
                 cursor: 'pointer',
               }}
@@ -197,7 +197,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
                     ALPHA CODE: <code>{factor}</code>
                   </div>
                 </div>
@@ -207,17 +207,17 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                     <span className="tabular-nums" style={{ fontSize: '18px', fontWeight: 900, color: textBadgeColor }}>
                       {winRatePct.toFixed(1)}%
                     </span>
-                    <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', display: 'block' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', display: 'block' }}>
                       {stats.wins}/{stats.total} trades
                     </span>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: ic >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: ic >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)' }}>
                       IC: {ic >= 0 ? `+${ic.toFixed(2)}` : ic.toFixed(2)}
                     </div>
                     {stats.p_value != null && (
-                      <div style={{ fontSize: '9px', color: 'var(--color-ink-muted)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
                         p={stats.p_value.toFixed(3)}
                       </div>
                     )}
@@ -228,7 +228,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                   <div style={{ marginTop: '2px' }}>
                     <span
                       style={{
-                        fontSize: '9px',
+                        fontSize: '11px',
                         padding: '1px 5px',
                         borderRadius: '2px',
                         fontWeight: 700,
@@ -299,7 +299,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                       <span
                         style={{
                           marginLeft: '8px',
-                          fontSize: '9px',
+                          fontSize: '11px',
                           padding: '1px 5px',
                           borderRadius: '2px',
                           fontWeight: 700,
@@ -327,7 +327,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                     )}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
                       IC: {ic >= 0 ? `+${ic.toFixed(2)}` : ic.toFixed(2)}
                     </span>
                     <span

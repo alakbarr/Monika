@@ -52,9 +52,9 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
           className="win-badge"
           style={{
             background: 'var(--color-win-yellow)',
-            color: '#1C1917',
+            color: 'var(--color-on-win-yellow)',
             padding: '1px 6px',
-            fontSize: '10px',
+            fontSize: '11px',
             border: '1.5px solid var(--color-rule)',
             borderRadius: '2px',
           }}

@@ -48,9 +48,9 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
           justifyContent: 'center',
           border: '1.5px solid var(--color-rule)',
           boxShadow: '1px 1px 0 var(--color-rule)',
-          fontSize: '9px',
+          fontSize: '11px',
           fontWeight: 900,
-          color: status === 'connecting' || status === 'unknown' ? '#1C1917' : '#FFFFFF',
+          color: status === 'connecting' || status === 'unknown' ? 'var(--color-ink)' : 'var(--color-paper-raised)',
           lineHeight: 1,
         }}
         aria-hidden="true"

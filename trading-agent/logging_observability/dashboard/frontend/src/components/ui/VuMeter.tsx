@@ -78,7 +78,7 @@ export const VuMeter: React.FC<VuMeterProps> = ({
     >
       <div
         style={{
-          fontSize: '10px',
+          fontSize: '11px',
           fontWeight: 800,
           color: 'var(--color-ink)',
           textTransform: 'uppercase',
@@ -201,7 +201,7 @@ export const VuMeter: React.FC<VuMeterProps> = ({
         >
           {typeof value === 'number' ? value.toFixed(1) : value}
         </span>
-        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>
+        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
           {unit}
         </span>
       </div>

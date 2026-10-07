@@ -127,7 +127,7 @@ export const RiskPanel: React.FC = () => {
               height: 42,
               borderRadius: '6px',
               background: isPaused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)',
-              color: '#FAF7F2',
+              color: 'var(--color-paper-raised)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -410,10 +410,10 @@ export const RiskPanel: React.FC = () => {
                     style={{
                       padding: '2px 6px',
                       background: scorecardSymbol === s ? 'var(--color-brass)' : 'transparent',
-                      color: scorecardSymbol === s ? '#000' : 'var(--color-ink)',
+                      color: scorecardSymbol === s ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                       border: '1px solid var(--color-rule)',
                       borderRadius: '2px',
-                      fontSize: '10px',
+                      fontSize: '11px',
                       fontWeight: 700,
                       cursor: 'pointer',
                     }}
@@ -459,7 +459,7 @@ export const RiskPanel: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal.reason}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal.reason}>
                       {checkVal.reason}
                     </div>
                   </div>
@@ -490,7 +490,7 @@ export const RiskPanel: React.FC = () => {
 
                 {/* Matrix Heatmap Table */}
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', textAlign: 'center' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'center' }}>
                     <thead>
                       <tr>
                         <th style={{ textAlign: 'left', padding: '4px' }}>SYM</th>
@@ -536,7 +536,7 @@ export const RiskPanel: React.FC = () => {
 
                 {/* Correlated pairs warning list */}
                 {correlation.correlated_pairs.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
                     <span style={{ fontWeight: 'bold', color: 'var(--color-brass)' }}>[ CORRELATED RISK PAIRS ]</span>
                     {correlation.correlated_pairs.slice(0, 3).map((cp, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>

@@ -106,7 +106,7 @@ export function LedgerTable<T extends Record<string, any>>({
                   style={{
                     borderBottom: '1px solid var(--color-rule)',
                     background: greenbar && isEven
-                      ? 'color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-win-green))'
+                      ? 'var(--color-profit-dim)'
                       : 'var(--color-paper-raised)',
                     cursor: isClickable ? 'pointer' : 'default',
                     transition: 'background var(--transition-fast)',

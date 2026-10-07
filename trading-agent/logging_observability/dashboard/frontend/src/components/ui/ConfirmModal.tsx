@@ -109,7 +109,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 justifyContent: 'center',
                 fontSize: '18px',
                 fontWeight: 900,
-                color: '#1C1917',
+                color: danger ? 'var(--color-on-win-coral)' : 'var(--color-on-win-yellow)',
                 flexShrink: 0,
                 boxShadow: '2px 2px 0 var(--color-rule)',
               }}

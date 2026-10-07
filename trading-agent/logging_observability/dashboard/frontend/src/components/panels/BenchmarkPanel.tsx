@@ -274,7 +274,7 @@ export const BenchmarkPanel: React.FC = () => {
                 cursor: 'pointer',
                 border: '1.5px solid var(--color-rule)',
                 background: activeTab === 'task_compare' ? 'var(--color-moss)' : 'var(--color-paper)',
-                color: activeTab === 'task_compare' ? '#fff' : 'var(--color-ink)',
+                color: activeTab === 'task_compare' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
               🎯 Per-Role Lab
@@ -289,7 +289,7 @@ export const BenchmarkPanel: React.FC = () => {
                 cursor: 'pointer',
                 border: '1.5px solid var(--color-rule)',
                 background: activeTab === 'global_leaderboard' ? 'var(--color-moss)' : 'var(--color-paper)',
-                color: activeTab === 'global_leaderboard' ? '#fff' : 'var(--color-ink)',
+                color: activeTab === 'global_leaderboard' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
               🏆 Global Leaderboard
@@ -304,7 +304,7 @@ export const BenchmarkPanel: React.FC = () => {
                 cursor: 'pointer',
                 border: '1.5px solid var(--color-rule)',
                 background: activeTab === 'run_history' ? 'var(--color-moss)' : 'var(--color-paper)',
-                color: activeTab === 'run_history' ? '#fff' : 'var(--color-ink)',
+                color: activeTab === 'run_history' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
               📜 Run History
@@ -357,7 +357,7 @@ export const BenchmarkPanel: React.FC = () => {
             {/* STEP 1: Pilih Task Role */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
+                <span style={{ background: 'var(--color-moss)', color: 'var(--color-paper-raised)', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
                   1
                 </span>
                 <strong style={{ fontSize: 'var(--text-body-md)', color: 'var(--color-ink)' }}>
@@ -416,7 +416,7 @@ export const BenchmarkPanel: React.FC = () => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
+                  <span style={{ background: 'var(--color-moss)', color: 'var(--color-paper-raised)', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
                     2
                   </span>
                   <strong style={{ fontSize: 'var(--text-body-md)', color: 'var(--color-ink)' }}>
@@ -506,7 +506,7 @@ export const BenchmarkPanel: React.FC = () => {
             {/* STEP 3: Pilih Provider / Router */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ background: 'var(--color-moss)', color: '#fff', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
+                <span style={{ background: 'var(--color-moss)', color: 'var(--color-paper-raised)', padding: '2px 8px', borderRadius: '50%', fontWeight: 'bold', fontSize: '12px' }}>
                   3
                 </span>
                 <strong style={{ fontSize: 'var(--text-body-md)', color: 'var(--color-ink)' }}>
@@ -755,12 +755,12 @@ export const BenchmarkPanel: React.FC = () => {
                           <td style={{ padding: '10px 14px', fontFamily: 'var(--font-precision)', fontWeight: 600 }}>
                             {row.model_name}
                             {isBestScore && (
-                              <span style={{ marginLeft: '6px', fontSize: '10px', background: 'var(--color-moss-subtle)', color: 'var(--color-moss)', padding: '2px 4px', borderRadius: '3px' }}>
+                              <span style={{ marginLeft: '6px', fontSize: '11px', background: 'var(--color-moss-subtle)', color: 'var(--color-moss)', padding: '2px 4px', borderRadius: '3px' }}>
                                 ★ TOP KUALITAS
                               </span>
                             )}
                             {isFastest && (
-                              <span style={{ marginLeft: '6px', fontSize: '10px', background: 'var(--color-ochre-subtle)', color: 'var(--color-ochre)', padding: '2px 4px', borderRadius: '3px' }}>
+                              <span style={{ marginLeft: '6px', fontSize: '11px', background: 'var(--color-ochre-subtle)', color: 'var(--color-ochre)', padding: '2px 4px', borderRadius: '3px' }}>
                                 ⚡ TERCEPAT
                               </span>
                             )}
