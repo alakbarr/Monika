@@ -508,6 +508,15 @@ body {
   line-height: 1.7;
 }
 
+/* XTerm Terminal Dual-Theme Viewport */
+:root[data-theme="light"] .xterm .xterm-viewport {
+  background-color: var(--color-paper-raised) !important;
+}
+
+:root[data-theme="dark"] .xterm .xterm-viewport {
+  background-color: var(--color-console-bg) !important;
+}
+
 /* Web Dashboard Tactile Buttons */
 .win-btn,
 .typewriter-btn {
