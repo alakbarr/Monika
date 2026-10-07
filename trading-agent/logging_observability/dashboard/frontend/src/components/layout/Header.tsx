@@ -10,7 +10,7 @@ import { KeyboardShortcutsPanel } from '../ui/KeyboardShortcutsPanel';
 import { AudioToggleIcon } from '../ui/Icons';
 import { sounds } from '../../lib/soundEffects';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { fmt, vixSentiment } from '../../lib/formatters';
+import { fmt } from '../../lib/formatters';
 import { MonikaInfiniteIcon } from '../ui/MonikaInfiniteIcon';
 
 interface HeaderProps {
@@ -49,8 +49,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
       sounds.playClick('bell');
     }
   };
-
-  const vixS = overview?.vix ? vixSentiment(overview.vix) : null;
 
   return (
     <header
@@ -125,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
         </div>
       </div>
 
-      {/* Center: Live Ledger Status Pill */}
+      {/* Center: System Operational State Pill */}
       {overview && (
         <div
           className="header-metrics-center"
@@ -134,49 +132,44 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
             alignItems: 'center',
             height: '30px',
             boxSizing: 'border-box',
-            gap: '14px',
+            gap: '10px',
             fontSize: 'var(--text-xs)',
             background: 'var(--color-paper)',
             padding: '0 12px',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-sm)',
             border: '2px solid var(--color-rule)',
             boxShadow: '2px 2px 0 var(--color-rule)',
+            fontFamily: 'var(--font-precision)',
+            letterSpacing: '0.04em',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: 'var(--color-ink-soft)', fontWeight: 'bold' }}>P&L:</span>
+            <span style={{ color: 'var(--color-ink-soft)', fontWeight: 'bold' }}>ENGINE:</span>
             <span
-              className="tabular-nums"
               style={{
                 fontWeight: 800,
-                color: overview.daily_pnl >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
+                color: overview.agent_status === 'paused' ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)',
               }}
             >
-              {overview.daily_pnl >= 0 ? '▲ +' : '▼ '}
-              {fmt.usd(Math.abs(overview.daily_pnl))}
+              {overview.agent_status === 'paused' ? 'PAUSED' : 'ACTIVE'}
             </span>
           </div>
 
           <span style={{ opacity: 0.3 }}>│</span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: 'var(--color-ink-soft)', fontWeight: 'bold' }}>POSITIONS:</span>
-            <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-ink)' }}>
-              {overview.open_positions_count}
+            <span style={{ color: 'var(--color-ink-soft)', fontWeight: 'bold' }}>DRAWDOWN:</span>
+            <span
+              className="tabular-nums"
+              style={{
+                fontWeight: 800,
+                color: overview.current_drawdown > 0 ? 'var(--color-ledger-red)' : 'var(--color-ink)',
+              }}
+            >
+              {fmt.usd(overview.current_drawdown)}
+              {overview.drawdown_pct !== null && overview.drawdown_pct !== undefined ? ` (${overview.drawdown_pct.toFixed(1)}%)` : ''}
             </span>
           </div>
-
-          {overview.vix && vixS && (
-            <>
-              <span style={{ opacity: 0.3 }}>│</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ color: 'var(--color-ink-soft)', fontWeight: 'bold' }}>VIX:</span>
-                <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--color-brass)' }}>
-                  {overview.vix.toFixed(1)}
-                </span>
-              </div>
-            </>
-          )}
         </div>
       )}
 
