@@ -2355,7 +2355,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `theme.py`
   - **Classes**:
-    - `ThemePack`: Dataclass defining semantic color tokens for CLI & TUI skins (retro_vintage, modern_dark, high_contrast, daylight).
+    - `ThemePack`: Dataclass defining semantic color tokens for CLI & TUI skins (retro_vintage, modern_dark, high_contrast, daylight, no_color with automatic NO_COLOR environment detection).
   - **Global Variables**: `THEME_PACKS`, `PHOSPHOR_AMBER`, `BRASS`, `BULL_PROFIT`, `BEAR_LOSS`, `MUTED`, `DIM`, `PAPER`, `CHARCOAL`, `SURFACE`, `BORDER`, `MONIKA_THEME`, `LEDGER_BOX`
   - **Functions**:
     - `get_theme_pack(name)`: Retrieve ThemePack preset by name.
