@@ -103,6 +103,9 @@ scripts/*
 !scripts/update_index_toc.py
 !scripts/generate_model_quadrant.py
 !scripts/ux_audit_baseline_scan.py
+!scripts/capture_dashboard_screenshots.js
+!scripts/capture_tui_screenshots.py
+!scripts/convert_tui_svg_to_png.js
 trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md
