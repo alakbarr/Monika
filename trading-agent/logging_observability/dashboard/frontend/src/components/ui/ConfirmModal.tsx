@@ -43,14 +43,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
+      className="retro-modal-scrim"
       style={{
-        position: 'fixed',
-        inset: 0,
         zIndex: 10000,
-        background: 'rgba(28, 25, 23, 0.75)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         padding: '16px',
         fontFamily: 'var(--font-precision)',
       }}

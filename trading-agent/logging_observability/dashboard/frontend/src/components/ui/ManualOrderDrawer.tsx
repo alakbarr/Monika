@@ -140,20 +140,27 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, submitting, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
+      className="retro-modal-scrim"
       style={{
-        position: 'fixed',
-        inset: 0,
         zIndex: 10000,
-        background: 'rgba(28, 25, 23, 0.75)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         padding: '16px',
         fontFamily: 'var(--font-precision)',
       }}
