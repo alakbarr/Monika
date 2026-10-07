@@ -7,7 +7,7 @@
 
 :root[data-theme="light"] {
   /* Mode Terang — Vintage OS (vintage-ui.jpg desktop aesthetic) */
-  --color-desktop: #877F75;
+  --color-desktop: #8E867C;
   --color-paper: #EFE9DF;
   --color-paper-raised: #FAF7F2;
   --color-ink: #1C1917;
@@ -32,11 +32,11 @@
   --color-on-win-green: #1C1917;
   --color-on-win-gray: #1C1917;
 
-  /* Accents & Status */
+  /* Accents & Status (WCAG 2.2 AA compliant across raised, paper, and sunken surfaces) */
   --color-brass: #E0962B;
   --color-brass-bright: #F5BD38;
-  --color-ledger-green: #2E7D32;
-  --color-ledger-red: #D32F2F;
+  --color-ledger-green: #1B5E20;
+  --color-ledger-red: #B71C1C;
 
   /* Aliases & Backward Compatibility */
   --color-canvas: var(--color-desktop);
@@ -143,7 +143,7 @@
   --color-brass: #D98C28;
   --color-brass-bright: #F5BD38;
   --color-ledger-green: #4CAF50;
-  --color-ledger-red: #EF5350;
+  --color-ledger-red: #F46A6A;
 
   /* Aliases & Backward Compatibility */
   --color-canvas: var(--color-desktop);
@@ -209,7 +209,7 @@
   --color-text-info: #5BC3E0;       /* 7.45:1 */
   --color-text-accent: #7FAEE3;     /* 6.89:1 */
   --color-text-profit: #66BB6A;     /* 7.02:1 */
-  --color-text-loss: #EF5350;       /* 5.18:1 */
+  --color-text-loss: #F46A6A;       /* 4.94:1 against #2D2824, 5.47:1 against #24201D */
 
   /* Hard Vintage Drop Shadows */
   --shadow-card: 3px 3px 0 var(--color-rule);
@@ -524,7 +524,7 @@ body {
 
 /* Greenbar / Tabular Listview Table Rows */
 .greenbar-row:nth-child(even) {
-  background: color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-win-green)) !important;
+  background: var(--color-profit-dim) !important;
 }
 
 /* Fitts's Law Hit-Slop Utility (Invisible touch box >= 44x44px for compact desktop UI) */
@@ -777,7 +777,7 @@ body {
 @media (max-width: 768px) {
   .status-bar-global {
     padding: 0 var(--space-2);
-    font-size: 10.5px;
+    font-size: 11px;
   }
   .status-bar-global .status-bar-secondary {
     display: none !important;

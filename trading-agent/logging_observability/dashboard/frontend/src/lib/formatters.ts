@@ -63,6 +63,34 @@ export const fmt = {
     }
   },
 
+  // Institutional UTC Formatter (Decision D-02: YYYY-MM-DD HH:mm:ss UTC or HH:mm:ss UTC)
+  utc: (iso: string | number | Date | null | undefined, includeDate = true) => {
+    if (!iso) return '—';
+    try {
+      const d = typeof iso === 'string' ? parseISO(iso) : new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      const year = d.getUTCFullYear();
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const time = d.toISOString().slice(11, 19);
+      return includeDate ? `${year}-${month}-${day} ${time} UTC` : `${time} UTC`;
+    } catch {
+      return '—';
+    }
+  },
+
+  // Local Time Tooltip for title attribute (Decision D-02)
+  localTooltip: (iso: string | number | Date | null | undefined) => {
+    if (!iso) return '';
+    try {
+      const d = typeof iso === 'string' ? parseISO(iso) : new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return `${d.toLocaleString()} (Local)`;
+    } catch {
+      return '';
+    }
+  },
+
   datetime: (iso: string | null | undefined) => {
     if (!iso) return '—';
     try {

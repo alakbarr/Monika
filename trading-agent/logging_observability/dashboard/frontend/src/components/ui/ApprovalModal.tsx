@@ -138,7 +138,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           className="win-titlebar"
           style={{
             background: 'var(--color-win-yellow)',
-            color: '#1C1917',
+            color: 'var(--color-on-win-yellow)',
             padding: '6px 12px',
             display: 'flex',
             alignItems: 'center',
@@ -161,7 +161,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: '#1C1917',
+              color: 'var(--color-on-win-yellow)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -223,7 +223,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
               gap: '10px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.04em' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.04em' }}>
               <span>Stop Loss (SL)</span>
               <span>Proposed Entry</span>
               <span>Take Profit (TP)</span>
@@ -306,7 +306,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           )}
 
           {/* Drift Guard Notice */}
-          <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textAlign: 'center' }}>
             ⚠ Price drift guard active: Execution will auto-abort if market drifts &gt;0.15% before submission.
           </div>
         </div>

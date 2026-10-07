@@ -505,7 +505,7 @@ export const TokenAuditPanel: React.FC = () => {
                     }}
                   />
                 </div>
-                <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '4px' }}>
                   {isOver ? `⚠ Exceeds budget by +${(actualPct - quota.targetPct).toFixed(1)}%` : `✓ Within ${quota.targetPct}% quota limit`}
                 </div>
               </div>
@@ -575,7 +575,7 @@ export const TokenAuditPanel: React.FC = () => {
                       <div style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
                         {log.task_role || log.task_name || 'unknown'}
                       </div>
-                      <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
                         {log.provider} • {log.model_name}
                       </div>
                     </td>

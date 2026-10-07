@@ -217,7 +217,7 @@ export const PositionsTable: React.FC = () => {
                   fontFamily: 'var(--font-precision)',
                   fontWeight: !showClosed ? 700 : 500,
                   background: !showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                  color: !showClosed ? '#1C1917' : 'var(--color-ink-soft)',
+                  color: !showClosed ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                   border: 'none',
                   borderRight: '1.5px solid var(--color-rule)',
                   cursor: 'pointer',
@@ -234,7 +234,7 @@ export const PositionsTable: React.FC = () => {
                   fontFamily: 'var(--font-precision)',
                   fontWeight: showClosed ? 700 : 500,
                   background: showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                  color: showClosed ? '#1C1917' : 'var(--color-ink-soft)',
+                  color: showClosed ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                   border: 'none',
                   cursor: 'pointer',
                 }}
@@ -259,7 +259,7 @@ export const PositionsTable: React.FC = () => {
                     fontFamily: 'var(--font-precision)',
                     fontWeight: pnlUnit === u ? 700 : 500,
                     background: pnlUnit === u ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                    color: pnlUnit === u ? '#1C1917' : 'var(--color-ink-soft)',
+                    color: pnlUnit === u ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                     border: 'none',
                     borderRight: u !== 'r' ? '1.5px solid var(--color-rule)' : 'none',
                     cursor: 'pointer',
@@ -291,7 +291,7 @@ export const PositionsTable: React.FC = () => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 800,
                 background: 'var(--color-ledger-green)',
-                color: '#FFFFFF',
+                color: 'var(--color-on-win-green)',
                 border: '1.5px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: '1px 1px 0 var(--color-rule)',
@@ -343,7 +343,7 @@ export const PositionsTable: React.FC = () => {
                   fontFamily: 'var(--font-precision)',
                   fontWeight: 800,
                   background: 'var(--color-ledger-red)',
-                  color: '#FFFFFF',
+                  color: 'var(--color-on-win-coral)',
                   border: '1.5px solid var(--color-rule)',
                   borderRadius: 'var(--radius-sm)',
                   boxShadow: '1px 1px 0 var(--color-rule)',
@@ -404,7 +404,7 @@ export const PositionsTable: React.FC = () => {
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                background: 'color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-ink))',
+                background: 'var(--color-table-header)',
                 borderBottom: '2px solid var(--color-rule)',
               }}
             >
@@ -431,7 +431,7 @@ export const PositionsTable: React.FC = () => {
                       title={`Sort by ${col.label}`}
                     >
                       <span>{col.label}</span>
-                      <span style={{ marginLeft: '4px', fontSize: '10px' }}>
+                      <span style={{ marginLeft: '4px', fontSize: '11px' }}>
                         {isSorted ? (sortAsc ? '▲' : '▼') : '▿'}
                       </span>
                     </th>
@@ -561,7 +561,7 @@ export const PositionsTable: React.FC = () => {
                       fontFamily: 'var(--font-precision)',
                       fontWeight: closePercentage === pct ? 700 : 500,
                       background: closePercentage === pct ? 'var(--color-win-yellow)' : 'var(--color-paper)',
-                      color: closePercentage === pct ? '#1C1917' : 'var(--color-ink)',
+                      color: closePercentage === pct ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                       border: '1px solid var(--color-rule)',
                       borderRadius: '2px',
                       cursor: 'pointer',
@@ -729,7 +729,7 @@ const PositionRow: React.FC<{
       className={isEven ? 'greenbar-row' : ''}
       style={{
         background: isEven
-          ? 'color-mix(in srgb, var(--color-paper-raised) 92%, var(--color-ledger-green))'
+          ? 'var(--color-profit-dim)'
           : 'var(--color-paper-raised)',
         borderBottom: '1px solid var(--color-rule)',
         transition: 'background var(--transition-fast)',

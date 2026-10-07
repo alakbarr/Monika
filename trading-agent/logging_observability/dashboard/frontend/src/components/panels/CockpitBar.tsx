@@ -127,7 +127,7 @@ export const CockpitBar: React.FC = () => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               padding: '1px 5px',
               borderRadius: '4px',

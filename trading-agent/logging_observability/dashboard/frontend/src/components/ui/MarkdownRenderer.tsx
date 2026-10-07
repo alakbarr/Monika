@@ -90,7 +90,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
             border: '1px solid var(--color-rule)',
             borderRadius: 'var(--radius-sm)',
             padding: '2px 6px',
-            fontSize: '10px',
+            fontSize: '11px',
             fontFamily: 'var(--font-precision)',
             fontWeight: 700,
             color: 'var(--color-ink)',
@@ -305,7 +305,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 borderRight: '1px solid var(--color-rule)',
                 letterSpacing: '0.03em',
                 textTransform: 'uppercase',
-                fontSize: '10.5px',
+                fontSize: '11px',
               }}
             >
               {children}

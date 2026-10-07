@@ -154,7 +154,7 @@ export const AgentChatPanel: React.FC = () => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               padding: '2px 7px',
               borderRadius: 'var(--radius-sm)',
@@ -180,7 +180,7 @@ export const AgentChatPanel: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span
               style={{
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 800,
                 color: 'var(--color-titlebar-text)',
                 textTransform: 'uppercase',
@@ -227,7 +227,7 @@ export const AgentChatPanel: React.FC = () => {
               border: '1.5px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               padding: '2px 8px',
-              fontSize: '10.5px',
+              fontSize: '11px',
               fontWeight: 800,
               fontFamily: 'var(--font-precision)',
               color: 'var(--color-ink)',
@@ -249,7 +249,7 @@ export const AgentChatPanel: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontSize: '10px',
+          fontSize: '11px',
           fontFamily: 'var(--font-precision)',
           color: 'var(--color-ink-soft)',
           fontWeight: 700,
@@ -289,7 +289,7 @@ export const AgentChatPanel: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '10.5px',
+                fontSize: '11px',
                 fontWeight: 800,
                 color: msg.role === 'user' ? 'var(--color-ink-soft)' : 'var(--color-win-blue)',
                 fontFamily: 'var(--font-precision)',
@@ -423,7 +423,7 @@ export const AgentChatPanel: React.FC = () => {
                     <span
                       key={t}
                       style={{
-                        fontSize: '10px',
+                        fontSize: '11px',
                         padding: '2px 8px',
                         background: 'var(--color-paper)',
                         border: '1.5px solid var(--color-rule)',

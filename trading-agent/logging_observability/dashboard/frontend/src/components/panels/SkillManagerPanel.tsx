@@ -190,7 +190,7 @@ export const SkillManagerPanel: React.FC = () => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 700,
                 background: 'var(--color-win-yellow)',
-                color: '#1C1917',
+                color: 'var(--color-on-win-yellow)',
                 border: '1.5px solid var(--color-rule)',
                 borderRadius: '2px',
                 cursor: crystallizing ? 'not-allowed' : 'pointer',
@@ -252,7 +252,7 @@ export const SkillManagerPanel: React.FC = () => {
           <div
             style={{
               padding: '8px 14px',
-              background: actionMsg.type === 'ok' ? 'color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-ledger-green))' : 'color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-ledger-red))',
+              background: actionMsg.type === 'ok' ? 'var(--color-profit-bg)' : 'var(--color-loss-bg)',
               borderBottom: '1.5px solid var(--color-rule)',
               fontSize: 'var(--text-xs)',
               fontFamily: 'var(--font-precision)',
@@ -292,7 +292,7 @@ export const SkillManagerPanel: React.FC = () => {
                     fontFamily: 'var(--font-precision)',
                     fontWeight: filterSymbol === sym ? 700 : 500,
                     background: filterSymbol === sym ? 'var(--color-win-yellow)' : 'var(--color-paper)',
-                    color: filterSymbol === sym ? '#1C1917' : 'var(--color-ink)',
+                    color: filterSymbol === sym ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                     border: '1px solid var(--color-rule)',
                     borderRadius: '2px',
                     cursor: 'pointer',
@@ -318,7 +318,7 @@ export const SkillManagerPanel: React.FC = () => {
                   fontWeight: filterStatus === st ? 700 : 500,
                   textTransform: 'uppercase',
                   background: filterStatus === st ? 'var(--color-win-yellow)' : 'var(--color-paper)',
-                  color: filterStatus === st ? '#1C1917' : 'var(--color-ink)',
+                  color: filterStatus === st ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                   border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   cursor: 'pointer',
@@ -356,7 +356,7 @@ export const SkillManagerPanel: React.FC = () => {
                   position: 'sticky',
                   top: 0,
                   zIndex: 10,
-                  background: 'color-mix(in srgb, var(--color-paper-raised) 90%, var(--color-ink))',
+                  background: 'var(--color-table-header)',
                   borderBottom: '2px solid var(--color-rule)',
                 }}
               >
@@ -393,7 +393,7 @@ export const SkillManagerPanel: React.FC = () => {
                       key={sk.name}
                       style={{
                         background: isEven
-                          ? 'color-mix(in srgb, var(--color-paper-raised) 92%, var(--color-ledger-green))'
+                          ? 'var(--color-profit-dim)'
                           : 'var(--color-paper-raised)',
                         borderBottom: '1px solid var(--color-rule)',
                         opacity: isDep ? 0.75 : 1,
@@ -420,7 +420,7 @@ export const SkillManagerPanel: React.FC = () => {
                           {isDep ? 'DEPRECATED' : 'ACTIVE'}
                         </Badge>
                         {sk.deprecation_reason && (
-                          <div style={{ fontSize: '10px', color: 'var(--color-ledger-red)', marginTop: '2px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--color-ledger-red)', marginTop: '2px' }}>
                             {sk.deprecation_reason}
                           </div>
                         )}
@@ -519,7 +519,7 @@ export const SkillManagerPanel: React.FC = () => {
                         key={idx}
                         style={{
                           padding: '2px 6px',
-                          fontSize: '10px',
+                          fontSize: '11px',
                           fontWeight: 'bold',
                           borderRadius: '2px',
                           background: won ? 'var(--color-win-dim)' : 'var(--color-loss-dim)',

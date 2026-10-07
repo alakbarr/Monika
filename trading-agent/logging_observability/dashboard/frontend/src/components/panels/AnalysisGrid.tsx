@@ -48,7 +48,7 @@ export const AnalysisGrid: React.FC = () => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: viewMode === 'unique' ? 700 : 500,
                 background: viewMode === 'unique' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: viewMode === 'unique' ? '#1C1917' : 'var(--color-ink-soft)',
+                color: viewMode === 'unique' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
                 borderRight: '1.5px solid var(--color-rule)',
                 cursor: 'pointer',
@@ -65,7 +65,7 @@ export const AnalysisGrid: React.FC = () => {
                 fontFamily: 'var(--font-precision)',
                 fontWeight: viewMode === 'all' ? 700 : 500,
                 background: viewMode === 'all' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: viewMode === 'all' ? '#1C1917' : 'var(--color-ink-soft)',
+                color: viewMode === 'all' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
                 cursor: 'pointer',
               }}
@@ -147,7 +147,7 @@ const AnalysisCard: React.FC<{
         height: '100%',
         fontFamily: 'var(--font-precision)',
         opacity: isStale ? 0.82 : 1,
-        background: isStale ? 'color-mix(in srgb, var(--color-paper-raised) 94%, var(--color-ink))' : 'var(--color-paper-raised)',
+        background: isStale ? 'var(--color-paper-subtle)' : 'var(--color-paper-raised)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

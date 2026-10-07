@@ -196,7 +196,7 @@ export const BacktestPanel: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#1C1917',
+              color: 'var(--color-on-win-yellow)',
             }}
           >
             <Layers size={20} />
@@ -469,51 +469,51 @@ export const BacktestPanel: React.FC = () => {
             >
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>SORTINO (ANN.)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>SORTINO (ANN.)</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-profit)' }}>
                     {quantMetrics.sortino}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Downside penalty</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Downside penalty</div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CALMAR RATIO</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CALMAR RATIO</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
                     {quantMetrics.calmar}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Return / Max DD</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Return / Max DD</div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CVaR (95%)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>CVaR (95%)</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-loss)' }}>
                     {quantMetrics.cvar95}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Tail expected shortfall</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Tail expected shortfall</div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>WILSON 95% CI</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>WILSON 95% CI</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
                     {quantMetrics.wilsonLow}% - {quantMetrics.wilsonHigh}%
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>True WR confidence</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>True WR confidence</div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>PAYOFF RATIO</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>PAYOFF RATIO</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px' }}>
                     {quantMetrics.payoffRatio}x
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Avg Win / Avg Loss</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Avg Win / Avg Loss</div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--color-surface)', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>EXPECTANCY</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700 }}>EXPECTANCY</div>
                   <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 800, marginTop: '4px', color: 'var(--color-profit)' }}>
                     {quantMetrics.expectancy}
                   </div>
-                  <div style={{ fontSize: '9px', color: 'var(--color-ink-soft)' }}>Per trade edge</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Per trade edge</div>
                 </div>
               </div>
             </Card>

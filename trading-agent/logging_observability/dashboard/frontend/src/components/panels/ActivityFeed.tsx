@@ -58,7 +58,7 @@ export const ActivityFeed: React.FC = () => {
                     fontFamily: 'var(--font-precision)',
                     fontWeight: isActive ? 800 : 600,
                     background: isActive ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                    color: isActive ? '#1C1917' : 'var(--color-ink)',
+                    color: isActive ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                     border: '1px solid var(--color-rule)',
                     borderRadius: 'var(--radius-sm)',
                     boxShadow: isActive ? 'none' : '1px 1px 0 var(--color-rule)',
@@ -112,7 +112,7 @@ const ActivityRow: React.FC<{ item: any; idx: number }> = ({ item, idx }) => {
         gap: '12px',
         padding: '10px 16px',
         borderBottom: '1px solid var(--color-rule)',
-        background: idx % 2 === 1 ? 'color-mix(in srgb, var(--color-paper-raised) 95%, var(--color-ink))' : 'transparent',
+        background: idx % 2 === 1 ? 'var(--color-surface-hover)' : 'transparent',
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -131,7 +131,7 @@ const ActivityRow: React.FC<{ item: any; idx: number }> = ({ item, idx }) => {
                   fontFamily: 'var(--font-precision)',
                   fontWeight: 800,
                   background: showJson ? 'var(--color-win-yellow)' : 'var(--color-paper)',
-                  color: showJson ? '#1C1917' : 'var(--color-ink-soft)',
+                  color: showJson ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                   border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   cursor: 'pointer',

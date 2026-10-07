@@ -140,7 +140,7 @@ const parseTriggerCondition = (
     return {
       symbol,
       badgeLabel: 'Time Stop',
-      badgeColor: '#FAF7F2',
+      badgeColor: 'var(--color-on-win-coral)',
       badgeBg: 'var(--color-win-coral)',
       badgeBorder: 'var(--color-rule)',
       headline: holdFormatted ? `Max Hold Limit Reached (${holdFormatted})` : 'Max Hold Limit Reached',
@@ -162,7 +162,7 @@ const parseTriggerCondition = (
     return {
       symbol,
       badgeLabel: 'TTL Expired',
-      badgeColor: '#1C1917',
+      badgeColor: 'var(--color-on-win-yellow)',
       badgeBg: 'var(--color-win-yellow)',
       badgeBorder: 'var(--color-rule)',
       headline: ttlFormatted ? `Order Validity Expired (TTL: ${ttlFormatted})` : 'Order Validity Expired',
@@ -183,9 +183,9 @@ const parseTriggerCondition = (
     return {
       symbol,
       badgeLabel: 'Price Level',
-      badgeColor: 'cyan',
-      badgeBg: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
-      badgeBorder: 'color-mix(in srgb, cyan 40%, var(--color-border))',
+      badgeColor: 'var(--color-win-blue)',
+      badgeBg: 'var(--color-info-dim)',
+      badgeBorder: 'var(--color-win-blue)',
       headline: priceStr ? `Price ${dirLabel} ${priceStr}` : 'Price Level Milestone',
       subDetail: detail ? `↳ ${detail}` : undefined,
       fireAtFormatted,
@@ -215,7 +215,7 @@ const parseTriggerCondition = (
     return {
       symbol,
       badgeLabel: 'Time Reval',
-      badgeColor: '#1C1917',
+      badgeColor: 'var(--color-on-win-yellow)',
       badgeBg: 'var(--color-win-yellow)',
       badgeBorder: 'var(--color-rule)',
       headline: 'Scheduled Thesis Re-evaluation',
@@ -231,7 +231,7 @@ const parseTriggerCondition = (
     return {
       symbol,
       badgeLabel: 'Macro Catalyst',
-      badgeColor: '#1C1917',
+      badgeColor: 'var(--color-on-win-green)',
       badgeBg: 'var(--color-win-green)',
       badgeBorder: 'var(--color-rule)',
       headline: 'Macro Event / News Re-evaluation',
@@ -724,13 +724,13 @@ export const SignalsTriggersPanel: React.FC = () => {
                               type="button"
                               onClick={() => setDossierTarget({ id: t.asset_analysis_id ?? undefined })}
                               style={{
-                                padding: '1px 5px',
-                                fontSize: '10px',
+                                padding: '2px 6px',
+                                fontSize: '11px',
                                 fontFamily: 'var(--font-precision)',
                                 fontWeight: 'bold',
-                                background: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
-                                color: 'cyan',
-                                border: '1px solid color-mix(in srgb, cyan 40%, var(--color-border))',
+                                background: 'var(--color-info-dim)',
+                                color: 'var(--color-win-blue)',
+                                border: '1px solid var(--color-win-blue)',
                                 borderRadius: '2px',
                                 cursor: 'pointer',
                               }}
@@ -755,7 +755,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                             {condSummary.symbol && (
                               <span
                                 style={{
-                                  fontSize: '10px',
+                                  fontSize: '11px',
                                   fontFamily: 'var(--font-precision)',
                                   fontWeight: 'bold',
                                   padding: '1px 5px',
@@ -771,7 +771,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                             )}
                             <span
                               style={{
-                                fontSize: '9px',
+                                fontSize: '11px',
                                 fontFamily: 'var(--font-precision)',
                                 fontWeight: 'bold',
                                 letterSpacing: '0.04em',
@@ -804,7 +804,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                           {condSummary.subDetail && (
                             <div
                               style={{
-                                fontSize: '10px',
+                                fontSize: '11px',
                                 color: 'var(--color-ink-muted)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -828,7 +828,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                       </td>
                       <td style={{ color: 'var(--color-ink-muted)', fontSize: '11px' }}>
                         <div>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</div>
-                        <div style={{ fontSize: '10px', color: isPending ? 'var(--color-warning)' : 'var(--color-ink-muted)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: isPending ? 'var(--color-warning)' : 'var(--color-ink-muted)', marginTop: '2px' }}>
                           {formatTimeAgo(t.created_at)}
                         </div>
                       </td>
@@ -858,9 +858,9 @@ export const SignalsTriggersPanel: React.FC = () => {
                                 fontSize: '11px',
                                 fontFamily: 'var(--font-precision)',
                                 fontWeight: 'bold',
-                                background: 'var(--color-profit-dim, rgba(22, 163, 74, 0.15))',
-                                color: 'var(--color-ledger-green, #16a34a)',
-                                border: '1px solid var(--color-ledger-green, #16a34a)',
+                                background: 'var(--color-profit-dim)',
+                                color: 'var(--color-ledger-green)',
+                                border: '1px solid var(--color-ledger-green)',
                                 borderRadius: '2px',
                                 cursor: approvingId === t.id ? 'wait' : 'pointer',
                               }}
@@ -964,13 +964,13 @@ export const SignalsTriggersPanel: React.FC = () => {
                             type="button"
                             onClick={() => setDossierTarget({ id: (s as any).asset_analysis_id || undefined, symbol: s.symbol, ticket: s.mt5_ticket || undefined })}
                             style={{
-                              padding: '1px 5px',
-                              fontSize: '10px',
+                              padding: '2px 6px',
+                              fontSize: '11px',
                               fontFamily: 'var(--font-precision)',
                               fontWeight: 'bold',
-                              background: 'color-mix(in srgb, var(--color-surface) 70%, cyan)',
-                              color: 'cyan',
-                              border: '1px solid color-mix(in srgb, cyan 40%, var(--color-border))',
+                              background: 'var(--color-info-dim)',
+                              color: 'var(--color-win-blue)',
+                              border: '1px solid var(--color-win-blue)',
                               borderRadius: '2px',
                               cursor: 'pointer',
                               marginLeft: '2px',

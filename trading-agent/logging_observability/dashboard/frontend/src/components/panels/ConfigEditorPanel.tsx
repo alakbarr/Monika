@@ -356,7 +356,7 @@ export const ConfigEditorPanel: React.FC = () => {
                     <Icon size={16} />
                     <div>
                       <div style={{ fontWeight: active ? 700 : 500, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{sec.label}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>{sec.desc}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>{sec.desc}</div>
                     </div>
                   </div>
                   <ChevronRight size={12} style={{ opacity: active ? 1 : 0.4 }} />

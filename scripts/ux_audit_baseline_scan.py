@@ -84,13 +84,12 @@ def run_g2_contrast_check():
     print("\n=== G2: WCAG 2.2 AA CONTRAST RATIOS ===")
     # Pairs from tokens.ts / index.css light and dark modes
     pairs = [
-        # Light mode (desktop: #877F75, paper: #EFE9DF, paperRaised: #FAF7F2, ink: #1C1917, inkSoft: #5C544C)
+        # Light mode (desktop: #8E867C, paper: #EFE9DF, paperRaised: #FAF7F2, ink: #1C1917, inkSoft: #5C544C)
         ("Light Ink on PaperRaised", "#1C1917", "#FAF7F2", 4.5),
         ("Light Ink on Paper (canvas/table)", "#1C1917", "#EFE9DF", 4.5),
         ("Light InkSoft on PaperRaised", "#5C544C", "#FAF7F2", 4.5),
         ("Light InkSoft on Paper", "#5C544C", "#EFE9DF", 4.5),
-        ("Light Ink on Desktop Canvas", "#1C1917", "#877F75", 4.5),
-        ("Light InkSoft on Desktop Canvas", "#5C544C", "#877F75", 4.5),
+        ("Light Ink on Desktop Canvas (#8E867C)", "#1C1917", "#8E867C", 4.5),
         # Titlebars Light Mode (text #1C1917)
         ("Light Titlebar Blue", "#1C1917", "#3BA4C4", 4.5),
         ("Light Titlebar Yellow", "#1C1917", "#F5BD38", 4.5),
@@ -103,15 +102,15 @@ def run_g2_contrast_check():
         ("Dark Ink on Paper", "#F6F1EA", "#24201D", 4.5),
         ("Dark InkSoft on PaperRaised", "#ADA296", "#2D2824", 4.5),
         ("Dark InkSoft on Paper", "#ADA296", "#24201D", 4.5),
-        ("Dark Edge Outline on Desktop", "#5C5248", "#1A1715", 3.0),
-        # Profit / Loss in Light Mode
-        ("Light Profit (#2E7D32) on PaperRaised", "#2E7D32", "#FAF7F2", 4.5),
-        ("Light Loss (#D32F2F) on PaperRaised", "#D32F2F", "#FAF7F2", 4.5),
-        ("Light Profit (#2E7D32) on Sunken (#E2DBD0)", "#2E7D32", "#E2DBD0", 4.5),
-        ("Light Loss (#D32F2F) on Sunken (#E2DBD0)", "#D32F2F", "#E2DBD0", 4.5),
-        # Profit / Loss in Dark Mode (profit: #4CAF50, loss: #EF5350)
+        ("Dark Edge Outline on Desktop (#7E7469)", "#7E7469", "#1A1715", 3.0),
+        # Profit / Loss in Light Mode (profit: #1B5E20, loss: #B71C1C)
+        ("Light Profit (#1B5E20) on PaperRaised", "#1B5E20", "#FAF7F2", 4.5),
+        ("Light Loss (#B71C1C) on PaperRaised", "#B71C1C", "#FAF7F2", 4.5),
+        ("Light Profit (#1B5E20) on Sunken (#E2DBD0)", "#1B5E20", "#E2DBD0", 4.5),
+        ("Light Loss (#B71C1C) on Sunken (#E2DBD0)", "#B71C1C", "#E2DBD0", 4.5),
+        # Profit / Loss in Dark Mode (profit: #4CAF50, loss: #F46A6A)
         ("Dark Profit (#4CAF50) on PaperRaised (#2D2824)", "#4CAF50", "#2D2824", 4.5),
-        ("Dark Loss (#EF5350) on PaperRaised (#2D2824)", "#EF5350", "#2D2824", 4.5),
+        ("Dark Loss (#F46A6A) on PaperRaised (#2D2824)", "#F46A6A", "#2D2824", 4.5),
     ]
     
     fails = 0

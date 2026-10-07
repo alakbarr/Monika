@@ -16,10 +16,10 @@ interface SegmentedProgressBarProps {
 }
 
 const colorMap = {
-  salmon: '#E86C53',
-  yellow: '#F5BD38',
-  blue: '#3BA4C4',
-  green: '#48A9A6',
+  salmon: 'var(--color-win-salmon)',
+  yellow: 'var(--color-win-yellow)',
+  blue: 'var(--color-win-blue)',
+  green: 'var(--color-win-green)',
 };
 
 export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({

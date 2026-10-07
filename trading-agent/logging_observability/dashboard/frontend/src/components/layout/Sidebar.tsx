@@ -129,7 +129,7 @@ export const Sidebar: React.FC = () => {
                   gap: '8px',
                   padding: collapsed ? '10px 0' : '8px 10px',
                   background: isWsActive ? 'var(--color-win-yellow)' : 'transparent',
-                  color: isWsActive ? '#1C1917' : 'var(--color-ink)',
+                  color: isWsActive ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                   border: 'none',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -139,7 +139,7 @@ export const Sidebar: React.FC = () => {
                   borderBottom: isWsActive && !collapsed ? '1.5px solid var(--color-rule)' : 'none',
                 }}
               >
-                <span style={{ display: 'inline-flex', flexShrink: 0, color: isWsActive ? '#1C1917' : 'var(--color-brass)' }}>
+                <span style={{ display: 'inline-flex', flexShrink: 0, color: isWsActive ? 'var(--color-on-win-yellow)' : 'var(--color-brass)' }}>
                   <Icon size={18} />
                 </span>
                 {!collapsed && (
@@ -151,7 +151,7 @@ export const Sidebar: React.FC = () => {
                         letterSpacing: '0.04em',
                         flex: 1,
                         textTransform: 'uppercase',
-                        color: isWsActive ? '#1C1917' : 'var(--color-ink)',
+                        color: isWsActive ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
                       }}
                     >
                       [{w.keyNum}] {w.label}
@@ -162,10 +162,10 @@ export const Sidebar: React.FC = () => {
                         className="tabular-nums"
                         style={{
                           padding: '1px 5px',
-                          fontSize: '10px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           background: 'var(--color-win-salmon)',
-                          color: '#FAF7F2',
+                          color: 'var(--color-on-win-salmon)',
                           border: '1px solid var(--color-rule)',
                           borderRadius: '4px',
                         }}
@@ -250,10 +250,10 @@ export const Sidebar: React.FC = () => {
             <span
               className="win-badge"
               style={{
-                color: '#FAF7F2',
+                color: 'var(--color-on-win-coral)',
                 background: 'var(--color-win-coral)',
                 border: '1.5px solid var(--color-rule)',
-                fontSize: '10px',
+                fontSize: '11px',
                 padding: '2px 4px',
               }}
             >

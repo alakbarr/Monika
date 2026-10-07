@@ -42,7 +42,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           title="Compact Descending Flow (Screen-Fitted Multi-tier)"
           style={{
             background: layoutMode === 'compact' ? 'var(--color-win-yellow)' : 'transparent',
-            color: layoutMode === 'compact' ? '#1C1917' : 'var(--color-ink-soft)',
+            color: layoutMode === 'compact' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
             border: layoutMode === 'compact' ? '1px solid var(--color-rule)' : '1px solid transparent',
             padding: '4px 8px',
             borderRadius: '2px',
@@ -63,7 +63,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           title="Wide Linear Flow"
           style={{
             background: layoutMode === 'wide' ? 'var(--color-win-yellow)' : 'transparent',
-            color: layoutMode === 'wide' ? '#1C1917' : 'var(--color-ink-soft)',
+            color: layoutMode === 'wide' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
             border: layoutMode === 'wide' ? '1px solid var(--color-rule)' : '1px solid transparent',
             padding: '4px 8px',
             borderRadius: '2px',
@@ -175,7 +175,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           gap: '6px',
           padding: '6px 14px',
           background: triggering ? 'var(--color-surface)' : 'var(--color-win-yellow)',
-          color: '#1C1917',
+          color: 'var(--color-on-win-yellow)',
           border: '1.5px solid var(--color-rule)',
           borderRadius: 'var(--radius-sm)',
           boxShadow: triggering ? 'none' : '1.5px 1.5px 0 var(--color-rule)',

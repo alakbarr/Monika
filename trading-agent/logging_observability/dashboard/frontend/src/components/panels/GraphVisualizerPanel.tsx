@@ -304,7 +304,7 @@ export const GraphVisualizerPanel: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#1C1917',
+            color: 'var(--color-on-win-yellow)',
           }}>
             <Workflow size={18} />
           </div>
@@ -325,7 +325,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                 <span
                   className="stamp-badge"
                   style={{
-                    fontSize: '10px',
+                    fontSize: '11px',
                     background: graphData.status === 'completed'
                       ? 'var(--color-profit-dim)'
                       : graphData.status === 'running'
@@ -418,7 +418,7 @@ export const GraphVisualizerPanel: React.FC = () => {
               borderRadius: 'var(--radius-sm)',
               boxShadow: '1.5px 1.5px 0 var(--color-rule)',
             }}>
-              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
                 {((graphData.total_duration_ms ?? 0) / 1000).toFixed(2)}s
               </span>
@@ -433,7 +433,7 @@ export const GraphVisualizerPanel: React.FC = () => {
               borderRadius: 'var(--radius-sm)',
               boxShadow: '1.5px 1.5px 0 var(--color-rule)',
             }}>
-              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-win-blue)' }}>
                 {((graphData.total_tokens?.total ?? 0) / 1000).toFixed(1)}k
               </span>
@@ -448,7 +448,7 @@ export const GraphVisualizerPanel: React.FC = () => {
               borderRadius: 'var(--radius-sm)',
               boxShadow: '1.5px 1.5px 0 var(--color-rule)',
             }}>
-              <span style={{ fontSize: '9px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
               <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ledger-green)' }}>
                 ${(graphData.total_tokens?.cost_usd ?? 0).toFixed(4)}
               </span>
@@ -928,7 +928,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                   fontSize: 'var(--text-body-sm)',
                   fontWeight: 'bold',
                   cursor: steerLoading || !steerMessage.trim() ? 'not-allowed' : 'pointer',
-                  color: '#000',
+                  color: 'var(--color-on-win-yellow)',
                   fontFamily: 'var(--font-precision)',
                   display: 'flex',
                   alignItems: 'center',

@@ -140,7 +140,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               />
               <span
                 style={{
-                  fontSize: '8.5px',
+                  fontSize: '11px',
                   fontWeight: 800,
                   textTransform: 'uppercase',
                   color: statusColor,
@@ -164,7 +164,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
           >
             <span
               style={{
-                fontSize: '10.5px',
+                fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
                 color: 'var(--color-ink-soft)',
                 display: 'flex',
@@ -178,7 +178,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
 
             <span
               style={{
-                fontSize: '10.5px',
+                fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 700,
                 color: node.tokens.total > 0 ? 'var(--color-win-blue)' : 'var(--color-ink-soft)',

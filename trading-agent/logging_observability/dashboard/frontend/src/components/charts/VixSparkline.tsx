@@ -101,7 +101,7 @@ export const VixSparkline: React.FC<VixSparklineProps> = ({
           <XAxis
             dataKey="date"
             tickFormatter={(v) => safeDateFormat(v, 'dd')}
-            tick={{ fill: 'var(--color-ink-soft)', fontSize: 9, fontFamily: 'var(--font-precision)' }}
+            tick={{ fill: 'var(--color-ink-soft)', fontSize: 11, fontFamily: 'var(--font-precision)' }}
             axisLine={{ stroke: 'var(--color-rule)' }}
             tickLine={false}
           />
@@ -109,7 +109,7 @@ export const VixSparkline: React.FC<VixSparklineProps> = ({
         {showAxes && (
           <YAxis
             domain={yDomain}
-            tick={{ fill: 'var(--color-ink-soft)', fontSize: 9, fontFamily: 'var(--font-precision)' }}
+            tick={{ fill: 'var(--color-ink-soft)', fontSize: 11, fontFamily: 'var(--font-precision)' }}
             axisLine={{ stroke: 'var(--color-rule)' }}
             tickLine={false}
             width={28}

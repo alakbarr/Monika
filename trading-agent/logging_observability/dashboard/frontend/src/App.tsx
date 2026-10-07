@@ -279,7 +279,7 @@ const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              color: '#FAF7F2',
+              color: 'var(--color-on-win-coral)',
               fontSize: 'var(--text-xs)',
               fontWeight: 'bold',
             }}
@@ -309,7 +309,7 @@ const App: React.FC = () => {
                 height: 28,
                 borderRadius: '50%',
                 background: 'var(--color-win-coral)',
-                color: '#FAF7F2',
+                color: 'var(--color-on-win-coral)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
