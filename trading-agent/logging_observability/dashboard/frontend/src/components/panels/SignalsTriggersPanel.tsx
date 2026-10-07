@@ -291,6 +291,7 @@ export const SignalsTriggersPanel: React.FC = () => {
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [approveMsg, setApproveMsg] = useState<string | null>(null);
   const [dossierTarget, setDossierTarget] = useState<{ id?: number | string; symbol?: string; ticket?: number } | null>(null);
+  const [selectedSignalId, setSelectedSignalId] = useState<number | null>(null);
 
   const handleApproveTrigger = async (id: number) => {
     setApprovingId(id);
@@ -430,6 +431,23 @@ export const SignalsTriggersPanel: React.FC = () => {
       aggregatedSignals: Object.values(groups),
     };
   }, [filteredSignals]);
+
+  const handleSignalsKeyDown = (e: React.KeyboardEvent) => {
+    if (aggregatedSignals.length === 0) return;
+    const currentIndex = aggregatedSignals.findIndex((g) => g.primary.id === selectedSignalId);
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex < aggregatedSignals.length - 1 ? currentIndex + 1 : 0;
+      setSelectedSignalId(aggregatedSignals[nextIndex].primary.id);
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : aggregatedSignals.length - 1;
+      setSelectedSignalId(aggregatedSignals[prevIndex].primary.id);
+    } else if (e.key === 'Escape') {
+      setSelectedSignalId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -1013,7 +1031,12 @@ export const SignalsTriggersPanel: React.FC = () => {
           </div>
         }
       >
-        <div style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto' }}>
+        <div
+          style={{ overflowX: 'auto', maxHeight: '420px', overflowY: 'auto', outline: 'none' }}
+          tabIndex={0}
+          onKeyDown={handleSignalsKeyDown}
+          aria-label="MT5 signals ledger. Use J and K or arrow keys to navigate rows."
+        >
           <table className="ledger-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ position: 'sticky', top: 0, zIndex: 1 }}>
@@ -1036,7 +1059,13 @@ export const SignalsTriggersPanel: React.FC = () => {
                   const latency = formatLatency(s.created_at, s.executed_at);
 
                   return (
-                    <tr key={s.id}>
+                    <tr
+                      key={s.id}
+                      className={selectedSignalId === s.id ? 'retro-row-selected' : ''}
+                      aria-selected={selectedSignalId === s.id}
+                      onClick={() => setSelectedSignalId(s.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <td style={{ color: 'var(--color-ink-muted)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span>#{s.id}</span>

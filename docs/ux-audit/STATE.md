@@ -1,28 +1,28 @@
 # STATE — Monika UI/UX Audit Status
 
 - **Iteration**: 1
-- **Mode**: implement (Milestone 2 SELESAI)
+- **Mode**: implement (Milestones M0 s.d. M4 SELESAI)
 - **Scope**: all (44 surfaces terpetakan di SURFACES.md)
 - **Date**: 2026-10-07
 - **Coverage**: 100% (44/44 surfaces teridentifikasi dan dievaluasi berbukti empiris di COVERAGE.md)
-- **Gates Status (Post-M2)**:
+- **Gates Status (Post-M4)**:
   - G1 Token Integrity: PASS (0 forbidden effects, 0 modern color-mix/cyan, raw hex terisolasi di canvas/xterm)
   - G2 Contrast Check: PASS (22/22 pasangan kontras WCAG 2.2 AA PASS, 0 failures)
-  - G3 Type Floor: PASS (0 font <11px, seluruh 124 pelanggaran telah dimigrasi ke standar operasional)
+  - G3 Type Floor: PASS (0 font <11px, seluruh 124 lokasi telah dimigrasi ke standar operasional)
   - G4 Target Size / Affordance: PASS (0 dead controls tersisa, eliminasi kontrol mati pada App.tsx & BootSequence.tsx)
   - CLI & TUI Suite: 64/64 PASS
   - Pyright Type Analysis: PASS (0 errors, 0 warnings)
   - Ruff Linter: PASS (0 errors, 0 warnings)
-  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.89s)
+  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.57s)
 - **Findings Summary**:
   - S0: 0 | S1: 6 | S2: 11 | S3: 1 (Total: 18)
-  - Status: OPEN 3 · PLANNED 0 · IN-PROGRESS 0 · FIXED 15 · VERIFIED 0 · REGRESSED 0
-  - Temuan FIXED di M0, M1, M2: UX-001, UX-002, UX-003, UX-004, UX-005, UX-006, UX-008, UX-009, UX-010, UX-011, UX-012, UX-013, UX-015, UX-017, UX-018
+  - Status: OPEN 0 · PLANNED 0 · IN-PROGRESS 0 · FIXED 18 · VERIFIED 0 · REGRESSED 0
+  - Seluruh 18 temuan telah FIXED (UX-001 s.d. UX-018)
 - **Decisions Locked (/grill-me)**:
   - D-01: Kontrol Titlebar [ _ ] [ □ ] [ × ] → Opsi A (Fungsional penuh atau hapus) [IMPLEMENTED]
   - D-02: Kebijakan Zona Waktu → Opsi A (UTC Institusional seragam) [IMPLEMENTED]
   - D-03: Deduplikasi Sinyal → Opsi A (Agregasi '×N' + grup dithered expired) [IMPLEMENTED]
   - D-04: Penempatan Kill Switch → Opsi A (Tepi kanan Header taskbar Fitts' edge) [IMPLEMENTED]
-- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5). Milestone 0, 1, dan 2 tuntas.
-- **NEXT ACTION**: Jalankan Milestone 3 (M3: State Streams & Aksesibilitas) — M3-01 (UX-007: Pause/Resume log telegraph stream), M3-02 (UX-016: Inverted selection & keyboard j/k navigation).
-- **Handoff Notes**: Tata letak workspace dan ergonomi data (numeric ledger right alignment, sticky totals row, payload disclosure wells, Cockpit titlebar standard, dan deduplikasi sinyal ×N + expired folder D-03) telah teruji dan kokoh di codebase. Siap melanjutkan M3.
+- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5). Milestones M0 s.d. M4 tuntas 100%.
+- **NEXT ACTION**: Jalankan Milestone 5 (MODE verify) — verifikasi akhir komprehensif seluruh gate untuk mempromosikan status temuan dari FIXED ke VERIFIED.
+- **Handoff Notes**: Seluruh 18 temuan audit UI/UX telah diimplementasikan secara elegan tanpa tech debt. Fondasi token, safety fortress, ledger alignment, disclosure payload, signal queue deduplication, pause/resume streaming, keyboard navigation + inverted selection, dan penyelarasan tema TUI retro obsidian teruji 100% green di seluruh level lint, type check, test, dan build.

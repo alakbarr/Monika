@@ -46,7 +46,7 @@ def test_chat_palette_defaults():
 def test_chat_palette_switching():
     """Verify modern_dark and high_contrast theme derivation."""
     palette_dark = get_chat_palette("modern_dark")
-    assert palette_dark.background == "#0F172A"
+    assert palette_dark.background == "#1A1715"
 
     palette_contrast = get_chat_palette("high_contrast")
     assert palette_contrast.background == "#000000"

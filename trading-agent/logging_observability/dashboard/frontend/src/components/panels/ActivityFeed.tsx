@@ -31,8 +31,23 @@ function parseLogDescription(raw: string) {
 export const ActivityFeed: React.FC = () => {
   const { activity, loading } = useDashboardStore();
   const [filter, setFilter] = useState('all');
-  const filtered = filter === 'all' ? activity : activity.filter((a) => a.category === filter);
+  const [isPaused, setIsPaused] = useState(false);
+  const [frozenActivity, setFrozenActivity] = useState<typeof activity>([]);
+
+  const activeSource = isPaused ? frozenActivity : activity;
+  const filtered = filter === 'all' ? activeSource : activeSource.filter((a) => a.category === filter);
   const displayedRecords = filtered.slice(0, 200);
+  const pendingCount = isPaused ? Math.max(0, activity.length - frozenActivity.length) : 0;
+
+  const togglePause = () => {
+    if (isPaused) {
+      setIsPaused(false);
+      setFrozenActivity([]);
+    } else {
+      setFrozenActivity([...activity]);
+      setIsPaused(true);
+    }
+  };
 
   return (
     <WindowFrame
@@ -43,37 +58,82 @@ export const ActivityFeed: React.FC = () => {
       bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 0 }}
       toolbar={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px', overflowX: 'auto' }}>
-          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-            {FILTER_TABS.map((tab) => {
-              const isActive = filter === tab;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setFilter(tab)}
-                  className="typewriter-btn"
-                  style={{
-                    padding: '3px 8px',
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-precision)',
-                    fontWeight: isActive ? 800 : 600,
-                    background: isActive ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                    color: isActive ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
-                    border: '1px solid var(--color-rule)',
-                    borderRadius: 'var(--radius-sm)',
-                    boxShadow: isActive ? 'none' : '1px 1px 0 var(--color-rule)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              );
-            })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {FILTER_TABS.map((tab) => {
+                const isActive = filter === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setFilter(tab)}
+                    className="typewriter-btn"
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-precision)',
+                      fontWeight: isActive ? 800 : 600,
+                      background: isActive ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                      color: isActive ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
+                      border: '1px solid var(--color-rule)',
+                      borderRadius: 'var(--radius-sm)',
+                      boxShadow: isActive ? 'none' : '1px 1px 0 var(--color-rule)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {tab.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Stream Pause / Resume Control (WCAG 2.2.2 / UX-007) */}
+            <button
+              type="button"
+              onClick={togglePause}
+              aria-label={isPaused ? "Resume live telegraph dispatches" : "Pause live telegraph stream to read dispatches"}
+              style={{
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                fontWeight: 800,
+                background: isPaused ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                color: isPaused ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
+                border: '1.5px solid var(--color-rule)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '1px 1px 0 var(--color-rule)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Pause or resume live incoming dispatch stream (WCAG 2.2.2)"
+            >
+              {isPaused ? `▶ RESUME (${pendingCount > 0 ? `+${pendingCount}` : 'LIVE'})` : '⏸ PAUSE'}
+            </button>
           </div>
 
-          <Badge variant="neutral">
-            {displayedRecords.length} RECORDS {filtered.length > 200 ? `(OF ${filtered.length})` : ''}
-          </Badge>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {isPaused && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-precision)',
+                  color: 'var(--color-on-win-yellow)',
+                  background: 'var(--color-win-yellow)',
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--color-rule)',
+                }}
+              >
+                ⏸ STREAM FROZEN
+              </span>
+            )}
+            <Badge variant="neutral">
+              {displayedRecords.length} RECORDS {filtered.length > 200 ? `(OF ${filtered.length})` : ''}
+            </Badge>
+          </div>
         </div>
       }
       padding="0"

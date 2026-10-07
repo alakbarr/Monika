@@ -57,6 +57,7 @@ export const PositionsTable: React.FC = () => {
   const [isBatchClosing, setIsBatchClosing] = useState(false);
   const [batchCloseConfirmOpen, setBatchCloseConfirmOpen] = useState(false);
   const [dossierPos, setDossierPos] = useState<Position | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
@@ -201,6 +202,23 @@ export const PositionsTable: React.FC = () => {
   const totalLots = displayed.reduce((acc, p) => acc + (p.volume || 0), 0);
   const totalSwap = displayed.reduce((acc, p) => acc + (p.swap || 0), 0);
   const totalPnlUsd = displayed.reduce((acc, p) => acc + (p.pnl ?? 0), 0);
+
+  const handleTableKeyDown = (e: React.KeyboardEvent) => {
+    if (sorted.length === 0) return;
+    const currentIndex = sorted.findIndex((p) => p.id === selectedId);
+
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex < sorted.length - 1 ? currentIndex + 1 : 0;
+      setSelectedId(sorted[nextIndex].id);
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : sorted.length - 1;
+      setSelectedId(sorted[prevIndex].id);
+    } else if (e.key === 'Escape') {
+      setSelectedId(null);
+    }
+  };
 
   return (
     <WindowFrame
@@ -414,7 +432,13 @@ export const PositionsTable: React.FC = () => {
           icon={<FloppyDiskIcon size={16} />}
         />
       ) : (
-        <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
+        <div
+          className="table-responsive"
+          tabIndex={0}
+          onKeyDown={handleTableKeyDown}
+          aria-label="Positions ledger. Press J and K or arrow keys to navigate rows."
+          style={{ maxHeight: '520px', overflowY: 'auto', outline: 'none' }}
+        >
           <table
             style={{
               width: '100%',
@@ -486,8 +510,10 @@ export const PositionsTable: React.FC = () => {
                   key={pos.id}
                   pos={pos}
                   isEven={i % 2 === 1}
+                  isSelected={selectedId === pos.id}
                   showClosed={showClosed}
                   pnlUnit={pnlUnit}
+                  onSelect={() => setSelectedId(pos.id)}
                   onCloseClick={(target) => handleOpenClose(target)}
                   onEditClick={(target) => handleOpenEdit(target)}
                   onBreakevenClick={(target) => handleBreakeven(target)}
@@ -787,13 +813,15 @@ const renderPnl = (pos: Position, unit: 'usd' | 'pips' | 'r') => {
 const PositionRow: React.FC<{
   pos: Position;
   isEven: boolean;
+  isSelected: boolean;
   showClosed: boolean;
   pnlUnit: 'usd' | 'pips' | 'r';
+  onSelect: () => void;
   onCloseClick: (pos: Position) => void;
   onEditClick: (pos: Position) => void;
   onBreakevenClick: (pos: Position) => void;
   onDossierClick: (pos: Position) => void;
-}> = ({ pos, isEven, showClosed, pnlUnit, onCloseClick, onEditClick, onBreakevenClick, onDossierClick }) => {
+}> = ({ pos, isEven, isSelected, showClosed, pnlUnit, onSelect, onCloseClick, onEditClick, onBreakevenClick, onDossierClick }) => {
   const slDist = pos.entry_price && pos.sl ? Math.abs(pos.entry_price - pos.sl) : null;
   const tpDist = pos.entry_price && pos.tp ? Math.abs(pos.entry_price - pos.tp) : null;
   const rr = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
@@ -801,13 +829,19 @@ const PositionRow: React.FC<{
 
   return (
     <tr
-      className={isEven ? 'greenbar-row' : ''}
+      className={isSelected ? 'retro-row-selected' : (isEven ? 'greenbar-row' : '')}
+      aria-selected={isSelected}
+      onClick={onSelect}
       style={{
-        background: isEven
-          ? 'var(--color-profit-dim)'
-          : 'var(--color-paper-raised)',
+        background: isSelected
+          ? 'var(--color-ink)'
+          : isEven
+            ? 'var(--color-profit-dim)'
+            : 'var(--color-paper-raised)',
+        color: isSelected ? 'var(--color-paper-raised)' : 'inherit',
         borderBottom: '1px solid var(--color-rule)',
         transition: 'background var(--transition-fast)',
+        cursor: 'pointer',
       }}
     >
       <td style={{ padding: '8px 12px', borderRight: '1px solid var(--color-rule)' }}>
