@@ -13,6 +13,7 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   style?: React.CSSProperties;
+  compact?: boolean;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -22,7 +23,56 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionLabel,
   onAction,
   style,
+  compact = false,
 }) => {
+  if (compact) {
+    return (
+      <div
+        style={{
+          padding: '14px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          fontFamily: 'var(--font-precision)',
+          background: 'var(--color-paper-subtle)',
+          borderBottom: '1px dashed var(--color-rule)',
+          boxSizing: 'border-box',
+          ...style,
+        }}
+      >
+        {icon && (
+          <span style={{ display: 'inline-flex', color: 'var(--color-ink-soft)', flexShrink: 0 }}>
+            {icon}
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: 'var(--text-xs)',
+            fontWeight: 800,
+            color: 'var(--color-ink)',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          [ {title} ]
+        </span>
+        <span
+          style={{
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-ink-soft)',
+          }}
+        >
+          {message}
+        </span>
+        {actionLabel && onAction && (
+          <TypewriterButton size="sm" onClick={onAction}>
+            {actionLabel}
+          </TypewriterButton>
+        )}
+      </div>
+    );
+  }
   return (
     <div
       style={{

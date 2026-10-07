@@ -19,9 +19,12 @@ interface WindowFrameProps {
   showControls?: boolean;
   onClose?: () => void;
   actions?: React.ReactNode;
+  toolbar?: React.ReactNode;
   statusBar?: React.ReactNode;
   padding?: string;
   defaultCollapsed?: boolean;
+  isFocused?: boolean;
+  onFocus?: () => void;
 }
 
 const variantClassMap: Record<WindowVariant, string> = {
@@ -44,9 +47,12 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
   showControls = true,
   onClose,
   actions,
+  toolbar,
   statusBar,
   padding = '16px',
   defaultCollapsed = false,
+  isFocused,
+  onFocus,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -72,7 +78,8 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
 
   return (
     <div
-      className={`win-window ${className}`}
+      className={`win-window ${isFocused ? 'win-window--active' : isFocused === false ? 'win-window--inactive' : ''} ${className}`}
+      onClick={onFocus}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -160,6 +167,13 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
           )}
         </div>
       </div>
+
+      {/* Window Dedicated Toolbar */}
+      {toolbar && !isCollapsed && (
+        <div className="win-toolbar">
+          {toolbar}
+        </div>
+      )}
 
       {/* Window Body (collapsible) */}
       {!isCollapsed && (
