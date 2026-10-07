@@ -1,0 +1,22 @@
+PASS 16.37:1  (min 4.5)  Light: ink on paperRaised
+PASS  6.95:1  (min 4.5)  Light: inkSoft on paperRaised
+FAIL  4.43:1  (min 4.5)  Light: ink on desktop canvas
+PASS  6.07:1  (min 4.5)  Light: ink on winBlue titlebar
+PASS 10.18:1  (min 4.5)  Light: ink on winYellow titlebar
+PASS  5.58:1  (min 4.5)  Light: ink on winSalmon titlebar
+PASS  4.84:1  (min 4.5)  Light: ink on winCoral titlebar
+PASS  6.25:1  (min 4.5)  Light: ink on winGreen titlebar
+FAIL  3.61:1  (min 4.5)  Light: white text on winCoral button
+PASS  5.13:1  (min 4.5)  Light: white text on ledgerGreen button
+FAIL  2.69:1  (min 3.0)  Light: winBlue focus ring on paperRaised
+PASS 12.97:1  (min 4.5)  Dark: ink on paperRaised
+PASS  5.82:1  (min 4.5)  Dark: inkSoft on paperRaised
+FAIL  1.33:1  (min 3.0)  Dark: rule on paperRaised (boundary outline)
+FAIL  4.41:1  (min 4.5)  Dark: ink on winBlue titlebar
+FAIL  2.92:1  (min 4.5)  Dark: ink on winYellow titlebar
+PASS  4.82:1  (min 4.5)  Dark: ink on winSalmon titlebar
+PASS  5.66:1  (min 4.5)  Dark: ink on winCoral titlebar
+PASS  5.18:1  (min 4.5)  Dark: ink on winGreen titlebar
+PASS  5.24:1  (min 4.5)  Dark: ledgerGreen text on paperRaised
+FAIL  4.18:1  (min 4.5)  Dark: ledgerRed text on paperRaised
+FAIL  2.94:1  (min 3.0)  Dark: winBlue focus ring on paperRaised
