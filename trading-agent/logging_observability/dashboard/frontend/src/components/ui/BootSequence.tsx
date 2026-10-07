@@ -100,11 +100,21 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
           }}
         >
           <span>Monika OS / BIOS POST Bootloader</span>
-          <div className="win-controls">
-            <span className="win-control-btn">_</span>
-            <span className="win-control-btn">□</span>
-            <span className="win-control-btn">×</span>
-          </div>
+          <span
+            style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-precision)',
+              letterSpacing: '0.08em',
+              padding: '1px 6px',
+              background: 'var(--color-win-yellow)',
+              color: 'var(--color-on-win-yellow)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: '2px',
+              fontWeight: 800,
+            }}
+          >
+            POST
+          </span>
         </div>
 
         {/* Content */}

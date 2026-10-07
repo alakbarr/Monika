@@ -60,6 +60,18 @@ export const DecisionDossierModal: React.FC<DecisionDossierModalProps> = ({
       });
   }, [isOpen, analysisId, symbol, ticket]);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleCopyReceipt = () => {
@@ -137,18 +149,6 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
     alignItems: 'center',
     gap: '4px',
   });
-
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
 
   return (
     <div

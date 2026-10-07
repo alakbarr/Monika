@@ -1,28 +1,28 @@
 # STATE — Monika UI/UX Audit Status
 
 - **Iteration**: 1
-- **Mode**: implement (Milestone 0 SELESAI)
+- **Mode**: implement (Milestone 1 SELESAI)
 - **Scope**: all (44 surfaces terpetakan di SURFACES.md)
 - **Date**: 2026-10-07
 - **Coverage**: 100% (44/44 surfaces teridentifikasi dan dievaluasi berbukti empiris di COVERAGE.md)
-- **Gates Status (Post-M0)**:
-  - G1 Token Integrity: PASS (0 forbidden effects, 0 modern color-mix/cyan, raw hex hanya tersisa di canvas & xterm)
+- **Gates Status (Post-M1)**:
+  - G1 Token Integrity: PASS (0 forbidden effects, 0 modern color-mix/cyan, raw hex terisolasi di canvas/xterm)
   - G2 Contrast Check: PASS (22/22 pasangan kontras WCAG 2.2 AA PASS, 0 failures)
   - G3 Type Floor: PASS (0 font <11px, seluruh 124 pelanggaran telah dimigrasi ke standar operasional)
-  - G4 Target Size / Affordance: PENDING (6 kontrol jendela titlebar mati dijadwalkan di M1-01)
+  - G4 Target Size / Affordance: PASS (0 dead controls tersisa, eliminasi kontrol mati pada App.tsx & BootSequence.tsx)
   - CLI & TUI Suite: 64/64 PASS
   - Pyright Type Analysis: PASS (0 errors, 0 warnings)
   - Ruff Linter: PASS (0 errors, 0 warnings)
-  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.49s)
+  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.24s)
 - **Findings Summary**:
   - S0: 0 | S1: 6 | S2: 11 | S3: 1 (Total: 18)
-  - Status: OPEN 13 · PLANNED 0 · IN-PROGRESS 0 · FIXED 5 · VERIFIED 0 · REGRESSED 0
-  - Temuan FIXED di M0: UX-001 (Type Floor), UX-002 (Contrast AA), UX-003 (Token Integrity), UX-009 (UTC Policy), UX-013 (Modern CSS Leakage)
+  - Status: OPEN 7 · PLANNED 0 · IN-PROGRESS 0 · FIXED 11 · VERIFIED 0 · REGRESSED 0
+  - Temuan FIXED di M0 & M1: UX-001, UX-002, UX-003, UX-004, UX-005, UX-006, UX-009, UX-010, UX-011, UX-013, UX-017
 - **Decisions Locked (/grill-me)**:
-  - D-01: Kontrol Titlebar [ _ ] [ □ ] [ × ] → Opsi A (Fungsional penuh atau hapus)
-  - D-02: Kebijakan Zona Waktu → Opsi A (UTC Institusional seragam)
-  - D-03: Deduplikasi Sinyal → Opsi A (Agregasi '×N' + grup dithered expired)
-  - D-04: Penempatan Kill Switch → Opsi A (Tepi kanan Header taskbar Fitts' edge)
-- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5). Milestone 0 tuntas.
-- **NEXT ACTION**: Jalankan Milestone 1 (M1: Komponen Inti & Safety Fortress) — M1-01 (D-01 Titlebar), M1-02 (D-04 Kill Switch Header), M1-04 (Pinstripes & Fokus Retro), M1-05 (Fix Hook DecisionDossierModal), M1-06 (Stale WS Overlay).
-- **Handoff Notes**: Fondasi token, WCAG AA, type floor, dan timestamp formatter telah kokoh di codebase. Siap mengeksekusi M1 tanpa debt.
+  - D-01: Kontrol Titlebar [ _ ] [ □ ] [ × ] → Opsi A (Fungsional penuh atau hapus) [IMPLEMENTED]
+  - D-02: Kebijakan Zona Waktu → Opsi A (UTC Institusional seragam) [IMPLEMENTED]
+  - D-03: Deduplikasi Sinyal → Opsi A (Agregasi '×N' + grup dithered expired) [Target: M2]
+  - D-04: Penempatan Kill Switch → Opsi A (Tepi kanan Header taskbar Fitts' edge) [IMPLEMENTED]
+- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5). Milestone 0 dan Milestone 1 tuntas.
+- **NEXT ACTION**: Jalankan Milestone 2 (M2: Tata Letak Workspace & Ergonomi Data) — M2-01 (Payload Disclosure), M2-02 (Right-Aligned Numeric Ledger & Totals), M2-03 (Standardisasi Cockpit Well), M2-04 (Deduplikasi Sinyal ×N & Expired Folder D-03).
+- **Handoff Notes**: Fondasi safety fortress (persistent kill switch di header, status WS stale overlay, rules-of-hooks fix, retro pinstripe focus, dan eliminasi dead controls) telah teruji dan kokoh di codebase. Siap melanjutkan M2.

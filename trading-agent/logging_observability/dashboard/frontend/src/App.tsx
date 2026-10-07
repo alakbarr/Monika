@@ -6,6 +6,7 @@ import { BreadcrumbBar } from './components/layout/BreadcrumbBar';
 import { GlobalStatusBar } from './components/layout/GlobalStatusBar';
 import { MobileNavDrawer } from './components/layout/MobileNavDrawer';
 import { BootSequence } from './components/ui/BootSequence';
+import { WindowFrame } from './components/ui/WindowFrame';
 import { TickerTape } from './components/ui/TickerTape';
 import { WeekendGapBanner } from './components/ui/WeekendGapBanner';
 import { CockpitBar } from './components/panels/CockpitBar';
@@ -87,38 +88,13 @@ const BriefTab: React.FC = () => {
   }
   return (
     <div style={{ maxWidth: 840, margin: '0 auto' }}>
-      <div
-        className="win-window ledger-card"
-        style={{
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-card)',
-          overflow: 'hidden',
-        }}
+      <WindowFrame
+        title="Macro Intelligence Brief — Monika Document"
+        variant="salmon"
+        padding="20px"
       >
-        <div
-          className="win-titlebar win-titlebar--salmon"
-          style={{
-            padding: '6px 12px',
-            borderBottom: '2px solid var(--color-rule)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontWeight: 'bold',
-          }}
-        >
-          <span>Macro Intelligence Brief — Monika Document</span>
-          <div className="win-controls">
-            <span className="win-control-btn">_</span>
-            <span className="win-control-btn">□</span>
-            <span className="win-control-btn">×</span>
-          </div>
-        </div>
-        <div style={{ padding: '20px' }}>
-          <MarkdownRenderer content={brief.content_markdown || ''} />
-        </div>
-      </div>
+        <MarkdownRenderer content={brief.content_markdown || ''} />
+      </WindowFrame>
     </div>
   );
 };

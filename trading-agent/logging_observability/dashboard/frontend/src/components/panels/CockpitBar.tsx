@@ -9,7 +9,7 @@ import { SegmentedProgressBar } from '../ui/SegmentedProgressBar';
 import { fmt, vixSentiment } from '../../lib/formatters';
 
 export const CockpitBar: React.FC = () => {
-  const { overview, paperStats, loading } = useDashboardStore();
+  const { overview, paperStats, loading, wsConnected } = useDashboardStore();
 
   const dailyPnl = overview?.daily_pnl ?? 0;
   const isZero = Math.abs(dailyPnl) < 0.005;
@@ -37,6 +37,29 @@ export const CockpitBar: React.FC = () => {
         fontFamily: 'var(--font-precision)',
       }}
     >
+      {!wsConnected && (
+        <div
+          style={{
+            gridColumn: '1 / -1',
+            padding: '4px 10px',
+            marginBottom: '6px',
+            background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
+            border: '1.5px solid var(--color-ledger-red)',
+            borderRadius: 'var(--radius-xs)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '11px',
+            fontWeight: 800,
+            color: 'var(--color-ledger-red)',
+            letterSpacing: '0.04em',
+          }}
+        >
+          <span>[ ⚠ STALE FEED — WEBSOCKET DISCONNECTED · VALUES REPRESENT LAST RECORDED SNAPSHOT ]</span>
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>RECONNECTING...</span>
+        </div>
+      )}
+
       {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
       <div className="cockpit-item">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

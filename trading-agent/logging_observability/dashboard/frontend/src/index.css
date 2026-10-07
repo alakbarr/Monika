@@ -411,6 +411,43 @@ body {
 .win-titlebar--green  { background: var(--color-win-green);  color: var(--color-on-win-green); }
 .win-titlebar--gray   { background: var(--color-win-gray);   color: var(--color-on-win-gray); }
 
+/* Authentic Retro Focus Pinstripes & Elevation (UX-010) */
+.win-window--active,
+.win-window[data-focused="true"] {
+  box-shadow: var(--shadow-elevated) !important;
+  border-color: var(--color-rule) !important;
+}
+
+.win-window--active .win-titlebar,
+.win-window[data-focused="true"] .win-titlebar {
+  position: relative;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(28, 25, 23, 0.22) 1px,
+    rgba(28, 25, 23, 0.22) 2px
+  );
+}
+
+:root[data-theme="dark"] .win-window--active .win-titlebar,
+:root[data-theme="dark"] .win-window[data-focused="true"] .win-titlebar {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(246, 241, 234, 0.18) 1px,
+    rgba(246, 241, 234, 0.18) 2px
+  );
+}
+
+.win-titlebar-title {
+  background: inherit;
+  padding: 0 4px;
+  position: relative;
+  z-index: 1;
+}
+
 /* Window Control Buttons (o _ X) */
 .win-controls {
   display: flex;
