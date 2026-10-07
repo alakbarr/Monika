@@ -564,6 +564,27 @@ body {
   background: var(--color-profit-dim) !important;
 }
 
+/* Authentic Retro Inverted Row Selection (UX-016) */
+tr.retro-row-selected,
+tr[aria-selected="true"] {
+  background: var(--color-ink) !important;
+  color: var(--color-paper-raised) !important;
+}
+
+tr.retro-row-selected td,
+tr[aria-selected="true"] td,
+tr.retro-row-selected td .tabular-nums,
+tr[aria-selected="true"] td .tabular-nums,
+tr.retro-row-selected td span,
+tr[aria-selected="true"] td span {
+  color: var(--color-paper-raised) !important;
+}
+
+tr.retro-row-selected .table-action-btn,
+tr[aria-selected="true"] .table-action-btn {
+  border-color: var(--color-paper-raised) !important;
+}
+
 /* Fitts's Law Hit-Slop Utility (Invisible touch box >= 44x44px for compact desktop UI) */
 .touch-target-expand,
 .table-action-btn {
