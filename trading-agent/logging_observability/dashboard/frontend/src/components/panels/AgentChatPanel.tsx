@@ -128,7 +128,7 @@ export const AgentChatPanel: React.FC = () => {
               height: 22,
               borderRadius: '3px',
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -159,7 +159,7 @@ export const AgentChatPanel: React.FC = () => {
               padding: '2px 7px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               color: wsConnected ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
               fontFamily: 'var(--font-precision)',
             }}
@@ -195,7 +195,7 @@ export const AgentChatPanel: React.FC = () => {
               style={{
                 height: '24px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--color-ink)',
                 fontSize: '11px',
@@ -224,7 +224,7 @@ export const AgentChatPanel: React.FC = () => {
             title="Clear console transcript"
             style={{
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               padding: '2px 8px',
               fontSize: '11px',
@@ -232,7 +232,7 @@ export const AgentChatPanel: React.FC = () => {
               fontFamily: 'var(--font-precision)',
               color: 'var(--color-ink)',
               cursor: 'pointer',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
             }}
           >
             [ CLEAR ]
@@ -359,7 +359,7 @@ export const AgentChatPanel: React.FC = () => {
                       style={{
                         color: 'var(--color-brass)',
                         background: 'var(--color-warn-dim)',
-                        border: '1.5px solid var(--color-brass)',
+                        border: '1px solid var(--color-brass)',
                       }}
                     >
                       [ HITL // ORDER AUTHORIZATION SLIP ]
@@ -426,7 +426,7 @@ export const AgentChatPanel: React.FC = () => {
                         fontSize: '11px',
                         padding: '2px 8px',
                         background: 'var(--color-paper)',
-                        border: '1.5px solid var(--color-rule)',
+                        border: '1px solid var(--color-rule)',
                         borderRadius: 'var(--radius-sm)',
                         color: 'var(--color-ink-soft)',
                         fontFamily: 'var(--font-precision)',
@@ -459,8 +459,8 @@ export const AgentChatPanel: React.FC = () => {
                   background: 'var(--color-paper-raised)',
                   padding: '6px 12px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1.5px solid var(--color-rule)',
-                  boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
+                  boxShadow: '1px 1px 0 var(--color-rule)',
                   width: 'fit-content',
                 }}
               >
@@ -516,7 +516,7 @@ export const AgentChatPanel: React.FC = () => {
             outline: 'none',
             resize: 'none',
             fontFamily: 'var(--font-precision)',
-            boxShadow: 'inset 1.5px 1.5px 0 rgba(0,0,0,0.06)',
+            boxShadow: 'inset 1px 1px 0 rgba(0,0,0,0.06)',
           }}
         />
 

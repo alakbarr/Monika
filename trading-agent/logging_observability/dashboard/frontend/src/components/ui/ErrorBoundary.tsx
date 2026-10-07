@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="stamp-badge"
               style={{
                 color: 'var(--color-ledger-red)',
-                border: '1.5px solid var(--color-ledger-red)',
+                border: '2px solid var(--color-ledger-red)',
                 background: 'var(--color-loss-dim)',
               }}
             >

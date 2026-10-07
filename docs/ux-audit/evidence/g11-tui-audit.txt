@@ -7,17 +7,17 @@ trading-agent/cli/tui.py:58:    build_tui_css,
 trading-agent/cli/tui.py:282:        Binding("escape", "cancel", "Cancel", show=True),
 trading-agent/cli/tui.py:283:        Binding("y", "confirm", "Yes", show=False),
 trading-agent/cli/tui.py:284:        Binding("n", "cancel", "No", show=False),
-trading-agent/cli/tui.py:324:        Binding("tab", "switch_tab", "Next Tab", show=True),
-trading-agent/cli/tui.py:325:        Binding("shift+tab", "prev_tab", "Prev Tab", show=False),
-trading-agent/cli/tui.py:326:        Binding("f1", "help", "F1 Help", show=True),
-trading-agent/cli/tui.py:327:        Binding("f2", "tab_overview", "F2 Desk", show=True),
-trading-agent/cli/tui.py:328:        Binding("f3", "tab_analysis", "F3 Intel", show=True),
-trading-agent/cli/tui.py:329:        Binding("f4", "tab_performance", "F4 Performance", show=True),
-trading-agent/cli/tui.py:330:        Binding("f5", "tab_chat", "F5 Chat", show=True),
-trading-agent/cli/tui.py:331:        Binding("f6", "tab_plugins", "F6 Plugins", show=True),
-trading-agent/cli/tui.py:332:        Binding("f8", "pause", "F8 Pause", show=True),
-trading-agent/cli/tui.py:333:        Binding("f9", "kill", "F9 Kill", show=True),
-trading-agent/cli/tui.py:334:        Binding("f10", "quit", "F10 Quit", show=True),
+trading-agent/cli/tui.py:324:        Binding("f1", "help", "F1 Help", show=True),
+trading-agent/cli/tui.py:325:        Binding("f2", "tab_overview", "F2 Desk", show=True),
+trading-agent/cli/tui.py:326:        Binding("f3", "tab_analysis", "F3 Intel", show=True),
+trading-agent/cli/tui.py:327:        Binding("f4", "tab_performance", "F4 Perf", show=True),
+trading-agent/cli/tui.py:328:        Binding("f5", "tab_chat", "F5 Chat", show=True),
+trading-agent/cli/tui.py:329:        Binding("f6", "tab_plugins", "F6 Plug", show=True),
+trading-agent/cli/tui.py:330:        Binding("f8", "pause", "F8 Pause", show=True),
+trading-agent/cli/tui.py:331:        Binding("f9", "kill", "F9 Kill", show=True),
+trading-agent/cli/tui.py:332:        Binding("f10", "quit", "F10 Quit", show=True),
+trading-agent/cli/tui.py:333:        Binding("tab", "switch_tab", "Next Tab", show=False),
+trading-agent/cli/tui.py:334:        Binding("shift+tab", "prev_tab", "Prev Tab", show=False),
 trading-agent/cli/tui.py:335:        Binding("1", "tab_overview", "Overview", show=False),
 trading-agent/cli/tui.py:336:        Binding("2", "tab_analysis", "Analysis", show=False),
 trading-agent/cli/tui.py:337:        Binding("3", "tab_performance", "Performance", show=False),
@@ -25,9 +25,9 @@ trading-agent/cli/tui.py:338:        Binding("4", "tab_chat", "Chat", show=False
 trading-agent/cli/tui.py:339:        Binding("q", "quit", "Quit", show=False),
 trading-agent/cli/tui.py:340:        Binding("p", "pause", "Pause Trading", show=False),
 trading-agent/cli/tui.py:341:        Binding("c", "chat", "Chat Mode", show=False),
-trading-agent/cli/tui.py:342:        Binding("r", "refresh", "Refresh", show=True),
-trading-agent/cli/tui.py:343:        Binding("t", "toggle_plugin", "Toggle ON/OFF", show=True),
-trading-agent/cli/tui.py:344:        Binding("i", "install_plugin", "Install Plugin", show=True),
+trading-agent/cli/tui.py:342:        Binding("r", "refresh", "Refresh", show=False),
+trading-agent/cli/tui.py:343:        Binding("t", "toggle_plugin", "Toggle ON/OFF", show=False),
+trading-agent/cli/tui.py:344:        Binding("i", "install_plugin", "Install Plugin", show=False),
 trading-agent/cli/tui.py:345:        Binding("colon", "focus_input", "Command Bar", show=False),
 trading-agent/cli/tui.py:346:        Binding("escape", "blur_input", "Unfocus Bar", show=False),
 trading-agent/cli/tui.py:347:        Binding("ctrl+c", "quit", "Quit", show=False),
@@ -56,37 +56,37 @@ trading-agent/cli/tui.py:543:        analysis_log = self.query_one("#analysis_de
 trading-agent/cli/tui.py:547:        inline_chat = self.query_one("#inline_chat_log", RichLog)
 trading-agent/cli/tui.py:552:        plugins_table = self.query_one("#plugins_table", DataTable)
 trading-agent/cli/tui.py:558:        bench_table = self.query_one("#benchmark_table", DataTable)
-trading-agent/cli/tui.py:595:                table = self.query_one("#positions_table", DataTable)
-trading-agent/cli/tui.py:686:        """Fetch and populate benchmark leaderboard DataTable."""
-trading-agent/cli/tui.py:688:            bench_table = self.query_one("#benchmark_table", DataTable)
-trading-agent/cli/tui.py:754:        """Fetch unified plugin statuses and refresh DataTable."""
-trading-agent/cli/tui.py:758:            table = self.query_one("#plugins_table", DataTable)
-trading-agent/cli/tui.py:793:            table = self.query_one("#plugins_table", DataTable)
-trading-agent/cli/tui.py:852:            new_css = build_tui_css(self.theme_pack)
-trading-agent/cli/tui.py:870:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:916:            det_log = self.query_one("#analysis_detail_log", RichLog)
-trading-agent/cli/tui.py:1190:        """Distribute fetched data to DataTable, ActivityFeed, Banner, and Footer."""
-trading-agent/cli/tui.py:1235:        # 3. Update Positions DataTable (differential to preserve scroll & cursor)
-trading-agent/cli/tui.py:1236:        table = self.query_one("#positions_table", DataTable)
-trading-agent/cli/tui.py:1283:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1341:            perf_table = self.query_one("#perf_table", DataTable)
-trading-agent/cli/tui.py:1360:        # 7. Update Signals DataTable
-trading-agent/cli/tui.py:1362:            sig_table = self.query_one("#signals_table", DataTable)
-trading-agent/cli/tui.py:1386:        # 8. Update Risk DataTable
-trading-agent/cli/tui.py:1388:            r_table = self.query_one("#risk_table", DataTable)
-trading-agent/cli/tui.py:1443:            m_rates = self.query_one("#market_rates_table", DataTable)
-trading-agent/cli/tui.py:1469:            m_cal = self.query_one("#market_table", DataTable)
-trading-agent/cli/tui.py:1545:                        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1569:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1618:                det_log = self.query_one("#analysis_detail_log", RichLog)
-trading-agent/cli/tui.py:1628:                det_log = self.query_one("#analysis_detail_log", RichLog)
-trading-agent/cli/tui.py:1651:                det_log = self.query_one("#analysis_detail_log", RichLog)
-trading-agent/cli/tui.py:1669:                det_log = self.query_one("#analysis_detail_log", RichLog)
-trading-agent/cli/tui.py:1696:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1718:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1731:            inline_log = self.query_one("#inline_chat_log", RichLog)
-trading-agent/cli/tui.py:1748:                inline_log = self.query_one("#inline_chat_log", RichLog)
-trading-agent/cli/tui.py:1765:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1784:            activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1790:        activity_log = self.query_one("#activity_log", RichLog)
-trading-agent/cli/tui.py:1802:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:604:                table = self.query_one("#positions_table", DataTable)
+trading-agent/cli/tui.py:695:        """Fetch and populate benchmark leaderboard DataTable."""
+trading-agent/cli/tui.py:697:            bench_table = self.query_one("#benchmark_table", DataTable)
+trading-agent/cli/tui.py:763:        """Fetch unified plugin statuses and refresh DataTable."""
+trading-agent/cli/tui.py:767:            table = self.query_one("#plugins_table", DataTable)
+trading-agent/cli/tui.py:802:            table = self.query_one("#plugins_table", DataTable)
+trading-agent/cli/tui.py:861:            new_css = build_tui_css(self.theme_pack)
+trading-agent/cli/tui.py:879:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:925:            det_log = self.query_one("#analysis_detail_log", RichLog)
+trading-agent/cli/tui.py:1199:        """Distribute fetched data to DataTable, ActivityFeed, Banner, and Footer."""
+trading-agent/cli/tui.py:1244:        # 3. Update Positions DataTable (differential to preserve scroll & cursor)
+trading-agent/cli/tui.py:1245:        table = self.query_one("#positions_table", DataTable)
+trading-agent/cli/tui.py:1292:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1350:            perf_table = self.query_one("#perf_table", DataTable)
+trading-agent/cli/tui.py:1369:        # 7. Update Signals DataTable
+trading-agent/cli/tui.py:1371:            sig_table = self.query_one("#signals_table", DataTable)
+trading-agent/cli/tui.py:1395:        # 8. Update Risk DataTable
+trading-agent/cli/tui.py:1397:            r_table = self.query_one("#risk_table", DataTable)
+trading-agent/cli/tui.py:1452:            m_rates = self.query_one("#market_rates_table", DataTable)
+trading-agent/cli/tui.py:1478:            m_cal = self.query_one("#market_table", DataTable)
+trading-agent/cli/tui.py:1554:                        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1578:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1627:                det_log = self.query_one("#analysis_detail_log", RichLog)
+trading-agent/cli/tui.py:1637:                det_log = self.query_one("#analysis_detail_log", RichLog)
+trading-agent/cli/tui.py:1660:                det_log = self.query_one("#analysis_detail_log", RichLog)
+trading-agent/cli/tui.py:1678:                det_log = self.query_one("#analysis_detail_log", RichLog)
+trading-agent/cli/tui.py:1705:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1727:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1740:            inline_log = self.query_one("#inline_chat_log", RichLog)
+trading-agent/cli/tui.py:1757:                inline_log = self.query_one("#inline_chat_log", RichLog)
+trading-agent/cli/tui.py:1774:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1793:            activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1799:        activity_log = self.query_one("#activity_log", RichLog)
+trading-agent/cli/tui.py:1811:        activity_log = self.query_one("#activity_log", RichLog)

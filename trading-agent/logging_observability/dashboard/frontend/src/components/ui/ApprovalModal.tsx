@@ -215,7 +215,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           <div
             style={{
               background: 'var(--color-surface-card)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: '3px',
               padding: '14px',
               display: 'flex',

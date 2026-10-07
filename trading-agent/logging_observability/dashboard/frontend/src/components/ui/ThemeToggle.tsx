@@ -45,7 +45,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
           width: '28px',
           height: '14px',
           background: 'var(--color-paper)',
-          border: '1.5px solid var(--color-rule)',
+          border: '1px solid var(--color-rule)',
           borderRadius: '3px',
           position: 'relative',
           display: 'inline-block',
@@ -60,7 +60,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
             width: '11px',
             height: '11px',
             background: 'var(--color-win-yellow)',
-            border: '1.5px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             borderRadius: '2px',
             transition: 'left 120ms ease-out',
           }}

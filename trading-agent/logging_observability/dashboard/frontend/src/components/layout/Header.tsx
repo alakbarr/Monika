@@ -148,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
           title={overview?.is_live ? 'LIVE REAL-CAPITAL TRADING ACTIVE' : 'Simulated Paper Trading Mode'}
         >
           <span style={{ fontSize: '11px' }}>■</span>
-          <span>{overview?.is_live ? 'LIVE TRADING' : 'PAPER TRADING'}</span>
+          <span>{overview?.is_live ? 'LIVE' : 'PAPER'}</span>
         </div>
       </div>
 

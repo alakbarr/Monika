@@ -235,7 +235,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   width: '100%',
                   padding: '6px 10px',
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   fontFamily: 'var(--font-precision)',
                   fontWeight: 800,
@@ -271,7 +271,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
               <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-ink-soft)', display: 'block', marginBottom: '4px' }}>
                 DIRECTION
               </label>
-              <div style={{ display: 'flex', height: '34px', border: '1.5px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', height: '34px', border: '1px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
                 <button
                   type="button"
                   onClick={() => { sounds.playClick('toggle'); setDirection('BUY'); }}
@@ -352,7 +352,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 width: '100%',
                 padding: '6px 10px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 800,
@@ -377,7 +377,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 width: '100%',
                 padding: '6px 10px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontFamily: 'var(--font-precision)',
                 fontSize: '12px',
@@ -415,7 +415,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   width: '100%',
                   padding: '6px 10px',
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   fontFamily: 'var(--font-precision)',
                   fontSize: '12px',
@@ -451,7 +451,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                   width: '100%',
                   padding: '6px 10px',
                   background: 'var(--color-paper)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   fontFamily: 'var(--font-precision)',
                   fontSize: '12px',
@@ -475,7 +475,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 width: '100%',
                 padding: '6px 10px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontFamily: 'var(--font-precision)',
                 fontSize: '12px',
@@ -565,7 +565,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 flex: 1,
                 padding: '9px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontWeight: 700,
                 fontSize: '12px',
@@ -583,7 +583,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
                 padding: '9px',
                 background: direction === 'BUY' ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
                 color: direction === 'BUY' ? 'var(--color-on-win-green)' : 'var(--color-on-win-coral)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: '2px',
                 fontWeight: 800,
                 fontSize: '12px',

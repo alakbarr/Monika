@@ -160,12 +160,12 @@ export const WeekendGapBanner: React.FC = () => {
               height: 34,
               borderRadius: '4px',
               background: isUrgent ? 'var(--color-ledger-red)' : 'var(--color-win-yellow)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               color: isUrgent ? 'var(--color-paper-raised)' : 'var(--color-on-win-yellow)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
               flexShrink: 0,
             }}
           >

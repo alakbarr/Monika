@@ -62,7 +62,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
           <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
             FACTOR VIEW:
           </span>
-          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--color-rule)', borderRadius: '2px', overflow: 'hidden' }}>
             <button
               type="button"
               onClick={() => { sounds.playClick('toggle'); setViewMode('matrix'); }}
@@ -77,7 +77,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                 background: viewMode === 'matrix' ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
                 color: viewMode === 'matrix' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
                 border: 'none',
-                borderRight: '1.5px solid var(--color-rule)',
+                borderRight: '1px solid var(--color-rule)',
                 cursor: 'pointer',
               }}
             >
@@ -122,7 +122,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
             fontWeight: filterSignificantOnly ? 800 : 600,
             background: filterSignificantOnly ? 'rgba(232, 185, 74, 0.2)' : 'var(--color-paper)',
             color: filterSignificantOnly ? 'var(--color-ink)' : 'var(--color-ink-soft)',
-            border: `1.5px solid ${filterSignificantOnly ? 'var(--color-brass)' : 'var(--color-rule)'}`,
+            border: `1px solid ${filterSignificantOnly ? 'var(--color-brass)' : 'var(--color-rule)'}`,
             borderRadius: '2px',
             cursor: 'pointer',
           }}
@@ -175,7 +175,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
                 key={factor}
                 style={{
                   background: bgHeat,
-                  border: `1.5px solid ${borderColor}`,
+                  border: `1px solid ${borderColor}`,
                   borderRadius: '2px',
                   padding: '10px',
                   display: 'flex',

@@ -46,7 +46,9 @@ Monika/
 │       ├── SURFACES.md
 │       ├── SYSTEM-MAP.md
 │       ├── iterations
-│       │   └── 01
+│       │   ├── 01
+│       │   │   └── summary.md
+│       │   └── 02
 │       │       └── summary.md
 │       └── surfaces
 │       ├── 01_trading_desk_overview.png

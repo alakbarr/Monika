@@ -1,30 +1,35 @@
 # STATE — Monika UI/UX Audit Status
 
-- **Iteration**: 1
-- **Mode**: verify (Milestones M0 s.d. M5 SELESAI — TUNTAS)
+- **Iteration**: 2
+- **Mode**: verify (Milestones M6 s.d. M8 SELESAI — TUNTAS)
 - **Scope**: all (44 surfaces terpetakan di SURFACES.md)
 - **Date**: 2026-10-07
 - **Coverage**: 100% (44/44 surfaces teridentifikasi dan dievaluasi berbukti empiris di COVERAGE.md)
-- **Gates Status (Final Verification)**:
-  - G1 Token Integrity: PASS (0 forbidden effects, 0 modern color-mix/cyan, raw hex terisolasi di canvas/xterm)
+- **Gates Status (Final Verification Iterasi 2)**:
+  - G1 Token Integrity & Border Scan: PASS (0 forbidden effects, 0 raw hex leak, 0 border non-integer 1.5px tersisa)
   - G2 Contrast Check: PASS (22/22 pasangan kontras WCAG 2.2 AA PASS, 0 failures)
-  - G3 Type Floor: PASS (0 font <11px, seluruh 124 lokasi telah dimigrasi ke standar operasional)
+  - G3 Type Floor: PASS (0 font <11px, 0 pelanggaran)
   - G4 Target Size / Affordance: PASS (0 dead controls tersisa)
-  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.74s)
+  - Frontend Build: PASS (`tsc -b && vite build` dalam 10.01s)
   - Frontend Lint: PASS (`oxlint` 0 warnings, 0 errors pada 82 files)
   - CLI & TUI Suite: PASS (`pytest trading-agent/tests/cli -v`, 64/64 passed)
   - Dynamic Unit Tests: PASS (`pytest trading-agent/tests -v`, 3564 passed, 0 failed)
   - Static Linter: PASS (`ruff check .`, 0 errors, 0 warnings)
   - Static Type Analysis: PASS (`npx pyright trading-agent`, 0 errors, 0 warnings, 0 informations)
 - **Findings Summary**:
-  - S0: 0 | S1: 6 | S2: 11 | S3: 1 (Total: 18)
-  - Status: OPEN 0 · PLANNED 0 · IN-PROGRESS 0 · FIXED 0 · VERIFIED 18 · REGRESSED 0
-  - Seluruh 18 temuan telah VERIFIED (UX-001 s.d. UX-018)
+  - S0: 0 | S1: 10 | S2: 14 | S3: 1 (Total: 25)
+  - Status: OPEN 0 · PLANNED 0 · IN-PROGRESS 0 · FIXED 0 · VERIFIED 25 · REGRESSED 0
+  - Seluruh 25 temuan (UX-001 s.d. UX-025) kini berstatus VERIFIED.
 - **Decisions Locked (/grill-me)**:
   - D-01: Kontrol Titlebar [ _ ] [ □ ] [ × ] → Opsi A (Fungsional penuh atau hapus) [VERIFIED]
   - D-02: Kebijakan Zona Waktu → Opsi A (UTC Institusional seragam) [VERIFIED]
   - D-03: Deduplikasi Sinyal → Opsi A (Agregasi '×N' + grup dithered expired) [VERIFIED]
   - D-04: Penempatan Kill Switch → Opsi A (Tepi kanan Header taskbar Fitts' edge) [VERIFIED]
-- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5). Seluruh milestone tuntas 100%.
-- **NEXT ACTION**: Audit UI/UX Iterasi 1 SELESAI & TUNTAS. Sistem siap beroperasi dengan standar visual dan finansial retro vintage OS 1990-an tanpa tech debt.
-- **Handoff Notes**: Seluruh 18 temuan audit UI/UX telah diimplementasikan secara elegan dan diverifikasi menyeluruh dengan bukti empiris. Fondasi token, safety fortress, ledger alignment, disclosure payload, signal queue deduplication, pause/resume streaming, keyboard navigation + inverted selection, dan penyelarasan tema TUI retro obsidian teruji 100% green di seluruh level lint, type check, test, dan build.
+  - D-05: L0 Mode Pill Header → Opsi B (Pill ringkas [ PAPER ] / [ LIVE ] tanpa garis hazard frame) [VERIFIED]
+  - D-06: Hierarki Tipografi Cockpit → Opsi A (Net P&L 28px Display Numeral + well terpisah) [VERIFIED]
+  - D-07: Alokasi Empty Ledger → Opsi A (Compact sunken ribbon 44px saat 0 posisi) [VERIFIED]
+  - D-08: TUI 80x24 Layout & F-Keys → Opsi A (Auto-stacked <100 cols + bottom FunctionKeyBar) [VERIFIED]
+- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M8). Seluruh milestone tuntas 100%.
+- **NEXT ACTION**: Audit UI/UX Iterasi 2 SELESAI & TUNTAS. Coverage 100%, 0 temuan terbuka (0 S0/S1/S2/S3 open), seluruh gerbang kualitas hijau dua kali berturut-turut. Sistem stabil dan konvergen.
+- **Handoff Notes**: Seluruh 25 temuan audit UI/UX telah diimplementasikan dan diverifikasi menyeluruh. 112 border non-integer 1.5px dibersihkan ke standar integer retro 1px/2px di 32 file. Net Daily P&L dinaikkan ke Display Numeral 28px L1 hero. Mode Pill [ PAPER ] / [ LIVE ] aktif di header. Empty ledger positions table beralih ke 44px compact ribbon saat 0 exposure. Activity feed di-cap pada 200 circular buffer. TUI 80x24 auto-stacking dan Norton-style F-key bar aktif. Seluruh test pass 100% green.
+

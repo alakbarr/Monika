@@ -279,6 +279,20 @@ Tab.-active {{
     padding: 0;
 }}
 
+#main_panels.stacked-panels {{
+    layout: vertical;
+}}
+
+#main_panels.stacked-panels #positions_container {{
+    width: 100%;
+    height: 50%;
+}}
+
+#main_panels.stacked-panels #activity_container {{
+    width: 100%;
+    height: 50%;
+}}
+
 #positions_container {{
     width: 55%;
     height: 100%;

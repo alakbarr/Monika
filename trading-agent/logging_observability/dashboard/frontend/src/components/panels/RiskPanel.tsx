@@ -177,7 +177,7 @@ export const RiskPanel: React.FC = () => {
           style={{
             padding: '10px 14px',
             background: 'var(--color-paper)',
-            border: '1.5px solid var(--color-win-yellow)',
+            border: '2px solid var(--color-win-yellow)',
             borderRadius: 'var(--radius-sm)',
             fontSize: 'var(--text-xs)',
             color: 'var(--color-ink)',
@@ -358,7 +358,7 @@ export const RiskPanel: React.FC = () => {
               </div>
               <div
                 style={{
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '2px',
                   background: 'var(--color-paper)',
                   padding: '10px 12px',

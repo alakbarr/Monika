@@ -63,7 +63,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 fontSize: '11px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
-                border: '1.5px solid var(--color-brass)',
+                border: '1px solid var(--color-brass)',
                 background: 'var(--color-paper)',
                 color: 'var(--color-brass)',
                 fontFamily: 'var(--font-precision)',
@@ -88,7 +88,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           onClick={onClose}
           style={{
             background: 'var(--color-paper)',
-            border: '1.5px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             color: 'var(--color-ink)',
             cursor: 'pointer',
             padding: 4,
@@ -127,7 +127,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '10px 12px',
               background: 'var(--color-paper)',
               borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
             }}
           >
             <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</span>
@@ -157,7 +157,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '10px 12px',
               background: 'var(--color-paper)',
               borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
             }}
           >
             <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Duration</span>
@@ -180,7 +180,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '10px 12px',
               background: 'var(--color-paper)',
               borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
             }}
           >
             <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
@@ -221,7 +221,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '10px 12px',
               background: 'var(--color-paper)',
               borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
             }}
           >
             <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Est. Cost</span>
@@ -247,7 +247,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '12px 14px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--color-loss-bg)',
-              border: '1.5px solid var(--color-ledger-red)',
+              border: '2px solid var(--color-ledger-red)',
               color: 'var(--color-ledger-red)',
               fontSize: 'var(--text-caption)',
               display: 'flex',
@@ -285,7 +285,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               padding: '12px',
               background: 'var(--color-paper)',
               borderRadius: 'var(--radius-sm)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               fontSize: 'var(--text-body-sm)',
               color: 'var(--color-ink)',
               fontFamily: 'var(--font-precision)',
@@ -326,7 +326,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 alignItems: 'center',
                 gap: '4px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 padding: '2px 8px',
                 color: copied ? 'var(--color-ledger-green)' : 'var(--color-ink)',
@@ -344,7 +344,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           <div
             style={{
               background: 'var(--color-paper)',
-              border: '1.5px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-sm)',
               padding: '12px',
               maxHeight: '220px',
@@ -384,11 +384,11 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
-              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)' }}>
+              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)' }}>
                 <span style={{ color: 'var(--color-ink-soft)' }}>Spans: </span>
                 <strong style={{ color: 'var(--color-ink)' }}>{cycleTrace.spans?.length ?? (cycleTrace.summary?.span_count ?? '—')}</strong>
               </div>
-              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)' }}>
+              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)' }}>
                 <span style={{ color: 'var(--color-ink-soft)' }}>Root: </span>
                 <strong style={{ color: 'var(--color-ink)' }}>{cycleTrace.summary?.root_name ?? 'Workflow'}</strong>
               </div>
@@ -405,7 +405,7 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
                 CYCLE TOKEN ATTRIBUTION
               </span>
             </div>
-            <div style={{ background: 'var(--color-paper)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-rule)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
+            <div style={{ background: 'var(--color-paper)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
               {cycleTokens.total_cost_usd != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ color: 'var(--color-ink-soft)' }}>Cycle Cost:</span>

@@ -56,7 +56,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
       style={{
         margin: '12px 0',
         borderRadius: 'var(--radius-sm)',
-        border: '1.5px solid var(--color-rule)',
+        border: '1px solid var(--color-rule)',
         background: 'var(--color-paper-dark)',
         overflow: 'hidden',
         boxShadow: '1px 1px 0 var(--color-rule)',
@@ -155,7 +155,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 marginTop: '16px',
                 marginBottom: '8px',
                 paddingBottom: '4px',
-                borderBottom: '1.5px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 color: 'var(--color-ink)',
                 letterSpacing: '0.02em',
               }}
@@ -268,16 +268,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               style={{
                 overflowX: 'auto',
                 margin: '12px 0',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
-                boxShadow: '1.5px 1.5px 0 var(--color-rule)',
+                boxShadow: '1px 1px 0 var(--color-rule)',
               }}
             >
               <table
                 style={{
                   width: '100%',
                   borderCollapse: 'collapse',
-                  fontSize: '11.5px',
+                  fontSize: '12px',
                   fontFamily: 'var(--font-precision)',
                   textAlign: 'left',
                 }}
@@ -290,7 +290,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             <thead
               style={{
                 background: 'var(--color-paper-dark)',
-                borderBottom: '1.5px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 color: 'var(--color-ink)',
                 fontWeight: 800,
               }}
@@ -351,7 +351,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             <hr
               style={{
                 border: 'none',
-                borderTop: '1.5px solid var(--color-rule)',
+                borderTop: '1px solid var(--color-rule)',
                 margin: '14px 0',
               }}
             />

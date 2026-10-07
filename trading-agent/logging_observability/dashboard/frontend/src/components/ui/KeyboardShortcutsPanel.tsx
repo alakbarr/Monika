@@ -99,7 +99,7 @@ export const KeyboardShortcutsPanel: React.FC<KeyboardShortcutsPanelProps> = ({ 
                 justifyContent: 'space-between',
                 padding: '8px 12px',
                 background: 'var(--color-paper)',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: 'var(--text-body-sm)',
               }}
@@ -111,7 +111,7 @@ export const KeyboardShortcutsPanel: React.FC<KeyboardShortcutsPanelProps> = ({ 
                   fontWeight: 'var(--weight-bold)',
                   padding: '2px 8px',
                   background: 'var(--color-paper-raised)',
-                  border: '1.5px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '3px',
                   boxShadow: '1px 1px 0 var(--color-rule)',
                   color: 'var(--color-ink)',

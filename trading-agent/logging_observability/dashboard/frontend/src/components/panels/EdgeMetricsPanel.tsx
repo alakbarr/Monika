@@ -114,7 +114,7 @@ export const EdgeMetricsPanel: React.FC = () => {
                 letterSpacing: '0.08em', 
                 marginBottom: '16px',
                 alignSelf: 'flex-start',
-                border: '1.5px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 fontFamily: 'var(--font-precision)'
               }}>
                 [ WINDOW: {period} ]
