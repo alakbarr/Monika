@@ -4608,7 +4608,7 @@ This document provides an exhaustive structural index of all directories, files,
 ######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/theme`
 
 **File:** `tokens.ts`
-  - **Description**: Type-safe design tokens dictionary exporting canonical color variables, high-contrast semantic text tokens (`--color-text-warn`, `--color-text-info`, `--color-text-accent`, `--color-text-profit`, `--color-text-loss` guaranteed WCAG 2.1 AA >= 4.5:1), font stacks, typography scale, radii, and hard drop shadows for the Monika vintage workstation theme.
+  - **Description**: Type-safe design tokens dictionary exporting canonical color variables, calibrated high-contrast semantic text and border tokens (`--color-edge`, `--color-on-win-*`, `--color-text-warn`, `--color-text-info`, `--color-text-accent`, `--color-text-profit`, `--color-text-loss` guaranteed WCAG 2.2 AA >= 4.5:1), font stacks, typography scale (with 11px floor), radii, and hard drop shadows for the Monika vintage workstation theme.
 
 ######## Folder: `trading-agent/logging_observability/dashboard/frontend/src/types`
 

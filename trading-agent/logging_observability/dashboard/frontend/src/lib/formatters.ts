@@ -1,4 +1,5 @@
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { useDashboardStore } from '../store/dashboardStore';
 
 export const fmt = {
   // Currency
@@ -9,13 +10,16 @@ export const fmt = {
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(val);
-    return showSign && val > 0 ? `+${formatted}` : formatted;
+    }).format(Math.abs(val));
+    if (Math.abs(val) < 0.005) return '$0.00';
+    if (val < 0) return `−${formatted}`;
+    return showSign ? `+${formatted}` : formatted;
   },
 
   // Percentage
   pct: (val: number | null | undefined, showSign = false, decimals = 2) => {
     if (val === null || val === undefined) return '—';
+    if (Math.abs(val) < 0.005) return `${(0).toFixed(decimals)}%`;
     const sign = showSign && val > 0 ? '+' : '';
     return `${sign}${val.toFixed(decimals)}%`;
   },
@@ -43,13 +47,17 @@ export const fmt = {
     return `${val.toFixed(2)}L`;
   },
 
-  // Date/time
+  // Date/time with dynamic UTC / LOCAL selection
   time: (iso: string | null | undefined) => {
     if (!iso) return '—';
     try {
       const d = parseISO(iso);
       if (isNaN(d.getTime())) return '—';
-      return format(d, 'HH:mm:ss');
+      const tz = useDashboardStore.getState().timeZoneDisplay;
+      if (tz === 'LOCAL') {
+        return `${format(d, 'HH:mm:ss')} LOC`;
+      }
+      return `${d.toISOString().slice(11, 19)} UTC`;
     } catch {
       return '—';
     }
@@ -60,7 +68,15 @@ export const fmt = {
     try {
       const d = parseISO(iso);
       if (isNaN(d.getTime())) return '—';
-      return format(d, 'dd MMM HH:mm');
+      const tz = useDashboardStore.getState().timeZoneDisplay;
+      if (tz === 'LOCAL') {
+        return `${format(d, 'dd MMM HH:mm')} LOC`;
+      }
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const mon = months[d.getUTCMonth()];
+      const timeStr = d.toISOString().slice(11, 16);
+      return `${day} ${mon} ${timeStr} UTC`;
     } catch {
       return '—';
     }

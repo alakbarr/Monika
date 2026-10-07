@@ -34,6 +34,8 @@ export interface Overview {
   vix_date: string | null;
   last_analysis_at: string | null;
   timestamp: string;
+  is_live?: boolean;
+  is_paper?: boolean;
 }
 
 export interface Position {

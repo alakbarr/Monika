@@ -34,9 +34,11 @@ interface DashboardState {
   wsConnected: boolean;
   userRole: import('../types/api').UserRole | null;
   theme: 'light' | 'dark';
+  timeZoneDisplay: 'UTC' | 'LOCAL';
 
   // Actions
   setTheme: (theme: 'light' | 'dark') => void;
+  setTimeZoneDisplay: (tz: 'UTC' | 'LOCAL') => void;
   fetchAll: () => Promise<void>;
   fetchQuick: () => Promise<void>; // fast-refresh subset
   fetchUserRole: () => Promise<void>;
@@ -71,11 +73,19 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   wsConnected: false,
   userRole: null,
   theme: (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('theme') as 'light' | 'dark' || localStorage.getItem('monika_theme') as 'light' | 'dark')) || 'light',
+  timeZoneDisplay: (typeof window !== 'undefined' && (localStorage.getItem('monika_timezone') as 'UTC' | 'LOCAL')) || 'UTC',
 
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('monika_theme', theme);
     set({ theme });
+  },
+
+  setTimeZoneDisplay: (timeZoneDisplay) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('monika_timezone', timeZoneDisplay);
+    }
+    set({ timeZoneDisplay });
   },
 
   fetchUserRole: async () => {
