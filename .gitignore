@@ -102,6 +102,7 @@ scripts/*
 !scripts/run_tests.sh
 !scripts/update_index_toc.py
 !scripts/generate_model_quadrant.py
+!scripts/ux_audit_baseline_scan.py
 trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md

@@ -1,0 +1,26 @@
+# STATE — Monika UI/UX Audit Status
+
+- **Iteration**: 1
+- **Mode**: audit (SELESAI)
+- **Scope**: all (44 surfaces terpetakan di SURFACES.md)
+- **Date**: 2026-10-07
+- **Coverage**: 100% (44/44 surfaces teridentifikasi dan dievaluasi berbukti empiris di COVERAGE.md)
+- **Gates Status (Baseline)**:
+  - G1 Token Integrity: FAIL (225 raw hex, kebocoran modern color-mix & cyan)
+  - G2 Contrast Check: FAIL (6 pasangan kontras WCAG 2.2 AA <4.5:1)
+  - G3 Type Floor: FAIL (124 kemunculan font <11px)
+  - G4 Target Size / Affordance: FAIL (6 tombol kontrol jendela titlebar mati)
+  - CLI & TUI Suite: 64/64 PASS
+  - Frontend Build: PASS (`tsc -b && vite build`)
+  - Frontend Linter: FAIL (1 error di `DecisionDossierModal.tsx:141` conditional hook)
+- **Findings Summary**:
+  - S0: 0 | S1: 6 | S2: 11 | S3: 1 (Total: 18)
+  - Status: OPEN 18 · PLANNED 0 · IN-PROGRESS 0 · FIXED 0 · VERIFIED 0 · REGRESSED 0
+- **Decisions Locked (/grill-me)**:
+  - D-01: Kontrol Titlebar [ _ ] [ □ ] [ × ] → Opsi A (Fungsional penuh atau hapus)
+  - D-02: Kebijakan Zona Waktu → Opsi A (UTC Institusional seragam)
+  - D-03: Deduplikasi Sinyal → Opsi A (Agregasi '×N' + grup dithered expired)
+  - D-04: Penempatan Kill Switch → Opsi A (Tepi kanan Header taskbar Fitts' edge)
+- **Rencana Kerja**: Tersusun lengkap di `PLAN.md` (Milestones M0 s.d. M5).
+- **NEXT ACTION**: Jalankan iterasi berikutnya dengan `MODE: implement · BUDGET: 1 milestone` untuk mengeksekusi Milestone 0 (M0: Fondasi & Token Integrity) atau `MODE: full`.
+- **Handoff Notes**: Seluruh direktori `docs/ux-audit/` terisi lengkap dan siap dilanjutkan oleh agent baru tanpa kehilangan konteks.
