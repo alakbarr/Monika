@@ -87,9 +87,12 @@ Monika/
 ├── pytest.ini
 ├── scripts
 │   ├── build_curated_benchmark_fixtures.py
+│   ├── capture_dashboard_screenshots.js
+│   ├── capture_tui_screenshots.py
 │   ├── check_all_models.py
 │   ├── check_env_keys.py
 │   ├── check_incomplete.py
+│   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
 │   ├── extract_production_fixtures.py
 │   ├── find_extra_models.py
