@@ -12,10 +12,16 @@ export const CockpitBar: React.FC = () => {
   const { overview, paperStats, loading } = useDashboardStore();
 
   const dailyPnl = overview?.daily_pnl ?? 0;
-  const isProfit = dailyPnl >= 0;
-  const pnlSign = isProfit ? '+' : '';
-  const winRate = paperStats?.win_rate_pct ?? 0;
+  const isZero = Math.abs(dailyPnl) < 0.005;
+  const isProfit = !isZero && dailyPnl > 0;
+  const badgeLabel = isZero ? 'FLAT' : isProfit ? 'PROFIT' : 'LOSS';
+  const badgeColor = isZero ? 'var(--color-ink-soft)' : isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)';
+  const badgeBg = isZero ? 'var(--color-paper)' : isProfit ? 'var(--color-profit-dim)' : 'var(--color-loss-dim)';
+  const pnlColor = isZero ? 'var(--color-ink)' : isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)';
+
   const totalTrades = paperStats?.total_trades ?? 0;
+  const winRate = paperStats?.win_rate_pct ?? 0;
+  const winRateDisplay = totalTrades > 0 ? `${winRate.toFixed(1)}%` : '—';
   const vix = overview?.vix ?? 16.5;
   const vixS = vixSentiment(vix);
 
@@ -31,7 +37,7 @@ export const CockpitBar: React.FC = () => {
         fontFamily: 'var(--font-precision)',
       }}
     >
-      {/* 1. Daily P&L & Drawdown Instrument */}
+      {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
       <div className="cockpit-item">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -41,43 +47,47 @@ export const CockpitBar: React.FC = () => {
             className="stamp-badge"
             style={{
               padding: '1px 6px',
-              fontSize: '10px',
-              background: isProfit ? 'var(--color-profit-dim)' : 'var(--color-loss-dim)',
-              color: isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
-              border: `1px solid ${isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)'}`,
+              fontSize: '11px',
+              fontWeight: 800,
+              background: badgeBg,
+              color: badgeColor,
+              border: `1px solid ${badgeColor}`,
             }}
           >
-            {isProfit ? 'PROFIT' : 'LOSS'}
+            {badgeLabel}
           </span>
         </div>
         <div
           className="tabular-nums"
           style={{
-            fontSize: 'var(--text-title-md)',
+            fontSize: 'var(--text-display-md)',
             fontWeight: 800,
-            color: isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
+            color: pnlColor,
             lineHeight: 1.1,
           }}
         >
-          {loading ? '...' : `${pnlSign}${fmt.usd(dailyPnl)}`}
+          {loading ? '...' : fmt.usd(dailyPnl, true)}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }} className="tabular-nums">
           Max DD: {fmt.usd(overview?.current_drawdown ?? 0)}
+          {overview?.drawdown_pct !== null && overview?.drawdown_pct !== undefined ? ` (${overview.drawdown_pct.toFixed(2)}%)` : ''}
         </div>
       </div>
 
       {/* 2. Win Rate Instrument (Segmented Pill Block Bar) */}
       <div className="cockpit-item" style={{ justifyContent: 'center' }}>
         <SegmentedProgressBar
-          value={winRate}
+          value={totalTrades > 0 ? winRate : 0}
           max={100}
           segments={10}
           variant="salmon"
           label="WIN RATE"
-          valueDisplay={`${winRate.toFixed(1)}%`}
+          valueDisplay={winRateDisplay}
         />
         <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', marginTop: '3px' }}>
-          SOP Benchmark: ≥ 55.0% ({totalTrades} Trades)
+          {totalTrades > 0
+            ? `SOP Benchmark: ≥ 55.0% (${totalTrades} Trades)`
+            : 'No closed trades recorded (—)'}
         </div>
       </div>
 

@@ -202,49 +202,95 @@ export const PositionsTable: React.FC = () => {
       title="POSITION LEDGER"
       icon={<FloppyDiskIcon size={18} />}
       variant="blue"
-      actions={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick('typewriter');
-              setOrderDrawerSymbol(open[0]?.symbol || 'EURUSD');
-              setIsOrderDrawerOpen(true);
-            }}
-            style={{
-              padding: '3px 10px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-precision)',
-              fontWeight: 800,
-              background: 'var(--color-ledger-green)',
-              color: '#FFFFFF',
-              border: '1.5px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-            title="Create and execute a new manual market or limit trade order"
-          >
-            ⚡ NEW ORDER
-          </button>
+      toolbar={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+          {/* Left: View & Unit Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Active vs Historical */}
+            <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+              <button
+                type="button"
+                onClick={() => setShowClosed(false)}
+                style={{
+                  padding: '3px 10px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: !showClosed ? 700 : 500,
+                  background: !showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                  color: !showClosed ? '#1C1917' : 'var(--color-ink-soft)',
+                  border: 'none',
+                  borderRight: '1.5px solid var(--color-rule)',
+                  cursor: 'pointer',
+                }}
+              >
+                ACTIVE
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClosed(true)}
+                style={{
+                  padding: '3px 10px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: showClosed ? 700 : 500,
+                  background: showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                  color: showClosed ? '#1C1917' : 'var(--color-ink-soft)',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                HISTORICAL
+              </button>
+            </div>
 
-          {open.length > 0 && (
+            {/* P&L Unit Selector */}
+            <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
+              {(['usd', 'pips', 'r'] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => {
+                    sounds.playClick('toggle');
+                    setPnlUnit(u);
+                  }}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-precision)',
+                    fontWeight: pnlUnit === u ? 700 : 500,
+                    background: pnlUnit === u ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
+                    color: pnlUnit === u ? '#1C1917' : 'var(--color-ink-soft)',
+                    border: 'none',
+                    borderRight: u !== 'r' ? '1.5px solid var(--color-rule)' : 'none',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {u === 'usd' ? '$ USD' : u.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <Badge variant={open.length > 0 ? 'active' : 'neutral'}>
+              {open.length} OPEN
+            </Badge>
+          </div>
+
+          {/* Right: Operational Action Triggers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
-              disabled={isBatchClosing}
               onClick={() => {
-                sounds.playClick('toggle');
-                setBatchCloseConfirmOpen(true);
+                sounds.playClick('typewriter');
+                setOrderDrawerSymbol(open[0]?.symbol || 'EURUSD');
+                setIsOrderDrawerOpen(true);
               }}
               style={{
                 padding: '3px 10px',
                 fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 800,
-                background: 'var(--color-ledger-red)',
+                background: 'var(--color-ledger-green)',
                 color: '#FFFFFF',
                 border: '1.5px solid var(--color-rule)',
                 borderRadius: 'var(--radius-sm)',
@@ -254,103 +300,63 @@ export const PositionsTable: React.FC = () => {
                 alignItems: 'center',
                 gap: '4px',
               }}
-              title="Liquidate all open positions across all instruments immediately"
+              title="Create and execute a new manual market or limit trade order"
             >
-              {isBatchClosing ? 'CLOSING...' : '🚨 CLOSE ALL'}
+              ⚡ NEW ORDER
             </button>
-          )}
 
-          <Badge variant={open.length > 0 ? 'active' : 'neutral'}>
-            {open.length} POSITIONS
-          </Badge>
-
-          {/* P&L Unit Selector */}
-          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
-            {(['usd', 'pips', 'r'] as const).map((u) => (
+            {/* Bulk Break-Even */}
+            {open.length > 0 && (
               <button
-                key={u}
                 type="button"
-                onClick={() => {
-                  sounds.playClick('toggle');
-                  setPnlUnit(u);
-                }}
+                disabled={isBulkBeRunning}
+                onClick={handleBulkBreakeven}
                 style={{
-                  padding: '3px 8px',
+                  padding: '3px 9px',
                   fontSize: '11px',
                   fontFamily: 'var(--font-precision)',
-                  fontWeight: pnlUnit === u ? 700 : 500,
-                  background: pnlUnit === u ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                  color: pnlUnit === u ? '#1C1917' : 'var(--color-ink-soft)',
-                  border: 'none',
-                  borderRight: u !== 'r' ? '1.5px solid var(--color-rule)' : 'none',
+                  fontWeight: 700,
+                  background: 'var(--color-paper-raised)',
+                  color: 'var(--color-ink)',
+                  border: '1.5px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxShadow: '1px 1px 0 var(--color-rule)',
                   cursor: 'pointer',
-                  textTransform: 'uppercase',
                 }}
+                title="Set Break-Even on all currently profitable positions"
               >
-                {u === 'usd' ? '$ USD' : u.toUpperCase()}
+                {isBulkBeRunning ? 'SETTING...' : '🛡️ BULK BE'}
               </button>
-            ))}
-          </div>
+            )}
 
-          {/* Bulk Break-Even */}
-          {open.length > 0 && (
-            <button
-              type="button"
-              disabled={isBulkBeRunning}
-              onClick={handleBulkBreakeven}
-              style={{
-                padding: '3px 9px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-precision)',
-                fontWeight: 700,
-                background: 'var(--color-paper-raised)',
-                color: 'var(--color-ink)',
-                border: '1.5px solid var(--color-rule)',
-                borderRadius: 'var(--radius-sm)',
-                boxShadow: '1px 1px 0 var(--color-rule)',
-                cursor: 'pointer',
-              }}
-              title="Set Break-Even on all currently profitable positions"
-            >
-              {isBulkBeRunning ? 'SETTING...' : '🛡️ BULK BE'}
-            </button>
-          )}
-
-          {/* Active vs Historical */}
-          <div style={{ display: 'inline-flex', border: '1.5px solid var(--color-rule)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', boxShadow: '1px 1px 0 var(--color-rule)' }}>
-            <button
-              type="button"
-              onClick={() => setShowClosed(false)}
-              style={{
-                padding: '3px 10px',
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-precision)',
-                fontWeight: !showClosed ? 700 : 500,
-                background: !showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: !showClosed ? '#1C1917' : 'var(--color-ink-soft)',
-                border: 'none',
-                borderRight: '1.5px solid var(--color-rule)',
-                cursor: 'pointer',
-              }}
-            >
-              ACTIVE
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowClosed(true)}
-              style={{
-                padding: '3px 10px',
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-precision)',
-                fontWeight: showClosed ? 700 : 500,
-                background: showClosed ? 'var(--color-win-yellow)' : 'var(--color-paper-raised)',
-                color: showClosed ? '#1C1917' : 'var(--color-ink-soft)',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              HISTORICAL
-            </button>
+            {open.length > 0 && (
+              <button
+                type="button"
+                disabled={isBatchClosing}
+                onClick={() => {
+                  sounds.playClick('toggle');
+                  setBatchCloseConfirmOpen(true);
+                }}
+                style={{
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: 800,
+                  background: 'var(--color-ledger-red)',
+                  color: '#FFFFFF',
+                  border: '1.5px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxShadow: '1px 1px 0 var(--color-rule)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Liquidate all open positions across all instruments immediately"
+              >
+                {isBatchClosing ? 'CLOSING...' : '🚨 CLOSE ALL'}
+              </button>
+            )}
           </div>
         </div>
       }
@@ -378,9 +384,10 @@ export const PositionsTable: React.FC = () => {
         </div>
       ) : sorted.length === 0 ? (
         <EmptyState
+          compact
           title="LEDGER CLEAR"
-          message={showClosed ? "No closed historical positions in MT5." : "No active market positions in MT5."}
-          icon={<FloppyDiskIcon size={24} />}
+          message={showClosed ? "No closed historical positions in MT5." : "No active market positions in MT5 — watching target symbols."}
+          icon={<FloppyDiskIcon size={16} />}
         />
       ) : (
         <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
