@@ -44,15 +44,9 @@ export const ConfigDiffModal: React.FC<ConfigDiffModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="config-diff-title"
+      className="retro-modal-scrim"
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(4px)',
         zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         padding: '20px',
       }}
     >

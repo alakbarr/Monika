@@ -28,7 +28,8 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 
   return (
     <div 
-      title={tooltip}
+      title={tooltip || `${label ? `${label}: ` : ''}${config.labelText}`}
+      aria-label={`${label ? `${label}: ` : ''}${config.labelText}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -38,15 +39,24 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     >
       <span
         style={{
-          width: dotSize,
-          height: dotSize,
+          width: dotSize + 3,
+          height: dotSize + 3,
           borderRadius: '2px',
           backgroundColor: config.color,
-          display: 'inline-block',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           border: '1.5px solid var(--color-rule)',
           boxShadow: '1px 1px 0 var(--color-rule)',
+          fontSize: '9px',
+          fontWeight: 900,
+          color: status === 'connecting' || status === 'unknown' ? '#1C1917' : '#FFFFFF',
+          lineHeight: 1,
         }}
-      />
+        aria-hidden="true"
+      >
+        {status === 'connected' ? '●' : status === 'disconnected' ? '×' : status === 'connecting' ? '~' : '?'}
+      </span>
       {label && (
         <span
           style={{

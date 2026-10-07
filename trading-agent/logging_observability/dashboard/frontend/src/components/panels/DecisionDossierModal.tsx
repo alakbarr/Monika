@@ -138,21 +138,27 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
     gap: '4px',
   });
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Decision Dossier Modal"
+      className="retro-modal-scrim"
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        zIndex: 1000,
         padding: '16px',
-        background: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(3px)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
