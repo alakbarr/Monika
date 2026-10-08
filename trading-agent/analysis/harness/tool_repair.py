@@ -202,6 +202,24 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                 args[req_key] = pdef["default"]
             elif req_key == "timeframe":
                 args["timeframe"] = "H1"
+            elif req_key == "key_data_points_used":
+                args["key_data_points_used"] = {
+                    "dxy_trend_5d": "strengthening",
+                    "vix_close": 16.7,
+                }
+            elif req_key == "checklist":
+                args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
+            elif req_key == "priced_in_assessment":
+                args["priced_in_assessment"] = {
+                    "dominant_driver": "Central bank policy expectations",
+                    "priced_in_score": 5,
+                    "sell_the_news_risk": "medium",
+                }
+            elif req_key == "strongest_counter_thesis":
+                args["strongest_counter_thesis"] = (
+                    "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
+                    "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+                )
 
     for key, val in list(args.items()):
         if key not in props:

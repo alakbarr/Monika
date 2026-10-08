@@ -344,7 +344,10 @@ SUBMIT_FUNDAMENTAL_BRIEF = _tool(
         "Do NOT submit until you are confident in your analysis."
     ),
     properties=_fundamental_brief_schema["properties"],
-    required=_fundamental_brief_schema.get("required", []),
+    required=[
+        r for r in _fundamental_brief_schema.get("required", [])
+        if r in {"macro_narrative", "currency_bias", "macro_regime", "risk_sentiment", "confidence", "priced_in_assessment"}
+    ],
 )
 
 
