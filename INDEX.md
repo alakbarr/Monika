@@ -2172,7 +2172,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `db_access.py`
   - **Classes**: `BenchmarkToolExecutor`, `BenchmarkFixtureDispatcher`
-  - **Functions**: `_capturing_submit_asset_analysis`, `_capturing_submit_fundamental_brief`, `_capturing_propose_action`, `guarded_tool_executor`, `pick_asset_analysis`, `latest_brief`, `latest_digest`, `recent_news`, `resolved_reflection`, `latest_user_message`, `entry_context`
+  - **Functions**: `_capturing_submit_asset_analysis`, `_capturing_submit_fundamental_brief`, `_capturing_propose_action`, `guarded_tool_executor`, `_handle_calculate_position_size`, `_handle_optimal_intraday_levels`, `_handle_spread_snapshot`, `_handle_technical_analysis`, `_handle_institutional_data`, `_handle_update_scratchpad`, `_handle_read_scratchpad`, `_handle_scan_pattern_similarity`, `pick_asset_analysis`, `latest_brief`, `latest_digest`, `recent_news`, `resolved_reflection`, `latest_user_message`, `entry_context`
 
 **File:** `db_models.py`
   - **Classes**: `BenchmarkRun`, `BenchmarkResult`

@@ -860,7 +860,7 @@ SUBMIT_ASSET_ANALYSIS = _tool(
         "Submit your completed per-asset analysis decision. "
         "Call this ONCE per asset after you have reviewed all relevant data. "
         "IMPORTANT RULES:\n"
-        "- If decision is 'buy' or 'sell': entry_condition, stop_loss, take_profit, confluence_score, priced_in_score, invalidation_price, AND invalidation_direction ('above' or 'below') are REQUIRED. R:R must be >= 1.3.\n"
+        "- If decision is 'buy' or 'sell': calculate_position_size MUST be called first to register verified sizing evidence in the ledger. entry_condition, stop_loss, take_profit, confluence_score, priced_in_score, invalidation_price, AND invalidation_direction ('above' or 'below') are REQUIRED. R:R must be >= 1.3.\n"
         "- confluence_factors: only use exact active IDs: 'fundamental_bias', 'dxy_confirms', 'd1_trend', 'rsi_neutral', 'near_fvg', 'near_order_block', 'in_ote_zone', 'near_sr_zone', 'cot_aligned', 'vix_ok', 'liquidity_sweep_confirmed', 'session_prime', 'microstructure_ok', 'historical_pattern_consensus'.\n"
         "- If SSVP warning or macro divergence active: rationale MUST explicitly state 'I trust price action because...' or 'I trust the brief because...'.\n"
         "- If specialists disagree on direction: 'specialist_adjudication' is REQUIRED.\n"
