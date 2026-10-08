@@ -570,9 +570,10 @@ class AgentHarness:
     @staticmethod
     def get_mandatory_tool_for_stage(stage_name: str) -> Optional[str]:
         """Determine if a stage has an indispensable conclusion tool."""
-        if stage_name.startswith("per_asset_") or stage_name == "per_asset_primary":
+        s_lower = stage_name.lower()
+        if s_lower.startswith("per_asset_") or s_lower == "per_asset_primary" or "asset_analysis" in s_lower:
             return "submit_asset_analysis"
-        if stage_name == "fundamental":
+        if "fundamental" in s_lower or "stage1" in s_lower:
             return "submit_fundamental_brief"
         return None
 
@@ -1382,11 +1383,34 @@ class AgentHarness:
                         }
                 prepared_calls.append(call_item)
 
+            # Prune empty duplicate submission calls if a substantive submission call exists in the same batch
+            submission_tools = {"submit_fundamental_brief", "submit_asset_analysis"}
+            for sub_tool in submission_tools:
+                sub_calls = [c for c in prepared_calls if c["name"] == sub_tool]
+                if len(sub_calls) > 1:
+                    has_substantive = any(len(c.get("input", {})) > 1 for c in sub_calls)
+                    if has_substantive:
+                        for c in sub_calls:
+                            if len(c.get("input", {})) <= 1:
+                                c["_superseded"] = True
+
             async def _execute_single_prepared_tool(call_item: dict) -> dict:
                 nonlocal tool_calls_made, consecutive_tool_sig, repeated_tool_count
                 c_name = call_item["name"]
                 c_input = call_item["input"]
                 c_id = call_item["id"]
+
+                # Check if call was superseded by another parallel call
+                if call_item.get("_superseded"):
+                    return {
+                        "type": "tool_result",
+                        "tool_use_id": c_id,
+                        "content": json.dumps({
+                            "status": "superseded",
+                            "notice": "Duplicate/empty submission call superseded by substantive parallel submission in the same turn."
+                        }),
+                        "is_error": False,
+                    }
 
                 # Check if schema validation preflight failed
                 if call_item.get("_schema_error"):

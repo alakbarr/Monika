@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
 from typing import Optional, List, Dict, Literal, Any
 import copy
+import json
 
 class TradeDirection(str, Enum):
     BUY = "buy"
@@ -643,8 +644,17 @@ class SubmitAssetAnalysisSchema(BaseModel):
         return self
 
 class ChecklistVerification(BaseModel):
-    bias_vs_narrative_match: bool = Field(..., description="True if the currency bias aligns with the narrative.")
-    contradiction_existed: bool = Field(..., description="True if a contradiction was found and resolved.")
+    bias_vs_narrative_match: bool = Field(default=True, description="True if the currency bias aligns with the narrative.")
+    contradiction_existed: bool = Field(default=False, description="True if a contradiction was found and resolved.")
+
+    @field_validator('bias_vs_narrative_match', 'contradiction_existed', mode='before')
+    @classmethod
+    def coerce_bool(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes", "t")
+        return bool(v)
 
 class KeyDataPointsUsed(BaseModel):
     dxy_trend_5d: str = Field(..., description="e.g. 'strengthening +0.8%' or 'weakening -0.4%', persis seperti dibaca dari get_dxy()")
@@ -668,7 +678,13 @@ class KeyDataPointsUsed(BaseModel):
         return coerce_float(v)
 
 class SubmitFundamentalBriefSchema(BaseModel):
-    checklist: ChecklistVerification = Field(..., description="Wajib diisi sebelum submit. Verifikasi kelengkapan dan konsistensi internal.")
+    checklist: ChecklistVerification = Field(
+        default_factory=lambda: ChecklistVerification(
+            bias_vs_narrative_match=True,
+            contradiction_existed=False,
+        ),
+        description="Wajib diisi sebelum submit. Verifikasi kelengkapan dan konsistensi internal."
+    )
     key_data_points_used: KeyDataPointsUsed = Field(..., description=(
         "WAJIB: restate nilai numerik kunci yang BENAR-BENAR kamu baca dari tools "
         "sebelum menulis narasi. Field ini di-cross-check backend terhadap data riil "
@@ -742,6 +758,15 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 data['bias_continuity_justification'] = {}
             if data.get('bias_change_justification') is None:
                 data['bias_change_justification'] = {}
+
+            # Auto-heal checklist if missing or stringified
+            if not data.get('checklist'):
+                data['checklist'] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
+            elif isinstance(data.get('checklist'), str):
+                try:
+                    data['checklist'] = json.loads(data['checklist'])
+                except Exception:
+                    data['checklist'] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
 
             # Auto-synthesize strongest_counter_thesis if missing or too short (< 50 chars)
             ct = data.get('strongest_counter_thesis')

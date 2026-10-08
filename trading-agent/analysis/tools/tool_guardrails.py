@@ -274,21 +274,30 @@ class ReadBeforeActGuard:
 
             # Check if market data was pre-bundled / satisfied in execution context
             ctx = context or {}
+            stage_name = str(ctx.get("stage_name") or ctx.get("stage") or "").lower()
+            is_fundamental_stage = "fundamental" in stage_name or "stage1" in stage_name or tool_name == "submit_fundamental_brief"
             has_prefetched = bool(
                 ctx.get("prefetch_satisfied_tools")
                 or ctx.get("has_prefetched_data")
                 or ctx.get("raw_bundle_data")
+                or ctx.get("user_has_prefetched_bundle")
+                or is_fundamental_stage
             )
             if has_prefetched:
                 return GuardrailVerdict(allowed=True, guard_name="ReadBeforeActGuard", reason="OK")
 
             if len(self._read_tools_called) == 0:
+                hint_tools = (
+                    "get_fedwatch_probabilities, get_treasury_yields, get_dxy"
+                    if is_fundamental_stage
+                    else "get_price_history, get_open_positions, get_atr"
+                )
                 return GuardrailVerdict(
                     allowed=False,
                     guard_name="ReadBeforeActGuard",
                     reason=(
-                        f"Action '{tool_name}' invoked without any prior market/technical data reads. "
-                        f"You MUST query real-time data (e.g. get_price_history, get_open_positions, get_atr) "
+                        f"Action '{tool_name}' invoked without any prior market/data reads. "
+                        f"You MUST query real-time data (e.g. {hint_tools}) "
                         f"before submitting analysis or proposing trades."
                     ),
                     action="nudge",

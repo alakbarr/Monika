@@ -932,11 +932,24 @@ class OpenAIProvider(BaseLLMClient):
                         c_val = block.get("content") if isinstance(block, dict) else getattr(block, "content", "")
                         tid = block.get("tool_use_id") if isinstance(block, dict) else getattr(block, "tool_use_id", "call_0")
                         tname = block.get("name") if isinstance(block, dict) else getattr(block, "name", "tool")
+                        content_str = json.dumps(c_val, default=str) if not isinstance(c_val, str) else c_val
+                        if (
+                            "gemini" in self.model.lower()
+                            or "google" in self.model.lower()
+                            or getattr(self, "provider_name", "") == "google"
+                        ):
+                            try:
+                                parsed = json.loads(content_str)
+                                if not isinstance(parsed, (dict, list)):
+                                    content_str = json.dumps({"output": content_str})
+                            except Exception:
+                                content_str = json.dumps({"output": content_str})
+
                         tool_results.append({
                             "role": "tool",
                             "tool_call_id": str(tid),
                             "name": str(tname),
-                            "content": json.dumps(c_val, default=str) if not isinstance(c_val, str) else c_val
+                            "content": content_str,
                         })
                     elif b_type == "tool_use":
                         tname = block.get("name") if isinstance(block, dict) else getattr(block, "name", "tool")
@@ -1182,11 +1195,19 @@ class OpenAIProvider(BaseLLMClient):
                     res = await executor.execute(tool_name, tool_input)
                     raw_content = json.dumps(res, default=str, ensure_ascii=False)
                     pruned_content = compactor.micro_prune(raw_content, tool_name=tool_name)
+                    tool_content = pruned_content
+                    if "gemini" in self.model.lower() or "google" in self.model.lower() or getattr(self, "provider_name", "") == "google":
+                        try:
+                            parsed_check = json.loads(tool_content)
+                            if not isinstance(parsed_check, (dict, list)):
+                                tool_content = json.dumps({"output": tool_content})
+                        except Exception:
+                            tool_content = json.dumps({"output": tool_content})
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "name": tool_name,
-                        "content": pruned_content
+                        "content": tool_content
                     })
 
             await self._save_token_usage(self.model, "chat_telegram", total_input, total_output, cached_tokens=total_cached, thinking_tokens=total_thinking)
