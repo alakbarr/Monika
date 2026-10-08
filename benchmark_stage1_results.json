@@ -2149,7 +2149,7 @@
       "output_tokens": 9695,
       "thinking_tokens": 7524,
       "cached_tokens": 5888,
-      "cost_usd": 0.014768,
+      "cost_usd": 0.022152,
       "captured_payload": {
         "checklist": {
           "bias_vs_narrative_match": true,
@@ -2364,7 +2364,7 @@
       "output_tokens": 7506,
       "thinking_tokens": 3684,
       "cached_tokens": 5632,
-      "cost_usd": 0.004278,
+      "cost_usd": 0.034727,
       "captured_payload": {
         "checklist": {
           "bias_vs_narrative_match": true,
@@ -2602,7 +2602,7 @@
       "output_tokens": 6670,
       "thinking_tokens": 3005,
       "cached_tokens": 0,
-      "cost_usd": 0.014493,
+      "cost_usd": 0.008029,
       "captured_payload": {
         "checklist": {
           "bias_vs_narrative_match": true,
