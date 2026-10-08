@@ -216,6 +216,8 @@ class ToolExecutor:
         }
         actual_cache_hours = TOOL_CACHE_HOURS.get(tool_name, cache_hours)
         
+        if not self.session or self.settings.get("_benchmark_mode"):
+            return None
         # Include input in cache key to ensure we don't return wrong filtered results
         cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"
         cfg = (await self.session.execute(select(SystemConfig).where(SystemConfig.key == cache_key))).scalar_one_or_none()
@@ -232,6 +234,8 @@ class ToolExecutor:
         return None
 
     async def _save_tool_cache(self, tool_name: str, tool_input: dict, result: dict):
+        if not self.session or self.settings.get("_benchmark_mode"):
+            return
         import json
         from datetime import datetime, timezone
         cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"

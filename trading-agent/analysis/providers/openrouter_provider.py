@@ -24,6 +24,8 @@ OPENROUTER_MODEL_ALIASES = {
     # --- Anthropic ---
     "claude-fable-5": "anthropic/claude-fable-5",
     "fable-5": "anthropic/claude-fable-5",
+    "claude-opus-5.5": "anthropic/claude-opus-5.5",
+    "opus-5.5": "anthropic/claude-opus-5.5",
     "claude-opus-5": "anthropic/claude-opus-5",
     "opus-5": "anthropic/claude-opus-5",
     "claude-opus-4.8": "anthropic/claude-opus-4.8",
@@ -88,10 +90,10 @@ OPENROUTER_MODEL_ALIASES = {
     "gemini-3.0-flash-preview": "google/gemini-3.0-flash-preview",
 
     # --- Meta ---
-    "muse-spark-1.3": "meta-llama/muse-spark-1.3",
-    "meta/muse-spark-1.3": "meta-llama/muse-spark-1.3",
-    "muse-spark-1.2": "meta-llama/muse-spark-1.2",
-    "meta/muse-spark-1.2": "meta-llama/muse-spark-1.2",
+    "muse-spark-1.3": "meta/muse-spark-1.3",
+    "meta/muse-spark-1.3": "meta/muse-spark-1.3",
+    "muse-spark-1.2": "meta/muse-spark-1.2",
+    "meta/muse-spark-1.2": "meta/muse-spark-1.2",
 
     # --- MiniMax ---
     "minimax-m3": "minimax/minimax-m3",
@@ -100,8 +102,9 @@ OPENROUTER_MODEL_ALIASES = {
     "minimax/minimax-m3:free": "minimax/minimax-m3:free",
 
     # --- Moonshot ---
-    "kimi-k3": "moonshot/kimi-k3",
-    "moonshot/kimi-k3": "moonshot/kimi-k3",
+    "kimi-k3": "moonshotai/kimi-k3",
+    "moonshot/kimi-k3": "moonshotai/kimi-k3",
+    "moonshotai/kimi-k3": "moonshotai/kimi-k3",
 
     # --- OpenAI ---
     "gpt-6.1-sol": "openai/gpt-6.1-sol",
@@ -380,11 +383,12 @@ class OpenRouterProvider(OpenAIProvider):
 
     def _apply_provider_routing(self, kwargs: dict) -> None:
         """Injects OpenRouter provider routing configuration for lowest latency, session affinity, and parameter safety."""
+        require_params = bool((self.settings or {}).get("llm", {}).get("providers", {}).get("openrouter", {}).get("require_parameters", False))
         extra = kwargs.setdefault("extra_body", {})
         if isinstance(extra, dict) and "provider" not in extra:
             extra["provider"] = {
                 "sort": "latency",
-                "require_parameters": True,
+                "require_parameters": require_params,
                 "data_collection": "deny",
                 "allow_fallbacks": True,
             }
