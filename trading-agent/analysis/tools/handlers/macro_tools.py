@@ -61,6 +61,9 @@ async def _safe_execute(session: Optional[AsyncSession], stmt: Any, max_retries:
                 import asyncio
                 await asyncio.sleep(0.05)
                 continue
+            if "has no attribute 'execute'" in err_str or "not bound" in err_str or "nonetype" in err_str:
+                logger.debug(f"_safe_execute session error (non-fatal, returning None): {e}")
+                return None
             raise
 
 
@@ -414,12 +417,13 @@ async def handle_get_treasury_yields(args: dict, **ctx) -> dict:
 
     days_back = args.get("days_back", 5)
     since = clock.now() - timedelta(days=days_back)
-    rows = (await _safe_execute(
+    raw_res = await _safe_execute(
         session,
         select(TreasuryYield)
         .where(and_(TreasuryYield.date >= since, TreasuryYield.date <= clock.now()))
         .order_by(TreasuryYield.tenor, TreasuryYield.date.desc())
-    )).scalars().all()
+    )
+    rows = raw_res.scalars().all() if raw_res is not None else []
 
     by_tenor: dict[str, list] = {}
     for r in rows:
@@ -478,30 +482,33 @@ async def handle_get_bond_yield_spreads(args: dict, **ctx) -> dict:
     since = clock.now() - timedelta(days=days_back)
 
     # 1. Ambil US 10Y & 2Y Treasury
-    us_10y_rows = (await _safe_execute(
+    raw_10y = await _safe_execute(
         session,
         select(TreasuryYield)
         .where(and_(TreasuryYield.tenor == "10Y", TreasuryYield.date >= since, TreasuryYield.date <= clock.now()))
         .order_by(TreasuryYield.date.desc())
-    )).scalars().all()
+    )
+    us_10y_rows = raw_10y.scalars().all() if raw_10y is not None else []
     us_10y_by_date = {r.date.strftime("%Y-%m-%d"): r.yield_percent for r in us_10y_rows}
 
-    us_2y_rows = (await _safe_execute(
+    raw_2y = await _safe_execute(
         session,
         select(TreasuryYield)
         .where(and_(TreasuryYield.tenor == "2Y", TreasuryYield.date >= since, TreasuryYield.date <= clock.now()))
         .order_by(TreasuryYield.date.desc())
-    )).scalars().all()
+    )
+    us_2y_rows = raw_2y.scalars().all() if raw_2y is not None else []
     us_2y_by_date = {r.date.strftime("%Y-%m-%d"): r.yield_percent for r in us_2y_rows}
 
     # 2. Ambil yield internasional (10Y dan 2Y)
     intl_since = clock.now() - timedelta(days=max(days_back, 60))
-    intl_rows = (await _safe_execute(
+    raw_intl = await _safe_execute(
         session,
         select(BondYieldData)
         .where(and_(BondYieldData.date >= intl_since, BondYieldData.date <= clock.now()))
         .order_by(BondYieldData.country_tenor, BondYieldData.date.desc())
-    )).scalars().all()
+    )
+    intl_rows = raw_intl.scalars().all() if raw_intl is not None else []
 
     intl_by_country: dict[str, dict[str, float]] = {}
     for r in intl_rows:
@@ -517,13 +524,14 @@ async def handle_get_bond_yield_spreads(args: dict, **ctx) -> dict:
         for code, meta in mapping.items():
             country_yields = dict(intl_by_country.get(code, {}))
             if not country_yields:
-                latest_rows = (await _safe_execute(
+                latest_res = await _safe_execute(
                     session,
                     select(BondYieldData)
                     .where(BondYieldData.country_tenor == code)
                     .order_by(BondYieldData.date.desc())
                     .limit(5)
-                )).scalars().all()
+                )
+                latest_rows = latest_res.scalars().all() if latest_res is not None else []
                 for r in latest_rows:
                     country_yields[r.date.strftime("%Y-%m-%d")] = r.yield_percent
 
@@ -612,17 +620,21 @@ async def handle_get_interest_rates(args: dict, **ctx) -> dict:
     if not session:
         return {"error": "Database session required for interest rates"}
 
-    rows = (await session.execute(
+    raw_rates = await _safe_execute(
+        session,
         select(InterestRate)
         .where(InterestRate.effective_date <= clock.now())
         .order_by(InterestRate.bank, InterestRate.effective_date.desc())
-    )).scalars().all()
+    )
+    rows = raw_rates.scalars().all() if raw_rates is not None else []
 
     # Ambil ekspektasi suku bunga terbaru dari CentralBankRateExpectation
-    exp_rows = (await session.execute(
+    raw_exp = await _safe_execute(
+        session,
         select(CentralBankRateExpectation)
         .order_by(CentralBankRateExpectation.bank, CentralBankRateExpectation.fetched_at.desc(), CentralBankRateExpectation.id.desc())
-    )).scalars().all()
+    )
+    exp_rows = raw_exp.scalars().all() if raw_exp is not None else []
     latest_exp = {}
     for er in exp_rows:
         eb = getattr(er, "bank", "").upper()

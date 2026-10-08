@@ -113,6 +113,8 @@ MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_f
 [ ] Did I provide a clear directional bias for ALL requested pairs?
 [ ] Did I include `currency_confidence` and `invalidation_conditions` for every non-neutral bias?
     NOTE: `invalidation_conditions` MUST contain >= 40 characters AND specific numbers/price levels (e.g. "DXY D1 close < 103.50", "USDJPY > 155.00", "WTI close > 78.50 USD", "BTCUSD < 58500 USD"). Generic statements without numbers will be rejected.
+[ ] In submit_fundamental_brief, include `checklist` verification:
+    Example: checklist={"bias_vs_narrative_match": true, "contradiction_existed": false}
 [ ] Did I include `strongest_counter_thesis` (>= 50 characters) citing concrete macro data/scenarios that would invalidate my thesis? (e.g. "If Friday NFP exceeds 250k OR US 10Y yield rises above 4.35%, my USD bearish thesis is invalidated due to rapid hawkish repricing of Fed rate path.")
 [ ] Did I include `priced_in_assessment` with numerical percentiles, `sell_the_news_risk`, and `fedwatch_shift_summary`?
     Example: priced_in_assessment={"dominant_driver": "Fed 25bps cut expectations", "priced_in_score": 6, "sell_the_news_risk": "medium", "cot_positioning_percentile": 65.0, "retail_sentiment_percentile": 45.0, "fedwatch_shift_summary": "Hike odds 37.1% vs 45.0% pre-PCE (-7.9%)", "upcoming_event_context": "FOMC meeting in 7 days"}

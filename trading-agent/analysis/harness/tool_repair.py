@@ -78,16 +78,38 @@ def repair_tool_name(raw_name: str) -> str:
 
 
 def _parse_xml_parameters(text: str) -> Optional[Dict[str, Any]]:
-    """Parse XML parameter tags e.g. <parameter name="type">price_level</parameter> into a dict."""
-    if not isinstance(text, str) or "<parameter" not in text:
+    """Parse XML parameter tags e.g. <parameter name="type">price_level</parameter> or <parameter=type>price_level</parameter> into a dict."""
+    if not isinstance(text, str):
         return None
-    matches = re.findall(
-        r'<parameter\s+name=["\']([^"\']+)["\']\s*>(.*?)(?:</parameter>|(?=<parameter)|$)',
-        text,
-        re.DOTALL
+    lower_text = text.lower()
+    if "<parameter" not in lower_text and "<arg" not in lower_text:
+        return None
+
+    # Matches <parameter name="key">val</parameter>, <parameter=key>val</parameter>,
+    # <arg name="key">val</arg>, or <arg=key>val</arg>
+    pattern = re.compile(
+        r'<(?:parameter|arg)(?:\s+name=["\']?([^"\'\s>]+)["\']?|=\s*["\']?([^"\'\s>]+)["\']?)\s*>(.*?)(?:</(?:parameter|arg)>|(?=<(?:parameter|arg))|$)',
+        re.DOTALL | re.IGNORECASE
     )
+    matches = pattern.findall(text)
     if matches:
-        return {k.strip(): v.strip() for k, v in matches}
+        res: Dict[str, Any] = {}
+        for k1, k2, val in matches:
+            key = (k1 or k2).strip()
+            v_str = val.strip()
+            try:
+                parsed_v = json.loads(v_str)
+                res[key] = parsed_v
+            except Exception:
+                if v_str.lower() == "true":
+                    res[key] = True
+                elif v_str.lower() == "false":
+                    res[key] = False
+                elif v_str.lower() in ("null", "none"):
+                    res[key] = None
+                else:
+                    res[key] = v_str
+        return res
     return None
 
 
@@ -96,7 +118,7 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
     if isinstance(args, dict):
         res = dict(args)
         for k, v in list(res.items()):
-            if isinstance(v, str) and "<parameter" in v:
+            if isinstance(v, str) and ("<parameter" in v.lower() or "<arg" in v.lower()):
                 xml_parsed = _parse_xml_parameters(v)
                 if xml_parsed:
                     res[k] = xml_parsed
@@ -125,7 +147,7 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
         parsed = json.loads(args_str)
         if isinstance(parsed, dict):
             for k, v in list(parsed.items()):
-                if isinstance(v, str) and "<parameter" in v:
+                if isinstance(v, str) and ("<parameter" in v.lower() or "<arg" in v.lower()):
                     xml_p = _parse_xml_parameters(v)
                     if xml_p:
                         parsed[k] = xml_p
@@ -151,7 +173,7 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
         parsed = json.loads(cleaned)
         if isinstance(parsed, dict):
             for k, v in list(parsed.items()):
-                if isinstance(v, str) and "<parameter" in v:
+                if isinstance(v, str) and ("<parameter" in v.lower() or "<arg" in v.lower()):
                     xml_p = _parse_xml_parameters(v)
                     if xml_p:
                         parsed[k] = xml_p

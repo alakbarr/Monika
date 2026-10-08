@@ -56,5 +56,15 @@ def test_openrouter_provider_routing():
     assert "provider" in kwargs["extra_body"]
     prov_cfg = kwargs["extra_body"]["provider"]
     assert prov_cfg["sort"] == "latency"
-    assert prov_cfg["require_parameters"] is True
+    assert prov_cfg["require_parameters"] is False
     assert prov_cfg["data_collection"] == "deny"
+
+    # With explicit setting
+    prov_custom = OpenRouterProvider(
+        model="google/gemini-2.5-flash",
+        api_key="sk-or-v1-mock",
+        settings={"llm": {"providers": {"openrouter": {"require_parameters": True}}}},
+    )
+    kwargs_custom = {}
+    prov_custom._apply_provider_routing(kwargs_custom)
+    assert kwargs_custom["extra_body"]["provider"]["require_parameters"] is True

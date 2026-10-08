@@ -400,3 +400,49 @@ def test_reevaluation_trigger_and_entry_condition_xml_and_string_coercion():
     assert schema.reevaluation_trigger is not None
     assert schema.reevaluation_trigger.type == "time"
     assert schema.key_news_events_considered == ["No major news in last 6 hours. Economic calendar clear for AUD/USD."]
+
+
+def test_submit_fundamental_brief_checklist_resilience():
+    from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
+
+    base_payload = {
+        "macro_narrative": "Comprehensive US disinflation narrative with solid labor conditions.",
+        "currency_bias": {
+            "USD": "bullish", "EUR": "bearish", "GBP": "neutral",
+            "JPY": "neutral", "AUD": "neutral", "XAU": "bearish"
+        },
+        "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9},
+        "confidence": 0.85,
+        "risk_sentiment": "risk-on",
+        "macro_regime": "mixed",
+        "key_data_points_used": {
+            "dxy_trend_5d": "strengthening +0.8%",
+            "vix_close": 15.5
+        },
+        "priced_in_assessment": {
+            "dominant_driver": "Fed cut",
+            "priced_in_score": 6,
+            "sell_the_news_risk": "medium",
+            "cot_positioning_percentile": 75.0
+        },
+        "strongest_counter_thesis": "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+    }
+
+    # 1. Grok style: checklist omitted entirely
+    obj1 = SubmitFundamentalBriefSchema.model_validate(base_payload)
+    assert obj1.checklist.bias_vs_narrative_match is True
+    assert obj1.checklist.contradiction_existed is False
+
+    # 2. Stringified checklist (JSON string)
+    payload_str_chk = dict(base_payload)
+    payload_str_chk["checklist"] = '{"bias_vs_narrative_match": true, "contradiction_existed": true}'
+    obj2 = SubmitFundamentalBriefSchema.model_validate(payload_str_chk)
+    assert obj2.checklist.bias_vs_narrative_match is True
+    assert obj2.checklist.contradiction_existed is True
+
+    # 3. String booleans inside checklist dict
+    payload_str_bools = dict(base_payload)
+    payload_str_bools["checklist"] = {"bias_vs_narrative_match": "true", "contradiction_existed": "false"}
+    obj3 = SubmitFundamentalBriefSchema.model_validate(payload_str_bools)
+    assert obj3.checklist.bias_vs_narrative_match is True
+    assert obj3.checklist.contradiction_existed is False

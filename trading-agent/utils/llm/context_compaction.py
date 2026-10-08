@@ -39,6 +39,43 @@ def spill_tool_output(
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(tool_output)
 
+        # Check if original output was valid JSON
+        is_json = False
+        parsed_json = None
+        try:
+            parsed_json = json.loads(tool_output)
+            is_json = True
+        except Exception:
+            pass
+
+        if is_json:
+            # Build structured valid JSON preview payload to prevent breaking upstream LLM protobuf/JSON validators (e.g. Google Vertex/Gemini)
+            preview_data: Any = {}
+            if isinstance(parsed_json, dict):
+                for k, v in list(parsed_json.items())[:6]:
+                    if isinstance(v, list):
+                        preview_data[k] = v[:3]
+                    elif isinstance(v, dict):
+                        preview_data[k] = {sk: sv for sk, sv in list(v.items())[:3]}
+                    elif isinstance(v, str) and len(v) > 200:
+                        preview_data[k] = v[:200] + "... [truncated]"
+                    else:
+                        preview_data[k] = v
+            elif isinstance(parsed_json, list):
+                preview_data = parsed_json[:3]
+            else:
+                preview_data = str(parsed_json)[:500]
+
+            payload = {
+                "_spill_status": "truncated",
+                "tool_name": clean_name,
+                "preview": preview_data,
+                "full_output_file": filepath,
+                "total_characters": len(tool_output),
+                "notice": f"Tool output exceeded {threshold_chars} characters and was spilled to disk. Full data: {filepath}"
+            }
+            return json.dumps(payload)
+
         preview = tool_output[:1000]
         return (
             f"{preview}\n\n"
@@ -81,7 +118,7 @@ class ContextCompactionEngine:
         "price_history": 5,
         "news": 3,
         "sentiment": 3,
-        "macro": 4,
+        "macro": 8,
     }
     DEFAULT_FAMILY_QUOTA = 4
 

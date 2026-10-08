@@ -158,3 +158,27 @@ def test_coerce_timeframe_m15_to_h1():
     assert coerced["timeframe"] == "H1"
 
 
+def test_xml_parameter_repair_mimo_format():
+    """Verify repair of MiMo v2.6 Pro <parameter=key>value</parameter> format."""
+    xml_str = (
+        '<parameter=macro_narrative>US inflation cooling steadily.</parameter>\n'
+        '<parameter=checklist>{"bias_vs_narrative_match": true, "contradiction_existed": false}</parameter>\n'
+        '<parameter=confidence>0.85</parameter>\n'
+        '<parameter=risk_sentiment>risk-on</parameter>'
+    )
+    repaired = repair_tool_arguments(xml_str)
+    assert repaired["macro_narrative"] == "US inflation cooling steadily."
+    assert isinstance(repaired["checklist"], dict)
+    assert repaired["checklist"]["bias_vs_narrative_match"] is True
+    assert repaired["confidence"] == 0.85
+    assert repaired["risk_sentiment"] == "risk-on"
+
+
+def test_xml_arg_tag_repair():
+    """Verify repair of <arg name="key">value</arg> format."""
+    xml_str = '<arg name="symbol">EURUSD</arg><arg name="timeframe">H4</arg>'
+    repaired = repair_tool_arguments(xml_str)
+    assert repaired["symbol"] == "EURUSD"
+    assert repaired["timeframe"] == "H4"
+
+

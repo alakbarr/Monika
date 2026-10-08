@@ -218,19 +218,22 @@ class ToolExecutor:
         
         if not self.session or self.settings.get("_benchmark_mode"):
             return None
-        # Include input in cache key to ensure we don't return wrong filtered results
-        cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"
-        cfg = (await self.session.execute(select(SystemConfig).where(SystemConfig.key == cache_key))).scalar_one_or_none()
-        
-        if cfg and cfg.value:
-            try:
-                data = json.loads(cfg.value)
-                from data_sources.validators import is_intraday_cache_expired
-                ttl_sec = actual_cache_hours * 3600
-                if not is_intraday_cache_expired(data["timestamp"], ttl_seconds=ttl_sec, now=clock.now()):
-                    return data["result"]
-            except Exception:
-                pass
+        try:
+            # Include input in cache key to ensure we don't return wrong filtered results
+            cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"
+            cfg = (await self.session.execute(select(SystemConfig).where(SystemConfig.key == cache_key))).scalar_one_or_none()
+            
+            if cfg and cfg.value:
+                try:
+                    data = json.loads(cfg.value)
+                    from data_sources.validators import is_intraday_cache_expired
+                    ttl_sec = actual_cache_hours * 3600
+                    if not is_intraday_cache_expired(data["timestamp"], ttl_seconds=ttl_sec, now=clock.now()):
+                        return data["result"]
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug(f"Tool cache lookup failed (non-fatal): {e}")
         return None
 
     async def _save_tool_cache(self, tool_name: str, tool_input: dict, result: dict):
@@ -238,19 +241,22 @@ class ToolExecutor:
             return
         import json
         from datetime import datetime, timezone
-        cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"
-        cfg = (await self.session.execute(select(SystemConfig).where(SystemConfig.key == cache_key))).scalar_one_or_none()
-        
-        data_str = json.dumps({
-            "timestamp": clock.now().isoformat(),
-            "result": result
-        })
-        
-        if cfg:
-            cfg.value = data_str
-        else:
-            self.session.add(SystemConfig(key=cache_key, value=data_str))
-        await self.session.commit()
+        try:
+            cache_key = f"cache_tool_{tool_name}_{json.dumps(tool_input, sort_keys=True)}"
+            cfg = (await self.session.execute(select(SystemConfig).where(SystemConfig.key == cache_key))).scalar_one_or_none()
+            
+            data_str = json.dumps({
+                "timestamp": clock.now().isoformat(),
+                "result": result
+            })
+            
+            if cfg:
+                cfg.value = data_str
+            else:
+                self.session.add(SystemConfig(key=cache_key, value=data_str))
+            await self.session.commit()
+        except Exception as e:
+            logger.debug(f"Tool cache save failed (non-fatal): {e}")
 
 
     def _title_tokens(self, title: str) -> frozenset:
@@ -574,10 +580,13 @@ class ToolExecutor:
         cacheable_tools = ["get_treasury_yields", "get_bond_yield_spreads", "get_interest_rates"]
         
         if normalized_name in cacheable_tools:
-            cached_result = await self._get_cached_tool_result(normalized_name, tool_input)
-            if cached_result is not None:
-                logger.debug(f"Tool {normalized_name} returned from cache")
-                return cached_result
+            try:
+                cached_result = await self._get_cached_tool_result(normalized_name, tool_input)
+                if cached_result is not None:
+                    logger.debug(f"Tool {normalized_name} returned from cache")
+                    return cached_result
+            except Exception as ce:
+                logger.debug(f"Tool cache lookup non-fatal exception: {ce}")
 
         session_lock = getattr(self.session, "_session_lock", None) or getattr(self, "_session_lock", None)
         if session_lock is None:
@@ -653,7 +662,10 @@ class ToolExecutor:
                 result = compress_tool_payload(result)
             
             if normalized_name in cacheable_tools and isinstance(result, dict) and "error" not in result:
-                await self._save_tool_cache(normalized_name, tool_input, result)
+                try:
+                    await self._save_tool_cache(normalized_name, tool_input, result)
+                except Exception as ce:
+                    logger.debug(f"Tool cache save non-fatal exception: {ce}")
 
             # Tool Observation Condensation & Lossless Financial Structural Projection (LFSP)
             if normalized_name not in ("submit_asset_analysis", "submit_fundamental_brief") and isinstance(result, (dict, list)):
