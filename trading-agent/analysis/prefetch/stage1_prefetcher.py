@@ -1,7 +1,7 @@
 import logging
 import asyncio
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from analysis.tools.tool_executor import ToolExecutor
@@ -31,6 +31,53 @@ PREFETCH_KEY_TO_TOOL: dict[str, str] = {
     'macro_cross_report_synthesis': 'get_macro_cross_report_synthesis',
     'g10_macro_divergence': 'get_g10_macro_divergence',
 }
+
+CORE_STAGE1_PREFETCH_TOOLS: frozenset[str] = frozenset({
+    'get_economic_calendar',
+    'get_treasury_yields',
+    'get_vix',
+    'get_dxy',
+    'get_fedwatch_probabilities',
+    'get_news_digest',
+})
+
+
+def prune_stage1_tools(
+    base_tools: list[dict[str, Any]],
+    satisfied_tools: Union[set[str], frozenset[str]],
+    mandatory_conclusion_tool: str = "submit_fundamental_brief",
+) -> list[dict[str, Any]]:
+    """
+    Health-Aware Conditional Tool Pruning for Stage 1 Fundamental Analysis.
+    
+    When prefetch data has already been injected into prompt context:
+    1. If prefetch is complete (all core indicators satisfied), prunes all read
+       tools to force direct synthesis and eliminate turn exhaustion, leaving
+       only mandatory_conclusion_tool ('submit_fundamental_brief').
+    2. If any core indicator failed during prefetch (e.g. FRED API down), that specific
+       tool is preserved alongside mandatory_conclusion_tool so the agent retains
+       an operational fallback path.
+    3. If satisfied_tools is empty (prefetch failure), returns base_tools unchanged.
+    """
+    if not satisfied_tools:
+        return list(base_tools)
+
+    if CORE_STAGE1_PREFETCH_TOOLS.issubset(satisfied_tools):
+        # 100% healthy prefetch: prune all read tools, leaving only mandatory conclusion tool
+        return [
+            tool for tool in base_tools
+            if (tool.get("name") if isinstance(tool, dict) else getattr(tool, "name", "")) == mandatory_conclusion_tool
+        ]
+
+    # Partial prefetch: keep mandatory conclusion tool and any unsatisfied tools
+    pruned: list[dict[str, Any]] = []
+    for tool in base_tools:
+        name = str(tool.get("name") if isinstance(tool, dict) else getattr(tool, "name", ""))
+        if name == mandatory_conclusion_tool or name not in satisfied_tools:
+            pruned.append(tool)
+
+    return pruned
+
 
 class Stage1DataBundler:
     def __init__(self, session: AsyncSession, settings: dict):
