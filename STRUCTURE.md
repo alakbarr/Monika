@@ -86,6 +86,9 @@ Monika/
 ├── pyrightconfig.json
 ├── pytest.ini
 ├── scripts
+│   ├── benchmark_debate_openrouter.py
+│   ├── benchmark_stage1_openrouter.py
+│   ├── benchmark_stage2_openrouter.py
 │   ├── build_curated_benchmark_fixtures.py
 │   ├── capture_dashboard_screenshots.js
 │   ├── capture_tui_screenshots.py
