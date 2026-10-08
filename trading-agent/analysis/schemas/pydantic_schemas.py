@@ -847,7 +847,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     data['invalidation_conditions'] = inv
                 for ccy, bias in cb.items():
                     b_str = str(bias).lower()
-                    if b_str != 'neutral' and (ccy not in inv or len(str(inv[ccy]).strip()) < 40):
+                    if b_str != 'neutral' and (ccy not in inv or not str(inv[ccy]).strip()):
                         level_defaults = {
                             "USD": "DXY D1 close below 101.20 with unexpected dovish Fed repricing",
                             "EUR": "EURUSD D1 close above 1.1420 with ECB emergency rate hike announcement",

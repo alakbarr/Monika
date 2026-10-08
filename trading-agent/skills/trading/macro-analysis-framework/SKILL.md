@@ -21,16 +21,22 @@ Rank currency attractiveness across G10/major pairs based on policy rate differe
 
 ## MANDATORY SEQUENTIAL CHECKPOINTS
 
-### CHECKPOINT 1: Data Verification & Time-to-Live (TTL) Hierarchy
-Verify PRE-FETCHED DATA contains: news_digest, economic_calendar, dxy, treasury_yields, interest_rates, fedwatch, vix, cot_signals, surprise_summary, eurusd_momentum.
+### CHECKPOINT 1: Data Verification & Pre-Fetch Synthesis Mandate
+All core macro indicators are pre-fetched directly into your prompt under `[PRE-FETCHED DATA]`: news_digest, economic_calendar, dxy, treasury_yields, interest_rates, fedwatch, vix, cot_signals, surprise_summary, eurusd_momentum.
+
+> [!IMPORTANT]
+> **PRE-FETCH SYNTHESIS MANDATE (Zero Redundant Tool Calls)**:
+> If pre-fetched data is present in your context, DO NOT invoke redundant read tools (`get_treasury_yields`, `get_vix`, `get_dxy`, `get_economic_calendar`, etc.).
+> Immediately synthesize the pre-fetched indicators in your reasoning and call `submit_fundamental_brief()` directly.
+> Manual tool calls are STRICTLY reserved as an emergency fallback if a critical indicator is completely absent or returned an error during pre-fetch.
 
 | Data Source | Maximum Acceptable TTL | Action if Stale / Missing |
 |:---|:---|:---|
-| **CME FedWatch Probabilities** | 12 hours | Discount weight by 50%; check for breaking FOMC speaker commentary. |
-| **Sovereign Treasury Yields (10Y/2Y)** | 24 hours | Call `get_treasury_yields` manually. |
-| **Central Bank Policy Rates** | 72 hours | Check economic calendar for recent rate decisions. |
-| **CFTC COT Report** | 7 days (released Fridays) | Use latest published release; check for mid-week extreme momentum. |
-| **Equity Volatility (VIX Index)** | 4 hours | Call `get_vix` manually to verify live risk environment. |
+| **CME FedWatch Probabilities** | 12 hours | Discount weight by 50%; check for breaking FOMC speaker commentary in pre-fetch news. |
+| **Sovereign Treasury Yields (10Y/2Y)** | 24 hours | If completely absent from pre-fetch, call `get_treasury_yields`. |
+| **Central Bank Policy Rates** | 72 hours | Check economic calendar in pre-fetch for recent rate decisions. |
+| **CFTC COT Report** | 7 days (released Fridays) | Use latest published release from pre-fetch; check for mid-week extreme momentum. |
+| **Equity Volatility (VIX Index)** | 4 hours | If completely absent from pre-fetch, call `get_vix`. |
 
 *DXY Proxy Note*: DXY is daily (D1) only. Use EURUSD H4 momentum as high-fidelity intraday inverse USD strength proxy (~0.95 inverse correlation).
 

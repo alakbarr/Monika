@@ -346,7 +346,7 @@ SUBMIT_FUNDAMENTAL_BRIEF = _tool(
     properties=_fundamental_brief_schema["properties"],
     required=[
         r for r in _fundamental_brief_schema.get("required", [])
-        if r in {"macro_narrative", "currency_bias", "macro_regime", "risk_sentiment", "confidence", "priced_in_assessment"}
+        if r in {"macro_narrative", "currency_bias", "macro_regime", "risk_sentiment", "confidence", "priced_in_assessment", "strongest_counter_thesis"}
     ],
 )
 

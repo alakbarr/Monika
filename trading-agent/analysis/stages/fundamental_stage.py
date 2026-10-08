@@ -19,7 +19,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from analysis.providers.llm_factory import get_client_for_task, create_client
-from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+from analysis.prefetch.stage1_prefetcher import (
+    Stage1DataBundler,
+    CORE_STAGE1_PREFETCH_TOOLS,
+    prune_stage1_tools,
+)
 from analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC, minify_tool_definitions
 from analysis.validators.fundamental_verifier import verify_fundamental_brief
 from database.db import get_session
@@ -589,9 +593,24 @@ class FundamentalStage:
         result = None
         last_error = None
         
-        tools_to_use = minify_tool_definitions(STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS)
-        # Permanent Tool Schema Freeze: preserving 100% KV-cache hit rate across all cycles.
-        # ToolExecutor already handles prefetch cache hit checks internally without modifying schema.
+        base_tools = STAGE1_TOOLS_WEEKEND_BTC if weekend_btc_only_mode else STAGE1_TOOLS
+        is_prefetch_healthy = bool(prefetch_satisfied_tools and CORE_STAGE1_PREFETCH_TOOLS.issubset(prefetch_satisfied_tools))
+
+        if not is_prefetch_healthy and prefetch_satisfied_tools:
+            missing_core = sorted(list(CORE_STAGE1_PREFETCH_TOOLS - prefetch_satisfied_tools))
+            actual_user_message += (
+                f"\n\n[PRE-FETCH ALERT]: The following core macro indicators could not be pre-fetched: {missing_core}. "
+                f"Fallback tools remain available in your schema to fetch them if needed."
+            )
+
+        # Health-Aware Conditional Tool Pruning:
+        # When prefetch is 100% healthy, prune redundant read tools to force direct synthesis and eliminate turn exhaustion.
+        # If any core tool failed during prefetch, preserve it in the schema as an operational fallback.
+        pruned_tools = prune_stage1_tools(base_tools, prefetch_satisfied_tools)
+        tools_to_use = minify_tool_definitions(pruned_tools)
+
+        # Turn budget: strict 2 turns when prefetch is complete, 4 turns if fallback tools required.
+        stage1_max_turns = 2 if is_prefetch_healthy else 4
         
         for attempt in range(max_retries):
             try:
@@ -603,6 +622,7 @@ class FundamentalStage:
                     stage_name="fundamental",
                     extra_context=extra_context,
                     prefetch_satisfied_tools=prefetch_satisfied_tools,
+                    max_tool_turns=stage1_max_turns,
                 )
                 if result.get("success"):
                     break

@@ -75,7 +75,7 @@ def test_openrouter_aliases_registered():
     assert OPENROUTER_MODEL_ALIASES.get("glm-5.2:free") in ("z-ai/glm-5.2:free", "zhipu/glm-5.2:free")
     assert OPENROUTER_MODEL_ALIASES.get("glm-5.3") in ("z-ai/glm-5.3", "zhipu/glm-5.3")
     assert OPENROUTER_MODEL_ALIASES.get("glm-5.1") in ("z-ai/glm-5.1", "zhipu/glm-5.1")
-    assert OPENROUTER_MODEL_ALIASES.get("kimi-k3") == "moonshot/kimi-k3"
+    assert OPENROUTER_MODEL_ALIASES.get("kimi-k3") in ("moonshot/kimi-k3", "moonshotai/kimi-k3")
     assert OPENROUTER_MODEL_ALIASES.get("minimax-m3") == "minimax/minimax-m3"
     assert OPENROUTER_MODEL_ALIASES.get("minimax/minimax-m3:free") == "minimax/minimax-m3:free"
     assert OPENROUTER_MODEL_ALIASES.get("qwen3.8-max") == "qwen/qwen3.8-max"

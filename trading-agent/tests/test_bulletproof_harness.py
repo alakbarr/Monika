@@ -11,6 +11,8 @@ from analysis.schemas.pydantic_schemas import SubmitFundamentalBriefSchema
 from analysis.stages.fundamental_stage_recovery import recover_fundamental_brief_from_text
 from benchmark.db_access import BenchmarkFixtureDispatcher, guarded_tool_executor
 from analysis.tools.tool_executor import ToolExecutor
+from analysis.tools.tools_definitions import STAGE1_TOOLS
+from analysis.prefetch.stage1_prefetcher import CORE_STAGE1_PREFETCH_TOOLS, prune_stage1_tools
 
 
 def test_fundamental_brief_schema_auto_healing():
@@ -138,3 +140,47 @@ async def test_guarded_tool_executor_context():
         assert box.get("result") is not None
         assert box["result"]["tool"] == "submit_fundamental_brief"
         assert box["result"]["payload"]["macro_regime"] in ("risk_off", "mixed")
+
+
+def test_prune_stage1_tools_healthy_prefetch():
+    """Verify that 100% healthy prefetch prunes all read tools and leaves only submit_fundamental_brief."""
+    healthy_satisfied = set(CORE_STAGE1_PREFETCH_TOOLS) | {
+        "get_interest_rates",
+        "get_bond_yield_spreads",
+        "get_central_bank_expectations",
+        "get_precomputed_cot_signals",
+        "get_surprise_summary",
+        "get_price_momentum",
+        "get_funding_rate",
+        "get_market_session",
+    }
+    pruned = prune_stage1_tools(STAGE1_TOOLS, healthy_satisfied)
+    names = [t["name"] for t in pruned]
+    assert names == ["submit_fundamental_brief"]
+
+
+def test_prune_stage1_tools_partial_prefetch_failure():
+    """Verify that if a core indicator (e.g. yields) fails prefetch, it is preserved as an operational fallback."""
+    partial_satisfied = (set(CORE_STAGE1_PREFETCH_TOOLS) - {"get_treasury_yields"}) | {
+        "get_vix",
+        "get_dxy",
+        "get_news_digest",
+    }
+    pruned = prune_stage1_tools(STAGE1_TOOLS, partial_satisfied)
+    names = [t["name"] for t in pruned]
+    assert "submit_fundamental_brief" in names
+    assert "get_treasury_yields" in names
+    # Tools that were satisfied should NOT be present
+    assert "get_vix" not in names
+    assert "get_dxy" not in names
+
+
+def test_prune_stage1_tools_zero_prefetch_fallback():
+    """Verify that zero prefetch preserves all base tools untouched."""
+    pruned = prune_stage1_tools(STAGE1_TOOLS, set())
+    assert len(pruned) == len(STAGE1_TOOLS)
+    names = [t["name"] for t in pruned]
+    assert "submit_fundamental_brief" in names
+    assert "get_treasury_yields" in names
+    assert "get_vix" in names
+
