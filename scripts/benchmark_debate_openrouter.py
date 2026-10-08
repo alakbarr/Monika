@@ -83,6 +83,27 @@ MODELS_TO_BENCHMARK = [
         "thinking_level": "high",
         "max_tokens": 16384,
     },
+    {
+        "name": "deepseek-v4.1-flash",
+        "display_name": "DeepSeek v4.1 Flash (max)",
+        "model_id": "deepseek/deepseek-v4.1-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "glm-5.3",
+        "display_name": "GLM-5.3 (max)",
+        "model_id": "z-ai/glm-5.3",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "glm-5.3-flash",
+        "display_name": "GLM-5.3 Flash (max)",
+        "model_id": "z-ai/glm-5.3-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
 ]
 
 JSON_OUTPUT_PATH = REPO_ROOT / "benchmark_debate_results.json"

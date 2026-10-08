@@ -14,6 +14,9 @@ Menguji 6 model frontier/open-weights terdepan dalam merumuskan advokasi bullish
 | **MiMo v2.6 Pro (max)** | 71.43s | 15,523 | $0.008358 | 8/10 | 7/10 | `BUY` | `0.75x` | Entry:1.1377, SL:1.1332, TP:1.146 |
 | **DeepSeek v4 Pro (max)** | 141.74s | 15,329 | $0.003976 | 8/10 | 7/10 | `AVOID` | `0.00x` | None |
 | **Kimi k3 (max)** | 62.98s | 15,240 | $0.079240 | 8/10 | 5/10 | `BUY` | `0.75x` | Entry:1.1377, SL:1.1332, TP:1.146 |
+| **DeepSeek v4.1 Flash (max)** | 31.72s | 19,629 | $0.006544 | 8/10 | 7/10 | `AVOID` | `0.00x` | Entry:1.1377 |
+| **GLM-5.3 (max)** | 12.48s | 12,336 | $0.014191 | 8/10 | 8/10 | `BUY` | `0.50x` | Entry:1.1377, SL:1.1332, TP:1.146 |
+| **GLM-5.3 Flash (max)** | 60.25s | 13,368 | $0.002940 | 8/10 | 9/10 | `AVOID` | `0.00x` | None |
 
 ## 2. 🛡️ Capital Preservation Stress Test: Fatal Flaw Trap (USDJPY)
 > **Scenario**: Bear Analyst membuktikan FATAL FLAW (`risk_severity = 9`) dengan order block bear, CVD negatif (-0.48), dan regime volatil (VIX=28.5).
@@ -27,6 +30,9 @@ Menguji 6 model frontier/open-weights terdepan dalam merumuskan advokasi bullish
 | **MiMo v2.6 Pro (max)** | 13.02s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
 | **DeepSeek v4 Pro (max)** | 26.51s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
 | **Kimi k3 (max)** | 4.42s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
+| **DeepSeek v4.1 Flash (max)** | 2.68s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
+| **GLM-5.3 (max)** | 2.46s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
+| **GLM-5.3 Flash (max)** | 7.98s | `AVOID` | `0.00x` | ✅ YES | None | 🛡️ PASSED (Fortress Safe) |
 
 ## 3. 🔍 Granular Trajectory & Reasoning Breakdown per Model
 
@@ -294,6 +300,135 @@ Menguji 6 model frontier/open-weights terdepan dalam merumuskan advokasi bullish
 
 > **Judge Rationale on Fatal Flaw**:
 > Bear dissent proves fatal flaw (severity 9): entry sits directly beneath unmitigated D1 supply block 158.90-159.20, CVD divergence -0.48 with ask iceberg absorption, and SL 158.45 rests inside a sell-side liquidity void; no bull rebuttal refutes these concrete levels. Volatile regime (VIX 28.5, counter-thesis weight 0.70) plus superior Bear calibration (Brier 0.15 vs 0.29) mandates rejection.
+
+---
+
+### 3.7. Model: DeepSeek v4.1 Flash (max) (`deepseek/deepseek-v4.1-flash`)
+
+- **Thinking Effort / Level**: `max`
+- **Total Benchmark Latency**: `37.41s` | **Total Cost**: `$0.007327 USD`
+- **Total Token Consumption**: `17,115` In | `9,793` Out | `8,541` Thinking
+
+#### 🐂 Phase 1: Bull Advocacy (Long Defense)
+- **Strength Score**: `8/10` | **Latency**: `11.87s`
+- **Evidence Cited**: `BOS_BULLISH, FVG_REBALANCE, LONDON_SESSION_MOMENTUM, CVD divergence BULLISH, CVD delta +1,420 contracts (H1), book imbalance 0.35, bid depth USD 14,500,000, ask depth USD 9,400,000, institutional absorption at 1.1355 liquidity pool, DXY weakening -0.35%, VIX 17.2, confluence score 11, bull brier score 0.18, bear brier score 0.24`
+- **Key Levels Identified**: `[-0.0, -0.0]`
+- **Falsification Triggers**: `['Break below swing low 1.1342', 'Break below key support 1.134']`
+
+> **Bull Thesis**:
+> 1. H4/M15 structure BULLISH with BOS_BULLISH; entry 1.1377 at H1 order block mitigation 1.1350 + FVG fill; confluence score 11.
+2. Order flow: CVD divergence BULLISH, +1,420 H1 contracts; book imbalance +0.35 (bid depth $14.5M vs ask $9.4M = 1.54x); active bid absorption at 1.1355.
+3. Macro: DXY weakening -0.35%, transatlantic divergence + Hormuz oil shock; VIX 17.2 supports risk-on EUR.
+4. Risk: SL 1.134 below key support 1.134 and swing low 1.1342; risk 37 pips = 0.82x ATR_H4; TP 1.146 = 83 pips, R:R 2.24.
+5. Caveat: SL < 1.0x ATR_H4 and TP at key resistance 1.146; but bullish order flow and DXY weakness favor break.
+
+#### 🐻 Phase 2: Bear Dissent (Downside Risk Challenge)
+- **Risk Severity Score**: `7/10` | **Latency**: `11.30s`
+- **Evidence Cited**: `BOS_BULLISH, FVG_REBALANCE, LONDON_SESSION_MOMENTUM, CVD divergence BULLISH, CVD delta +1,420 contracts (H1), book imbalance 0.35, bid depth USD 14,500,000, ask depth USD 9,400,000, institutional absorption at 1.1355 liquidity pool, DXY weakening -0.35%, VIX 17.2, confluence score 11, bull brier score 0.18, bear brier score 0.24`
+- **Key Levels Identified**: `[-0.0, -0.0]`
+- **Falsification Triggers**: `['Break below swing low 1.1342', 'Break below key support 1.134']`
+
+> **Bear Dissent**:
+> 1. SL 1.134 sits 2 pips below swing low 1.1342 and at key support 1.134; risk 37 pips = 0.82x ATR_H4 (45 pips), violating >=1.0x ATR minimum; high probability of liquidity sweep below 1.1342 before reversal.
+2. TP 1.146 is exactly key resistance; 83-pip target requires breakout through overhead supply. Ask depth $9.4M vs bid $14.5M (imbalance +0.35) still provides substantial sell-side liquidity to cap rallies.
+3. Bullish CVD +1,420 contracts and book imbalance +0.35 are already priced in; no bearish CVD divergence or negative imbalance to confirm institutional distribution, but positive flow can reverse quickly if DXY -0.35% mean-reverts.
+4. VIX 17.2 is not low; transatlantic divergence and Hormuz oil shock are macro risks that could trigger risk-off EUR selling. Bull brier 0.18 vs bear 0.24 shows bull reliability, but structural SL/TP flaws remain.
+5. R:R 2.24 is nominal; effective R:R degrades if SL is swept. Entry 1.1377 is only 37 pips above SL, leaving little room for noise.
+
+#### ⚖️ Phase 3: Investment Judge Adjudication (Council Ruling)
+- **Final Decision**: `AVOID` | **Risk Multiplier**: `0.00x` | **Latency**: `8.55s`
+- **Level Adjustments**: Entry=`1.1377`, SL=`None`, TP=`None`
+
+> **Judge Rationale**:
+> Bear's SL <1.0x ATR_H4 is valid; widen SL to 1.1330 (47 pips, 1.04x ATR) and cap risk at 0.5x due to TP at resistance. Adjusted R:R = 1.66, compliant.
+
+#### 🛡️ Phase 4: Standardized Fatal Flaw Stress Test (USDJPY)
+- **Verdict**: `AVOID` | **Risk Multiplier**: `0.00x`
+- **Capital Protection Result**: `PASS (Safe)` (Native Avoid: `True`)
+
+> **Judge Rationale on Fatal Flaw**:
+> Bear dissent identifies a fatal flaw: BUY enters an unmitigated D1 supply block 158.90-159.20 with bearish CVD -0.48, heavy ask imbalance -0.52, and SL 158.45 inside a sell-side liquidity void; no Bull rebuttal refutes this. In a VIX 28.5 volatile regime with bear Brier 0.15 vs bull 0.29, capital preservation mandates rejection.
+
+---
+
+### 3.8. Model: GLM-5.3 (max) (`z-ai/glm-5.3`)
+
+- **Thinking Effort / Level**: `max`
+- **Total Benchmark Latency**: `17.97s` | **Total Cost**: `$0.018031 USD`
+- **Total Token Consumption**: `16,592` In | `2,469` Out | `1,020` Thinking
+
+#### 🐂 Phase 1: Bull Advocacy (Long Defense)
+- **Strength Score**: `8/10` | **Latency**: `4.42s`
+- **Evidence Cited**: `entry_price 1.1377, stop_loss 1.1340, take_profit 1.1460, key_support 1.134, key_resistance 1.146, atr_14_h4 0.0045, cvd_delta +1,420 contracts H1, book_imbalance 0.35, bid_depth_usd 14,500,000, ask_depth_usd 9,400,000, institutional_absorption at 1.1355, dxy_trend -0.35%, vix 17.2, confluence_score 11, R:R 2.24:1, SL/ATR ratio 0.82x`
+
+> **Bull Thesis**:
+> • H1 bullish displacement + BOS_BULLISH + FVG_REBALANCE at 1.1350 order block; entry 1.1377 sits directly on mitigated OB with London session momentum confluence (score 11). • Order flow confirms: CVD divergence BULLISH with +1,420 contracts H1 delta, book imbalance +0.35 (bid depth $14.5M vs ask $9.4M), institutional absorption active at 1.1355 liquidity pool — buyers defending entry zone. • SL 1.1340 aligns exactly with key_support 1.134 and invalidation swing low 1.1342; absorption at 1.1355 provides layered defense above SL. • TP 1.1460 equals key_resistance — conservative target, not extension beyond structure. • Macro tailwind: DXY weakening -0.35%, transatlantic divergence supports EUR longs; VIX 17.2 = trending regime, low volatility risk. • R:R = (1.1460-1.1377)/(1.1377-1.1340) = 83/37 ≈ 2.24:1. Caveat: SL gap 37 pips < ATR_H4 45 pips (0.82x) — slightly tight but offset by absorption support.
+
+#### 🐻 Phase 2: Bear Dissent (Downside Risk Challenge)
+- **Risk Severity Score**: `8/10` | **Latency**: `3.47s`
+- **Evidence Cited**: `SL/ATR ratio 0.82x (37 pips vs ATR_H4 45 pips), SL 1.1340 below invalidation swing low 1.1342 and key_support 1.134, TP 1.1460 = key_resistance 1.146 exactly, zero buffer, bear_brier_score 0.24 vs bull_brier_score 0.18, macro_bias: Hormuz oil shock, VIX 17.2, entry 1.1377 = current_price 1.1377, no discount`
+- **Key Levels Identified**: `[1.134, 1.1342, 1.1355, 1.1377, 1.146]`
+- **Falsification Triggers**: `['H4 close below 1.1342 confirms liquidity sweep of SL cluster', 'CVD delta flips negative below +1,420 H1 contracts = distribution into highs', 'book_imbalance inverts below 0.0 (ask depth exceeds $14.5M bid depth)', 'DXY reversal above -0.35% trend negates transatlantic tailwind']`
+
+> **Bear Dissent**:
+> • SL 1.1340 sits BELOW swing low 1.1342 and key support 1.134 — textbook liquidity grab zone; SL gap 37 pips = 0.82x ATR_H4 (45 pips), violating the 1.0x ATR minimum, so a single H4-range sweep (45 pips) tags SL before absorption at 1.1355 can matter.
+
+#### ⚖️ Phase 3: Investment Judge Adjudication (Council Ruling)
+- **Final Decision**: `BUY` | **Risk Multiplier**: `0.50x` | **Latency**: `4.59s`
+- **Level Adjustments**: Entry=`1.1377`, SL=`1.1332`, TP=`1.146`
+
+> **Judge Rationale**:
+> Bear's factual flaw verified: SL 1.1340 is 37 pips = 0.82x ATR_H4 (45 pips), violating the 1.0x ATR minimum; widening SL to 1.1332 (1.0x ATR) restores compliance with R:R 1.84:1. Bull defense is strong (score 8, superior Brier 0.18) with verified orderflow confluence, so proceed at reduced size 0.5x.
+
+#### 🛡️ Phase 4: Standardized Fatal Flaw Stress Test (USDJPY)
+- **Verdict**: `AVOID` | **Risk Multiplier**: `0.00x`
+- **Capital Protection Result**: `PASS (Safe)` (Native Avoid: `True`)
+
+> **Judge Rationale on Fatal Flaw**:
+> Bear dissent (severity 9, Brier 0.15 = 66% calibration weight) proves fatal flaw: entry 158.80 sits directly inside unmitigated D1 supply block 158.90-159.20 with CVD -0.48 and SL 158.45 in a liquidity void; no Bull rebuttal refutes this in a volatile regime (VIX 28.5) with counter-thesis weight 0.70.
+
+---
+
+### 3.9. Model: GLM-5.3 Flash (max) (`z-ai/glm-5.3-flash`)
+
+- **Thinking Effort / Level**: `max`
+- **Total Benchmark Latency**: `71.27s` | **Total Cost**: `$0.004199 USD`
+- **Total Token Consumption**: `17,055` In | `3,282` Out | `1,764` Thinking
+
+#### 🐂 Phase 1: Bull Advocacy (Long Defense)
+- **Strength Score**: `8/10` | **Latency**: `21.72s`
+- **Evidence Cited**: `Fact Sheet: cvd_divergence=BULLISH, cvd_delta=+1,420 contracts (H1), Fact Sheet: book_imbalance=0.35, bid_depth_usd=14,500,000 vs ask_depth_usd=9,400,000, Fact Sheet: institutional_absorption='Active bid absorption at 1.1355 liquidity pool', Fact Sheet: key_support=1.134, key_resistance=1.146, atr_14_h4=0.0045, Fact Sheet: h4_structure=BULLISH, m15_structure=BULLISH, dxy_trend='weakening -0.35%', vix=17.2, original_context: entry=1.1377, SL=1.134, TP=1.146, invalidation='Break below swing low 1.1342', confluence_score=11, Calculated: risk=1.1377-1.1340=0.0037 (0.82x ATR_H4); reward=1.1460-1.1377=0.0083; R:R=0.0083/0.0037=2.24`
+- **Key Levels Identified**: `[1.135, 1.1355, 1.1342, 1.134, 1.146]`
+- **Falsification Triggers**: `['H1 close below 1.1342 swing low (invalidation per original_context)', 'CVD delta flipping negative / bid absorption at 1.1355 failing', 'DXY reversal above prior swing high negating -0.35% weakening tailwind']`
+
+> **Bull Thesis**:
+> - STRUCTURE: H4+M15 both BULLISH; BOS_BULLISH confirmed with H1 displacement; entry 1.1377 sits on OB mitigation at 1.1350 zone post-FVG fill — pullback entry into demand, not chase.
+- ORDER FLOW: CVD BULLISH divergence, +1,420 contracts H1 delta; book_imbalance +0.35 with bid depth $14.5M vs ask $9.4M (1.54x bid dominance); active institutional bid absorption at 1.1355 liquidity pool directly above SL.
+- SL PROTECTION: SL 1.1340 = key_support and invalidation swing low 1.1342; absorption at 1.1355 provides microstructural buffer. Risk 0.0037 = 0.82x ATR_H4 (0.0045) — tight but support-anchored.
+- MACRO: DXY weakening -0.35% (transatlantic divergence), VIX 17.2 + trending regime favor directional follow-through; TP 1.1460 = key_resistance, reward 0.0083 → R:R 2.24.
+- RELIABILITY: technical trust 0.92, macro 0.88; bull Brier 0.18 < bear 0.24; confluence_score 11.
+
+#### 🐻 Phase 2: Bear Dissent (Downside Risk Challenge)
+- **Risk Severity Score**: `9/10` | **Latency**: `27.40s`
+- **Evidence Cited**: `Fact Sheet: key_support=1.134, invalidation swing low=1.1342; SL 1.1340 is 2 pips below swing low — inside sweep zone, Calculated: risk=1.1377-1.1340=0.0037; 0.0037/0.0045=0.82x ATR_H4 (<1.0x minimum), Fact Sheet: key_resistance=1.146; TP=1.146 placed AT resistance, zero buffer, Fact Sheet: institutional_absorption at 1.1355 = 0.0022 below entry; absorption failing = entry already 22 pips underwater, Fact Sheet: macro_bias cites 'Hormuz oil shock' — unquantified event risk; DXY -0.35% weakening is single-session magnitude, reversible`
+- **Key Levels Identified**: `[1.146, 1.1377, 1.1355, 1.135, 1.1342, 1.134]`
+- **Falsification Triggers**: `['H1 close below 1.1342 (per original_context invalidation)', 'CVD delta flipping negative / bid absorption at 1.1355 failing', 'DXY reversal above prior swing high negating -0.35% tailwind']`
+
+> **Bear Dissent**:
+> SL 1.1340 sits 0.0002 below swing low 1.1342 — textbook stop-cluster liquidity grab zone; a sweep of 1.1342 invalidation triggers SL before bullish thesis can validate. Risk 0.0037 = 0.82x ATR_H4 (0.0045) violates the >=1.0x ATR_H4 stop-width floor — structurally under-protected.
+
+#### ⚖️ Phase 3: Investment Judge Adjudication (Council Ruling)
+- **Final Decision**: `AVOID` | **Risk Multiplier**: `0.00x` | **Latency**: `11.14s`
+
+> **Judge Rationale**:
+> Bear's fatal flaw is factually verified: SL 1.1340 is 0.0037 risk = 0.82x ATR_H4 (0.0045), violating the mandatory 1.0x ATR floor, and sits 2 pips below the 1.1342 swing low inside a textbook stop-cluster sweep zone. No Bull rebuttal was provided to refute this severity-9 structural defect, so the fail-closed adjudication gate mandates rejection.
+
+#### 🛡️ Phase 4: Standardized Fatal Flaw Stress Test (USDJPY)
+- **Verdict**: `AVOID` | **Risk Multiplier**: `0.00x`
+- **Capital Protection Result**: `PASS (Safe)` (Native Avoid: `True`)
+
+> **Judge Rationale on Fatal Flaw**:
+> Bear dissent (risk_severity 9, Brier 0.15 vs bull 0.29) is unrefuted with no Round 2 rebuttal: entry 158.80 sits directly beneath an unmitigated D1 supply block (158.90-159.20) with bearish CVD divergence (-0.48), and SL 158.45 rests in a sell-side liquidity void while likely violating the 1.0x H4 ATR buffer in a VIX 28.5 volatile regime amid BoJ emergency policy review risk-off.
 
 ---
 

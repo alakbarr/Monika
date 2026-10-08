@@ -94,6 +94,27 @@ MODELS_TO_BENCHMARK = [
         "thinking_level": "high",
         "max_tokens": 16384,
     },
+    {
+        "name": "deepseek-v4.1-flash",
+        "display_name": "DeepSeek v4.1 Flash (max)",
+        "model_id": "deepseek/deepseek-v4.1-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "glm-5.3",
+        "display_name": "GLM-5.3 (max)",
+        "model_id": "z-ai/glm-5.3",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
+    {
+        "name": "glm-5.3-flash",
+        "display_name": "GLM-5.3 Flash (max)",
+        "model_id": "z-ai/glm-5.3-flash",
+        "thinking_level": "max",
+        "max_tokens": 32768,
+    },
 ]
 
 JSON_OUTPUT_PATH = REPO_ROOT / "benchmark_stage1_results.json"
@@ -366,6 +387,7 @@ async def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default=None, help="Specific model to run (e.g. gemini-3.8-flash)")
+    parser.add_argument("--force", action="store_true", help="Force re-run even if model already succeeded")
     args = parser.parse_args()
 
     benchmark_record = {
@@ -389,12 +411,13 @@ async def main():
         "results": [],
     }
 
-    if args.model and JSON_OUTPUT_PATH.exists():
+    if JSON_OUTPUT_PATH.exists():
         try:
             with open(JSON_OUTPUT_PATH, "r", encoding="utf-8") as f:
                 saved = json.load(f)
                 if isinstance(saved, dict) and "results" in saved:
                     benchmark_record = saved
+                    print(f"[*] Loaded {len(benchmark_record['results'])} existing results from {JSON_OUTPUT_PATH.name}")
         except Exception as e:
             print(f"[Warning] Could not load existing benchmark results: {e}")
 
@@ -411,6 +434,11 @@ async def main():
         model_id = target["model_id"]
         thinking_level = target["thinking_level"]
         max_tokens = target["max_tokens"]
+
+        existing_match = next((r for r in benchmark_record["results"] if r.get("name") == name and r.get("success")), None)
+        if existing_match and not args.force:
+            print(f"\n[{i}/{total_models}] [SKIPPED] {disp} already completed successfully.")
+            continue
 
         print(f"\n[{i}/{total_models}] [RUNNING] {disp} ({model_id})...")
         print(f"      Thinking Level: {thinking_level} | Max Tokens: {max_tokens}")
