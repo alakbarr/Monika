@@ -318,6 +318,127 @@ def _handle_market_quote(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[st
     }
 
 
+def _handle_calculate_position_size(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper().replace("/", "")
+    entry = float(inp.get("entry_price") or 1.1250)
+    sl = float(inp.get("stop_loss") or (entry - 0.0030))
+    risk_pct = float(inp.get("risk_pct") or inp.get("risk_percent") or 1.0)
+    sl_dist = abs(entry - sl)
+    pip_size = 0.01 if "JPY" in sym or "XAU" in sym else 0.0001
+    sl_pips = sl_dist / pip_size if pip_size > 0 else 30.0
+    account_balance = 76849.91
+    risk_usd = round(account_balance * (risk_pct / 100.0), 2)
+    lot_size = round(max(0.01, risk_usd / (max(sl_pips, 1.0) * 10.0)), 2)
+    return {
+        "status": "success",
+        "symbol": sym,
+        "entry_price": entry,
+        "stop_loss": sl,
+        "risk_pct": risk_pct,
+        "risk_amount_usd": risk_usd,
+        "lot_size": lot_size,
+        "lots": lot_size,
+        "recommended_lots": lot_size,
+        "max_risk_allowed": risk_usd,
+        "invariants_checked": True,
+    }
+
+
+def _handle_optimal_intraday_levels(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper().replace("/", "")
+    direction = str(inp.get("direction", "buy")).lower()
+    entry = float(inp.get("entry_price") or 1.1250)
+    pip = 0.0001 if "JPY" not in sym else 0.01
+    sl = round(entry - (30 * pip) if direction == "buy" else entry + (30 * pip), 5)
+    tp1 = round(entry + (45 * pip) if direction == "buy" else entry - (45 * pip), 5)
+    tp2 = round(entry + (75 * pip) if direction == "buy" else entry - (75 * pip), 5)
+    return {
+        "status": "success",
+        "symbol": sym,
+        "direction": direction,
+        "entry_price": entry,
+        "stop_loss": sl,
+        "take_profit_1": tp1,
+        "take_profit_2": tp2,
+        "rr_ratio": 1.5,
+        "levels": {"sl": sl, "tp1": tp1, "tp2": tp2},
+    }
+
+
+def _handle_spread_snapshot(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper().replace("/", "")
+    return {
+        "status": "success",
+        "symbol": sym,
+        "spread_pips": 1.0,
+        "spread_points": 10,
+        "pip_size": 0.0001 if "JPY" not in sym else 0.01,
+        "bid": 1.12500,
+        "ask": 1.12510,
+        "status_quality": "normal",
+    }
+
+
+def _handle_technical_analysis(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper().replace("/", "")
+    return {
+        "status": "success",
+        "symbol": sym,
+        "H4": {
+            "trend": "BEARISH_CORRECTION",
+            "rsi": 52.4,
+            "ema_20": 1.1228,
+            "ema_50": 1.11942,
+            "ema_200": 1.11155,
+            "atr_14": 0.00563,
+            "adx_14": 28.5,
+        },
+        "H1": {
+            "trend": "PULLBACK",
+            "rsi": 48.6,
+            "ema_20": 1.1228,
+            "ema_50": 1.11942,
+            "atr_14": 0.0021,
+        },
+    }
+
+
+def _handle_institutional_data(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "symbol": str(inp.get("symbol", "EURUSD")).upper(),
+        "cot_bias": "Net Short Hedging (EUR)",
+        "commercial_sentiment": "Bearish",
+        "retail_sentiment": {"long_pct": 74.2, "short_pct": 25.8, "contrarian_signal": "BEARISH"},
+    }
+
+
+_scratchpad_cache: dict[str, Any] = {}
+
+
+def _handle_update_scratchpad(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper()
+    data = inp.get("data") or inp.get("notes") or inp
+    _scratchpad_cache[sym] = data
+    return {"status": "success", "symbol": sym, "saved": True}
+
+
+def _handle_read_scratchpad(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper()
+    return {"status": "success", "symbol": sym, "data": _scratchpad_cache.get(sym, {})}
+
+
+def _handle_scan_pattern_similarity(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "symbol": str(inp.get("symbol", "EURUSD")).upper(),
+        "top_matches": [
+            {"date": "2026-06-12", "similarity": 0.88, "pattern": "H4 Asian Liquidity Sweep & Retest", "subsequent_outcome": "BEARISH_EXPANSION +85 pips"},
+            {"date": "2026-08-04", "similarity": 0.81, "pattern": "H1 Bearish FVG Rejection", "subsequent_outcome": "BEARISH_CONTINUATION +60 pips"},
+        ],
+    }
+
+
 class BenchmarkFixtureDispatcher:
     """Deterministic in-memory fixture dispatcher for benchmark evaluations.
     Serves all Stage 1 & Stage 2 read tools directly from golden production fixtures,
@@ -382,6 +503,22 @@ class BenchmarkFixtureDispatcher:
         "get_current_price": _handle_market_quote,
         "get_price_data": _handle_market_quote,
         "get_verified_market_snapshot": _handle_market_quote,
+        "calculate_position_size": _handle_calculate_position_size,
+        "calculate_size": _handle_calculate_position_size,
+        "position_size": _handle_calculate_position_size,
+        "get_optimal_intraday_levels": _handle_optimal_intraday_levels,
+        "optimal_intraday_levels": _handle_optimal_intraday_levels,
+        "get_spread_snapshot": _handle_spread_snapshot,
+        "get_spread": _handle_spread_snapshot,
+        "spread_snapshot": _handle_spread_snapshot,
+        "get_technical_analysis": _handle_technical_analysis,
+        "technical_analysis": _handle_technical_analysis,
+        "get_institutional_data": _handle_institutional_data,
+        "institutional_data": _handle_institutional_data,
+        "update_scratchpad": _handle_update_scratchpad,
+        "read_scratchpad": _handle_read_scratchpad,
+        "scan_pattern_similarity": _handle_scan_pattern_similarity,
+        "pattern_similarity": _handle_scan_pattern_similarity,
     }
 
     @classmethod
