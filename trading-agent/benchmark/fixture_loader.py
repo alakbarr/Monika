@@ -86,6 +86,11 @@ def get_synthetic_market_snapshot() -> dict:
     return load_fixture_json("_market_snapshot_2026_09.json")
 
 
+def get_stage1_fixture_bundle_dict() -> dict:
+    """Returns the parsed dictionary of the full production Stage 1 fixture bundle."""
+    return load_fixture_json("macro/full_production_stage1_bundle.json", default={})
+
+
 def get_synthetic_stage1_bundle() -> str:
     """Realistic production-scale stage 1 data bundle formatted from Golden Snapshot or Full Production Bundle."""
     full_bundle = load_fixture_json("macro/full_production_stage1_bundle.json")
@@ -121,7 +126,7 @@ def get_synthetic_stage1_bundle() -> str:
 
     lines = [
         "=== GLOBAL MACROECONOMIC SNAPSHOT & PREFETCH BUNDLE (OCTOBER 2026 BENCHMARK GROUND TRUTH) ===",
-        "As of Timestamp: 2026-10-01T14:00:00Z",
+        "As of Timestamp: 2026-10-04T19:00:00Z",
         "",
         "--- [CENTRAL_BANK_RATES & EXPECTATIONS] ---",
         "Fed Funds Target: 3.75% - 4.00% (Hawkish hold, pause/cut trajectory delayed to 2027)",

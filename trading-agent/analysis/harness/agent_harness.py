@@ -212,9 +212,11 @@ class AgentHarness:
                 t_id = b.get("tool_call_id") or b.get("tool_use_id")
             if not t_id:
                 t_id = f"truncated_{i}"
+            t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", "tool")
             results.append({
                 "type": "tool_result",
                 "tool_use_id": str(t_id),
+                "name": str(t_name),
                 "content": json.dumps({
                     "status": "refused_truncated_response",
                     "error": (
@@ -1412,10 +1414,27 @@ class AgentHarness:
                         "is_error": False,
                     }
 
+                # Final Turn Read Tools Lockdown: force agent to submit on final turn
+                terminal_tool = "submit_fundamental_brief" if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower()) else ("submit_asset_analysis" if ("asset" in stage_name.lower() or "stage2" in stage_name.lower()) else None)
+                if turns >= effective_max_turns and terminal_tool and c_name != terminal_tool:
+                    if c_name.startswith(("get_", "read_", "search_", "inspect_", "diff_")):
+                        tool_calls_made += 1
+                        logger.warning(f"[{stage_name}][AgentHarness] Final turn read tool lockdown: blocked '{c_name}'. Forcing '{terminal_tool}'.")
+                        return {
+                            "type": "tool_result",
+                            "tool_use_id": c_id,
+                            "content": json.dumps({
+                                "status": "read_tools_disabled",
+                                "error": f"Read tools are strictly disabled on final turn {turns}/{effective_max_turns}. You MUST call '{terminal_tool}' immediately with your synthesized analysis."
+                            }),
+                            "is_error": True,
+                        }
+
                 # Check if schema validation preflight failed
                 if call_item.get("_schema_error"):
                     tool_calls_made += 1
-                    self.guardrail_controller.record_denial()
+                    if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
+                        self.guardrail_controller.record_denial()
                     return call_item["_schema_error"]
 
                 # Unified Tool Guardrails (Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Anti-Oscillation)
@@ -1432,11 +1451,13 @@ class AgentHarness:
                     tool_calls_made += 1
                     called_tools.add(c_name)
                     if guard_verdict.action in ("reject", "nudge"):
-                        self.guardrail_controller.record_denial()
+                        if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
+                            self.guardrail_controller.record_denial()
                     status_val = "already_executed" if guard_verdict.guard_name == "AntiOscillationGuard" else f"guardrail_{guard_verdict.action}"
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
+                        "name": c_name,
                         "content": json.dumps({
                             "status": status_val,
                             "guard": guard_verdict.guard_name,
@@ -1475,6 +1496,7 @@ class AgentHarness:
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
+                        "name": c_name,
                         "content": json.dumps(suppressed_result),
                     }
 
@@ -1490,6 +1512,7 @@ class AgentHarness:
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
+                        "name": c_name,
                         "content": json.dumps(suppressed_result),
                     }
 
@@ -1567,6 +1590,7 @@ class AgentHarness:
                             return {
                                 "type": "tool_result",
                                 "tool_use_id": c_id,
+                                "name": c_name,
                                 "content": json.dumps({
                                     "status": "blocked_by_parameter_integrity",
                                     "error": f"Trade proposal blocked: {integrity_err}",
@@ -1645,6 +1669,7 @@ class AgentHarness:
                 return {
                     "type": "tool_result",
                     "tool_use_id": c_id,
+                    "name": c_name,
                     "content": tool_res_content,
                 }
 
@@ -1682,6 +1707,22 @@ class AgentHarness:
 
             # Append tool observations as next turn user message
             current_messages.append({"role": "user", "content": tool_results})
+
+            # 7b. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
+            terminal_sub_tool = "submit_fundamental_brief" if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower()) else ("submit_asset_analysis" if ("asset" in stage_name.lower() or "stage2" in stage_name.lower()) else None)
+            if terminal_sub_tool and terminal_sub_tool not in called_tools and turns == effective_max_turns - 1:
+                forcing_directive = (
+                    f"\n\n[CRITICAL MANDATORY INSTRUCTION — TURN BUDGET LIMIT REACHED]:\n"
+                    f"You are on turn {turns}/{effective_max_turns}. You have gathered more than sufficient market data.\n"
+                    f"All additional read tools are now LOCKED.\n"
+                    f"On your NEXT step, you MUST invoke '{terminal_sub_tool}' with your complete synthesis.\n"
+                    f"Do NOT call any more get_* or read_* tools."
+                )
+                if isinstance(current_messages[-1].get("content"), list):
+                    current_messages[-1]["content"].append({"type": "text", "text": forcing_directive})
+                elif current_messages:
+                    current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}{forcing_directive}"
+                logger.info(f"[{stage_name}][AgentHarness] Injected Penultimate Turn Forcing Directive for '{terminal_sub_tool}' on turn {turns}/{effective_max_turns}.")
 
             # 8. State-Aware Stall Guard Check (H-8)
             is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()

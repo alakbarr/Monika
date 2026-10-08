@@ -287,6 +287,7 @@ class OpenAIProvider(BaseLLMClient):
             if hasattr(chunk, "model") and chunk.model:
                 served_model = chunk.model
 
+            extra_fields = {}
             for choice in (getattr(chunk, "choices", None) or []):
                 delta = getattr(choice, "delta", None)
                 if delta:
@@ -296,6 +297,11 @@ class OpenAIProvider(BaseLLMClient):
                         reasoning += delta.reasoning_content
                     elif getattr(delta, "reasoning", None):
                         reasoning += delta.reasoning
+
+                    for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
+                        val = getattr(delta, k, None)
+                        if val:
+                            extra_fields[k] = val
 
                     tc_list = getattr(delta, "tool_calls", None) or []
                     for tc in tc_list:
@@ -334,7 +340,8 @@ class OpenAIProvider(BaseLLMClient):
             content=content if content else None,
             reasoning=reasoning if reasoning else None,
             reasoning_content=reasoning if reasoning else None,
-            tool_calls=tool_calls_objs if tool_calls_objs else None
+            tool_calls=tool_calls_objs if tool_calls_objs else None,
+            **extra_fields
         )
         choice_obj = SimpleNamespace(
             message=msg_obj,
@@ -910,6 +917,25 @@ class OpenAIProvider(BaseLLMClient):
 
     def _normalize_messages(self, messages: list) -> list:
         """Normalizes messages across heterogeneous provider formats (Anthropic/Gemini to OpenAI)."""
+        call_id_to_name: dict[str, str] = {}
+        for msg in messages:
+            if not isinstance(msg, dict):
+                continue
+            for tc in msg.get("tool_calls", []):
+                if isinstance(tc, dict):
+                    cid = tc.get("id")
+                    fn_name = tc.get("function", {}).get("name")
+                    if cid and fn_name:
+                        call_id_to_name[str(cid)] = str(fn_name)
+            c = msg.get("content")
+            if isinstance(c, list):
+                for b in c:
+                    if isinstance(b, dict) and b.get("type") == "tool_use":
+                        bid = b.get("id")
+                        bname = b.get("name")
+                        if bid and bname:
+                            call_id_to_name[str(bid)] = str(bname)
+
         norm_messages = []
         for m in messages:
             if not isinstance(m, dict):
@@ -931,7 +957,10 @@ class OpenAIProvider(BaseLLMClient):
                     elif b_type == "tool_result":
                         c_val = block.get("content") if isinstance(block, dict) else getattr(block, "content", "")
                         tid = block.get("tool_use_id") if isinstance(block, dict) else getattr(block, "tool_use_id", "call_0")
-                        tname = block.get("name") if isinstance(block, dict) else getattr(block, "name", "tool")
+                        raw_tname = block.get("name") if isinstance(block, dict) else getattr(block, "name", None)
+                        if not raw_tname or str(raw_tname).lower() == "none":
+                            raw_tname = call_id_to_name.get(str(tid)) or "tool"
+                        tname = str(raw_tname)
                         content_str = json.dumps(c_val, default=str) if not isinstance(c_val, str) else c_val
                         if (
                             "gemini" in self.model.lower()
@@ -948,7 +977,7 @@ class OpenAIProvider(BaseLLMClient):
                         tool_results.append({
                             "role": "tool",
                             "tool_call_id": str(tid),
-                            "name": str(tname),
+                            "name": tname,
                             "content": content_str,
                         })
                     elif b_type == "tool_use":
@@ -971,12 +1000,24 @@ class OpenAIProvider(BaseLLMClient):
                         ast_msg["tool_calls"] = tool_calls
                     if m.get("reasoning_content"):
                         ast_msg["reasoning_content"] = m["reasoning_content"]
+                    for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
+                        if k in m and m[k] is not None:
+                            ast_msg[k] = m[k]
                     norm_messages.append(ast_msg)
                 elif text_parts:
                     norm_messages.append({"role": role, "content": " ".join(text_parts)})
 
                 if tool_results:
                     norm_messages.extend(tool_results)
+            elif role == "tool":
+                tid = m.get("tool_call_id", "")
+                raw_name = m.get("name")
+                if not raw_name or str(raw_name).lower() == "none":
+                    m_copy = dict(m)
+                    m_copy["name"] = call_id_to_name.get(str(tid)) or "tool"
+                    norm_messages.append(m_copy)
+                else:
+                    norm_messages.append(m)
             else:
                 norm_messages.append(m)
         return norm_messages
@@ -1109,6 +1150,12 @@ class OpenAIProvider(BaseLLMClient):
                     
                 if getattr(message, 'reasoning_content', None):
                     ast_msg["reasoning_content"] = message.reasoning_content
+
+                extra = getattr(message, "model_extra", {}) or {}
+                for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
+                    val = getattr(message, k, None) or (extra.get(k) if isinstance(extra, dict) else None)
+                    if val is not None:
+                        ast_msg[k] = val
                     
                 if message.tool_calls:
                     ast_msg["tool_calls"] = []

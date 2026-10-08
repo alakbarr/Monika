@@ -19,6 +19,20 @@ class BenchmarkToolExecutor(ToolExecutor):
         super().__init__(session, settings, model_name=model_name)
         self.captured: dict | None = None
 
+    async def execute(self, tool_name: str, tool_input: dict) -> dict:
+        normalized = getattr(self, "TOOL_ALIASES", {}).get(tool_name, tool_name)
+        if hasattr(self, "called_tools"):
+            self.called_tools.add(normalized)
+        if normalized == "submit_fundamental_brief":
+            return await self._tool_submit_fundamental_brief(tool_input)
+        if normalized == "submit_asset_analysis":
+            return await self._tool_submit_asset_analysis(tool_input)
+        if normalized == "propose_action":
+            return await self._tool_propose_action(tool_input)
+        if BenchmarkFixtureDispatcher.can_handle(normalized):
+            return BenchmarkFixtureDispatcher.dispatch(normalized, tool_input)
+        return await super().execute(tool_name, tool_input)
+
     async def _tool_submit_asset_analysis(self, inp: dict) -> dict:
         try:
             payload = SubmitAssetAnalysisSchema.model_validate(inp).model_dump(exclude_unset=True, mode="json")
@@ -82,25 +96,354 @@ async def _capturing_propose_action(self, inp: dict) -> dict:
             "action_type": inp.get("action_type"), "params": inp.get("params")}
 
 
+def _handle_economic_calendar(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    events = bundle.get("economic_calendar", [])
+    cur_filter = inp.get("currency_filter")
+    impact_filter = inp.get("impact_filter")
+    event_name = inp.get("event_name")
+    filtered = list(events)
+    if cur_filter:
+        curs = {c.strip().upper() for c in str(cur_filter).split(",")}
+        filtered = [e for e in filtered if str(e.get("currency", "")).upper() in curs]
+    if impact_filter and impact_filter != "all":
+        if impact_filter == "high_and_medium":
+            filtered = [e for e in filtered if str(e.get("impact", "")).lower() in ("high", "medium")]
+        elif impact_filter in ("high", "medium", "low"):
+            filtered = [e for e in filtered if str(e.get("impact", "")).lower() == impact_filter]
+    if event_name:
+        ename = str(event_name).lower()
+        filtered = [e for e in filtered if ename in str(e.get("event", "")).lower()]
+    return {"status": "success", "count": len(filtered), "events": filtered}
+
+
+def _handle_interest_rates(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    rates = bundle.get("interest_rates", [])
+    cb_filter = inp.get("central_bank")
+    if cb_filter:
+        rates = [r for r in rates if str(r.get("central_bank", "")).upper() == str(cb_filter).upper()]
+    return {"status": "success", "count": len(rates), "interest_rates": rates}
+
+
+def _handle_treasury_yields(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "data": bundle.get("treasury_yields", {})}
+
+
+def _handle_bond_yield_spreads(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "spreads": bundle.get("bond_yield_spreads", {})}
+
+
+def _handle_fedwatch(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "fedwatch": bundle.get("fedwatch", {})}
+
+
+def _handle_central_bank_expectations(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "expectations": bundle.get("central_bank_expectations", {})}
+
+
+def _handle_news_digest(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "digest": bundle.get("news_digest", ""), "generated_at": "2026-10-04T18:47:55Z"}
+
+
+def _handle_news_items(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    from benchmark.fixture_loader import get_golden_macro_stage1
+    golden = get_golden_macro_stage1()
+    items = []
+    for it in golden.get("high_impact_news", []):
+        items.append({
+            "title": it.get("title"),
+            "summary": it.get("summary"),
+            "impact": it.get("impact", "HIGH"),
+            "source": it.get("source", "news"),
+            "published_at": it.get("published_at", "2026-10-04T12:00:00Z"),
+            "currencies": it.get("currencies", ["USD"]),
+        })
+    limit = int(inp.get("limit", 10)) if inp.get("limit") else 10
+    return {"status": "success", "count": len(items[:limit]), "news_items": items[:limit]}
+
+
+def _handle_vix(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "vix": bundle.get("vix", {})}
+
+
+def _handle_dxy(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "dxy": bundle.get("dxy", {})}
+
+
+def _handle_fear_greed(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "fear_greed": bundle.get("fear_greed", {})}
+
+
+def _handle_eia_oil_inventory(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "crude_inventory_change_mb": -1.8,
+        "gasoline_inventory_change_mb": 0.4,
+        "distillate_change_mb": -0.9,
+        "spr_change_mb": 0.2,
+        "interpretation": "BULLISH_CRUDE",
+        "report_date": "2026-10-02",
+    }
+
+
+def _handle_market_session(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "session": bundle.get("market_session", {})}
+
+
+def _handle_surprise_summary(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "surprises": {
+            "USD": {"score": -1.4, "momentum": "WEAKENING_POST_NFP", "last_release": "NFP +29k vs +90k exp"},
+            "EUR": {"score": +0.2, "momentum": "STABLE", "last_release": "CPI flash 2.2%"},
+            "GBP": {"score": +0.5, "momentum": "MODERATELY_POSITIVE", "last_release": "GDP 0.3%"},
+            "JPY": {"score": +0.3, "momentum": "HAWKISH_NORMALIZATION", "last_release": "Tokyo CPI 2.5%"},
+            "AUD": {"score": 0.0, "momentum": "NEUTRAL", "last_release": "RBA hold 4.10%"},
+        },
+    }
+
+
+def _handle_cot_signals(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "cot_signals": bundle.get("cot_signals", [])}
+
+
+def _handle_economic_surprise(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "key_surprises": [
+            {"indicator": "Non-Farm Payrolls", "country": "US", "actual": 29000, "forecast": 90000, "deviation": -61000, "impact": "LARGE_NEGATIVE"},
+            {"indicator": "Unemployment Rate", "country": "US", "actual": 4.2, "forecast": 4.1, "deviation": 0.1, "impact": "NEGATIVE"},
+        ],
+    }
+
+
+def _handle_price_momentum(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "momentum": bundle.get("eurusd_momentum", {})}
+
+
+def _handle_funding_rate(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "funding_rates": bundle.get("funding_rate", {})}
+
+
+def _handle_web_search(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    q = str(inp.get("query", ""))
+    return {
+        "status": "success",
+        "query": q,
+        "results": [
+            {
+                "title": "US Nonfarm Payrolls Miss Sharply in September 2026",
+                "snippet": "The US economy added just 29,000 jobs in September 2026 against consensus of 90,000, pushing the unemployment rate up to 4.2%. Dollar Index softened below 102.",
+                "url": "https://reuters.com/markets/us-nfp-sep-2026"
+            },
+            {
+                "title": "Middle East Tensions Sustain Oil and Gold Safe-Haven Bids",
+                "snippet": "WTI crude trades near $71.85 and Spot Gold holds near $2,658.50/oz as geopolitical friction in the Middle East sustains a persistent risk premium.",
+                "url": "https://bloomberg.com/markets/commodities-geopolitics-2026"
+            },
+            {
+                "title": "Federal Reserve Rate Decision Outlook",
+                "snippet": "CME FedWatch shows an 82% probability of the Fed holding rates at 3.75-4.00% at the November meeting following mixed labor and inflation data.",
+                "url": "https://cmegroup.com/fedwatch-2026"
+            }
+        ]
+    }
+
+
+def _handle_save_intel(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "saved", "intel_id": 9999, "message": "benchmark: intelligence captured in memory"}
+
+
+def _handle_list_intel(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "active_intelligence": []}
+
+
+def _handle_archive_intel(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "archived", "intel_id": inp.get("intel_id", 0)}
+
+
+def _handle_inspect_report(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "report_name": inp.get("report_name", "NFP"),
+        "details": "US September Non-Farm Payrolls printed at +29,000 vs +90,000 expected. Unemployment rate rose to 4.2%. Prior two months revised downward by 60,000 jobs cumulatively.",
+    }
+
+
+def _handle_diff_cb_docs(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "comparison": "FOMC Statement Delta: The Committee noted slower job gains while inflation remains somewhat elevated. Language shifted from active tightening risk to balanced two-sided risks.",
+    }
+
+
+def _handle_cross_report_synthesis(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "synthesis": bundle.get("macro_cross_report_synthesis", {})}
+
+
+def _handle_g10_divergence(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "divergence": bundle.get("g10_macro_divergence", {})}
+
+
+def _handle_fed_net_liquidity(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "liquidity_stress": bundle.get("fed_net_liquidity_and_stress", {})}
+
+
+def _handle_treasury_auction(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    return {"status": "success", "auction_results": bundle.get("treasury_auction_results", {})}
+
+
+def _handle_market_quote(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    sym = str(inp.get("symbol", "EURUSD")).upper().replace("/", "")
+    prices = {
+        "EURUSD": 1.1260,
+        "GBPUSD": 1.3325,
+        "USDJPY": 144.20,
+        "XAUUSD": 2658.50,
+        "XTIUSD": 71.85,
+        "BTCUSD": 84200.00,
+        "ETHUSD": 3150.00,
+        "AUDUSD": 0.6540,
+        "USDCHF": 0.8520,
+        "USDCAD": 1.3580,
+    }
+    p = prices.get(sym, 1.0)
+    return {
+        "status": "success",
+        "symbol": sym,
+        "price": p,
+        "bid": round(p * 0.9999, 4),
+        "ask": round(p * 1.0001, 4),
+        "spread_pips": 1.2,
+        "as_of": "2026-10-04T19:00:00Z",
+    }
+
+
+class BenchmarkFixtureDispatcher:
+    """Deterministic in-memory fixture dispatcher for benchmark evaluations.
+    Serves all Stage 1 & Stage 2 read tools directly from golden production fixtures,
+    guaranteeing zero empty DB returns, zero network timeouts, and zero unmocked MT5 calls."""
+
+    _bundle: dict[str, Any] | None = None
+
+    _HANDLERS = {
+        "get_economic_calendar": _handle_economic_calendar,
+        "get_economic_calendars": _handle_economic_calendar,
+        "get_calendar": _handle_economic_calendar,
+        "get_interest_rates": _handle_interest_rates,
+        "get_interest_rate": _handle_interest_rates,
+        "get_treasury_yields": _handle_treasury_yields,
+        "get_treasury_yield": _handle_treasury_yields,
+        "get_bond_yield_spreads": _handle_bond_yield_spreads,
+        "get_fedwatch_probabilities": _handle_fedwatch,
+        "get_central_bank_expectations": _handle_central_bank_expectations,
+        "get_news_digest": _handle_news_digest,
+        "get_news": _handle_news_digest,
+        "get_news_items": _handle_news_items,
+        "get_news_item": _handle_news_items,
+        "get_vix": _handle_vix,
+        "get_dxy": _handle_dxy,
+        "get_fear_greed": _handle_fear_greed,
+        "get_eia_oil_inventory": _handle_eia_oil_inventory,
+        "get_market_session": _handle_market_session,
+        "get_market_sessions": _handle_market_session,
+        "get_surprise_summary": _handle_surprise_summary,
+        "surprise_summary": _handle_surprise_summary,
+        "economic_surprise_summary": _handle_surprise_summary,
+        "get_economic_surprise_summary": _handle_surprise_summary,
+        "get_precomputed_cot_signals": _handle_cot_signals,
+        "get_precomputed_cot_signal": _handle_cot_signals,
+        "get_cot_signals": _handle_cot_signals,
+        "cot_signals": _handle_cot_signals,
+        "precomputed_cot": _handle_cot_signals,
+        "get_cot_report": _handle_cot_signals,
+        "get_economic_surprise": _handle_economic_surprise,
+        "get_price_momentum": _handle_price_momentum,
+        "get_funding_rate": _handle_funding_rate,
+        "web_search": _handle_web_search,
+        "search_web": _handle_web_search,
+        "google_search": _handle_web_search,
+        "save_market_intelligence": _handle_save_intel,
+        "save_intel": _handle_save_intel,
+        "list_active_intelligence": _handle_list_intel,
+        "list_intel": _handle_list_intel,
+        "archive_market_intelligence": _handle_archive_intel,
+        "archive_intel": _handle_archive_intel,
+        "inspect_economic_report": _handle_inspect_report,
+        "diff_central_bank_documents": _handle_diff_cb_docs,
+        "get_macro_cross_report_synthesis": _handle_cross_report_synthesis,
+        "get_g10_macro_divergence": _handle_g10_divergence,
+        "get_fed_net_liquidity_and_stress": _handle_fed_net_liquidity,
+        "get_treasury_auction_results": _handle_treasury_auction,
+        "get_market_quote": _handle_market_quote,
+        "get_quote": _handle_market_quote,
+        "market_quote": _handle_market_quote,
+        "fetch_quote": _handle_market_quote,
+        "quote": _handle_market_quote,
+        "get_current_price": _handle_market_quote,
+        "get_price_data": _handle_market_quote,
+        "get_verified_market_snapshot": _handle_market_quote,
+    }
+
+    @classmethod
+    def get_bundle(cls) -> dict[str, Any]:
+        if cls._bundle is None:
+            from benchmark.fixture_loader import get_stage1_fixture_bundle_dict
+            cls._bundle = get_stage1_fixture_bundle_dict()
+        return cls._bundle
+
+    @classmethod
+    def can_handle(cls, tool_name: str) -> bool:
+        return tool_name in cls._HANDLERS
+
+    @classmethod
+    def dispatch(cls, tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any]:
+        handler = cls._HANDLERS.get(tool_name)
+        if handler:
+            return handler(cls.get_bundle(), tool_input)
+        return {"status": "error", "message": f"Unsupported benchmark tool: {tool_name}"}
+
+
 @contextmanager
 def guarded_tool_executor():
-    """Context manager: selama block ini aktif, ToolExecutor._tool_submit_* /
-    _tool_propose_action di-patch supaya tidak menulis DB. Selalu dipulihkan
-    (finally), termasuk saat exception. Kembalikan dict box -- box['result']
-    berisi payload yang ditangkap (kalau model memanggil tool tsb)."""
+    """Context manager: selama block ini aktif:
+    1. Tool tulis (submit_asset_analysis, submit_fundamental_brief, propose_action)
+       divalidasi via schema Pydantic dan ditangkap di memori tanpa menulis DB.
+    2. Tool baca diarahkan ke BenchmarkFixtureDispatcher sehingga selalu
+       mengembalikan data fixture deterministik (anti-stuck, anti-empty DB).
+    Selalu dipulihkan (finally), termasuk saat exception. Kembalikan dict box --
+    box['result'] berisi payload yang ditangkap (kalau model memanggil tool tsb)."""
     _capture_box.clear()
     orig = (ToolExecutor._tool_submit_asset_analysis,
             ToolExecutor._tool_submit_fundamental_brief,
             ToolExecutor._tool_propose_action)
+    orig_execute = ToolExecutor.execute
+
     ToolExecutor._tool_submit_asset_analysis = _capturing_submit_asset_analysis
     ToolExecutor._tool_submit_fundamental_brief = _capturing_submit_fundamental_brief
     ToolExecutor._tool_propose_action = _capturing_propose_action
+
+    async def _guarded_execute(self: ToolExecutor, tool_name: str, tool_input: dict) -> dict:
+        normalized = getattr(self, "TOOL_ALIASES", {}).get(tool_name, tool_name)
+        if hasattr(self, "called_tools"):
+            self.called_tools.add(normalized)
+        if normalized == "submit_fundamental_brief":
+            return await _capturing_submit_fundamental_brief(self, tool_input)
+        if normalized == "submit_asset_analysis":
+            return await _capturing_submit_asset_analysis(self, tool_input)
+        if normalized == "propose_action":
+            return await _capturing_propose_action(self, tool_input)
+        if BenchmarkFixtureDispatcher.can_handle(normalized):
+            return BenchmarkFixtureDispatcher.dispatch(normalized, tool_input)
+        return await orig_execute(self, tool_name, tool_input)
+
+    setattr(ToolExecutor, "execute", _guarded_execute)
     try:
         yield _capture_box
     finally:
         (ToolExecutor._tool_submit_asset_analysis,
          ToolExecutor._tool_submit_fundamental_brief,
          ToolExecutor._tool_propose_action) = orig
+        setattr(ToolExecutor, "execute", orig_execute)
 
 
 # ---------------------------------------------------------------------------
