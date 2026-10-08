@@ -1935,7 +1935,7 @@
       "output_tokens": 12064,
       "thinking_tokens": 8684,
       "cached_tokens": 0,
-      "cost_usd": 0.0,
+      "cost_usd": 0.130713,
       "captured_payload": {
         "checklist": {
           "bias_vs_narrative_match": true,

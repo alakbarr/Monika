@@ -15,7 +15,7 @@
 | **MiMo v2.6 Pro (max)** | `max` | ✅ Success | 546.6s | 2 | 1 | 39,627 / 13,877 | 9,308 | $0.0761 | `transition` | `bearish` | ✅ Yes |
 | **DeepSeek v4 Pro (max)** | `max` | ✅ Success | 327.6s | 2 | 1 | 35,672 / 10,235 | 7,539 | $0.0438 | `disinflation` | `bearish` | ✅ Yes |
 | **Kimi k3 (max)** | `max` | ✅ Success | 41.9s | 2 | 1 | 28,950 / 4,972 | 1,984 | $0.1614 | `mixed` | `bearish` | ✅ Yes |
-| **Gemini 3.8 Flash (high)** | `high` | ✅ Success | 89.0s | 2 | 1 | 26,822 / 12,064 | 8,684 | $0.0000 | `transition` | `bearish` | ✅ Yes |
+| **Gemini 3.8 Flash (high)** | `high` | ✅ Success | 89.0s | 2 | 1 | 26,822 / 12,064 | 8,684 | $0.1307 | `transition` | `bearish` | ✅ Yes |
 
 ---
 
@@ -3823,7 +3823,7 @@ Brief submitted and validated. Summary of the call:
 - **Thinking Effort / Level**: `high`
 - **Execution Latency**: `88.95s` | **Turns Taken**: `2` | **Tool Calls**: `1`
 - **Token Usage**: `26,822` In | `12,064` Out | `8,684` Thinking | `0` Cached
-- **Calculated Cost**: `$0.000000 USD`
+- **Calculated Cost**: `$0.130713 USD`
 
 #### 📋 Captured `submit_fundamental_brief` Payload:
 
