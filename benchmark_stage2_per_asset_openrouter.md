@@ -14,9 +14,9 @@
 | **MiMo v2.6 Pro (max)** | `max` | ✅ Success | 553.5s | 4 | 3 | 117,055 / 16,953 | 12,793 | $0.1479 | `WAIT` | 0.80 | - | 12/14 | ✅ Yes |
 | **DeepSeek v4 Pro (max)** | `max` | ✅ Success | 468.9s | 4 | 9 | 76,662 / 9,756 | 9,132 | $0.0699 | `-` | - | - | - | ❌ No |
 | **Kimi k3 (max)** | `max` | ✅ Success | 210.5s | 4 | 4 | 69,652 / 5,964 | 3,684 | $0.2984 | `SELL` | 0.72 | 1:2.00 | 13/14 | ✅ Yes |
-| **DeepSeek v4.1 Flash (max)** | `max` | ✅ Success | 25.2s | 4 | 12 | 72,812 / 7,912 | 5,311 | $0.0209 | `SELL` | 0.68 | 1:1.50 | 13/14 | ✅ Yes |
-| **GLM-5.3 (max)** | `max` | ✅ Success | 51.7s | 4 | 7 | 72,594 / 6,392 | 4,173 | $0.0070 | `SELL` | 0.78 | 1:1.50 | 13/14 | ✅ Yes |
-| **GLM-5.3 Flash (max)** | `max` | ✅ Success | 78.9s | 4 | 8 | 70,199 / 5,398 | 3,221 | $0.0229 | `SELL` | 0.78 | 1:2.66 | 13/14 | ✅ Yes |
+| **DeepSeek v4.1 Flash (max)** | `max` | ✅ Success | 25.2s | 4 | 12 | 72,812 / 7,912 | 5,311 | $0.0313 | `SELL` | 0.68 | 1:1.50 | 13/14 | ✅ Yes |
+| **GLM-5.3 (max)** | `max` | ✅ Success | 51.7s | 4 | 7 | 72,594 / 6,392 | 4,173 | $0.0341 | `SELL` | 0.78 | 1:1.50 | 13/14 | ✅ Yes |
+| **GLM-5.3 Flash (max)** | `max` | ✅ Success | 78.9s | 4 | 8 | 70,199 / 5,398 | 3,221 | $0.0132 | `SELL` | 0.78 | 1:2.66 | 13/14 | ✅ Yes |
 
 ---
 
@@ -3700,7 +3700,7 @@ Core logic: macro (USD bullish/EUR bearish, +144bps spread), positioning (COT -4
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `25.19s` | **Turns Taken**: `4` | **Tool Calls**: `12`
 - **Token Usage**: `72,812` In | `7,912` Out | `5,311` Thinking | `31,360` Cached
-- **Calculated Cost**: `$0.020892 USD`
+- **Calculated Cost**: `$0.031338 USD`
 
 #### 📋 Captured `submit_asset_analysis` Payload:
 
@@ -4262,7 +4262,7 @@ D1 ADX not separately reported; H4 ADX=28.5 → regime=Trend (25-40), threshold 
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `51.67s` | **Turns Taken**: `4` | **Tool Calls**: `7`
 - **Token Usage**: `72,594` In | `6,392` Out | `4,173` Thinking | `37,440` Cached
-- **Calculated Cost**: `$0.007043 USD`
+- **Calculated Cost**: `$0.034106 USD`
 
 #### 📋 Captured `submit_asset_analysis` Payload:
 
@@ -4651,7 +4651,7 @@ Sizing verified. Submit.
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `78.88s` | **Turns Taken**: `4` | **Tool Calls**: `8`
 - **Token Usage**: `70,199` In | `5,398` Out | `3,221` Thinking | `45,056` Cached
-- **Calculated Cost**: `$0.022948 USD`
+- **Calculated Cost**: `$0.013229 USD`
 
 #### 📋 Captured `submit_asset_analysis` Payload:
 

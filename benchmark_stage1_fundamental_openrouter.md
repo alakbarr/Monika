@@ -16,9 +16,9 @@
 | **DeepSeek v4 Pro (max)** | `max` | ✅ Success | 327.6s | 2 | 1 | 35,672 / 10,235 | 7,539 | $0.0438 | `disinflation` | `bearish` | ✅ Yes |
 | **Kimi k3 (max)** | `max` | ✅ Success | 41.9s | 2 | 1 | 28,950 / 4,972 | 1,984 | $0.1614 | `mixed` | `bearish` | ✅ Yes |
 | **Gemini 3.8 Flash (high)** | `high` | ✅ Success | 89.0s | 2 | 1 | 26,822 / 12,064 | 8,684 | $0.1307 | `transition` | `bearish` | ✅ Yes |
-| **DeepSeek v4.1 Flash (max)** | `max` | ✅ Success | 43.4s | 2 | 1 | 35,061 / 9,695 | 7,524 | $0.0148 | `mixed` | `neutral` | ✅ Yes |
-| **GLM-5.3 (max)** | `max` | ✅ Success | 111.1s | 2 | 1 | 32,022 / 7,506 | 3,684 | $0.0043 | `transition` | `bearish` | ✅ Yes |
-| **GLM-5.3 Flash (max)** | `max` | ✅ Success | 67.1s | 2 | 1 | 31,293 / 6,670 | 3,005 | $0.0145 | `mixed` | `bearish` | ✅ Yes |
+| **DeepSeek v4.1 Flash (max)** | `max` | ✅ Success | 43.4s | 2 | 1 | 35,061 / 9,695 | 7,524 | $0.0222 | `mixed` | `neutral` | ✅ Yes |
+| **GLM-5.3 (max)** | `max` | ✅ Success | 111.1s | 2 | 1 | 32,022 / 7,506 | 3,684 | $0.0347 | `transition` | `bearish` | ✅ Yes |
+| **GLM-5.3 Flash (max)** | `max` | ✅ Success | 67.1s | 2 | 1 | 31,293 / 6,670 | 3,005 | $0.0080 | `mixed` | `bearish` | ✅ Yes |
 
 ---
 
@@ -4218,7 +4218,7 @@ I am now finalizing the last elements of my assessment. Specifically, I am incor
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `43.40s` | **Turns Taken**: `2` | **Tool Calls**: `1`
 - **Token Usage**: `35,061` In | `9,695` Out | `7,524` Thinking | `5,888` Cached
-- **Calculated Cost**: `$0.014768 USD`
+- **Calculated Cost**: `$0.022152 USD`
 
 #### 📋 Captured `submit_fundamental_brief` Payload:
 
@@ -4805,7 +4805,7 @@ Fundamental brief submitted and validated. Summary of the Stage 1 macro assessme
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `111.13s` | **Turns Taken**: `2` | **Tool Calls**: `1`
 - **Token Usage**: `32,022` In | `7,506` Out | `3,684` Thinking | `5,632` Cached
-- **Calculated Cost**: `$0.004278 USD`
+- **Calculated Cost**: `$0.034727 USD`
 
 #### 📋 Captured `submit_fundamental_brief` Payload:
 
@@ -5176,7 +5176,7 @@ Handing off to Stage 2 technical execution.
 - **Thinking Effort / Level**: `max`
 - **Execution Latency**: `67.12s` | **Turns Taken**: `2` | **Tool Calls**: `1`
 - **Token Usage**: `31,293` In | `6,670` Out | `3,005` Thinking | `0` Cached
-- **Calculated Cost**: `$0.014493 USD`
+- **Calculated Cost**: `$0.008029 USD`
 
 #### 📋 Captured `submit_fundamental_brief` Payload:
 

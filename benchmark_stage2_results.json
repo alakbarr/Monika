@@ -1949,7 +1949,7 @@
       "output_tokens": 7912,
       "thinking_tokens": 5311,
       "cached_tokens": 31360,
-      "cost_usd": 0.020892,
+      "cost_usd": 0.031338,
       "captured_payload": {
         "symbol": "EURUSD",
         "decision": "sell",
@@ -2246,7 +2246,7 @@
       "output_tokens": 6392,
       "thinking_tokens": 4173,
       "cached_tokens": 37440,
-      "cost_usd": 0.007043,
+      "cost_usd": 0.034106,
       "captured_payload": {
         "symbol": "EURUSD",
         "decision": "sell",
@@ -2466,7 +2466,7 @@
       "output_tokens": 5398,
       "thinking_tokens": 3221,
       "cached_tokens": 45056,
-      "cost_usd": 0.022948,
+      "cost_usd": 0.013229,
       "captured_payload": {
         "symbol": "EURUSD",
         "decision": "sell",

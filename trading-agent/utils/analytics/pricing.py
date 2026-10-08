@@ -120,7 +120,7 @@ PRICING: Dict[str, Price] = {
     # --- DeepSeek Models ---
     "deepseek-v4-pro": Price(0.66, 0.022, 1.98, "off-peak; peak=1.32/0.044/3.96"),
     "deepseek-v4-pro-0813": Price(0.66, 0.022, 1.98),
-    "deepseek-v4.1-flash": Price(0.20, 0.02, 0.80),
+    "deepseek-v4.1-flash": Price(0.30, 0.006, 1.20),
     "deepseek-v4-flash": Price(0.22, 0.007, 0.66, "off-peak; peak=0.44/0.014/1.32"),
     "deepseek-v4-flash-0731": Price(0.22, 0.007, 0.66),
     "deepseek-chat": Price(0.14, 0.014, 0.28),
@@ -143,8 +143,8 @@ PRICING: Dict[str, Price] = {
     "mimo-v2.6-flash": Price(0.15, 0.015, 0.60),
     "mimo-v2.5-pro": Price(0.50, 0.05, 2.00),
     "mimo-v2.5": Price(0.20, 0.02, 1.00),
-    "glm-5.3-flash": Price(0.25, 0.025, 1.00),
-    "glm-5.3": Price(0.075, 0.0075, 0.25),
+    "glm-5.3-flash": Price(0.15, 0.030, 0.50),
+    "glm-5.3": Price(0.10, 0.048, 4.20),
     "glm-5.2": Price(0.20, 0.02, 1.00),
     "glm-5.1": Price(0.20, 0.02, 1.00),
     "minimax-m3": Price(0.20, 0.02, 1.00),
@@ -172,6 +172,7 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     # DeepSeek
     "deepseek/deepseek-v4-pro": "deepseek-v4-pro",
     "deepseek/deepseek-v4-pro-0813": "deepseek-v4-pro-0813",
+    "deepseek/deepseek-v4.1-flash": "deepseek-v4.1-flash",
     "deepseek/deepseek-v4-flash": "deepseek-v4-flash",
     "deepseek/deepseek-v4-flash-0731": "deepseek-v4-flash-0731",
     "deepseek/deepseek-chat": "deepseek-chat",
@@ -229,6 +230,7 @@ OPENROUTER_PRICING_MAP: Dict[str, str] = {
     "xiaomi/mimo-v2.5": "mimo-v2.5",
 
     # Zhipu GLM
+    "z-ai/glm-5.3-flash": "glm-5.3-flash",
     "z-ai/glm-5.3": "glm-5.3",
     "z-ai/glm-5.2": "glm-5.2",
     "z-ai/glm-5.1": "glm-5.1",
