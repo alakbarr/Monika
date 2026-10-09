@@ -446,87 +446,93 @@ class StartupChecker:
                         logger.info(f"  [OK] All {len(critical_tables)} critical tables verified")
                 except Exception as e:
                     logger.warning(f"  [WARN] Schema check failed: {e}")
+                finally:
+                    try:
+                        await conn.rollback()
+                    except Exception:
+                        pass
 
-                try:
-                    from database.models import SystemConfig
-                    from sqlalchemy import delete, select
-                    from database.db import AsyncSessionLocal
-                    async with AsyncSessionLocal() as startup_session:
+            try:
+                from database.models import SystemConfig
+                from sqlalchemy import delete, select
+                from database.db import AsyncSessionLocal
+                from database.safe_ops import safe_commit
+                async with AsyncSessionLocal() as startup_session:
+                    await startup_session.execute(
+                        delete(SystemConfig).where(SystemConfig.key.like("pending_specialist_biases_%"))
+                    )
+                    # Auto-cleanup legacy blacklisted stub synthesized strategies from SystemConfig
+                    res_stubs = await startup_session.execute(
+                        select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
+                    )
+                    stub_keys = []
+                    for r in res_stubs.scalars().all():
+                        if r and r.value and 'direction="buy"' in r.value and 'confidence=0.82' in r.value:
+                            stub_keys.append(r.key)
+                    if stub_keys:
                         await startup_session.execute(
-                            delete(SystemConfig).where(SystemConfig.key.like("pending_specialist_biases_%"))
+                            delete(SystemConfig).where(SystemConfig.key.in_(stub_keys))
                         )
-                        # Auto-cleanup legacy blacklisted stub synthesized strategies from SystemConfig
-                        res_stubs = await startup_session.execute(
-                            select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
-                        )
-                        stub_keys = []
-                        for r in res_stubs.scalars().all():
-                            if r and r.value and 'direction="buy"' in r.value and 'confidence=0.82' in r.value:
-                                stub_keys.append(r.key)
-                        if stub_keys:
-                            await startup_session.execute(
-                                delete(SystemConfig).where(SystemConfig.key.in_(stub_keys))
-                            )
-                            logger.info(f"  [OK] Cleaned up {len(stub_keys)} legacy blacklisted stub synthesized strategies from SystemConfig")
+                        logger.info(f"  [OK] Cleaned up {len(stub_keys)} legacy blacklisted stub synthesized strategies from SystemConfig")
 
-                        # Pre-boot integrity verification of synthesized strategies
-                        import json
-                        from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
-                        synth_rows = (await startup_session.execute(
-                            select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
-                        )).scalars().all()
-                        healed_boot_count = 0
-                        synth_dir = pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
-                        for sr in synth_rows:
-                            if not sr or not sr.value:
-                                continue
-                            try:
-                                sdata = json.loads(sr.value)
-                                scode = sdata.get("python_code", "")
-                                s_id = sdata.get("strategy_id", "")
-                                sanitized = StrategySynthesisScheduler.sanitize_strategy_code(scode)
-                                lint_ok, _ = StrategySynthesisScheduler._lint_check_code(sanitized)
-                                if not lint_ok and s_id:
-                                    dfile = synth_dir / f"{s_id}.py"
-                                    if dfile.exists():
-                                        dcode = dfile.read_text(encoding="utf-8")
-                                        d_sanitized = StrategySynthesisScheduler.sanitize_strategy_code(dcode)
-                                        if StrategySynthesisScheduler._lint_check_code(d_sanitized)[0]:
-                                            sdata["python_code"] = dcode
-                                            sr.value = json.dumps(sdata)
-                                            healed_boot_count += 1
-                            except Exception:
-                                pass
-                        if healed_boot_count > 0:
-                            logger.info(f"  [OK] Pre-boot reconciled {healed_boot_count} synthesized strategies in SystemConfig from disk")
+                    # Pre-boot integrity verification of synthesized strategies
+                    import json
+                    from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+                    synth_rows = (await startup_session.execute(
+                        select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
+                    )).scalars().all()
+                    healed_boot_count = 0
+                    synth_dir = pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
+                    for sr in synth_rows:
+                        if not sr or not sr.value:
+                            continue
+                        try:
+                            sdata = json.loads(sr.value)
+                            scode = sdata.get("python_code", "")
+                            s_id = sdata.get("strategy_id", "")
+                            sanitized = StrategySynthesisScheduler.sanitize_strategy_code(scode)
+                            lint_ok, _ = StrategySynthesisScheduler._lint_check_code(sanitized)
+                            if not lint_ok and s_id:
+                                dfile = synth_dir / f"{s_id}.py"
+                                if dfile.exists():
+                                    dcode = dfile.read_text(encoding="utf-8")
+                                    d_sanitized = StrategySynthesisScheduler.sanitize_strategy_code(dcode)
+                                    if StrategySynthesisScheduler._lint_check_code(d_sanitized)[0]:
+                                        sdata["python_code"] = dcode
+                                        sr.value = json.dumps(sdata)
+                                        healed_boot_count += 1
+                        except Exception:
+                            pass
+                    if healed_boot_count > 0:
+                        logger.info(f"  [OK] Pre-boot reconciled {healed_boot_count} synthesized strategies in SystemConfig from disk")
 
-                        await startup_session.commit()
-                    logger.info("  [OK] Cleaned up temporary specialist biases from previous runs")
-                except Exception as e:
-                    logger.warning(f"  [WARN] Startup specialist biases cleanup failed (non-fatal): {e}")
+                    await safe_commit(startup_session, label="startup_specialist_biases")
+                logger.info("  [OK] Cleaned up temporary specialist biases from previous runs")
+            except Exception as e:
+                logger.warning(f"  [WARN] Startup specialist biases cleanup failed (non-fatal): {e}")
 
-                try:
-                    from utils.analytics.cost_tracker import CostTracker
-                    from database.db import AsyncSessionLocal
-                    async with AsyncSessionLocal() as budget_session:
-                        b_stat = await CostTracker.check_and_update_budget_status(budget_session, self.settings)
-                        logger.info(
-                            f"  [OK] AI Budget Status: MTD ${b_stat['mtd_cost']:.4f}/${b_stat['monthly_budget']:.2f} "
-                            f"({b_stat['usage_pct']:.1f}%), Daily ${b_stat['daily_cost']:.4f}/${b_stat['daily_budget']:.2f} "
-                            f"(Paused: {b_stat['is_paused']})"
-                        )
-                except Exception as e:
-                    logger.warning(f"  [WARN] AI Budget synchronization check failed (non-fatal): {e}")
+            try:
+                from utils.analytics.cost_tracker import CostTracker
+                from database.db import AsyncSessionLocal
+                async with AsyncSessionLocal() as budget_session:
+                    b_stat = await CostTracker.check_and_update_budget_status(budget_session, self.settings)
+                    logger.info(
+                        f"  [OK] AI Budget Status: MTD ${b_stat['mtd_cost']:.4f}/${b_stat['monthly_budget']:.2f} "
+                        f"({b_stat['usage_pct']:.1f}%), Daily ${b_stat['daily_cost']:.4f}/${b_stat['daily_budget']:.2f} "
+                        f"(Paused: {b_stat['is_paused']})"
+                    )
+            except Exception as e:
+                logger.warning(f"  [WARN] AI Budget synchronization check failed (non-fatal): {e}")
 
-                try:
-                    from analysis.memory.chronicle_writer import ChronicleWriter
-                    from database.db import AsyncSessionLocal
-                    async with AsyncSessionLocal() as chronicle_session:
-                        c_writer = ChronicleWriter(self.settings)
-                        synced = await c_writer.sync_macro_reality_from_file(chronicle_session)
-                        logger.info(f"  [OK] Macro reality synchronized ({synced} active structural regimes verified)")
-                except Exception as e:
-                    logger.warning(f"  [WARN] Macro reality synchronization failed (non-fatal): {e}")
+            try:
+                from analysis.memory.chronicle_writer import ChronicleWriter
+                from database.db import AsyncSessionLocal
+                async with AsyncSessionLocal() as chronicle_session:
+                    c_writer = ChronicleWriter(self.settings)
+                    synced = await c_writer.sync_macro_reality_from_file(chronicle_session)
+                    logger.info(f"  [OK] Macro reality synchronized ({synced} active structural regimes verified)")
+            except Exception as e:
+                logger.warning(f"  [WARN] Macro reality synchronization failed (non-fatal): {e}")
 
         except Exception as e:
             logger.error(f"  [FAIL] Database: {e}")

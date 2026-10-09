@@ -366,8 +366,7 @@ class TrailingStopManager:
                             try:
                                 from utils.analytics.paper_tracker import PaperTracker
                                 tracker = PaperTracker()
-                                async with get_session() as paper_session:
-                                    await tracker.update_paper_trade_sl(paper_session, pos.analysis_id, new_sl)
+                                await tracker.update_paper_trade_sl(session, pos.analysis_id, new_sl)
                             except Exception as e:
                                 logger.debug(f'Paper trade SL sync failed (non-fatal): {e}')
                     return {

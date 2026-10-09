@@ -581,21 +581,21 @@ class NewsWatcher:
                     .where(TradeOutcome.opened_at >= today_start)
                     .where(TradeOutcome.opened_at < today_end)
                 )).scalar_one_or_none() or 0
-                
-                max_daily_trades = self.settings.get('trading', {}).get('risk', {}).get('max_daily_trades', 3)
-                
-                if today_trades >= max_daily_trades:
-                    logger.info(
-                        f'NewsWatcher: Daily trade limit reached ({today_trades}/{max_daily_trades}). '
-                        f'Skipping Stage 2 reanalysis to save tokens — risk gate would block execution anyway.'
-                    )
-                    # Still run Stage 1 for macro brief update if it's a major news event
-                    # but skip Stage 2 since it can't execute
-                    if len(affected_symbols) >= 4 and self._fundamental_stage:
-                        logger.info('Running Stage 1 only (major event) to update macro brief.')
-                        async with get_session() as session:
-                            await self._fundamental_stage.run(session, forced=True)
-                    return
+
+            max_daily_trades = self.settings.get('trading', {}).get('risk', {}).get('max_daily_trades', 3)
+
+            if today_trades >= max_daily_trades:
+                logger.info(
+                    f'NewsWatcher: Daily trade limit reached ({today_trades}/{max_daily_trades}). '
+                    f'Skipping Stage 2 reanalysis to save tokens — risk gate would block execution anyway.'
+                )
+                # Still run Stage 1 for macro brief update if it's a major news event
+                # but skip Stage 2 since it can't execute
+                if len(affected_symbols) >= 4 and self._fundamental_stage:
+                    logger.info('Running Stage 1 only (major event) to update macro brief.')
+                    async with get_session() as session:
+                        await self._fundamental_stage.run(session, forced=True)
+                return
         except Exception as e:
             logger.debug(f'NewsWatcher daily count check failed (non-fatal): {e}')
         # --- END NEW ---
