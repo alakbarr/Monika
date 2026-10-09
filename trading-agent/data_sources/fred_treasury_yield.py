@@ -39,7 +39,7 @@ FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 # Pemetaan FRED series ID ke tipe/label tenor
 TENOR_SERIES = {
     "DGS2", "DGS5", "DGS10", "DGS30", "DFII10", "T10YIE", "WALCL", "RRPONTSYD",
-    "WTREGEN", "M2SL", "GVZCLS", "OVXCLS", "DGS3MO", "ACMTP10", "CUSR0000SACL1E",
+    "WTREGEN", "M2SL", "GVZCLS", "OVXCLS", "DGS3MO", "THREEFYTP10", "ACMTP10", "CUSR0000SACL1E",
     "A191RL1Q225SBEA", "CLVMNACSCAB1GQEA19", "ECBASSETSW"
 }
 INTEREST_RATE_SERIES = {"FEDFUNDS", "ECBDFR", "BOERUKM", "IRSTCB01JPM156N", "IRSTCB01AUM156N"}
@@ -51,7 +51,8 @@ SERIES_TO_TENOR = {
     "DGS10": "10Y",
     "DGS30": "30Y",
     "DGS3MO": "3M",
-    "ACMTP10": "10Y_TERM_PREMIUM",
+    "THREEFYTP10": "10Y_TERM_PREMIUM",
+    "ACMTP10": "10Y_TERM_PREMIUM",  # Backward-compatible alias (FRED official series is THREEFYTP10)
     "CUSR0000SACL1E": "SUPERCORE_CPI",
     "DFII10": "10Y_REAL",
     "T10YIE": "10Y_INFLATION",
@@ -92,7 +93,7 @@ class FREDDataFetcher:
             api_key: FRED API key. Defaults to FRED_API_KEY env var.
         """
         self.session = session
-        self.api_key = api_key or os.getenv("FRED_API_KEY", "")
+        self.api_key = api_key if api_key is not None else os.getenv("FRED_API_KEY", "")
         self.api_url = config.get("api_url", FRED_BASE_URL)
         self.series_map: dict[str, str] = config.get("series", {})  # {label: series_id}
         self.timeout = aiohttp.ClientTimeout(total=30)
@@ -166,41 +167,44 @@ class FREDDataFetcher:
         observations = await self._call_fred(series_id, limit=10)
         saved = 0
 
-        for obs in observations:
-            date = self._parse_date(obs.get("date", ""))
-            if not date:
-                continue
-            value_str = obs.get("value", ".")
-            if not value_str or value_str in (".", "ND", "nd"):
-                continue  # FRED menggunakan '.' atau 'ND' untuk data yang kosong
+        with self.session.no_autoflush:
+            for obs in observations:
+                date = self._parse_date(obs.get("date", ""))
+                if not date:
+                    continue
+                value_str = obs.get("value", ".")
+                if not value_str or value_str in (".", "ND", "nd"):
+                    continue  # FRED menggunakan '.' atau 'ND' untuk data yang kosong
 
-            try:
-                yield_pct = float(value_str)
-            except (ValueError, TypeError):
-                logger.debug(f"Skipping non-numeric FRED treasury yield value: {value_str}")
-                continue
+                try:
+                    yield_pct = float(value_str)
+                except (ValueError, TypeError):
+                    logger.debug(f"Skipping non-numeric FRED treasury yield value: {value_str}")
+                    continue
 
-            # Lewati jika sudah ada (duplikat)
-            exists = await self.session.execute(
-                select(TreasuryYield.id)
-                .where(TreasuryYield.tenor == tenor)
-                .where(TreasuryYield.date == date)
-                .limit(1)
-            )
-            if exists.scalar_one_or_none() is not None:
-                continue
+                # Lewati jika sudah ada (duplikat)
+                exists = await self.session.execute(
+                    select(TreasuryYield.id)
+                    .where(TreasuryYield.tenor == tenor)
+                    .where(TreasuryYield.date == date)
+                    .limit(1)
+                )
+                if exists.scalar_one_or_none() is not None:
+                    continue
 
-            record = TreasuryYield(
-                tenor=tenor,
-                yield_percent=yield_pct,
-                date=date,
-            )
-            self.session.add(record)
-            saved += 1
+                record = TreasuryYield(
+                    tenor=tenor,
+                    yield_percent=yield_pct,
+                    date=date,
+                )
+                self.session.add(record)
+                saved += 1
 
         if saved:
             await self.session.commit()
             logger.info(f"Treasury {tenor}: saved {saved} new observations")
+        else:
+            await self.session.rollback()
 
         return saved
 
@@ -239,6 +243,7 @@ class FREDDataFetcher:
         )
         if exists.scalar_one_or_none() is not None:
             logger.debug(f"Interest rate {bank} already up-to-date ({effective_date.date()})")
+            await self.session.rollback()
             return 0
 
         record = InterestRate(

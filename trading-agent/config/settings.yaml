@@ -510,7 +510,7 @@ data_sources:
       reverse_repo_level: RRPONTSYD
       treasury_general_account: WTREGEN
       treasury_3m: DGS3MO
-      term_premium_10y: ACMTP10
+      term_premium_10y: THREEFYTP10
       supercore_cpi: CUSR0000SACL1E
       us_real_gdp: A191RL1Q225SBEA
       eurozone_real_gdp: CLVMNACSCAB1GQEA19

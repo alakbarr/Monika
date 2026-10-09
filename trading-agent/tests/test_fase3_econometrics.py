@@ -68,9 +68,11 @@ def test_timesfm_residuals():
 
 def test_fred_series_extensions():
     assert "DGS3MO" in TENOR_SERIES
+    assert "THREEFYTP10" in TENOR_SERIES
     assert "ACMTP10" in TENOR_SERIES
     assert "CUSR0000SACL1E" in TENOR_SERIES
     assert SERIES_TO_TENOR["DGS3MO"] == "3M"
+    assert SERIES_TO_TENOR["THREEFYTP10"] == "10Y_TERM_PREMIUM"
     assert SERIES_TO_TENOR["ACMTP10"] == "10Y_TERM_PREMIUM"
     assert SERIES_TO_TENOR["CUSR0000SACL1E"] == "SUPERCORE_CPI"
 
