@@ -161,11 +161,21 @@ def get_engine():
 
             @event.listens_for(engine.sync_engine, "connect")
             def _set_sqlite_pragma(dbapi_connection, connection_record):
+                try:
+                    dbapi_connection.isolation_level = None
+                except Exception:
+                    pass
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.execute("PRAGMA busy_timeout=60000")
                 cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA cache_size=-64000")
+                cursor.execute("PRAGMA journal_size_limit=67108864")
                 cursor.close()
+
+            @event.listens_for(engine.sync_engine, "begin")
+            def _do_begin(conn):
+                conn.exec_driver_sql("BEGIN IMMEDIATE")
     return engine
 
 

@@ -9,12 +9,24 @@ This module provides `safe_db_op()` which wraps individual DB operations
 with proper rollback on failure.
 """
 import asyncio
+import inspect
 import logging
 from typing import TypeVar, Callable, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger('TradingAgent.SafeOps')
 T = TypeVar('T')
+
+
+async def _safe_expunge_all(session: AsyncSession) -> None:
+    """Expunges all identity map objects, safely awaiting if mock is async."""
+    if hasattr(session, "expunge_all"):
+        try:
+            res = session.expunge_all()
+            if inspect.isawaitable(res):
+                await res
+        except Exception:
+            pass
 
 
 async def safe_db_op(
@@ -44,6 +56,7 @@ async def safe_db_op(
     except asyncio.CancelledError:
         try:
             await session.rollback()
+            await _safe_expunge_all(session)
         except Exception:
             pass
         raise
@@ -51,30 +64,56 @@ async def safe_db_op(
         logger.warning(f"safe_db_op [{label}] failed: {e}")
         try:
             await session.rollback()
+            await _safe_expunge_all(session)
         except Exception as rb_err:
             logger.error(f"safe_db_op [{label}] rollback failed: {rb_err}")
         return default
 
 
-async def safe_commit(session: AsyncSession, label: str = "commit") -> bool:
+async def safe_commit(session: AsyncSession, label: str = "commit", max_retries: int = 3) -> bool:
     """Commit an active transaction with automatic rollback on failure.
+    
+    Prevents PendingRollbackError cascades by retrying transient SQLite lock
+    contention and guaranteeing clean rollback and expunge on failure.
     
     Returns:
         True if commit succeeded, False if failed and rolled back.
     """
+    for attempt in range(max_retries):
+        try:
+            await session.commit()
+            return True
+        except asyncio.CancelledError:
+            try:
+                await session.rollback()
+                await _safe_expunge_all(session)
+            except Exception:
+                pass
+            raise
+        except Exception as e:
+            err_str = str(e).lower()
+            is_locked = "locked" in err_str or "busy" in err_str
+            if is_locked and attempt < max_retries - 1:
+                # If flush already invalidated the transaction, break out to clean rollback
+                if not getattr(session, "is_active", True):
+                    break
+                logger.warning(
+                    f"safe_commit [{label}] lock collision (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
+                )
+                await asyncio.sleep(0.05 * (2 ** attempt))
+                continue
+
+            logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction.")
+            try:
+                await session.rollback()
+                await _safe_expunge_all(session)
+            except Exception as rb_err:
+                logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
+            return False
+
     try:
-        await session.commit()
-        return True
-    except asyncio.CancelledError:
-        try:
-            await session.rollback()
-        except Exception:
-            pass
-        raise
-    except Exception as e:
-        logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction.")
-        try:
-            await session.rollback()
-        except Exception as rb_err:
-            logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
-        return False
+        await session.rollback()
+        await _safe_expunge_all(session)
+    except Exception as rb_err:
+        logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
+    return False

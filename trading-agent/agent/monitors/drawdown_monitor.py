@@ -55,6 +55,7 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                         try:
                             from database.db import get_session
                             from database.models import SystemConfig
+                            from database.safe_ops import safe_commit
                             from sqlalchemy import select as _sel
 
                             now_utc = datetime.now(timezone.utc)
@@ -74,7 +75,7 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                                 ).scalar_one_or_none()
                                 if not balance_cfg or balance_cfg.value is None:
                                     cfg_session.add(SystemConfig(key=balance_key, value=str(balance)))
-                                    await cfg_session.commit()
+                                    await safe_commit(cfg_session, label="drawdown_monitor_start_balance")
                                     starting_balance = balance
                                 else:
                                     starting_balance = float(balance_cfg.value)
@@ -94,7 +95,7 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                                     state_cfg.value = state_json
                                 else:
                                     cfg_session.add(SystemConfig(key=state_key, value=state_json))
-                                await cfg_session.commit()
+                                await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
                         except Exception as e:
                             logger.debug(f"Real risk state write failed (non-fatal): {e}")
 
