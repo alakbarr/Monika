@@ -223,8 +223,8 @@ class LLMFactory:
         ):
             return "9router"
 
-        # System One Decision Models (TypeSafe Jev, Kev, NanoJev) — direct or routed via OpenRouter
-        if "jev" in name or "typesafe" in name or "kev" in name or "nanojev" in name:
+        # System One Decision Models (TypeSafe Jev, Kev, NanoJev, Liquid, Luna, Mercury) — direct or routed via OpenRouter
+        if any(k in name for k in ("jev", "typesafe", "kev", "nanojev", "liquid", "luna", "mercury")):
             return "typesafe"
 
         # Guess provider
@@ -353,12 +353,12 @@ class LLMFactory:
             if prefix.lower() in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
                 clean_model_name = remainder
 
-        # Routing adjustments for System One models via OpenRouter (e.g. jaredpalmer/kev-4b or openrouter/typesafe/jev-latest)
+        # Routing adjustments for System One models via OpenRouter (e.g. jaredpalmer/kev-4b, liquid/lfm-7b-d1, or openrouter/typesafe/jev-latest)
         if provider_name == "typesafe":
             m_lower = model_name.lower()
             is_openrouter_route = (
                 model_name.startswith("openrouter/")
-                or "kev" in m_lower
+                or any(k in m_lower for k in ("kev", "liquid", "luna", "mercury"))
                 or (model_name.startswith("typesafe/") and "openrouter" in m_lower)
                 or provider_config.get("use_openrouter", False)
             )
@@ -374,6 +374,12 @@ class LLMFactory:
                     clean_model_name = clean_model_name[len("openrouter/"):]
                 if clean_model_name.lower() in ("kev", "kev-4b"):
                     clean_model_name = "jaredpalmer/kev-4b"
+                elif clean_model_name.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
+                    clean_model_name = "liquid/lfm-7b-d1"
+                elif clean_model_name.lower() in ("luna-decision", "luna/decision"):
+                    clean_model_name = "luna/decision"
+                elif clean_model_name.lower() in ("mercury-decide", "mercury/decide"):
+                    clean_model_name = "mercury/decide"
 
         from analysis.providers.provider_registry import ProviderRegistry
         client = ProviderRegistry.create_client(

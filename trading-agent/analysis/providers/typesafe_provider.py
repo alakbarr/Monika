@@ -49,6 +49,12 @@ class TypeSafeProvider(BaseLLMClient):
             clean_model = clean_model[len("openrouter/"):]
         if clean_model.lower() in ("kev", "kev-4b"):
             clean_model = "jaredpalmer/kev-4b"
+        elif clean_model.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
+            clean_model = "liquid/lfm-7b-d1"
+        elif clean_model.lower() in ("luna-decision", "luna/decision"):
+            clean_model = "luna/decision"
+        elif clean_model.lower() in ("mercury-decide", "mercury/decide"):
+            clean_model = "mercury/decide"
 
         super().__init__(
             model=clean_model,
@@ -63,7 +69,7 @@ class TypeSafeProvider(BaseLLMClient):
         # Base URL resolution
         if base_url:
             self.base_url = base_url
-        elif "openrouter" in (model or "").lower() or "kev" in (model or "").lower():
+        elif "openrouter" in (model or "").lower() or any(k in (model or "").lower() for k in ("kev", "liquid", "luna", "mercury")):
             self.base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api")
         else:
             self.base_url = os.getenv("TYPESAFE_BASE_URL", "https://api.typesafe.ai")

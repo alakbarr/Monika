@@ -156,6 +156,12 @@ OPENROUTER_MODEL_ALIASES = {
     "0x-alpha": "stealth/ox-alpha",
     "stealth/ox-alpha": "stealth/ox-alpha",
 
+    # --- Audio / Speech ---
+    "openai/whisper-large-v3": "openai/whisper-large-v3",
+    "whisper-large-v3": "openai/whisper-large-v3",
+    "openai/whisper-large-v3-turbo": "openai/whisper-large-v3-turbo",
+    "whisper-large-v3-turbo": "openai/whisper-large-v3-turbo",
+
     # --- OpenRouter Free Tier Models ---
     # Google Gemma (Free)
     "gemma-4-31b-it:free": "google/gemma-4-31b-it:free",

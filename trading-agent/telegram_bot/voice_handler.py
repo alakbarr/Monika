@@ -249,67 +249,140 @@ class VoiceHandler:
                 except Exception as e:
                     logger.debug(f"[VoiceHandler] client.generate_content failed: {e}")
 
-        # 2. Direct HTTP call to Gemini API using GEMINI_API_KEY or settings
-        api_key = (
+        # 2. Iterate through candidate models across OpenRouter, Groq, and Gemini
+        task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
+        voice_role = task_roles.get("voice_transcription", {})
+        candidate_models: list[str] = []
+        custom_tg_model = (self.settings or {}).get("telegram", {}).get("voice_transcription_model")
+        if custom_tg_model:
+            candidate_models.append(custom_tg_model)
+
+        for k in ("primary", "model", "fallback_1", "fallback_2", "fallback_3", "fallback_4"):
+            m = voice_role.get(k)
+            if m and m not in candidate_models:
+                candidate_models.append(m)
+
+        if not candidate_models:
+            chat_role = task_roles.get("chat_telegram", {})
+            chat_m = chat_role.get("primary") or chat_role.get("model")
+            if chat_m:
+                candidate_models.append(chat_m)
+            for live_m in (
+                "gemini-3.8-flash",
+                "gemini-3.7-flash",
+                "gemini-3.5-flash",
+            ):
+                if live_m not in candidate_models:
+                    candidate_models.append(live_m)
+
+        # Resolve API keys
+        openrouter_key = (
+            self.settings.get("api_keys", {}).get("openrouter")
+            or os.getenv("OPENROUTER_API_KEY")
+        )
+        if not openrouter_key:
+            from utils.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+            openrouter_key = get_paid_key() or (get_free_keys()[0] if get_free_keys() else None)
+
+        groq_key = (
+            self.settings.get("api_keys", {}).get("groq")
+            or os.getenv("GROQ_API_KEY")
+        )
+        if not groq_key:
+            from utils.api.groq_rate_limiter import get_api_keys
+            g_keys = get_api_keys()
+            if g_keys:
+                groq_key = g_keys[0]
+
+        gemini_key = (
             self.settings.get("api_keys", {}).get("gemini")
             or os.getenv("GEMINI_API_KEY")
         )
-        if not api_key:
+        if not gemini_key:
             keys = os.getenv("GEMINI_API_KEYS", "")
             if keys:
-                api_key = keys.split(",")[0].strip()
+                gemini_key = keys.split(",")[0].strip()
 
-        if api_key:
-            try:
-                import aiohttp
-                b64_audio = base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
-                task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
-                voice_role = task_roles.get("voice_transcription", {})
-                candidate_models: list[str] = []
-                custom_tg_model = (self.settings or {}).get("telegram", {}).get("voice_transcription_model")
-                if custom_tg_model:
-                    candidate_models.append(custom_tg_model)
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as http_session:
+                for model_name in candidate_models:
+                    m_lower = model_name.lower()
 
-                for k in ("primary", "model", "fallback_1", "fallback_2", "fallback_3", "fallback_4"):
-                    m = voice_role.get(k)
-                    if m and m not in candidate_models:
-                        candidate_models.append(m)
+                    # A. OpenRouter Whisper endpoint
+                    if ("whisper" in m_lower and ("openai/" in m_lower or "/" in m_lower)) or "openrouter" in m_lower:
+                        if not openrouter_key:
+                            continue
+                        clean_model = model_name
+                        if clean_model.startswith("openrouter/"):
+                            clean_model = clean_model[len("openrouter/"):]
+                        try:
+                            form = aiohttp.FormData()
+                            form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
+                            form.add_field("model", clean_model)
+                            headers = {"Authorization": f"Bearer {openrouter_key}"}
+                            url = "https://openrouter.ai/api/v1/audio/transcriptions"
+                            async with http_session.post(url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    text = data.get("text", "")
+                                    if text and str(text).strip():
+                                        return str(text).strip()
+                                else:
+                                    err_body = await resp.text()
+                                    logger.warning(f"[VoiceHandler] OpenRouter transcription ({clean_model}) status {resp.status}: {err_body}")
+                        except Exception as e:
+                            logger.warning(f"[VoiceHandler] OpenRouter transcription failed for {clean_model}: {e}")
 
-                if not candidate_models:
-                    chat_role = task_roles.get("chat_telegram", {})
-                    chat_m = chat_role.get("primary") or chat_role.get("model")
-                    if chat_m:
-                        candidate_models.append(chat_m)
-                    for live_m in (
-                        "gemini-3.8-live",
-                        "gemini-3.8-live-extended-thinking",
-                        "gemini-3.5-transcribe-live",
-                        "gemini-3-flash-live",
-                    ):
-                        if live_m not in candidate_models:
-                            candidate_models.append(live_m)
+                    # B. Groq Whisper endpoint
+                    elif "whisper" in m_lower and "/" not in m_lower:
+                        if not groq_key:
+                            continue
+                        try:
+                            form = aiohttp.FormData()
+                            form.add_field("file", audio, filename="audio.ogg", content_type=mime_type)
+                            form.add_field("model", model_name)
+                            headers = {"Authorization": f"Bearer {groq_key}"}
+                            url = "https://api.groq.com/openai/v1/audio/transcriptions"
+                            async with http_session.post(url, data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    text = data.get("text", "")
+                                    if text and str(text).strip():
+                                        return str(text).strip()
+                                else:
+                                    err_body = await resp.text()
+                                    logger.warning(f"[VoiceHandler] Groq transcription ({model_name}) status {resp.status}: {err_body}")
+                        except Exception as e:
+                            logger.warning(f"[VoiceHandler] Groq transcription failed for {model_name}: {e}")
 
-                headers = {
-                    "x-goog-api-key": api_key,
-                    "Content-Type": "application/json",
-                }
-                payload = {
-                    "contents": [{
-                        "role": "user",
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inlineData": {
-                                    "mimeType": mime_type,
-                                    "data": b64_audio,
-                                }
-                            }
-                        ]
-                    }]
-                }
-                async with aiohttp.ClientSession() as http_session:
-                    for model_name in candidate_models:
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                    # C. Gemini multimodal endpoint
+                    elif "gemini" in m_lower or not ("whisper" in m_lower):
+                        if not gemini_key:
+                            continue
+                        clean_gemini_model = model_name
+                        if clean_gemini_model.startswith("google/"):
+                            clean_gemini_model = clean_gemini_model[len("google/"):]
+                        b64_audio = base64.b64encode(audio).decode("utf-8") if isinstance(audio, (bytes, bytearray)) else audio
+                        headers = {
+                            "x-goog-api-key": gemini_key,
+                            "Content-Type": "application/json",
+                        }
+                        payload = {
+                            "contents": [{
+                                "role": "user",
+                                "parts": [
+                                    {"text": prompt},
+                                    {
+                                        "inlineData": {
+                                            "mimeType": mime_type,
+                                            "data": b64_audio,
+                                        }
+                                    }
+                                ]
+                            }]
+                        }
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_gemini_model}:generateContent"
                         try:
                             async with http_session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                                 if resp.status == 200:
@@ -322,10 +395,10 @@ class VoiceHandler:
                                             return text.strip()
                                 else:
                                     err_body = await resp.text()
-                                    logger.warning(f"[VoiceHandler] Direct Gemini transcription ({model_name}) status {resp.status}: {err_body}")
+                                    logger.warning(f"[VoiceHandler] Direct Gemini transcription ({clean_gemini_model}) status {resp.status}: {err_body}")
                         except Exception as e:
-                            logger.warning(f"[VoiceHandler] Direct Gemini transcription failed for {model_name}: {e}")
-            except Exception as e:
-                logger.warning(f"[VoiceHandler] Direct Gemini transcription setup failed: {e}")
+                            logger.warning(f"[VoiceHandler] Direct Gemini transcription failed for {clean_gemini_model}: {e}")
+        except Exception as e:
+            logger.warning(f"[VoiceHandler] Transcription execution failed: {e}")
 
         return ""

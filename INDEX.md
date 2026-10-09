@@ -156,23 +156,23 @@ This document provides an exhaustive structural index of all directories, files,
         - [Folder: `trading-agent/skills/trading/telegram-persona`](#folder-trading-agentskillstradingtelegram-persona) - Line 5985
     - [Folder: `trading-agent/systemd`](#folder-trading-agentsystemd) - Line 5990
     - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 5995
-    - [Folder: `trading-agent/tests`](#folder-trading-agenttests) - Line 6187
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 6192
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 6232
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 6292
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 6346
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 6358
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 6408
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6525
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6566
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6579
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6604
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6617
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6643
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6652
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6668
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6695
-      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6710
+    - [Folder: `trading-agent/tests`](#folder-trading-agenttests) - Line 6186
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 6191
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 6231
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 6291
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 6345
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 6357
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 6407
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6524
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6565
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6578
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6603
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6616
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6642
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6651
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6667
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6694
+      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6709
 
 ## Root Directory: `/trading-agent`
 
@@ -1336,9 +1336,9 @@ This document provides an exhaustive structural index of all directories, files,
     - *Methods*: `compress_turns(messages, budget_tokens)`
 
 **File:** `typesafe_provider.py`
-  - **Docstring**: TypeSafe (Jev) Provider: System One Decision-Making Engine. Integrates TypeSafe's Jev model family for fast, typed classification, scoring, and boolean decisions.
+  - **Docstring**: TypeSafe (Jev, Kev, Liquid D1, Luna Decision, Mercury Decide) Provider: System One Decision-Making Engine. Integrates TypeSafe's Jev model family and OpenRouter-hosted decision models for fast, typed classification, scoring, and boolean decisions.
   - **Classes**: `TypeSafeProvider`
-    - *Methods*: `_get_client()`, `classify_json()`, `generate()`, `run_chat_loop()`, `run_tool_agent()`, `ping()`
+    - *Methods*: `_get_client()`, `classify_json()`, `generate()`, `run_chat_loop()`, `run_tool_agent()`, `ping()`, `system_one()`
 
 ##### Folder: `trading-agent/analysis/schemas`
 
@@ -6170,11 +6170,10 @@ This document provides an exhaustive structural index of all directories, files,
   - **Global Variables**: logger
   - **Classes**:
     - `VoiceHandler`
-      - *Docstring*: Handles Telegram voice notes and audio memos with Gemini multimodal transcription.
+      - *Docstring*: Handles Telegram voice notes and audio memos with OpenRouter Whisper, Groq Whisper, and Gemini multimodal transcription.
       - *Methods*:
-        - `__init__(self, bot_token, chat_agent, topic_manager=None, gemini_api_key=None)`
-        - `_download_voice(self, file_id)`
-        - `_transcribe_audio(self, audio_bytes, mime_type='audio/ogg')`
+        - `__init__(self, chat_agent=None, bot=None, settings=None)`
+        - `_transcribe(self, audio, mime_type='audio/ogg')`
         - `handle_voice(self, update, context)`
 
 **File:** `voice_safety_gate.py`
