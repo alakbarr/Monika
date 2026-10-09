@@ -28,6 +28,8 @@ GROQ_MODEL_ALIASES = {
     "groq-qwen3.6-27b":    "qwen/qwen3.8-27b",
     "qwen3.6-27b":         "qwen/qwen3.8-27b",
     "qwen/qwen3.6-27b":    "qwen/qwen3.8-27b",
+    # Audio transcription models
+    "whisper-large-v3":    "whisper-large-v3",
 }
 
 _groq_limiter = GroqRateLimiter()

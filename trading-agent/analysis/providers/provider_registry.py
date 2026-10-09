@@ -212,7 +212,7 @@ def _register_builtins():
         m_lower = model_name.lower()
         is_openrouter = (
             model_name.startswith("openrouter/")
-            or "kev" in m_lower
+            or any(k in m_lower for k in ("kev", "liquid", "luna", "mercury"))
             or (model_name.startswith("typesafe/") and "openrouter" in m_lower)
             or provider_config.get("use_openrouter", False)
         )
@@ -222,6 +222,12 @@ def _register_builtins():
             clean_model = model_name.replace("openrouter/", "")
             if clean_model.lower() in ("kev", "kev-4b"):
                 clean_model = "jaredpalmer/kev-4b"
+            elif clean_model.lower() in ("liquid-d1", "lfm-7b-d1", "liquid/lfm-7b-d1"):
+                clean_model = "liquid/lfm-7b-d1"
+            elif clean_model.lower() in ("luna-decision", "luna/decision"):
+                clean_model = "luna/decision"
+            elif clean_model.lower() in ("mercury-decide", "mercury/decide"):
+                clean_model = "mercury/decide"
         else:
             default_base = "https://api.typesafe.ai"
             default_key = os.getenv("TYPESAFE_API_KEY")
