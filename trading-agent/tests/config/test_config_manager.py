@@ -4,6 +4,7 @@ Test suite for ConfigManager, Security Guards, and TraderOnboarding.
 
 import os
 import json
+import asyncio
 import pytest
 from pathlib import Path
 from config.security import validate_env_mutation, BLOCKED_ENV_VARS
@@ -67,3 +68,22 @@ def test_setup_wizard_missing_items():
     assert "mt5" in missing
     assert "db" in missing
     assert "llm" in missing
+
+
+@pytest.mark.asyncio
+async def test_config_manager_watcher_lifecycle():
+    cm = ConfigManager(config_paths=[])
+    assert not cm.is_running
+    assert not cm._running
+
+    task = asyncio.create_task(cm.start_watcher(interval_seconds=0.01))
+    await asyncio.sleep(0.03)
+    assert cm.is_running
+    assert cm._running
+
+    cm.stop_watcher()
+    await asyncio.sleep(0.02)
+    assert not cm.is_running
+    assert not cm._running
+    await task
+

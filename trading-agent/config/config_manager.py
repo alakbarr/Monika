@@ -114,27 +114,42 @@ class ConfigManager:
         self.publish("all", new_settings)
         return new_settings
 
+    @property
+    def is_running(self) -> bool:
+        return self._is_watching
+
+    @property
+    def _running(self) -> bool:
+        return self._is_watching
+
     async def start_watcher(self, interval_seconds: float = 3.0) -> None:
-        """Starts background watcher task for real-time config reloads."""
+        """Starts background watcher loop for real-time config reloads."""
         if self._is_watching:
             return
         self._is_watching = True
-
-        async def _loop():
-            while self._is_watching:
+        self._stop_event = asyncio.Event()
+        logger.info(f"ConfigManager file watcher started (poll interval: {interval_seconds}s)")
+        try:
+            while self._is_watching and not self._stop_event.is_set():
                 try:
                     self.check_for_updates()
                 except Exception as e:
                     logger.debug(f"Config watcher loop error: {e}")
-                await asyncio.sleep(interval_seconds)
-
-        self._watch_task = asyncio.create_task(_loop())
-        logger.info(f"ConfigManager file watcher started (poll interval: {interval_seconds}s)")
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=interval_seconds)
+                except (asyncio.TimeoutError, TimeoutError):
+                    pass
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._is_watching = False
 
     def stop_watcher(self) -> None:
         """Stops background file watcher."""
         self._is_watching = False
-        if self._watch_task:
+        if hasattr(self, "_stop_event"):
+            self._stop_event.set()
+        if self._watch_task and not self._watch_task.done():
             self._watch_task.cancel()
             self._watch_task = None
         logger.info("ConfigManager file watcher stopped")
