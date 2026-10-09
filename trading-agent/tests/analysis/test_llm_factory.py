@@ -1,4 +1,5 @@
 from tests.conftest import create_mock_async_session
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from analysis.providers.llm_factory import LLMFactory, FallbackClientWrapper, get_client_for_task, create_client
@@ -368,6 +369,61 @@ async def test_fallback_wrapper_activity_log_recorded():
         assert "LLMFallbackAudit" in log_entry.description
         assert "downgraded from primary" in log_entry.description
         mock_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fallback_wrapper_typesafe_array_schema_skip_audit():
+    settings = {
+        "llm": {
+            "providers": {
+                "typesafe": {"enabled": True},
+                "gemini": {"enabled": True}
+            },
+            "model_catalog": {
+                "jev-latest": {"provider": "typesafe"},
+                "gemini-3.5-flash-lite": {"provider": "gemini"}
+            },
+            "task_roles": {
+                "news_task": {
+                    "primary": "jev-latest",
+                    "fallback_1": "gemini-3.5-flash-lite",
+                }
+            }
+        }
+    }
+    factory = LLMFactory(settings)
+    mock_fb = AsyncMock()
+    mock_fb.classify_json.return_value = [{"index": 1, "impact": "HIGH"}]
+
+    def side_effect(model_name, role_config, slot_name=None, task_role=None):
+        return mock_fb
+
+    mock_session = create_mock_async_session()
+    added_items = []
+    mock_session.add = MagicMock(side_effect=lambda item: added_items.append(item))
+    mock_session.commit = AsyncMock()
+
+    from contextlib import asynccontextmanager
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_session
+
+    with patch.object(factory, '_create_client_instance', side_effect=side_effect), \
+         patch('database.db.get_session', mock_get_session), \
+         patch('analysis.providers.llm_factory.logger') as mock_logger:
+        wrapper = FallbackClientWrapper(
+            factory, "jev-latest", ["gemini-3.5-flash-lite"],
+            settings["llm"]["task_roles"]["news_task"],
+            task_role="news_task"
+        )
+        res = await wrapper.classify_json(prompt="test", schema={"type": "array", "items": {}})
+        assert res == [{"index": 1, "impact": "HIGH"}]
+        await asyncio.sleep(0.05)
+        warn_msgs = [call.args[0] for call in mock_logger.warning.call_args_list if call.args]
+        audit_msgs = [m for m in warn_msgs if "[LLMFallbackAudit]" in m]
+        assert len(audit_msgs) == 1
+        assert "does not support top-level array schema in classify_json" in audit_msgs[0]
+
 
 
 

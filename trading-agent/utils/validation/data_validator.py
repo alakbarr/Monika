@@ -12,8 +12,8 @@ from database.models import PriceOHLCV, NewsItem, FundamentalBrief
 
 logger = logging.getLogger("TradingAgent.DataValidator")
 
-DEFAULT_OHLCV_AGE = {"M15": 1.0, "H1": 3.0, "H4": 8.0, "D1": 48.0}
-DEFAULT_IND_AGE = {"H1": 3.0, "H4": 8.0, "D1": 48.0}
+DEFAULT_OHLCV_AGE = {"M15": 1.0, "H1": 3.0, "H4": 8.0, "D1": 48.0, "W1": 192.0}
+DEFAULT_IND_AGE = {"H1": 3.0, "H4": 8.0, "D1": 48.0, "W1": 192.0}
 DEFAULT_MACRO_AGE_DAYS = {
     "vix": 4.5,
     "treasury_yield": 4.5,

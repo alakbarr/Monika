@@ -318,7 +318,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     for err in validation.get("errors", []):
         for sym in target_symbols:
             if sym in err:
-                if "/D1 Indicator is" in err:
+                if "/D1 Indicator is" in err or "/W1 Indicator is" in err:
                     context_stale_assets.add(sym)
                 else:
                     critical_stale_assets.add(sym)
@@ -344,7 +344,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         should_pause = True
     elif context_stale_assets:
         logger.warning(
-            f"D1 context indicators aging for {len(context_stale_assets)} assets ({', '.join(sorted(context_stale_assets))}). "
+            f"HTF context indicators (D1/W1) aging for {len(context_stale_assets)} assets ({', '.join(sorted(context_stale_assets))}). "
             f"Proceeding with Stage 2 in graceful degradation mode."
         )
         
