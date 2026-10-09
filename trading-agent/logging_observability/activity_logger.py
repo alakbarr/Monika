@@ -10,6 +10,7 @@ Dual functionality:
 2. DB ActivityLog: Structured persistence for dashboard metrics and Telegram bot history.
 """
 
+import asyncio
 import logging
 import logging.handlers
 import os
@@ -191,7 +192,7 @@ class ActivityLogger:
             category = "system"
 
         try:
-            from database.db import get_session
+            from database.db import get_write_session
             from database.models import ActivityLog
 
             entry = ActivityLog(
@@ -207,11 +208,17 @@ class ActivityLogger:
                 await session.flush()
                 return entry.id
             else:
-                async with get_session() as new_session:
-                    new_session.add(entry)
-                    await new_session.commit()
-                    await new_session.refresh(entry)
-                    return entry.id
+                for attempt in range(3):
+                    try:
+                        async with get_write_session() as new_session:
+                            new_session.add(entry)
+                            await new_session.flush()
+                            return entry.id
+                    except Exception as err:
+                        if attempt < 2 and ("locked" in str(err).lower() or "busy" in str(err).lower()):
+                            await asyncio.sleep(0.05 * (2 ** attempt))
+                            continue
+                        raise
         except Exception as e:
             self._logger.error(f"ActivityLogger DB write failed: {e}")
             return None
@@ -276,7 +283,7 @@ class ActivityLogger:
         if not entries:
             return 0
         try:
-            from database.db import get_session
+            from database.db import get_write_session
             from database.models import ActivityLog
 
             async def _do_bulk(sess):
@@ -298,10 +305,16 @@ class ActivityLogger:
             if session:
                 return await _do_bulk(session)
             else:
-                async with get_session() as new_session:
-                    res = await _do_bulk(new_session)
-                    await new_session.commit()
-                    return res
+                for attempt in range(3):
+                    try:
+                        async with get_write_session() as new_session:
+                            res = await _do_bulk(new_session)
+                            return res
+                    except Exception as err:
+                        if attempt < 2 and ("locked" in str(err).lower() or "busy" in str(err).lower()):
+                            await asyncio.sleep(0.05 * (2 ** attempt))
+                            continue
+                        raise
         except Exception as e:
             self._logger.error(f"ActivityLogger bulk write failed: {e}")
             return 0

@@ -118,26 +118,46 @@ def get_tier() -> str:
     return "trial"
 
 
+def get_canonical_db_path() -> Path:
+    """Return absolute canonical database file path for Monika SQLite database."""
+    base_data_dir = _cur_dir.parent / "data"
+    base_data_dir.mkdir(parents=True, exist_ok=True)
+    return (base_data_dir / "monika.db").resolve()
+
+
 def get_engine():
     """Lazy engine factory with connection pooling."""
     global engine
     if engine is None:
         tier = get_tier()
-        if tier == "trial":
-            from pathlib import Path
-            data_dir = Path.cwd() / "data"
-            data_dir.mkdir(parents=True, exist_ok=True)
-            db_path = (data_dir / "monika.db").resolve()
+        env_url = os.getenv("DATABASE_URL")
+        if is_running_under_test_suite() and env_url:
+            db_url = env_url
+        elif tier == "trial":
+            db_path = get_canonical_db_path()
             db_url = f"sqlite+aiosqlite:///{db_path.as_posix()}"
             os.environ["DATABASE_URL"] = db_url
             os.environ["MONIKA_TIER"] = "trial"
             os.environ["PAPER_TRADING_MODE"] = "true"
         else:
-            db_url = os.getenv("DATABASE_URL", DATABASE_URL)
+            db_url = env_url or DATABASE_URL
         if db_url.startswith("sqlite://") and not db_url.startswith("sqlite+"):
             db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
         elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # Normalize relative SQLite paths to canonical absolute path unless test/in-memory
+        if "sqlite" in db_url and ":memory:" not in db_url and not is_running_under_test_suite():
+            for prefix in [
+                "sqlite+aiosqlite:///data/monika.db",
+                "sqlite+aiosqlite:///monika.db",
+                "sqlite+aiosqlite:///./data/monika.db",
+                "sqlite+aiosqlite:///./monika.db",
+            ]:
+                if db_url == prefix:
+                    db_url = f"sqlite+aiosqlite:///{get_canonical_db_path().as_posix()}"
+                    break
+
         verify_safe_database_url(db_url)
         engine_kwargs: dict[str, Any] = {"echo": False}
         if "postgresql" in db_url:
@@ -154,7 +174,18 @@ def get_engine():
                 }
             )
         elif "sqlite" in db_url:
-            engine_kwargs["connect_args"] = {"timeout": 60.0}
+            engine_kwargs.update(
+                {
+                    "pool_size": 20,
+                    "max_overflow": 30,
+                    "pool_timeout": 60.0,
+                    "pool_pre_ping": True,
+                    "pool_recycle": 1800,
+                    "connect_args": {
+                        "timeout": 60.0,
+                    },
+                }
+            )
         engine = create_async_engine(db_url, **engine_kwargs)
         if "sqlite" in db_url:
             from sqlalchemy import event
@@ -173,12 +204,6 @@ def get_engine():
                 cursor.execute("PRAGMA journal_size_limit=67108864")
                 cursor.close()
 
-            @event.listens_for(engine.sync_engine, "begin")
-            def _do_begin(conn):
-                if conn.get_execution_options().get("read_only", False):
-                    conn.exec_driver_sql("BEGIN DEFERRED")
-                    return
-                conn.exec_driver_sql("BEGIN IMMEDIATE")
     return engine
 
 
@@ -213,9 +238,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with sm() as session:
         yield session
 
+_SQLITE_WRITE_LOCKS: dict[Any, asyncio.Lock] = {}
+
+def _get_write_lock() -> asyncio.Lock:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop not in _SQLITE_WRITE_LOCKS:
+        _SQLITE_WRITE_LOCKS[loop] = asyncio.Lock()
+    return _SQLITE_WRITE_LOCKS[loop]
+
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an async session as an asynchronous context manager."""
+    """Yield an async session as an asynchronous context manager (optimistic / non-blocking)."""
     sm = AsyncSessionLocal if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy)) else get_sessionmaker()
     async with sm() as session:
         try:
@@ -226,10 +262,46 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             else:
                 logger.error(f"Session error: {e}", exc_info=True)
             try:
-                await session.rollback()
+                await asyncio.shield(session.rollback())
             except Exception as rb_err:
                 logger.warning(f"Session rollback failed (original error preserved): {rb_err}")
             raise
+
+@asynccontextmanager
+async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Yield an async session serialized for write operations.
+    On SQLite, acquires an in-process async mutex to guarantee single-writer determinism.
+    On PostgreSQL, proceeds with standard connection concurrency.
+    Automatically commits on normal exit, or rolls back cleanly on exception.
+    """
+    eng = engine if engine is not None else get_engine()
+    dialect_name = getattr(getattr(eng, "dialect", None), "name", "").lower()
+    is_sqlite = "sqlite" in dialect_name
+
+    if is_sqlite:
+        async with _get_write_lock():
+            async with get_session() as session:
+                try:
+                    yield session
+                    await session.commit()
+                except Exception:
+                    try:
+                        await asyncio.shield(session.rollback())
+                    except Exception:
+                        pass
+                    raise
+    else:
+        async with get_session() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                try:
+                    await asyncio.shield(session.rollback())
+                except Exception:
+                    pass
+                raise
 
 _IN_MEMORY_EXECUTION_LOCKS: dict[int, asyncio.Lock] = {}
 
@@ -280,6 +352,8 @@ async def transactional_advisory_lock(session: AsyncSession, lock_key: Union[int
 async def close_db() -> None:
     """Tutup koneksi database dengan aman."""
     global engine, _async_session_factory
+    _SQLITE_WRITE_LOCKS.clear()
+    _IN_MEMORY_EXECUTION_LOCKS.clear()
     if engine is not None:
         logger.info("Disposing database engine...")
         await engine.dispose()

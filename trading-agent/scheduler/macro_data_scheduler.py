@@ -27,13 +27,17 @@ class MacroDataScheduler:
     """
     Background worker mandiri untuk me-refresh 11 sumber data makro & sentimen.
     """
-    _global_sync_lock: Optional[asyncio.Lock] = None
+    _global_sync_locks: dict[Any, asyncio.Lock] = {}
 
     @classmethod
     def _get_global_lock(cls) -> asyncio.Lock:
-        if cls._global_sync_lock is None:
-            cls._global_sync_lock = asyncio.Lock()
-        return cls._global_sync_lock
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop not in cls._global_sync_locks:
+            cls._global_sync_locks[loop] = asyncio.Lock()
+        return cls._global_sync_locks[loop]
 
     def __init__(self, settings: dict, recovery_event: Optional[asyncio.Event] = None):
         self.settings = settings
