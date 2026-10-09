@@ -153,6 +153,8 @@ def get_engine():
                     },
                 }
             )
+        elif "sqlite" in db_url:
+            engine_kwargs["connect_args"] = {"timeout": 30.0}
         engine = create_async_engine(db_url, **engine_kwargs)
         if "sqlite" in db_url:
             from sqlalchemy import event
@@ -161,7 +163,7 @@ def get_engine():
             def _set_sqlite_pragma(dbapi_connection, connection_record):
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.execute("PRAGMA busy_timeout=30000")
                 cursor.execute("PRAGMA synchronous=NORMAL")
                 cursor.close()
     return engine

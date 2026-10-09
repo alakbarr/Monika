@@ -142,25 +142,27 @@ class FXSSISentimentFetcher:
         # Jalankan proses scraping DrissionPage di thread terpisah
         result = await asyncio.to_thread(self.fetch_sync)
 
-        # 1. Simpan snapshot terbaru ke DB hanya jika ada ratios valid
-        if "ratios" in result and result["ratios"]:
+        # Simpan snapshot terbaru dan time-series history ke DB jika ratios valid
+        if self.session and "ratios" in result and result.get("ratios"):
             cfg_key = "fxssi_sentiment_latest"
+            hist_key = "fxssi_sentiment_history"
+
+            # Query both rows in read phase before mutating any session state to eliminate mid-query autoflush
             existing = (await self.session.execute(
                 select(SystemConfig).where(SystemConfig.key == cfg_key)
             )).scalar_one_or_none()
-            
+
+            hist_row = (await self.session.execute(
+                select(SystemConfig).where(SystemConfig.key == hist_key)
+            )).scalar_one_or_none()
+
+            # 1. Simpan snapshot terbaru
             if existing:
                 existing.value = json.dumps(result)
             else:
                 self.session.add(SystemConfig(key=cfg_key, value=json.dumps(result)))
 
-        # 2. Simpan atau append ke time-series history snapshot jika data valid
-        if "ratios" in result and result["ratios"]:
-            hist_key = "fxssi_sentiment_history"
-            hist_row = (await self.session.execute(
-                select(SystemConfig).where(SystemConfig.key == hist_key)
-            )).scalar_one_or_none()
-
+            # 2. Simpan atau append ke time-series history snapshot
             history_list = []
             if hist_row and hist_row.value:
                 try:
@@ -183,5 +185,6 @@ class FXSSISentimentFetcher:
             else:
                 self.session.add(SystemConfig(key=hist_key, value=json.dumps(history_list)))
 
-        await self.session.commit()
+            await self.session.commit()
+
         return result

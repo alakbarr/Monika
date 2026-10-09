@@ -28,9 +28,9 @@ class SqliteCheckpointSaver(InMemorySaver):
 
     def _get_connection(self) -> sqlite3.Connection:
         """Create a hardened SQLite connection with WAL mode and high-concurrency pragmas."""
-        conn = sqlite3.connect(self.db_path, timeout=5.0)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA busy_timeout = 30000")
         conn.execute("PRAGMA synchronous = NORMAL")
         conn.execute("PRAGMA journal_size_limit = 67108864")  # 64MB journal limit
         return conn
@@ -144,7 +144,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                 type_chk, c_blob = ("json", b"")
                 type_meta, m_blob = ("json", b"")
 
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -189,7 +189,8 @@ class SqliteCheckpointSaver(InMemorySaver):
                 type_meta, m_blob = ("json", b"")
 
             if aiosqlite is not None:
-                async with aiosqlite.connect(self.db_path) as conn:
+                async with aiosqlite.connect(self.db_path, timeout=30.0) as conn:
+                    await conn.execute("PRAGMA busy_timeout = 30000")
                     await conn.execute(
                         """
                         INSERT OR REPLACE INTO checkpoints 
@@ -209,7 +210,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         return res
 
     def _persist_checkpoint_sync(self, thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, type_chk, c_blob, type_meta, m_blob):
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         try:
             conn.execute(
                 """
@@ -248,7 +249,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                     v_type, v_blob = ("json", b"")
                 rows.append((thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob)))
 
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.executemany(
                     """
@@ -290,7 +291,8 @@ class SqliteCheckpointSaver(InMemorySaver):
                 rows.append((thread_id, checkpoint_ns, checkpoint_id, task_id, idx, str(channel), str(v_type), bytes(v_blob)))
 
             if aiosqlite is not None:
-                async with aiosqlite.connect(self.db_path) as conn:
+                async with aiosqlite.connect(self.db_path, timeout=30.0) as conn:
+                    await conn.execute("PRAGMA busy_timeout = 30000")
                     await conn.executemany(
                         """
                         INSERT OR REPLACE INTO writes
@@ -306,7 +308,7 @@ class SqliteCheckpointSaver(InMemorySaver):
             logger.warning(f"[SqliteCheckpointer] Failed to persist writes asynchronously: {e}")
 
     def _persist_writes_sync(self, rows):
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         try:
             conn.executemany(
                 """

@@ -44,6 +44,20 @@ def utc_now_iso() -> str:
     return now().isoformat()
 
 
+def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Ensures datetime is timezone-aware in UTC.
+    If dt is naive (e.g. retrieved from SQLite), attaches timezone.utc.
+    If dt is aware, converts to UTC.
+    If dt is None, returns None.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 @contextmanager
 def frozen_time(dt: Optional[datetime]):
     """
