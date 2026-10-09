@@ -231,7 +231,7 @@ class InvestingCalendarScraper(BaseScraper):
     _last_cache_time: float = 0.0
     CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
 
-    def fetch_events(self, fast_mode: bool = True, time_filter: Optional[str] = None, force_refresh: bool = False) -> List[CalendarEvent]:
+    def fetch_events(self, fast_mode: bool = False, time_filter: Optional[str] = None, force_refresh: bool = False) -> List[CalendarEvent]:
         # Check in-memory cache first to avoid launching browser unnecessarily
         now_ts = time.time()
         if not force_refresh and self._cached_events and (now_ts - self._last_cache_time < self.CACHE_TTL_SECONDS):
