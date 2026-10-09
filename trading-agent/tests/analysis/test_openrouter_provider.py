@@ -79,6 +79,7 @@ async def test_openrouter_generate():
     mock_choice.message.content = "OpenRouter response"
     mock_resp = MagicMock()
     mock_resp.choices = [mock_choice]
+    mock_resp.usage = None
 
     with patch.object(provider.client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_resp
@@ -106,6 +107,7 @@ async def test_openrouter_classify_json():
     mock_choice.message.content = json.dumps({"status": "approved", "score": 8.5})
     mock_resp = MagicMock()
     mock_resp.choices = [mock_choice]
+    mock_resp.usage = None
 
     with patch.object(provider.client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_resp
@@ -123,7 +125,7 @@ async def test_openrouter_run_agent_402_billing_error():
     provider = OpenRouterProvider(model="claude-sonnet-5", api_key="test-key")
 
     with patch.object(provider, 'run_tool_agent', side_effect=Exception("402 Payment Required: Insufficient credits")):
-        session = MagicMock()
+        session = create_mock_async_session()
         res = await provider.run_agent(session, "sys", "user", tools=[], stage_name="stage1_test")
 
         assert res["success"] is False
@@ -553,5 +555,38 @@ async def test_openrouter_502_503_service_unavailable_fail_fast():
         OpenRouterProvider.reset_cooldowns()
 
 
+def test_llm_factory_openrouter_paid_model_uses_paid_key_not_free_pool():
+    """
+    LLMFactory TIDAK boleh menyuntikkan free key dari CredentialPool ke model berbayar OpenRouter.
+    Model seperti z-ai/glm-5.3 atau claude-sonnet-5 HARUS menggunakan OPENROUTER_PAID_API_KEY.
+    """
+    from analysis.providers.llm_factory import LLMFactory
+    env = {
+        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-secret',
+        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2, sk-or-free-3',
+    }
+    with patch.dict('os.environ', env, clear=True):
+        factory = LLMFactory({})
+        client = factory._create_client_instance("z-ai/glm-5.3", role_config={"max_tokens": 512, "temperature": 0.0})
+        assert isinstance(client, OpenRouterProvider)
+        assert client.is_free is False
+        assert client._paid_key == "sk-or-paid-secret"
+        assert client._get_api_key() == "sk-or-paid-secret"
 
 
+def test_openrouter_provider_paid_model_rejects_free_key_override():
+    """
+    Jika caller tidak sengaja mem-pass salah satu kunci gratis dari OPENROUTER_API_KEYS
+    ke OpenRouterProvider untuk model berbayar, provider HARUS menolak kunci gratis tersebut
+    dan tetap mengutamakan OPENROUTER_PAID_API_KEY.
+    """
+    env = {
+        'OPENROUTER_PAID_API_KEY': 'sk-or-paid-secret',
+        'OPENROUTER_API_KEYS': 'sk-or-free-1, sk-or-free-2',
+    }
+    with patch.dict('os.environ', env, clear=True):
+        # Caller secara keliru mem-pass sk-or-free-1 ke model berbayar
+        provider = OpenRouterProvider(model="z-ai/glm-5.3", api_key="sk-or-free-1")
+        assert provider.is_free is False
+        assert provider._paid_key == "sk-or-paid-secret"
+        assert provider._get_api_key() == "sk-or-paid-secret"

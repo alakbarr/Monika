@@ -6202,7 +6202,7 @@ This document provides an exhaustive structural index of all directories, files,
       - *Docstring*: Non-blocking asynchronous wrapper dispatching chart rendering to a dedicated background thread.
 
 **File:** `clock.py`
-  - **Functions**: `now`, `set_simulated_now`, `get_simulated_now`, `is_simulated`, `utc_now_iso`, `frozen_time`, `async_frozen_time`
+  - **Functions**: `now`, `set_simulated_now`, `get_simulated_now`, `is_simulated`, `utc_now_iso`, `ensure_utc`, `frozen_time`, `async_frozen_time`
 
 **File:** `constants.py`
   - **Global Variables**: `MARKET_OUTCOME_EXIT_REASONS`, `NON_MARKET_EXIT_REASONS`, `AI_MAGIC_NUMBER`, `CLAUDE_MAGIC_NUMBER`, `ANALYSIS_TIMEFRAMES`, `H4_DATA_MAX_AGE_HOURS`, `D1_DATA_MAX_AGE_HOURS`
@@ -6334,7 +6334,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `openrouter_rate_limiter.py`
   - **Classes**: `OpenRouterRateLimiter`
-    - *Methods*: `try_acquire()`, `check_quota()`, `get_usage()`, `mark_cooldown()`, `reset()`, `_save_state()`, `_ensure_loaded()`
+    - *Methods*: `try_acquire()`, `check_quota()`, `get_usage()`, `mark_cooldown()`, `reset()`, `_save_state()`, `_ensure_loaded()`, `_get_lock()`
   - **Functions**: `get_paid_key`, `get_free_keys`, `get_all_keys`, `is_free_tier_model`
   - **Variables**: `DEFAULT_FREE_QUOTA`, `DEFAULT_PAID_QUOTA`
 

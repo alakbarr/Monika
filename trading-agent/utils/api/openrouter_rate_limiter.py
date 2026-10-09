@@ -7,7 +7,7 @@ import time
 import logging
 import os
 from collections import deque, defaultdict
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, Any
 
 logger = logging.getLogger("TradingAgent.OpenRouterRateLimiter")
 
@@ -63,8 +63,21 @@ class OpenRouterRateLimiter:
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
     _daily_counts: ClassVar[dict] = {}
     _cooldowns: ClassVar[dict] = {}
-    _lock: ClassVar[asyncio.Lock] = asyncio.Lock()
+    _lock: ClassVar[Optional[asyncio.Lock]] = None
+    _lock_loop: ClassVar[Any] = None
     _loaded_from_disk: ClassVar[bool] = False
+
+    @classmethod
+    def _get_lock(cls) -> asyncio.Lock:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if cls._lock is None or cls._lock_loop != current_loop:
+            cls._lock = asyncio.Lock()
+            cls._lock_loop = current_loop
+        return cls._lock
 
     @classmethod
     def _ensure_loaded(cls):
@@ -137,7 +150,7 @@ class OpenRouterRateLimiter:
         now = time.time()
         key_tuple = (model, self._resolve_key_id(api_key))
 
-        async with self._lock:
+        async with self._get_lock():
             # Check cooldown
             if key_tuple in self._cooldowns:
                 cooldown_until = self._cooldowns[key_tuple]

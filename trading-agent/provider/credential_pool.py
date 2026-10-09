@@ -240,12 +240,12 @@ class CredentialPool:
     def _initialize_from_env(self) -> None:
         """Populate initial keys from environment variables across all supported providers."""
         provider_env_map = {
-            "gemini": ["GEMINI_API_KEYS", "GEMINI_API_KEY"],
+            "gemini": ["GEMINI_API_KEYS", "GEMINI_PAID_API_KEY", "GEMINI_API_KEY"],
             "anthropic": ["ANTHROPIC_API_KEYS", "ANTHROPIC_API_KEY"],
             "openai": ["OPENAI_API_KEYS", "OPENAI_API_KEY"],
             "deepseek": ["DEEPSEEK_API_KEYS", "DEEPSEEK_API_KEY"],
             "groq": ["GROQ_API_KEYS", "GROQ_API_KEY"],
-            "openrouter": ["OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"],
+            "openrouter": ["OPENROUTER_PAID_API_KEY", "OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"],
             "typesafe": ["TYPESAFE_API_KEYS", "TYPESAFE_API_KEY"],
         }
 
