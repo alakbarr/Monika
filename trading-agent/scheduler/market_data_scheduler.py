@@ -128,12 +128,24 @@ class MarketDataScheduler:
                             logger.debug(f"[MarketDataSync] Failed to publish tick for {sym}: {tick_err}")
 
                 # 2. Compute Technical Indicators (H1, H4, D1)
+                try:
+                    await sess.rollback()
+                    from database.safe_ops import _safe_expunge_all
+                    await _safe_expunge_all(sess)
+                except Exception:
+                    pass
                 indicator_timeframes = [tf for tf in self.timeframes if tf != "M15"]
                 calc = TechnicalIndicatorCalculator(sess, self.settings.get("trading", {}))
                 ind_results = await calc.compute_all_symbols(target_symbols, indicator_timeframes)
                 summary["indicators"] = ind_results
 
                 # 3. Analyze Market Structure (Swings, SR, FVG)
+                try:
+                    await sess.rollback()
+                    from database.safe_ops import _safe_expunge_all
+                    await _safe_expunge_all(sess)
+                except Exception:
+                    pass
                 analyzer = MarketStructureAnalyzer(sess, self.settings)
                 struct_results = await analyzer.analyze_all(target_symbols, indicator_timeframes)
                 summary["structure"] = {k: sum(v.values()) for k, v in struct_results.items()}

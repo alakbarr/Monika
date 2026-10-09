@@ -215,6 +215,13 @@ class TechnicalIndicatorCalculator:
                     results[key] = n
                 except Exception as e:
                     logger.error(f"Indicator computation failed for {key}: {e}")
+                    if hasattr(self.session, "rollback"):
+                        try:
+                            await self.session.rollback()
+                            from database.safe_ops import _safe_expunge_all
+                            await _safe_expunge_all(self.session)
+                        except Exception:
+                            pass
                     results[key] = 0
         total_rows = sum(results.values())
         logger.info(f"Technical indicators complete: {len(results)} pairs ({total_rows} indicator rows computed)")

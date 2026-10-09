@@ -703,8 +703,12 @@ class MT5Client:
             saved += 1
 
         if saved:
-            await session.commit()
-            logger.debug(f"Saved/Updated {saved} bars: {symbol}/{timeframe}")
+            from database.safe_ops import safe_commit
+            ok = await safe_commit(session, label=f"ohlcv_{symbol}_{timeframe}")
+            if ok:
+                logger.debug(f"Saved/Updated {saved} bars: {symbol}/{timeframe}")
+            else:
+                return 0
 
         return saved
 
@@ -729,6 +733,12 @@ class MT5Client:
                         results[key] = 0
                 except Exception as e:
                     logger.error(f"Failed to fetch/save {key}: {e}")
+                    try:
+                        await session.rollback()
+                        from database.safe_ops import _safe_expunge_all
+                        await _safe_expunge_all(session)
+                    except Exception:
+                        pass
                     results[key] = 0
         total_bars = sum(results.values())
         logger.info(f"OHLCV data sync complete: {len(results)} pairs ({total_bars} bars saved/updated)")
