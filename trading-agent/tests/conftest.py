@@ -54,14 +54,7 @@ except Exception:
     pass
 
 
-@pytest.hookimpl
-def pytest_asyncio_loop_factories(config, item):
-    """Customize pytest-asyncio event loop factory on Windows to use SelectorEventLoop except for MCP/subprocess."""
-    if sys.platform == "win32":
-        if "mcp" in item.nodeid or "subprocess" in item.nodeid or "terminal" in item.nodeid:
-            return {"default": asyncio.ProactorEventLoop}
-        return {"default": asyncio.SelectorEventLoop}
-    return {"default": asyncio.new_event_loop}
+# (pytest-asyncio loop factory handled by pytest-asyncio default configuration)
 
 
 @pytest.fixture(autouse=True)
@@ -285,7 +278,7 @@ def protect_live_database_in_tests(monkeypatch, request):
     Mencegah seluruh unit test memicu koneksi socket asyncpg ke live PostgreSQL port 5432
     kecuali jika pengujian secara eksplisit meminta fixture `db_session`.
     """
-    if "db_session" in request.fixturenames:
+    if "db_session" in request.fixturenames or "setup_sqlite_concurrency_db" in request.fixturenames:
         return
 
     try:

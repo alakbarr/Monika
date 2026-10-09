@@ -55,7 +55,7 @@ async def safe_db_op(
         return await operation(session, *args, **kwargs)
     except asyncio.CancelledError:
         try:
-            await session.rollback()
+            await asyncio.shield(session.rollback())
             await _safe_expunge_all(session)
         except Exception:
             pass
@@ -63,7 +63,7 @@ async def safe_db_op(
     except Exception as e:
         logger.warning(f"safe_db_op [{label}] failed: {e}")
         try:
-            await session.rollback()
+            await asyncio.shield(session.rollback())
             await _safe_expunge_all(session)
         except Exception as rb_err:
             logger.error(f"safe_db_op [{label}] rollback failed: {rb_err}")
@@ -85,7 +85,7 @@ async def safe_commit(session: AsyncSession, label: str = "commit", max_retries:
             return True
         except asyncio.CancelledError:
             try:
-                await session.rollback()
+                await asyncio.shield(session.rollback())
                 await _safe_expunge_all(session)
             except Exception:
                 pass
@@ -105,14 +105,14 @@ async def safe_commit(session: AsyncSession, label: str = "commit", max_retries:
 
             logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction.")
             try:
-                await session.rollback()
+                await asyncio.shield(session.rollback())
                 await _safe_expunge_all(session)
             except Exception as rb_err:
                 logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
             return False
 
     try:
-        await session.rollback()
+        await asyncio.shield(session.rollback())
         await _safe_expunge_all(session)
     except Exception as rb_err:
         logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
