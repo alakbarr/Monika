@@ -271,7 +271,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 ### Folder: `scripts`
 
-  - **Description**: Installation, testing, operational utility scripts, benchmark evaluation suites (`benchmark_stage1_openrouter.py`, `benchmark_stage2_openrouter.py`, `benchmark_debate_openrouter.py`, `benchmark_news_classification_openrouter.py`), and `ux_audit_baseline_scan.py` automated baseline verification harness.
+  - **Description**: Installation, testing, operational utility scripts (`update_economic_calendar.py`), benchmark evaluation suites (`benchmark_stage1_openrouter.py`, `benchmark_stage2_openrouter.py`, `benchmark_debate_openrouter.py`, `benchmark_news_classification_openrouter.py`), and `ux_audit_baseline_scan.py` automated baseline verification harness.
   - **Note**: Collapsed directory containing utility, benchmarking, and verification scripts.
 
 ### Folder: `trading-agent`

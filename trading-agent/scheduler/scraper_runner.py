@@ -237,7 +237,7 @@ class ScraperRunner:
             from scrapers.calendar.calendar_investing import InvestingCalendarScraper
             scraper = self._register_scraper(InvestingCalendarScraper(headless=True))
             try:
-                return scraper.fetch_events()
+                return scraper.fetch_events(fast_mode=False)
             finally:
                 self._unregister_scraper(scraper)
                 scraper.close()
