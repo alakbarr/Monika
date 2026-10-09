@@ -155,6 +155,44 @@ def test_system_one_full_scoring_mismatch():
     assert score_result["overall_score"] < 4.0
 
 
+def test_system_one_ordinal_proximity_scoring():
+    # 1. Exact match on impact
+    exact_res = score_system_one(
+        output={"impact": "HIGH"},
+        expected={"impact": "HIGH"},
+        latency_s=0.200,
+    )
+    assert exact_res["is_exact_match"] is True
+    assert exact_res["is_adjacent_match"] is True
+    assert exact_res["ordinal_tier_distance"] == 0
+    assert exact_res["accuracy_score"] == 10.0
+    assert exact_res["exact_accuracy_score"] == 10.0
+
+    # 2. Adjacent tier match: HIGH vs MEDIUM (diff = 1) -> 75% credit
+    adjacent_res = score_system_one(
+        output={"impact": "MEDIUM"},
+        expected={"impact": "HIGH"},
+        latency_s=0.200,
+    )
+    assert adjacent_res["is_exact_match"] is False
+    assert adjacent_res["is_adjacent_match"] is True
+    assert adjacent_res["ordinal_tier_distance"] == 1
+    assert adjacent_res["accuracy_score"] == 7.5
+    assert adjacent_res["exact_accuracy_score"] == 0.0
+
+    # 3. Distant tier: BREAKING vs NONE (diff = 4) -> 0% credit
+    distant_res = score_system_one(
+        output={"impact": "NONE"},
+        expected={"impact": "BREAKING"},
+        latency_s=0.200,
+    )
+    assert distant_res["is_exact_match"] is False
+    assert distant_res["is_adjacent_match"] is False
+    assert distant_res["ordinal_tier_distance"] == 4
+    assert distant_res["accuracy_score"] == 0.0
+    assert distant_res["exact_accuracy_score"] == 0.0
+
+
 # ==========================================
 # 3. Model Registry & Tiers Tests
 # ==========================================

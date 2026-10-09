@@ -980,8 +980,20 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         # 1. Urgent/breaking headlines always relevant (H-3)
         URGENT_TAGS = ['breaking', 'flash', 'urgent', 'alert', 'bulletin', 'just in',
                        'emergency', 'war', 'sanction', 'crisis', 'attack', 'explosion',
-                       'embargo', 'escalation', 'coup', 'default', 'bailout']
+                       'embargo', 'escalation', 'coup', 'default', 'bailout',
+                       'ultimatum', 'threaten', 'retaliat']
         if any(tag in text for tag in URGENT_TAGS):
+            return True
+
+        from utils.market.news_impact_keywords import GEOPOLITICAL_HOTSPOT_ENTITIES, GEOPOLITICAL_LEADERS
+        # 1.1 Geopolitical Hotspot + Leader combination (e.g. Trump + Iran, Putin + Xi)
+        has_leader = any(leader in text for leader in GEOPOLITICAL_LEADERS)
+        has_hotspot = any(spot in text for spot in GEOPOLITICAL_HOTSPOT_ENTITIES)
+        if has_leader and has_hotspot:
+            return True
+
+        # 1.2 High-level diplomatic summits, accords, and strategic talks
+        if any(w in text for w in ('trilateral', 'bilateral', 'summit', 'diplomatic', 'accord')):
             return True
 
         from database.adapters import CURRENCY_KEYWORDS

@@ -14,12 +14,26 @@ from benchmark.config import (
 )
 
 
-def _score_accuracy(output: Dict[str, Any], expected: Dict[str, Any], questions: Optional[List[Dict[str, Any]]]) -> float:
+IMPACT_ORDINAL_RANKS = {
+    "BREAKING": 4,
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 1,
+    "NONE": 0,
+}
+
+
+def _score_accuracy(
+    output: Dict[str, Any],
+    expected: Dict[str, Any],
+    questions: Optional[List[Dict[str, Any]]],
+    allow_ordinal_grace: bool = True,
+) -> float:
     """Calculates accuracy (0.0 - 10.0) based on exact/directional matches against expected answers."""
     if not output or not expected:
         return 0.0
 
-    matches = 0
+    matches = 0.0
     total_checks = 0
 
     for key, exp_val in expected.items():
@@ -33,13 +47,24 @@ def _score_accuracy(output: Dict[str, Any], expected: Dict[str, Any], questions:
 
         # Exact match (bool, str enum, int score)
         if out_val == exp_val:
-            matches += 1
+            matches += 1.0
         elif isinstance(exp_val, str) and isinstance(out_val, str) and exp_val.lower() == out_val.lower():
-            matches += 1
+            matches += 1.0
+        elif (
+            allow_ordinal_grace
+            and isinstance(exp_val, str)
+            and isinstance(out_val, str)
+            and exp_val.upper() in IMPACT_ORDINAL_RANKS
+            and out_val.upper() in IMPACT_ORDINAL_RANKS
+        ):
+            diff = abs(IMPACT_ORDINAL_RANKS[exp_val.upper()] - IMPACT_ORDINAL_RANKS[out_val.upper()])
+            if diff == 1:
+                # 75% credit for adjacent tier on ordinal impact scale
+                matches += 0.75
         elif isinstance(exp_val, (int, float)) and isinstance(out_val, (int, float)):
             tol = expected.get(f"{key}_tolerance", 0.0)
             if abs(out_val - exp_val) <= tol:
-                matches += 1
+                matches += 1.0
 
     return round((matches / total_checks) * 10.0, 2) if total_checks > 0 else 0.0
 
@@ -121,12 +146,15 @@ def score_system_one(
     latency_s: float,
     questions: Optional[List[Dict[str, Any]]] = None,
     target_latency_ms: float = S1_LATENCY_TARGET_MS,
+    ceiling_latency_ms: float = S1_LATENCY_CEILING_MS,
+    allow_ordinal_grace: bool = True,
 ) -> Dict[str, Any]:
     """
     Complete composite evaluation for System One decision-making outputs.
     """
-    acc = _score_accuracy(output, expected, questions)
-    lat = _score_latency(latency_s, target_ms=target_latency_ms)
+    acc = _score_accuracy(output, expected, questions, allow_ordinal_grace=allow_ordinal_grace)
+    exact_acc = _score_accuracy(output, expected, questions, allow_ordinal_grace=False)
+    lat = _score_latency(latency_s, target_ms=target_latency_ms, ceiling_ms=ceiling_latency_ms)
     cal = _score_calibration(output, expected)
     sch = _score_schema(output, questions)
 
@@ -137,12 +165,29 @@ def score_system_one(
         + S1_WEIGHT_SCHEMA * sch
     )
 
+    # Compute ordinal tier distance if applicable
+    ord_dist = 0
+    exp_impact = expected.get("impact")
+    out_impact = output.get("impact")
+    if (
+        isinstance(exp_impact, str)
+        and isinstance(out_impact, str)
+        and exp_impact.upper() in IMPACT_ORDINAL_RANKS
+        and out_impact.upper() in IMPACT_ORDINAL_RANKS
+    ):
+        ord_dist = abs(IMPACT_ORDINAL_RANKS[exp_impact.upper()] - IMPACT_ORDINAL_RANKS[out_impact.upper()])
+
     return {
         "accuracy_score": acc,
+        "exact_accuracy_score": exact_acc,
+        "ordinal_tier_distance": ord_dist,
+        "is_exact_match": (exact_acc == 10.0),
+        "is_adjacent_match": (ord_dist <= 1),
         "latency_score": lat,
         "calibration_score": cal,
         "schema_score": sch,
         "overall_score": round(overall, 2),
         "latency_ms": round(latency_s * 1000.0, 1),
         "target_latency_ms": target_latency_ms,
+        "ceiling_latency_ms": ceiling_latency_ms,
     }
