@@ -183,3 +183,87 @@ async def test_technical_indicators_resilient_to_pair_failure():
     assert results["EURUSD/H1"] == 10
     assert mock_session.rollback.called
     assert mock_session.expunge_all.called
+
+
+@pytest.mark.asyncio
+async def test_startup_checks_sqlite_no_deadlock(tmp_path):
+    """
+    Verify that StartupChecker._check_db_schema runs without database is locked errors
+    on an active SQLite database where tables are initialized.
+    """
+    from agent.startup_checks import StartupChecker
+    from database import db
+
+    test_db_path = tmp_path / "test_startup.db"
+    test_db_url = f"sqlite+aiosqlite:///{test_db_path.as_posix()}"
+
+    engine = create_async_engine(test_db_url, connect_args={"timeout": 10.0})
+    from sqlalchemy import event
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        try:
+            dbapi_connection.isolation_level = None
+        except Exception:
+            pass
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def _do_begin(conn):
+        if conn.get_execution_options().get("read_only", False):
+            conn.exec_driver_sql("BEGIN DEFERRED")
+            return
+        conn.exec_driver_sql("BEGIN IMMEDIATE")
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    sm = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    checker = StartupChecker({"paper_trading": {"enabled": True}}, db_engine=engine)
+    with patch("database.db.AsyncSessionLocal", sm), \
+         patch("database.db.get_engine", return_value=engine), \
+         patch("database.db.engine", engine):
+        ok, warnings = await checker._check_db_schema()
+
+    assert ok is True
+    assert not any("database is locked" in w for w in warnings)
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_sqlite_read_only_execution_option(tmp_path):
+    """Verify that read_only execution option uses BEGIN DEFERRED instead of BEGIN IMMEDIATE."""
+    test_db_path = tmp_path / "test_readonly.db"
+    test_db_url = f"sqlite+aiosqlite:///{test_db_path.as_posix()}"
+    engine = create_async_engine(test_db_url)
+    from sqlalchemy import event
+
+    begins = []
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def _do_begin(conn):
+        if conn.get_execution_options().get("read_only", False):
+            begins.append("BEGIN DEFERRED")
+            conn.exec_driver_sql("BEGIN DEFERRED")
+            return
+        begins.append("BEGIN IMMEDIATE")
+        conn.exec_driver_sql("BEGIN IMMEDIATE")
+
+    # Regular connection
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+        await conn.rollback()
+
+    # Read-only connection
+    async with engine.connect() as conn:
+        conn = await conn.execution_options(read_only=True)
+        await conn.execute(text("SELECT 1"))
+        await conn.rollback()
+
+    assert begins == ["BEGIN IMMEDIATE", "BEGIN DEFERRED"]
+    await engine.dispose()
+

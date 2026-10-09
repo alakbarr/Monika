@@ -157,8 +157,7 @@ class CycleScheduler:
                     if paper_trades >= min_paper_trades:
                         try:
                             from utils.analytics.edge_tracker import compute_edge_status
-                            async with get_session() as edge_session:
-                                edge_status = await compute_edge_status(edge_session)
+                            edge_status = await compute_edge_status(perf_session)
                             if edge_status.get('status') == 'no_edge' and edge_status.get('total_trades', 0) >= 50:
                                 result['effective_auto_execute'] = False
                                 logger.critical(f"[EdgeGate] Statistical edge NOT confirmed after {edge_status['total_trades']} trades. Win rate: {edge_status['win_rate']}% (CI: {edge_status['ci_lower']}-{edge_status['ci_upper']}%). Auto-execute suppressed.")

@@ -1093,6 +1093,7 @@ class TradingAgent:
             
             # Check news digest freshness
             try:
+                is_stale = True
                 async with get_session() as session:
                     last_digest = (await session.execute(
                         select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1)
@@ -1100,18 +1101,17 @@ class TradingAgent:
                     
                     # Assume generated_at is utc naive or aware
                     dt_now = datetime.now(timezone.utc)
-                    is_stale = True
                     if last_digest and last_digest.generated_at:
                         l_gen = last_digest.generated_at
                         if l_gen.tzinfo is None:
                             l_gen = l_gen.replace(tzinfo=timezone.utc)
                         is_stale = (dt_now - l_gen).total_seconds() > 4 * 3600
-                    
-                    if is_stale:
-                        logger.info('[Recovery] News digest stale/missing, generating fresh digest...')
-                        processor = NewsDigestProcessor(self.settings)
-                        async with get_session() as digest_session:
-                            await processor.create_news_digest(digest_session, hours_back=12)
+                
+                if is_stale:
+                    logger.info('[Recovery] News digest stale/missing, generating fresh digest...')
+                    processor = NewsDigestProcessor(self.settings)
+                    async with get_session() as digest_session:
+                        await processor.create_news_digest(digest_session, hours_back=12)
             except Exception as e:
                 logger.error(f'[Recovery] News digest recovery failed: {e}')
             

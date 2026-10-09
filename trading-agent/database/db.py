@@ -175,6 +175,9 @@ def get_engine():
 
             @event.listens_for(engine.sync_engine, "begin")
             def _do_begin(conn):
+                if conn.get_execution_options().get("read_only", False):
+                    conn.exec_driver_sql("BEGIN DEFERRED")
+                    return
                 conn.exec_driver_sql("BEGIN IMMEDIATE")
     return engine
 
