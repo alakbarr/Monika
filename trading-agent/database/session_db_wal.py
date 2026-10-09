@@ -153,12 +153,12 @@ class SessionDbReadPool:
 
         conn = sqlite3.connect(
             str(self.db_path),
-            timeout=10.0,
+            timeout=30.0,
             check_same_thread=False,
         )
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA query_only = ON;")
-        conn.execute("PRAGMA busy_timeout = 5000;")
+        conn.execute("PRAGMA busy_timeout = 30000;")
         conn.execute("PRAGMA synchronous = NORMAL;")
         return conn
 
@@ -235,13 +235,13 @@ class SessionDbWal:
         if not hasattr(self._local, "conn") or self._local.conn is None:
             conn = sqlite3.connect(
                 str(self.db_path),
-                timeout=15.0,
+                timeout=30.0,
                 check_same_thread=False,
             )
             conn.row_factory = sqlite3.Row
             # Configure high-performance WAL pragmas
             conn.execute("PRAGMA journal_mode = WAL;")
-            conn.execute("PRAGMA busy_timeout = 5000;")
+            conn.execute("PRAGMA busy_timeout = 30000;")
             conn.execute("PRAGMA synchronous = NORMAL;")
             conn.execute("PRAGMA journal_size_limit = 67108864;")  # 64MB WAL ceiling
             conn.execute("PRAGMA foreign_keys = ON;")

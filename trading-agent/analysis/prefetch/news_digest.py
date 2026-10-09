@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import NewsItem
 from analysis.providers.llm_factory import get_client_for_task
 from utils.market.news_impact_keywords import SHOCK_KEYWORDS
+from utils.clock import ensure_utc
 import re
 _re_module = re
 
@@ -746,7 +747,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 seen_titles.append(t)
                 cur = row[1] or 'MACRO'
                 imp = row[2]
-                age_days = max(0, round((now_utc - row[3]).total_seconds() / 86400, 1)) if row[3] else 0
+                age_days = max(0, round((now_utc - ensure_utc(row[3])).total_seconds() / 86400, 1)) if row[3] else 0
                 theme_lines.append(f"• [{cur}] ({imp}, {age_days}d ago): {t[:110]}")
                 if len(theme_lines) >= 8:
                     break
@@ -822,7 +823,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             return {}
         lines = []
         for j, (item_result, news_item) in enumerate(candidates):
-            age_min = round((now_utc - news_item.fetched_at).total_seconds() / 60) if news_item.fetched_at else '?'
+            age_min = round((now_utc - ensure_utc(news_item.fetched_at)).total_seconds() / 60) if news_item.fetched_at else '?'
             lines.append(f"{j + 1}. ORIGINAL_VERDICT={item_result.get('impact')} "
                           f"(confidence={item_result.get('confidence', 0):.2f})\n"
                           f"   TITLE: {news_item.title[:200]}\n"
@@ -878,7 +879,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             return {}
         lines = []
         for j, (item_result, news_item) in enumerate(low_conf_items):
-            age_min = round((now_utc - news_item.fetched_at).total_seconds() / 60) if news_item.fetched_at else '?'
+            age_min = round((now_utc - ensure_utc(news_item.fetched_at)).total_seconds() / 60) if news_item.fetched_at else '?'
             lines.append(
                 f"{j + 1}. [ID #{news_item.id}] ORIGINAL_VERDICT={item_result.get('impact')} (confidence={item_result.get('confidence', 0):.2f})\n"
                 f"   TITLE: {news_item.title[:200]}\n"
@@ -940,7 +941,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             currencies = [c.strip().upper() for c in item.currency_tags.split(',') if c.strip() and c.strip() != 'NON']
             if not currencies:
                 continue
-            check_time = item.fetched_at or now_utc
+            check_time = ensure_utc(item.fetched_at) or now_utc
             candidates = (await session.execute(
                 select(EconomicCalendar)
                 .where(EconomicCalendar.currency.in_(currencies))
@@ -968,7 +969,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 tight_candidates = [
                     ev for ev in candidates
                     if (ev.impact or '').lower() == 'high' and ev.event_time is not None
-                    and abs((ev.event_time - check_time).total_seconds()) <= 1200
+                    and abs((ensure_utc(ev.event_time) - check_time).total_seconds()) <= 1200
                 ]
                 if tight_candidates:
                     priors[idx] = 'high'
@@ -1256,7 +1257,7 @@ Respond JSON array of objects:
                 items_text_lines.append(
                     f"{j + 1}. [ID: {item.id}] PUBLISHED: {(item.published_at.strftime('%H:%M UTC') if item.published_at else 'unknown')} "
                     f"(FETCHED: {(item.fetched_at.strftime('%H:%M UTC') if item.fetched_at else 'unknown')}) "
-                    f"| TIME-IN-SYSTEM: {(round((now_utc - item.fetched_at).total_seconds() / 60) if item.fetched_at else '?')} min ago{prior_tag}\n"
+                    f"| TIME-IN-SYSTEM: {(round((now_utc - ensure_utc(item.fetched_at)).total_seconds() / 60) if item.fetched_at else '?')} min ago{prior_tag}\n"
                     f"   TITLE: {item.title[:150]}\n"
                     f"   SUMMARY: {(item.summary or '')[:200]}"
                 )
@@ -1412,7 +1413,7 @@ Return ONLY valid JSON matching schema."""
                 logger.info(f"[NewsClassification] Micro-retrying {len(missing_batch_items)} omitted items in batch...")
                 retry_lines = []
                 for sub_i, (orig_idx, m_item) in enumerate(missing_batch_items):
-                    m_age = round((now_utc - m_item.fetched_at).total_seconds() / 60) if m_item.fetched_at else '?'
+                    m_age = round((now_utc - ensure_utc(m_item.fetched_at)).total_seconds() / 60) if m_item.fetched_at else '?'
                     retry_lines.append(
                         f"{sub_i + 1}. [ID: {m_item.id}] TITLE: {m_item.title[:150]}\n"
                         f"   SUMMARY: {(m_item.summary or '')[:200]}\n"
@@ -1713,7 +1714,8 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
 
             # Hard validation: BREAKING requires TIME-IN-SYSTEM < 120 minutes
             if impact == 'BREAKING' and news_item.fetched_at:
-                time_in_system = (now_utc - news_item.fetched_at).total_seconds() / 60
+                f_at = ensure_utc(news_item.fetched_at)
+                time_in_system = (now_utc - f_at).total_seconds() / 60 if f_at else 0
                 if time_in_system > 120:
                     impact = 'HIGH'
                     item_result['impact'] = 'HIGH'
@@ -1822,7 +1824,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         from sqlalchemy import select
         from database.models import NewsItem
         
-        check_time = news_item.fetched_at or now_utc
+        check_time = ensure_utc(news_item.fetched_at) or now_utc
         since = check_time - timedelta(hours=4)
         
         # Get recent breaking news
@@ -1862,7 +1864,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
             from sqlalchemy import select, or_
             
             # Check window: 4 hours before fetched time
-            check_time = news_item.fetched_at or now_utc
+            check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
             
             stmt = select(EconomicCalendar).where(
@@ -1883,7 +1885,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         try:
             from database.models import EconomicCalendar
             from sqlalchemy import select
-            check_time = news_item.fetched_at or now_utc
+            check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
             stmt = select(EconomicCalendar).where(
                 EconomicCalendar.event_time >= since,

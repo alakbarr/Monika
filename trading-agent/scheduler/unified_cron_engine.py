@@ -35,6 +35,28 @@ logger = logging.getLogger("TradingAgent.Scheduler.UnifiedCronEngine")
 DEFAULT_CRON_DB = "data/universal_cron.db"
 DELIVERY_LEASE_SECONDS = 300.0
 
+CRON_JOB_COLUMNS = (
+    "job_id",
+    "name",
+    "schedule_expression",
+    "prompt",
+    "target_delivery",
+    "target_destination",
+    "workdir",
+    "monitor_script",
+    "last_monitor_hash",
+    "next_run_at",
+    "last_run_at",
+    "last_exit_code",
+    "last_output",
+    "is_active",
+    "no_agent",
+    "pending_slot",
+    "timeout_seconds",
+    "metadata_json",
+)
+CRON_JOB_SELECT_COLS = ", ".join(CRON_JOB_COLUMNS)
+
 
 class DeliveryStatus:
     PENDING = "PENDING"
@@ -149,14 +171,23 @@ class UnifiedCronEngine:
         self._channel_dispatcher: Optional[Callable[[UnifiedCronJob, str], None]] = None
         self._init_db()
 
+    def _get_connection(self) -> sqlite3.Connection:
+        """Returns SQLite connection with WAL, busy_timeout=30s, and sqlite3.Row factory."""
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 30000;")
+        return conn
+
     def _init_db(self) -> None:
-        """Initializes SQLite WAL database for persistent job registry."""
+        """Initializes SQLite WAL database for persistent job registry with automated schema migration."""
         db_dir = os.path.dirname(os.path.abspath(self.db_path))
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=30000;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS cron_jobs (
                     job_id TEXT PRIMARY KEY,
@@ -179,6 +210,29 @@ class UnifiedCronEngine:
                     metadata_json TEXT
                 )
             """)
+
+            # Automated backward-compatible schema migration for legacy cron_jobs tables
+            existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(cron_jobs)").fetchall()}
+            expected_cols = {
+                "name": "TEXT DEFAULT ''",
+                "target_destination": "TEXT",
+                "last_output": "TEXT",
+                "pending_slot": "INTEGER DEFAULT 0",
+                "timeout_seconds": "REAL DEFAULT 300.0",
+                "no_agent": "INTEGER DEFAULT 0",
+                "metadata_json": "TEXT",
+                "workdir": "TEXT",
+                "monitor_script": "TEXT",
+                "last_monitor_hash": "TEXT",
+                "last_run_at": "REAL",
+                "last_exit_code": "INTEGER",
+                "is_active": "INTEGER DEFAULT 1",
+            }
+            for col_name, col_def in expected_cols.items():
+                if col_name not in existing_cols:
+                    logger.info(f"[UnifiedCronEngine] Migrating schema: adding missing column '{col_name}' to cron_jobs")
+                    conn.execute(f"ALTER TABLE cron_jobs ADD COLUMN {col_name} {col_def};")
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS outbox_deliveries (
                     delivery_id TEXT PRIMARY KEY,
@@ -284,7 +338,7 @@ class UnifiedCronEngine:
         )
 
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -329,7 +383,7 @@ class UnifiedCronEngine:
     def unregister_job(self, job_id: str) -> bool:
         """Deletes a job from the database."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM cron_jobs WHERE job_id = ?", (job_id,))
@@ -342,10 +396,10 @@ class UnifiedCronEngine:
     def get_job(self, job_id: str) -> Optional[UnifiedCronJob]:
         """Retrieves a job by its unique ID."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT * FROM cron_jobs WHERE job_id = ?", (job_id,))
+                cursor.execute(f"SELECT {CRON_JOB_SELECT_COLS} FROM cron_jobs WHERE job_id = ?", (job_id,))
                 row = cursor.fetchone()
                 if not row:
                     return None
@@ -356,10 +410,10 @@ class UnifiedCronEngine:
     def list_jobs(self, active_only: bool = False) -> List[UnifiedCronJob]:
         """Lists all registered jobs."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
-                query = "SELECT * FROM cron_jobs"
+                query = f"SELECT {CRON_JOB_SELECT_COLS} FROM cron_jobs"
                 if active_only:
                     query += " WHERE is_active = 1"
                 query += " ORDER BY next_run_at ASC"
@@ -399,7 +453,7 @@ class UnifiedCronEngine:
         self.stop()
         if self.db_path != ":memory:" and os.path.exists(self.db_path):
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = sqlite3.connect(self.db_path, timeout=30.0)
                 conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
                 conn.close()
             except Exception:
@@ -424,11 +478,11 @@ class UnifiedCronEngine:
         due_jobs: List[UnifiedCronJob] = []
 
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT * FROM cron_jobs WHERE is_active = 1 AND pending_slot = 0 AND next_run_at <= ?",
+                    f"SELECT {CRON_JOB_SELECT_COLS} FROM cron_jobs WHERE is_active = 1 AND pending_slot = 0 AND next_run_at <= ?",
                     (now,),
                 )
                 rows = cursor.fetchall()
@@ -482,7 +536,7 @@ class UnifiedCronEngine:
 
                 # Record newly changed monitor hash
                 with self._lock:
-                    conn = sqlite3.connect(self.db_path)
+                    conn = self._get_connection()
                     try:
                         conn.execute(
                             "UPDATE cron_jobs SET last_monitor_hash = ? WHERE job_id = ?",
@@ -603,7 +657,7 @@ class UnifiedCronEngine:
         delivery_id = f"del_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
         now = time.time()
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -644,7 +698,7 @@ class UnifiedCronEngine:
         deliveries = []
 
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 cursor = conn.cursor()
                 cursor.execute(
@@ -693,7 +747,7 @@ class UnifiedCronEngine:
         """Marks outbox delivery as successfully delivered."""
         now = time.time()
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -711,7 +765,7 @@ class UnifiedCronEngine:
         """Marks outbox delivery as failed and increments retry count."""
         now = time.time()
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -729,7 +783,7 @@ class UnifiedCronEngine:
     def _release_pending_slot(self, job_id: str, exit_code: int = 0, output: Optional[str] = None) -> None:
         """Releases pending lock and updates execution status in DB."""
         with self._lock:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_connection()
             try:
                 conn.execute(
                     """
@@ -765,7 +819,7 @@ class UnifiedCronEngine:
 
             if hung_jobs:
                 try:
-                    conn = sqlite3.connect(self.db_path)
+                    conn = self._get_connection()
                     for jid in hung_jobs:
                         conn.execute(
                             "UPDATE cron_jobs SET pending_slot = 0, last_exit_code = -1, last_output = 'Job timed out by watchdog' WHERE job_id = ?",
@@ -778,8 +832,30 @@ class UnifiedCronEngine:
 
         return hung_jobs
 
-    def _row_to_job(self, row: Tuple[Any, ...]) -> UnifiedCronJob:
-        """Converts raw SQLite row into UnifiedCronJob dataclass instance."""
+    def _row_to_job(self, row: Any) -> UnifiedCronJob:
+        """Converts raw SQLite row (tuple or sqlite3.Row) into UnifiedCronJob dataclass instance."""
+        if isinstance(row, (sqlite3.Row, dict)):
+            d = dict(row)
+            return UnifiedCronJob(
+                job_id=str(d.get("job_id", "")),
+                name=str(d.get("name") or d.get("job_id", "")),
+                schedule_expression=str(d.get("schedule_expression", "")),
+                prompt=str(d.get("prompt", "")),
+                target_delivery=str(d.get("target_delivery", "session")),
+                target_destination=d.get("target_destination"),
+                workdir=d.get("workdir"),
+                monitor_script=d.get("monitor_script"),
+                last_monitor_hash=d.get("last_monitor_hash"),
+                next_run_at=float(d.get("next_run_at", 0.0)),
+                last_run_at=float(d["last_run_at"]) if d.get("last_run_at") is not None else None,
+                last_exit_code=int(d["last_exit_code"]) if d.get("last_exit_code") is not None else None,
+                last_output=d.get("last_output"),
+                is_active=bool(d.get("is_active", 1)),
+                no_agent=bool(d.get("no_agent", 0)),
+                pending_slot=bool(d.get("pending_slot", 0)),
+                timeout_seconds=float(d.get("timeout_seconds", 300.0)) if d.get("timeout_seconds") else 300.0,
+                metadata=json.loads(d.get("metadata_json") or "{}") if isinstance(d.get("metadata_json"), str) else (d.get("metadata") or {}),
+            )
         return UnifiedCronJob(
             job_id=row[0],
             name=row[1] or row[0],
@@ -790,9 +866,9 @@ class UnifiedCronEngine:
             workdir=row[6],
             monitor_script=row[7],
             last_monitor_hash=row[8],
-            next_run_at=row[9],
-            last_run_at=row[10],
-            last_exit_code=row[11],
+            next_run_at=float(row[9]),
+            last_run_at=float(row[10]) if row[10] is not None else None,
+            last_exit_code=int(row[11]) if row[11] is not None else None,
             last_output=row[12],
             is_active=bool(row[13]),
             no_agent=bool(row[14]),
