@@ -266,3 +266,89 @@ def test_cycle_decision_lineage_endpoint():
         assert data["total_events"] == 2
 
 
+def test_parse_iso_datetime_helper():
+    """Verify _parse_iso_datetime handles strings, dates, datetimes, and None safely."""
+    from datetime import datetime, timezone, date
+    from logging_observability.dashboard.routes.system import _parse_iso_datetime
+
+    assert _parse_iso_datetime(None) is None
+    assert _parse_iso_datetime("invalid-date") is None
+
+    # SQLite string formats
+    dt1 = _parse_iso_datetime("2026-10-09 03:00:09.291433")
+    assert dt1 is not None
+    assert dt1.year == 2026 and dt1.month == 10 and dt1.day == 9
+    assert dt1.tzinfo == timezone.utc
+
+    # ISO format with Z
+    dt2 = _parse_iso_datetime("2026-10-09T03:00:09Z")
+    assert dt2 is not None
+    assert dt2.tzinfo == timezone.utc
+
+    # Python date
+    d = date(2026, 10, 8)
+    dt3 = _parse_iso_datetime(d)
+    assert dt3 is not None
+    assert dt3.date() == d
+
+    # Python datetime (naive and aware)
+    now = datetime(2026, 10, 9, 12, 0, 0)
+    dt4 = _parse_iso_datetime(now)
+    assert dt4 is not None
+    assert dt4.tzinfo == timezone.utc
+
+
+@pytest.mark.asyncio
+async def test_health_diagnostics_with_raw_string_timestamps():
+    """Verify get_health_diagnostics succeeds without AttributeError when DB returns raw strings."""
+    from logging_observability.dashboard.routes.system import get_health_diagnostics
+
+    # Mock engine.connect to return string timestamps like SQLite does
+    mock_conn = AsyncMock()
+
+    class FakeScalarResult:
+        def __init__(self, val):
+            self._val = val
+        def scalar_one_or_none(self):
+            return self._val
+
+    async def fake_execute(stmt):
+        sql = str(stmt)
+        if "activity_log" in sql and "analysis" in sql:
+            return FakeScalarResult("2026-10-03 02:46:16.850621")
+        if "activity_log" in sql and "scraping" in sql:
+            return FakeScalarResult("2026-10-03 02:30:00.000000")
+        if "news_items" in sql:
+            return FakeScalarResult("2026-10-09 03:00:09.291433")
+        if "economic_calendar" in sql:
+            return FakeScalarResult("2026-10-09 03:05:00.000000")
+        if "vix_data" in sql:
+            return FakeScalarResult("2026-10-08 00:00:00.000000")
+        if "cot_report" in sql:
+            return FakeScalarResult("2026-09-29 00:00:00.000000")
+        if "system_config" in sql:
+            return FakeScalarResult('{"total_usd_ytd": 12.34}')
+        return FakeScalarResult(1)
+
+    mock_conn.execute.side_effect = fake_execute
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value.__aenter__.return_value = mock_conn
+
+    with patch("database.db.get_engine", return_value=mock_engine):
+        diag = await get_health_diagnostics()
+        assert diag["status"] == "ok"
+        assert diag["last_analysis_cycle"] is not None
+        assert isinstance(diag["last_analysis_cycle"], str)
+        assert "2026-10-03" in diag["last_analysis_cycle"]
+        assert diag["last_scraper_run"] is not None
+        assert "2026-10-03" in diag["last_scraper_run"]
+        assert diag["data_freshness"]["news_hours_old"] is not None
+        assert diag["data_freshness"]["calendar_hours_old"] is not None
+        assert diag["data_freshness"]["vix_days_old"] is not None
+        assert diag["data_freshness"]["cot_days_old"] is not None
+        assert diag["api_cost_ytd_usd"] == 12.34
+
+
+
+

@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +21,23 @@ logger = logging.getLogger("TradingAgent.DashboardAPI.System")
 
 router = APIRouter()
 system_router = router
+
+
+def _parse_iso_datetime(val: Any) -> Optional[datetime]:
+    """Parse raw string or datetime from DB into a UTC datetime object."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val if val.tzinfo is not None else val.replace(tzinfo=timezone.utc)
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time(), tzinfo=timezone.utc)
+    if isinstance(val, str):
+        try:
+            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+    return None
 
 
 @router.get("/api/ping", tags=["System"])
@@ -44,7 +61,8 @@ async def get_metrics():
 @router.get("/api/health", tags=["System"])
 async def get_health():
     """Mengecek uptime, koneksi DB, dan status koneksi MT5 (Liveness Probe)."""
-    from database.db import engine
+    from database.db import get_engine
+    engine = get_engine()
 
     db_ok = False
     try:
@@ -84,7 +102,8 @@ async def get_health():
 @router.get("/api/health/diagnostics", tags=["System"])
 async def get_health_diagnostics():
     """Diagnostik internal mendalam: kuota LLM, freshness data, heartbeat, biaya API."""
-    from database.db import engine
+    from database.db import get_engine
+    engine = get_engine()
 
     db_ok = False
     try:
@@ -113,10 +132,10 @@ async def get_health_diagnostics():
         async with engine.connect() as conn:
             from sqlalchemy import text
             scraper_res = await conn.execute(text("SELECT MAX(timestamp) FROM activity_log WHERE category = 'scraping'"))
-            last_scraper = scraper_res.scalar_one_or_none()
+            last_scraper = _parse_iso_datetime(scraper_res.scalar_one_or_none())
 
             cycle_res = await conn.execute(text("SELECT MAX(timestamp) FROM activity_log WHERE category = 'analysis'"))
-            last_cycle = cycle_res.scalar_one_or_none()
+            last_cycle = _parse_iso_datetime(cycle_res.scalar_one_or_none())
     except Exception as e:
         logger.warning(f"ActivityLog query failed: {e}")
 
@@ -140,23 +159,24 @@ async def get_health_diagnostics():
     try:
         async with engine.connect() as conn:
             from sqlalchemy import text
+            now_dt = datetime.now(timezone.utc)
+            now_ts = now_dt.timestamp()
+
             res = await conn.execute(text("SELECT MAX(fetched_at) FROM news_items"))
-            n_ts = res.scalar_one_or_none()
-            data_freshness["news_hours_old"] = round((time.time() - n_ts.timestamp()) / 3600, 1) if n_ts else None
+            n_dt = _parse_iso_datetime(res.scalar_one_or_none())
+            data_freshness["news_hours_old"] = round((now_ts - n_dt.timestamp()) / 3600, 1) if n_dt else None
 
             res = await conn.execute(text("SELECT MAX(fetched_at) FROM economic_calendar"))
-            c_ts = res.scalar_one_or_none()
-            data_freshness["calendar_hours_old"] = round((time.time() - c_ts.timestamp()) / 3600, 1) if c_ts else None
+            c_dt = _parse_iso_datetime(res.scalar_one_or_none())
+            data_freshness["calendar_hours_old"] = round((now_ts - c_dt.timestamp()) / 3600, 1) if c_dt else None
 
             res = await conn.execute(text("SELECT MAX(date) FROM vix_data"))
-            v_ts = res.scalar_one_or_none()
-            v_date = v_ts.date() if hasattr(v_ts, "date") and callable(getattr(v_ts, "date")) else v_ts
-            data_freshness["vix_days_old"] = (datetime.now(timezone.utc).date() - v_date).days if v_date else None
+            v_dt = _parse_iso_datetime(res.scalar_one_or_none())
+            data_freshness["vix_days_old"] = (now_dt.date() - v_dt.date()).days if v_dt else None
 
             res = await conn.execute(text("SELECT MAX(report_date) FROM cot_report"))
-            cot_ts = res.scalar_one_or_none()
-            cot_date = cot_ts.date() if hasattr(cot_ts, "date") and callable(getattr(cot_ts, "date")) else cot_ts
-            data_freshness["cot_days_old"] = (datetime.now(timezone.utc).date() - cot_date).days if cot_date else None
+            cot_dt = _parse_iso_datetime(res.scalar_one_or_none())
+            data_freshness["cot_days_old"] = (now_dt.date() - cot_dt.date()).days if cot_dt else None
     except Exception as e:
         logger.warning(f"Data freshness check failed: {e}")
 
