@@ -27,6 +27,8 @@ Monika/
 ├── README.md
 ├── SECURITY.md
 ├── STRUCTURE.md
+├── benchmark_news_classification_openrouter.md
+├── benchmark_news_classification_results.json
 ├── benchmark_report.md
 ├── deploy
 │   ├── Dockerfile.mt5-wine
@@ -87,6 +89,7 @@ Monika/
 ├── pytest.ini
 ├── scripts
 │   ├── benchmark_debate_openrouter.py
+│   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
 │   ├── benchmark_stage2_openrouter.py
 │   ├── build_curated_benchmark_fixtures.py

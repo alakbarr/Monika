@@ -1133,13 +1133,13 @@ async def classify_news_batch_with_jev(
 
         questions: Dict[str, Union[Choice, Score, Noul]] = {
             "impact": Choice(
-                instructions="Classify the market impact level for financial trading:",
+                instructions="Classify the market impact level for financial trading (FX, Gold, Oil, Crypto, Equities):",
                 criteria={
-                    "BREAKING": "Immediate market-moving shock: unexpected rate decision, major geopolitical escalation, flash crash, surprise economic data",
-                    "HIGH": "Important scheduled data release (CPI, NFP, GDP), major policy speech with new guidance, significant market catalyst",
-                    "MEDIUM": "Notable market development within expected range, routine economic update, standard corporate/commodity news",
-                    "LOW": "Minor commentary, routine statistics, minor updates with no immediate trading impact",
-                    "NONE": "Opinion pieces, previews, general recaps, commentary, or stale rehashed news"
+                    "BREAKING": "Immediate market-moving shock: war ultimatums/threats, unexpected rate decision, major geopolitical escalation, flash crash, emergency policy announcement",
+                    "HIGH": "Important scheduled data release (CPI, NFP, GDP), major policy speech with new guidance, significant multi-asset market catalyst",
+                    "MEDIUM": "Notable development within expected range: routine economic statistics, corporate earnings, single-sector/stock updates (e.g. Boeing glitch, BofA sentiment)",
+                    "LOW": "Minor updates with limited market impact: minor administrative meetings, diplomatic talk without binding policy, secondary statistics",
+                    "NONE": "Noise, commentary without data, procedural scheduling (e.g. remarks ended), social media banter, clickbait"
                 }
             ),
             "surprise_magnitude": Choice(

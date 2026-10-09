@@ -109,6 +109,7 @@ scripts/*
 !scripts/benchmark_stage1_openrouter.py
 !scripts/benchmark_stage2_openrouter.py
 !scripts/benchmark_debate_openrouter.py
+!scripts/benchmark_news_classification_openrouter.py
 trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md

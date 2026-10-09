@@ -3,13 +3,16 @@ news_watcher.py (regex fallback) DAN news_digest.py (AI classification guard),
 supaya tidak divergen."""
 
 SHOCK_KEYWORDS = [
-    # Geopolitical — frasa spesifik (bukan single words seperti 'war', 'attack')
+    # Geopolitical & War Threats — frasa spesifik (bukan single words seperti 'war', 'attack')
     'missile attack', 'missile strikes', 'military strikes', 'military strikes on', 'airstrike on',
     'war declared', 'declares war', 'war breaks out',
     'coup attempt', 'coup d\'etat', 'martial law declared', 'state of emergency declared',
     'assassination of', 'targeted assassination',
     'nuclear threat', 'nuclear strike', 'nuclear missile', 'nuclear attack',
     'terrorist attack on', 'terror attack kills',
+    'or it won\'t exist', 'won\'t exist any longer', 'military ultimatum', 'existential threat',
+    'threatens attack', 'threatens strikes', 'threatens retaliation', 'military action against',
+    'strikes on oil', 'attacks oil tankers', 'retaliation pledged', 'forces on high alert',
     # Financial system shocks — frasa spesifik
     'bank run', 'bank collapse', 'bank failure', 'banking crisis',
     'circuit breaker activated', 'trading halt activated', 'trading suspended',
@@ -30,10 +33,20 @@ SHOCK_KEYWORDS = [
     'bitcoin flash crash', 'btc flash crash',
     'crypto ban enacted', 'crypto ban imposed',
     'stablecoin depeg', 'usdt depeg', 'usdc depeg', 'tether depeg',
-    # Energy Shocks — spesifik
+    # Energy Shocks & Strategic Chokepoints — spesifik
     'opec emergency meeting', 'opec surprise output cut', 'opec surprise cut',
-    'strait of hormuz', 'oil supply disruption', 'pipeline explosion',
+    'strait of hormuz', 'bab el-mandeb', 'red sea shipping', 'persian gulf',
+    'kharg island', 'oil supply disruption', 'pipeline explosion',
     'major pipeline explosion',
+]
+
+GEOPOLITICAL_HOTSPOT_ENTITIES = [
+    'iran', 'tehran', 'irgc', 'taiwan', 'russia', 'ukraine', 'israel',
+    'lebanon', 'hezbollah', 'houthi', 'north korea', 'strait of hormuz',
+]
+
+GEOPOLITICAL_LEADERS = [
+    'trump', 'putin', 'xi jinping', 'netanyahu', 'khamenei', 'biden', 'zelenskiy',
 ]
 
 HIGH_IMPACT_KEYWORDS = [
