@@ -314,7 +314,8 @@ class MacroPreprocessor:
                 currency_scores[cur] = 0.0
             
             # Exponential time decay (half-life ~ 4 days, fresh events dominate)
-            days_old = max(0.0, (now_dt - e.event_time).total_seconds() / 86400.0) if e.event_time else 0.0
+            ev_time = clock.ensure_utc(e.event_time) if e.event_time else None
+            days_old = max(0.0, (now_dt - ev_time).total_seconds() / 86400.0) if ev_time else 0.0
             decay = max(0.20, 2.71828 ** (-days_old / 4.0))
 
             # Tiered impact weighting (High Tier-1 is 4.0x, Medium 1.5x, Low 0.5x)

@@ -104,15 +104,18 @@ class TestMacroPreprocessor:
         assert res["USD"]["score"] == 1.5
 
     @pytest.mark.asyncio
-    async def _ignore_test_compute_surprise_summary_empty(self, preprocessor):
+    async def test_compute_surprise_summary_handles_offset_naive_datetime(self, preprocessor):
         session = create_mock_async_session()
-        session.add = MagicMock()
+        naive_dt = datetime(2026, 10, 8, 12, 0, 0)
+        event = EconomicCalendar(currency="USD", event_name="NFP", impact="high", surprise_score=2.5, event_time=naive_dt)
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
+        mock_result.scalars.return_value.all.return_value = [event]
         session.execute.return_value = mock_result
-        
+
         res = await preprocessor.compute_surprise_summary(session)
-        assert res == {}
+        assert "USD" in res
+        assert res["USD"]["score"] > 0
+        assert res["USD"]["trend"] == "positive"
 
     @pytest.mark.asyncio
     @patch("analysis.prefetch.macro_preprocessor.datetime")

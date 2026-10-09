@@ -256,4 +256,32 @@ class TestDataValidator:
             assert "Treasury yield data is 5.5 days old (stale)" in warnings_str
             assert "DXY data is 5.5 days old (stale)" in warnings_str
 
+    @pytest.mark.asyncio
+    async def test_validate_w1_candle_freshness_friday(self):
+        """Verify 128.9h old W1 bar on Friday is valid under 192.0h threshold."""
+        mock_session = create_mock_async_session()
+        # Friday 12:54 UTC
+        friday_now = datetime(2026, 10, 9, 12, 54, 0, tzinfo=timezone.utc)
+        # Monday 00:00 UTC (128.9h old W1 open)
+        w1_bar_open = friday_now - timedelta(hours=128.9)
+
+        execute_side_effects = [
+            MagicMock(scalar_one_or_none=MagicMock(return_value=w1_bar_open)),  # XAUUSD W1 OHLCV
+            MagicMock(scalar_one_or_none=MagicMock(return_value=w1_bar_open)),  # XAUUSD W1 Indicator
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(hours=1))),  # News
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(hours=2))),  # Calendar
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(hours=12))), # VIX
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(days=1))),   # Yield
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(days=1))),   # DXY
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(days=3))),   # COT
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_now - timedelta(days=1))),   # FedWatch
+        ]
+        mock_session.execute.side_effect = execute_side_effects
+
+        with patch("utils.clock.now", return_value=friday_now):
+            res = await validate_data_freshness(mock_session, ["XAUUSD"], ["W1"])
+            assert res["ready"] is True
+            assert len(res["errors"]) == 0
+
+
 

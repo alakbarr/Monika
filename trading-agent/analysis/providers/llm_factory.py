@@ -586,6 +586,7 @@ class FallbackClientWrapper(BaseLLMClient):
             if provider == "typesafe" and method_name == "classify_json" and not kwargs.get("jev_questions"):
                 sch = kwargs.get("schema") or (args[2] if len(args) > 2 and isinstance(args[2], dict) else None)
                 if isinstance(sch, dict) and sch.get("type") == "array":
+                    last_error = f"TypeSafe model '{model}' ({slot_name}) does not support top-level array schema in classify_json"
                     logger.debug(
                         f"[{self.task_role}] Skipping {slot_name} '{model}' — "
                         f"TypeSafe Jev does not support array schemas in classify_json"
