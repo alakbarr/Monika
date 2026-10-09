@@ -338,20 +338,25 @@ class LLMFactory:
         
         thinking_level = self._resolve_thinking_level(model_name, role_config, provider_name, slot_name=slot_name)
 
-        # Retrieve healthy API key from CredentialPool (M2)
-        try:
-            from utils.api.credential_pool import get_credential_pool
-            cred_pool = get_credential_pool()
-            pooled_key = cred_pool.get_key(provider_name)
-        except Exception:
-            cred_pool = None
-            pooled_key = None
-
         clean_model_name = model_name
         if ":" in model_name:
             prefix, remainder = model_name.split(":", 1)
             if prefix.lower() in ("gemini", "anthropic", "openai", "openrouter", "deepseek", "groq", "typesafe", "9router", "ninerouter", "nine_router", "ollama", "openai_compatible", "vertex"):
                 clean_model_name = remainder
+
+        # Retrieve healthy API key from CredentialPool (M2)
+        # Note: OpenRouter manages its own dual-tier key pool (OPENROUTER_PAID_API_KEY vs OPENROUTER_API_KEYS)
+        # with model-aware paid/free routing & per-model cooldowns. Do not override with a generic pooled key.
+        try:
+            from utils.api.credential_pool import get_credential_pool
+            cred_pool = get_credential_pool()
+            if provider_name == "openrouter":
+                pooled_key = None
+            else:
+                pooled_key = cred_pool.get_key(provider_name, model=clean_model_name)
+        except Exception:
+            cred_pool = None
+            pooled_key = None
 
         # Routing adjustments for System One models via OpenRouter (e.g. jaredpalmer/kev-4b, liquid/lfm-7b-d1, or openrouter/typesafe/jev-latest)
         if provider_name == "typesafe":

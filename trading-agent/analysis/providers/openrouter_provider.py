@@ -248,19 +248,25 @@ class OpenRouterProvider(OpenAIProvider):
         self.is_free = is_free_tier_model(self.raw_model_name) or is_free_tier_model(resolved_model)
 
         # Dynamic key extraction
-        if api_key:
+        paid_key_env = get_paid_key()
+        free_keys_env = get_free_keys()
+        all_keys_env = get_all_keys()
+
+        # If api_key is explicitly passed:
+        # Protect paid models from being assigned a free key from the free-tier pool
+        if api_key and (self.is_free or api_key not in free_keys_env):
             self._paid_key = api_key
             self._free_keys = [api_key]
             self._all_keys = [api_key]
             initial_key = api_key
         else:
-            self._paid_key = get_paid_key()
-            self._free_keys = get_free_keys()
-            self._all_keys = get_all_keys()
+            self._paid_key = paid_key_env
+            self._free_keys = free_keys_env
+            self._all_keys = all_keys_env
             if self.is_free:
-                initial_key = self._all_keys[0] if self._all_keys else "dummy_key"
+                initial_key = self._all_keys[0] if self._all_keys else (api_key or "dummy_key")
             else:
-                initial_key = self._paid_key or (self._all_keys[0] if self._all_keys else "dummy_key")
+                initial_key = self._paid_key or (self._all_keys[0] if self._all_keys else (api_key or "dummy_key"))
 
         super().__init__(model=resolved_model, max_tokens=max_tokens, api_key=initial_key,
                          settings=settings, temperature=temperature, **kwargs)
