@@ -5361,7 +5361,7 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `UnifiedCronJob`, `UnifiedCronEngine`
     - *Methods*: `parse_schedule_expression()`, `register_job()`, `unregister_job()`, `get_job()`, `list_jobs()`, `register_execution_callback()`, `set_channel_dispatcher()`, `start()`, `stop()`, `close()`, `check_hung_jobs()`
   - **Functions**: `compute_next_cron_timestamp()`, `get_unified_cron_engine()`
-  - **Variables**: `DEFAULT_CRON_DB`, `_ANTI_SUICIDE_PATTERNS`
+  - **Variables**: `DEFAULT_CRON_DB`, `_ANTI_SUICIDE_PATTERNS`, `CRON_JOB_COLUMNS`, `CRON_JOB_SELECT_COLS`
 
 **File:** `universal_cron_scheduler.py`
   - **Docstring**: Universal Cron Scheduler & Background Automation Engine with at-most-once semantic invariant, natural language parser, and monitor hashing.
