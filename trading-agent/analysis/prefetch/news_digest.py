@@ -656,7 +656,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         self._last_known_breaking_id: Optional[int] = None
 
         # Backward compatibility aliases
-        self._flash_lite = self._classification_escalation
+        self._flash_lite = self._classifier
         self._flash = self._digest_generator
 
     def invalidate_macro_context_cache(self) -> None:

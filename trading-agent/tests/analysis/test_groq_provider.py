@@ -105,6 +105,7 @@ def test_all_groq_aliases_defined():
         "groq-qwen3.6-27b", "groq-qwen3.8-27b",
         "qwen3.6-27b", "qwen3.8-27b",
         "qwen/qwen3.6-27b",
+        "whisper-large-v3",
     }
     assert expected == set(GROQ_MODEL_ALIASES.keys())
     assert GROQ_MODEL_ALIASES["groq-qwen3.6-27b"] == "qwen/qwen3.8-27b"
