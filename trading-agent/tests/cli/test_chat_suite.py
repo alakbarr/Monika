@@ -203,11 +203,11 @@ async def test_command_router_basic():
     # 3. /model
     res = await router.handle("/model fast")
     assert res.handled
-    assert prompt_mgr.active_model == "gemini-3.5-flash-lite"
+    assert prompt_mgr.active_model == MODEL_ALIASES["fast"]
 
     res = await router.handle("/model reasoning")
     assert res.handled
-    assert prompt_mgr.active_model == "gemini-3.8-flash"
+    assert prompt_mgr.active_model == MODEL_ALIASES["reasoning"]
 
     # 4. /theme
     res = await router.handle("/theme modern_dark")

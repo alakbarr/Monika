@@ -137,7 +137,7 @@ def test_summarizer_task_role_and_factory():
     assert "summarizer" in task_roles, "Role 'summarizer' must be defined in settings.yaml"
     summarizer_cfg = task_roles["summarizer"]
     assert summarizer_cfg.get("max_tokens") == 2048, "summarizer max_tokens should be 2048"
-    assert summarizer_cfg.get("primary") == "gemini-3.5-flash-lite"
+    assert summarizer_cfg.get("primary") == "deepseek-v4.1-flash"
 
     # Verifikasi get_client_for_task dengan explicit settings
     client_explicit = get_client_for_task("summarizer", settings)

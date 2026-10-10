@@ -1,5 +1,12 @@
 import os
 os.environ.setdefault("PTB_TIMEDELTA", "1")
+_cache_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".cache", "matplotlib"))
+os.makedirs(_cache_dir, exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", _cache_dir)
+
+import _thread
+import threading
+import faulthandler
 import asyncio
 import sys
 import warnings
@@ -55,6 +62,48 @@ except Exception:
 
 
 # (pytest-asyncio loop factory handled by pytest-asyncio default configuration)
+
+if sys.platform == "win32":
+    try:
+        from asyncio.proactor_events import _ProactorBasePipeTransport
+        _orig_pipe_del = getattr(_ProactorBasePipeTransport, "__del__", None)
+        if _orig_pipe_del is not None:
+            def _safe_pipe_del(self):
+                try:
+                    _orig_pipe_del(self)
+                except (ValueError, OSError):
+                    pass
+            _ProactorBasePipeTransport.__del__ = _safe_pipe_del
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def test_timeout_watchdog(request):
+    """Ensure no test hangs indefinitely; interrupts after 30s with full thread traceback."""
+    interrupted = threading.Event()
+    test_node = request.node.nodeid
+
+    def on_timeout():
+        interrupted.set()
+        sys.stderr.write(f"\n[WATCHDOG TIMEOUT] Test exceeded 30s limit: {test_node}\n")
+        try:
+            faulthandler.dump_traceback(file=sys.stderr)
+        except Exception:
+            pass
+        _thread.interrupt_main()
+
+    timer = threading.Timer(30.0, on_timeout)
+    timer.daemon = True
+    timer.start()
+    try:
+        yield
+    except KeyboardInterrupt:
+        if interrupted.is_set():
+            pytest.fail(f"Test exceeded 30s execution limit (stuck/hanging detected): {test_node}")
+        raise
+    finally:
+        timer.cancel()
 
 
 @pytest.fixture(autouse=True)

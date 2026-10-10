@@ -4,14 +4,17 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 
-@pytest.mark.asyncio
-async def test_event_loop_is_selector_on_windows():
-    """Verify that on Windows the running loop is SelectorEventLoop (required by psycopg)."""
-    loop = asyncio.get_running_loop()
-    if sys.platform == "win32":
-        assert isinstance(loop, asyncio.SelectorEventLoop) or "Selector" in type(loop).__name__, (
-            f"Expected SelectorEventLoop for psycopg compatibility, got {type(loop).__name__}"
-        )
+def test_event_loop_is_selector_on_windows():
+    """Verify that on Windows configure_event_loop provides SelectorEventLoop (required by psycopg)."""
+    from utils.infra.platform_compat import configure_event_loop, IS_WINDOWS
+    if IS_WINDOWS:
+        factory_dict = configure_event_loop()
+        assert factory_dict.get("loop_factory") == asyncio.SelectorEventLoop
+        loop = factory_dict["loop_factory"]()
+        try:
+            assert isinstance(loop, asyncio.SelectorEventLoop) or "Selector" in type(loop).__name__
+        finally:
+            loop.close()
 
 
 @pytest.mark.asyncio
