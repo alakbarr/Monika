@@ -25,7 +25,8 @@ from analysis.tools.unified_registry import unified_tool_registry
 
 logger = logging.getLogger("TradingAgent.Tools.Kanban")
 
-_KANBAN_DIR = Path("trading-agent/data")
+from utils.infra.paths import DATA_DIR
+_KANBAN_DIR = DATA_DIR
 _KANBAN_FILE = _KANBAN_DIR / "kanban_board.json"
 
 VALID_COLUMNS = frozenset({"backlog", "in_progress", "review", "done"})

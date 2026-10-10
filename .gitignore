@@ -111,7 +111,6 @@ scripts/*
 !scripts/update_economic_calendar.py
 !scripts/benchmark_debate_openrouter.py
 !scripts/benchmark_news_classification_openrouter.py
-trading-agent/scripts/
 contoh_pertanyaan.md
 prompt_benchmark.md
 

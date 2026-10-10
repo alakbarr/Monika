@@ -28,7 +28,9 @@ from scheduler.cron_nlp_parser import parse_natural_schedule
 
 logger = logging.getLogger("TradingAgent.Scheduler.DetachedCronWorker")
 
-DEFAULT_DELIVERIES_DB_PATH = Path("trading-agent/data/deliveries.db")
+from utils.infra.paths import DATA_DIR
+
+DEFAULT_DELIVERIES_DB_PATH = DATA_DIR / "deliveries.db"
 
 
 class DetachedCronWorker:
