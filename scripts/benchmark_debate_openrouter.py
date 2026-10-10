@@ -106,8 +106,8 @@ MODELS_TO_BENCHMARK = [
     },
 ]
 
-JSON_OUTPUT_PATH = REPO_ROOT / "benchmark_debate_results.json"
-MARKDOWN_OUTPUT_PATH = REPO_ROOT / "benchmark_debate_openrouter.md"
+JSON_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_debate_results.json"
+MARKDOWN_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_debate_openrouter.md"
 
 
 class BenchmarkingDebateClient(OpenRouterProvider):

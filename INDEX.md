@@ -5,7 +5,7 @@ This document provides an exhaustive structural index of all directories, files,
 ## Table of Contents
 *(Note: Line numbers are auto-updated by `scripts/update_index_toc.py`)*
 
-- [Root Directory: `/trading-agent`](#root-directory-trading-agent) - Line 177
+- [Root Directory: `Monika/`](#root-directory-monika) - Line 177
   - [Folder: `.github`](#folder-github) - Line 235
     - [Folder: `.github/ISSUE_TEMPLATE`](#folder-githubissue_template) - Line 240
     - [Folder: `.github/workflows`](#folder-githubworkflows) - Line 248
@@ -174,7 +174,7 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6708
       - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6723
 
-## Root Directory: `/trading-agent`
+## Root Directory: `Monika/`
 
 **File:** `.dockerignore`
 

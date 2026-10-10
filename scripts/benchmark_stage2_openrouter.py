@@ -103,8 +103,8 @@ MODELS_TO_BENCHMARK = [
     },
 ]
 
-JSON_OUTPUT_PATH = REPO_ROOT / "benchmark_stage2_results.json"
-MARKDOWN_OUTPUT_PATH = REPO_ROOT / "benchmark_stage2_per_asset_openrouter.md"
+JSON_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_stage2_results.json"
+MARKDOWN_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_stage2_per_asset_openrouter.md"
 
 
 def extract_turn_details(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

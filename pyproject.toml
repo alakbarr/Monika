@@ -6,6 +6,16 @@ readme = "README.md"
 authors = [{ name = "Saiful Akbar", email = "asaifulakbarw@gmail.com" }]
 license = { text = "MIT" }
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["trading-agent"]
+
+[project.scripts]
+monika = "cli.main:main"
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
