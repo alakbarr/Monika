@@ -34,9 +34,9 @@ from utils.api.openrouter_rate_limiter import get_paid_key
 
 DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 FIXTURE_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "fixtures" / "news" / "raw_news_batch_25.json"
-OUTPUT_JSON_ROOT = REPO_ROOT / "benchmark_news_classification_results.json"
+OUTPUT_JSON_ROOT = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_news_classification_results.json"
 OUTPUT_JSON_BENCHMARK = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "news_classification_openrouter.json"
-OUTPUT_MD_REPORT = REPO_ROOT / "benchmark_news_classification_openrouter.md"
+OUTPUT_MD_REPORT = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_news_classification_openrouter.md"
 
 MODELS_TO_BENCHMARK: List[Dict[str, str]] = [
     {"id": "openai/gpt-6-luna-decisions", "name": "Luna Decision (GPT-6)"},

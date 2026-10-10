@@ -27,9 +27,7 @@ Monika/
 ├── README.md
 ├── SECURITY.md
 ├── STRUCTURE.md
-├── benchmark_news_classification_openrouter.md
-├── benchmark_news_classification_results.json
-├── benchmark_report.md
+├── monika.bat
 ├── deploy
 │   ├── Dockerfile.mt5-wine
 │   ├── docker-compose.vps.yml

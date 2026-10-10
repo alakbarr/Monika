@@ -19,8 +19,17 @@ class EnvFileManager:
     @staticmethod
     def get_default_env_path() -> str:
         """Returns the canonical root .env file path."""
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        return os.path.join(base_dir, ".env")
+        agent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        repo_dir = os.path.dirname(agent_dir)
+        repo_env = os.path.join(repo_dir, ".env")
+        if os.path.exists(repo_env):
+            return repo_env
+        agent_env = os.path.join(agent_dir, ".env")
+        if os.path.exists(agent_env):
+            return agent_env
+        if os.path.exists(os.path.join(repo_dir, "pyproject.toml")) or os.path.exists(os.path.join(repo_dir, ".git")):
+            return repo_env
+        return agent_env
 
     @classmethod
     def update_env_values(cls, updates: Dict[str, str], env_path: Optional[str] = None) -> bool:
