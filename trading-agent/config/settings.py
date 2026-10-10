@@ -378,19 +378,26 @@ get_settings = load_settings
 
 
 def get_installation_tier(settings_or_path: Union[Dict[str, Any], str, None] = None) -> str:
-    """Return the configured installation tier ('trial', 'full', or 'unconfigured')."""
+    """
+    Return the configured installation tier ('trial', 'full', or 'unconfigured').
+    Adheres strictly to standard configuration cascade hierarchy:
+    Explicit Dictionary/File Parameter > OS Environment Variable > Persistent Marker File > Global Settings File > Safe Fallback ('trial').
+    """
     if isinstance(settings_or_path, dict):
-        return str(settings_or_path.get("installation_tier", "trial")).strip().lower()
+        val = settings_or_path.get("installation_tier")
+        if val is not None and str(val).strip().lower() in ("trial", "full", "unconfigured"):
+            return str(val).strip().lower()
     elif isinstance(settings_or_path, str):
         try:
             cfg = load_settings(settings_or_path)
-            if "installation_tier" in cfg:
-                return str(cfg["installation_tier"]).strip().lower()
+            val = cfg.get("installation_tier")
+            if val is not None and str(val).strip().lower() in ("trial", "full", "unconfigured"):
+                return str(val).strip().lower()
         except Exception:
             pass
 
     env_tier = os.getenv("MONIKA_TIER")
-    if env_tier:
+    if env_tier and env_tier.strip().lower() in ("trial", "full", "unconfigured"):
         return env_tier.strip().lower()
 
     from pathlib import Path
@@ -406,13 +413,17 @@ def get_installation_tier(settings_or_path: Union[Dict[str, Any], str, None] = N
         if cand.exists():
             try:
                 t = cand.read_text(encoding="utf-8").strip().lower()
-                if t:
+                if t in ("trial", "full", "unconfigured"):
                     return t
             except Exception:
                 pass
 
     try:
         cfg = load_settings()
-        return str(cfg.get("installation_tier", "trial")).strip().lower()
+        val = cfg.get("installation_tier")
+        if val is not None and str(val).strip().lower() in ("trial", "full", "unconfigured"):
+            return str(val).strip().lower()
     except Exception:
-        return "trial"
+        pass
+
+    return "trial"
