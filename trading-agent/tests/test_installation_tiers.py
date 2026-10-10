@@ -24,12 +24,18 @@ def test_schema_installation_tier():
     assert cfg_default.installation_tier == "trial"
 
 
-def test_get_installation_tier_helper():
+def test_get_installation_tier_helper(monkeypatch):
     """Verify get_installation_tier extracts correctly from dict or defaults."""
     assert get_installation_tier({"installation_tier": "full"}) == "full"
     assert get_installation_tier({"installation_tier": "trial"}) == "trial"
-    assert get_installation_tier({}) == "trial"
+    assert get_installation_tier({}) in ("trial", "full", "unconfigured")
     assert get_installation_tier(None) in ("trial", "full", "unconfigured")
+
+    # Verify environment variable cascade when dict omits key
+    monkeypatch.setenv("MONIKA_TIER", "full")
+    assert get_installation_tier({}) == "full"
+    monkeypatch.setenv("MONIKA_TIER", "trial")
+    assert get_installation_tier({}) == "trial"
 
 
 def test_upgrade_subcommand_registration():

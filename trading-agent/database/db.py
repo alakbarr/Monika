@@ -94,28 +94,32 @@ def verify_safe_database_url(url: str) -> None:
 
 
 def get_tier() -> str:
-    """Detect configured tier with fallback to trial."""
-    tier = os.getenv("MONIKA_TIER")
-    if tier:
-        return tier.strip().lower()
-    from pathlib import Path
-    _cur = Path(__file__).resolve().parent
-    candidates = [
-        Path.cwd() / ".monika_tier",
-        Path.cwd().parent / ".monika_tier",
-        _cur.parent / ".monika_tier",
-        _cur.parent.parent / ".monika_tier",
-        _cur / ".monika_tier",
-    ]
-    for cand in candidates:
-        if cand.exists():
-            try:
-                t = cand.read_text(encoding="utf-8").strip().lower()
-                if t:
-                    return t
-            except Exception:
-                pass
-    return "trial"
+    """Detect configured tier via canonical settings resolver with fallback to trial."""
+    try:
+        from config.settings import get_installation_tier
+        return get_installation_tier()
+    except Exception:
+        tier = os.getenv("MONIKA_TIER")
+        if tier:
+            return tier.strip().lower()
+        from pathlib import Path
+        _cur = Path(__file__).resolve().parent
+        candidates = [
+            Path.cwd() / ".monika_tier",
+            Path.cwd().parent / ".monika_tier",
+            _cur.parent / ".monika_tier",
+            _cur.parent.parent / ".monika_tier",
+            _cur / ".monika_tier",
+        ]
+        for cand in candidates:
+            if cand.exists():
+                try:
+                    t = cand.read_text(encoding="utf-8").strip().lower()
+                    if t:
+                        return t
+                except Exception:
+                    pass
+        return "trial"
 
 
 def get_canonical_db_path() -> Path:
