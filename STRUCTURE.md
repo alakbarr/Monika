@@ -86,6 +86,7 @@ Monika/
 ├── pyrightconfig.json
 ├── pytest.ini
 ├── scripts
+│   ├── audit_token_usage.py
 │   ├── benchmark_debate_openrouter.py
 │   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
@@ -96,10 +97,19 @@ Monika/
 │   ├── check_all_models.py
 │   ├── check_env_keys.py
 │   ├── check_incomplete.py
+│   ├── check_scrapers
+│   │   ├── __init__.py
+│   │   ├── check_calendar.py
+│   │   ├── check_cme.py
+│   │   ├── check_news.py
+│   │   ├── check_sentiment.py
+│   │   └── check_twitter.py
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
 │   ├── extract_production_fixtures.py
+│   ├── extract_realistic_fixtures.py
 │   ├── find_extra_models.py
+│   ├── heal_kill_switch_state.py
 │   ├── generate_full_benchmark_dashboard.py
 │   ├── generate_model_quadrant.py
 │   ├── generate_table.py
@@ -1260,17 +1270,6 @@ Monika/
     │   └── social
     │       ├── __init__.py
     │       └── twitter_watch.py
-    ├── scripts
-    │   ├── audit_token_usage.py
-    │   ├── check_scrapers
-    │   │   ├── __init__.py
-    │   │   ├── check_calendar.py
-    │   │   ├── check_cme.py
-    │   │   ├── check_news.py
-    │   │   ├── check_sentiment.py
-    │   │   └── check_twitter.py
-    │   ├── extract_realistic_fixtures.py
-    │   └── heal_kill_switch_state.py
     ├── security
     │   ├── __init__.py
     │   ├── credential_vault.py
@@ -1489,6 +1488,7 @@ Monika/
         │   ├── event_loop.py
         │   ├── log_redactor.py
         │   ├── notifier.py
+        │   ├── paths.py
         │   ├── platform_compat.py
         │   └── worktree_manager.py
         ├── llm

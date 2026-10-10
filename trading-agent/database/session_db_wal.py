@@ -27,7 +27,9 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Database.SessionDbWal")
 
-DEFAULT_SESSION_DB_PATH = Path("trading-agent/data/session_db.sqlite")
+from utils.infra.paths import DATA_DIR
+
+DEFAULT_SESSION_DB_PATH = DATA_DIR / "session_db.sqlite"
 
 # Pool limits
 _READ_POOL_MAX_PER_INSTANCE = 8

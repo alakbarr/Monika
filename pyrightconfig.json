@@ -15,7 +15,7 @@
   ],
   "venvPath": "trading-agent",
   "venv": "venv",
-  "extraPaths": ["trading-agent"],
+  "extraPaths": ["trading-agent", "."],
   "typeCheckingMode": "off",
   "reportMissingTypeStubs": false,
   "reportMissingImports": false,

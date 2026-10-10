@@ -260,9 +260,10 @@ class SystemDoctor:
     def check_wal_integrity_and_repair(self) -> None:
         """Verify SQLite WAL database files integrity and clear stale locks."""
         import sqlite3
+        from utils.infra.paths import DATA_DIR
         wal_dbs = [
-            Path("trading-agent/data/session_db.sqlite"),
-            Path("data/universal_cron.db"),
+            DATA_DIR / "session_db.sqlite",
+            DATA_DIR / "universal_cron.db",
         ]
         for db_file in wal_dbs:
             if not db_file.exists():
