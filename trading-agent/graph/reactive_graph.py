@@ -244,8 +244,15 @@ async def fast_debate_node(state: ReactiveState, config: Optional[RunnableConfig
             "risk_debate_states": debate_res.get("risk_debate_states", {}),
         }
     except Exception as e:
-        logger.warning(f"[ReactiveGraph:Debate] Debate subgraph failed ({e}). Proceeding to RiskGate with caution.", exc_info=True)
-        return {"actionable_trades": actionable}
+        logger.error(
+            f"[ReactiveGraph:Debate] Debate subgraph failed: {e}. "
+            f"Failing closed: dropping all un-debated trades to protect capital.",
+            exc_info=True,
+        )
+        return {
+            "actionable_trades": [],
+            "error": f"Debate subgraph failure: {e}",
+        }
 
 
 async def reactive_risk_gate_node(state: ReactiveState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
