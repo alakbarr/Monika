@@ -1439,7 +1439,14 @@ Monika/
     │   ├── chat_compaction.py
     │   ├── chat_tool_router.py
     │   ├── command_router.py
+    │   ├── formatters
+    │   │   └── __init__.py
     │   ├── fuzzy_router.py
+    │   ├── handlers
+    │   │   ├── __init__.py
+    │   │   ├── market_commands.py
+    │   │   ├── system_commands.py
+    │   │   └── trading_commands.py
     │   ├── message_formatter.py
     │   ├── sanitizer.py
     │   ├── topic_manager.py

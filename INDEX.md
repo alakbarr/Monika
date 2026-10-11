@@ -155,23 +155,23 @@ This document provides an exhaustive structural index of all directories, files,
         - [Folder: `trading-agent/skills/trading/telegram-persona`](#folder-trading-agentskillstradingtelegram-persona) - Line 5984
     - [Folder: `trading-agent/systemd`](#folder-trading-agentsystemd) - Line 5989
     - [Folder: `trading-agent/telegram_bot`](#folder-trading-agenttelegram_bot) - Line 5994
-    - [Folder: `trading-agent/tests`](#folder-trading-agenttests) - Line 6159
-    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 6164
-      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 6204
-      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 6264
-      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 6318
-      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 6330
-      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 6385
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6502
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6543
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6556
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6581
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6594
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6619
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6628
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6644
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6671
-      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6686
+    - [Folder: `trading-agent/tests`](#folder-trading-agenttests) - Line 6182
+    - [Folder: `trading-agent/utils`](#folder-trading-agentutils) - Line 6187
+      - [Folder: `trading-agent/utils/analytics`](#folder-trading-agentutilsanalytics) - Line 6227
+      - [Folder: `trading-agent/utils/api`](#folder-trading-agentutilsapi) - Line 6287
+      - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 6341
+      - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 6353
+      - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 6408
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6525
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6566
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6579
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6604
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6617
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6642
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6651
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6667
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6694
+      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6709
 
 ## Root Directory: `Monika/`
 
@@ -6093,10 +6093,33 @@ This document provides an exhaustive structural index of all directories, files,
         - `build_confirm_keyboard(self)`
         - `build_close_keyboard(self)`
 
+**File:** `formatters/__init__.py`
+  - **Docstring**: Telegram Bot formatters package re-exporting canonical formatters and HTML sanitizer.
+
 **File:** `fuzzy_router.py`
   - **Docstring**: 3-Tier fuzzy command resolution engine (Exact -> Alias -> Levenshtein) for Telegram bot commands.
   - **Classes**: `FuzzyCommandRouter`
     - *Methods*: `register_command()`, `resolve_command()`, `get_command_help()`
+
+**Folder:** `trading-agent/telegram_bot/handlers`
+
+**File:** `handlers/__init__.py`
+  - **Docstring**: Telegram Bot Handlers Package re-exporting modular command descriptors.
+
+**File:** `handlers/trading_commands.py`
+  - **Docstring**: Trading Operations Command Group for Telegram Bot.
+  - **Classes**: `CommandDescriptor`
+  - **Global Variables**: TRADING_COMMAND_DESCRIPTORS
+
+**File:** `handlers/market_commands.py`
+  - **Docstring**: Market Intelligence & Quantitative Commands Group for Telegram Bot.
+  - **Classes**: `MarketCommandDescriptor`
+  - **Global Variables**: MARKET_COMMAND_DESCRIPTORS
+
+**File:** `handlers/system_commands.py`
+  - **Docstring**: System, Analytics, and Governance Commands Group for Telegram Bot.
+  - **Classes**: `SystemCommandDescriptor`
+  - **Global Variables**: SYSTEM_COMMAND_DESCRIPTORS
 
 **File:** `message_formatter.py`
   - **Docstring**: Message and Dispatch Slip Formatters for Telegram Bot.
