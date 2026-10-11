@@ -1191,6 +1191,9 @@ Monika/
     │   ├── approval_transport.py
     │   ├── correlation_matrix.py
     │   ├── crypto_audit_ledger.py
+    │   ├── domain
+    │   │   ├── __init__.py
+    │   │   └── instruments.py
     │   ├── execution_simulator.py
     │   ├── invariants
     │   │   ├── __init__.py
@@ -1209,6 +1212,7 @@ Monika/
     ├── scheduler
     │   ├── __init__.py
     │   ├── active_calendar_poller.py
+    │   ├── adhoc_proxy.py
     │   ├── alpha_discovery_scheduler.py
     │   ├── cron_nlp_parser.py
     │   ├── cycle_scheduler.py

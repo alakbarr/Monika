@@ -21,7 +21,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     if scheduler is None:
         if is_ad_hoc:
             logger.info("Scheduler not found in config for ad-hoc pipeline, initializing AdHocSchedulerProxy fallback.")
-            from agent.agent_loop import AdHocSchedulerProxy
+            from scheduler.adhoc_proxy import AdHocSchedulerProxy
             scheduler = AdHocSchedulerProxy(
                 settings=configurable.get("settings"),
                 symbols=list(state.get("symbols") or [s for s, _ in state.get("actionable_trades", [])] or ["XAUUSD"]),

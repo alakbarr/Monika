@@ -103,7 +103,7 @@ class TestRiskGate:
         ok, reason = await gate._check_max_positions(mock_session)
         assert not ok
         
-        mock_session.execute.return_value.scalar_one_or_none.return_value = 3
+        mock_session.execute.return_value.scalar_one_or_none.side_effect = [3, 0]
         ok, reason = await gate._check_max_positions(mock_session)
         assert ok
 

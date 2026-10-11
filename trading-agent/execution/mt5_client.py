@@ -784,7 +784,7 @@ class MT5Client:
                 logger.debug(f"[{clean_sym}] MT5 order_calc_margin failed: {e}")
 
         if margin is None:
-            from risk.position_sizing import DEFAULT_INSTRUMENTS
+            from risk.domain.instruments import DEFAULT_INSTRUMENTS
             spec = DEFAULT_INSTRUMENTS.get(clean_sym)
             contract = spec.contract_size if spec else (100 if "XAU" in clean_sym else 100_000)
             cur_price = price or (2650.0 if "XAU" in clean_sym else 1.1000)
