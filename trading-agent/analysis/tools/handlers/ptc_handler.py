@@ -38,9 +38,14 @@ class PTCHandler:
         FORBIDDEN_MODULES = {
             "subprocess", "ctypes", "shutil", "pty",
             "multiprocessing", "threading", "signal", "webbrowser",
-            "winreg", "_winapi",
+            "winreg", "_winapi", "os", "sys", "metatrader5", "mt5linux",
+            "execution", "socket", "requests", "urllib", "httpx", "aiohttp", "pathlib",
         }
-        FORBIDDEN_CALLS = {"eval", "exec", "__import__", "compile"}
+        FORBIDDEN_CALLS = {"eval", "exec", "__import__", "compile", "open"}
+        DANGEROUS_ATTRIBUTES = {
+            "system", "popen", "spawn", "order_send", "place_order",
+            "close_position", "__subclasses__", "__builtins__", "__base__",
+        }
 
         try:
             tree = ast.parse(code)
@@ -62,6 +67,12 @@ class PTCHandler:
                 if isinstance(node.func, ast.Name):
                     if node.func.id in FORBIDDEN_CALLS:
                         return False, f"Call to dangerous built-in '{node.func.id}' is prohibited"
+                elif isinstance(node.func, ast.Attribute):
+                    if node.func.attr in DANGEROUS_ATTRIBUTES:
+                        return False, f"Invocation of dangerous attribute '{node.func.attr}' is prohibited"
+            elif isinstance(node, ast.Attribute):
+                if node.attr in {"__subclasses__", "__builtins__", "__base__"}:
+                    return False, f"Access to reflective attribute '{node.attr}' is prohibited"
 
         return True, ""
 
@@ -120,18 +131,18 @@ class PTCHandler:
                     "LANG",
                     "LC_ALL",
                 }
-                env = {k: v for k, v in os.environ.items() if k.upper() in safe_keys}
-                env["PYTHONPATH"] = base_dir
-                env["PYTHONUNBUFFERED"] = "1"
-
                 scratch_dir = Path(base_dir) / "data" / "sandbox_scratch"
                 scratch_dir.mkdir(parents=True, exist_ok=True)
                 existing_mtimes = {p: p.stat().st_mtime for p in scratch_dir.glob("*") if p.is_file()}
 
+                env = {k: v for k, v in os.environ.items() if k.upper() in safe_keys}
+                env["PYTHONPATH"] = str(scratch_dir)
+                env["PYTHONUNBUFFERED"] = "1"
+
                 def _run_proc():
                     import subprocess
                     p = subprocess.Popen(
-                        [sys.executable, script_path],
+                        [sys.executable, "-I", script_path],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         env=env,

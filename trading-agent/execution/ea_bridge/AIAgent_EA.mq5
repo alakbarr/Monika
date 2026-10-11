@@ -354,6 +354,13 @@ void EnforceSLOnClaudePositions() { EnforceSLOnAIPositions(); }
 //+------------------------------------------------------------------+
 void WriteEAHeartbeat()
 {
+    // Check terminal connection status before updating heartbeat
+    if(!TerminalInfoInteger(TERMINAL_CONNECTED))
+    {
+        Print("[AIAgent EA] Terminal disconnected from broker server. Heartbeat suppressed.");
+        return;
+    }
+
     int handle = FileOpen(HEARTBEAT_FILE_EA, FILE_WRITE | FILE_TXT | FILE_COMMON | FILE_ANSI);
     if(handle == INVALID_HANDLE)
     {
