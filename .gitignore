@@ -82,11 +82,11 @@ trading-agent/skills/crystallized/mt5_slippage_defense/
 *.corrupt.*
 
 # Local Data and Results
-data/
 /data/
 /data/*
 /trading-agent/data/*
 !/trading-agent/data/.gitkeep
+!/trading-agent/data/README.md
 results/
 trading-agent/results/
 !trading-agent/benchmark/results/
