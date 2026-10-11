@@ -149,19 +149,20 @@ class MT5SelfHealingExecutor:
     ) -> Optional[tuple[float, float]]:
         """Calculates deterministic SL/TP offset outside broker stops_level zone."""
         try:
-            import MetaTrader5 as mt5
-            info = mt5.symbol_info(symbol)
-            if not info:
+            def _fetch_symbol_data():
+                import MetaTrader5 as mt5
+                s_info = mt5.symbol_info(symbol)
+                s_tick = mt5.symbol_info_tick(symbol) if s_info else None
+                return s_info, s_tick
+
+            info, tick = await asyncio.to_thread(_fetch_symbol_data)
+            if not info or not tick:
                 return None
 
             point = info.point or 0.00001
             digits = info.digits or 5
             stops_level = max(getattr(info, "trade_stops_level", 10), 10)
             spread = getattr(info, "spread", 20)
-
-            tick = mt5.symbol_info_tick(symbol)
-            if not tick:
-                return None
 
             # In MT5, Buy positions close at Bid, Sell positions close at Ask
             curr_price = tick.bid if is_buy else tick.ask
@@ -202,8 +203,11 @@ class MT5SelfHealingExecutor:
     async def _snap_volume(self, symbol: str, volume: float) -> Optional[float]:
         """Snaps lot volume to valid broker min, max, and volume_step."""
         try:
-            import MetaTrader5 as mt5
-            info = mt5.symbol_info(symbol)
+            def _fetch_volume_info():
+                import MetaTrader5 as mt5
+                return mt5.symbol_info(symbol)
+
+            info = await asyncio.to_thread(_fetch_volume_info)
             if not info:
                 return None
 
@@ -225,8 +229,11 @@ class MT5SelfHealingExecutor:
     ) -> bool:
         """Verifies if fresh tick price is within safe ATR drift tolerance (<= 0.20 * ATR)."""
         try:
-            from execution.mt5_compat import mt5
-            tick = mt5.symbol_info_tick(symbol) if mt5 else None
+            def _fetch_tick():
+                from execution.mt5_compat import mt5
+                return mt5.symbol_info_tick(symbol) if mt5 else None
+
+            tick = await asyncio.to_thread(_fetch_tick)
             if not tick:
                 return False
 
