@@ -59,6 +59,7 @@ class PostReleaseAnalyzer:
         execution_service: Any = None,
         mt5_client: Any = None,
         dry_run: bool = False,
+        cycle_scheduler: Any = None,
     ):
         self.settings = settings
         self._per_asset = per_asset_stage
@@ -66,6 +67,7 @@ class PostReleaseAnalyzer:
         self._exec_svc = execution_service
         self._mt5 = mt5_client
         self._dry_run = dry_run
+        self._cycle_scheduler = cycle_scheduler
         self._running = False
         self._stop_event = asyncio.Event()
         self._processed_events: set[int] = set()
@@ -282,6 +284,17 @@ class PostReleaseAnalyzer:
         return '\n'.join(lines)
 
     async def _run_targeted_reanalysis(
+        self, symbols: list[str], context: str, events: list
+    ):
+        """Execute Stage 2 analysis for affected symbols under cycle_lock if available."""
+        cycle_lock = getattr(self._cycle_scheduler, "_cycle_lock", None) if self._cycle_scheduler else None
+        if cycle_lock:
+            async with cycle_lock:
+                await self._do_targeted_reanalysis(symbols, context, events)
+        else:
+            await self._do_targeted_reanalysis(symbols, context, events)
+
+    async def _do_targeted_reanalysis(
         self, symbols: list[str], context: str, events: list
     ):
         """Execute Stage 2 analysis for affected symbols only."""

@@ -1002,8 +1002,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     client=active_client,
                     max_retries=1
                 )
-                if corrections:
-                    logger.info(f"[{symbol}] Post-decision self-correction applied: {corrections}")
+                if verified and isinstance(verified, dict):
                     if verified.get("stop_loss"):
                         analysis.stop_loss = verified["stop_loss"]
                     if verified.get("take_profit"):
@@ -1014,23 +1013,32 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                         analysis.priced_in_score = verified["priced_in_score"]
                     if verified.get("decision"):
                         analysis.decision = verified["decision"]
+                        decision = verified["decision"]
+
+                if corrections:
+                    logger.info(f"[{symbol}] Post-decision self-correction applied: {corrections}")
                     curr_notes = analysis.execution_notes or ""
                     corr_note = f"[OutputVerifier] Corrected: {', '.join(corrections)}"
                     analysis.execution_notes = f"{curr_notes}\n{corr_note}".strip()
-                    if str(analysis.decision).lower() in ("wait", "avoid", "rejected"):
-                        try:
-                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
-                            TradeTrajectoryLogger().log_trajectory(
-                                symbol=symbol,
-                                decision="REJECTED",
-                                risk_decision={"approved": False, "reason": f"output_verifier: {corrections}"},
-                                execution_details={"analysis_id": analysis.id, "decision": "REJECTED", "stage": "output_verifier"}
-                            )
-                        except Exception as traj_err:
-                            logger.debug(f"[{symbol}] OutputVerifier trajectory log error: {traj_err}")
-                    await session.commit()
+
+                if str(analysis.decision).lower() in ("wait", "avoid", "rejected"):
+                    decision = "wait"
+                    try:
+                        from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                        TradeTrajectoryLogger().log_trajectory(
+                            symbol=symbol,
+                            decision="REJECTED",
+                            risk_decision={"approved": False, "reason": f"output_verifier: {corrections or (verified.get('verification_failures') if isinstance(verified, dict) else [])}"},
+                            execution_details={"analysis_id": analysis.id, "decision": "REJECTED", "stage": "output_verifier"}
+                        )
+                    except Exception as traj_err:
+                        logger.debug(f"[{symbol}] OutputVerifier trajectory log error: {traj_err}")
+                await session.commit()
             except Exception as e:
-                logger.debug(f"[{symbol}] Output verifier non-fatal execution: {e}")
+                logger.error(f"[{symbol}] Output verifier failed, demoting to wait (Fail-Closed): {e}")
+                analysis.decision = "wait"
+                decision = "wait"
+                await session.commit()
 
             # In-Harness Grounding Validator (Extended PR-07: lot_size, spread, margin, equity)
             try:
@@ -1125,7 +1133,10 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                         await session.commit()
                         decision = "wait"
             except Exception as htf_err:
-                logger.debug(f"[{symbol}] CrossTimeframeConfirmationGate non-fatal: {htf_err}")
+                logger.error(f"[{symbol}] CrossTimeframeConfirmationGate error, demoting to wait (Fail-Closed): {htf_err}")
+                analysis.decision = "wait"
+                decision = "wait"
+                await session.commit()
 
             missing_fields = []
             if analysis.confluence_score is None:
@@ -1371,6 +1382,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     entry_price_val = float(getattr(analysis, "current_price"))
                 except (ValueError, TypeError):
                     pass
+
+        if analysis and hasattr(analysis, "decision") and analysis.decision is not None:
+            decision = analysis.decision
 
         result.update({
             "symbol": symbol,

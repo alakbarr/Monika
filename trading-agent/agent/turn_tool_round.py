@@ -204,7 +204,26 @@ class TurnToolRoundCoordinator:
         # Side-effecting tools (order execution, trade proposals, state mutations) remain strictly sequential.
         def _is_mutation_tool(name: str) -> bool:
             lower = name.lower()
-            return any(k in lower for k in ("order", "trade", "execute", "cancel", "modify", "close", "kill", "proposal", "set_", "submit"))
+            # Side-effecting mutations MUST always be executed sequentially
+            mutation_verbs = (
+                "execute", "cancel", "modify", "close", "kill", "place", "create",
+                "delete", "remove", "update", "write", "set_", "submit", "trigger",
+                "post_", "proposal",
+            )
+            if any(k in lower for k in mutation_verbs):
+                return True
+            # Read-only prefixes are safe for parallel batch execution
+            read_prefixes = (
+                "get_", "fetch_", "calc_", "calculate_", "read_", "inspect_",
+                "check_", "list_", "scan_", "search_", "query_", "load_", "find_",
+            )
+            if any(lower.startswith(p) for p in read_prefixes):
+                return False
+            # Trade or order tools without an explicit read prefix default to sequential
+            if any(k in lower for k in ("order", "trade")):
+                return True
+            # Default to sequential execution for unknown unclassified tools (fail-safe)
+            return True
 
         read_calls = [c for c in valid_calls if not _is_mutation_tool(c.name)]
         mutation_calls = [c for c in valid_calls if _is_mutation_tool(c.name)]

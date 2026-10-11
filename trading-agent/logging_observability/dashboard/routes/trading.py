@@ -1766,8 +1766,40 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     mt5_client = get_dashboard_dependency("mt5_client")
     exec_svc = get_dashboard_dependency("execution_service")
 
-    if not mt5_client and not exec_svc:
-        return JSONResponse(status_code=503, content={"status": "error", "message": "No active broker or execution service available."})
+    from database.db import AsyncSessionLocal
+    from database.models import Position, ActivityLog
+    from risk.trade_proposal import TradeProposal
+
+    risk_gate = get_dashboard_dependency("risk_gate")
+    proposal = TradeProposal(
+        symbol=sym,
+        direction=direction.upper(),
+        entry_price=payload.price or 0.0,
+        stop_loss=payload.sl or 0.0,
+        take_profit=payload.tp or 0.0,
+        lot_size=volume,
+        confluence_score=75.0,
+        metadata={"source": "manual:dashboard"},
+    )
+
+    async with AsyncSessionLocal() as session:
+        if risk_gate:
+            verdict = await risk_gate.evaluate_proposal(session, proposal, is_paper=False)
+            if not verdict.approved:
+                session.add(ActivityLog(
+                    category="risk",
+                    description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
+                    actor="operator",
+                ))
+                await session.commit()
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "rejected",
+                        "message": f"Order ditolak oleh RiskGate: {', '.join(verdict.rejection_reasons)}",
+                        "rejection_reasons": verdict.rejection_reasons,
+                    },
+                )
 
     res = None
     if mt5_client and hasattr(mt5_client, "place_order"):
@@ -1782,8 +1814,6 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
             order_type=payload.order_type,
         )
 
-    from database.db import AsyncSessionLocal
-    from database.models import Position, ActivityLog
     async with AsyncSessionLocal() as session:
         session.add(ActivityLog(
             category="trading",

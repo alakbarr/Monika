@@ -74,6 +74,7 @@ if TYPE_CHECKING:
     from execution.mt5_client import MT5Client
     from execution.execution_service import ExecutionService
     from execution.ea_bridge.heartbeat_writer import HeartbeatManager
+    from execution.ea_bridge.watchdog import EAWatchdog
     from scheduler.graph_cycle_scheduler import GraphCycleScheduler
     from scheduler.news_watcher import NewsWatcher
     from scheduler.trigger_checker import TriggerChecker
@@ -212,6 +213,7 @@ class TradingAgent:
     trigger_checker: Optional['TriggerChecker']
     telegram_bot: Optional['TelegramBot']
     heartbeat_mgr: Optional['HeartbeatManager']
+    ea_watchdog: Optional['EAWatchdog']
     market_data_scheduler: Optional['MarketDataScheduler']
     macro_data_scheduler: Optional['MacroDataScheduler']
     edge_strategy_runner: Optional['EdgeStrategyRunner']
@@ -268,6 +270,7 @@ class TradingAgent:
         self.trigger_checker   = None
         self.telegram_bot      = None
         self.heartbeat_mgr     = None
+        self.ea_watchdog       = None
         self.market_data_scheduler = None
         self.macro_data_scheduler = None
         self.edge_strategy_runner = None
@@ -360,6 +363,7 @@ class TradingAgent:
         )
         mt5_common = self.settings.get("execution", {}).get("mt5_common_dir", "")
         self.heartbeat_mgr = HeartbeatManager(mt5_common_path=mt5_common)
+        self.ea_watchdog = self.heartbeat_mgr.get_watchdog()
 
         self.edge_strategy_runner = EdgeStrategyRunner(
             self.settings,
@@ -452,6 +456,7 @@ class TradingAgent:
             execution_service=self.execution_service,
             mt5_client=self.mt5_client,
             dry_run=self.dry_run,
+            cycle_scheduler=self.cycle_scheduler,
         )
         self.active_calendar_poller._news_watcher = self.news_watcher
         self.news_watcher._post_release_analyzer = self.post_release_analyzer
@@ -1311,6 +1316,8 @@ class TradingAgent:
             _launch_task("PositionExitReviewer", self.position_exit_reviewer.start, "position_exit_reviewer")
         if self.heartbeat_mgr:
             _launch_task("Heartbeat", self.heartbeat_mgr.run_forever, "heartbeat")
+        if self.ea_watchdog:
+            _launch_task("EAWatchdog", self.ea_watchdog.run_forever, "ea_watchdog")
         _launch_task("Dashboard", self._run_dashboard, "dashboard")
         if self.order_reconciler:
             _launch_task("OrderReconciler", self.order_reconciler.start, "order_reconciler")
@@ -1777,6 +1784,7 @@ class TradingAgent:
             (self.active_calendar_poller, "ActiveCalendarPoller"),
             (self.trigger_checker,  "TriggerChecker"),
             (self.heartbeat_mgr,    "HeartbeatManager"),
+            (self.ea_watchdog,      "EAWatchdog"),
             (self.position_supervisor, "PositionSupervisor"),
             (self.position_exit_reviewer, 'PositionExitReviewer'),
             (self.position_guardian, "PositionGuardian"),

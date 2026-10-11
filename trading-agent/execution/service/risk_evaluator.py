@@ -98,7 +98,11 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
             kelly = win_rate - (1 - win_rate) / rr_ratio
             
             if kelly <= 0:
-                return min_pct
+                logger.warning(
+                    f"[Negative Expectancy] Dynamic risk scaling for {symbol} returned 0.0% "
+                    f"due to non-positive Kelly Criterion (WR={win_rate:.0%}, RR={rr_ratio}, Kelly={kelly:.2f})"
+                )
+                return 0.0
                 
             half_kelly_pct = kelly * 50
             scaled = max(min_pct, min(max_pct, half_kelly_pct))

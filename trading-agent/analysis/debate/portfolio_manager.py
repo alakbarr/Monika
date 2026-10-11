@@ -50,7 +50,7 @@ async def make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debat
         return data
     except Exception as e:
         logger.error(f"Failed to parse Portfolio Manager JSON: {e}")
-        return {"approval": True, "recommended_risk_multiplier": 0.5, "reason": f"Fallback - Parse Error: {e}", "parse_error": True}
+        return {"approval": False, "recommended_risk_multiplier": 0.0, "reason": f"Fallback - Parse Error: {e}", "parse_error": True}
 
 
 async def evaluate_portfolio_impact(
