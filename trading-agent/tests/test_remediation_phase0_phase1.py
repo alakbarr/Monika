@@ -36,7 +36,7 @@ def test_sharpe_ratio_annualization_sqrt_252():
 
 def test_outcome_evaluator_pip_calculation():
     """Verify outcome evaluator pip calculation uses dynamic pip sizes for Gold and Crypto."""
-    evaluator = OutcomeEvaluator()
+    evaluator = OutcomeEvaluator(apply_costs=False)
     from datetime import datetime, timezone
     
     # Gold test (pip_size = 0.01 or 0.1 depending on spec, here 0.01 for 100 multiplier)

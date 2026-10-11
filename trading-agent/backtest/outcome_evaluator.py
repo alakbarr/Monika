@@ -369,9 +369,12 @@ class OutcomeEvaluator:
         exit_price: float,
         reason: str,
         bar: Optional[PriceOHLCV] = None,
-        apply_costs: bool = True,
+        apply_costs: Optional[bool] = None,
         atr_pips: Optional[float] = None,
     ) -> Dict[str, Any]:
+        if apply_costs is None:
+            apply_costs = getattr(self, "apply_costs", True)
+
         spec = DEFAULT_INSTRUMENTS.get(trade.symbol)
         if spec:
             pip_size = spec.pip_size

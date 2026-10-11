@@ -28,10 +28,9 @@ class WebSearchHandler(ToolHandler):
     parallel_safe = True
 
     async def execute(self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs) -> Any:
-        if executor and hasattr(executor, "_tool_web_search"):
-            return await executor._tool_web_search(args)
         from analysis.tools.handlers.news_tools import handle_web_search
         return await handle_web_search(args, session=session, executor=executor, settings=self.settings)
+
 
 
 @register_tool("get_retail_sentiment", aliases=["retail_sentiment"], category="SENTIMENT", parallel_safe=True)
