@@ -1,160 +1,50 @@
-import json
-import math
-import re
+# ==============================================================================
+# File: graph/nodes/risk_gate_node.py
+# Monika Core Risk Gate Node & Orchestrator
+# ==============================================================================
+
+"""
+Core LangGraph RiskGate Node Orchestrator.
+Coordinates quant arbitration, structural level synthesis, portfolio correlation
+gating, institutional RiskGate evaluation, pre-commit validation, and negotiable
+re-planning feedback.
+
+Decomposed into specialized sub-modules in `graph.nodes.risk.*`:
+- level_synthesizer: Order entry/SL/TP single-pass derivation & repair
+- quant_arbitration: Quant alpha evaluation & SignalArbitrator defense
+- portfolio_synthesis: AI portfolio synthesis & correlation heat reduction
+- rejection_auditor: Unified paper what-if & benchmark trajectory auditing
+- proposal_notifier: Operator notification dispatch
+"""
+
+from __future__ import annotations
+
 import logging
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
-from sqlalchemy import select
-from graph.state import TradingState
+from typing import Any, Dict, List, Optional
 from langchain_core.runnables.config import RunnableConfig
+
+from graph.state import TradingState
+from graph.nodes.risk.level_synthesizer import _safe_num, resolve_and_repair_levels
+from graph.nodes.risk.portfolio_synthesis import (
+    ai_portfolio_synthesis as _ai_portfolio_synthesis,
+    apply_portfolio_synthesis_reduction,
+)
+from graph.nodes.risk.proposal_notifier import send_proposal_notifications
+from graph.nodes.risk.quant_arbitration import run_quant_arbitration
+from graph.nodes.risk.rejection_auditor import audit_trade_rejection
 
 logger = logging.getLogger("TradingAgent.Graph.RiskGateNode")
 
-def _safe_num(val: Any, default: float = 0.0) -> float:
-    if val is None or hasattr(val, "_mock_name") or hasattr(val, "_mock_return_value"):
-        return default
-    try:
-        if isinstance(val, str):
-            val = re.sub(r'[$€£¥,]', '', val).strip()
-        f = float(val)
-        return default if (math.isnan(f) or math.isinf(f)) else f
-    except (ValueError, TypeError):
-        return default
+__all__ = ["risk_gate_node", "_safe_num", "_ai_portfolio_synthesis"]
 
-async def _ai_portfolio_synthesis(actionable: list, session, settings, market_regime: str = 'normal', as_of: Optional[datetime] = None, user_market_intel: Optional[list] = None) -> dict:
-    """
-    Use cheap AI to do portfolio-level synthesis when multiple trades proposed.
-    """
-    from analysis.providers.llm_factory import get_client_for_task
-    from database.models import FundamentalBrief, VIXData
-    from sqlalchemy import select
-    from datetime import datetime
-    
-    # Build summary
-    trade_summaries = []
-    proposed_trades = []
-    for sym, r in actionable:
-        trade_summaries.append(
-            f"- {sym} {r.get('decision','?').upper()}: "
-            f"confidence={r.get('confidence',0):.0%}, "
-            f"analysis_id={r.get('analysis_id','?')}"
-        )
-        proposed_trades.append({'symbol': sym, 'decision': r.get('decision', 'unknown')})
-
-    # [NEW] Inject Pairwise Correlations (Dynamic)
-    from utils.market.dynamic_correlation import get_rolling_correlation
-    corr_context = []
-    for i in range(len(proposed_trades)):
-        for j in range(i+1, len(proposed_trades)):
-            sym1, sym2 = proposed_trades[i]['symbol'], proposed_trades[j]['symbol']
-            try:
-                corr, source = await get_rolling_correlation(session, sym1, sym2)
-                d1, d2 = proposed_trades[i]['decision'], proposed_trades[j]['decision']
-                aligned = (d1 == d2 and corr > 0) or (d1 != d2 and corr < 0)
-                if abs(corr) >= 0.3:
-                    corr_context.append(f"{sym1}({d1}) & {sym2}({d2}): Correlation={corr:.2f}[{source}] -> "
-                                        f"{'MULTIPLYING RISK' if aligned else 'HEDGING'}")
-            except Exception as e:
-                pass
-
-    # Operator Market Intelligence & Directives Context
-    intel_context = []
-    if user_market_intel:
-        for item in user_market_intel:
-            raw_syms = item.get("affected_symbols")
-            if isinstance(raw_syms, list):
-                syms = ", ".join(raw_syms) or "ALL"
-            else:
-                syms = str(raw_syms or "ALL")
-            intel_context.append(
-                f"- ID #{item.get('id')} [{item.get('intel_type', '').upper()}]: {item.get('title')}\n"
-                f"  Directive: {item.get('directive', 'neutral')} | Scope: {syms} | Target Cycle: {item.get('target_cycle', 'continuous')}\n"
-                f"  Summary: {item.get('summary')}"
-            )
-    
-    # Get brief and VIX for context
-    brief_stmt = select(FundamentalBrief)
-    if as_of:
-        brief_stmt = brief_stmt.where(FundamentalBrief.generated_at <= as_of)
-    brief = (await session.execute(
-        brief_stmt.order_by(FundamentalBrief.generated_at.desc()).limit(1)
-    )).scalar_one_or_none()
-    
-    vix_stmt = select(VIXData)
-    if as_of:
-        vix_stmt = vix_stmt.where(VIXData.date <= as_of)
-    vix = (await session.execute(
-        vix_stmt.order_by(VIXData.date.desc()).limit(1)
-    )).scalar_one_or_none()
-    
-    prompt = f"""Portfolio Review: {len(actionable)} trades proposed simultaneously.
-
-Proposed Trades:
-{chr(10).join(trade_summaries)}
-
-Macro Context:
-- Market Regime (from early cycle check): {market_regime}
-- Risk sentiment: {brief.risk_sentiment if brief else 'unknown'}
-- Brief confidence: {brief.confidence if brief else 'unknown'}
-- VIX: {vix.close if vix else 'unknown'}
-
-Operator Market Intelligence & Directives:
-{chr(10).join(intel_context) if intel_context else '- (No active operator directives)'}
-
-Pairwise Correlation Assessment:
-{chr(10).join(corr_context) if corr_context else '- (No relevant pairs found or only 1 trade)'}
-
-Question: Should we execute ALL these trades simultaneously, or REDUCE the portfolio?
-
-Consider:
-1. Correlation between assets
-2. Overall portfolio risk
-3. Macro conditions and Operator directives (e.g. avoid_trade, favor_buy/sell)
-4. Prefer reducing position size via "size_adjustments" (multiplier 0.1-1.0, e.g. 0.5) over completely dropping a trade when setups are valid but moderately correlated.
-
-Respond in JSON:
-{{
-  "recommendation": "execute_all" or "reduce",
-  "keep": ["SYMBOL1", "SYMBOL2"],
-  "size_adjustments": {{"SYMBOL1": 0.5}},
-  "reasoning": "brief explanation"
-}}
-"""
-    PORTFOLIO_SYNTHESIS_SCHEMA = {
-        'type': 'object',
-        'properties': {
-            'recommendation': {'type': 'string', 'enum': ['execute_all', 'reduce']},
-            'keep': {'type': 'array', 'items': {'type': 'string'}},
-            'size_adjustments': {
-                'type': 'object',
-                'description': 'Optional per-symbol risk multiplier (0.1-1.0) as an alternative '
-                                'to fully dropping a trade — prefer this over hard exclusion when '
-                                'the correlation risk is moderate rather than severe.',
-                'additionalProperties': {'type': 'number'}
-            },
-            'reasoning': {'type': 'string'},
-        },
-        'required': ['recommendation', 'keep', 'reasoning'],
-    }
-
-    client = get_client_for_task("portfolio_synthesis", settings)
-    result = await client.classify_json(prompt=prompt, schema=PORTFOLIO_SYNTHESIS_SCHEMA, temperature=0.0)
-    return result or {'recommendation': 'execute_all',
-                       'keep': [t['symbol'] for t in proposed_trades],
-                       'size_adjustments': {}, 'reasoning': 'fallback: synthesis call failed'}
 
 async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
     """
-    Node untuk mengevaluasi trade melalui Portfolio Synthesis dan Risk Gate.
-    Mengirim notifikasi Telegram untuk trade yang lolos.
-    
-    NOTE: Task role 'risk_gate_check' di settings.yaml digunakan untuk LLM 
-    risk-debate analysts (conservative/aggressive/neutral), BUKAN untuk 
-    class/node ini yang lebih bersifat deterministik dan mensintesis portfolio.
+    LangGraph execution node for evaluating trade proposals through
+    Portfolio Synthesis, Correlation Filters, and Institutional RiskGate.
     """
     configurable = (config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
-    summary = state.get("summary", {})
     summary = state.get("summary", {})
     actionable = list(state.get("actionable_trades", []) or [])
     asset_analyses = dict(state.get("asset_analyses", {}) or {})
@@ -162,407 +52,68 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     if scheduler is None:
         logger.error("Scheduler not found in config")
         return {"summary": summary, "actionable_trades": [], "approved_trades": []}
-    
+
     rejected_candidates: List[Dict[str, Any]] = []
 
-    # Apply SignalArbitrator defense, quant alpha opportunity evaluation, and regime scaling
+    # 1. Quant Alpha Evaluation & Signal Arbitration (with single-pass level repair)
     try:
-        from analysis.arbitration.signal_arbitrator import SignalArbitrator
-        from database.models import VIXData, AssetAnalysis, PriceOHLCV
-        from analysis.calculators.regime_classifier import classify_market_regime
-        from database.db import get_session
-        from sqlalchemy import select
-        
-        arbitrator = SignalArbitrator(scheduler.settings)
-        filtered_actionable = []
-
-        candidate_map: Dict[str, Tuple[Dict[str, Any], bool]] = {}
-        for sym, r in actionable:
-            candidate_map[sym] = (dict(r) if isinstance(r, dict) else r, True)
-        for sym, r in asset_analyses.items():
-            if sym not in candidate_map and isinstance(r, dict):
-                candidate_map[sym] = (dict(r), False)
-        
-        async with get_session() as session:
-            vix_val = 15.0
-            try:
-                vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
-                if vix_row and vix_row.close:
-                    vix_val = float(vix_row.close)
-            except Exception:
-                pass
-
-            from analysis.strategies.registry import StrategyRegistry
-            from analysis.strategies.decay_monitor import get_strategy_decay_monitor
-
-            decay_mon = get_strategy_decay_monitor()
-
-            for sym, (r, is_actionable_originally) in candidate_map.items():
-                # Fix 4.11: Skip duplicate arbitration if already arbitrated by EdgeStrategyRunner
-                if r.get("arbitrated_by"):
-                    logger.info(f"[RiskGateNode] {sym} already arbitrated by {r.get('arbitrated_by')}, skipping duplicate arbitration.")
-                    if r.get("decision") in ("buy", "sell"):
-                        filtered_actionable.append((sym, r))
-                    else:
-                        if is_actionable_originally:
-                            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"previously_arbitrated: {r.get('decision')}"]})
-                    continue
-
-                try:
-                    regime_dict = await classify_market_regime(session, sym, scheduler.settings)
-                except Exception:
-                    regime_dict = {}
-
-                # Evaluate quant alphas from StrategyRegistry for this symbol & market regime
-                active_quant_signal = None
-                try:
-                    regime_str = regime_dict.get("regime") if isinstance(regime_dict, dict) else str(regime_dict or "")
-                    quant_signals = await StrategyRegistry.evaluate_all(
-                        session=session,
-                        symbol=sym,
-                        settings=scheduler.settings,
-                        current_regime=regime_str,
-                    )
-                    if quant_signals:
-                        valid_sigs = [
-                            s for s in quant_signals
-                            if getattr(s, "valid", False) and getattr(s, "direction", None) in ("buy", "sell")
-                        ]
-                        if valid_sigs:
-                            def _sig_prio(s):
-                                strat_id = getattr(s, "strategy_id", "")
-                                is_ready = decay_mon.is_live_ready(strat_id)
-                                conf = float(getattr(s, "confidence", 0.0) or 0.0)
-                                return (1 if is_ready else 0, conf)
-
-                            valid_sigs.sort(key=_sig_prio, reverse=True)
-                            active_quant_signal = valid_sigs[0]
-                            strat_id = getattr(active_quant_signal, "strategy_id", "")
-                            if not decay_mon.is_live_ready(strat_id):
-                                active_quant_signal.meta = dict(getattr(active_quant_signal, "meta", {}))
-                                active_quant_signal.meta["is_incubating"] = True
-                                if not is_actionable_originally:
-                                    active_quant_signal = None
-                except Exception as q_err:
-                    logger.debug(f"[RiskGateNode] Quant signal evaluation for {sym} non-fatal: {q_err}")
-
-                llm_dec = {
-                    "decision": r.get("decision", "wait"),
-                    "confidence": float(r.get("confidence", 0.5) or 0.5),
-                    "risk_multiplier": float(r.get("risk_multiplier", 1.0) or 1.0),
-                    "entry_price": r.get("entry_price"),
-                    "stop_loss": r.get("stop_loss"),
-                    "take_profit": r.get("take_profit"),
-                    "rationale": r.get("rationale", ""),
-                    "decision_source": r.get("decision_source", "llm_debate" if is_actionable_originally else "stage2_per_asset")
-                }
-
-                arb_res = await arbitrator.arbitrate(
-                    session=session,
-                    symbol=sym,
-                    quant_signal=active_quant_signal,
-                    llm_decision=llm_dec,
-                    vix_level=vix_val,
-                    regime_info=regime_dict
-                )
-
-                if arb_res.decision in ("avoid", "wait"):
-                    if is_actionable_originally:
-                        logger.info(f"[RiskGateNode] {sym} suppressed by SignalArbitrator: {arb_res.arbitration_reason}")
-                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"signal_arbitrator: {arb_res.arbitration_reason}"]})
-                else:
-                    r["risk_multiplier"] = arb_res.risk_multiplier
-                    if arb_res.selected_source == "concordant":
-                        r["confidence"] = arb_res.confidence
-                        r["was_concordant"] = True
-                        r["decision_source"] = "concordant"
-                        if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
-                            r["source_strategy_id"] = active_quant_signal.strategy_id
-                    elif arb_res.selected_source == "quant":
-                        r["decision"] = arb_res.decision
-                        r["confidence"] = arb_res.confidence
-                        if arb_res.entry_price:
-                            r["entry_price"] = arb_res.entry_price
-                        if arb_res.stop_loss:
-                            r["stop_loss"] = arb_res.stop_loss
-                        if arb_res.take_profit:
-                            r["take_profit"] = arb_res.take_profit
-                        r["decision_source"] = f"quant_{arb_res.meta.get('strategy_id', 'alpha')}"
-                        if active_quant_signal and getattr(active_quant_signal, "strategy_id", None):
-                            r["source_strategy_id"] = active_quant_signal.strategy_id
-                        if not is_actionable_originally:
-                            logger.info(f"[RiskGateNode] Quant strategy {r.get('source_strategy_id')} promoted {sym} from WAIT to {arb_res.decision.upper()} via SignalArbitrator")
-
-                    analysis_id = r.get("analysis_id")
-                    ana = await session.get(AssetAnalysis, analysis_id) if analysis_id else None
-
-                    # If arbitrated decision is actionable (BUY/SELL), resolve missing entry_price, SL, and TP
-                    if str(r.get("decision", "")).upper() in ("BUY", "SELL"):
-                        dec_u = str(r["decision"]).upper()
-                        entry_p = _safe_num(r.get("entry_price"))
-
-                        # 1. Resolve entry_price if missing
-                        if entry_p <= 0.0 and ana:
-                            entry_p = _safe_num(getattr(ana, "entry_price", None))
-                            if entry_p <= 0.0 and getattr(ana, "entry_zone", None):
-                                try:
-                                    ez = json.loads(ana.entry_zone) if isinstance(ana.entry_zone, str) else ana.entry_zone
-                                    if isinstance(ez, dict):
-                                        entry_p = _safe_num(ez.get("price"))
-                                except Exception:
-                                    pass
-                            if entry_p <= 0.0:
-                                entry_p = _safe_num(getattr(ana, "price_at_analysis", None))
-
-                        if entry_p <= 0.0 and hasattr(scheduler, "mt5") and scheduler.mt5:
-                            try:
-                                info = await scheduler.mt5.get_symbol_info(sym)
-                                if isinstance(info, dict):
-                                    entry_p = _safe_num(info.get("ask" if dec_u == "BUY" else "bid") or info.get("price"))
-                            except Exception:
-                                pass
-
-                        if entry_p <= 0.0:
-                            try:
-                                bar_close = (await session.execute(
-                                    select(PriceOHLCV.close).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(1)
-                                )).scalar_one_or_none()
-                                if bar_close and float(bar_close) > 0.0:
-                                    entry_p = float(bar_close)
-                            except Exception:
-                                pass
-
-                        if entry_p > 0.0:
-                            r["entry_price"] = entry_p
-
-                        # 2. Resolve SL and TP if missing or geometrically invalid
-                        sl_p = _safe_num(r.get("stop_loss"))
-                        tp_p = _safe_num(r.get("take_profit"))
-
-                        levels_invalid = (
-                            sl_p <= 0.0 or tp_p <= 0.0
-                            or (dec_u == "BUY" and (sl_p >= entry_p or tp_p <= entry_p))
-                            or (dec_u == "SELL" and (sl_p <= entry_p or tp_p >= entry_p))
-                        )
-
-                        if levels_invalid and entry_p > 0.0:
-                            # Try IntradayLevelOptimizer first
-                            try:
-                                from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
-                                calc_res = await compute_optimal_levels(
-                                    session=session,
-                                    symbol=sym,
-                                    direction=dec_u.lower(),
-                                    entry_price=entry_p,
-                                    settings=scheduler.settings,
-                                    existing_sl=sl_p if sl_p > 0.0 else None,
-                                    existing_tp=tp_p if tp_p > 0.0 else None,
-                                )
-                                if calc_res:
-                                    top_sl = calc_res.get("top_sl_candidates")
-                                    top_tp = calc_res.get("top_tp_candidates")
-                                    if top_sl and (sl_p <= 0.0 or (dec_u == "BUY" and sl_p >= entry_p) or (dec_u == "SELL" and sl_p <= entry_p)):
-                                        sl_p = float(top_sl[0]["price"])
-                                        r["stop_loss"] = sl_p
-                                    if top_tp and (tp_p <= 0.0 or (dec_u == "BUY" and tp_p <= entry_p) or (dec_u == "SELL" and tp_p >= entry_p)):
-                                        tp_p = float(top_tp[0]["price"])
-                                        r["take_profit"] = tp_p
-                                    logger.info(f"[RiskGateNode] Computed structural levels for arbitrated {sym} ({dec_u}): SL={sl_p}, TP={tp_p}")
-                            except Exception as opt_err:
-                                logger.debug(f"[RiskGateNode] Level optimizer failed for {sym}: {opt_err}")
-
-                            # Fallback to ATR-based calculation if structural calculation failed or levels still invalid
-                            if (sl_p <= 0.0 or tp_p <= 0.0
-                                or (dec_u == "BUY" and (sl_p >= entry_p or tp_p <= entry_p))
-                                or (dec_u == "SELL" and (sl_p <= entry_p or tp_p >= entry_p))):
-                                atr_val = _safe_num(r.get("atr") or r.get("atr_14"))
-                                if atr_val <= 0.0 and ana and getattr(ana, "indicators", None):
-                                    try:
-                                        inds = json.loads(ana.indicators) if isinstance(ana.indicators, str) else ana.indicators
-                                        if isinstance(inds, dict):
-                                            atr_val = _safe_num(inds.get("atr_14") or inds.get("atr") or inds.get("ATR"))
-                                    except Exception:
-                                        pass
-                                if atr_val <= 0.0:
-                                    sym_u = sym.upper()
-                                    if "BTC" in sym_u or "ETH" in sym_u or "CRYPTO" in sym_u:
-                                        atr_val = entry_p * 0.02
-                                    elif "XAU" in sym_u or "OIL" in sym_u or "XTI" in sym_u or "XBR" in sym_u:
-                                        atr_val = entry_p * 0.01
-                                    else:
-                                        atr_val = entry_p * 0.005
-                                if dec_u == "BUY":
-                                    sl_p = round(max(0.0001, entry_p - (1.5 * atr_val)), 5)
-                                    tp_p = round(entry_p + (3.0 * atr_val), 5)
-                                else:
-                                    sl_p = round(entry_p + (1.5 * atr_val), 5)
-                                    tp_p = round(max(0.0001, entry_p - (3.0 * atr_val)), 5)
-                                r["stop_loss"] = sl_p
-                                r["take_profit"] = tp_p
-                                logger.info(f"[RiskGateNode] Applied ATR fallback levels for arbitrated {sym} ({dec_u}): SL={sl_p}, TP={tp_p}")
-
-                    # Persist arbitrated decision and levels to DB AssetAnalysis
-                    if ana:
-                        ana.decision = r["decision"]
-                        ana.confidence = r["confidence"]
-                        ana.risk_multiplier = r["risk_multiplier"]
-                        if r.get("entry_price") is not None:
-                            ana.entry_price = r["entry_price"]
-                        if r.get("stop_loss") is not None:
-                            ana.stop_loss = r["stop_loss"]
-                        if r.get("take_profit") is not None:
-                            ana.take_profit = r["take_profit"]
-                        if r.get("decision_source"):
-                            ana.decision_source = r["decision_source"]
-                        if r.get("arbitration_reason"):
-                            ana.arbitration_reason = r["arbitration_reason"]
-                        if r.get("source_strategy_id"):
-                            ana.source_strategy_id = r["source_strategy_id"]
-                        await session.commit()
-                        logger.info(f"[RiskGateNode] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}")
-
-                    filtered_actionable.append((sym, r))
-                    if isinstance(state.get("asset_analyses"), dict) and sym in state["asset_analyses"]:
-                        if isinstance(state["asset_analyses"][sym], dict):
-                            state["asset_analyses"][sym].update(r)
-                    
-        actionable = filtered_actionable
+        actionable, arb_rejected = await run_quant_arbitration(
+            scheduler=scheduler,
+            actionable=actionable,
+            asset_analyses=asset_analyses,
+            state=state,
+        )
+        rejected_candidates.extend(arb_rejected)
     except Exception as e:
-        logger.debug(f"SignalArbitrator check in RiskGateNode non-fatal error: {e}")
+        logger.debug(f"[RiskGateNode] SignalArbitrator check non-fatal error: {e}")
 
     if not actionable:
         return {"summary": summary, "actionable_trades": [], "approved_trades": []}
 
     logger.info(f"[Step 7a] Stage 3 Portfolio Synthesis for {len(actionable)} trades...")
-    
-    # Apply deterministic correlation filter
+
+    # 2. Deterministic Portfolio Correlation Gating
     try:
-        from risk.portfolio_correlation_gate import filter_correlated_proposals
         from database.db import get_session
-        from analysis.memory.decision_log import DecisionLogger
-        from database.models import AssetAnalysis
-        
+        from risk.portfolio_correlation_gate import filter_correlated_proposals
+
         async with get_session() as session:
             kept_actionable, rejected_actionable = await filter_correlated_proposals(session, actionable)
-        
+
         if rejected_actionable:
-            for sym, r, reason in rejected_actionable:
-                rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"correlation_gate: {reason}"]})
-            async with get_session() as session:
+            async with get_session() as rej_session:
                 for sym, r, reason in rejected_actionable:
-                    try:
-                        ana = await session.get(AssetAnalysis, r["analysis_id"])
-                        ctx_id = ana.context_snapshot_id if ana else None
-                        cds = ana.ssvp_cds_score_at_analysis if ana else None
-                        
-                        await DecisionLogger.log_paper_whatif(
-                            session,
-                            analysis_id=r["analysis_id"],
-                            symbol=sym,
-                            decision=r.get("decision", "wait"),
-                            confidence=r.get("confidence", 0),
-                            confluence_score=None,
-                            rationale=reason,
-                            reason="correlation_gate_rejected",
-                            context_snapshot_id=ctx_id,
-                            ssvp_cds_score=cds
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to log whatif for {sym}: {e}")
+                    reasons = [f"correlation_gate: {reason}"]
+                    rejected_candidates.append({"symbol": sym, "trade": r, "reasons": reasons})
+                    await audit_trade_rejection(
+                        rej_session,
+                        symbol=sym,
+                        trade_data=r,
+                        reasons=reasons,
+                        stage="correlation_gate",
+                    )
         actionable = kept_actionable
     except Exception as e:
-        logger.debug(f'Correlation filter failed (non-fatal): {e}')
+        logger.debug(f"[RiskGateNode] Correlation filter non-fatal error: {e}")
 
-    # Step 7a.1: AI Portfolio Synthesis (if >= 3 trades proposed)
-    if len(actionable) >= 3:
-        try:
-            from database.db import get_session
-            async with get_session() as session:
-                portfolio_summary = await _ai_portfolio_synthesis(
-                    actionable, session, scheduler.settings,
-                    market_regime=state.get('market_regime', 'normal'),
-                    user_market_intel=state.get('user_market_intel'),
-                )
-            if portfolio_summary.get('recommendation') == 'reduce':
-                size_adj = portfolio_summary.get('size_adjustments', {})
-                keep_symbols = portfolio_summary.get('keep', [sym for sym, _ in actionable])
+    # 3. AI Portfolio Synthesis & Correlation Heat Reduction (if >= 3 trades proposed)
+    actionable, synth_rejected = await apply_portfolio_synthesis_reduction(actionable, scheduler, state)
+    rejected_candidates.extend(synth_rejected)
 
-                if size_adj:
-                    from database.db import get_session as _gs_adj
-                    from database.models import AssetAnalysis as _AA
-                    async with _gs_adj() as adj_session:
-                        for sym, r in actionable:
-                            if sym in size_adj and sym in keep_symbols:
-                                try:
-                                    mult = max(0.1, min(1.0, float(size_adj[sym])))  # clamp defensively
-                                except (TypeError, ValueError):
-                                    continue
-                                ana = await adj_session.get(_AA, r['analysis_id'])
-                                if ana:
-                                    new_mult = round((ana.risk_multiplier or 1.0) * mult, 3)
-                                    ana.risk_multiplier = new_mult
-                                    r['risk_multiplier'] = new_mult
-                                    logger.info(f'[PortfolioSynthesis] {sym} risk_multiplier -> {new_mult} (persisted)')
-                        await adj_session.commit()
-                
-                # Log removed trades as paper what-ifs
-                removed_trades = [(sym, r) for sym, r in actionable if sym not in keep_symbols]
-                if removed_trades:
-                    for sym, r in removed_trades:
-                        rejected_candidates.append({"symbol": sym, "trade": r, "reasons": ["portfolio_synthesis: heat reduced"]})
-                        try:
-                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
-                            TradeTrajectoryLogger().log_trajectory(
-                                symbol=sym,
-                                decision="REJECTED",
-                                risk_decision={"approved": False, "reason": "portfolio_synthesis_reduced"},
-                                execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "portfolio_synthesis"}
-                            )
-                        except Exception as traj_err:
-                            logger.debug(f"Portfolio synthesis trajectory log error: {traj_err}")
-                    try:
-                        from analysis.memory.decision_log import DecisionLogger
-                        from database.models import AssetAnalysis
-                        async with get_session() as session:
-                            for sym, r in removed_trades:
-                                ana = await session.get(AssetAnalysis, r["analysis_id"])
-                                ctx_id = ana.context_snapshot_id if ana else None
-                                cds = ana.ssvp_cds_score_at_analysis if ana else None
-                                
-                                await DecisionLogger.log_paper_whatif(
-                                    session,
-                                    analysis_id=r["analysis_id"],
-                                    symbol=sym,
-                                    decision=r.get("decision", "wait"),
-                                    confidence=r.get("confidence", 0),
-                                    confluence_score=None,
-                                    rationale="Portfolio synthesis reduced trade.",
-                                    reason="portfolio_synthesis_rejected",
-                                    context_snapshot_id=ctx_id,
-                                    ssvp_cds_score=cds
-                                )
-                    except Exception as e:
-                        logger.error(f"Failed to log whatif for removed trades: {e}")
-
-                actionable = [(sym, r) for sym, r in actionable if sym in keep_symbols]
-                logger.info(f'AI portfolio synthesis reduced trades to: {[s for s,_ in actionable]}')
-        except Exception as e:
-            logger.debug(f'AI portfolio synthesis failed (non-fatal): {e}')
-
-    # Step 7a.2: Institutional Risk Gate Evaluation (22 Institutional Checks)
+    # 4. Institutional 22-Check Risk Gate Evaluation
     if actionable:
         try:
+            from database.db import get_session as _gs_rg
+            from database.models import AssetAnalysis
             from risk.risk_gate import RiskGate
             from risk.trade_proposal import TradeProposal
-            from database.models import AssetAnalysis
-            from database.db import get_session as _gs_rg
 
             risk_gate = getattr(scheduler, "risk_gate", None) or RiskGate(
                 scheduler.settings, mt5_client=getattr(scheduler, "mt5", None)
             )
             gate_approved = []
 
-            equity = None
+            equity = 10000.0
             if hasattr(scheduler, "mt5") and scheduler.mt5:
                 try:
                     acc = await scheduler.mt5.get_account_info()
@@ -577,123 +128,31 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     ana = await rg_session.get(AssetAnalysis, analysis_id) if analysis_id else None
 
                     dec = str(r.get("decision") or (ana.decision if ana else "WAIT")).upper()
-
-                    entry_price = _safe_num(r.get("entry_price"))
-                    if entry_price == 0.0 and ana:
-                        entry_price = _safe_num(getattr(ana, "entry_price", None))
-                    if entry_price == 0.0 and ana and getattr(ana, "entry_zone", None) and not hasattr(ana.entry_zone, "_mock_name"):
-                        try:
-                            ez = json.loads(ana.entry_zone) if isinstance(ana.entry_zone, str) else ana.entry_zone
-                            if isinstance(ez, dict):
-                                entry_price = _safe_num(ez.get("price"))
-                        except Exception:
-                            pass
-                    if entry_price == 0.0:
-                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
-                        if isinstance(raw_aa, dict):
-                            entry_price = _safe_num(raw_aa.get("entry_price"))
-                    if entry_price <= 0.0 and hasattr(scheduler, "mt5") and scheduler.mt5:
-                        try:
-                            info = await scheduler.mt5.get_symbol_info(sym)
-                            if isinstance(info, dict):
-                                entry_price = _safe_num(info.get("ask" if dec == "BUY" else "bid") or info.get("price"))
-                        except Exception:
-                            pass
-                    if entry_price <= 0.0:
-                        try:
-                            from database.models import PriceOHLCV
-                            latest_bar = (await rg_session.execute(
-                                select(PriceOHLCV.close).where(PriceOHLCV.symbol == sym).order_by(PriceOHLCV.timestamp.desc()).limit(1)
-                            )).scalar_one_or_none()
-                            if latest_bar and float(latest_bar) > 0.0:
-                                entry_price = float(latest_bar)
-                        except Exception:
-                            pass
-
-                    sl = _safe_num(r.get("stop_loss"))
-                    if sl == 0.0 and ana:
-                        sl = _safe_num(getattr(ana, "stop_loss", None))
-                    if sl == 0.0:
-                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
-                        if isinstance(raw_aa, dict):
-                            sl = _safe_num(raw_aa.get("stop_loss"))
-
-                    tp = _safe_num(r.get("take_profit"))
-                    if tp == 0.0 and ana:
-                        tp = _safe_num(getattr(ana, "take_profit", None))
-                    if tp == 0.0:
-                        raw_aa = state.get("asset_analyses", {}).get(sym, {})
-                        if isinstance(raw_aa, dict):
-                            tp = _safe_num(raw_aa.get("take_profit"))
-
-                    conf = _safe_num(r.get("confidence"))
-                    if conf == 0.0 and ana:
-                        conf = _safe_num(getattr(ana, "confidence", 50.0), default=50.0)
-                    if conf == 0.0:
-                        conf = 50.0
-
-                    # Protective SL/TP fallback for active trades missing levels
-                    if dec in ("BUY", "SELL") and entry_price > 0.0:
-                        atr_val = None
-                        if ana and getattr(ana, "indicators", None) and not hasattr(ana.indicators, "_mock_name"):
-                            try:
-                                inds = json.loads(ana.indicators) if isinstance(ana.indicators, str) else ana.indicators
-                                if isinstance(inds, dict):
-                                    atr_val = _safe_num(inds.get("atr_14") or inds.get("atr") or inds.get("ATR"))
-                            except Exception:
-                                pass
-                        if not atr_val or atr_val <= 0.0:
-                            atr_val = _safe_num(r.get("atr") or r.get("atr_14"))
-                        if (not atr_val or atr_val <= 0.0) and entry_price > 0.0:
-                            sym_upper = sym.upper()
-                            if "BTC" in sym_upper or "ETH" in sym_upper or "CRYPTO" in sym_upper:
-                                atr_val = entry_price * 0.02
-                            elif "XAU" in sym_upper or "OIL" in sym_upper or "XTI" in sym_upper or "XBR" in sym_upper:
-                                atr_val = entry_price * 0.01
-                            else:
-                                atr_val = entry_price * 0.005
-
-                        if dec == "BUY":
-                            if sl <= 0.0 or sl >= entry_price:
-                                sl = round(max(0.0001, entry_price - (1.5 * atr_val)), 5)
-                                if sl >= entry_price:
-                                    sl = round(entry_price * 0.99, 5)
-                                r["stop_loss"] = sl
-                            if tp <= 0.0 or tp <= entry_price:
-                                tp = round(entry_price + (3.0 * atr_val), 5)
-                                r["take_profit"] = tp
-                        elif dec == "SELL":
-                            if sl <= 0.0 or sl <= entry_price:
-                                sl = round(entry_price + (1.5 * atr_val), 5)
-                                r["stop_loss"] = sl
-                            if tp <= 0.0 or tp >= entry_price:
-                                tp = round(max(0.0001, entry_price - (3.0 * atr_val)), 5)
-                                if tp >= entry_price:
-                                    tp = round(entry_price * 0.99, 5)
-                                r["take_profit"] = tp
-
+                    if dec in ("BUY", "SELL"):
+                        entry_price, sl, tp = await resolve_and_repair_levels(
+                            session=rg_session,
+                            scheduler=scheduler,
+                            symbol=sym,
+                            r=r,
+                            ana=ana,
+                            state_asset_analyses=state.get("asset_analyses"),
+                        )
+                    else:
+                        entry_price = _safe_num(r.get("entry_price"))
+                        sl = _safe_num(r.get("stop_loss"))
+                        tp = _safe_num(r.get("take_profit"))
                         if r.get("entry_price") != entry_price:
                             r["entry_price"] = entry_price
 
-                        if ana:
-                            ana_updated = False
-                            if getattr(ana, "stop_loss", None) != sl:
-                                ana.stop_loss = sl
-                                ana_updated = True
-                            if getattr(ana, "take_profit", None) != tp:
-                                ana.take_profit = tp
-                                ana_updated = True
-                            if getattr(ana, "entry_price", None) != entry_price and entry_price > 0.0:
-                                ana.entry_price = entry_price
-                                ana_updated = True
-                            if ana_updated:
-                                await rg_session.commit()
+                    conf = float(r.get("confidence", 0.5) or 0.5)
 
                     reasoning_text = ""
                     if ana and hasattr(ana, "rationale") and not hasattr(ana.rationale, "_mock_name"):
                         reasoning_text = str(ana.rationale or "")
 
-                    conf_override = r.get("confidence_override") or (r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None)
+                    conf_override = r.get("confidence_override") or (
+                        r.get("metadata", {}).get("confidence_override") if isinstance(r.get("metadata"), dict) else None
+                    )
 
                     try:
                         proposal = TradeProposal.from_analysis(
@@ -717,68 +176,39 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             reasons = verdict.rejection_reasons or verdict.checks_failed or ["risk_gate_rejected"]
                             logger.warning(f"[RiskGate] Suppressed {sym}: {reasons}")
                             rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"risk_gate: {x}" for x in reasons]})
-                            try:
-                                from analysis.memory.decision_log import DecisionLogger
-                                ctx_id = ana.context_snapshot_id if ana else None
-                                cds = ana.ssvp_cds_score_at_analysis if ana else None
-                                await DecisionLogger.log_paper_whatif(
-                                    rg_session,
-                                    analysis_id=r["analysis_id"],
-                                    symbol=sym,
-                                    decision=r.get("decision", "wait"),
-                                    confidence=r.get("confidence", 0),
-                                    confluence_score=None,
-                                    rationale=f"RiskGate blocked: {'; '.join(reasons)}",
-                                    reason="risk_gate_rejected",
-                                    context_snapshot_id=ctx_id,
-                                    ssvp_cds_score=cds
-                                )
-                            except Exception as whatif_err:
-                                logger.debug(f"RiskGate whatif log error: {whatif_err}")
-                            try:
-                                from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
-                                TradeTrajectoryLogger().log_trajectory(
-                                    symbol=sym,
-                                    decision="REJECTED",
-                                    risk_decision={"approved": False, "reasons": reasons},
-                                    execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "risk_gate"}
-                                )
-                            except Exception as traj_err:
-                                logger.debug(f"RiskGate trajectory log error: {traj_err}")
+                            await audit_trade_rejection(
+                                rg_session,
+                                symbol=sym,
+                                trade_data=r,
+                                reasons=reasons,
+                                stage="risk_gate",
+                                analysis_record=ana,
+                            )
                     except Exception as prop_err:
                         logger.warning(f"[RiskGate] Proposal error for {sym}: {prop_err}")
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"proposal_error: {prop_err}"]})
-                        try:
-                            from analysis.memory.decision_log import DecisionLogger
-                            ctx_id = ana.context_snapshot_id if ana else None
-                            cds = ana.ssvp_cds_score_at_analysis if ana else None
-                            await DecisionLogger.log_paper_whatif(
-                                rg_session,
-                                analysis_id=r.get("analysis_id"),
-                                symbol=sym,
-                                decision=r.get("decision", "wait"),
-                                confidence=r.get("confidence", 0),
-                                confluence_score=None,
-                                rationale=f"RiskGate proposal error: {prop_err}",
-                                reason="proposal_error",
-                                context_snapshot_id=ctx_id,
-                                ssvp_cds_score=cds
-                            )
-                        except Exception as whatif_err:
-                            logger.debug(f"RiskGate whatif log error on proposal exception: {whatif_err}")
+                        await audit_trade_rejection(
+                            rg_session,
+                            symbol=sym,
+                            trade_data=r,
+                            reasons=[f"proposal_error: {prop_err}"],
+                            stage="proposal_error",
+                            analysis_record=ana,
+                        )
 
             actionable = gate_approved
         except Exception as e:
             logger.warning(f"[RiskGate] Evaluation non-fatal error: {e}", exc_info=True)
 
-    # Step 7a.3: Deterministic Trade Pre-Commit Gate
+    # 5. Deterministic Trade Pre-Commit Gate
     if actionable:
         try:
             from analysis.validators.precommit_gate import TradePreCommitGate
+            from database.db import get_session as _gs_pre
+
             precommit_gate = TradePreCommitGate(scheduler.settings)
             precommit_approved = []
-            
-            from database.db import get_session as _gs_pre
+
             async with _gs_pre() as pre_session:
                 for sym, r in actionable:
                     passed, failures = await precommit_gate.verify_precommit(pre_session, r, sym)
@@ -787,80 +217,29 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     else:
                         logger.warning(f"[PreCommitGate] Suppressed {sym} from execution: {failures}")
                         rejected_candidates.append({"symbol": sym, "trade": r, "reasons": failures})
-                        try:
-                            from analysis.memory.decision_log import DecisionLogger
-                            from database.models import AssetAnalysis as _AA_pre
-                            ana = await pre_session.get(_AA_pre, r.get("analysis_id"))
-                            ctx_id = ana.context_snapshot_id if ana else None
-                            cds = ana.ssvp_cds_score_at_analysis if ana else None
-                            await DecisionLogger.log_paper_whatif(
-                                pre_session,
-                                analysis_id=r["analysis_id"],
-                                symbol=sym,
-                                decision=r.get("decision", "wait"),
-                                confidence=r.get("confidence", 0),
-                                confluence_score=None,
-                                rationale=f"PreCommit Gate blocked: {'; '.join(failures)}",
-                                reason="precommit_gate_rejected",
-                                context_snapshot_id=ctx_id,
-                                ssvp_cds_score=cds
-                            )
-                        except Exception as whatif_err:
-                            logger.debug(f"Precommit whatif log error: {whatif_err}")
-                        try:
-                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
-                            TradeTrajectoryLogger().log_trajectory(
-                                symbol=sym,
-                                decision="REJECTED",
-                                risk_decision={"approved": False, "reasons": failures},
-                                execution_details={"analysis_id": r.get("analysis_id"), "decision": "REJECTED", "stage": "precommit_gate"}
-                            )
-                        except Exception as traj_err:
-                            logger.debug(f"Precommit trajectory log error: {traj_err}")
-                            
+                        await audit_trade_rejection(
+                            pre_session,
+                            symbol=sym,
+                            trade_data=r,
+                            reasons=failures,
+                            stage="precommit_gate",
+                        )
+
             actionable = precommit_approved
         except Exception as e:
-            logger.debug(f"TradePreCommitGate check non-fatal error: {e}")
-            
+            logger.debug(f"[RiskGateNode] TradePreCommitGate check non-fatal error: {e}")
+
     summary["portfolio_synthesis_approved"] = [sym for sym, r in actionable]
 
+    # 6. Telegram Operator Proposal Notifications
     if actionable:
-        try:
-            from utils.infra.notifier import AgentNotifier
-            notifier = AgentNotifier()
-            for sym, r in actionable:
-                analysis_id = r["analysis_id"]
-                decision = r.get("decision", "unknown").upper()
-                confidence = r.get("confidence", 0)
-                
-                from database.db import get_session as _gs
-                async with _gs() as session:
-                    from database.models import AssetAnalysis
-                    from sqlalchemy import select as _sel
-                    ana = (await session.execute(_sel(AssetAnalysis).where(AssetAnalysis.id == analysis_id))).scalar_one_or_none()
-                    
-                if not ana: continue
-                    
-                msg = (
-                    f"[LAPORAN] <b>Trade Proposal — {sym}</b>\n\n"
-                    f"Decision: <b>{decision}</b>\n"
-                    f"Confidence: {confidence:.0%}\n"
-                    f"Entry: {ana.entry_zone or 'market'}\n"
-                    f"SL: {ana.stop_loss}\n"
-                    f"TP: {ana.take_profit}\n\n"
-                    f"Rationale: {(ana.rationale or '')[:200]}...\n\n"
-                    f"<i>Use /approve {analysis_id} to execute or /reject {analysis_id} to skip.</i>"
-                )
-                await notifier.send_info(msg)
-        except Exception as e:
-            logger.error(f"Failed to send trade proposal notification: {e}")
-            
+        await send_proposal_notifications(actionable)
         summary["execution"] = {"status": "pending_approval", "count": len(actionable)}
     else:
         logger.info("[Step 7b] No actionable buy/sell decisions this cycle.")
         summary["execution"] = {"status": "no_actionable_decisions"}
 
-    # Phase 3: Check for negotiable rejections for bidirectional re-planning (Fix 4.9)
+    # 7. Check for negotiable rejections for bidirectional re-planning
     is_negotiable = False
     rejection_feedback = None
     negotiable_items = []
@@ -868,6 +247,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
     if rejected_candidates and current_refinement < 2:
         from graph.nodes.plan_refinement_node import _is_reason_negotiable
+
         negotiable_items = [
             item for item in rejected_candidates
             if _is_reason_negotiable(" ".join(item.get("reasons", [])))

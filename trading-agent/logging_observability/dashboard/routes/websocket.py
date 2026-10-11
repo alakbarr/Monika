@@ -426,7 +426,7 @@ async def websocket_agent_chat(websocket: WebSocket):
     from config.settings import load_settings
     raw_settings = get_dashboard_dependency("settings") or load_settings()
     settings: dict = dict(raw_settings) if isinstance(raw_settings, dict) else raw_settings.model_dump()
-    from telegram_bot.chat_agent import ChatAgent
+    from agent.chat_agent import ChatAgent
     agent = ChatAgent(settings=settings, user_id=session_id, is_admin=(role == Role.ADMIN))
 
     tools_used: list[str] = []

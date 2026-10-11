@@ -1221,7 +1221,7 @@ async def _cmd_ask(args):
     if not is_raw:
         console.print(f"{stamp_info('ASK')} Querying Monika: [bold]{question}[/]")
 
-    from telegram_bot.chat_agent import ChatAgent
+    from agent.chat_agent import ChatAgent
     from config.settings import load_all_config
     settings = load_all_config()
     agent = ChatAgent(settings, user_id="cli_user", is_admin=True)

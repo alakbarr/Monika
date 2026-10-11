@@ -579,7 +579,7 @@ class UnifiedCronEngine:
                 # Default headless ChatAgent execution for conversational / analytical tasks
                 try:
                     from config.settings import load_settings
-                    from telegram_bot.chat_agent import ChatAgent
+                    from agent.chat_agent import ChatAgent
                     settings = load_settings()
                     agent = ChatAgent(settings, user_id=job.target_destination or "cron_scheduler", is_admin=True)
                     async def _run_agent():

@@ -1742,7 +1742,7 @@ class TradingDashboard(App):
             inline_log.write(f"[dim {MUTED}]Thinking...[/]")
 
             if self._inline_chat_agent is None:
-                from telegram_bot.chat_agent import ChatAgent
+                from agent.chat_agent import ChatAgent
                 settings = getattr(self, "settings", None) or load_settings()
                 self._inline_chat_agent = ChatAgent(settings=settings, user_id="cli:tui_inline")
             reply_text, pending = await self._inline_chat_agent.handle(prompt)
