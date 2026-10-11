@@ -489,7 +489,7 @@ class AssetAnalysis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    brief_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('fundamental_briefs.id'), nullable=True)
+    brief_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('fundamental_briefs.id', ondelete='SET NULL'), nullable=True)
     decision: Mapped[str] = mapped_column(String(10))  # buy, sell, avoid, wait
     confidence: Mapped[float] = mapped_column(Float)
     entry_zone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON entry condition
@@ -610,7 +610,7 @@ class TradeTrigger(Base):
     __tablename__ = "trade_triggers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
+    asset_analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True, index=True)
     trigger_type: Mapped[str] = mapped_column(String(20))  # price_level, indicator, time, news
     condition_json: Mapped[str] = mapped_column(Text)  # JSON condition detail
     status: Mapped[str] = mapped_column(String(10), default='pending')  # pending, fired, cancelled
@@ -630,7 +630,7 @@ class MT5Signal(Base):
     __tablename__ = "mt5_signals"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    asset_analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey('asset_analysis.id'), index=True)
+    asset_analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), index=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     action: Mapped[str] = mapped_column(String(10)) # buy, sell
     status: Mapped[str] = mapped_column(String(20), default="pending") # pending, sent, executed, failed
@@ -757,7 +757,7 @@ class Order(Base):
     client_order_id: Mapped[str] = mapped_column(
         String(64), unique=True, index=True, nullable=False, default=lambda: f"ORD_{uuid.uuid4().hex[:12]}"
     )
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("asset_analysis.id"), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     order_type: Mapped[str] = mapped_column(String(20), nullable=False)  # MARKET, LIMIT, STOP
     direction: Mapped[str] = mapped_column(String(10), nullable=False)   # BUY, SELL
@@ -869,7 +869,7 @@ class OrderEvent(Base):
     __tablename__ = "order_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    order_id: Mapped[str] = mapped_column(String(64), ForeignKey("orders.id"), nullable=False, index=True)
+    order_id: Mapped[str] = mapped_column(String(64), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
     from_status: Mapped[str] = mapped_column(String(30), nullable=False)
     to_status: Mapped[str] = mapped_column(String(30), nullable=False)
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -885,8 +885,8 @@ class Position(Base):
     __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey('orders.id'), nullable=True, index=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
+    order_id: Mapped[Optional[str]] = mapped_column(String(64), ForeignKey('orders.id', ondelete='SET NULL'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
     mt5_ticket: Mapped[Optional[int]] = mapped_column(Integer, unique=True, nullable=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
@@ -975,8 +975,8 @@ class TradeOutcome(Base):
     __tablename__ = "trade_outcomes"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
-    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
+    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(20))
     direction: Mapped[str] = mapped_column(String(10))
     entry_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -1012,7 +1012,7 @@ class PaperTradeRecord(Base):
     __tablename__ = "paper_trade_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(20))
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
     entry_price: Mapped[float] = mapped_column(Float)
@@ -1104,7 +1104,7 @@ class TradePlan(Base):
     __tablename__ = "trade_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id'), nullable=True, index=True)
+    analysis_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # buy, sell
     status: Mapped[str] = mapped_column(String(30), default="PENDING_PROBE", index=True)  # PENDING_PROBE, PROBE_FILLED, CONFIRMED_SCALE_IN, PARTIAL_TP1_HIT, COMPLETED, CANCELLED
@@ -1136,7 +1136,7 @@ class TradePlanLeg(Base):
     __tablename__ = "trade_plan_legs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("trade_plans.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("trade_plans.id", ondelete="CASCADE"), index=True)
     leg_type: Mapped[str] = mapped_column(String(20))  # probe, runner
     volume: Mapped[float] = mapped_column(Float)
     target_entry: Mapped[float] = mapped_column(Float)
@@ -1144,7 +1144,7 @@ class TradePlanLeg(Base):
     stop_loss: Mapped[float] = mapped_column(Float)
     take_profit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     ticket_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id'), nullable=True)
+    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, filled, tp_hit, sl_hit, closed, cancelled
     filled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1384,10 +1384,10 @@ class ConfluenceFactorOutcome(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     paper_trade_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('paper_trade_records.id'), nullable=True
+        Integer, ForeignKey('paper_trade_records.id', ondelete='CASCADE'), nullable=True
     )
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id'), nullable=True
+        Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True
     )
     symbol: Mapped[str] = mapped_column(String(20))
     factor_name: Mapped[str] = mapped_column(String(50))
@@ -1423,7 +1423,7 @@ class DecisionReflection(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id'), nullable=True
+        Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True
     )
     position_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
@@ -1571,7 +1571,7 @@ class BacktestRun(Base):
 class BacktestTrade(Base):
     __tablename__ = "backtest_trade"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("backtest_run.id"))
+    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("backtest_run.id", ondelete="CASCADE"))
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     entry_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -1611,7 +1611,7 @@ class DecisionMemory(Base):
 class NewsClassificationOutcome(Base):
     __tablename__ = 'news_classification_outcomes'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    news_item_id: Mapped[int] = mapped_column(Integer, ForeignKey('news_items.id'))
+    news_item_id: Mapped[int] = mapped_column(Integer, ForeignKey('news_items.id', ondelete='CASCADE'))
     symbol_checked: Mapped[str] = mapped_column(String(20))
     classified_impact: Mapped[str] = mapped_column(String(20))
     classified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
