@@ -82,17 +82,25 @@ class HeartbeatManager:
             self.common_path.mkdir(parents=True, exist_ok=True)
             ts = int(time.time())
             
-            # Tulis ke file universal dan legacy (menggunakan UTF-8/ANSI standar)
+            # Tulis ke file universal dan legacy (menggunakan UTF-8/ANSI standar secara atomik)
             for hb_file in (self.heartbeat_file, self.legacy_heartbeat_file):
+                tmp_file = hb_file.with_name(f"{hb_file.name}.tmp")
                 for attempt in range(5):
                     try:
-                        hb_file.write_text(str(ts), encoding="utf-8")
+                        tmp_file.write_text(str(ts), encoding="utf-8")
+                        os.replace(tmp_file, hb_file)
                         break
                     except PermissionError:
                         if attempt < 4:
                             time.sleep(0.5)
                         else:
                             raise
+                    finally:
+                        if tmp_file.exists():
+                            try:
+                                tmp_file.unlink()
+                            except OSError:
+                                pass
             logger.debug(f"Heartbeat written: {ts}")
         except Exception as e:
             logger.error(f"Failed to write heartbeat: {e}")

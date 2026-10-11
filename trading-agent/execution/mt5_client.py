@@ -1846,7 +1846,7 @@ def _place_order(
         check_result = mt5.order_check(request)
         if check_result is not None:
             check_retcode = getattr(check_result, "retcode", 0)
-            if isinstance(check_retcode, int) and check_retcode not in (0, 10009):
+            if isinstance(check_retcode, int) and check_retcode not in (0, 10008, 10009):
                 err_msg = f"Pre-flight order_check rejected: {format_mt5_error(check_retcode, getattr(check_result, 'comment', ''))}"
                 logger.warning(f"[{resolved_symbol}] {err_msg}")
                 return {
@@ -1869,7 +1869,9 @@ def _place_order(
             }
 
         done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
-        if getattr(result, "retcode", None) == done_code or getattr(result, "retcode", None) == 10009:
+        placed_code = getattr(mt5, "TRADE_RETCODE_PLACED", 10008)
+        ret_val = getattr(result, "retcode", None)
+        if ret_val in (done_code, placed_code, 10009, 10008):
             break
 
         # Transient requote / price drift handling
@@ -1897,11 +1899,15 @@ def _place_order(
         }
 
     done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    placed_code = getattr(mt5, "TRADE_RETCODE_PLACED", 10008)
     res_retcode = getattr(result, "retcode", -1)
-    success = (res_retcode == done_code or res_retcode == 10009)
+    success = res_retcode in (done_code, placed_code, 10009, 10008)
+    ticket_id = getattr(result, "order", None)
+    if success and not ticket_id:
+        ticket_id = getattr(result, "deal", None)
     return {
         'success': success,
-        'ticket': getattr(result, "order", None) if success else None,
+        'ticket': ticket_id if success else None,
         'price': getattr(result, "price", None) if success else None,
         'error': None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
         'retcode': res_retcode,
