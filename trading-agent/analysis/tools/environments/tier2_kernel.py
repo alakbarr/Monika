@@ -30,13 +30,13 @@ from utils.security.nt_guard import sanitize_path
 
 logger = logging.getLogger("TradingAgent.Analysis.Tools.Environments.Tier2Kernel")
 
-_SCRUBBED_ENV_KEYS = {
-    "ANTHROPIC_API_KEY",
-    "GEMINI_API_KEY",
-    "OPENAI_API_KEY",
-    "TELEGRAM_BOT_TOKEN",
-    "MT5_PASSWORD",
-    "DATABASE_URL",
+_SAFE_SYSTEM_ENV_KEYS = {
+    "PATH", "SYSTEMROOT", "TEMP", "TMP", "PYTHONPATH", "COMSPEC",
+    "PATHEXT", "WINDIR", "USERPROFILE", "HOMEPATH", "HOMEDRIVE",
+    "LANG", "LC_ALL", "LOCALAPPDATA", "APPDATA", "PROGRAMDATA",
+    "COMMONPROGRAMFILES", "PROGRAMFILES", "PROGRAMFILES(X86)",
+    "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "PROCESSOR_IDENTIFIER",
+    "OS", "SYSTEMDRIVE", "PUBLIC",
 }
 
 
@@ -50,11 +50,17 @@ class Tier2HostKernelEnvironment(BaseExecutionEnvironment):
         return True
 
     def _prepare_sanitized_env(self, extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-        env = os.environ.copy()
-        for k in _SCRUBBED_ENV_KEYS:
-            env.pop(k, None)
+        env: Dict[str, str] = {}
+        for k, v in os.environ.items():
+            if k.upper() in _SAFE_SYSTEM_ENV_KEYS:
+                env[k] = v
         if extra_env:
-            env.update(extra_env)
+            for ek, ev in extra_env.items():
+                ek_upper = ek.upper()
+                if any(bad in ek_upper for bad in ("KEY", "SECRET", "TOKEN", "PASSWORD", "PASSWD", "CREDENTIAL", "DATABASE_URL")):
+                    logger.warning(f"[Tier2Kernel] Blocked sensitive extra_env key: {ek}")
+                    continue
+                env[ek] = ev
         return env
 
     async def run_command(

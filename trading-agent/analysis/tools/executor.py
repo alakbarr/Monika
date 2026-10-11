@@ -497,27 +497,48 @@ class ToolExecutor:
 
         self.called_tools.add(normalized_name)
 
-        # Primary dispatch to modular domain handlers (CRITICAL-03)
+        # 1. Primary dispatch via UnifiedToolRegistry (Single Source of Truth)
         handler = None
-        domain_candidates = [
-            self.execution_handlers,
-            self.position_handlers,
-            self.macro_handlers,
-            self.sentiment_handlers,
-            self.technical_handlers
-        ]
-        for dh in domain_candidates:
-            if hasattr(dh, normalized_name):
-                target_func = getattr(dh, normalized_name)
-                async def _delegated_wrapper(inp_dict: dict, _fn=target_func):
+        try:
+            from analysis.tools.unified_registry import unified_tool_registry
+            u_entry = unified_tool_registry.get_tool(normalized_name)
+            if u_entry is not None:
+                async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
                     params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
-                    if "session" not in params:
-                        params["session"] = self.session
-                    return await _fn(**params)
-                handler = _delegated_wrapper
-                break
+                    res = await unified_tool_registry.execute_tool(
+                        _ue.name, params, session=self.session, executor=self
+                    )
+                    if isinstance(res, str):
+                        try:
+                            res = json.loads(res)
+                        except Exception:
+                            pass
+                    return res
+                handler = _unified_wrapper
+        except Exception as _unif_err:
+            logger.debug(f"UnifiedToolRegistry dispatch error for '{normalized_name}': {_unif_err}")
 
-        # Fallback to internal ToolExecutor methods (lifecycle, scratchpad, submission)
+        # 2. Dispatch to modular domain handlers
+        if handler is None:
+            domain_candidates = [
+                self.execution_handlers,
+                self.position_handlers,
+                self.macro_handlers,
+                self.sentiment_handlers,
+                self.technical_handlers
+            ]
+            for dh in domain_candidates:
+                if hasattr(dh, normalized_name):
+                    target_func = getattr(dh, normalized_name)
+                    async def _delegated_wrapper(inp_dict: dict, _fn=target_func):
+                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
+                        if "session" not in params:
+                            params["session"] = self.session
+                        return await _fn(**params)
+                    handler = _delegated_wrapper
+                    break
+
+        # 3. Fallback to internal ToolExecutor methods (lifecycle, scratchpad, submission)
         # Avoid triggering __getattr__ infinite recursion for nonexistent tools
         if handler is None:
             if f"_tool_{normalized_name}" in self.__dict__:
@@ -525,7 +546,7 @@ class ToolExecutor:
             elif hasattr(self.__class__, f"_tool_{normalized_name}"):
                 handler = getattr(self, f"_tool_{normalized_name}")
 
-        # Fallback to modular ToolRegistry auto-discovery (CRITICAL-01)
+        # 4. Fallback to modular ToolRegistry auto-discovery
         if handler is None:
             try:
                 from analysis.tools.registry import default_tool_registry
@@ -543,27 +564,6 @@ class ToolExecutor:
                     handler = _reg_wrapper
             except Exception as _reg_err:
                 logger.debug(f"Registry dispatch error for '{normalized_name}': {_reg_err}")
-
-        # Fallback to UnifiedToolRegistry bridge (terminal, computer_use, domain tools)
-        if handler is None:
-            try:
-                from analysis.tools.unified_registry import unified_tool_registry
-                u_entry = unified_tool_registry.get_tool(normalized_name)
-                if u_entry is not None:
-                    async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
-                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
-                        res = await unified_tool_registry.execute_tool(
-                            _ue.name, params, session=self.session, executor=self
-                        )
-                        if isinstance(res, str):
-                            try:
-                                res = json.loads(res)
-                            except Exception:
-                                pass
-                        return res
-                    handler = _unified_wrapper
-            except Exception as _unif_err:
-                logger.debug(f"UnifiedToolRegistry bridge dispatch error for '{normalized_name}': {_unif_err}")
 
         if handler is None:
             logger.warning(f"Unknown tool called: '{tool_name}' (normalized: '{normalized_name}')")

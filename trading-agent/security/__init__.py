@@ -13,6 +13,7 @@ from security.credential_vault import (
     vault,
 )
 from security import terminal_guard, prompt_injection_scanner, ssrf_guard
+from security.terminal_guard import assert_safe_read_path, assert_safe_write_path
 
 __all__ = [
     "CredentialVault",
@@ -25,4 +26,6 @@ __all__ = [
     "terminal_guard",
     "prompt_injection_scanner",
     "ssrf_guard",
+    "assert_safe_read_path",
+    "assert_safe_write_path",
 ]

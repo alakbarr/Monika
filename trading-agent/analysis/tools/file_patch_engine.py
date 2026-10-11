@@ -347,6 +347,12 @@ class FilePatchEngine:
         """
         Reads file content with 1-indexed line numbers and records read timestamp.
         """
+        try:
+            from security.terminal_guard import assert_safe_read_path
+            assert_safe_read_path(path)
+        except Exception as sec_exc:
+            return False, f"Safety Guard: {sec_exc}"
+
         norm_path = os.path.normpath(os.path.abspath(path))
         if not os.path.exists(norm_path):
             return False, f"File not found: '{path}'"
