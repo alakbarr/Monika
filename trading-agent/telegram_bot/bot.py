@@ -250,6 +250,29 @@ class TelegramBot:
             ))
         # Unknown slash command fallback with fuzzy suggestion
         app.add_handler(MessageHandler(filters.COMMAND, self._handle_unknown_command))
+        # Centralized error handler
+        app.add_error_handler(self._on_telegram_error)
+
+    async def _on_telegram_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Centralized Telegram error handler with Conflict backoff recovery."""
+        error = context.error
+        if error is None:
+            return
+        try:
+            from telegram.error import Conflict, NetworkError, TimedOut
+            if isinstance(error, Conflict):
+                logger.warning(
+                    f"[TelegramBot] Conflict detected (another instance running with same token): {error}. "
+                    "Backing off for 15 seconds to prevent polling churn."
+                )
+                await asyncio.sleep(15.0)
+                return
+            elif isinstance(error, (NetworkError, TimedOut)):
+                logger.debug(f"[TelegramBot] Transient network/timeout error: {error}")
+                return
+        except Exception:
+            pass
+        logger.error(f"[TelegramBot] Unhandled error: {error}", exc_info=error)
 
     async def start(self) -> None:
         """Memulai polling Telegram (blocking)."""

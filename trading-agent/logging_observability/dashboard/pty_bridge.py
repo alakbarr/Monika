@@ -156,7 +156,13 @@ class PtyBridgeManager:
         shell_cmd = "powershell.exe -NoLogo" if sys.platform == "win32" else "/bin/bash"
         proc = None
         try:
-            env = os.environ.copy()
+            # Whitelist safe system environment variables to prevent secret leakage
+            safe_vars = {
+                "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP",
+                "USERPROFILE", "HOMEPATH", "HOMEDRIVE", "PSMODULEPATH",
+                "LANG", "LC_ALL", "SHELL", "HOME", "USER", "LOGNAME",
+            }
+            env = {k: v for k, v in os.environ.items() if k.upper() in safe_vars}
             env["TERM"] = "xterm-256color"
             env["COLORTERM"] = "truecolor"
             env["PYTHONIOENCODING"] = "utf-8"

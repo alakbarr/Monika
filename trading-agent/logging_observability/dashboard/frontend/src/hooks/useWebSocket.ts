@@ -124,7 +124,7 @@ export const useWebSocket = () => {
               if (event.payload) {
                 state.addActivity(event.payload);
               }
-              state.fetchAll();
+              state.fetchQuick();
               break;
             default:
               break;

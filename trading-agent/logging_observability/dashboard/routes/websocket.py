@@ -821,9 +821,10 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
                         except Exception:
                             pass
                     await pty_session.write_input(data)
-                    responses = pty_session.append_output(data)
-                    for resp in responses:
-                        await websocket.send_bytes(resp)
+                    if not pty_session.process:
+                        responses = pty_session.append_output(data)
+                        for resp in responses:
+                            await websocket.send_bytes(resp)
                 except WebSocketDisconnect:
                     break
                 except Exception as e:

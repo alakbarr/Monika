@@ -52,6 +52,10 @@ ENDPOINT_ROLES: Dict[str, Role] = {
     "POST:/api/actions/override-risk": Role.ADMIN,
     "PUT:/api/config/settings": Role.ADMIN,
     "POST:/api/actions/kill": Role.ADMIN,
+    "POST:/api/actions/emergency-kill": Role.ADMIN,
+    "POST:/api/actions/pause": Role.ADMIN,
+    "POST:/api/actions/resume": Role.ADMIN,
+    "POST:/api/actions/unsuspend": Role.ADMIN,
 }
 
 

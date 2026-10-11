@@ -2946,4 +2946,16 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             summary_text=result.summary(),
             analysis_id=analysis_id,
         )
+        try:
+            from logging_observability.metrics_exporter import metrics
+            if result.executed:
+                metrics.inc_counter("trades_executed_total", 1.0, labels={"symbol": result.symbol})
+            elif not result.risk_approved:
+                metrics.inc_counter("trades_risk_blocked_total", 1.0, labels={"symbol": result.symbol})
+            else:
+                metrics.inc_counter("trades_failed_total", 1.0, labels={"symbol": result.symbol})
+            if result.elapsed_ms > 0:
+                metrics.record_histogram("execution_latency_ms", float(result.elapsed_ms))
+        except Exception:
+            pass
 

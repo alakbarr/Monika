@@ -340,6 +340,15 @@ class RiskGate:
             except Exception as e:
                 logger.debug(f"Event store emit risk.verdict failed: {e}")
 
+            try:
+                from logging_observability.metrics_exporter import metrics
+                if approved:
+                    metrics.inc_counter("risk_checks_approved_total", 1.0, labels={"symbol": symbol})
+                else:
+                    metrics.inc_counter("risk_checks_rejected_total", 1.0, labels={"symbol": symbol})
+            except Exception:
+                pass
+
         if is_backtest:
             log_fn = logger.debug
         else:
