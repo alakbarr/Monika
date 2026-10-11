@@ -4150,7 +4150,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 **File:** `qlib158.py`
   - **Docstring**: Microsoft Qlib 158 Factor Implementations for MT5 Continuous Financial Time Series.
-  - **Functions**: `qlib_kmid()`, `qlib_klen()`, `qlib_kup()`, `qlib_klow()`, `qlib_ksft()`, `_calc_wvma()`, `_register_wvma()`, `_calc_rsv()`
+  - **Functions**: `qlib_kmid()`, `qlib_klen()`, `qlib_kup()`, `qlib_klow()`, `qlib_ksft()`, `_calc_wvma()`, `_register_wvma()`, `_calc_rsv()`, `_calc_resi_rsqr()`
 
 **File:** `registry.py`
   - **Docstring**: Factor Registry with Static AST Metadata Extraction and NaN Dependency Masking.
