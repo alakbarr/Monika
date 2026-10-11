@@ -1169,7 +1169,7 @@ class OrderLog(Base):
     requested_by: Mapped[str] = mapped_column(String(50))  # system, telegram_user, ai_agent
     approved_by: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # risk_gate, manual
     result: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 class RiskState(Base):
@@ -1255,7 +1255,7 @@ class TradingEvent(Base):
     seq: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     event_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    causation_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    causation_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     actor: Mapped[str] = mapped_column(String(50), default="system")
     ts_created: Mapped[datetime] = mapped_column(
@@ -1266,6 +1266,10 @@ class TradingEvent(Base):
 class TokenUsageLog(Base):
     """Log konsumsi token API AI komprehensif untuk audit performa & biaya."""
     __tablename__ = "token_usage_log"
+
+    __table_args__ = (
+        Index("idx_token_usage_ts_subsys", "timestamp", "subsystem"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)

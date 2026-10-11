@@ -64,7 +64,8 @@ class ChannelRouter:
 
         # 1. Log to SessionDbWal
         turn_ordinal = int(metadata.get("turn_ordinal", 1))
-        self.db.append_message(
+        await asyncio.to_thread(
+            self.db.append_message,
             session_id=session_id,
             role="user",
             content=text,
@@ -83,7 +84,8 @@ class ChannelRouter:
             reply_text = f"[Echo from Monika Gateway]: Received '{text}'"
 
         # 3. Log assistant reply to SessionDbWal
-        self.db.append_message(
+        await asyncio.to_thread(
+            self.db.append_message,
             session_id=session_id,
             role="assistant",
             content=reply_text,

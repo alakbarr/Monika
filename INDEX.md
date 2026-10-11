@@ -2857,7 +2857,7 @@ This document provides an exhaustive structural index of all directories, files,
       - *Docstring*: Mereset seluruh riwayat paper trading dan data terkait secara aman, mereset loss streak ke 0, dan membuka kuncian sistem.
 
 **File:** `db.py`
-  - **Global Variables**: logger, DATABASE_URL, engine, _async_session_factory, AsyncSessionLocal, _IN_MEMORY_EXECUTION_LOCKS, _SQLITE_WRITE_LOCKS
+  - **Global Variables**: logger, DATABASE_URL, engine, _async_session_factory, _engine_lock, AsyncSessionLocal, _IN_MEMORY_EXECUTION_LOCKS, _SQLITE_WRITE_LOCKS
   - **Classes**:
     - `_AsyncSessionLocalProxy`
       - *Docstring*: Callable proxy ensuring AsyncSessionLocal can be imported and called at any time, even before or after get_sessionmaker()/close_db().
