@@ -80,6 +80,17 @@ def _execute_single_scenario_worker(
                 max_dd = dd
 
         duration = int((time.monotonic() - start_t) * 1000)
+        pnls = [float(t.get("price_delta", 0.0)) for t in ticks]
+        if len(pnls) >= 2:
+            import numpy as np
+            std = float(np.std(pnls, ddof=1))
+            mean = float(np.mean(pnls))
+            sharpe = round(float((mean / std) * np.sqrt(252)), 2) if std > 1e-8 else (1.5 if mean > 0 else 0.0)
+        elif pnls:
+            sharpe = 1.0 if pnls[0] > 0 else 0.0
+        else:
+            sharpe = 0.0
+
         win_rate = (wins / trades * 100.0) if trades > 0 else 0.0
 
         res = ScenarioResult(
@@ -90,7 +101,7 @@ def _execute_single_scenario_worker(
             win_rate=win_rate,
             net_pnl_usd=net_pnl,
             max_drawdown_pct=min(100.0, (max_dd / 10000.0) * 100.0),
-            sharpe_ratio=1.65 if net_pnl > 0 else 0.45,
+            sharpe_ratio=sharpe,
             risk_violations=0 if max_dd < 500.0 else 1,
             duration_ms=duration,
         )
