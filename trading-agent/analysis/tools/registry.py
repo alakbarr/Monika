@@ -296,11 +296,17 @@ class ToolRegistry:
     def has_tool(self, name: str) -> bool:
         """Check if a tool or handler is registered under the given name."""
         canonical = self.resolve_name(name)
-        return (
+        if (
             canonical in self._tools
             or canonical in self._handlers
             or canonical in self._handler_classes
-        )
+        ):
+            return True
+        try:
+            from analysis.tools.unified_registry import unified_tool_registry
+            return unified_tool_registry.get_tool(canonical) is not None
+        except Exception:
+            return False
 
     def get(self, name: str, settings: Optional[dict] = None) -> Any:
         """Resolve canonical name and return an instantiated ToolHandler or ToolDefinition."""
@@ -314,6 +320,14 @@ class ToolRegistry:
             instance = handler_cls(settings=settings)
             self._handlers[canonical] = instance
             return instance
+        # Bidirectional bridge: fallback to unified_tool_registry
+        try:
+            from analysis.tools.unified_registry import unified_tool_registry
+            u_entry = unified_tool_registry.get_tool(canonical)
+            if u_entry is not None:
+                return u_entry
+        except Exception:
+            pass
         return None
 
     def resolve_name(self, name: str) -> str:
@@ -335,6 +349,11 @@ class ToolRegistry:
     def list_tools(self) -> List[str]:
         """Return all registered canonical tool names."""
         names = set(self._handlers.keys()) | set(self._handler_classes.keys()) | set(self._tools.keys())
+        try:
+            from analysis.tools.unified_registry import unified_tool_registry
+            names |= set(t.name for t in unified_tool_registry.list_tools(only_available=False))
+        except Exception:
+            pass
         return sorted(list(names))
 
     def get_by_category(self, category: str) -> List[str]:
