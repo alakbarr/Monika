@@ -19,6 +19,19 @@ from graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.StatePruner")
 
+MAX_ARCHIVED_PAYLOAD_ENTRIES = 50
+
+
+def _cap_archived_payloads(archived: Dict[str, Any], max_entries: int = MAX_ARCHIVED_PAYLOAD_ENTRIES) -> Dict[str, Any]:
+    """Ring-buffer cap to prevent unbounded state growth across LangGraph turns."""
+    if len(archived) <= max_entries:
+        return archived
+    keys = list(archived.keys())
+    excess = len(keys) - max_entries
+    for k in keys[:excess]:
+        del archived[k]
+    return archived
+
 
 def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
     """Prune raw conversational payload from Stage 1, losslessly archiving to archived_payloads."""
@@ -46,6 +59,7 @@ def prune_after_fundamental(state: TradingState, *args, **kwargs) -> Dict[str, A
             pruned_count += 1
 
     summary["fundamental"] = fund
+    archived_payloads = _cap_archived_payloads(archived_payloads)
     logger.debug(f"[StatePruner] Losslessly archived {pruned_count} verbose keys after fundamental analysis")
     return {
         "summary": summary,
@@ -97,6 +111,7 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                     archived_payloads[f"risk.{sym}.{key}"] = rds[key]
                     rds[key] = "_DELETED_"
 
+    archived_payloads = _cap_archived_payloads(archived_payloads)
     logger.debug("[StatePruner] Losslessly archived debate dialogue turns & heavy payloads")
     return {
         "debate_states": debate_states,
