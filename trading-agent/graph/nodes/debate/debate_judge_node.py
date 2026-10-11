@@ -148,8 +148,8 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
 
                     return sym, (sym, r), verdict
             except Exception as e:
-                logger.error(f"[{sym}] Judge adjudication failed: {e}", exc_info=True)
-                return sym, (sym, r), None
+                logger.error(f"[{sym}] Judge adjudication failed (failing closed to avoid risk): {e}", exc_info=True)
+                return sym, None, {"decision": "wait", "reason": f"Judge adjudication failed: {e}", "risk_multiplier": 0.0}
 
     tasks = [_process_single(sym, r) for sym, r in actionable]
     results = await asyncio.gather(*tasks)

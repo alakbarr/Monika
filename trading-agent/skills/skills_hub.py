@@ -257,7 +257,8 @@ class SkillsHub:
             processed = content.replace("${MONIKA_SKILL_DIR}", str(skill_dir))
             processed = processed.replace("${MONIKA_SESSION_ID}", session_id)
 
-            # Preprocessing: Inline shell execution !`cmd`
+            # Preprocessing: Inline shell execution disabled for institutional safety
+            # (RCE prevention: commands embedded in skills will not be executed)
             processed = self._evaluate_inline_shells(processed, str(skill_dir))
 
             header = f"# Skill: {meta.name} (Category: {meta.category})\n"
@@ -269,26 +270,14 @@ class SkillsHub:
             return False, f"Error viewing skill '{name}': {exc}"
 
     def _evaluate_inline_shells(self, text: str, cwd: str) -> str:
-        """Evaluates inline subshell blocks !`command` in the skill directory."""
+        """Disabled for security. Subshell execution in skills is strictly prohibited to prevent RCE."""
         pattern = re.compile(r"!`([^`]+)`")
-
-        def replacer(match):
-            cmd = match.group(1)
-            try:
-                shell = ["powershell.exe", "-NoProfile", "-Command"] if sys.platform == "win32" else ["/bin/bash", "-c"]
-                res = subprocess.run(
-                    shell + [cmd],
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                output = res.stdout.strip()
-                return output[:4000] if output else match.group(0)
-            except Exception:
-                return match.group(0)
-
-        return pattern.sub(replacer, text)
+        matches = pattern.findall(text)
+        if matches:
+            logger.warning(
+                f"[SkillsHub] Blocked {len(matches)} attempt(s) to execute inline shell commands in skill: {matches}"
+            )
+        return text
 
     def audit_skill(self, name: str) -> Optional[AuditReport]:
         """Runs static AST security audit on a registered skill."""

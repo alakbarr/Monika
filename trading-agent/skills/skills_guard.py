@@ -201,7 +201,27 @@ class SkillsGuard:
             except Exception:
                 pass
 
-        # 3. Compute security score
+        # 3. Audit Markdown files for forbidden inline shell execution (!`...`)
+        inline_shell_pattern = re.compile(r"!`([^`]+)`")
+        for md_file in p.glob("**/*.md"):
+            try:
+                with open(md_file, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+                for line_no, line in enumerate(lines, start=1):
+                    if inline_shell_pattern.search(line):
+                        findings.append(
+                            AuditFinding(
+                                severity="HIGH",
+                                file_path=str(md_file),
+                                line_number=line_no,
+                                rule="INLINE_SHELL_EXECUTION",
+                                message=f"Dangerous inline shell execution detected in skill docs: {line.strip()}",
+                            )
+                        )
+            except Exception:
+                pass
+
+        # 4. Compute security score
         high_count = sum(1 for f in findings if f.severity == "HIGH")
         med_count = sum(1 for f in findings if f.severity == "MEDIUM")
         score = max(0, 100 - (high_count * 50) - (med_count * 20))

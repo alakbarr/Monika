@@ -259,8 +259,8 @@ class RiskGate:
             ("lot_size", self._check_lot_size(sizing)),
             ("daily_drawdown", self._check_daily_drawdown(session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest)),
             ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=is_paper)),
-            ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions)),
-            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group)),
+            ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions, is_paper=is_paper)),
+            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group, is_paper=is_paper)),
             ("portfolio_heat", self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions)),
             ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol, as_of=as_of)),
             ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
@@ -1020,7 +1020,12 @@ class RiskGate:
 
         return True, f"drawdown={drawdown_pct:.2f}% (limit={self.max_daily_drawdown_pct}%)"
 
-    async def _check_max_positions(self, session: AsyncSession, simulated_positions: Optional[list] = None) -> tuple[bool, str]:
+    async def _check_max_positions(
+        self,
+        session: AsyncSession,
+        simulated_positions: Optional[list] = None,
+        is_paper: Optional[bool] = None,
+    ) -> tuple[bool, str]:
         """Pastikan batas maksimal posisi terbuka (concurrent) belum terlewati."""
         if simulated_positions is not None:
             count = len(simulated_positions)
@@ -1028,9 +1033,10 @@ class RiskGate:
                 return False, f"Max concurrent positions reached (simulated): {count}/{self.max_concurrent}"
             return True, f"open_positions={count}/{self.max_concurrent}"
 
-        count = (await session.execute(
-            select(func.count(Position.id)).where(Position.status == "open")
-        )).scalar_one_or_none() or 0
+        stmt = select(func.count(Position.id)).where(Position.status == "open")
+        if is_paper is not None:
+            stmt = stmt.where(Position.is_paper == is_paper)
+        count = (await session.execute(stmt)).scalar_one_or_none() or 0
 
         if count >= self.max_concurrent:
             return False, (
@@ -1044,6 +1050,7 @@ class RiskGate:
         symbol: str,
         simulated_positions: Optional[list] = None,
         pair_group_id: Optional[str] = None,
+        is_paper: Optional[bool] = None,
     ) -> tuple[bool, str]:
         """Pastikan hanya ada SATU posisi terbuka untuk simbol ini (kecuali multi-leg/tranche dengan pair_group_id)."""
         if simulated_positions is not None:
@@ -1058,32 +1065,39 @@ class RiskGate:
 
         if pair_group_id:
             # DB-15: Posisi dengan pair_group_id diizinkan multi-leg/tranche dalam group yang sama
-            conflict = (await session.execute(
+            conflict_stmt = (
                 select(Position.id)
                 .where(Position.symbol == symbol)
                 .where(Position.status == "open")
                 .where((Position.pair_group_id != pair_group_id) | (Position.pair_group_id.is_(None)))
-                .limit(1)
-            )).scalar_one_or_none()
+            )
+            if is_paper is not None:
+                conflict_stmt = conflict_stmt.where(Position.is_paper == is_paper)
+            conflict = (await session.execute(conflict_stmt.limit(1))).scalar_one_or_none()
             if conflict is not None:
                 return False, f"Already have an open position for {symbol} outside pair group {pair_group_id} (id={conflict})"
 
-            group_count = (await session.execute(
+            group_stmt = (
                 select(func.count(Position.id))
                 .where(Position.symbol == symbol)
                 .where(Position.status == "open")
                 .where(Position.pair_group_id == pair_group_id)
-            )).scalar_one_or_none() or 0
+            )
+            if is_paper is not None:
+                group_stmt = group_stmt.where(Position.is_paper == is_paper)
+            group_count = (await session.execute(group_stmt)).scalar_one_or_none() or 0
             if group_count >= 2:
                 return False, f"Pair group {pair_group_id} already has max legs ({group_count}) for {symbol}"
             return True, "no duplicate (pair group leg allowed)"
 
-        existing = (await session.execute(
+        existing_stmt = (
             select(Position.id)
             .where(Position.symbol == symbol)
             .where(Position.status == "open")
-            .limit(1)
-        )).scalar_one_or_none()
+        )
+        if is_paper is not None:
+            existing_stmt = existing_stmt.where(Position.is_paper == is_paper)
+        existing = (await session.execute(existing_stmt.limit(1))).scalar_one_or_none()
 
         if existing is not None:
             return False, f"Already have an open position for {symbol} (id={existing})"

@@ -2280,16 +2280,18 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 from database.models import Position as _Position
                 from sqlalchemy import select as _select, func as _func
                 
+                is_paper_mode = getattr(self, "dry_run", False) or bool(self.settings.get("paper_trading", {}).get("enabled", True))
+                
                 # Check for existing open position on the same symbol under the mutex
                 symbol_open_exists = (await session.execute(
                     _select(_Position.id)
-                    .where(_Position.symbol == symbol, _Position.status == 'open')
+                    .where(_Position.symbol == symbol, _Position.status == 'open', _Position.is_paper == is_paper_mode)
                 )).scalar_one_or_none()
                 if symbol_open_exists:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                     logger.warning(
                         f'[Pre-MT5 Re-check] BLOCKED {symbol}: Open position already exists for {symbol} '
-                        f'(symbol race condition prevented).'
+                        f'(symbol race condition prevented, is_paper={is_paper_mode}).'
                     )
                     return ExecutionResult(
                         symbol=symbol, analysis_id=analysis.id, decision=decision,
@@ -2306,7 +2308,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 re_check_open_count = (await session.execute(
                     _select(_func.count()).select_from(_Position)
-                    .where(_Position.status == 'open')
+                    .where(_Position.status == 'open', _Position.is_paper == is_paper_mode)
                 )).scalar_one_or_none() or 0
                 
                 max_concurrent = self.settings.get('trading', {}).get('risk', {}).get('max_concurrent_positions', 4)
@@ -2330,7 +2332,20 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         timestamp=start, elapsed_ms=elapsed,
                     )
             except Exception as recheck_err:
-                logger.debug(f'Pre-MT5 position re-check failed (non-fatal, proceeding): {recheck_err}')
+                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                logger.error(f'Pre-MT5 position re-check failed (Fail-Closed): {recheck_err}')
+                return ExecutionResult(
+                    symbol=symbol, analysis_id=analysis.id, decision=decision,
+                    sizing=sizing, risk_approved=False,
+                    risk_checks_passed=verdict.checks_passed,
+                    risk_checks_failed=verdict.checks_failed + ['pre_mt5_recheck_exception'],
+                    risk_rejection_reasons=[
+                        f'Race condition guard query failed (Fail-Closed): {recheck_err}'
+                    ],
+                    executed=False, mt5_ticket=None, executed_price=None,
+                    executed_lots=None, mt5_error=None, position_id=None,
+                    timestamp=start, elapsed_ms=elapsed,
+                )
 
             # Pilar 4: Evidence-First Pre-Trade Assertions
             verifier_enabled = self.settings.get("trading", {}).get("risk", {}).get("confluence_verifier_enabled", False)
@@ -2444,166 +2459,184 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         position_id=None, timestamp=start, elapsed_ms=elapsed,
                     )
 
-            # R-1: Race condition pre-MT5 position re-check
+            await _EXECUTION_LOCK.acquire()
             try:
-                re_check_open_count = (await session.execute(select(func.count()).select_from(Position).where(Position.status == 'open'))).scalar_one_or_none() or 0
-                max_concurrent = self.settings.get('trading', {}).get('risk', {}).get('max_concurrent_positions', 5)
-                if re_check_open_count >= max_concurrent:
+                # R-1: Race condition pre-MT5 position re-check under global execution mutex
+                try:
+                    re_check_open_count = (await session.execute(
+                        select(func.count()).select_from(Position)
+                        .where(Position.status == 'open', Position.is_paper == is_paper_mode)
+                    )).scalar_one_or_none() or 0
+                    max_concurrent = self.settings.get('trading', {}).get('risk', {}).get('max_concurrent_positions', 5)
+                    if re_check_open_count >= max_concurrent:
+                        elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                        logger.warning(f'[Pre-MT5 Re-check] BLOCKED {symbol}: {re_check_open_count}/{max_concurrent} positions already open (race condition prevented).')
+                        await self._transition_order_state(
+                            session, order, OrderStatus.REJECTED,
+                            reason=f"Race condition guard: {re_check_open_count} positions open (limit={max_concurrent})",
+                        )
+                        return ExecutionResult(
+                            symbol=symbol, analysis_id=analysis.id, decision=decision, sizing=sizing, risk_approved=False,
+                            risk_checks_passed=verdict.checks_passed, risk_checks_failed=verdict.checks_failed + ['pre_mt5_position_recheck'],
+                            risk_rejection_reasons=[f'Race condition guard: {re_check_open_count} positions open (limit={max_concurrent}). Position filled between risk check and execution.'],
+                            executed=False, mt5_ticket=None, executed_price=None, executed_lots=None, mt5_error=None, position_id=None, timestamp=start, elapsed_ms=elapsed
+                        )
+                except Exception as recheck_err:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-                    logger.warning(f'[Pre-MT5 Re-check] BLOCKED {symbol}: {re_check_open_count}/{max_concurrent} positions already open (race condition prevented).')
+                    logger.error(f'Pre-MT5 position re-check failed (Fail-Closed): {recheck_err}')
                     await self._transition_order_state(
                         session, order, OrderStatus.REJECTED,
-                        reason=f"Race condition guard: {re_check_open_count} positions open (limit={max_concurrent})",
+                        reason=f"Race condition guard query failed (Fail-Closed): {recheck_err}",
                     )
                     return ExecutionResult(
                         symbol=symbol, analysis_id=analysis.id, decision=decision, sizing=sizing, risk_approved=False,
-                        risk_checks_passed=verdict.checks_passed, risk_checks_failed=verdict.checks_failed + ['pre_mt5_position_recheck'],
-                        risk_rejection_reasons=[f'Race condition guard: {re_check_open_count} positions open (limit={max_concurrent}). Position filled between risk check and execution.'],
+                        risk_checks_passed=verdict.checks_passed, risk_checks_failed=verdict.checks_failed + ['pre_mt5_recheck_exception'],
+                        risk_rejection_reasons=[f'Position re-check query failed (Fail-Closed): {recheck_err}'],
                         executed=False, mt5_ticket=None, executed_price=None, executed_lots=None, mt5_error=None, position_id=None, timestamp=start, elapsed_ms=elapsed
                     )
-            except Exception as recheck_err:
-                logger.debug(f'Pre-MT5 position re-check failed (non-fatal, proceeding): {recheck_err}')
 
-            # Submit order to broker adapter under EffectGate admission
-            try:
-                if hasattr(self, "effect_gate") and self.effect_gate is not None:
-                    mt5_result = await self.effect_gate.admit(
-                        lambda: self.broker_adapter.submit_order(
+                # Submit order to broker adapter under EffectGate admission
+                try:
+                    if hasattr(self, "effect_gate") and self.effect_gate is not None:
+                        mt5_result = await self.effect_gate.admit(
+                            lambda: self.broker_adapter.submit_order(
+                                order=order,
+                                sl=sl_price,
+                                tp=tp_price,
+                                comment=comment,
+                                max_spread_multiplier=max_spread_mult,
+                            ),
+                            context_name=f"order_{order.client_order_id}_{symbol}"
+                        )
+                    else:
+                        mt5_result = await self.broker_adapter.submit_order(
                             order=order,
                             sl=sl_price,
                             tp=tp_price,
                             comment=comment,
                             max_spread_multiplier=max_spread_mult,
-                        ),
-                        context_name=f"order_{order.client_order_id}_{symbol}"
-                    )
-                else:
-                    mt5_result = await self.broker_adapter.submit_order(
-                        order=order,
-                        sl=sl_price,
-                        tp=tp_price,
-                        comment=comment,
-                        max_spread_multiplier=max_spread_mult,
-                    )
-            except AbortRequested as abort_err:
-                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-                logger.warning(f"[EffectGate] Order blocked for {symbol}: {abort_err}")
-                await self._transition_order_state(
-                    session, order, OrderStatus.ABORT_REQUESTED,
-                    reason=f"Effect gate blocked execution: {abort_err}",
-                )
-                await session.flush()
-                return ExecutionResult(
-                    symbol=symbol, analysis_id=analysis.id, decision=decision, sizing=sizing, risk_approved=False,
-                    risk_checks_passed=verdict.checks_passed, risk_checks_failed=verdict.checks_failed + ['effect_gate_aborted'],
-                    risk_rejection_reasons=[f"Effect gate blocked execution: {abort_err}"],
-                    executed=False, mt5_ticket=None, executed_price=None, executed_lots=None, mt5_error=str(abort_err),
-                    position_id=None, timestamp=start, elapsed_ms=elapsed
-                )
-
-            is_pending: bool = False
-            if mt5_result.get('success'):
-                status_returned = mt5_result.get('status')
-                is_pending = (
-                    status_returned in ('accepted', 'pending')
-                    or (
-                        (order.order_type or "").upper() in ("LIMIT", "STOP", "BUY_LIMIT", "SELL_LIMIT", "BUY_STOP", "SELL_STOP")
-                        and float(mt5_result.get('executed_volume', 0.0)) == 0.0
-                    )
-                )
-                exec_vol = float(mt5_result.get('executed_volume', 0.0))
-                req_vol = float(order.requested_volume)
-
-                reported_slippage = mt5_result.get('slippage_pips')
-                exec_price = mt5_result.get('price')
-                if reported_slippage is not None:
-                    slippage = float(reported_slippage)
-                elif exec_price is not None and entry_price:
-                    from utils.market.instrument_identity import resolve_instrument_identity
-                    sym_id = resolve_instrument_identity(order.symbol or symbol)
-                    slippage = SizingCalculator.compute_slippage_pips(float(entry_price), float(exec_price), pip_size=sym_id.pip_size)
-                else:
-                    slippage = 0.0
-
-                if is_pending:
-                    await self._transition_order_state(
-                        session, order, OrderStatus.ACCEPTED,
-                        reason=f"Broker accepted pending order: ticket={mt5_result.get('ticket')}",
-                        ticket=mt5_result.get('ticket'),
-                        executed_price=exec_price,
-                        slippage_pips=slippage,
-                        filled_volume=0.0,
-                        details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "accepted"}
-                    )
-                elif 0.0 < exec_vol < req_vol:
-                    await self._transition_order_state(
-                        session, order, OrderStatus.PARTIALLY_FILLED,
-                        reason=f"Partially filled {exec_vol}/{req_vol} lots at {exec_price}, ticket={mt5_result.get('ticket')}",
-                        ticket=mt5_result.get('ticket'),
-                        executed_price=exec_price,
-                        slippage_pips=slippage,
-                        filled_volume=exec_vol,
-                        details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "partially_filled", "filled_volume": exec_vol}
-                    )
-                else:
-                    await self._transition_order_state(
-                        session, order, OrderStatus.FILLED,
-                        reason=f"Filled at {exec_price}, ticket={mt5_result.get('ticket')}",
-                        ticket=mt5_result.get('ticket'),
-                        executed_price=exec_price,
-                        slippage_pips=slippage,
-                        filled_volume=exec_vol if exec_vol > 0 else req_vol,
-                        details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "filled"}
-                    )
-            else:
-                await self._transition_order_state(
-                    session, order, OrderStatus.REJECTED,
-                    reason=mt5_result.get('error') or "Broker order rejected",
-                )
-
-            elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-
-            # Step 4: Persist position to database if order is directly filled (market order)
-            position_id = None
-            if mt5_result.get('success'):
-                # Update executed cache upon successful MT5 placement (Cache-Before-Commit pattern)
-                _EXECUTED_ANALYSIS_IDS[analysis.id] = time.time()
-                
-                if not is_pending:
-                    try:
-                        position_id = await self._save_position(
-                            session=session,
-                            analysis=analysis,
-                            sizing=sizing,
-                            mt5_result=mt5_result,
-                            order_id=order.id,
                         )
-                        if position_id is None:
-                            raise RuntimeError(f"Failed to persist position to DB for ticket {mt5_result.get('ticket')}")
-                        await session.commit()
-                    except Exception as db_err:
-                        logger.critical(f"DB save failed after MT5 order {mt5_result.get('ticket')}. CLOSING orphan position.")
-                        orphan_ticket = mt5_result.get('ticket')
-                        try:
-                            if not self.dry_run and orphan_ticket is not None:
-                                if hasattr(self, 'broker_adapter') and self.broker_adapter:
-                                    await self.broker_adapter.close_position(int(orphan_ticket))
-                                else:
-                                    await self.mt5.close_position(int(orphan_ticket))
-                        except Exception as close_err:
-                            await AgentNotifier().send_critical(f"ORPHAN TRADE: ticket={orphan_ticket} {symbol}. DB and close both failed!")
-                        raise
-                    
-                    # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
-                    try:
-                        from utils.analytics.paper_tracker import PaperTracker
-                        paper_tracker = PaperTracker(self.settings)
-                        eff_risk_pct = sizing.risk_percent
-                        await paper_tracker.open_paper_trade(session, analysis, risk_pct=eff_risk_pct)
-                    except Exception as e:
-                        logger.debug(f"Paper trade open failed (non-fatal): {e}")
+                except AbortRequested as abort_err:
+                    elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                    logger.warning(f"[EffectGate] Order blocked for {symbol}: {abort_err}")
+                    await self._transition_order_state(
+                        session, order, OrderStatus.ABORT_REQUESTED,
+                        reason=f"Effect gate blocked execution: {abort_err}",
+                    )
+                    await session.flush()
+                    return ExecutionResult(
+                        symbol=symbol, analysis_id=analysis.id, decision=decision, sizing=sizing, risk_approved=False,
+                        risk_checks_passed=verdict.checks_passed, risk_checks_failed=verdict.checks_failed + ['effect_gate_aborted'],
+                        risk_rejection_reasons=[f"Effect gate blocked execution: {abort_err}"],
+                        executed=False, mt5_ticket=None, executed_price=None, executed_lots=None, mt5_error=str(abort_err),
+                        position_id=None, timestamp=start, elapsed_ms=elapsed
+                    )
+
+                is_pending: bool = False
+                if mt5_result.get('success'):
+                    status_returned = mt5_result.get('status')
+                    is_pending = (
+                        status_returned in ('accepted', 'pending')
+                        or (
+                            (order.order_type or "").upper() in ("LIMIT", "STOP", "BUY_LIMIT", "SELL_LIMIT", "BUY_STOP", "SELL_STOP")
+                            and float(mt5_result.get('executed_volume', 0.0)) == 0.0
+                        )
+                    )
+                    exec_vol = float(mt5_result.get('executed_volume', 0.0))
+                    req_vol = float(order.requested_volume)
+
+                    reported_slippage = mt5_result.get('slippage_pips')
+                    exec_price = mt5_result.get('price')
+                    if reported_slippage is not None:
+                        slippage = float(reported_slippage)
+                    elif exec_price is not None and entry_price:
+                        from utils.market.instrument_identity import resolve_instrument_identity
+                        sym_id = resolve_instrument_identity(order.symbol or symbol)
+                        slippage = SizingCalculator.compute_slippage_pips(float(entry_price), float(exec_price), pip_size=sym_id.pip_size)
+                    else:
+                        slippage = 0.0
+
+                    if is_pending:
+                        await self._transition_order_state(
+                            session, order, OrderStatus.ACCEPTED,
+                            reason=f"Broker accepted pending order: ticket={mt5_result.get('ticket')}",
+                            ticket=mt5_result.get('ticket'),
+                            executed_price=exec_price,
+                            slippage_pips=slippage,
+                            filled_volume=0.0,
+                            details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "accepted"}
+                        )
+                    elif 0.0 < exec_vol < req_vol:
+                        await self._transition_order_state(
+                            session, order, OrderStatus.PARTIALLY_FILLED,
+                            reason=f"Partially filled {exec_vol}/{req_vol} lots at {exec_price}, ticket={mt5_result.get('ticket')}",
+                            ticket=mt5_result.get('ticket'),
+                            executed_price=exec_price,
+                            slippage_pips=slippage,
+                            filled_volume=exec_vol,
+                            details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "partially_filled", "filled_volume": exec_vol}
+                        )
+                    else:
+                        await self._transition_order_state(
+                            session, order, OrderStatus.FILLED,
+                            reason=f"Filled at {exec_price}, ticket={mt5_result.get('ticket')}",
+                            ticket=mt5_result.get('ticket'),
+                            executed_price=exec_price,
+                            slippage_pips=slippage,
+                            filled_volume=exec_vol if exec_vol > 0 else req_vol,
+                            details={"analysis_id": analysis.id, "order_type": order.order_type, "status": "filled"}
+                        )
                 else:
-                    await session.commit()
+                    await self._transition_order_state(
+                        session, order, OrderStatus.REJECTED,
+                        reason=mt5_result.get('error') or "Broker order rejected",
+                    )
+
+                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+
+                # Step 4: Persist position to database if order is directly filled (market order)
+                position_id = None
+                if mt5_result.get('success'):
+                    # Update executed cache upon successful MT5 placement (Cache-Before-Commit pattern)
+                    _EXECUTED_ANALYSIS_IDS[analysis.id] = time.time()
+                    
+                    if not is_pending:
+                        try:
+                            position_id = await self._save_position(
+                                session=session,
+                                analysis=analysis,
+                                sizing=sizing,
+                                mt5_result=mt5_result,
+                                order_id=order.id,
+                            )
+                            if position_id is None:
+                                raise RuntimeError(f"Failed to persist position to DB for ticket {mt5_result.get('ticket')}")
+                            await session.commit()
+                        except Exception as db_err:
+                            logger.critical(f"DB save failed after MT5 order {mt5_result.get('ticket')}. CLOSING orphan position.")
+                            orphan_ticket = mt5_result.get('ticket')
+                            try:
+                                if not self.dry_run and orphan_ticket is not None:
+                                    if hasattr(self, 'broker_adapter') and self.broker_adapter:
+                                        await self.broker_adapter.close_position(int(orphan_ticket))
+                                    else:
+                                        await self.mt5.close_position(int(orphan_ticket))
+                            except Exception as close_err:
+                                await AgentNotifier().send_critical(f"ORPHAN TRADE: ticket={orphan_ticket} {symbol}. DB and close both failed!")
+                            raise
+                        
+                        # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
+                        try:
+                            from utils.analytics.paper_tracker import PaperTracker
+                            paper_tracker = PaperTracker(self.settings)
+                            eff_risk_pct = sizing.risk_percent
+                            await paper_tracker.open_paper_trade(session, analysis, risk_pct=eff_risk_pct)
+                        except Exception as e:
+                            logger.debug(f"Paper trade open failed (non-fatal): {e}")
+                    else:
+                        await session.commit()
+            finally:
+                _EXECUTION_LOCK.release()
 
                 # Stateful Multi-Phase Trade Plan (Probe 30%, Runner 70%)
                 try:
