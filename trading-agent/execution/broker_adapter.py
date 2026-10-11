@@ -22,7 +22,6 @@ from typing import Optional, List, Dict, Any
 import utils.clock as clock
 from database.models import Order, OrderStatus
 from execution.broker_plugin import OrderRequest, normalize_order_request
-from execution.broker_registry import BrokerAdapterRegistry
 
 logger = logging.getLogger("TradingAgent.BrokerAdapter")
 
@@ -45,7 +44,7 @@ def _get_contract_size(symbol: str) -> float:
     """Determine standard contract lot size based on instrument type."""
     sym = (symbol or "").upper()
     try:
-        from risk.position_sizing import DEFAULT_INSTRUMENTS
+        from risk.domain.instruments import DEFAULT_INSTRUMENTS
         clean = sym.replace("/", "").replace(".", "").replace("-", "")
         for k, spec in DEFAULT_INSTRUMENTS.items():
             if k in clean or clean in k:
