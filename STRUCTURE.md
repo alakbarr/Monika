@@ -916,6 +916,13 @@ Monika/
     │   │   ├── plan_refinement_node.py
     │   │   ├── reflection_node.py
     │   │   ├── risk_gate_node.py
+    │   │   ├── risk
+    │   │   │   ├── __init__.py
+    │   │   │   ├── level_synthesizer.py
+    │   │   │   ├── portfolio_synthesis.py
+    │   │   │   ├── proposal_notifier.py
+    │   │   │   ├── quant_arbitration.py
+    │   │   │   └── rejection_auditor.py
     │   │   └── state_pruner.py
     │   ├── presets
     │   │   ├── crypto_trading_desk.yaml

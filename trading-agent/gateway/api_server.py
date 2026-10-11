@@ -145,7 +145,7 @@ def get_default_chat_agent():
     global _agent_instance
     if _agent_instance is None:
         from config.settings import load_settings
-        from telegram_bot.chat_agent import ChatAgent
+        from agent.chat_agent import ChatAgent
         settings = load_settings()
         _agent_instance = ChatAgent(settings=settings, user_id="api_client", is_admin=True)
     return _agent_instance
