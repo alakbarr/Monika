@@ -250,8 +250,8 @@ class TradingAgent:
     _tasks: list[asyncio.Task]
 
     def __init__(self, settings: dict, dry_run: bool = False):
-        self.settings = settings
-        self.dry_run = dry_run
+        paper_enabled = bool(self.settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        self.dry_run = dry_run or paper_enabled
         self.shutdown_event = asyncio.Event()
         # Event to block the initial cycle until startup recovery completes.
         # The cycle scheduler waits on this event before initiating the first cycle.

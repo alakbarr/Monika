@@ -1765,12 +1765,30 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
 
     mt5_client = get_dashboard_dependency("mt5_client")
     exec_svc = get_dashboard_dependency("execution_service")
+    settings = get_dashboard_dependency("settings")
+    if not settings:
+        try:
+            from config.settings import load_settings
+            settings = load_settings()
+        except Exception:
+            settings = {}
 
     from database.db import AsyncSessionLocal
     from database.models import Position, ActivityLog
     from risk.trade_proposal import TradeProposal
 
     risk_gate = get_dashboard_dependency("risk_gate")
+    if not risk_gate:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "message": "RiskGate tidak tersedia. Pengiriman order diblokir oleh Mechanical Fortress Principle.",
+            },
+        )
+
+    is_paper = bool(settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+
     proposal = TradeProposal(
         symbol=sym,
         direction=direction.upper(),
@@ -1783,23 +1801,22 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     )
 
     async with AsyncSessionLocal() as session:
-        if risk_gate:
-            verdict = await risk_gate.evaluate_proposal(session, proposal, is_paper=False)
-            if not verdict.approved:
-                session.add(ActivityLog(
-                    category="risk",
-                    description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
-                    actor="operator",
-                ))
-                await session.commit()
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "status": "rejected",
-                        "message": f"Order ditolak oleh RiskGate: {', '.join(verdict.rejection_reasons)}",
-                        "rejection_reasons": verdict.rejection_reasons,
-                    },
-                )
+        verdict = await risk_gate.evaluate_proposal(session, proposal, is_paper=is_paper)
+        if not verdict.approved:
+            session.add(ActivityLog(
+                category="risk",
+                description=f"Manual order rejected by RiskGate: {direction.upper()} {volume} {sym} - {', '.join(verdict.rejection_reasons)}",
+                actor="operator",
+            ))
+            await session.commit()
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "rejected",
+                    "message": f"Order ditolak oleh RiskGate: {', '.join(verdict.rejection_reasons)}",
+                    "rejection_reasons": verdict.rejection_reasons,
+                },
+            )
 
     res = None
     if mt5_client and hasattr(mt5_client, "place_order"):
@@ -1830,7 +1847,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
                 sl=payload.sl,
                 tp=payload.tp,
                 status="open",
-                is_paper=False,
+                is_paper=is_paper,
             ))
         await session.commit()
 

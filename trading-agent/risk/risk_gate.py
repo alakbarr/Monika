@@ -221,6 +221,7 @@ class RiskGate:
         effective_pair_group = pair_group_id or getattr(analysis, 'pair_group_id', None)
         fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
         equity = simulated_equity if (is_backtest and simulated_equity is not None) else (account_equity or fallback_equity)
+        effective_is_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
 
         try:
             from utils.plugins.manager import get_plugin_manager, PluginHook
@@ -250,7 +251,7 @@ class RiskGate:
                 logger.error(f"RiskGate check '{name}' raised exception: {e}")
 
         checks = [
-            ("daily_trade_count", self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=is_paper)),
+            ("daily_trade_count", self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=effective_is_paper)),
             ("trading_not_paused", self._check_not_paused(session, is_backtest=is_backtest)),
             ("edge_status_not_paused", self._check_edge_status_not_paused(session, is_backtest=is_backtest)),
             ("vix_threshold", self._check_vix_threshold(session, as_of=as_of, is_backtest=is_backtest)),
@@ -258,14 +259,14 @@ class RiskGate:
             ("sizing_valid", self._check_sizing_valid(sizing)),
             ("lot_size", self._check_lot_size(sizing)),
             ("daily_drawdown", self._check_daily_drawdown(session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest)),
-            ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=is_paper)),
-            ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions, is_paper=is_paper)),
-            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group, is_paper=is_paper)),
+            ("weekly_drawdown", self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=effective_is_paper)),
+            ("max_concurrent_positions", self._check_max_positions(session, simulated_positions=simulated_positions, is_paper=effective_is_paper)),
+            ("no_duplicate_symbol", self._check_no_duplicate(session, symbol, simulated_positions=simulated_positions, pair_group_id=effective_pair_group, is_paper=effective_is_paper)),
             ("portfolio_heat", self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions)),
             ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol, as_of=as_of)),
             ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
             ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("news_window", self._check_news_window(session, symbol, as_of=as_of, is_backtest=is_backtest)),
+            ("news_window", self._check_news_window(session, symbol, as_of=as_of, is_backtest=is_backtest, is_paper=effective_is_paper)),
             ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'recommended_lots', getattr(sizing, 'lot_size', None)) if sizing else None)),
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
@@ -277,7 +278,7 @@ class RiskGate:
             ("evidence_gate", self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest)),
             ("bounded_mandate", self._check_bounded_mandate(session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions)),
             ("min_rr_ratio", self._check_min_rr_ratio(sizing)),
-            ("max_spread", self._check_max_spread(session, symbol, is_backtest=is_backtest)),
+            ("max_spread", self._check_max_spread(session, symbol, is_backtest=is_backtest, is_paper=effective_is_paper)),
         ]
         
         if analysis is not None:
@@ -849,10 +850,11 @@ class RiskGate:
             return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
         return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"
 
-    async def _check_max_spread(self, session: AsyncSession, symbol: str, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_max_spread(self, session: AsyncSession, symbol: str, is_backtest: bool = False, is_paper: Optional[bool] = None) -> tuple[bool, str]:
         """Validasi batas spread pasar tidak sedang melebar (FR-4.1)."""
         if is_backtest:
             return True, "backtest_spread_ok"
+        effective_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
         try:
             from execution.mt5_client import get_mt5_client
             client = getattr(self, "_mt5", None)
@@ -862,12 +864,14 @@ class RiskGate:
                 except Exception:
                     client = None
             if client is None:
-                return True, "no_client_spread_skipped"
+                if effective_paper:
+                    return True, "no_client_spread_skipped"
+                return False, "mt5_client_unavailable_spread_blocked"
             is_conn = await client.is_connected() if callable(getattr(client, "is_connected", None)) else getattr(client, "is_connected", False)
             if asyncio.iscoroutine(is_conn):
                 is_conn = await is_conn
             if not is_conn:
-                if getattr(self, "_mt5", None) is None:
+                if effective_paper:
                     return True, "client_disconnected_spread_skipped"
                 return False, "client_disconnected_spread_blocked"
             spread_info = await client.get_spread(symbol)
@@ -1231,7 +1235,7 @@ class RiskGate:
         
         return True, "Outside rollover window"
 
-    async def _check_news_window(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False) -> tuple[bool, str]:
+    async def _check_news_window(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False, is_paper: bool = True) -> tuple[bool, str]:
         if is_backtest:
             return True, "news_window_backtest_ok"
         currencies = get_symbol_currencies(symbol)
@@ -1268,11 +1272,14 @@ class RiskGate:
         )).scalar_one_or_none() or 0
 
         if total_events == 0 and latest_calendar_fetch is None:
-            logger.warning(
-                "No economic calendar data exists in database. "
-                "Degraded mode: proceeding with warning instead of hard-block."
-            )
-            return True, "economic_calendar_empty_warning_pass"
+            if is_paper:
+                logger.warning(
+                    "No economic calendar data exists in database. "
+                    "Degraded mode: proceeding with warning instead of hard-block."
+                )
+                return True, "economic_calendar_empty_warning_pass"
+            logger.error("No economic calendar data in database for live trade. Hard block.")
+            return False, "economic_calendar_unavailable_blocked"
 
         calendar_age_hours = (now - latest_calendar_fetch).total_seconds() / 3600 if latest_calendar_fetch else 999.0
 
@@ -1286,6 +1293,8 @@ class RiskGate:
 
         stale_warning = ""
         if calendar_age_hours > 8.0:
+            if not is_paper:
+                return False, f"Economic calendar data is {calendar_age_hours:.1f}h stale (>8.0h limit). Live trade blocked."
             logger.warning(
                 f"Economic calendar data is {calendar_age_hours:.1f}h old (threshold=8.0h). "
                 f"Degraded mode: proceeding with warning instead of hard-block."

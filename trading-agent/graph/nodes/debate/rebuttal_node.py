@@ -88,7 +88,12 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
                 }
             except Exception as e:
                 logger.error(f"[{sym}] Rebuttal failed: {e}", exc_info=True)
-                return sym, None
+                new_turn = deb.get("turn", 1) + 1
+                return sym, {
+                    'turn': new_turn,
+                    'needs_rebuttal': False,
+                    'rebuttal_error': str(e),
+                }
 
     tasks = [_process_single(sym, r) for sym, r in actionable]
     results = await asyncio.gather(*tasks)

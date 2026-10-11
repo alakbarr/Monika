@@ -198,7 +198,14 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
             actionable = gate_approved
         except Exception as e:
-            logger.warning(f"[RiskGate] Evaluation non-fatal error: {e}", exc_info=True)
+            logger.critical(f"[RiskGate] Evaluation failure - enforcing FAIL-CLOSED: {e}", exc_info=True)
+            for sym, r in actionable:
+                rejected_candidates.append({
+                    "symbol": sym,
+                    "trade": r,
+                    "reasons": [f"risk_gate_system_exception: {e}"],
+                })
+            actionable = []
 
     # 5. Deterministic Trade Pre-Commit Gate
     if actionable:

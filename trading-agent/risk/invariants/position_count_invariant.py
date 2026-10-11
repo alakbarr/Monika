@@ -41,8 +41,16 @@ def check_position_count_invariant(context: Dict[str, Any]) -> InvariantResult:
             package_name="risk.invariants.position_count",
         )
 
-    # Optional warning if at maximum limit
+    # If currently evaluating a new trade proposal and already at maximum limit, fail
     if count == max_positions:
+        if "proposal" in context or context.get("is_new_trade"):
+            return InvariantResult(
+                name="position_count",
+                status=InvariantStatus.FAIL,
+                message=f"Open positions ({count}) have reached maximum capacity ({max_positions}). New trade prohibited.",
+                details={"current_count": count, "max_limit": max_positions},
+                package_name="risk.invariants.position_count",
+            )
         return InvariantResult(
             name="position_count",
             status=InvariantStatus.WARN,

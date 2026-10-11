@@ -39,10 +39,12 @@ class Tier3DockerEnvironment(BaseExecutionEnvironment):
         memory_limit: str = "512m",
         cpu_limit: str = "1.0",
         fallback_tier: Optional[BaseExecutionEnvironment] = None,
+        allow_fallback: bool = True,
     ):
         self.image_name = image_name
         self.memory_limit = memory_limit
         self.cpu_limit = cpu_limit
+        self.allow_fallback = allow_fallback
         self.fallback_tier = fallback_tier or Tier2HostKernelEnvironment()
         self._docker_bin = shutil.which("docker")
         self._active_containers: Dict[str, str] = {}  # session_id -> container_name
@@ -133,7 +135,14 @@ class Tier3DockerEnvironment(BaseExecutionEnvironment):
         session_id: Optional[str] = None,
     ) -> ExecutionOutcome:
         if not self.is_available():
-            logger.info("[Tier3Docker] Docker not available on host. Falling back to Tier 2 Host Kernel.")
+            if not self.allow_fallback:
+                logger.error("[Tier3Docker] Docker is not available and host fallback is disabled.")
+                return ExecutionOutcome(
+                    exit_code=-1,
+                    stdout="",
+                    stderr="Docker container sandbox is unavailable and host fallback is disabled.",
+                )
+            logger.warning("[Tier3Docker] Docker not available on host. Falling back to Tier 2 Host Kernel.")
             return await self.fallback_tier.run_command(command, cwd, timeout_seconds, env_vars)
 
         start_time = time.perf_counter()
@@ -200,6 +209,13 @@ class Tier3DockerEnvironment(BaseExecutionEnvironment):
                 is_timeout=True,
             )
         except Exception as e:
+            if not self.allow_fallback:
+                logger.error(f"[Tier3Docker] Docker invocation error: {e} and host fallback is disabled.")
+                return ExecutionOutcome(
+                    exit_code=-1,
+                    stdout="",
+                    stderr=f"Docker invocation error: {e} (host fallback disabled).",
+                )
             logger.warning(f"[Tier3Docker] Docker invocation error: {e}. Falling back to Tier 2.")
             return await self.fallback_tier.run_command(command, cwd, timeout_seconds, env_vars)
 
@@ -210,6 +226,12 @@ class Tier3DockerEnvironment(BaseExecutionEnvironment):
         session_id: Optional[str] = None,
     ) -> ExecutionOutcome:
         if not self.is_available():
+            if not self.allow_fallback:
+                return ExecutionOutcome(
+                    exit_code=-1,
+                    stdout="",
+                    stderr="Docker container sandbox is unavailable and host fallback is disabled.",
+                )
             return await self.fallback_tier.run_python_code(code, timeout_seconds)
 
         escaped_code = code.replace("'", "'\"'\"'")

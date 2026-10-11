@@ -73,8 +73,8 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         self.mt5_client = self.mt5  # Parity attribute alias
         self.sizer = PositionSizer(settings, mt5_client=self.mt5)
         self.gate = risk_gate if risk_gate is not None else RiskGate(settings, mt5_client=self.mt5)
-        self.risk_gate = self.gate  # Backward-compatible alias
-        self.dry_run = dry_run
+        paper_enabled = bool(self.settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        self.dry_run = dry_run or paper_enabled
 
         if broker_adapter is not None:
             self.broker_adapter = broker_adapter
