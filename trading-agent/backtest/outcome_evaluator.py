@@ -34,6 +34,7 @@ ASSET_FRICTION_PROFILE = {
     "ETHUSD": {"spread_pips": 15.0, "slippage_pips": 8.0},
     "SOLUSD": {"spread_pips": 12.0, "slippage_pips": 6.0},
 }
+DEFAULT_FRICTION_PROFILE = ASSET_FRICTION_PROFILE
 
 
 class OutcomeEvaluator:
@@ -243,7 +244,14 @@ class OutcomeEvaluator:
         sym_profile = self.friction_profile.get(trade.symbol, {"spread_pips": 1.5, "slippage_pips": 0.5})
         spread_pips = sym_profile.get("spread_pips", 1.5)
         spec = DEFAULT_INSTRUMENTS.get(trade.symbol)
-        pip_size = getattr(spec, "pip_size", 0.0001) if spec else 0.0001
+        if spec:
+            pip_size = getattr(spec, "pip_size", 0.0001)
+        elif "XAU" in trade.symbol or "JPY" in trade.symbol:
+            pip_size = 0.01
+        elif "BTC" in trade.symbol:
+            pip_size = 1.0
+        else:
+            pip_size = 0.0001
         spread_pip = spread_pips * pip_size
         for bar in bars:
             # Simulated PositionGuardian Friday market close liquidation parity
@@ -263,13 +271,8 @@ class OutcomeEvaluator:
                 sl_hit = bar.low <= trade.stop_loss
                 tp_hit = bar.high >= trade.take_profit
                 if sl_hit and tp_hit:
-                    # Intra-bar collision resolution (NautilusTrader parity):
-                    # Check distance from bar open to TP vs SL. Closer price triggered first.
-                    bar_open = getattr(bar, "open", None)
-                    if bar_open is not None and abs(bar_open - trade.take_profit) < abs(bar_open - trade.stop_loss):
-                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
-                    else:
-                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    # Intra-bar collision resolution: conservative worst-case (SL triggered first)
+                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
                 elif sl_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
@@ -284,13 +287,8 @@ class OutcomeEvaluator:
                 sl_hit = ask_high >= trade.stop_loss
                 tp_hit = ask_low <= trade.take_profit
                 if sl_hit and tp_hit:
-                    # Intra-bar collision resolution (NautilusTrader parity):
-                    bar_open = getattr(bar, "open", None)
-                    ask_open = (bar_open + spread_pip) if bar_open is not None else None
-                    if ask_open is not None and abs(ask_open - trade.take_profit) < abs(ask_open - trade.stop_loss):
-                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.take_profit, "tp_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
-                    else:
-                        outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
+                    # Intra-bar collision resolution: conservative worst-case (SL triggered first)
+                    outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)
                     break
                 elif sl_hit:
                     outcome = self._calculate_outcome(trade, bar.timestamp, trade.stop_loss, "sl_hit", bar=bar, apply_costs=apply_costs, atr_pips=atr_pips)

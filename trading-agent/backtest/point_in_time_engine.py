@@ -362,7 +362,26 @@ class PointInTimeBacktestEngine:
                             pass
 
                         if confluence_score >= req_threshold:
-                            entry_price = latest_bar.close
+                            from risk.domain.instruments import DEFAULT_INSTRUMENTS
+                            from backtest.outcome_evaluator import DEFAULT_FRICTION_PROFILE
+                            spec = DEFAULT_INSTRUMENTS.get(symbol)
+                            if spec:
+                                pip_sz = getattr(spec, "pip_size", 0.0001)
+                            elif "XAU" in symbol or "JPY" in symbol:
+                                pip_sz = 0.01
+                            elif "BTC" in symbol:
+                                pip_sz = 1.0
+                            else:
+                                pip_sz = 0.0001
+
+                            sym_prof = DEFAULT_FRICTION_PROFILE.get(symbol, {"spread_pips": 1.5, "slippage_pips": 0.5})
+                            spread_cost = sym_prof.get("spread_pips", 1.5) * pip_sz
+                            slip_cost = sym_prof.get("slippage_pips", 0.5) * pip_sz
+
+                            if direction == 'buy':
+                                entry_price = latest_bar.close + (spread_cost / 2.0) + slip_cost
+                            else:
+                                entry_price = latest_bar.close - (spread_cost / 2.0) - slip_cost
 
                             # Calculate ATR-based dynamic stops & targets
                             adr_ctx = await compute_daily_range_context(session, symbol, self.settings, as_of=current_time)
