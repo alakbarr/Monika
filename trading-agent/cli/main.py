@@ -280,8 +280,16 @@ async def _cmd_pause(args):
             session.add(SystemConfig(key="system_paused", value="true"))
         await session.commit()
     try:
-        from logging_observability.dashboard.routes.common import broadcast_live_event
-        await broadcast_live_event("system_state_change", {"state": "paused", "reason": "CLI pause command"})
+        import aiohttp
+        settings = load_settings()
+        port = settings.get("dashboard", {}).get("port", 8000)
+        async with aiohttp.ClientSession() as http_sess:
+            async with http_sess.post(
+                f"http://127.0.0.1:{port}/api/actions/pause",
+                timeout=aiohttp.ClientTimeout(total=2.0),
+            ) as resp:
+                if resp.status in (200, 201):
+                    console.print(f"{stamp_ok('FORWARD')} Signal forwarded to running Dashboard daemon API.")
     except Exception:
         pass
     console.print(f"{stamp_ok('PAUSE')} System trading paused successfully.")
@@ -310,8 +318,16 @@ async def _cmd_resume(args):
                 cfg.value = "false"
         await session.commit()
     try:
-        from logging_observability.dashboard.routes.common import broadcast_live_event
-        await broadcast_live_event("system_state_change", {"state": "active", "reason": "CLI resume command"})
+        import aiohttp
+        settings = load_settings()
+        port = settings.get("dashboard", {}).get("port", 8000)
+        async with aiohttp.ClientSession() as http_sess:
+            async with http_sess.post(
+                f"http://127.0.0.1:{port}/api/actions/resume",
+                timeout=aiohttp.ClientTimeout(total=2.0),
+            ) as resp:
+                if resp.status in (200, 201):
+                    console.print(f"{stamp_ok('FORWARD')} Signal forwarded to running Dashboard daemon API.")
     except Exception:
         pass
     console.print(f"{stamp_ok('RESUME')} System trading resumed (all pause, kill-switch, and suspension flags cleared).")
@@ -334,8 +350,17 @@ async def _cmd_unsuspend(args):
             ok = await tracker.unsuspend_symbol(session, sym)
 
     try:
-        from logging_observability.dashboard.routes.common import broadcast_live_event
-        await broadcast_live_event("symbols_unsuspended", {"symbols": cleared if is_all else ([sym] if ok else [])})
+        import aiohttp
+        settings = load_settings()
+        port = settings.get("dashboard", {}).get("port", 8000)
+        async with aiohttp.ClientSession() as http_sess:
+            async with http_sess.post(
+                f"http://127.0.0.1:{port}/api/actions/unsuspend",
+                json={"symbol": sym if not is_all else "ALL"},
+                timeout=aiohttp.ClientTimeout(total=2.0),
+            ) as resp:
+                if resp.status in (200, 201):
+                    console.print(f"{stamp_ok('FORWARD')} Signal forwarded to running Dashboard daemon API.")
     except Exception:
         pass
 

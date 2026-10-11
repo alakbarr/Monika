@@ -119,6 +119,16 @@ class TokenBudgetManager:
             if model:
                 self._usage_by_model[model] = self._usage_by_model.get(model, 0) + total
 
+            try:
+                from logging_observability.metrics_exporter import metrics
+                metrics.inc_counter(
+                    "llm_tokens_consumed_total",
+                    float(total),
+                    labels={"subsystem": norm, "model": model or "unknown"},
+                )
+            except Exception:
+                pass
+
             quota = self.get_quota(norm)
             pct = (sub_dict["total"] / max(1, quota)) * 100.0
             if pct >= 90.0:

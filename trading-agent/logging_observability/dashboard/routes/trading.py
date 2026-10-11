@@ -1931,6 +1931,61 @@ async def action_resume_trading(request: Request):
     return {"status": "success", "message": "Trading resumed. All pause & kill flags cleared, EffectGate reset."}
 
 
+@trading_router.post("/api/actions/pause", tags=["Actions"])
+@trading_router.post("/api/actions/pause-trading", tags=["Actions"])
+@require_role(Role.ADMIN)
+async def action_pause_trading(request: Request):
+    """Pause system trading operations."""
+    from database.db import AsyncSessionLocal
+    from database.models import SystemConfig
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as session:
+        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == "system_paused"))).scalar_one_or_none()
+        if cfg:
+            cfg.value = "true"
+        else:
+            session.add(SystemConfig(key="system_paused", value="true"))
+        await session.commit()
+
+    await broadcast_live_event("system_state_change", {
+        "state": "paused",
+        "reason": "Dashboard/CLI pause command",
+        "paused_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"status": "success", "message": "System trading paused."}
+
+
+@trading_router.post("/api/actions/unsuspend", tags=["Actions"])
+@require_role(Role.ADMIN)
+async def action_unsuspend_symbols(request: Request):
+    """Lift trading suspension on all instruments or specific symbol."""
+    from database.db import AsyncSessionLocal
+    from utils.analytics.paper_tracker import PaperTracker
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    symbol = body.get("symbol")
+    async with AsyncSessionLocal() as session:
+        tracker = PaperTracker()
+        if not symbol or str(symbol).upper() == "ALL":
+            cleared = await tracker.unsuspend_all(session)
+            sym_list = cleared
+        else:
+            sym_upper = str(symbol).strip().upper()
+            ok = await tracker.unsuspend_symbol(session, sym_upper)
+            sym_list = [sym_upper] if ok else []
+
+    await broadcast_live_event("symbols_unsuspended", {
+        "symbols": sym_list,
+        "cleared_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"status": "success", "cleared": sym_list}
+
+
 @trading_router.api_route("/api/actions/approve-trade/{trade_id}", methods=["POST", "PUT"], tags=["Actions"])
 @require_role(Role.OPERATOR)
 async def action_approve_trade(trade_id: int, request: Request):
