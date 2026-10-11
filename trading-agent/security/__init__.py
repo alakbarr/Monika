@@ -12,8 +12,10 @@ from security.credential_vault import (
     mask_sensitive,
     vault,
 )
-from security import terminal_guard, prompt_injection_scanner, ssrf_guard
+from security import terminal_guard, prompt_injection_scanner, ssrf_guard, nt_guard, supply_chain_quarantine
 from security.terminal_guard import assert_safe_read_path, assert_safe_write_path
+from security.nt_guard import assert_safe_nt_path, is_dangerous_nt_namespace, sanitize_path
+from security.supply_chain_quarantine import SupplyChainQuarantine, QuarantineVerdict
 
 __all__ = [
     "CredentialVault",
@@ -26,6 +28,13 @@ __all__ = [
     "terminal_guard",
     "prompt_injection_scanner",
     "ssrf_guard",
+    "nt_guard",
+    "supply_chain_quarantine",
     "assert_safe_read_path",
     "assert_safe_write_path",
+    "assert_safe_nt_path",
+    "is_dangerous_nt_namespace",
+    "sanitize_path",
+    "SupplyChainQuarantine",
+    "QuarantineVerdict",
 ]

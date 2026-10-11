@@ -752,6 +752,7 @@ Monika/
     │   ├── academic_search.py
     │   ├── bond_yields_fetcher.py
     │   ├── bond_yields_yfinance.py
+    │   ├── brent_yfinance.py
     │   ├── bps_stats.py
     │   ├── central_bank_watch.py
     │   ├── cftc_cot.py
@@ -1137,6 +1138,7 @@ Monika/
     │   ├── reporting
     │   │   ├── __init__.py
     │   │   ├── docx_report_generator.py
+    │   │   ├── pdf_report_generator.py
     │   │   ├── pptx_deck_generator.py
     │   │   └── tearsheet_generator.py
     │   ├── run_card.py
@@ -1288,8 +1290,10 @@ Monika/
     ├── security
     │   ├── __init__.py
     │   ├── credential_vault.py
+    │   ├── nt_guard.py
     │   ├── prompt_injection_scanner.py
     │   ├── ssrf_guard.py
+    │   ├── supply_chain_quarantine.py
     │   └── terminal_guard.py
     ├── services
     │   ├── __init__.py
