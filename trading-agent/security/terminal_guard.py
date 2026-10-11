@@ -204,6 +204,83 @@ def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) ->
     return str(target)
 
 
+def is_secret_credential_file(filename: str) -> bool:
+    """Check if filename matches sensitive credential or private key patterns."""
+    name_lower = filename.lower()
+    if name_lower.startswith(".env") and name_lower != ".env.example":
+        return True
+    if name_lower.endswith(".key") or name_lower.endswith(".pem"):
+        return True
+    if "credentials" in name_lower and name_lower.endswith(".json"):
+        return True
+    if name_lower in {
+        "id_rsa",
+        "id_ed25519",
+        "id_dsa",
+        "id_ecdsa",
+        ".git-credentials",
+        ".netrc",
+        ".pgpass",
+    }:
+        return True
+    return False
+
+
+def assert_safe_read_path(target_path: str, safe_root: Optional[str] = None) -> str:
+    """
+    Ensure the target read path is inside designated roots and does not read
+    credentials, secret keys, or sensitive OS system files.
+    """
+    if is_dangerous_nt_namespace(target_path):
+        raise SecurityViolationError(f"Rejected NT-namespace path: {target_path}")
+
+    root_env = safe_root or os.environ.get("MONIKA_WRITE_SAFE_ROOT")
+    if not root_env:
+        root_path = Path(__file__).resolve().parent.parent.parent
+        allow_temp = True
+    else:
+        root_path = Path(root_env).resolve()
+        allow_temp = False
+
+    target = Path(target_path).resolve()
+    import tempfile
+    temp_dir = Path(tempfile.gettempdir()).resolve()
+
+    # 1. Check if inside safe root or temp dir
+    is_safe = False
+    try:
+        target.relative_to(root_path)
+        is_safe = True
+    except ValueError:
+        pass
+
+    if not is_safe and allow_temp:
+        try:
+            target.relative_to(temp_dir)
+            is_safe = True
+        except ValueError:
+            pass
+
+    if not is_safe:
+        raise SecurityViolationError(
+            f"Path traversal blocked: '{target_path}' is outside designated safe root '{root_path}'."
+        )
+
+    # 2. Check secret credential files (.env*, *.key, *.pem, *credentials*.json)
+    base_name = target.name.lower()
+    if is_secret_credential_file(base_name):
+        raise SecurityViolationError(
+            f"Access denied: Reading protected secret credential file '{target.name}' is prohibited."
+        )
+
+    # 3. Check protected directories
+    for part in target.parts:
+        if part.lower() in {d.strip("/\\").lower() for d in PROTECTED_DIRECTORIES}:
+            raise SecurityViolationError(f"Access denied: Target resides in protected directory '{part}'.")
+
+    return str(target)
+
+
 class DenialCircuitBreaker:
     """
     Tracks consecutive security and execution rejections.

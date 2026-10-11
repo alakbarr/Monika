@@ -259,6 +259,63 @@ class UnifiedToolRegistry:
         tools = self.list_tools(category=category, only_available=True)
         return [t.get_gemini_schema() for t in tools]
 
+    def _run_security_interceptors(self, name: str, arguments: Dict[str, Any]) -> None:
+        """
+        Centralized Security Interceptor Pipeline:
+        1. PromptInjectionScanner: Evaluates prompt and user message inputs.
+        2. SSRFGuard: Validates outbound network URLs against private/metadata IPs.
+        3. TerminalGuard: Blocks prohibited host execution commands.
+        4. PathReadWriteGuard: Blocks unauthorized read/write access to secret credentials (.env*, *.key, *.pem).
+        """
+        if not isinstance(arguments, dict):
+            return
+
+        # Stage 1: Prompt Injection Scanner
+        try:
+            from security.prompt_injection_scanner import PromptInjectionScanner
+            for k, v in arguments.items():
+                if isinstance(v, str) and len(v) > 20:
+                    if k in ("prompt", "query", "text", "message", "instruction", "content", "news_text"):
+                        PromptInjectionScanner.assert_safe(v, threshold=0.85)
+        except Exception as pi_err:
+            if "PromptInjectionThreatDetected" in type(pi_err).__name__:
+                raise
+
+        # Stage 2: SSRF Guard
+        try:
+            from security.ssrf_guard import validate_request_url
+            for k, v in arguments.items():
+                if isinstance(v, str) and (k in ("url", "uri", "endpoint", "target_url") or v.startswith(("http://", "https://"))):
+                    validate_request_url(v)
+        except Exception as ssrf_err:
+            if "SSRFViolationError" in type(ssrf_err).__name__:
+                raise
+
+        # Stage 3: Terminal Guard
+        try:
+            from security.terminal_guard import is_hardline_blocked_command, CommandSecurityViolationError
+            for k, v in arguments.items():
+                if isinstance(v, str) and k in ("command", "cmd", "exec_cmd"):
+                    is_blocked, reason = is_hardline_blocked_command(v)
+                    if is_blocked:
+                        raise CommandSecurityViolationError(f"Prohibited terminal command: {reason}")
+        except Exception as term_err:
+            if "CommandSecurityViolationError" in type(term_err).__name__:
+                raise
+
+        # Stage 4: Path Read / Write Guard
+        try:
+            from security.terminal_guard import assert_safe_read_path, assert_safe_write_path, SecurityViolationError
+            for k, v in arguments.items():
+                if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):
+                    if name in ("write_file", "patch", "delete_file", "append_file", "save_file"):
+                        assert_safe_write_path(v)
+                    elif name in ("read_file", "view_file", "inspect_file", "get_file"):
+                        assert_safe_read_path(v)
+        except Exception as path_err:
+            if "SecurityViolationError" in type(path_err).__name__:
+                raise
+
     async def execute_tool(
         self,
         name: str,
@@ -275,6 +332,9 @@ class UnifiedToolRegistry:
         entry = self.get_tool(name)
         if not entry:
             raise KeyError(f"Tool '{name}' is not registered in UnifiedToolRegistry.")
+
+        # Run Centralized Security Interceptor Pipeline before executing handler
+        self._run_security_interceptors(name, arguments or {})
 
         # Validate arguments against Pydantic schema if provided
         args_payload: Any = arguments or {}
