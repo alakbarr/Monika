@@ -22,58 +22,8 @@ from typing import Any, Dict, Optional, Tuple, Union
 logger = logging.getLogger("TradingAgent.Agent.ErrorClassifier")
 
 
-class FailoverReason(str, enum.Enum):
-    """Structured taxonomy of failure reasons across LLM, infra, and broker layers."""
-    # Auth & Permissions
-    AUTH = "auth"
-    AUTH_PERMANENT = "auth_permanent"
-    BILLING = "billing"
-    BILLING_UNVERIFIED = "billing_unverified"
-    MODEL_ENTITLEMENT = "model_entitlement"
+from provider.error_taxonomy import FailoverReason  # noqa: F401 (canonical re-export)
 
-    # Rate Limiting & Capacity
-    RATE_LIMIT = "rate_limit"
-    UPSTREAM_RATE_LIMIT = "upstream_rate_limit"
-    UPSTREAM_BLOCKED = "upstream_blocked"  # WAF, Cloudflare, 403 CDN
-    OVERLOADED = "overloaded"
-
-    # Network & Transport
-    SERVER_ERROR = "server_error"
-    TIMEOUT = "timeout"
-    SSL_CERT_VERIFICATION = "ssl_cert_verification"
-    CONNECTION_LOST = "connection_lost"
-
-    # Context & Payload
-    CONTEXT_OVERFLOW = "context_overflow"
-    PAYLOAD_TOO_LARGE = "payload_too_large"
-    IMAGE_TOO_LARGE = "image_too_large"
-    IMAGE_CORRUPT = "image_corrupt"
-
-    # Model & Formatting
-    MODEL_NOT_FOUND = "model_not_found"
-    PROVIDER_POLICY_BLOCKED = "provider_policy_blocked"
-    CONTENT_POLICY_BLOCKED = "content_policy_blocked"
-    FORMAT_ERROR = "format_error"
-    ROLE_ALTERNATION = "role_alternation"
-    INVALID_ENCRYPTED_CONTENT = "invalid_encrypted_content"
-    MULTIMODAL_TOOL_CONTENT_UNSUPPORTED = "multimodal_tool_content_unsupported"
-    REASONING_MANDATORY = "reasoning_mandatory"
-    THINKING_SIGNATURE = "thinking_signature"
-    LONG_CONTEXT_TIER = "long_context_tier"
-    OAUTH_LONG_CONTEXT_BETA_FORBIDDEN = "oauth_long_context_beta_forbidden"
-    LLAMA_CPP_GRAMMAR_PATTERN = "llama_cpp_grammar_pattern"
-
-    # Trading & Financial Domain Sub-Taxonomy
-    BROKER_DISCONNECTED = "broker_disconnected"
-    MARGIN_CALL_RISK = "margin_call_risk"
-    INSUFFICIENT_MARGIN = "insufficient_margin"
-    OFF_QUOTES = "off_quotes"
-    MARKET_CLOSED = "market_closed"
-    PRICE_SLIPPAGE_EXCEEDED = "price_slippage_exceeded"
-    MARKET_DATA_STALE = "market_data_stale"
-
-    # Fallback
-    UNKNOWN = "unknown"
 
 
 @dataclass
