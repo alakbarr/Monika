@@ -959,7 +959,7 @@ class TradingDashboard(App):
                     activity_res = await session.get(f"{self.api_url}/api/activity?limit=30")
                     tokens_res = await session.get(f"{self.api_url}/api/v1/tokens/summary")
                     perf_res = await session.get(f"{self.api_url}/api/paper-trading")
-                    signals_res = await session.get(f"{self.api_url}/api/mt5/signals?limit=20")
+                    signals_res = await session.get(f"{self.api_url}/api/signals/mt5?limit=20")
                     scorecard_res = await session.get(f"{self.api_url}/api/risk/scorecard")
                     yields_res = await session.get(f"{self.api_url}/api/market/yields")
                     fg_res = await session.get(f"{self.api_url}/api/market/fear-greed")

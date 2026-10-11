@@ -101,6 +101,10 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
     for ws in dead:
         _active_websockets.discard(ws)
         _client_queues.pop(ws, None)
+        try:
+            await ws.close()
+        except Exception:
+            pass
 
 
 class TriggerCycleRequest(BaseModel):
