@@ -54,6 +54,7 @@ class OrderBlockData:
     formed_at: datetime
     mitigated_at: Optional[datetime] = None
     has_confluent_fvg: bool = False
+    confirmed_at: Optional[datetime] = None
 
 
 @dataclass
@@ -645,12 +646,14 @@ class MarketStructureAnalyzer:
                 
                 # RELAXED threshold per IMP-2
                 if impulse_move > max(body_size * 2, atr * 1.5):
-                    post_impulse_low = ohlcv.iloc[i+1:min(i+10, n)]['low'].min()
+                    confirm_idx = min(i + 10, n - 1)
+                    post_impulse_low = ohlcv.iloc[i+1:confirm_idx+1]['low'].min()
                     if post_impulse_low > candle['low']:  # Price stayed above OB
                         new_bullish.append(OrderBlockData(
                             symbol=symbol, timeframe=timeframe, direction="bullish",
                             price_high=float(candle['high']), price_low=float(candle['low']),
-                            formed_at=candle['timestamp']
+                            formed_at=candle['timestamp'],
+                            confirmed_at=ohlcv.iloc[confirm_idx]['timestamp'],
                         ))
             
             # Bearish OB: bullish candle followed by impulse bearish move
@@ -661,12 +664,14 @@ class MarketStructureAnalyzer:
                 
                 # RELAXED threshold per IMP-2
                 if impulse_move > max(body_size * 2, atr * 1.5):
-                    post_impulse_high = ohlcv.iloc[i+1:min(i+10, n)]['high'].max()
+                    confirm_idx = min(i + 10, n - 1)
+                    post_impulse_high = ohlcv.iloc[i+1:confirm_idx+1]['high'].max()
                     if post_impulse_high < candle['high']:  # Price stayed below OB
                         new_bearish.append(OrderBlockData(
                             symbol=symbol, timeframe=timeframe, direction="bearish",
                             price_high=float(candle['high']), price_low=float(candle['low']),
-                            formed_at=candle['timestamp']
+                            formed_at=candle['timestamp'],
+                            confirmed_at=ohlcv.iloc[confirm_idx]['timestamp'],
                         ))
         
         # Mitigation check (penetration into 50% of the OB zone)

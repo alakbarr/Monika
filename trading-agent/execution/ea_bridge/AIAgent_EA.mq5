@@ -113,7 +113,7 @@ void CheckPythonHeartbeat(datetime now)
         return;
     }
 
-    int handle = FileOpen(HEARTBEAT_FILE_PYTHON, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI);
+    int handle = FileOpen(HEARTBEAT_FILE_PYTHON, FILE_READ | FILE_TXT | FILE_COMMON | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
     if(handle == INVALID_HANDLE)
     {
         Print("[AIAgent EA] Cannot open heartbeat file.");

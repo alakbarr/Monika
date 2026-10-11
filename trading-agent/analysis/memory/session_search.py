@@ -299,9 +299,13 @@ class SessionSearchEngine:
                     dense_rows = []
 
             if not dense_rows:
-                dense_stmt = select(DecisionReflection).where(DecisionReflection.embedding.isnot(None))
+                dense_stmt = (
+                    select(DecisionReflection)
+                    .where(DecisionReflection.embedding.isnot(None))
+                )
                 if as_of is not None:
                     dense_stmt = dense_stmt.where(DecisionReflection.created_at <= as_of)
+                dense_stmt = dense_stmt.order_by(DecisionReflection.created_at.desc()).limit(1000)
                 all_embedded = (await session.execute(dense_stmt)).scalars().all()
 
                 if all_embedded:

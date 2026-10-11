@@ -12,6 +12,7 @@ import logging
 import math
 from typing import Dict, Any, Optional, List
 
+import secrets
 from analysis.tools.kernel.persistent_kernel import PersistentCodeKernel
 
 logger = logging.getLogger("TradingAgent.QuantSandboxRPC")
@@ -22,9 +23,10 @@ class QuantSandboxRpcServer:
     Lightweight JSON-RPC loopback execution server for quantitative calculations.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 8991):
+    def __init__(self, host: str = "127.0.0.1", port: int = 8991, auth_token: Optional[str] = None):
         self.host = host
         self.port = port
+        self.auth_token = auth_token or secrets.token_hex(16)
         self.kernel = PersistentCodeKernel(session_id="quant_rpc")
         self._server: Optional[asyncio.Server] = None
         self._is_running = False
@@ -166,6 +168,18 @@ class QuantSandboxRpcServer:
                 if not line:
                     return
                 req = json.loads(line.decode("utf-8"))
+                # Enforce token validation on network TCP connections
+                if self.auth_token:
+                    provided = req.get("auth_token") or req.get("params", {}).get("auth_token")
+                    if provided != self.auth_token:
+                        err_resp = {
+                            "jsonrpc": "2.0",
+                            "id": req.get("id"),
+                            "error": {"code": -32000, "message": "Unauthorized: Invalid or missing RPC auth token"},
+                        }
+                        writer.write((json.dumps(err_resp) + "\n").encode("utf-8"))
+                        await writer.drain()
+                        return
                 resp = await self.handle_request(req)
                 writer.write((json.dumps(resp) + "\n").encode("utf-8"))
                 await writer.drain()
@@ -193,14 +207,16 @@ class QuantSandboxClient:
     Direct in-process or loopback client for executing quant computations.
     """
 
-    def __init__(self, server: Optional[QuantSandboxRpcServer] = None):
+    def __init__(self, server: Optional[QuantSandboxRpcServer] = None, auth_token: Optional[str] = None):
         self._server = server or QuantSandboxRpcServer()
+        self.auth_token = auth_token or getattr(self._server, "auth_token", None)
 
     async def compute_stats(self, series: List[float]) -> Dict[str, Any]:
         """Compute summary statistics for a price or tick series."""
         resp = await self._server.handle_request({
             "id": 1,
             "method": "compute_stats",
+            "auth_token": self.auth_token,
             "params": {"series": series},
         })
         return resp.get("result", {})
@@ -210,6 +226,7 @@ class QuantSandboxClient:
         resp = await self._server.handle_request({
             "id": 2,
             "method": "compute_correlation",
+            "auth_token": self.auth_token,
             "params": {"series_a": series_a, "series_b": series_b},
         })
         return resp.get("result", {})
@@ -219,6 +236,7 @@ class QuantSandboxClient:
         resp = await self._server.handle_request({
             "id": 3,
             "method": "execute_code",
+            "auth_token": self.auth_token,
             "params": {"code": code, "timeout_seconds": timeout_seconds},
         })
         return resp.get("result", {})
