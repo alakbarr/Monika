@@ -50,7 +50,7 @@ class TrajectoryCompressionConfig:
     verbose_turn_max_chars: int = 2400
 
 
-class TrajectoryCompressor:
+class DatasetTrajectoryCompressor:
     """
     Compresses conversation trajectories to fit model context windows for fine-tuning.
     """
@@ -196,3 +196,7 @@ class TrajectoryCompressor:
                     logger.warning("Failed compressing trajectory line %d: %s", processed, exc)
 
         return {"processed": processed, "written": written}
+
+
+# Backward-compatible alias
+TrajectoryCompressor = DatasetTrajectoryCompressor

@@ -1082,6 +1082,18 @@ class ChatAgent:
             guidance_text = "\n".join(f"- {g}" for g in self._steer_queue)
             self._steer_queue.clear()
             clean_message = f"[OPERATOR STEERING GUIDANCE]:\n{guidance_text}\n\n{clean_message}"
+
+        # Prompt injection safety pre-flight check
+        try:
+            from security.prompt_injection_scanner import PromptInjectionScanner
+            scan_res = PromptInjectionScanner.scan(clean_message, threshold=0.75)
+            if not scan_res.is_safe:
+                logger.warning(f"[ChatAgent] Rejected hostile message from user {self.user_id}: {scan_res.rejection_reason}")
+                return f"[KEAMANAN] Pesan ditolak karena terdeteksi potensi prompt injection/adversarial jailbreak ({scan_res.rejection_reason}).", None
+            if scan_res.sanitized_text and scan_res.threat_score > 0.0:
+                clean_message = scan_res.sanitized_text
+        except Exception as scan_err:
+            logger.debug(f"[ChatAgent] Prompt injection pre-flight non-fatal error: {scan_err}")
         
         # Auto-detect jika tidak ada manual preference
         if preference == 'auto':

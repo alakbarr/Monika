@@ -1,49 +1,30 @@
 """
 Multi-Scope Content Threat & Prompt Injection Detector.
-
-Provides defense against:
-1. Prompt Injections (jailbreaks, instruction overrides, hidden HTML).
-2. Secret Exfiltration attempts (credentials, .env inspection).
-3. Invisible & Bidirectional Unicode obfuscation (ZWS, BiDi overrides).
-Applies across ALL ingested surfaces (scraped news, RSS feeds, economic calendar, and user messages).
+Thin facade delegating to the unified security scanner: security.prompt_injection_scanner.
 """
 
-import re
-import unicodedata
 from typing import Any, Dict, List, Set
+from security.prompt_injection_scanner import PromptInjectionScanner, INVISIBLE_CHARS
 
+# Re-export patterns for backward compatibility with existing tests
 INJECTION_PATTERNS = [
-    r"ignore\s+(?:all\s+)?previous\s+instructions",
-    r"system\s+prompt\s+override",
-    r"you\s+are\s+now\s+a\b",
-    r"pretend\s+to\s+be\b",
-    r"disregard\s+all\s+(?:prior|previous)\s+rules",
-    r"override\s+(?:all\s+)?safety\s+(?:checks|rules|guidelines)",
-    r"<!--[\s\S]*?-->",  # Hidden HTML comment injection
-    r'<div\s+style=[\'"][^\'"]*display:\s*none[\'"]',  # Hidden CSS injection
-    r'<span\s+style=[\'"][^\'"]*display:\s*none[\'"]',
+    p.pattern
+    for p, _, _ in (
+        PromptInjectionScanner.OVERRIDE_PATTERNS
+        + PromptInjectionScanner.JAILBREAK_PATTERNS
+        + PromptInjectionScanner.DELIMITER_PATTERNS
+    )
 ]
 
 EXFILTRATION_PATTERNS = [
-    r"curl\s+[^\n]*\$(?:[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|AUTH))",
-    r"cat\s+[^\n]*\.env\b",
-    r"authorized_keys",
-    r"(?:id_rsa|id_ed25519)",
-    r"exfiltrate",
+    p.pattern for p, _, _ in PromptInjectionScanner.EXFILTRATION_PATTERNS
 ]
-
-# Invisible Unicode, Zero-Width Characters, and BiDi Overrides
-INVISIBLE_CHARS: Set[int] = (
-    set(range(0x200B, 0x200F))  # ZWS, ZWNJ, ZWJ, LRM, RLM
-    | set(range(0x202A, 0x202F))  # LRE, RLE, PDF, LRO, RLO
-    | {0xFEFF, 0x2060, 0x00AD}    # BOM, Word Joiner, Soft Hyphen
-)
 
 
 class ThreatDetector:
     """Security scanner detecting adversarial promptware and covert unicode injection."""
 
-    MAX_SCAN_CHARS: int = 65_536
+    MAX_SCAN_CHARS: int = PromptInjectionScanner.MAX_SCAN_CHARS
 
     @classmethod
     def scan(cls, text: str, scope: str = "all") -> List[Dict[str, Any]]:
@@ -54,68 +35,43 @@ class ThreatDetector:
         if not text or not isinstance(text, str):
             return []
 
+        result = PromptInjectionScanner.scan(text, threshold=0.70)
         findings: List[Dict[str, Any]] = []
-        bounded_text = text[:cls.MAX_SCAN_CHARS]
 
-        # 1. Unicode Steganography & BiDi Scanning
-        for idx, char in enumerate(bounded_text[:10_000]):
-            code = ord(char)
-            if code in INVISIBLE_CHARS:
+        for p_label in result.detected_patterns:
+            if "invisible_unicode" in p_label:
                 findings.append({
                     "type": "invisible_unicode",
-                    "char": hex(code),
-                    "pos": idx,
+                    "char": "unicode_control",
+                    "pos": 0,
                     "severity": "high",
                 })
-
-        # Normalize via NFKC to defeat homoglyph obfuscation
-        normalized = unicodedata.normalize("NFKC", bounded_text)
-
-        # 2. Prompt Injection Scanning
-        for pattern in INJECTION_PATTERNS:
-            match = re.search(pattern, normalized, re.IGNORECASE)
-            if match:
+            elif "exfiltration" in p_label or "env_file" in p_label or "ssh_key" in p_label:
                 findings.append({
-                    "type": "prompt_injection",
-                    "pattern": pattern[:60],
-                    "match": match.group(0)[:80],
+                    "type": "exfiltration_threat",
+                    "pattern": p_label,
+                    "match": p_label,
                     "severity": "critical",
                 })
-
-        # 3. Exfiltration Scanning (if strict or all)
-        if scope in ("all", "strict"):
-            for pattern in EXFILTRATION_PATTERNS:
-                match = re.search(pattern, normalized, re.IGNORECASE)
-                if match:
-                    findings.append({
-                        "type": "exfiltration_threat",
-                        "pattern": pattern[:60],
-                        "match": match.group(0)[:80],
-                        "severity": "critical",
-                    })
+            else:
+                findings.append({
+                    "type": "prompt_injection",
+                    "pattern": p_label,
+                    "match": p_label,
+                    "severity": "critical",
+                })
 
         return findings
 
     @classmethod
     def sanitize(cls, text: str) -> str:
-        """
-        Strips invisible unicode, neutralizes BiDi overrides, and normalizes characters.
-        Safe for consumption by LLM prompts.
-        """
-        if not text or not isinstance(text, str):
-            return ""
-
-        # Normalize unicode
-        normalized = unicodedata.normalize("NFKC", text)
-
-        # Filter out invisible and bidi control characters
-        clean_chars = [ch for ch in normalized if ord(ch) not in INVISIBLE_CHARS]
-        return "".join(clean_chars)
+        """Strips invisible unicode, neutralizes BiDi overrides, and normalizes characters."""
+        return PromptInjectionScanner.sanitize_unicode(text)
 
     @classmethod
     def is_clean(cls, text: str, scope: str = "all") -> bool:
         """Helper returning True if input has zero threat findings."""
-        return len(cls.scan(text, scope=scope)) == 0
+        return PromptInjectionScanner.is_clean(text)
 
 
 # Default module-level singleton instance

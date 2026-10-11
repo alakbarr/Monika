@@ -161,8 +161,8 @@ async def test_portfolio_manager_empty_response_fallback(mock_client):
     
     result = await make_portfolio_decision(mock_client, "EURUSD", {}, {})
     assert isinstance(result, dict)
-    assert result["approval"] is True
-    assert result["recommended_risk_multiplier"] == 0.5
+    assert result["approval"] is False
+    assert result["recommended_risk_multiplier"] == 0.0
     assert result.get("parse_error") is True
     assert "Fallback - Parse Error" in result["reason"]
 
@@ -173,6 +173,6 @@ async def test_portfolio_manager_invalid_json_fallback(mock_client):
     
     result = await make_portfolio_decision(mock_client, "EURUSD", {}, {})
     assert isinstance(result, dict)
-    assert result["approval"] is True
-    assert result["recommended_risk_multiplier"] == 0.5
+    assert result["approval"] is False
+    assert result["recommended_risk_multiplier"] == 0.0
     assert result.get("parse_error") is True
