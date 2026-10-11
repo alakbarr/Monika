@@ -983,14 +983,20 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             try:
                 from analysis.validators.output_verifier import OutputVerifier
                 verifier = OutputVerifier(self.settings)
+                entry_payload = json.loads(analysis.entry_zone) if isinstance(analysis.entry_zone, (str, bytes, bytearray)) else (analysis.entry_zone if isinstance(analysis.entry_zone, dict) else {})
+                if not entry_payload.get("price") and getattr(analysis, "entry_price", None) is not None:
+                    try:
+                        entry_payload["price"] = float(analysis.entry_price)
+                    except (TypeError, ValueError):
+                        pass
                 raw_payload = {
                     "decision": analysis.decision,
-                    "entry_condition": json.loads(analysis.entry_zone) if analysis.entry_zone else {},
+                    "entry_condition": entry_payload,
                     "stop_loss": analysis.stop_loss,
                     "take_profit": analysis.take_profit,
                     "confluence_score": analysis.confluence_score,
                     "priced_in_score": analysis.priced_in_score,
-                    "reevaluation_trigger": json.loads(analysis.reevaluation_trigger) if analysis.reevaluation_trigger else {},
+                    "reevaluation_trigger": json.loads(analysis.reevaluation_trigger) if isinstance(analysis.reevaluation_trigger, (str, bytes, bytearray)) else (analysis.reevaluation_trigger if isinstance(analysis.reevaluation_trigger, dict) else {}),
                     "rationale": analysis.rationale,
                 }
                 verified, corrections = await verifier.verify_and_correct(

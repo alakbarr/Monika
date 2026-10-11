@@ -22,7 +22,7 @@ logger = logging.getLogger("TradingAgent.Agent.TrajectoryCompressor")
 INVARIANT_PATTERN = re.compile(r"<mechanical-invariants>.*?</mechanical-invariants>", re.DOTALL | re.IGNORECASE)
 
 
-class TrajectoryCompressor:
+class InvariantTrajectoryCompressor:
     """
     Unified Trajectory Compression Engine.
     
@@ -139,3 +139,7 @@ class TrajectoryCompressor:
                 sanitized.append(msg_copy)
 
         return sanitized
+
+
+# Backward-compatible alias
+TrajectoryCompressor = InvariantTrajectoryCompressor

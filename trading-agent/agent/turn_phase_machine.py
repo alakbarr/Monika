@@ -14,6 +14,10 @@ Replaces monolithic nested while-loops with an explicit phase state machine:
   5. NORMALIZE_RESPONSE: Parse multimodal tags, scrub reasoning blocks, validate JSON schemas.
   6. TOOL_ROUND / TEXT_RESPONSE: Execute tool batch (enforcing persist-before-execute) or complete turn.
   7. FINALIZE_TURN: Commit turn boundary, update usage counters, export telemetry.
+
+NOTE: Standalone alternative turn-loop engine. In current production, runtime execution
+is driven by `analysis.harness.AgentHarness`. This module is maintained for experimental
+phase-isolated testing and future modular harness migration.
 """
 
 from __future__ import annotations

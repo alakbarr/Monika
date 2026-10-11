@@ -177,3 +177,6 @@ class TradingState(TypedDict):
     rejection_feedback: Optional[Dict[str, Any]]
     is_negotiable_rejection: bool
     archived_payloads: Optional[Dict[str, Any]]
+
+    # Dynamic Desk Swarm & Execution Metadata
+    metadata: Annotated[Dict[str, Any], merge_dicts]

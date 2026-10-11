@@ -218,7 +218,7 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
 
 
 
-class ContextCompressor:
+class PromptBundleCompressor:
     """Kompres data bundle sebelum injeksi ke LLM prompt."""
 
     def __init__(self, settings: Optional[dict] = None):
@@ -511,3 +511,7 @@ class ContextCompressor:
             return self._prune_text_bundle_safely(bundle, max_tokens=max_tokens)
 
         return str(bundle)
+
+
+# Backward-compatible alias
+ContextCompressor = PromptBundleCompressor

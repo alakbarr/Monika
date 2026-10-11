@@ -311,7 +311,8 @@ class StartupChecker:
             eng = self.db_engine or engine or get_engine()
             eng_url = getattr(eng, "url", None)
             if hasattr(eng_url, "render_as_string"):
-                eng_url = eng_url.render_as_string(hide_password=True)
+                rendered = eng_url.render_as_string(hide_password=True)
+                eng_url = rendered if isinstance(rendered, (str, bytes)) else None
             elif not isinstance(eng_url, (str, bytes)):
                 eng_url = None
             db_url = eng_url or _get_env("DATABASE_URL", "")

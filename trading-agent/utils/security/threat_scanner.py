@@ -1,19 +1,20 @@
 """
 Prompt injection threat scanner and sanitizer tailored to trading safety.
+Thin facade delegating to the unified security scanner: security.prompt_injection_scanner.
 """
 
-import re
-from typing import List, Tuple
+from typing import Any, List, Tuple
+from security.prompt_injection_scanner import PromptInjectionScanner
 
-THREAT_PATTERNS: List[Tuple[re.Pattern, str]] = [
-    (re.compile(r"ignore\s+(?:all\s+)?previous\s+instructions", re.IGNORECASE), "instruction_override"),
-    (re.compile(r"you\s+are\s+now\s+(?:a|an)\s+", re.IGNORECASE), "role_hijack"),
-    (re.compile(r"<\s*(?:system|developer|assistant)\s*>", re.IGNORECASE), "tag_injection"),
-    (re.compile(r"system\s*:\s*", re.IGNORECASE), "role_prefix_injection"),
-    (re.compile(r"(?:buy|sell|long|short)\s+(?:immediately|now|everything|all\s+in)", re.IGNORECASE), "trade_manipulation"),
-    (re.compile(r"disable\s+(?:risk|stop.?loss|sl|kill.?switch)", re.IGNORECASE), "safety_bypass"),
-    (re.compile(r"set\s+(?:leverage|lot.?size)\s+(?:to\s+)?(?:max|maximum|\d{3,})", re.IGNORECASE), "risk_manipulation"),
-    (re.compile(r"override\s+(?:risk\s+gate|position\s+guardian|drawdown)", re.IGNORECASE), "risk_override"),
+# Re-export patterns for backward compatibility with existing tests
+THREAT_PATTERNS: List[Tuple[Any, str]] = [
+    (p, label)
+    for p, _, label in (
+        PromptInjectionScanner.OVERRIDE_PATTERNS
+        + PromptInjectionScanner.JAILBREAK_PATTERNS
+        + PromptInjectionScanner.TRADING_MANIPULATION_PATTERNS
+        + PromptInjectionScanner.DELIMITER_PATTERNS
+    )
 ]
 
 
@@ -35,14 +36,7 @@ def scan_content(text: str) -> List[Tuple[str, str]]:
 
 def sanitize_or_block(text: str, source: str = "external_data") -> str:
     """
-    Evaluates content for threats. If any threat pattern is discovered,
-    the text is blocked from entering LLM context and replaced with a warning notice.
+    Evaluates content for threats via PromptInjectionScanner.
+    If unsafe, the text is blocked and replaced with a safety warning notice.
     """
-    threats = scan_content(text)
-    if threats:
-        names = ", ".join(t[0] for t in threats)
-        return (
-            f"[BLOCKED: Data from '{source}' contained potential injection/manipulation "
-            f"patterns ({names}). Content not loaded to protect execution safety.]"
-        )
-    return text
+    return PromptInjectionScanner.sanitize_or_block(text, source=source)

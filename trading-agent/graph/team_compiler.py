@@ -129,7 +129,8 @@ class TeamCompiler:
                 async def _default_role_handler(state: Any, r=role) -> Dict[str, Any]:
                     logger.debug(f"Executing desk node [{r.name}] for desk [{desk_id}]")
                     # Store desk analysis into state metadata
-                    meta = dict(getattr(state, "metadata", {}) or {})
+                    raw_meta = state.get("metadata", {}) if isinstance(state, dict) else getattr(state, "metadata", {})
+                    meta = dict(raw_meta or {})
                     desk_logs = meta.setdefault("desk_analyses", {})
                     desk_logs[r.role_id] = {
                         "role_name": r.name,
