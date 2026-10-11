@@ -795,6 +795,7 @@ Monika/
     │   │       ├── 0001_initial_schema.py
     │   │       ├── 0002_user_prefs_and_journal.py
     │   │       ├── 0003_add_benchmark_tables_and_cache_cost_columns.py
+    │   │       ├── 0004_fk_cascade_integrity.py
     │   │       ├── __init__.py
     │   │       └── c83c5e451412_sync_schema_indexes_types_and_.py
     │   ├── models.py
