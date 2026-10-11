@@ -7,6 +7,7 @@ System status, observability, and calibration tool handlers.
 Direct execution without circular trampolines.
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
@@ -72,15 +73,19 @@ async def handle_get_system_health(args: dict, session: Optional[AsyncSession] =
     mt5_ping_ms = None
     mt5_terminal_connected = False
     try:
-        from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
-        mt5 = ensure_mt5_module()
-        if mt5 and (is_native_mt5_available() or is_mt5linux_available()):
-            t_info = mt5.terminal_info()
-            if t_info:
-                mt5_terminal_connected = bool(getattr(t_info, "connected", False))
-                raw_ping = getattr(t_info, "ping_last", None)
-                if raw_ping is not None:
-                    mt5_ping_ms = round(raw_ping / 1000.0, 2) if raw_ping > 1000 else float(raw_ping)
+        def _get_terminal_info():
+            from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            mt5 = ensure_mt5_module()
+            if mt5 and (is_native_mt5_available() or is_mt5linux_available()):
+                return mt5.terminal_info()
+            return None
+
+        t_info = await asyncio.to_thread(_get_terminal_info)
+        if t_info:
+            mt5_terminal_connected = bool(getattr(t_info, "connected", False))
+            raw_ping = getattr(t_info, "ping_last", None)
+            if raw_ping is not None:
+                mt5_ping_ms = round(raw_ping / 1000.0, 2) if raw_ping > 1000 else float(raw_ping)
     except Exception:
         pass
 
@@ -639,14 +644,18 @@ async def handle_get_latency_breakdown(args: dict, session: Optional[AsyncSessio
 
         mt5_ping = None
         try:
-            from execution.mt5_compat import ensure_mt5_module
-            mt5 = ensure_mt5_module()
-            if mt5:
-                t_info = mt5.terminal_info()
-                if t_info and hasattr(t_info, "ping_last"):
-                    raw_ping = float(t_info.ping_last)
-                    mt5_ping = round(raw_ping / 1000.0, 2) if raw_ping > 1000 else raw_ping
-                    stage_latencies["mt5_broker_network_ping"] = {"current_ms": mt5_ping}
+            def _get_telemetry_terminal_info():
+                from execution.mt5_compat import ensure_mt5_module
+                mt5 = ensure_mt5_module()
+                if mt5:
+                    return mt5.terminal_info()
+                return None
+
+            t_info = await asyncio.to_thread(_get_telemetry_terminal_info)
+            if t_info and hasattr(t_info, "ping_last"):
+                raw_ping = float(t_info.ping_last)
+                mt5_ping = round(raw_ping / 1000.0, 2) if raw_ping > 1000 else raw_ping
+                stage_latencies["mt5_broker_network_ping"] = {"current_ms": mt5_ping}
         except Exception:
             pass
 

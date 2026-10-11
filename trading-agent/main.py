@@ -250,7 +250,14 @@ class TradingAgent:
     _tasks: list[asyncio.Task]
 
     def __init__(self, settings: dict, dry_run: bool = False):
-        paper_enabled = bool(self.settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        self.settings = settings
+        paper_cfg = self.settings.get("trading", {}).get("paper_trading", {})
+        if "enabled" in paper_cfg:
+            paper_enabled = bool(paper_cfg["enabled"])
+        elif "paper_trading" in self.settings:
+            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", False))
+        else:
+            paper_enabled = False
         self.dry_run = dry_run or paper_enabled
         self.shutdown_event = asyncio.Event()
         # Event to block the initial cycle until startup recovery completes.
@@ -1810,14 +1817,23 @@ class TradingAgent:
             (getattr(self, "config_manager", None), "ConfigManager"),
         ]:
             try:
-                if comp and hasattr(comp, "stop"):
-                    stop_fn = comp.stop
-                    if inspect.iscoroutinefunction(stop_fn):
-                        await stop_fn()
-                    else:
-                        res = stop_fn()
-                        if inspect.isawaitable(res):
-                            await res
+                if comp:
+                    if hasattr(comp, "aclose"):
+                        aclose_fn = comp.aclose
+                        if inspect.iscoroutinefunction(aclose_fn):
+                            await aclose_fn()
+                        else:
+                            res = aclose_fn()
+                            if inspect.isawaitable(res):
+                                await res
+                    if hasattr(comp, "stop"):
+                        stop_fn = comp.stop
+                        if inspect.iscoroutinefunction(stop_fn):
+                            await stop_fn()
+                        else:
+                            res = stop_fn()
+                            if inspect.isawaitable(res):
+                                await res
                     logger.info(f"  [OK] {name} stopped")
             except Exception as e:
                 logger.warning(f"  [WARN] {name} stop failed: {e}")
