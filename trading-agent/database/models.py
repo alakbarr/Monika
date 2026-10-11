@@ -489,7 +489,7 @@ class AssetAnalysis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    brief_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('fundamental_briefs.id', ondelete='SET NULL'), nullable=True)
+    brief_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('fundamental_briefs.id', ondelete='SET NULL'), nullable=True, index=True)
     decision: Mapped[str] = mapped_column(String(10))  # buy, sell, avoid, wait
     confidence: Mapped[float] = mapped_column(Float)
     entry_zone: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON entry condition
@@ -1144,7 +1144,7 @@ class TradePlanLeg(Base):
     stop_loss: Mapped[float] = mapped_column(Float)
     take_profit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     ticket_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True)
+    position_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('positions.id', ondelete='SET NULL'), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, filled, tp_hit, sl_hit, closed, cancelled
     filled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1384,10 +1384,10 @@ class ConfluenceFactorOutcome(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     paper_trade_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('paper_trade_records.id', ondelete='CASCADE'), nullable=True
+        Integer, ForeignKey('paper_trade_records.id', ondelete='CASCADE'), nullable=True, index=True
     )
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True
+        Integer, ForeignKey('asset_analysis.id', ondelete='CASCADE'), nullable=True, index=True
     )
     symbol: Mapped[str] = mapped_column(String(20))
     factor_name: Mapped[str] = mapped_column(String(50))
@@ -1423,7 +1423,7 @@ class DecisionReflection(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     analysis_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True
+        Integer, ForeignKey('asset_analysis.id', ondelete='SET NULL'), nullable=True, index=True
     )
     position_id: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True
@@ -1571,7 +1571,7 @@ class BacktestRun(Base):
 class BacktestTrade(Base):
     __tablename__ = "backtest_trade"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("backtest_run.id", ondelete="CASCADE"))
+    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("backtest_run.id", ondelete="CASCADE"), index=True)
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     entry_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

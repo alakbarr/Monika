@@ -208,6 +208,10 @@ def get_engine():
                 cursor.execute("PRAGMA journal_size_limit=67108864")
                 cursor.close()
 
+            @event.listens_for(engine.sync_engine, "begin")
+            def _sqlite_begin_immediate(conn):
+                conn.exec_driver_sql("BEGIN IMMEDIATE")
+
     return engine
 
 
