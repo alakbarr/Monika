@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+import os
 import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -17,7 +18,7 @@ from analysis.memory.lesson_consolidator import (
     enforce_declarative_memory_rule,
 )
 from analysis.memory.playbook_linter import PlaybookLinter
-from analysis.memory.playbook_ledger import PlaybookLedger
+from analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
 import utils.clock as clock
 
 logger = logging.getLogger("TradingAgent.PlaybookCurator")
@@ -171,18 +172,24 @@ class PlaybookCurator:
         playbook_path = self.playbooks_dir / playbook_filename
         crystallized_path = self.crystallized_dir / f"crystallized_{clean_sym.lower()}.md"
 
-        action = "update" if playbook_path.exists() else "create"
-        blob_hash = self.ledger.record_mutation(
-            playbook_name=playbook_filename,
-            content=full_content,
-            action=action,
-            reason=f"Curated from {win_count}/{total_count} winning trades (WR={win_rate:.1%})",
-            author="playbook_curator",
-        )
+        async with get_playbook_async_lock():
+            action = "update" if playbook_path.exists() else "create"
+            blob_hash = self.ledger.record_mutation(
+                playbook_name=playbook_filename,
+                content=full_content,
+                action=action,
+                reason=f"Curated from {win_count}/{total_count} winning trades (WR={win_rate:.1%})",
+                author="playbook_curator",
+            )
 
-        playbook_path.write_text(full_content, encoding="utf-8")
-        crystallized_path.write_text(full_content, encoding="utf-8")
-        logger.info(f"[{clean_sym}] Successfully curated playbook -> {playbook_path.name} (hash={blob_hash[:8]})")
+            tmp_pb = playbook_path.with_name(f"{playbook_path.name}.tmp")
+            tmp_pb.write_text(full_content, encoding="utf-8")
+            os.replace(tmp_pb, playbook_path)
+
+            tmp_cr = crystallized_path.with_name(f"{crystallized_path.name}.tmp")
+            tmp_cr.write_text(full_content, encoding="utf-8")
+            os.replace(tmp_cr, crystallized_path)
+            logger.info(f"[{clean_sym}] Successfully curated playbook -> {playbook_path.name} (hash={blob_hash[:8]})")
 
         return {
             "symbol": clean_sym,

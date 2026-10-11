@@ -11,6 +11,7 @@ Evaluates post-trade reflections and execution records from DecisionMemory:
 Transforms passive reflections into active procedural memory.
 """
 
+import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -21,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import utils.clock as clock
 from skills.loader import invalidate_cache
 from analysis.memory.playbook_linter import PlaybookLinter
-from analysis.memory.playbook_ledger import PlaybookLedger
+from analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
 
@@ -159,18 +160,21 @@ sample_size: {len(trades)}
                         logger.warning(f"MicroPlaybookCompiler: Lint failed for '{playbook_name}': {lint_res.errors}")
                         continue
 
-                    ledger = PlaybookLedger(str(PLAYBOOKS_DIR))
-                    action = "update" if playbook_path.exists() else "create"
-                    blob_hash = ledger.record_mutation(
-                        playbook_name=playbook_name,
-                        content=content,
-                        action=action,
-                        reason=f"Empirical compilation ({len(trades)} trades, {win_rate*100:.1f}% WR)",
-                        author="micro_playbook_compiler",
-                    )
+                    async with get_playbook_async_lock():
+                        ledger = PlaybookLedger(str(PLAYBOOKS_DIR))
+                        action = "update" if playbook_path.exists() else "create"
+                        blob_hash = ledger.record_mutation(
+                            playbook_name=playbook_name,
+                            content=content,
+                            action=action,
+                            reason=f"Empirical compilation ({len(trades)} trades, {win_rate*100:.1f}% WR)",
+                            author="micro_playbook_compiler",
+                        )
 
-                    playbook_path.write_text(content, encoding="utf-8")
-                    invalidate_cache()
+                        tmp_path = playbook_path.with_name(f"{playbook_path.name}.tmp")
+                        tmp_path.write_text(content, encoding="utf-8")
+                        os.replace(tmp_path, playbook_path)
+                        invalidate_cache()
                     try:
                         from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
                         lifecycle = PlaybookLifecycleManager()

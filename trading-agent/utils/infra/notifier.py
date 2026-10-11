@@ -172,13 +172,18 @@ class AgentNotifier:
                 try:
                     import urllib.request
                     plain_content = re.sub(r'<[^>]+>', '', full_msg)
-                    req_data = json.dumps({"content": plain_content[:2000]}).encode("utf-8")
-                    d_req = urllib.request.Request(
-                        discord_url,
-                        data=req_data,
-                        headers={"Content-Type": "application/json", "User-Agent": "Monika-Notifier/1.0"}
-                    )
-                    urllib.request.urlopen(d_req, timeout=5.0)
+
+                    def _dispatch_discord_sync(url: str, text: str) -> None:
+                        req_data = json.dumps({"content": text[:2000]}).encode("utf-8")
+                        d_req = urllib.request.Request(
+                            url,
+                            data=req_data,
+                            headers={"Content-Type": "application/json", "User-Agent": "Monika-Notifier/1.0"}
+                        )
+                        with urllib.request.urlopen(d_req, timeout=5.0):
+                            pass
+
+                    await asyncio.to_thread(_dispatch_discord_sync, discord_url, plain_content)
                 except Exception as d_err:
                     logger.debug(f"Discord webhook dispatch non-fatal error: {d_err}")
 

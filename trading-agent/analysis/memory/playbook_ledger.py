@@ -7,6 +7,8 @@ Enables full auditability and 1-click rollback of synthesized or mutated trading
 import os
 import json
 import hashlib
+import threading
+import asyncio
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
@@ -14,6 +16,17 @@ from enum import Enum
 import logging
 
 logger = logging.getLogger("TradingAgent.Memory.PlaybookLedger")
+
+_PLAYBOOK_THREAD_LOCK = threading.Lock()
+_PLAYBOOK_ASYNC_LOCK: Optional[asyncio.Lock] = None
+
+
+def get_playbook_async_lock() -> asyncio.Lock:
+    """Returns or creates the process-wide asyncio lock for playbook mutations."""
+    global _PLAYBOOK_ASYNC_LOCK
+    if _PLAYBOOK_ASYNC_LOCK is None:
+        _PLAYBOOK_ASYNC_LOCK = asyncio.Lock()
+    return _PLAYBOOK_ASYNC_LOCK
 
 
 class PlaybookState(str, Enum):
@@ -138,26 +151,27 @@ class PlaybookLedger:
         raw_bytes = content.encode("utf-8")
         blob_hash = hashlib.sha256(raw_bytes).hexdigest()
 
-        # 1. Save blob
-        blob_path = os.path.join(self.blobs_dir, blob_hash)
-        if not os.path.exists(blob_path):
-            with open(blob_path, "wb") as bf:
-                bf.write(raw_bytes)
+        with _PLAYBOOK_THREAD_LOCK:
+            # 1. Save blob
+            blob_path = os.path.join(self.blobs_dir, blob_hash)
+            if not os.path.exists(blob_path):
+                with open(blob_path, "wb") as bf:
+                    bf.write(raw_bytes)
 
-        # 2. Append ledger entry
-        now_iso = datetime.now(timezone.utc).isoformat()
-        entry = {
-            "timestamp": now_iso,
-            "action": action,
-            "playbook_name": playbook_name,
-            "sha256_hash": blob_hash,
-            "reason": reason,
-            "author": author,
-        }
-        with open(self.ledger_file, "a", encoding="utf-8") as lf:
-            lf.write(json.dumps(entry) + "\n")
+            # 2. Append ledger entry
+            now_iso = datetime.now(timezone.utc).isoformat()
+            entry = {
+                "timestamp": now_iso,
+                "action": action,
+                "playbook_name": playbook_name,
+                "sha256_hash": blob_hash,
+                "reason": reason,
+                "author": author,
+            }
+            with open(self.ledger_file, "a", encoding="utf-8") as lf:
+                lf.write(json.dumps(entry) + "\n")
 
-        logger.info(f"[PlaybookLedger] Recorded {action} on '{playbook_name}' [hash={blob_hash[:12]}]")
+            logger.info(f"[PlaybookLedger] Recorded {action} on '{playbook_name}' [hash={blob_hash[:12]}]")
         return blob_hash
 
     def list_history(self, playbook_name: Optional[str] = None) -> List[Dict[str, Any]]:

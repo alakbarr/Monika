@@ -310,7 +310,9 @@ class StartupChecker:
 
             eng = self.db_engine or engine or get_engine()
             eng_url = getattr(eng, "url", None)
-            if eng_url is not None and type(eng_url).__name__ in ("MagicMock", "Mock", "AsyncMock"):
+            if hasattr(eng_url, "render_as_string"):
+                eng_url = eng_url.render_as_string(hide_password=True)
+            elif not isinstance(eng_url, (str, bytes)):
                 eng_url = None
             db_url = eng_url or _get_env("DATABASE_URL", "")
             db_type = "SQLite" if "sqlite" in str(db_url).lower() else "PostgreSQL"
@@ -384,42 +386,13 @@ class StartupChecker:
                                     actual_cols = existing_cols.get(t, set())
                                     missing_cols = expected_cols - actual_cols
                                     if missing_cols:
-                                        logger.warning(
-                                            f"  [WARN] Schema gap on table '{t}': missing column(s) {missing_cols}. "
-                                            f"Attempting automated database column repair..."
+                                        msg = (
+                                            f"Schema mismatch on table '{t}': missing column(s) {missing_cols}. "
+                                            f"Please apply migrations via 'alembic upgrade head'."
                                         )
-                                        from sqlalchemy.dialects import postgresql
-                                        healed_cols = []
-                                        for col_name in sorted(list(missing_cols)):
-                                            try:
-                                                col = Base.metadata.tables[t].columns[col_name]
-                                                type_sql = col.type.compile(dialect=postgresql.dialect())
-                                                default_clause = ""
-                                                if col.server_default is not None:
-                                                    default_clause = f" DEFAULT {col.server_default.arg}"
-                                                elif col.default is not None and col.default.is_scalar:
-                                                    default_val = col.default.arg
-                                                    if isinstance(default_val, bool):
-                                                        default_clause = f" DEFAULT {'TRUE' if default_val else 'FALSE'}"
-                                                    elif isinstance(default_val, (int, float)):
-                                                        default_clause = f" DEFAULT {default_val}"
-                                                    elif isinstance(default_val, str):
-                                                        default_clause = f" DEFAULT '{default_val}'"
-
-                                                alter_query = f'ALTER TABLE "{t}" ADD COLUMN IF NOT EXISTS "{col_name}" {type_sql}{default_clause}'
-                                                await conn.execute(text(alter_query))
-                                                await conn.commit()
-                                                existing_cols.setdefault(t, set()).add(col_name)
-                                                healed_cols.append(col_name)
-                                            except Exception as heal_err:
-                                                logger.warning(f"  [WARN] Column auto-heal failed for '{t}.{col_name}': {heal_err}")
-
-                                        remaining = expected_cols - existing_cols.get(t, set())
-                                        if remaining:
-                                            logger.error(f"  [FAIL] Schema mismatch on table '{t}': missing column(s) {remaining}.")
-                                            schema_gap_found = True
-                                        else:
-                                            logger.info(f"  [OK] Successfully auto-healed table '{t}': added column(s) {set(healed_cols)}.")
+                                        logger.error(f"  [FAIL] {msg}")
+                                        warnings.append(msg)
+                                        schema_gap_found = True
 
                             if schema_gap_found:
                                 ok = False

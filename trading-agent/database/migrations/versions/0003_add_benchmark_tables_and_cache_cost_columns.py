@@ -79,4 +79,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing_tables = insp.get_table_names()
+
+    if 'llm_benchmark_result' in existing_tables:
+        if 'llm_benchmark_run' in existing_tables:
+            op.drop_table('llm_benchmark_result')
+            op.drop_table('llm_benchmark_run')
+        else:
+            existing_cols = [c['name'] for c in insp.get_columns('llm_benchmark_result')]
+            for col_name in ('provider_route', 'thinking_tokens', 'cost_usd_with_cache', 'cost_usd_no_cache', 'cached_tokens'):
+                if col_name in existing_cols:
+                    op.drop_column('llm_benchmark_result', col_name)

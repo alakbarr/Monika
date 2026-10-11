@@ -475,6 +475,7 @@ class TradingAgent:
             cycle_scheduler=self.cycle_scheduler,
         )
         self.telegram_bot._activity_log = self._activity_log
+        self.telegram_bot.task_registry = self.task_registry
 
         from utils.infra.notifier import AgentNotifier
         self.notifier = AgentNotifier()
@@ -1283,12 +1284,16 @@ class TradingAgent:
         tasks_list: list[asyncio.Task] = []
 
         def _launch_task(name: str, runner: Callable, task_name: str) -> asyncio.Task:
+            t: asyncio.Task
             if hasattr(self, "task_registry") and self.task_registry:
                 try:
-                    self.task_registry.register(name, runner)
-                except Exception:
-                    pass
-            t = asyncio.create_task(_run_with_restart(name, runner, self.shutdown_event), name=task_name)
+                    defn = self.task_registry.register(name, runner, task_id=task_name)
+                    t = self.task_registry.create_asyncio_task(defn)
+                except Exception as ex:
+                    logger.warning(f"Failed to register task {name} in task_registry ({ex}), fallback to direct task.")
+                    t = asyncio.create_task(_run_with_restart(name, runner, self.shutdown_event), name=task_name)
+            else:
+                t = asyncio.create_task(_run_with_restart(name, runner, self.shutdown_event), name=task_name)
             tasks_list.append(t)
             return t
 

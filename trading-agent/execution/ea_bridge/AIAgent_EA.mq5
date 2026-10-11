@@ -257,8 +257,33 @@ void EmergencyCloseAllAIPositions()
         }
     }
 
+    // Cancel all pending AI orders to prevent rogue executions while backend is down
+    int cancelledOrders = 0;
+    int ordersTotal = OrdersTotal();
+    for(int i = ordersTotal - 1; i >= 0; i--)
+    {
+        ulong orderTicket = OrderGetTicket(i);
+        if(orderTicket == 0) continue;
+        if((int)OrderGetInteger(ORDER_MAGIC) != AI_MAGIC_NUMBER) continue;
+
+        MqlTradeRequest oReq = {};
+        MqlTradeResult  oRes = {};
+        oReq.action = TRADE_ACTION_REMOVE;
+        oReq.order  = orderTicket;
+        if(OrderSend(oReq, oRes) && (oRes.retcode == TRADE_RETCODE_DONE || oRes.retcode == 10009))
+        {
+            Print("[AIAgent EA] Emergency cancelled pending order ticket=", orderTicket);
+            cancelledOrders++;
+        }
+        else
+        {
+            Print("[AIAgent EA] FAILED to cancel pending order ticket=", orderTicket,
+                  " retcode=", oRes.retcode, " comment=", oRes.comment);
+        }
+    }
+
     Print("[AIAgent EA] Emergency close done: closed=", closedCount,
-          " failed=", failedCount);
+          " failed=", failedCount, " cancelled_pending=", cancelledOrders);
 }
 
 //+------------------------------------------------------------------+
