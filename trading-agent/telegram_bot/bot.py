@@ -1134,7 +1134,7 @@ class TelegramBot:
             if DEFAULT_SESSION_DB_PATH.exists():
                 wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
                 rewinder = StateRewindManager(wal_db)
-                rewinder.rewind_session(user_id)
+                await asyncio.to_thread(rewinder.rewind_session, user_id)
         except Exception:
             pass
 

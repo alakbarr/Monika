@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import (
     PriceOHLCV, AssetAnalysis, FundamentalBrief, ActivityLog,
     OrderLog, NewsItem, EconomicCalendar, VIXData, RiskState, TechnicalIndicator, ConfluenceFactorOutcome,
-    SwingPoint, LiquidityZone, FVGZone, OrderBlock, StructureBreak, TokenUsageLog, PrescreenLog, NewsDigest
+    SwingPoint, LiquidityZone, FVGZone, OrderBlock, StructureBreak, TokenUsageLog, PrescreenLog, NewsDigest,
+    TradingEvent
 )
 
 logger = logging.getLogger("TradingAgent.DBCleanup")
@@ -46,6 +47,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
     token_log_days   = int(retention_cfg.get("token_usage_log", 90))
     prescreen_days   = int(retention_cfg.get("prescreen_log", 30))
     digest_days      = int(retention_cfg.get("news_digest", 30))
+    trading_event_days = int(retention_cfg.get("trading_events", 90))
 
     now = datetime.now(timezone.utc)
     total_deleted = 0
@@ -117,6 +119,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             (TokenUsageLog,   "timestamp",     token_log_days, "TokenUsageLog"),
             (PrescreenLog,    "checked_at",    prescreen_days, "PrescreenLog"),
             (NewsDigest,      "generated_at",  digest_days,    "NewsDigest"),
+            (TradingEvent,    "ts_created",    trading_event_days, "TradingEvent"),
         ]
 
         for model, col_name, days, label in other_targets:

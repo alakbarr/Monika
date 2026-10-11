@@ -5,6 +5,7 @@
 import os
 import asyncio
 import logging
+import threading
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Union
 
@@ -28,6 +29,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///monika.db")
 
 engine = None
 _async_session_factory = None
+_engine_lock = threading.Lock()
 
 
 class _AsyncSessionLocalProxy:
@@ -130,100 +132,106 @@ def get_canonical_db_path() -> Path:
 
 
 def get_engine():
-    """Lazy engine factory with connection pooling."""
+    """Lazy engine factory with connection pooling (thread-safe)."""
     global engine
     if engine is None:
-        tier = get_tier()
-        env_url = os.getenv("DATABASE_URL")
-        if is_running_under_test_suite() and env_url:
-            db_url = env_url
-        elif tier == "trial":
-            db_path = get_canonical_db_path()
-            db_url = f"sqlite+aiosqlite:///{db_path.as_posix()}"
-            os.environ["DATABASE_URL"] = db_url
-            os.environ["MONIKA_TIER"] = "trial"
-            os.environ["PAPER_TRADING_MODE"] = "true"
-        else:
-            db_url = env_url or DATABASE_URL
-        if db_url.startswith("sqlite://") and not db_url.startswith("sqlite+"):
-            db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-        elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
-            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        with _engine_lock:
+            if engine is None:
+                tier = get_tier()
+                env_url = os.getenv("DATABASE_URL")
+                if is_running_under_test_suite() and env_url:
+                    db_url = env_url
+                elif tier == "trial":
+                    db_path = get_canonical_db_path()
+                    db_url = f"sqlite+aiosqlite:///{db_path.as_posix()}"
+                    os.environ["DATABASE_URL"] = db_url
+                    os.environ["MONIKA_TIER"] = "trial"
+                    os.environ["PAPER_TRADING_MODE"] = "true"
+                else:
+                    db_url = env_url or DATABASE_URL
+                if db_url.startswith("sqlite://") and not db_url.startswith("sqlite+"):
+                    db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+                elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+                    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # Normalize relative SQLite paths to canonical absolute path unless test/in-memory
-        if "sqlite" in db_url and ":memory:" not in db_url and not is_running_under_test_suite():
-            for prefix in [
-                "sqlite+aiosqlite:///data/monika.db",
-                "sqlite+aiosqlite:///monika.db",
-                "sqlite+aiosqlite:///./data/monika.db",
-                "sqlite+aiosqlite:///./monika.db",
-            ]:
-                if db_url == prefix:
-                    db_url = f"sqlite+aiosqlite:///{get_canonical_db_path().as_posix()}"
-                    break
+                # Normalize relative SQLite paths to canonical absolute path unless test/in-memory
+                if "sqlite" in db_url and ":memory:" not in db_url and not is_running_under_test_suite():
+                    for prefix in [
+                        "sqlite+aiosqlite:///data/monika.db",
+                        "sqlite+aiosqlite:///monika.db",
+                        "sqlite+aiosqlite:///./data/monika.db",
+                        "sqlite+aiosqlite:///./monika.db",
+                    ]:
+                        if db_url == prefix:
+                            db_url = f"sqlite+aiosqlite:///{get_canonical_db_path().as_posix()}"
+                            break
 
-        verify_safe_database_url(db_url)
-        engine_kwargs: dict[str, Any] = {"echo": False}
-        if "postgresql" in db_url:
-            engine_kwargs.update(
-                {
-                    "pool_size": 25,
-                    "max_overflow": 35,
-                    "pool_timeout": 60.0,
-                    "pool_pre_ping": True,
-                    "pool_recycle": 1800,
-                    "connect_args": {
-                        "timeout": 30.0,
-                    },
-                }
-            )
-        elif "sqlite" in db_url:
-            engine_kwargs.update(
-                {
-                    "pool_size": 20,
-                    "max_overflow": 30,
-                    "pool_timeout": 60.0,
-                    "pool_pre_ping": True,
-                    "pool_recycle": 1800,
-                    "connect_args": {
-                        "timeout": 60.0,
-                    },
-                }
-            )
-        engine = create_async_engine(db_url, **engine_kwargs)
-        if "sqlite" in db_url:
-            from sqlalchemy import event
+                verify_safe_database_url(db_url)
+                engine_kwargs: dict[str, Any] = {"echo": False}
+                if "postgresql" in db_url:
+                    engine_kwargs.update(
+                        {
+                            "pool_size": 25,
+                            "max_overflow": 35,
+                            "pool_timeout": 60.0,
+                            "pool_pre_ping": True,
+                            "pool_recycle": 1800,
+                            "connect_args": {
+                                "timeout": 30.0,
+                            },
+                        }
+                    )
+                elif "sqlite" in db_url:
+                    engine_kwargs.update(
+                        {
+                            "pool_size": 20,
+                            "max_overflow": 30,
+                            "pool_timeout": 60.0,
+                            "pool_pre_ping": True,
+                            "pool_recycle": 1800,
+                            "connect_args": {
+                                "timeout": 60.0,
+                            },
+                        }
+                    )
+                new_engine = create_async_engine(db_url, **engine_kwargs)
+                if "sqlite" in db_url:
+                    from sqlalchemy import event
 
-            @event.listens_for(engine.sync_engine, "connect")
-            def _set_sqlite_pragma(dbapi_connection, connection_record):
-                try:
-                    dbapi_connection.isolation_level = None
-                except Exception:
-                    pass
-                cursor = dbapi_connection.cursor()
-                cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA busy_timeout=60000")
-                cursor.execute("PRAGMA synchronous=NORMAL")
-                cursor.execute("PRAGMA cache_size=-64000")
-                cursor.execute("PRAGMA journal_size_limit=67108864")
-                cursor.close()
+                    @event.listens_for(new_engine.sync_engine, "connect")
+                    def _set_sqlite_pragma(dbapi_connection, connection_record):
+                        try:
+                            dbapi_connection.isolation_level = None
+                        except Exception:
+                            pass
+                        cursor = dbapi_connection.cursor()
+                        cursor.execute("PRAGMA journal_mode=WAL")
+                        cursor.execute("PRAGMA busy_timeout=60000")
+                        cursor.execute("PRAGMA synchronous=NORMAL")
+                        cursor.execute("PRAGMA cache_size=-64000")
+                        cursor.execute("PRAGMA journal_size_limit=67108864")
+                        cursor.close()
 
-            @event.listens_for(engine.sync_engine, "begin")
-            def _sqlite_begin_immediate(conn):
-                conn.exec_driver_sql("BEGIN IMMEDIATE")
+                    @event.listens_for(new_engine.sync_engine, "begin")
+                    def _sqlite_begin_immediate(conn):
+                        conn.exec_driver_sql("BEGIN IMMEDIATE")
+
+                engine = new_engine
 
     return engine
 
 
 def get_sessionmaker():
-    """Lazy sessionmaker factory bound to engine."""
+    """Lazy sessionmaker factory bound to engine (thread-safe)."""
     global _async_session_factory
     if _async_session_factory is None:
-        _async_session_factory = async_sessionmaker(
-            bind=get_engine(),
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+        with _engine_lock:
+            if _async_session_factory is None:
+                _async_session_factory = async_sessionmaker(
+                    bind=get_engine(),
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                )
     return _async_session_factory
 
 
