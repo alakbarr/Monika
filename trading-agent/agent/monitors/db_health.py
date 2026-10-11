@@ -14,10 +14,11 @@ async def run_db_health_check(agent: Any) -> None:
     """Monitor Database connection pool health."""
     while not agent.shutdown_event.is_set():
         try:
-            from database.db import engine
+            from database.db import get_engine
             from sqlalchemy import text
 
-            async with engine.connect() as conn:
+            eng = get_engine()
+            async with eng.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         except Exception as e:
             logger.error(f"Database health check failed: {e}")

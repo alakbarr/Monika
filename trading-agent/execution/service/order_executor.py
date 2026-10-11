@@ -2306,17 +2306,32 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         timestamp=start, elapsed_ms=elapsed,
                     )
 
+                from database.models import Order as _Order, OrderStatus as _OrderStatus
+
                 re_check_open_count = (await session.execute(
                     _select(_func.count()).select_from(_Position)
                     .where(_Position.status == 'open', _Position.is_paper == is_paper_mode)
                 )).scalar_one_or_none() or 0
                 
+                re_check_pending_orders = (await session.execute(
+                    _select(_func.count()).select_from(_Order)
+                    .where(
+                        _Order.status.in_([
+                            _OrderStatus.SUBMITTED,
+                            _OrderStatus.INTENT_COMMITTED,
+                            _OrderStatus.ACCEPTED,
+                            _OrderStatus.PARTIALLY_FILLED,
+                        ])
+                    )
+                )).scalar_one_or_none() or 0
+                total_recheck_count = re_check_open_count + re_check_pending_orders
+
                 max_concurrent = self.settings.get('trading', {}).get('risk', {}).get('max_concurrent_positions', 4)
-                if re_check_open_count >= max_concurrent:
+                if total_recheck_count >= max_concurrent:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                     logger.warning(
-                        f'[Pre-MT5 Re-check] BLOCKED {symbol}: {re_check_open_count}/{max_concurrent} '
-                        f'positions already open (race condition prevented).'
+                        f'[Pre-MT5 Re-check] BLOCKED {symbol}: {total_recheck_count}/{max_concurrent} '
+                        f'positions/orders already active (open={re_check_open_count}, pending={re_check_pending_orders}, race condition prevented).'
                     )
                     return ExecutionResult(
                         symbol=symbol, analysis_id=analysis.id, decision=decision,
@@ -2467,13 +2482,26 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         select(func.count()).select_from(Position)
                         .where(Position.status == 'open', Position.is_paper == is_paper_mode)
                     )).scalar_one_or_none() or 0
+                    re_check_pending_orders = (await session.execute(
+                        select(func.count()).select_from(Order)
+                        .where(
+                            Order.id != order.id,
+                            Order.status.in_([
+                                OrderStatus.SUBMITTED,
+                                OrderStatus.INTENT_COMMITTED,
+                                OrderStatus.ACCEPTED,
+                                OrderStatus.PARTIALLY_FILLED,
+                            ])
+                        )
+                    )).scalar_one_or_none() or 0
+                    total_exposure_count = re_check_open_count + re_check_pending_orders
                     max_concurrent = self.settings.get('trading', {}).get('risk', {}).get('max_concurrent_positions', 5)
-                    if re_check_open_count >= max_concurrent:
+                    if total_exposure_count >= max_concurrent:
                         elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-                        logger.warning(f'[Pre-MT5 Re-check] BLOCKED {symbol}: {re_check_open_count}/{max_concurrent} positions already open (race condition prevented).')
+                        logger.warning(f'[Pre-MT5 Re-check] BLOCKED {symbol}: {total_exposure_count}/{max_concurrent} active positions/orders (open={re_check_open_count}, pending={re_check_pending_orders}, race condition prevented).')
                         await self._transition_order_state(
                             session, order, OrderStatus.REJECTED,
-                            reason=f"Race condition guard: {re_check_open_count} positions open (limit={max_concurrent})",
+                            reason=f"Race condition guard: {total_exposure_count} active positions/orders (limit={max_concurrent})",
                         )
                         return ExecutionResult(
                             symbol=symbol, analysis_id=analysis.id, decision=decision, sizing=sizing, risk_approved=False,

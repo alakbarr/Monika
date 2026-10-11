@@ -32,7 +32,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import utils.clock as clock
 from database.models import (
-    Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig
+    Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig,
+    Order, OrderStatus
 )
 from risk.position_sizing import SizingResult
 
@@ -1042,11 +1043,24 @@ class RiskGate:
             stmt = stmt.where(Position.is_paper == is_paper)
         count = (await session.execute(stmt)).scalar_one_or_none() or 0
 
-        if count >= self.max_concurrent:
+        # Also account for pending/in-flight orders to prevent concurrent over-allocation
+        order_stmt = select(func.count(Order.id)).where(
+            Order.status.in_([
+                OrderStatus.ACCEPTED,
+                OrderStatus.SUBMITTED,
+                OrderStatus.INTENT_COMMITTED,
+                OrderStatus.PARTIALLY_FILLED,
+            ])
+        )
+        pending_count = (await session.execute(order_stmt)).scalar_one_or_none() or 0
+        total_exposure = count + pending_count
+
+        if total_exposure >= self.max_concurrent:
             return False, (
-                f"Max concurrent positions reached: {count}/{self.max_concurrent}"
+                f"Max concurrent exposure reached: {total_exposure}/{self.max_concurrent} "
+                f"(open={count}, pending={pending_count})"
             )
-        return True, f"open_positions={count}/{self.max_concurrent}"
+        return True, f"open_positions={count}, pending={pending_count}, total={total_exposure}/{self.max_concurrent}"
 
     async def _check_no_duplicate(
         self,
@@ -1066,6 +1080,20 @@ class RiskGate:
                         continue
                     return False, f"Already have an open simulated position for {symbol}"
             return True, "no duplicate (simulated)"
+
+        # Check pending/in-flight orders for this symbol first
+        pending_stmt = select(Order.id).where(
+            Order.symbol == symbol,
+            Order.status.in_([
+                OrderStatus.ACCEPTED,
+                OrderStatus.SUBMITTED,
+                OrderStatus.INTENT_COMMITTED,
+                OrderStatus.PARTIALLY_FILLED,
+            ])
+        )
+        pending_order = (await session.execute(pending_stmt.limit(1))).scalar_one_or_none()
+        if pending_order is not None and not pair_group_id:
+            return False, f"Already have an active pending/in-flight order for {symbol} (id={pending_order})"
 
         if pair_group_id:
             # DB-15: Posisi dengan pair_group_id diizinkan multi-leg/tranche dalam group yang sama

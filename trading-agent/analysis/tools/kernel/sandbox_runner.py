@@ -35,6 +35,14 @@ FORBIDDEN_MODULES = frozenset({
     "webbrowser",
     "winreg",
     "_winapi",
+    "metatrader5",
+    "mt5linux",
+    "execution",
+    "requests",
+    "urllib",
+    "httpx",
+    "aiohttp",
+    "pathlib",
 })
 
 FORBIDDEN_CALLS = frozenset({
@@ -42,6 +50,19 @@ FORBIDDEN_CALLS = frozenset({
     "eval",
     "exec",
     "__import__",
+    "open",
+})
+
+DANGEROUS_ATTRIBUTES = frozenset({
+    "system",
+    "popen",
+    "spawn",
+    "order_send",
+    "place_order",
+    "close_position",
+    "__subclasses__",
+    "__builtins__",
+    "__base__",
 })
 
 
@@ -70,6 +91,12 @@ def validate_code_ast(code: str) -> Tuple[bool, str]:
             if isinstance(node.func, ast.Name):
                 if node.func.id in FORBIDDEN_CALLS:
                     return False, f"Security Violation: Invocation of built-in '{node.func.id}' is prohibited."
+            elif isinstance(node.func, ast.Attribute):
+                if node.func.attr in DANGEROUS_ATTRIBUTES:
+                    return False, f"Security Violation: Invocation of dangerous attribute '{node.func.attr}' is prohibited."
+        elif isinstance(node, ast.Attribute):
+            if node.attr in {"__subclasses__", "__builtins__", "__base__"}:
+                return False, f"Security Violation: Access to reflective attribute '{node.attr}' is prohibited."
 
     return True, ""
 
