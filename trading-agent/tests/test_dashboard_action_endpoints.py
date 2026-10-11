@@ -213,7 +213,14 @@ def test_manual_order_submit(client):
     """Verify POST /api/orders/submit executes order to MT5 and logs position."""
     mock_mt5 = MagicMock()
     mock_mt5.place_order = AsyncMock(return_value={"success": True, "ticket": 888777, "price": 1.0850})
-    set_dashboard_dependencies(mt5_client=mock_mt5)
+
+    mock_verdict = MagicMock()
+    mock_verdict.approved = True
+    mock_risk_gate = MagicMock()
+    mock_risk_gate.evaluate_proposal = AsyncMock(return_value=mock_verdict)
+
+    set_dashboard_dependencies(mt5_client=mock_mt5, risk_gate=mock_risk_gate)
+
 
     with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
         mock_session = create_mock_async_session()

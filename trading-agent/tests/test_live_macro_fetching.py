@@ -39,6 +39,8 @@ from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidity
 
 import pytest_asyncio
 
+pytestmark = [pytest.mark.live, pytest.mark.network]
+
 
 @pytest_asyncio.fixture
 async def db_session_factory():

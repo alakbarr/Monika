@@ -729,6 +729,12 @@ class ToolExecutor:
         code_str = inp.get("code", "") if isinstance(inp, dict) else str(inp)
         return await ptc.execute(code=code_str)
 
+    async def _tool_web_search(self, inp: dict) -> dict:
+        """Execute web search directly via news_tools.handle_web_search."""
+        from analysis.tools.handlers.news_tools import handle_web_search
+        return await handle_web_search(inp, session=self.session, executor=self, settings=self.settings)
+
+
     async def _tool_update_scratchpad(self, inp: dict) -> dict:
         """Updates active working scratchpad with intermediate calculation anchors."""
         symbol = self._resolve_symbol(inp) or self.symbol or "DEFAULT"
