@@ -54,5 +54,8 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
 
 
     # Helper aliases (local closures keep the file standalone & purity-safe).
-    out = -1.0 * ts_corr(rank(delta(np.log(volume), 2)), rank((close - open_) / open_), 6)
-    return out
+    vol_safe = np.maximum(volume, 1e-8)
+    log_vol = np.log(vol_safe)
+    ret_open = safe_div(close - open_, open_)
+    out = -1.0 * ts_corr(rank(delta(log_vol, 2)), rank(ret_open), 6)
+    return out

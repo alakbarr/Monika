@@ -44,6 +44,7 @@ class OutcomeEvaluator:
         latency_ms: float = 0.0,
         commission_per_lot_usd: float = 0.0,
         settings: Optional[Dict[str, Any]] = None,
+        apply_costs: bool = True,
     ):
         bt_cfg = (settings or {}).get("backtest", {})
         self.max_holding_hours = bt_cfg.get("max_holding_hours", max_holding_hours)
@@ -54,7 +55,7 @@ class OutcomeEvaluator:
         if cfg_frictions:
             for sym, prof in cfg_frictions.items():
                 self.friction_profile[sym] = dict(prof)
-        self.apply_costs = bt_cfg.get("apply_costs", False)
+        self.apply_costs = bt_cfg.get("apply_costs", apply_costs)
         if custom_friction_profile:
             for sym, prof in custom_friction_profile.items():
                 self.friction_profile[sym] = dict(prof)
@@ -190,7 +191,7 @@ class OutcomeEvaluator:
         Returns outcome details including pips, percentage, dollar PnL, and cost friction.
         """
         if apply_costs is None:
-            apply_costs = getattr(self, "apply_costs", False)
+            apply_costs = getattr(self, "apply_costs", True)
 
         if trade.entry_time.tzinfo is None:
             trade_entry_time = trade.entry_time.replace(tzinfo=timezone.utc)
@@ -368,7 +369,7 @@ class OutcomeEvaluator:
         exit_price: float,
         reason: str,
         bar: Optional[PriceOHLCV] = None,
-        apply_costs: bool = False,
+        apply_costs: bool = True,
         atr_pips: Optional[float] = None,
     ) -> Dict[str, Any]:
         spec = DEFAULT_INSTRUMENTS.get(trade.symbol)

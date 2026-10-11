@@ -211,41 +211,68 @@ for w in (5, 10, 20, 60):
 # ==============================================================================
 
 def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series]:
-    """Calculates linear regression of close on time t=0..window-1."""
-    y = df["close"].values
+    """Calculates linear regression of close on time t=0..window-1 using vectorized rolling windows."""
+    y = df["close"].to_numpy(dtype=np.float64, copy=False)
     n = len(y)
     resi = np.full(n, np.nan, dtype=np.float64)
     rsqr = np.full(n, np.nan, dtype=np.float64)
-    
+
+    if n < window:
+        return (
+            pd.Series(resi, index=df.index),
+            pd.Series(rsqr, index=df.index),
+        )
+
+    # Precalculate x statistics (constant across all windows)
     x = np.arange(window, dtype=np.float64)
     x_mean = (window - 1.0) / 2.0
     x_dm = x - x_mean
-    sum_x_dm2 = np.sum(x_dm ** 2)
+    sum_x_dm2 = float(np.sum(x_dm ** 2))
 
-    for i in range(window - 1, n):
-        y_slice = y[i - window + 1 : i + 1]
-        if np.isnan(y_slice).any():
-            continue
-        y_mean = np.mean(y_slice)
-        y_dm = y_slice - y_mean
-        cov_xy = np.sum(x_dm * y_dm)
-        slope = cov_xy / sum_x_dm2 if sum_x_dm2 > 1e-12 else 0.0
-        intercept = y_mean - slope * x_mean
-        
-        y_pred = intercept + slope * (window - 1)
-        residual = y_slice[-1] - y_pred
-        
-        ss_tot = np.sum(y_dm ** 2)
-        ss_res = np.sum((y_slice - (intercept + slope * x)) ** 2)
-        r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-12 else 0.0
-        
-        resi[i] = residual
-        rsqr[i] = max(0.0, min(1.0, r2))
+    # Strided sliding window: shape (n - window + 1, window)
+    windows = np.lib.stride_tricks.sliding_window_view(y, window_shape=window)
+
+    # Mask windows containing any NaN
+    valid_mask = ~np.isnan(windows).any(axis=1)
+
+    if not np.any(valid_mask):
+        return (
+            pd.Series(resi, index=df.index),
+            pd.Series(rsqr, index=df.index),
+        )
+
+    valid_windows = windows[valid_mask]
+    y_mean = np.mean(valid_windows, axis=1)
+    y_dm = valid_windows - y_mean[:, None]
+    cov_xy = np.dot(y_dm, x_dm)
+
+    slope = cov_xy / sum_x_dm2 if sum_x_dm2 > 1e-12 else np.zeros_like(cov_xy)
+    intercept = y_mean - slope * x_mean
+
+    # Predicted value at the end of the window (t = window - 1)
+    y_pred = intercept + slope * (window - 1)
+    residuals = valid_windows[:, -1] - y_pred
+
+    ss_tot = np.sum(y_dm ** 2, axis=1)
+    # R^2 = (cov_xy^2) / (sum_x_dm2 * ss_tot)
+    if sum_x_dm2 > 1e-12:
+        denom = sum_x_dm2 * ss_tot
+        r2 = np.where(denom > 1e-12, (cov_xy ** 2) / denom, 0.0)
+    else:
+        r2 = np.zeros_like(ss_tot)
+
+    rsqr_vals = np.clip(r2, 0.0, 1.0)
+
+    # Fill back into output arrays
+    dest_indices = np.arange(window - 1, n)[valid_mask]
+    resi[dest_indices] = residuals
+    rsqr[dest_indices] = rsqr_vals
 
     return (
         pd.Series(resi, index=df.index),
         pd.Series(rsqr, index=df.index),
     )
+
 
 
 def _register_resi_rsqr(window: int) -> None:
