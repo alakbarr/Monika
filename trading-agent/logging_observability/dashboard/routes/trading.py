@@ -1042,6 +1042,7 @@ async def get_debate_outcomes(limit: int = Query(default=20, ge=1, le=100)):
 
 
 @trading_router.get("/api/signals/mt5", tags=["Execution"])
+@trading_router.get("/api/mt5/signals", tags=["Execution"], include_in_schema=False)
 async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
     """Ambil riwayat sinyal dan korelasi eksekusi MT5 yang diperkaya dengan analisis AI (M-4)."""
     from database.db import AsyncSessionLocal

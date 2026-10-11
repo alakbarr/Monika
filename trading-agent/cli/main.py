@@ -279,6 +279,11 @@ async def _cmd_pause(args):
         else:
             session.add(SystemConfig(key="system_paused", value="true"))
         await session.commit()
+    try:
+        from logging_observability.dashboard.routes.common import broadcast_live_event
+        await broadcast_live_event("system_state_change", {"state": "paused", "reason": "CLI pause command"})
+    except Exception:
+        pass
     console.print(f"{stamp_ok('PAUSE')} System trading paused successfully.")
 
 
@@ -304,6 +309,11 @@ async def _cmd_resume(args):
             if cfg:
                 cfg.value = "false"
         await session.commit()
+    try:
+        from logging_observability.dashboard.routes.common import broadcast_live_event
+        await broadcast_live_event("system_state_change", {"state": "active", "reason": "CLI resume command"})
+    except Exception:
+        pass
     console.print(f"{stamp_ok('RESUME')} System trading resumed (all pause, kill-switch, and suspension flags cleared).")
 
 
@@ -322,6 +332,12 @@ async def _cmd_unsuspend(args):
             cleared = await tracker.unsuspend_all(session)
         else:
             ok = await tracker.unsuspend_symbol(session, sym)
+
+    try:
+        from logging_observability.dashboard.routes.common import broadcast_live_event
+        await broadcast_live_event("symbols_unsuspended", {"symbols": cleared if is_all else ([sym] if ok else [])})
+    except Exception:
+        pass
 
     if is_all:
         if cleared:
