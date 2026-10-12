@@ -43,7 +43,8 @@ class SystemDoctor:
 
     async def check_directories(self) -> None:
         """Verify required directories exist and are writable."""
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from monika.infrastructure.infra.paths import get_repo_root
+        base_dir = str(get_repo_root())
         req_dirs = [
             os.path.join(base_dir, "skills", "trading", "playbooks"),
             os.path.join(base_dir, "skills", "trading", "playbooks", "archive"),
@@ -215,7 +216,8 @@ class SystemDoctor:
                 self._record("Database", "AutoFix", "INFO", "Attempting alembic migration...")
                 try:
                     import subprocess
-                    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    from monika.infrastructure.infra.paths import get_repo_root
+                    base_dir = str(get_repo_root())
                     env = os.environ.copy()
                     db_url = env.get("DATABASE_URL", "")
                     if "+asyncpg" in db_url:
