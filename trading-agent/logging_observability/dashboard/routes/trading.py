@@ -1145,8 +1145,9 @@ async def get_trade_triggers(status: Optional[str] = None, limit: int = Query(de
 
 @trading_router.post("/api/actions/trigger-cycle", tags=["Actions"])
 @require_role(Role.OPERATOR)
-async def action_trigger_cycle(request: Request, body: TriggerCycleRequest = TriggerCycleRequest()):
+async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequest] = None):
     """Trigger the LangGraph analysis cycle immediately with optional symbol and context guidance."""
+    body = body or TriggerCycleRequest()
     cycle_sched = get_dashboard_dependency("cycle_scheduler")
     if not cycle_sched:
         return JSONResponse(

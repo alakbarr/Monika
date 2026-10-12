@@ -1189,6 +1189,11 @@ class MT5Client:
         """Alias for modify_position (Priority 0)."""
         return await self.modify_position(ticket=ticket, sl=sl, tp=tp)
 
+    def _timeframe_to_mt5(self, timeframe: str) -> int:
+        """Map timeframe string to MT5 timeframe integer constant."""
+        tf_map = _build_timeframe_map()
+        return tf_map.get(timeframe.upper(), 16385)
+
     async def capture_chart_screenshot(
         self,
         symbol: str,
@@ -1522,7 +1527,7 @@ def _connect(path: str, account: int, password: str, server: str, expected_trade
     if target_mode:
         trade_mode = getattr(info, "trade_mode", None)
         mode_names = {0: "DEMO", 1: "CONTEST", 2: "REAL"}
-        actual_mode = mode_names.get(trade_mode, "UNKNOWN")
+        actual_mode = mode_names.get(int(trade_mode) if trade_mode is not None else -1, "UNKNOWN")
         if actual_mode != target_mode:
             err_msg = (
                 f"MT5 Trade Mode Mismatch: Terminal is running in {actual_mode} mode (code={trade_mode}), "

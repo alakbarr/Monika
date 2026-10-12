@@ -365,8 +365,8 @@ class PortfolioOptimizer:
     @staticmethod
     def equal_volatility(returns_df: pd.DataFrame) -> OptimizationResult:
         cols = list(returns_df.columns)
-        cov = returns_df.cov().values * 252.0
-        mean = returns_df.mean().values * 252.0
+        cov = returns_df.cov().to_numpy(dtype=float) * 252.0
+        mean = returns_df.mean().to_numpy(dtype=float) * 252.0
         return PortfolioOptimizer(cols, cov, mean).solve_equal_volatility()
 
     @staticmethod
@@ -376,8 +376,8 @@ class PortfolioOptimizer:
         max_weight: float = 0.40,
     ) -> OptimizationResult:
         cols = list(returns_df.columns)
-        cov = returns_df.cov().values * 252.0
-        mean = returns_df.mean().values * 252.0
+        cov = returns_df.cov().to_numpy(dtype=float) * 252.0
+        mean = returns_df.mean().to_numpy(dtype=float) * 252.0
         return PortfolioOptimizer(cols, cov, mean).solve_mean_variance(
             risk_free_rate=risk_free_rate,
             max_weight=max_weight,

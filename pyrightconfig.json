@@ -1,5 +1,9 @@
 {
-  "include": ["trading-agent"],
+  "include": [
+    "trading-agent/risk",
+    "trading-agent/execution",
+    "trading-agent/database"
+  ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
@@ -13,10 +17,11 @@
     "**/dist",
     ".git"
   ],
+  "stubPath": "typings",
   "venvPath": "trading-agent",
   "venv": "venv",
   "extraPaths": ["trading-agent", "."],
-  "typeCheckingMode": "off",
+  "typeCheckingMode": "standard",
   "reportMissingTypeStubs": false,
   "reportMissingImports": false,
   "reportMissingModuleSource": false

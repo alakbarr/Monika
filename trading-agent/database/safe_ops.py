@@ -20,9 +20,10 @@ T = TypeVar('T')
 
 async def _safe_expunge_all(session: AsyncSession) -> None:
     """Expunges all identity map objects, safely awaiting if mock is async."""
-    if hasattr(session, "expunge_all"):
+    expunge_fn = getattr(session, "expunge_all", None)
+    if callable(expunge_fn):
         try:
-            res = session.expunge_all()
+            res: Any = expunge_fn()
             if inspect.isawaitable(res):
                 await res
         except Exception:

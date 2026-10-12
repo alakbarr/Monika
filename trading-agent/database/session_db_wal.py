@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, ContextManager, Dict, Generator, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Database.SessionDbWal")
 
@@ -139,8 +139,9 @@ class SessionDbReadPool:
         self.max_connections = max_connections
         self._pool: queue.Queue[sqlite3.Connection] = queue.Queue(maxsize=max_connections)
         self._allocated = 0
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._closed = False
+        self._all_conns: set[sqlite3.Connection] = set()
 
     def _create_connection(self) -> sqlite3.Connection:
         global _PROCESS_ACTIVE_READERS
@@ -162,6 +163,8 @@ class SessionDbReadPool:
         conn.execute("PRAGMA query_only = ON;")
         conn.execute("PRAGMA busy_timeout = 30000;")
         conn.execute("PRAGMA synchronous = NORMAL;")
+        with self._lock:
+            self._all_conns.add(conn)
         return conn
 
     @contextlib.contextmanager
@@ -202,6 +205,8 @@ class SessionDbReadPool:
             conn.close()
         except Exception:
             pass
+        with self._lock:
+            self._all_conns.discard(conn)
         with _PROCESS_ACTIVE_READERS_LOCK:
             _PROCESS_ACTIVE_READERS = max(0, _PROCESS_ACTIVE_READERS - 1)
 
@@ -215,6 +220,12 @@ class SessionDbReadPool:
                     self._close_conn(conn)
                 except queue.Empty:
                     break
+            for conn in list(self._all_conns):
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            self._all_conns.clear()
             self._allocated = 0
 
 
@@ -226,6 +237,8 @@ class SessionDbWal:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock_path = self.db_path.with_suffix(".lock")
         self._local = threading.local()
+        self._all_conns: set[sqlite3.Connection] = set()
+        self._conns_lock = threading.RLock()
         self._enable_read_pool = enable_read_pool
         self._read_pool: Optional[SessionDbReadPool] = None
         if self._enable_read_pool:
@@ -234,7 +247,15 @@ class SessionDbWal:
 
     def get_connection(self) -> sqlite3.Connection:
         """Get thread-local SQLite read-write connection with optimized WAL pragmas."""
-        if not hasattr(self._local, "conn") or self._local.conn is None:
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            try:
+                _ = conn.total_changes
+            except sqlite3.ProgrammingError:
+                conn = None
+                self._local.conn = None
+
+        if conn is None:
             conn = sqlite3.connect(
                 str(self.db_path),
                 timeout=30.0,
@@ -258,9 +279,11 @@ class SessionDbWal:
             except sqlite3.OperationalError:
                 pass
             self._local.conn = conn
-        return self._local.conn
+            with self._conns_lock:
+                self._all_conns.add(conn)
+        return conn
 
-    def acquire_reader(self) -> Generator[sqlite3.Connection, None, None]:
+    def acquire_reader(self) -> ContextManager[sqlite3.Connection]:
         """Context manager for obtaining a read-only pooled connection."""
         if self._read_pool is not None:
             return self._read_pool.acquire_reader()
@@ -378,7 +401,7 @@ class SessionDbWal:
                 INSERT INTO session_messages (session_id, role, content, carrier_marker, created_at, turn_ordinal, active)
                 VALUES (?, ?, ?, ?, ?, ?, ?);
             """, (session_id, role, content, carrier_marker, now, turn_ordinal, active))
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def record_tool_execution(
         self,
@@ -406,7 +429,7 @@ class SessionDbWal:
                 1 if has_side_effects else 0,
                 now,
             ))
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def get_messages(self, session_id: str, active_only: bool = True) -> List[Dict[str, Any]]:
         """Fetch messages for session, optionally filtering for active turns only."""
@@ -510,9 +533,13 @@ class SessionDbWal:
             self._read_pool.close()
             self._read_pool = None
 
-        if hasattr(self._local, "conn") and self._local.conn:
-            try:
-                self._local.conn.close()
-            except Exception:
-                pass
+        with self._conns_lock:
+            for conn in list(self._all_conns):
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            self._all_conns.clear()
+
+        if hasattr(self._local, "conn"):
             self._local.conn = None

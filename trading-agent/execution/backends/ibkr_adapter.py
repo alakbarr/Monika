@@ -47,39 +47,40 @@ class IBKRBrokerAdapter(BrokerAdapter):
         self.client_id = client_id
         self.account = account
         self.timeout_seconds = timeout_seconds
-        self.ib: Optional[Any] = None
+        self.ib: Any = None
         self._connected = False
         self._contract_cache: Dict[str, Any] = {}
 
-    def _ensure_ib(self):
-        if not HAS_IB_INSYNC:
+    def _ensure_ib(self) -> Any:
+        if not HAS_IB_INSYNC or ib_insync is None:
             raise RuntimeError(
                 "ib_insync package is not installed. Please install it with 'pip install ib_insync'."
             )
         if self.ib is None:
             self.ib = ib_insync.IB()
+        return self.ib
 
     async def connect(self) -> bool:
         """Connect to TWS or IB Gateway."""
-        if not HAS_IB_INSYNC:
+        if not HAS_IB_INSYNC or ib_insync is None:
             logger.warning("[IBKR] ib_insync library not available; running in stub/disconnected mode.")
             return False
 
         try:
-            self._ensure_ib()
-            if self.ib.isConnected():
+            ib = self._ensure_ib()
+            if ib.isConnected():
                 self._connected = True
                 return True
 
             logger.info(f"[IBKR] Connecting to {self.host}:{self.port} (clientId={self.client_id})...")
-            await self.ib.connectAsync(
+            await ib.connectAsync(
                 host=self.host,
                 port=self.port,
                 clientId=self.client_id,
                 timeout=self.timeout_seconds,
             )
-            self._connected = self.ib.isConnected()
-            logger.info(f"[IBKR] Connected successfully to account {self.ib.managedAccounts()}")
+            self._connected = ib.isConnected()
+            logger.info(f"[IBKR] Connected successfully to account {ib.managedAccounts()}")
             return self._connected
         except Exception as e:
             logger.error(f"[IBKR] Connection failed: {e}")
@@ -99,7 +100,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
         if sym in self._contract_cache:
             return self._contract_cache[sym]
 
-        if not HAS_IB_INSYNC:
+        if not HAS_IB_INSYNC or ib_insync is None:
             return None
 
         # FX pairs (EURUSD, GBPUSD, etc.)
@@ -120,7 +121,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
     async def get_tick(self, symbol: str) -> dict:
         """Fetch latest tick quote."""
         now_iso = clock.now().isoformat()
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None:
             return {
                 "symbol": symbol,
                 "bid": 0.0,
@@ -167,7 +168,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
         """Submit order to IBKR."""
         req: OrderRequest = normalize_order_request(order)
 
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None or ib_insync is None:
             logger.warning("[IBKR] Cannot submit order: IBKR adapter disconnected or ib_insync missing.")
             return {
                 "success": False,
@@ -225,7 +226,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
 
     async def cancel_order(self, client_order_id: str) -> bool:
         """Cancel an active order."""
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None:
             return False
         try:
             order_id = int(client_order_id)
@@ -240,7 +241,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
 
     async def get_orders(self, symbol: Optional[str] = None) -> List[dict]:
         """Return list of pending orders."""
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None:
             return []
         try:
             trades = self.ib.openTrades()
@@ -264,7 +265,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
 
     async def get_positions(self) -> List[dict]:
         """Return open positions."""
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None:
             return []
         try:
             pos_list = self.ib.positions()
@@ -285,7 +286,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
 
     async def get_account_info(self) -> dict:
         """Return account financial status."""
-        if not self._connected or not HAS_IB_INSYNC:
+        if not self._connected or not HAS_IB_INSYNC or self.ib is None:
             return {
                 "balance": 0.0,
                 "equity": 0.0,

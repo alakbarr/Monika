@@ -539,12 +539,14 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                     if not existing_pos:
                         order_sl = getattr(order, "stop_loss_price", None) or getattr(order, "sl", None)
                         order_tp = getattr(order, "take_profit_price", None) or getattr(order, "tp", None)
-                        if (order_sl is None or order_tp is None) and getattr(order, "params_json", None):
+                        raw_params = getattr(order, "params_json", None)
+                        if (order_sl is None or order_tp is None) and raw_params:
                             try:
                                 import json
-                                params = json.loads(order.params_json) if isinstance(order.params_json, str) else order.params_json
-                                order_sl = order_sl or params.get("sl") or params.get("stop_loss")
-                                order_tp = order_tp or params.get("tp") or params.get("take_profit")
+                                params = json.loads(raw_params) if isinstance(raw_params, str) else raw_params
+                                if isinstance(params, dict):
+                                    order_sl = order_sl or params.get("sl") or params.get("stop_loss")
+                                    order_tp = order_tp or params.get("tp") or params.get("take_profit")
                             except Exception:
                                 pass
 

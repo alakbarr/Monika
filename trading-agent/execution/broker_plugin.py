@@ -143,9 +143,8 @@ def normalize_order_request(order: Any) -> OrderRequest:
     symbol = getattr(order, "symbol", "")
     direction = str(getattr(order, "direction", "buy"))
     volume = getattr(order, "requested_volume", None) or getattr(order, "volume", 0.01)
-    order_type = getattr(order, "order_type", "MARKET")
-    if hasattr(order_type, "value"):
-        order_type = order_type.value
+    raw_order_type = getattr(order, "order_type", None)
+    order_type = str(getattr(raw_order_type, "value", raw_order_type) or "MARKET")
     price = getattr(order, "requested_price", None) or getattr(order, "price", None)
     sl = getattr(order, "stop_loss", None) or getattr(order, "sl", None)
     tp = getattr(order, "take_profit", None) or getattr(order, "tp", None)

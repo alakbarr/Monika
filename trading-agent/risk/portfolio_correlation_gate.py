@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 import logging
 import math
-from utils.market.dynamic_correlation import get_rolling_correlation
+from sqlalchemy.ext.asyncio import AsyncSession
+from utils.market.dynamic_correlation import get_rolling_correlation, _static_fallback
 
 logger = logging.getLogger('TradingAgent.PortfolioCorrelationGate')
 
 async def compute_portfolio_correlation_matrix(
-    session,
+    session: AsyncSession,
     symbols: List[str],
     as_of: Optional[datetime] = None
 ) -> Dict[str, Dict[str, float]]:
@@ -50,7 +51,7 @@ def _get_usd_directional_delta(symbol: str, direction: str) -> int:
 
 
 async def filter_correlated_proposals(
-    session,
+    session: Optional[AsyncSession],
     actionable_trades: list,
     threshold: float = 0.65,
     max_usd_exposure: int = 3,
@@ -132,7 +133,10 @@ async def filter_correlated_proposals(
             pos_dir = str(pos.direction or "").lower()
             if pos_sym.upper() == sym.upper():
                 continue
-            corr, source = await get_rolling_correlation(session, sym, pos_sym, as_of=as_of)
+            if session is not None:
+                corr, source = await get_rolling_correlation(session, sym, pos_sym, as_of=as_of)
+            else:
+                corr, source = _static_fallback(sym, pos_sym), "static_fallback"
             if corr is None or (isinstance(corr, float) and math.isnan(corr)):
                 corr = 0.0
                 source = "neutral_fallback"
@@ -154,7 +158,10 @@ async def filter_correlated_proposals(
         
         for kept_sym, kept_r in kept_trades:
             kept_direction = kept_r.get('decision', 'wait').lower()
-            corr, source = await get_rolling_correlation(session, sym, kept_sym, as_of=as_of)
+            if session is not None:
+                corr, source = await get_rolling_correlation(session, sym, kept_sym, as_of=as_of)
+            else:
+                corr, source = _static_fallback(sym, kept_sym), "static_fallback"
             
             if corr is None or (isinstance(corr, float) and math.isnan(corr)):
                 logger.info(f"Correlation Gate: Correlation data unavailable for {sym}-{kept_sym}. Defaulting to neutral 0.0 fallback.")

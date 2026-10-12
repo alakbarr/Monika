@@ -136,24 +136,23 @@ class CryptographicAuditLedger:
             with open(self.ledger_path, "a", encoding="utf-8") as f:
                 fd = f.fileno()
                 # Cross-process OS locking
-                is_win = sys.platform == "win32"
                 try:
-                    if is_win:
+                    if sys.platform == "win32":
                         import msvcrt
                         # Seek to file end before locking
                         f.seek(0, os.SEEK_END)
                     else:
                         import fcntl
-                        fcntl.flock(fd, fcntl.LOCK_EX)
+                        getattr(fcntl, "flock")(fd, getattr(fcntl, "LOCK_EX", 2))
 
                     f.write(line)
                     f.flush()
                     os.fsync(fd)
                 finally:
-                    if not is_win:
+                    if sys.platform != "win32":
                         try:
                             import fcntl
-                            fcntl.flock(fd, fcntl.LOCK_UN)
+                            getattr(fcntl, "flock")(fd, getattr(fcntl, "LOCK_UN", 8))
                         except Exception:
                             pass
 

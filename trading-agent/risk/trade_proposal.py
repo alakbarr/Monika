@@ -131,9 +131,11 @@ class TradeProposal(BaseModel):
     ) -> "TradeProposal":
         """Factory helper creating a validated TradeProposal with automated reasoning hash."""
         r_hash = cls.compute_reasoning_hash(reasoning_text)
+        norm_dir = decision.strip().upper()
+        dir_val: Literal["BUY", "SELL", "WAIT"] = "BUY" if norm_dir == "BUY" else ("SELL" if norm_dir == "SELL" else "WAIT")
         return cls(
             symbol=symbol,
-            direction=decision.upper(),
+            direction=dir_val,
             entry_price=entry_price,
             stop_loss=stop_loss,
             take_profit=take_profit,

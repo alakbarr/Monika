@@ -480,7 +480,7 @@ class RiskGate:
         try:
             from database.models import RiskState
             from sqlalchemy import select, desc
-            stmt = select(RiskState).order_by(desc(RiskState.updated_at)).limit(1)
+            stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
         except Exception:
             return None
@@ -624,7 +624,7 @@ class RiskGate:
 
         from analysis.strategies.registry import StrategyRegistry
         if not factor_family:
-            strat_cls = StrategyRegistry.get_strategy(strat_id)
+            strat_cls = StrategyRegistry.get_strategy(strat_id) if strat_id else None
             factor_family = getattr(strat_cls, "factor_family", "trend") if strat_cls else "trend"
 
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
@@ -640,12 +640,13 @@ class RiskGate:
                 p_fam = None
                 p_strat = getattr(p, "source_strategy_id", None)
                 if p_strat:
-                    p_cls = StrategyRegistry.get_strategy(p_strat)
+                    p_cls = StrategyRegistry.get_strategy(str(p_strat))
                     p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
                 elif getattr(p, "analysis_id", None):
                     p_ana = await session.get(AssetAnalysis, p.analysis_id)
-                    if p_ana and getattr(p_ana, "source_strategy_id", None):
-                        p_cls = StrategyRegistry.get_strategy(p_ana.source_strategy_id)
+                    ana_strat = getattr(p_ana, "source_strategy_id", None) if p_ana else None
+                    if p_ana and ana_strat:
+                        p_cls = StrategyRegistry.get_strategy(str(ana_strat))
                         p_fam = getattr(p_cls, "factor_family", None) if p_cls else None
                 if p_fam == factor_family:
                     current_count += 1
@@ -657,12 +658,13 @@ class RiskGate:
                 pos_fam = None
                 pos_strat = getattr(pos, "source_strategy_id", None)
                 if pos_strat:
-                    pos_cls = StrategyRegistry.get_strategy(pos_strat)
+                    pos_cls = StrategyRegistry.get_strategy(str(pos_strat))
                     pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
                 elif getattr(pos, "analysis_id", None):
                     pos_ana = await session.get(AssetAnalysis, pos.analysis_id)
-                    if pos_ana and getattr(pos_ana, "source_strategy_id", None):
-                        pos_cls = StrategyRegistry.get_strategy(pos_ana.source_strategy_id)
+                    ana_strat = getattr(pos_ana, "source_strategy_id", None) if pos_ana else None
+                    if pos_ana and ana_strat:
+                        pos_cls = StrategyRegistry.get_strategy(str(ana_strat))
                         pos_fam = getattr(pos_cls, "factor_family", None) if pos_cls else None
                 if pos_fam == factor_family:
                     current_count += 1
@@ -1368,6 +1370,8 @@ class RiskGate:
                     .where(EconomicCalendar.event_time <= now + window)
                 )).scalars().all()
                 for ev in user_blocked:
+                    if not ev.event_time:
+                        continue
                     ev_name_upper = (ev.event_name or "").upper()
                     if any(term in ev_name_upper for term in user_blacklisted_terms):
                         delta = abs((ev.event_time - now).total_seconds() / 60)
@@ -2128,12 +2132,21 @@ class RiskGate:
         fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
         eq = equity or fallback_equity
         dummy_sizing = SizingResult(
-            recommended_lots=0.01,
-            risk_amount_usd=eq * (self.max_risk_pct / 100.0),
-            stop_loss_pips=20.0,
-            take_profit_pips=30.0,
+            symbol=symbol,
+            direction="BUY",
+            entry_price=1.0,
+            stop_loss=0.99,
+            take_profit=1.02,
+            account_equity=eq,
             risk_percent=self.max_risk_pct,
-            sizing_method="scorecard_check",
+            risk_amount_usd=eq * (self.max_risk_pct / 100.0),
+            sl_distance_price=0.01,
+            sl_distance_pips=20.0,
+            pip_value_per_lot=10.0,
+            raw_lots=0.01,
+            recommended_lots=0.01,
+            rr_ratio=2.0,
+            is_valid=True,
         )
 
         checks_data: dict[str, Any] = {}

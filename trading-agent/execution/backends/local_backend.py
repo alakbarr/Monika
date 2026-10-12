@@ -49,11 +49,12 @@ class LocalTerminalBackend(BaseTerminalBackend):
 
         creationflags = 0
         preexec_fn = None
-        if _IS_WINDOWS:
+        if sys.platform == "win32":
             creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
         else:
-            preexec_fn = os.setsid
+            preexec_fn = getattr(os, "setsid", None)
 
+        proc: Optional[subprocess.Popen[str]] = None
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -72,16 +73,17 @@ class LocalTerminalBackend(BaseTerminalBackend):
             return stdout, stderr, proc.returncode
         except subprocess.TimeoutExpired:
             logger.warning(f"[LocalBackend] Command timed out after {timeout}s: {cmd[:60]}")
-            self._kill_process_tree(proc)
+            if proc is not None:
+                self._kill_process_tree(proc)
             return "", f"Command timed out after {timeout} seconds.", -1
         except Exception as exc:
             logger.error(f"[LocalBackend] Execution failed: {exc}")
             return "", str(exc), -1
 
-    def _kill_process_tree(self, proc: subprocess.Popen) -> None:
+    def _kill_process_tree(self, proc: subprocess.Popen[Any]) -> None:
         """Kill the process and all its descendants."""
         try:
-            if _IS_WINDOWS:
+            if sys.platform == "win32":
                 subprocess.run(
                     ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
                     stdout=subprocess.DEVNULL,
@@ -89,7 +91,13 @@ class LocalTerminalBackend(BaseTerminalBackend):
                     timeout=5.0,
                 )
             else:
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                sig_kill = getattr(signal, "SIGKILL", getattr(signal, "SIGTERM", 9))
+                killpg = getattr(os, "killpg", None)
+                getpgid = getattr(os, "getpgid", None)
+                if callable(killpg) and callable(getpgid):
+                    killpg(getpgid(proc.pid), sig_kill)
+                else:
+                    proc.kill()
         except Exception:
             try:
                 proc.kill()

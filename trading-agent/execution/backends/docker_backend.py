@@ -53,7 +53,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
             return False
 
     def is_alive(self) -> bool:
-        if not self.is_docker_available():
+        if not self.is_docker_available() or not self._docker_bin:
             return False
         try:
             res = subprocess.run(
@@ -74,7 +74,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
         timeout: float = 60.0,
         env: Optional[Dict[str, str]] = None,
     ) -> Tuple[str, str, int]:
-        if not self.is_docker_available():
+        if not self.is_docker_available() or not self._docker_bin:
             return "", "Docker daemon is not available on host system.", -1
 
         exec_cmd = [self._docker_bin, "exec"]
@@ -86,6 +86,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
 
         exec_cmd.extend([self.container_id, "sh", "-c", cmd])
 
+        proc: Optional[subprocess.Popen[str]] = None
         try:
             proc = subprocess.Popen(
                 exec_cmd,
@@ -98,7 +99,8 @@ class DockerTerminalBackend(BaseTerminalBackend):
             stdout, stderr = proc.communicate(timeout=timeout)
             return stdout, stderr, proc.returncode
         except subprocess.TimeoutExpired:
-            proc.kill()
+            if proc is not None:
+                proc.kill()
             return "", f"Docker execution timed out after {timeout} seconds.", -1
         except Exception as exc:
             return "", str(exc), -1

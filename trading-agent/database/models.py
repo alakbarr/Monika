@@ -571,7 +571,7 @@ class AssetAnalysis(Base):
     def entry_price(self, value: Optional[float]) -> None:
         """Set harga entry ke dalam field entry_zone JSON secara aman."""
         import json
-        ez = {}
+        ez: dict[str, Any] = {}
         if self.entry_zone:
             if isinstance(self.entry_zone, dict):
                 ez = dict(self.entry_zone)

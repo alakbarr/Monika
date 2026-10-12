@@ -560,3 +560,7 @@ def ensure_mt5_module(host: Optional[str] = None, port: Optional[int] = None) ->
 
     sys.modules["MetaTrader5"] = mt5_inst
     return mt5_inst
+
+
+# Module-level convenience reference
+mt5: Any = None
