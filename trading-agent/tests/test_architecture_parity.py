@@ -314,4 +314,55 @@ def test_core_foundation_identity_and_parity():
     assert shim_jev.Score is canon_jev.Score
 
 
+def test_interface_layer_identity_and_parity():
+    """Verify class identity and behavioral parity between legacy and canonical interface layer."""
+    # 1. Telegram identity & sub-routers
+    import telegram_bot.bot as shim_tgb
+    import monika.interfaces.telegram.bot as canon_tgb
+    assert shim_tgb.TelegramBot is canon_tgb.TelegramBot
+
+    import telegram_bot.command_router as shim_cr
+    import monika.interfaces.telegram.command_router as canon_cr
+    assert shim_cr.CommandType is canon_cr.CommandType
+    assert shim_cr.ParsedCommand is canon_cr.ParsedCommand
+
+    import telegram_bot.routers as shim_routers
+    import monika.interfaces.telegram.routers as canon_routers
+    assert shim_routers.TradingRouter is canon_routers.TradingRouter
+    assert shim_routers.RiskRouter is canon_routers.RiskRouter
+    assert shim_routers.MarketRouter is canon_routers.MarketRouter
+    assert shim_routers.QuantRouter is canon_routers.QuantRouter
+    assert shim_routers.AdminRouter is canon_routers.AdminRouter
+
+    # 2. CLI identity
+    import cli.main as shim_cli
+    import monika.interfaces.cli.main as canon_cli
+    assert shim_cli.main is canon_cli.main
+
+    import cli.tui as shim_tui
+    import monika.interfaces.cli.tui as canon_tui
+    assert shim_tui.TradingAgentApp is canon_tui.TradingAgentApp
+
+    # 3. Dashboard identity
+    import logging_observability.dashboard.api as shim_dash
+    import monika.interfaces.dashboard.api as canon_dash
+    assert shim_dash.app is canon_dash.app
+
+    import logging_observability.dashboard.rbac as shim_rbac
+    import monika.interfaces.dashboard.rbac as canon_rbac
+    assert shim_rbac.Role is canon_rbac.Role
+    assert shim_rbac.resolve_role is canon_rbac.resolve_role
+
+    # 4. Gateway identity
+    import gateway.omnichannel_router as shim_omni
+    import monika.interfaces.gateway.omnichannel_router as canon_omni
+    assert shim_omni.OmnichannelRouter is canon_omni.OmnichannelRouter
+
+    import gateway.api_server as shim_gw_api
+    import monika.interfaces.gateway.api_server as canon_gw_api
+    assert shim_gw_api.app is canon_gw_api.app
+    assert shim_gw_api.chat_completions is canon_gw_api.chat_completions
+
+
+
 

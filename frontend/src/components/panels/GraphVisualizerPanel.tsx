@@ -1,0 +1,948 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Workflow,
+  Sparkles,
+  Loader2,
+  Compass,
+  Send,
+  X,
+} from 'lucide-react';
+import { api } from '../../lib/api';
+import type { GraphStateResponse, GraphNode, CycleItem } from '../../types/api';
+import { GraphControls } from './graph/GraphControls';
+import { GraphEdge } from './graph/GraphEdge';
+import { GraphNodeComponent } from './graph/GraphNode';
+import { GraphInspector } from './graph/GraphInspector';
+import { computeGraphLayout, COMPACT_POSITIONS, WIDE_POSITIONS } from './graph/graphUtils';
+
+// Visual canvas dimensions & node geometry
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 120;
+
+export const GraphVisualizerPanel: React.FC = () => {
+  const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedCycle, setSelectedCycle] = useState<string>('');
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('');
+  const [layoutMode, setLayoutMode] = useState<'compact' | 'wide'>('compact');
+  const [autoFit, setAutoFit] = useState<boolean>(true);
+
+  const nodePositions = React.useMemo(() => {
+    if (!graphData) return layoutMode === 'compact' ? COMPACT_POSITIONS : WIDE_POSITIONS;
+    return computeGraphLayout(graphData.nodes, graphData.edges, layoutMode);
+  }, [graphData, layoutMode]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [triggering, setTriggering] = useState<boolean>(false);
+  const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
+
+  // Steer Directive Modal State
+  const [showSteerModal, setShowSteerModal] = useState<boolean>(false);
+  const [steerMessage, setSteerMessage] = useState<string>('');
+  const [steerMode, setSteerMode] = useState<string>('steer');
+  const [steerSymbols, setSteerSymbols] = useState<string>('');
+  const [steerLoading, setSteerLoading] = useState<boolean>(false);
+
+  // Cycle Telemetry & Token Cost State
+  const [cycleTrace, setCycleTrace] = useState<any | null>(null);
+  const [cycleTokens, setCycleTokens] = useState<any | null>(null);
+
+  // Viewport transform state: scale and translation
+  const [transform, setTransform] = useState<{ x: number; y: number; k: number }>({
+    x: 40,
+    y: 30,
+    k: 0.85,
+  });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const panStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
+    startX: 0,
+    startY: 0,
+    initX: 0,
+    initY: 0,
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastFetchedCycleRef = useRef<string | null>(null);
+
+  // Dynamic Auto-Fit calculation
+  const fitGraphToContainer = useCallback((mode: 'compact' | 'wide' = layoutMode) => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = containerRef.current.clientHeight;
+    if (!containerWidth || !containerHeight) return;
+
+    const positions = Object.values(
+      graphData
+        ? computeGraphLayout(graphData.nodes, graphData.edges, mode)
+        : (mode === 'compact' ? COMPACT_POSITIONS : WIDE_POSITIONS)
+    );
+    if (positions.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    positions.forEach(p => {
+      if (p.x < minX) minX = p.x;
+      if (p.x + NODE_WIDTH > maxX) maxX = p.x + NODE_WIDTH;
+      if (p.y < minY) minY = p.y;
+      if (p.y + NODE_HEIGHT > maxY) maxY = p.y + NODE_HEIGHT;
+    });
+
+    if (mode === 'compact') {
+      minX = Math.min(minX, 40);
+      minY = Math.min(minY, 50);
+      maxX = Math.max(maxX, 1275);
+      maxY = Math.max(maxY, 550);
+    }
+
+    const padding = 28;
+    const graphWidth = (maxX - minX) + padding * 2;
+    const graphHeight = (maxY - minY) + padding * 2;
+
+    const scaleX = containerWidth / graphWidth;
+    const scaleY = containerHeight / graphHeight;
+    const optimalScale = Math.min(scaleX, scaleY, 1.15);
+    const clampedScale = Math.max(optimalScale, 0.35);
+
+    const scaledGraphWidth = (maxX - minX) * clampedScale;
+    const scaledGraphHeight = (maxY - minY) * clampedScale;
+    const offsetX = (containerWidth - scaledGraphWidth) / 2 - minX * clampedScale;
+    const offsetY = (containerHeight - scaledGraphHeight) / 2 - minY * clampedScale;
+
+    setTransform({
+      x: Math.round(offsetX),
+      y: Math.round(offsetY),
+      k: Number(clampedScale.toFixed(3)),
+    });
+  }, [graphData, layoutMode]);
+
+  // Load graph state from backend
+  const loadGraphState = useCallback(async (cycleId?: string, symbol?: string, isBackground: boolean = false) => {
+    try {
+      if (!isBackground) setLoading(true);
+      const [res, traceRes, tokensRes] = await Promise.all([
+        api.graphState(cycleId, symbol || undefined),
+        cycleId ? api.cycleTraceSummary(cycleId).catch(() => null) : Promise.resolve(null),
+        api.tokenCycles(cycleId).catch(() => null),
+      ]);
+      setGraphData(res);
+      setCycleTrace(traceRes);
+      setCycleTokens(tokensRes);
+      lastFetchedCycleRef.current = res.cycle_id;
+      if (res.cycle_id && res.cycle_id !== selectedCycle) {
+        setSelectedCycle(res.cycle_id);
+      }
+      setSelectedNodeId(curr => curr || (res.nodes && res.nodes.length > 0 ? res.nodes[0].id : null));
+    } catch (err) {
+      console.error('Failed to load graph state:', err);
+    } finally {
+      if (!isBackground) setLoading(false);
+    }
+  }, [selectedCycle]);
+
+  useEffect(() => {
+    loadGraphState(selectedCycle || undefined, selectedSymbol || undefined, false);
+  }, [selectedCycle, selectedSymbol, loadGraphState]);
+
+  // Polling fallback without loading flash
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadGraphState(selectedCycle || undefined, selectedSymbol || undefined, true);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedCycle, selectedSymbol, loadGraphState]);
+
+  // Auto-fit on resize (window resize, sidebar toggle, or inspector open/close)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (autoFit) {
+        fitGraphToContainer();
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [autoFit, fitGraphToContainer]);
+
+  // Auto-fit when graphData arrives
+  useEffect(() => {
+    if (autoFit && graphData) {
+      const timer = setTimeout(() => {
+        fitGraphToContainer();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [graphData, autoFit, fitGraphToContainer]);
+
+  // Viewport zoom & pan handlers
+  const handleZoom = (factor: number) => {
+    setAutoFit(false);
+    setTransform(curr => ({
+      ...curr,
+      k: Math.min(Math.max(curr.k * factor, 0.35), 2.2),
+    }));
+  };
+
+  const handleReset = () => {
+    setAutoFit(false);
+    setTransform({ x: 40, y: 20, k: 0.85 });
+  };
+
+  const handleToggleAutoFit = () => {
+    const next = !autoFit;
+    setAutoFit(next);
+    if (next) {
+      fitGraphToContainer();
+    }
+  };
+
+  const handleLayoutModeChange = (mode: 'compact' | 'wide') => {
+    setLayoutMode(mode);
+    if (autoFit) {
+      fitGraphToContainer(mode);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('g[style*="cursor: pointer"]')) return;
+    setIsPanning(true);
+    panStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initX: transform.x,
+      initY: transform.y,
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    const dx = e.clientX - panStartRef.current.startX;
+    const dy = e.clientY - panStartRef.current.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      setAutoFit(false);
+    }
+    setTransform(curr => ({
+      ...curr,
+      x: panStartRef.current.initX + dx,
+      y: panStartRef.current.initY + dy,
+    }));
+  };
+
+  const handleMouseUp = () => setIsPanning(false);
+
+  const handleTriggerCycle = async () => {
+    try {
+      setTriggering(true);
+      setTriggerMsg(null);
+      const res = await api.triggerCycle(true, 'Manual trigger from LangGraph Visualizer');
+      setTriggerMsg(`Cycle triggered successfully (${res.status || 'dispatched'})`);
+      setTimeout(() => loadGraphState(), 1000);
+    } catch (err: any) {
+      setTriggerMsg(`Trigger failed: ${err.message || String(err)}`);
+    } finally {
+      setTriggering(false);
+      setTimeout(() => setTriggerMsg(null), 6000);
+    }
+  };
+
+  const handleCopyPayload = () => {
+    if (!selectedNode?.output_payload) return;
+    navigator.clipboard.writeText(JSON.stringify(selectedNode.output_payload, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSendSteer = async () => {
+    if (!steerMessage.trim()) return;
+    try {
+      setSteerLoading(true);
+      const symList = steerSymbols
+        .split(',')
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+      await api.steer({
+        message: steerMessage.trim(),
+        mode: steerMode,
+        symbols: symList.length > 0 ? symList : undefined,
+      });
+      setTriggerMsg(`Steer directive successfully dispatched (${steerMode})`);
+      setShowSteerModal(false);
+      setSteerMessage('');
+      setSteerSymbols('');
+    } catch (err: any) {
+      alert(`Steer failed: ${err.message || String(err)}`);
+    } finally {
+      setSteerLoading(false);
+    }
+  };
+
+  const selectedNode = graphData?.nodes.find((n: GraphNode) => n.id === selectedNodeId) || null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+      {/* 1. Header Toolbar */}
+      <div
+        className="win-window ledger-card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--color-paper-raised)',
+          padding: '12px 16px',
+          border: '2px solid var(--color-rule)',
+          borderRadius: 'var(--radius-card)',
+          boxShadow: 'var(--shadow-card)',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: 34,
+            height: 34,
+            borderRadius: '4px',
+            background: 'var(--color-win-yellow)',
+            border: '1px solid var(--color-rule)',
+            boxShadow: '1px 1px 0 var(--color-rule)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-on-win-yellow)',
+          }}>
+            <Workflow size={18} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{
+                fontSize: 'var(--text-title-sm)',
+                fontWeight: 800,
+                margin: 0,
+                color: 'var(--color-ink)',
+                fontFamily: 'var(--font-precision)',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}>
+                LANGGRAPH MULTI-AGENT PIPELINE
+              </h2>
+              {graphData && (
+                <span
+                  className="stamp-badge"
+                  style={{
+                    fontSize: '11px',
+                    background: graphData.status === 'completed'
+                      ? 'var(--color-profit-dim)'
+                      : graphData.status === 'running'
+                        ? 'var(--color-warn-dim)'
+                        : 'var(--color-loss-dim)',
+                    color: graphData.status === 'completed'
+                      ? 'var(--color-ledger-green)'
+                      : graphData.status === 'running'
+                        ? 'var(--color-brass)'
+                        : 'var(--color-ledger-red)',
+                    border: `1px solid ${
+                      graphData.status === 'completed'
+                        ? 'var(--color-ledger-green)'
+                        : graphData.status === 'running'
+                          ? 'var(--color-brass)'
+                          : 'var(--color-ledger-red)'
+                    }`,
+                  }}
+                >
+                  [{(graphData.status?.toUpperCase() || 'IDLE')}]
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)' }}>
+                EXECUTION CYCLE:
+              </span>
+              <select
+                value={selectedCycle}
+                onChange={(e) => setSelectedCycle(e.target.value)}
+                style={{
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-rule)',
+                  color: 'var(--color-ink)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '3px 8px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-precision)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                {(graphData?.available_cycles || []).map((c: CycleItem) => (
+                  <option key={c.cycle_id} value={c.cycle_id}>
+                    {c.label || c.cycle_id} ({c.status})
+                  </option>
+                ))}
+              </select>
+
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)', marginLeft: '6px' }}>
+                ASSET FILTER:
+              </span>
+              <select
+                value={selectedSymbol}
+                onChange={(e) => setSelectedSymbol(e.target.value)}
+                style={{
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-rule)',
+                  color: 'var(--color-ink)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '3px 8px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-precision)',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value="">ALL ASSETS (AGGREGATE)</option>
+                {(graphData?.available_symbols || []).map((sym: string) => (
+                  <option key={sym} value={sym}>
+                    {sym}
+                  </option>
+                ))}
+              </select>
+
+              {loading && <Loader2 size={13} color="var(--color-brass)" style={{ animation: 'spin 1s linear infinite' }} />}
+            </div>
+          </div>
+        </div>
+
+        {/* Telemetry Summary Badges */}
+        {graphData && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '4px 10px',
+              background: 'var(--color-paper)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
+            }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
+              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
+                {((graphData.total_duration_ms ?? 0) / 1000).toFixed(2)}s
+              </span>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '4px 10px',
+              background: 'var(--color-paper)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
+            }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
+              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-win-blue)' }}>
+                {((graphData.total_tokens?.total ?? 0) / 1000).toFixed(1)}k
+              </span>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '4px 10px',
+              background: 'var(--color-paper)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: '1px 1px 0 var(--color-rule)',
+            }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
+              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ledger-green)' }}>
+                ${(graphData.total_tokens?.cost_usd ?? 0).toFixed(4)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Viewport controls & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setShowSteerModal(true)}
+            title="Inject operator directive into current or next cycle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 12px',
+              background: 'var(--color-surface)',
+              color: 'var(--color-ink)',
+              border: '1px solid var(--color-rule)',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 700,
+              fontSize: 'var(--text-xs)',
+              cursor: 'pointer',
+              boxShadow: '1px 1px 0 var(--color-rule)',
+              fontFamily: 'var(--font-precision)',
+            }}
+          >
+            <Compass size={14} color="var(--color-brass)" />
+            <span>[ STEER DIRECTIVE ]</span>
+          </button>
+          <GraphControls
+            onZoom={handleZoom}
+            onReset={handleReset}
+            onTriggerCycle={handleTriggerCycle}
+            triggering={triggering}
+            layoutMode={layoutMode}
+            onChangeLayoutMode={handleLayoutModeChange}
+            autoFit={autoFit}
+            onToggleAutoFit={handleToggleAutoFit}
+          />
+        </div>
+      </div>
+
+      {triggerMsg && (
+        <div
+          className="win-window"
+          style={{
+            padding: '8px 14px',
+            borderRadius: 'var(--radius-card)',
+            background: 'var(--color-paper-raised)',
+            border: '2px solid var(--color-win-yellow)',
+            boxShadow: 'var(--shadow-card)',
+            color: 'var(--color-ink)',
+            fontSize: 'var(--text-body-sm)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontFamily: 'var(--font-precision)',
+          }}
+        >
+          <Sparkles size={16} color="var(--color-brass)" />
+          {triggerMsg}
+        </div>
+      )}
+
+      {/* 2. Main Content: Interactive SVG Canvas + Side Inspector */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: selectedNode ? '1fr 380px' : '1fr',
+        gap: '16px',
+        height: '680px',
+        transition: 'all 0.2s ease-out',
+      }}>
+        {/* Canvas Card */}
+        <div
+          ref={containerRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => setIsPanning(false)}
+          className="win-window dag-drafting-canvas"
+          style={{
+            position: 'relative',
+            background: 'var(--color-paper)',
+            border: '2px solid var(--color-rule)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
+            overflow: 'hidden',
+            cursor: isPanning ? 'grabbing' : (autoFit ? 'default' : 'grab'),
+            userSelect: 'none',
+          }}
+        >
+          {/* Architectural drafting grid background pattern */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'radial-gradient(circle, var(--color-dag-grid) 1.2px, transparent 1.2px)',
+            backgroundSize: '24px 24px',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Canvas SVG */}
+          <svg
+            width="100%"
+            height="100%"
+            style={{ display: 'block', overflow: 'visible' }}
+          >
+            <defs>
+              <marker
+                id="arrow-done"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ledger-green)" />
+              </marker>
+              <marker
+                id="arrow-running"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-brass)" />
+              </marker>
+              <marker
+                id="arrow-pending"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-soft)" opacity="0.6" />
+              </marker>
+              <marker
+                id="arrow-skipped"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-muted)" opacity="0.5" />
+              </marker>
+            </defs>
+
+            {/* Root SVG Transform Group */}
+            <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
+              {/* Subgraph container box: Dialectic Arbitration (rendered only when graph nodes exist) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && (
+                <>
+                  <rect
+                    x={layoutMode === 'compact' ? '515' : '865'}
+                    y={layoutMode === 'compact' ? '50' : '80'}
+                    width={layoutMode === 'compact' ? '495' : '555'}
+                    height={layoutMode === 'compact' ? '395' : '435'}
+                    rx="4"
+                    fill="var(--color-subgraph-bg)"
+                    stroke="var(--color-brass)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                  />
+                  <text
+                    x={layoutMode === 'compact' ? '530' : '880'}
+                    y={layoutMode === 'compact' ? '70' : '102'}
+                    fill="var(--color-brass)"
+                    fontSize={layoutMode === 'compact' ? '10.5' : '12'}
+                    fontWeight="800"
+                    letterSpacing="0.08em"
+                    fontFamily="var(--font-precision)"
+                  >
+                    {layoutMode === 'compact'
+                      ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
+                      : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
+                  </text>
+                </>
+              )}
+
+              {/* Subgraph container box: Fortress & Execution Waterfall (compact mode) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'compact' && (
+                <>
+                  <rect
+                    x="1025"
+                    y="50"
+                    width="250"
+                    height="500"
+                    rx="4"
+                    fill="rgba(34, 197, 94, 0.03)"
+                    stroke="var(--color-ledger-green)"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                  />
+                  <text
+                    x="1038"
+                    y="70"
+                    fill="var(--color-ledger-green)"
+                    fontSize="10"
+                    fontWeight="800"
+                    letterSpacing="0.08em"
+                    fontFamily="var(--font-precision)"
+                  >
+                    [ FORTRESS & EXECUTION WATERFALL ]
+                  </text>
+                </>
+              )}
+
+              {/* Edge Bezier Connectors */}
+              {graphData?.edges.map((edge, idx) => {
+                const srcPos = nodePositions[edge.from];
+                const dstPos = nodePositions[edge.to];
+                if (!srcPos || !dstPos) return null;
+
+                const srcNode = graphData.nodes.find(n => n.id === edge.from);
+                const dstNode = graphData.nodes.find(n => n.id === edge.to);
+
+                return (
+                  <GraphEdge
+                    key={`${edge.from}-${edge.to}-${idx}`}
+                    fromId={edge.from}
+                    toId={edge.to}
+                    srcPos={srcPos}
+                    dstPos={dstPos}
+                    srcNode={srcNode}
+                    dstNode={dstNode}
+                    nodeWidth={NODE_WIDTH}
+                    nodeHeight={NODE_HEIGHT}
+                  />
+                );
+              })}
+
+              {/* Interactive Graph Nodes */}
+              {graphData?.nodes.map((node: GraphNode) => {
+                const pos = nodePositions[node.id] || { x: 100, y: 100 };
+                const isSelected = selectedNodeId === node.id;
+
+                return (
+                  <GraphNodeComponent
+                    key={node.id}
+                    node={node}
+                    isSelected={isSelected}
+                    onSelect={setSelectedNodeId}
+                    pos={pos}
+                    nodeWidth={NODE_WIDTH}
+                    nodeHeight={NODE_HEIGHT}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+
+          {/* Idle Empty State Overlay */}
+          {(!graphData?.nodes || graphData.nodes.length === 0) && !loading && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                color: 'var(--color-ink-muted)',
+                pointerEvents: 'none',
+              }}
+            >
+              <Workflow size={36} color="var(--color-brass)" style={{ opacity: 0.6 }} />
+              <div style={{ fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--color-ink)' }}>
+                NO ACTIVE PIPELINE CYCLE
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
+                The trading pipeline is currently idle. Trigger a manual cycle above or wait for the next scheduled 8-hour graph run.
+              </div>
+            </div>
+          )}
+
+          {/* Minimap / Legend Badge */}
+          <div style={{
+            position: 'absolute',
+            bottom: 16,
+            left: 16,
+            background: 'var(--color-paper-raised)',
+            border: '1px solid var(--color-rule)',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: '1px 1px 0 var(--color-rule)',
+            padding: '6px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            fontSize: 'var(--text-caption)',
+            color: 'var(--color-ink)',
+            fontFamily: 'var(--font-precision)',
+            pointerEvents: 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-profit)' }} />
+              <span>[ COMPLETED ]</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-brass)' }} />
+              <span>[ RUNNING ]</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-loss)' }} />
+              <span>[ FAILED ]</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-ink-muted)' }} />
+              <span>[ PENDING ]</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Side Inspector Drawer */}
+        {selectedNode && (
+          <GraphInspector
+            selectedNode={selectedNode}
+            onClose={() => setSelectedNodeId(null)}
+            copied={copied}
+            onCopyPayload={handleCopyPayload}
+            cycleTrace={cycleTrace}
+            cycleTokens={cycleTokens}
+          />
+        )}
+      </div>
+
+      {showSteerModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowSteerModal(false)}
+        >
+          <div
+            className="win-window ledger-card"
+            style={{
+              background: 'var(--color-paper-raised)',
+              border: '2px solid var(--color-rule)',
+              borderRadius: 'var(--radius-card)',
+              boxShadow: '6px 6px 0 var(--color-rule)',
+              width: '520px',
+              maxWidth: '90vw',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-rule)', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Compass size={18} color="var(--color-brass)" />
+                <span style={{ fontSize: 'var(--text-body)', fontWeight: 800, fontFamily: 'var(--font-precision)', textTransform: 'uppercase' }}>
+                  OPERATOR STEER DIRECTIVE
+                </span>
+              </div>
+              <button
+                onClick={() => setShowSteerModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                Directive Instruction / Message
+              </label>
+              <textarea
+                value={steerMessage}
+                onChange={e => setSteerMessage(e.target.value)}
+                placeholder="e.g. Prioritize risk containment on EURUSD. Invalidate bullish confluence if DXY breaks above 104.50."
+                rows={4}
+                style={{
+                  width: '100%',
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px',
+                  color: 'var(--color-ink)',
+                  fontSize: 'var(--text-body-sm)',
+                  fontFamily: 'var(--font-precision)',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                  Delivery Mode
+                </label>
+                <select
+                  value={steerMode}
+                  onChange={e => setSteerMode(e.target.value)}
+                  style={{
+                    background: 'var(--color-paper)',
+                    border: '1px solid var(--color-rule)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px',
+                    color: 'var(--color-ink)',
+                    fontSize: 'var(--text-body-sm)',
+                    fontFamily: 'var(--font-precision)',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="steer">steer (Cycle State Injection)</option>
+                  <option value="follow_up">follow_up (Direct Agent Follow-up)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
+                  Symbols (Optional comma-sep)
+                </label>
+                <input
+                  type="text"
+                  value={steerSymbols}
+                  onChange={e => setSteerSymbols(e.target.value)}
+                  placeholder="EURUSD, XAUUSD"
+                  style={{
+                    background: 'var(--color-paper)',
+                    border: '1px solid var(--color-rule)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 10px',
+                    color: 'var(--color-ink)',
+                    fontSize: 'var(--text-body-sm)',
+                    fontFamily: 'var(--font-precision)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <button
+                onClick={() => setShowSteerModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: '1px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-body-sm)',
+                  cursor: 'pointer',
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-precision)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendSteer}
+                disabled={steerLoading || !steerMessage.trim()}
+                style={{
+                  padding: '8px 20px',
+                  background: 'var(--color-brass)',
+                  border: '1px solid var(--color-rule)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-body-sm)',
+                  fontWeight: 'bold',
+                  cursor: steerLoading || !steerMessage.trim() ? 'not-allowed' : 'pointer',
+                  color: 'var(--color-on-win-yellow)',
+                  fontFamily: 'var(--font-precision)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  opacity: steerLoading || !steerMessage.trim() ? 0.6 : 1,
+                }}
+              >
+                {steerLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
+                <span>Dispatch Steer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
