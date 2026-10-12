@@ -266,3 +266,52 @@ def test_infrastructure_layer_identity_and_parity():
     assert shim_tfm.TimesFMEngine is canon_tfm.TimesFMEngine
 
 
+def test_core_foundation_identity_and_parity():
+    """Verify class identity and behavioral parity between legacy and canonical core foundation."""
+    # 1. Config identity
+    import config.settings as shim_cfg
+    import monika.core.config.settings as canon_cfg
+    assert shim_cfg.load_settings is canon_cfg.load_settings
+
+    import config.schemas as shim_sch
+    import monika.core.config.schemas as canon_sch
+    assert shim_sch.TradingAgentConfig is canon_sch.TradingAgentConfig
+
+    # 2. Security identity
+    import security.terminal_guard as shim_tg
+    import monika.core.security.terminal_guard as canon_tg
+    assert shim_tg.validate_command is canon_tg.validate_command
+    assert shim_tg.assert_safe_read_path is canon_tg.assert_safe_read_path
+
+    import security.credential_vault as shim_cv
+    import monika.core.security.credential_vault as canon_cv
+    assert shim_cv.CredentialVault is canon_cv.CredentialVault
+
+    # 3. Telemetry identity
+    import logging_observability.activity_logger as shim_al
+    import monika.core.telemetry.activity_logger as canon_al
+    assert shim_al.ActivityLogger is canon_al.ActivityLogger
+
+    import logging_observability.tracing.tracer as shim_tr
+    import monika.core.telemetry.tracing.tracer as canon_tr
+    assert shim_tr.AgentTracer is canon_tr.AgentTracer
+    assert shim_tr.Span is canon_tr.Span
+    assert shim_tr.get_tracer is canon_tr.get_tracer
+
+    # 4. Primitives identity
+    import utils.clock as shim_clk
+    import monika.core.primitives.clock as canon_clk
+    assert shim_clk.now is canon_clk.now
+    assert shim_clk.set_simulated_now is canon_clk.set_simulated_now
+
+    import utils.protocol.event_bus as shim_eb
+    import monika.core.primitives.event_bus as canon_eb
+    assert shim_eb.EventBus is canon_eb.EventBus
+
+    import utils.typesafe.jev_primitives as shim_jev
+    import monika.core.primitives.jev_primitives as canon_jev
+    assert shim_jev.Choice is canon_jev.Choice
+    assert shim_jev.Score is canon_jev.Score
+
+
+

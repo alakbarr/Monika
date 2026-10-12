@@ -1,15 +1,29 @@
-# Exit reasons yang dianggap sebagai "market outcome" (bukan admin action)
-MARKET_OUTCOME_EXIT_REASONS = ['sl_hit', 'tp_hit', 'trailing_sl', 'breakeven_sl', 'partial_tp']
+"""
+Compatibility facade shim for legacy constants.py.
+Re-exports from canonical monika.core.primitives.constants.
+"""
 
-# Exit reasons yang tidak dihitung dalam win rate
-NON_MARKET_EXIT_REASONS = ['expired_limit', 'max_holding_time', 'rejected_by_admin']
+from __future__ import annotations
 
-# Magic number untuk MT5 orders dari AI Trading Agent
-AI_MAGIC_NUMBER = 20250101
-CLAUDE_MAGIC_NUMBER = AI_MAGIC_NUMBER  # Backward-compatible alias
+import monika.core.primitives.constants as _canonical
 
-# Default timeframes untuk analysis
-ANALYSIS_TIMEFRAMES = ['H1', 'H4', 'D1']
+from monika.core.primitives.constants import (
+    AI_MAGIC_NUMBER,
+    ANALYSIS_TIMEFRAMES,
+    CLAUDE_MAGIC_NUMBER,
+    D1_DATA_MAX_AGE_HOURS,
+    H4_DATA_MAX_AGE_HOURS,
+    MARKET_OUTCOME_EXIT_REASONS,
+    NON_MARKET_EXIT_REASONS,
+)
 
-H4_DATA_MAX_AGE_HOURS = 8.0
-D1_DATA_MAX_AGE_HOURS = 32.0
+__all__ = ['AI_MAGIC_NUMBER', 'ANALYSIS_TIMEFRAMES', 'CLAUDE_MAGIC_NUMBER', 'D1_DATA_MAX_AGE_HOURS', 'H4_DATA_MAX_AGE_HOURS', 'MARKET_OUTCOME_EXIT_REASONS', 'NON_MARKET_EXIT_REASONS']
+
+
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
+
+import sys as _sys
+_sys.modules[__name__] = _canonical
