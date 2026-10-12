@@ -120,12 +120,19 @@ def get_daily_risk_cutoff(now: datetime, risk_cfg: dict) -> datetime:
 class RiskGate:
     """Memvalidasi order terhadap semua aturan risiko yang ada."""
 
-    def __init__(self, settings: dict, mt5_client=None, flash_crash_detector=None):
+    def __init__(
+        self,
+        settings: dict,
+        mt5_client=None,
+        flash_crash_detector=None,
+        data_provider: Optional[Any] = None,
+    ):
         """
         Args:
         settings:   Full settings dict (uses trading.risk section).
         mt5_client: Optional live MT5Client for real-time account info.
         flash_crash_detector: Optional FlashCrashDetector instance.
+        data_provider: Optional RiskDataProviderProtocol instance for decoupled persistence.
         """
         risk_cfg = settings.get("trading", {}).get("risk", {})
         self.settings = settings
@@ -136,6 +143,7 @@ class RiskGate:
         self.max_risk_pct:            float = float(risk_cfg.get("max_risk_per_trade_percent") or risk_cfg.get("risk_per_trade_pct") or 1.0)
         self._mt5 = mt5_client
         self.flash_crash_detector = flash_crash_detector
+        self._data_provider = data_provider
         from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
         self.dynamic_correlation_matrix = DynamicCorrelationMatrix(
             rolling_days=int(risk_cfg.get("correlation_rolling_days", 30)),
@@ -144,6 +152,14 @@ class RiskGate:
         self.correlation_matrix = self.dynamic_correlation_matrix
         from monika.domain.risk.risk_rule_plugin import ModularRiskRegistry
         self.modular_risk_registry = ModularRiskRegistry()
+
+    @property
+    def data_provider(self):
+        """Lazy-load default SqlAlchemyRiskRepository when not explicitly injected."""
+        if self._data_provider is None:
+            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+            self._data_provider = SqlAlchemyRiskRepository(settings=self.settings)
+        return self._data_provider
 
     def update_parameters(self, new_risk_cfg: dict) -> None:
         """Hot-reload risk parameters dynamically without restarting."""

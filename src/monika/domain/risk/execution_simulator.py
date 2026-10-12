@@ -19,9 +19,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
-
-from monika.infrastructure.database.models import PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.Risk.ExecutionSimulator")
 
@@ -88,23 +85,19 @@ class ExecutionSimulator:
             except Exception as e:
                 logger.debug(f"[{symbol}] MT5 tick retrieval non-fatal: {e}")
 
-        # 2. Fallback: Reconstruct micro-ticks from recent OHLCV bars
+        # 2. Fallback: Reconstruct micro-ticks from recent OHLCV bars via repository
         if session is not None:
             try:
-                stmt = (
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "M15")
-                    .order_by(desc(PriceOHLCV.timestamp))
-                    .limit(20)
-                )
-                bars = list((await session.execute(stmt)).scalars().all())
+                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+                repo = SqlAlchemyRiskRepository(session=session)
+                bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="M15", limit=20, session=session)
                 if bars:
-                    close_p = float(bars[0].close)
+                    close_p = float(bars[-1]["close"])
                     # Baseline spread estimation (approx 0.01% - 0.02% of price or 1.5 pips)
                     base_spread = max(1e-5, close_p * 0.00015)
-                    for b in reversed(bars):
+                    for b in bars:
                         # Synthesize 5 micro-ticks per bar (open, high, low, close, mid)
-                        o, h, l, c = float(b.open), float(b.high), float(b.low), float(b.close)
+                        o, h, l, c = float(b["open"]), float(b["high"]), float(b["low"]), float(b["close"])
                         for price in [o, (o + h) / 2.0, h, l, (l + c) / 2.0, c]:
                             ticks.append({
                                 "bid": price,

@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
-from monika.infrastructure.brokers.approval_transport import ApprovalTransport
+from monika.domain.risk.approval_transport import ApprovalTransport
 
 logger = logging.getLogger("TradingAgent.Risk.ApprovalHub")
 
