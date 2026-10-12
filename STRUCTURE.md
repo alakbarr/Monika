@@ -109,6 +109,7 @@ Monika/
 ├── pyrightconfig.json
 ├── pytest.ini
 ├── scripts
+│   ├── analyze_news_classification_mismatches.py
 │   ├── audit_token_usage.py
 │   ├── benchmark_debate_openrouter.py
 │   ├── benchmark_news_classification_openrouter.py
@@ -127,46 +128,25 @@ Monika/
 │   │   ├── check_news.py
 │   │   ├── check_sentiment.py
 │   │   └── check_twitter.py
+│   ├── compile_alphas_to_catalog.py
+│   ├── consolidate_sqlite_dbs.py
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
 │   ├── extract_production_fixtures.py
 │   ├── extract_realistic_fixtures.py
-│   ├── find_extra_models.py
-│   ├── heal_kill_switch_state.py
 │   ├── generate_full_benchmark_dashboard.py
 │   ├── generate_model_quadrant.py
-│   ├── generate_table.py
-│   ├── inspect_axis.py
-│   ├── inspect_charts.py
-│   ├── inspect_cost_per_task.py
-│   ├── inspect_label_lists.py
-│   ├── inspect_latency_bars.py
-│   ├── inspect_latency_hierarchy.py
-│   ├── inspect_latency_labels_sorted.py
-│   ├── inspect_latency_meta.py
-│   ├── inspect_pricing.py
-│   ├── inspect_pricing_paths.py
-│   ├── inspect_speed.py
-│   ├── inspect_strat_econ.py
-│   ├── inspect_svg.py
-│   ├── inspect_tokens_per_task.py
+│   ├── heal_kill_switch_state.py
 │   ├── install.ps1
 │   ├── install.sh
 │   ├── install_uv_managed.ps1
-│   ├── missing_per_col.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
-│   ├── test_classifications.py
-│   ├── test_filter_models.py
-│   ├── test_pipeline.py
 │   ├── update_benchmark_table.py
 │   ├── update_economic_calendar.py
 │   ├── update_index_toc.py
-│   ├── ux_audit_baseline_scan.py
-│   ├── verify_e2e_match.py
-│   ├── verify_latency_match.py
-│   └── verify_tokens_match.py
+│   └── ux_audit_baseline_scan.py
 ├── setup.bat
 ├── setup.ps1
 ├── setup.sh
