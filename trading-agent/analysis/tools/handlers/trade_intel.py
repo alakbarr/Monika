@@ -1929,11 +1929,62 @@ async def handle_close_positions_batch(args: dict, session: Optional[AsyncSessio
     """Close batch of positions filtered by profit, loss, or all without triggering full emergency pause."""
     filter_type = str(args.get("filter_type") or args.get("filter") or "all").lower().strip()
     reason = str(args.get("reason") or "User requested batch close")
+
     try:
-        from execution.mt5_client import get_mt5_client
-        client = get_mt5_client()
-        res = await client.close_positions_batch(filter_type=filter_type, reason=reason)
-        return {"status": "success", "filter_type": filter_type, "result": res}
+        from config.settings import load_settings
+        settings = load_settings() or {}
+        is_paper = bool(settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        if "paper_trading" in settings:
+            is_paper = bool(settings.get("paper_trading", {}).get("enabled", is_paper))
+
+        if is_paper:
+            # Paper trading simulation: close open paper positions in database
+            from database.models import Position
+            from sqlalchemy import select
+
+            closed_count = 0
+
+            async def _close_paper_in_session(s: AsyncSession) -> int:
+                count = 0
+                stmt = select(Position).where(Position.status == "open")
+                positions = (await s.execute(stmt)).scalars().all()
+                for p in positions:
+                    pnl = p.pnl or 0.0
+                    should_close = False
+                    if filter_type == "profit" and pnl > 0:
+                        should_close = True
+                    elif filter_type == "loss" and pnl < 0:
+                        should_close = True
+                    elif filter_type in ("all", "any"):
+                        should_close = True
+
+                    if should_close:
+                        p.status = "closed"
+                        p.closed_at = datetime.now(timezone.utc)
+                        count += 1
+                await s.commit()
+                return count
+
+            if session:
+                closed_count = await _close_paper_in_session(session)
+            else:
+                from database.db import get_session
+                async with get_session() as s:
+                    closed_count = await _close_paper_in_session(s)
+
+            return {
+                "status": "success",
+                "mode": "paper",
+                "filter_type": filter_type,
+                "closed_count": closed_count,
+                "reason": reason,
+            }
+        else:
+            # Live broker mode: pass to MT5 client
+            from execution.mt5_client import get_mt5_client
+            client = get_mt5_client()
+            res = await client.close_positions_batch(filter_type=filter_type, reason=reason)
+            return {"status": "success", "mode": "live", "filter_type": filter_type, "result": res}
     except Exception as e:
         return {"status": "error", "filter_type": filter_type, "error": str(e)}
 

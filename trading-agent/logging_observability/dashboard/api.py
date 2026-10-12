@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from logging_observability.dashboard.rbac import Role, resolve_role
+from logging_observability.dashboard.rbac import Role, resolve_role, require_role
 from logging_observability.dashboard.routes import (
     ClosePositionRequest,
     OverrideRiskRequest,
@@ -240,6 +240,7 @@ async def serve_setup_page():
     raise HTTPException(status_code=404, detail="Setup page template not found")
 
 @app.post("/api/setup/submit")
+@require_role(Role.ADMIN)
 async def submit_setup_configuration(request: Request):
     """Receive and persist configuration submitted from Web Onboarding Wizard."""
     try:

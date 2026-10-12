@@ -193,6 +193,7 @@ class ManualOrderSubmitRequest(BaseModel):
     sl: Optional[float] = Field(default=None, description="Stop loss price")
     tp: Optional[float] = Field(default=None, description="Take profit price")
     comment: str = Field(default="Manual:Dashboard", description="Order comment")
+    is_paper: Optional[bool] = Field(default=None, description="Explicit paper trading toggle")
 
 
 class DeprecateSkillRequest(BaseModel):

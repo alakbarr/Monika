@@ -236,12 +236,52 @@ def test_manual_order_submit(client):
             "sl": 1.0800,
             "tp": 1.0950,
             "comment": "Test:manual",
+            "is_paper": False,
         }
         resp = client.post("/api/orders/submit", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
         assert data["result"]["ticket"] == 888777
+        assert data["is_paper"] is False
+        mock_mt5.place_order.assert_awaited_once()
+
+
+def test_manual_order_submit_paper(client):
+    """Verify POST /api/orders/submit in paper mode isolates from MT5 broker."""
+    mock_mt5 = MagicMock()
+    mock_mt5.place_order = AsyncMock()
+
+    mock_verdict = MagicMock()
+    mock_verdict.approved = True
+    mock_risk_gate = MagicMock()
+    mock_risk_gate.evaluate_proposal = AsyncMock(return_value=mock_verdict)
+
+    set_dashboard_dependencies(mt5_client=mock_mt5, risk_gate=mock_risk_gate)
+
+    with patch("database.db.AsyncSessionLocal") as mock_session_ctx:
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_session_ctx.return_value.__aenter__.return_value = mock_session
+
+        payload = {
+            "symbol": "EURUSD",
+            "direction": "buy",
+            "order_type": "buy",
+            "volume": 0.1,
+            "price": 1.0850,
+            "sl": 1.0800,
+            "tp": 1.0950,
+            "comment": "Test:paper",
+            "is_paper": True,
+        }
+        resp = client.post("/api/orders/submit", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["is_paper"] is True
+        assert data["result"]["is_paper"] is True
+        mock_mt5.place_order.assert_not_awaited()
 
 
 def test_market_candles_endpoint(client):
