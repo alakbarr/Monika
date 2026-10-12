@@ -35,6 +35,7 @@ Monika/
 │   └── vps_deployment_guide.md
 ├── docker-compose.yml
 ├── docs
+│   ├── ROADMAP_SRC_MONIKA.md
 │   ├── SETUP_GUIDE.md
 │   ├── images
 │   └── ux-audit
