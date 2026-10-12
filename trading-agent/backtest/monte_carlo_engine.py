@@ -114,7 +114,7 @@ class MonteCarloStressTester:
     def run_slippage_spread_shock_test(
         self,
         trade_returns: List[float],
-        slippage_multipliers: List[float] = [1.0, 2.0, 3.0, 5.0],
+        slippage_multipliers: Optional[List[float]] = None,
         base_friction_pct: float = 0.0003,  # 3 pips/bps
         num_simulations: int = 2000,
         initial_equity: float = 10000.0
@@ -122,10 +122,11 @@ class MonteCarloStressTester:
         """
         Menguji ketahanan strategi terhadap lonjakan slippage dan pelebaran spread.
         """
+        mults = slippage_multipliers if slippage_multipliers is not None else [1.0, 2.0, 3.0, 5.0]
         returns_arr = np.array(trade_returns, dtype=float)
         results = {}
 
-        for mult in slippage_multipliers:
+        for mult in mults:
             penalty = base_friction_pct * (mult - 1.0)
             shocked_returns = returns_arr - penalty
             

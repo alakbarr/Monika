@@ -567,7 +567,10 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             live_positions = await self.mt5.get_open_positions()
 
         for pos in live_positions:
-            ticket = pos.get("ticket")
+            raw_ticket = pos.get("ticket")
+            if raw_ticket is None:
+                continue
+            ticket = int(raw_ticket)
             sym = pos.get("symbol")
             if symbol and sym and sym.strip().upper() != symbol.strip().upper():
                 continue

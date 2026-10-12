@@ -274,12 +274,12 @@ class PositionSizer:
 
         # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
         try:
-            from database.models import TradeOrder
+            from database.models import Order
             from sqlalchemy import select, func
             lookback_24h = (as_of or clock.now()) - timedelta(hours=24)
-            stmt = select(func.count(TradeOrder.id)).where(
-                TradeOrder.symbol == symbol,
-                TradeOrder.created_at >= lookback_24h
+            stmt = select(func.count(Order.id)).where(
+                Order.symbol == symbol,
+                Order.created_at >= lookback_24h
             )
             recent_count = (await session.execute(stmt)).scalar() or 0
             if recent_count >= 3:
@@ -385,18 +385,16 @@ class PositionSizer:
             target_usd = float(d_risk_amount_usd)
             if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
                 value_per_unit = spec.pip_value_per_lot / spec.pip_size
-                effective_dist = sl_distance_price if sl_distance_price > 0 else avg_atr
-                if avg_atr is not None and effective_dist == avg_atr:
-                    avg_atr = max(1e-6, avg_atr)  # prevent division by zero on flat readings
-                    effective_dist = avg_atr
-                desired_lot = target_usd / (effective_dist * value_per_unit)
-                if desired_lot < spec.min_lot:
-                    rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
-                    recommended_lots = 0.0
-                else:
-                    recommended_lots = self._round_lots(desired_lot, spec.lot_step)
-                    if spec.max_lot > 0:
-                        recommended_lots = min(spec.max_lot, recommended_lots)
+                effective_dist = sl_distance_price if sl_distance_price > 0 else (avg_atr or 0.0)
+                if effective_dist > 0:
+                    desired_lot = target_usd / (effective_dist * value_per_unit)
+                    if desired_lot < spec.min_lot:
+                        rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
+                        recommended_lots = 0.0
+                    else:
+                        recommended_lots = self._round_lots(desired_lot, spec.lot_step)
+                        if spec.max_lot > 0:
+                            recommended_lots = min(spec.max_lot, recommended_lots)
             
         # TAMBAHKAN: sanity check — if lot size would create notional > 20% of equity, reduce
         if spec.contract_size > 0 and entry_price > 0:
@@ -653,18 +651,16 @@ class PositionSizer:
             target_usd = float(d_risk_amount_usd)
             if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
                 value_per_unit = spec.pip_value_per_lot / spec.pip_size
-                effective_dist = sl_distance_price if sl_distance_price > 0 else avg_atr
-                if avg_atr is not None and effective_dist == avg_atr:
-                    avg_atr = max(1e-6, avg_atr)  # prevent division by zero on flat readings
-                    effective_dist = avg_atr
-                desired_lot = target_usd / (effective_dist * value_per_unit)
-                if desired_lot < spec.min_lot:
-                    rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
-                    recommended_lots = 0.0
-                else:
-                    recommended_lots = self._round_lots(desired_lot, spec.lot_step)
-                    if spec.max_lot > 0:
-                        recommended_lots = min(spec.max_lot, recommended_lots)
+                effective_dist = sl_distance_price if sl_distance_price > 0 else (avg_atr or 0.0)
+                if effective_dist > 0:
+                    desired_lot = target_usd / (effective_dist * value_per_unit)
+                    if desired_lot < spec.min_lot:
+                        rejections.append(f"Volatility-parity lot ({desired_lot:.4f}) < broker min_lot ({spec.min_lot}); skipped to prevent oversizing")
+                        recommended_lots = 0.0
+                    else:
+                        recommended_lots = self._round_lots(desired_lot, spec.lot_step)
+                        if spec.max_lot > 0:
+                            recommended_lots = min(spec.max_lot, recommended_lots)
         
         # TAMBAHKAN: cap to configured max lot and spec max lot
         max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")
@@ -918,7 +914,7 @@ class PositionSizer:
         risk_pct = risk_percent if risk_percent is not None else self.risk_percent
         risk_usd = account_equity * (risk_pct / 100.0)
         sl_distance = avg_atr * atr_multiplier
-        if spec.pip_size > 0 and spec.pip_value_per_lot > 0:
+        if spec and spec.pip_size > 0 and spec.pip_value_per_lot > 0:
             value_per_unit = spec.pip_value_per_lot / spec.pip_size
             denom = sl_distance * value_per_unit
             if denom > 0:
@@ -926,7 +922,7 @@ class PositionSizer:
                 if spec.max_lot > 0:
                     lots = min(spec.max_lot, lots)
                 return max(spec.min_lot, lots)
-        return spec.min_lot
+        return spec.min_lot if spec else 0.01
 
     @staticmethod
     def _invalid(

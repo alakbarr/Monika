@@ -197,3 +197,21 @@ def evaluate_joint_tail_risk(
         "recommended_haircut": sizing_haircut,
         "risk_level": risk_level,
     }
+
+
+def fit_clayton_copula(
+    returns_a: Union[pd.Series, np.ndarray],
+    returns_b: Union[pd.Series, np.ndarray],
+) -> Dict[str, float]:
+    """
+    Fits bivariate Clayton copula to two return series and returns theta
+    and lower tail dependence coefficient (lambda_L).
+    """
+    u = empirical_cdf(returns_a)
+    v = empirical_cdf(returns_b)
+    theta, lambda_lower = fit_copula_from_tau(u, v, copula_type="clayton")
+    return {
+        "theta": float(theta),
+        "lower_tail_dependence": float(lambda_lower),
+    }
+

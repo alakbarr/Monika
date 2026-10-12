@@ -8,6 +8,7 @@ Interactive, step-by-step upgrade from Monika Trial Package to Full Package.
 Handles PostgreSQL transition, Web Dashboard compilation, 9Router, and TimesFM.
 """
 
+import asyncio
 import os
 import sys
 import shutil
@@ -113,8 +114,7 @@ class UpgradeSubcommand(Subcommand):
                         ], capture_output=True, text=True)
                         if run_res.returncode == 0:
                             console.print(f"  {stamp_ok('DOCKER')} PostgreSQL container active! Waiting 3s...")
-                            import time
-                            time.sleep(3)
+                            await asyncio.sleep(3)
                             pg_ok = wizard._test_db_connection(pg_url)
                         else:
                             console.print(f"  {stamp_warn('DOCKER')} Docker error: {run_res.stderr or run_res.stdout}")

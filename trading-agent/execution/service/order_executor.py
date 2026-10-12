@@ -1650,7 +1650,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 win_count = (await session.execute(
                     select(func.count(PaperTradeRecord.id)).where(
                         PaperTradeRecord.status == "closed",
-                        PaperTradeRecord.pnl > 0
+                        PaperTradeRecord.pnl_pct > 0
                     )
                 )).scalar() or 0
                 win_rate = (float(win_count) / float(closed_count)) if closed_count > 0 else 0.0
@@ -1916,13 +1916,15 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         # Priced-in score gating is centralized upstream in risk_gate.py
 
         # Parsing kondisi entry
-        entry_cond = {}
+        entry_cond: dict[str, Any] = {}
         if analysis.entry_zone:
             if isinstance(analysis.entry_zone, dict):
                 entry_cond = analysis.entry_zone
-            else:
+            elif isinstance(analysis.entry_zone, str):
                 try:
-                    entry_cond = json.loads(analysis.entry_zone)
+                    parsed = json.loads(analysis.entry_zone)
+                    if isinstance(parsed, dict):
+                        entry_cond = parsed
                 except Exception as e:
                     logger.debug(f"Failed to parse entry_zone JSON: {e}")
                     entry_cond = {}
@@ -1984,7 +1986,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 logger.debug(f"Spread check failed (non-fatal): {e}")
 
         try:
-            specified_price = float(entry_cond['price']) if entry_cond.get('price') is not None else None
+            raw_spec = entry_cond.get('price')
+            specified_price = float(raw_spec) if raw_spec is not None else None
         except (ValueError, TypeError):
             specified_price = None
 
@@ -2209,7 +2212,6 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         # Task 2.1: Adversarial Validation Pass (Pre-Execution) - Reuse cached check if already run
         if verdict.approved and analysis.decision in ('buy', 'sell') and not is_edge_signal and self.settings.get('adversarial_check', {}).get('enabled', True):
-            from database.models import SystemConfig
             cached_adv = (await session.execute(
                 select(SystemConfig).where(SystemConfig.key == f'adversarial_outcome_{analysis.id}')
             )).scalar_one_or_none()
@@ -2475,6 +2477,9 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     )
 
             await _EXECUTION_LOCK.acquire()
+            is_pending: bool = False
+            mt5_result: dict[str, Any] = {}
+            position_id: Optional[int] = None
             try:
                 # R-1: Race condition pre-MT5 position re-check under global execution mutex
                 try:

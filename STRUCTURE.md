@@ -150,6 +150,11 @@ Monika/
 ├── skills-lock.json
 ├── start_monika.bat
 ├── start_monika.sh
+├── typings
+│   ├── MetaTrader5
+│   │   └── __init__.pyi
+│   └── ib_insync
+│       └── __init__.pyi
 └── trading-agent
     ├── .env.example
     ├── PRD.md

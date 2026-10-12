@@ -230,7 +230,8 @@ class MT5SelfHealingExecutor:
         """Verifies if fresh tick price is within safe ATR drift tolerance (<= 0.20 * ATR)."""
         try:
             def _fetch_tick():
-                from execution.mt5_compat import mt5
+                from execution.mt5_compat import get_mt5_module
+                mt5 = get_mt5_module()
                 return mt5.symbol_info_tick(symbol) if mt5 else None
 
             tick = await asyncio.to_thread(_fetch_tick)

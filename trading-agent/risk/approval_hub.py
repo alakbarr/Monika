@@ -260,7 +260,7 @@ class ApprovalHub:
         self._requests[request_id] = req
         logger.info(
             f"[ApprovalHub] Created approval request '{request_id}' for {symbol} [{action}] "
-            f"(digest={req.request_digest[:12]}, expires in {ttl:.1f}s)."
+            f"(digest={(req.request_digest or '')[:12]}, expires in {ttl:.1f}s)."
         )
         return req
 
@@ -308,7 +308,7 @@ class ApprovalHub:
             self._requests[token] = req
             logger.info(
                 f"[ApprovalHub] Level {level} action '{action_type}' auto-approved "
-                f"(token={token}, digest={req.request_digest[:12]})."
+                f"(token={token}, digest={(req.request_digest or '')[:12]})."
             )
             return req
 
@@ -335,7 +335,7 @@ class ApprovalHub:
         self._requests[token] = req
         logger.warning(
             f"[ApprovalHub] Level {level} action '{action_type}' requires human authorization! "
-            f"(token={token}, digest={req.request_digest[:12]})"
+            f"(token={token}, digest={(req.request_digest or '')[:12]})"
         )
         return req
 

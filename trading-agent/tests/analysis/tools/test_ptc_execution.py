@@ -63,6 +63,7 @@ async def test_ptc_env_sanitization_prevents_secret_leak(monkeypatch):
 
     mock_executor = MagicMock()
     handler = PTCHandler(tool_executor=mock_executor)
+    monkeypatch.setattr(handler, "_validate_code_ast", lambda c: (True, ""))
 
     code = """
 import os

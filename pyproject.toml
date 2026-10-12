@@ -3,8 +3,27 @@ name = "monika-trading-agent"
 version = "1.0.0"
 description = "Monika: Autonomous SOTA MT5 Trading Agent Harness"
 readme = "README.md"
+requires-python = ">=3.14"
 authors = [{ name = "Saiful Akbar", email = "asaifulakbarw@gmail.com" }]
 license = { text = "MIT" }
+dependencies = [
+    "pydantic>=2.13.0",
+    "pydantic-settings>=2.15.0",
+    "numpy>=2.5.0",
+    "pandas>=3.0.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "SQLAlchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "aiohttp>=3.9.0",
+    "httpx>=0.27.0",
+    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "rich>=13.0.0",
+    "textual>=0.86.0",
+    "prompt-toolkit>=3.0.0",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -18,11 +37,12 @@ monika = "cli.main:main"
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py314"
 exclude = [
     ".git",
     "venv",
     ".venv",
+    "trading-agent/venv",
     "node_modules",
     "data",
     "build",
@@ -30,4 +50,41 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E9", "F63", "F7", "F82"]
+select = [
+    "E9",
+    "F63",
+    "F7",
+    "F82",
+    "ASYNC251",
+    "B002",
+    "B003",
+    "B004",
+    "B005",
+    "B006",
+    "B008",
+    "B011",
+    "B012",
+    "B013",
+    "B014",
+    "B015",
+    "B016",
+    "B017",
+    "B018",
+    "B019",
+    "B020",
+    "B021",
+    "B022",
+    "B024",
+    "B025",
+    "B026",
+    "B028",
+    "B029",
+    "B030",
+    "B031",
+    "B032",
+    "B033",
+    "B034",
+    "B035",
+    "B039",
+]
+

@@ -400,14 +400,17 @@ async def test_db15_risk_gate_no_duplicate_pair_group():
 
     # 2. DB positions test with pair_group_id
     mock_session = create_mock_async_session()
-    # Mock no conflict outside pair group, and 1 existing leg inside group
+    # Mock no pending order, no conflict outside pair group, and 1 existing leg inside group
+    res_pending = MagicMock()
+    res_pending.scalar_one_or_none.return_value = None
+
     res_conflict = MagicMock()
     res_conflict.scalar_one_or_none.return_value = None  # No outside position
     
     res_group_count = MagicMock()
     res_group_count.scalar_one_or_none.return_value = 1  # 1 leg already exists in group
     
-    mock_session.execute = AsyncMock(side_effect=[res_conflict, res_group_count])
+    mock_session.execute = AsyncMock(side_effect=[res_pending, res_conflict, res_group_count])
     
     ok, msg = await gate._check_no_duplicate(
         mock_session, symbol="XAUUSD", pair_group_id="tranche_123"

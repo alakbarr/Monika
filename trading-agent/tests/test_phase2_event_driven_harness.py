@@ -190,8 +190,9 @@ class TestEventBusCore:
 
     def test_event_dataclasses_immutability(self):
         """Verify frozen immutability of domain events."""
+        from dataclasses import FrozenInstanceError
         tick = TickPriceEvent(symbol="XAUUSD", bid=2000.0, ask=2000.5)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             tick.bid = 2005.0  # Cannot mutate frozen dataclass
 
 

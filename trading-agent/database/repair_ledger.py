@@ -71,7 +71,7 @@ class RepairLedger:
                 INSERT INTO repair_ledger (session_id, issue_type, action_taken, status, details_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?);
             """, (session_id, issue_type, action_taken, status, json.dumps(details or {}), now))
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def cleanup_stale_lockfiles(self, max_age_seconds: float = 30.0) -> int:
         """

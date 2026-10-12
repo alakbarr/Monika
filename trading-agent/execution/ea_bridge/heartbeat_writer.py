@@ -56,6 +56,10 @@ class HeartbeatManager:
         self._running = False
         self._stop_event = asyncio.Event()
 
+    def get_common_path(self) -> str:
+        """Return path to MT5 common files directory as string."""
+        return str(self.common_path)
+
     async def run_forever(self) -> None:
         """Tulis heartbeat setiap HEARTBEAT_INTERVAL_SECONDS terus-menerus."""
         self._running = True
