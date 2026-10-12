@@ -380,3 +380,13 @@ def test_decision_dossier_endpoint(client):
         assert dossier["stage4_riskgate"]["execution_status"] == "approved"
         assert dossier["stage5_execution"]["integrity_valid"] is True
 
+
+def test_shutdown_action_endpoint(client):
+    """Verify POST /api/actions/shutdown initiates graceful shutdown."""
+    resp = client.post("/api/actions/shutdown")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "shutting_down"
+    assert "initiated" in data["message"].lower()
+
+
