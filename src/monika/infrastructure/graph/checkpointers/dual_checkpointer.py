@@ -7,6 +7,7 @@ Implements always-on dual-write persistence:
 - Guarantees zero state loss across network disruptions and broker disconnects.
 """
 
+import asyncio
 import logging
 from typing import Any, AsyncIterator, Iterator, Optional, Sequence
 from langchain_core.runnables import RunnableConfig
@@ -171,7 +172,7 @@ class DualCheckpointSaver(BaseCheckpointSaver):
             if hasattr(self.primary, "aput"):
                 res_config = await self.primary.aput(config, checkpoint, metadata, new_versions=new_versions)
             else:
-                res_config = self.primary.put(config, checkpoint, metadata, new_versions=new_versions)
+                res_config = await asyncio.to_thread(self.primary.put, config, checkpoint, metadata, new_versions=new_versions)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Primary aput write failed: {e}")
 
@@ -180,7 +181,7 @@ class DualCheckpointSaver(BaseCheckpointSaver):
             if hasattr(self.secondary, "aput"):
                 await self.secondary.aput(config, checkpoint, metadata, new_versions=new_versions)
             else:
-                self.secondary.put(config, checkpoint, metadata, new_versions=new_versions)
+                await asyncio.to_thread(self.secondary.put, config, checkpoint, metadata, new_versions=new_versions)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Secondary aput write failed: {e}")
 
@@ -229,10 +230,12 @@ class DualCheckpointSaver(BaseCheckpointSaver):
                 except TypeError:
                     await self.primary.aput_writes(config, writes, task_id)
             else:
-                try:
-                    self.primary.put_writes(config, writes, task_id, task_path)
-                except TypeError:
-                    self.primary.put_writes(config, writes, task_id)
+                def _write_primary():
+                    try:
+                        self.primary.put_writes(config, writes, task_id, task_path)
+                    except TypeError:
+                        self.primary.put_writes(config, writes, task_id)
+                await asyncio.to_thread(_write_primary)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Primary aput_writes failed: {e}")
 
@@ -243,9 +246,11 @@ class DualCheckpointSaver(BaseCheckpointSaver):
                 except TypeError:
                     await self.secondary.aput_writes(config, writes, task_id)
             else:
-                try:
-                    self.secondary.put_writes(config, writes, task_id, task_path)
-                except TypeError:
-                    self.secondary.put_writes(config, writes, task_id)
+                def _write_secondary():
+                    try:
+                        self.secondary.put_writes(config, writes, task_id, task_path)
+                    except TypeError:
+                        self.secondary.put_writes(config, writes, task_id)
+                await asyncio.to_thread(_write_secondary)
         except Exception as e:
             logger.error(f"[DualCheckpointer] Secondary aput_writes failed: {e}")

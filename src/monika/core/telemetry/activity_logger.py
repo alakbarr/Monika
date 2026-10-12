@@ -158,8 +158,9 @@ def setup_logging(
         _queue_listener.start()
 
     # Mute noisy third-party loggers to eliminate polling log spam
-    for noisy_logger in ("httpx", "httpcore", "asyncpg", "apscheduler", "urllib3", "watchfiles"):
-        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+    if not is_pytest:
+        for noisy_logger in ("httpx", "httpcore", "asyncpg", "apscheduler", "urllib3", "watchfiles"):
+            logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
     root.info(f"Logging initialized. Log dir: {os.path.abspath(log_dir)}")
     return root
@@ -193,7 +194,7 @@ class ActivityLogger:
             category = "system"
 
         try:
-            from .sinks import get_telemetry_sink
+            from monika.core.telemetry.sinks import get_telemetry_sink
             sink = get_telemetry_sink()
             if sink is not None:
                 return await sink.persist_activity(
@@ -214,15 +215,14 @@ class ActivityLogger:
                 from monika.infrastructure.database.db import get_write_session
                 from monika.infrastructure.database.models import ActivityLog
 
-            entry = ActivityLog(
-                timestamp=datetime.now(timezone.utc),
-                category=category,
-                description=description[:2000],  # Safety truncation
-                related_id=related_id,
-                actor=actor,
-            )
-            
             if session:
+                entry = ActivityLog(
+                    timestamp=datetime.now(timezone.utc),
+                    category=category,
+                    description=description[:2000],  # Safety truncation
+                    related_id=related_id,
+                    actor=actor,
+                )
                 session.add(entry)
                 await session.flush()
                 return entry.id
@@ -230,6 +230,13 @@ class ActivityLogger:
                 for attempt in range(3):
                     try:
                         async with get_write_session() as new_session:
+                            entry = ActivityLog(
+                                timestamp=datetime.now(timezone.utc),
+                                category=category,
+                                description=description[:2000],  # Safety truncation
+                                related_id=related_id,
+                                actor=actor,
+                            )
                             new_session.add(entry)
                             await new_session.flush()
                             return entry.id

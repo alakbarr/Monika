@@ -1,7 +1,7 @@
 """
 Pydantic Schemas for strongly-typed configuration validation (H6, M-3, M-4).
 """
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from typing import Dict, List, Optional, Any, Union
 
 
@@ -97,7 +97,7 @@ class ExecutionConfig(SubscriptableConfig):
     max_brief_age_hours: Optional[float] = Field(default=12.0, ge=0.5, le=168.0)
     adapter_type: Optional[str] = "live"
     remote_gateway_url: Optional[str] = "http://127.0.0.1:8080"
-    remote_gateway_token: Optional[str] = ""
+    remote_gateway_token: Optional[SecretStr] = None
     mt5_common_dir: Optional[str] = ""
     mt5_linux_host: Optional[str] = "127.0.0.1"
     mt5_linux_port: Optional[int] = Field(default=18812, ge=1024, le=65535)
