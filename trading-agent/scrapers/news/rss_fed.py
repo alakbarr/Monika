@@ -1,20 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_fed.py
-# ==============================================================================
 """
-Federal Reserve press release RSS feed scraper.
-
-Source: federalreserve.gov official RSS — primary source for FOMC statements,
-rate decisions, minutes, and speeches. Zero scraping risk (official feed).
-Higher signal-to-noise than third-party news coverage.
+Compatibility facade shim for legacy rss_fed.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_fed.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_fed as _canonical
 
-class FedRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="federal_reserve_official",
-            feed_url="https://www.federalreserve.gov/feeds/press_all.xml",
-        )
+from monika.infrastructure.data_ingestion.scrapers.news.rss_fed import (
+    FedRssScraper,
+)
+
+__all__ = ['FedRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

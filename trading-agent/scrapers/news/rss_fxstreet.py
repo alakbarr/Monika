@@ -1,12 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_fxstreet.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy rss_fxstreet.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet.
+"""
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
-class FxstreetRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="fxstreet", 
-            feed_url="https://www.fxstreet.com/rss/news"
-        )
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_fxstreet import (
+    FxstreetRssScraper,
+)
+
+__all__ = ['FxstreetRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

@@ -1,32 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_rba.py
-# ==============================================================================
- 
-"""Reserve Bank of Australia official RSS feeds (Speeches & Monetary Policy Media Releases). Critical for AUDUSD."""
-from typing import List
-from scrapers.news.rss_base import RssBaseScraper
-from scrapers.models import ScrapedNews
+"""
+Compatibility facade shim for legacy rss_rba.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_rba.
+"""
 
-class RbaRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="rba_official",
-            feed_url="https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
-        )
-        self.feed_urls = [
-            "https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
-            "https://www.rba.gov.au/rss/rss-cb-speeches.xml",
-        ]
+from __future__ import annotations
 
-    def fetch_news(self, limit: int = 30, fetch_full_text: bool = False) -> List[ScrapedNews]:
-        all_news = []
-        seen_urls = set()
-        per_feed_limit = max(10, limit // len(self.feed_urls))
-        for url in self.feed_urls:
-            self.feed_url = url
-            items = super().fetch_news(limit=per_feed_limit, fetch_full_text=fetch_full_text)
-            for item in items:
-                if item.url not in seen_urls:
-                    seen_urls.add(item.url)
-                    all_news.append(item)
-        return all_news[:limit]
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_rba as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_rba import (
+    RbaRssScraper,
+)
+
+__all__ = ['RbaRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

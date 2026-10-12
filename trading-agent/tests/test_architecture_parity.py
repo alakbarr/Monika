@@ -364,5 +364,35 @@ def test_interface_layer_identity_and_parity():
     assert shim_gw_api.chat_completions is canon_gw_api.chat_completions
 
 
+def test_data_ingestion_layer_identity_and_parity():
+    """Verify PR-5 data ingestion shims preserve exact object identity and runtime contracts."""
+    # 1. Data Sources identity
+    import data_sources.bond_yields_fetcher as shim_by
+    import monika.infrastructure.data_ingestion.sources.bond_yields_fetcher as canon_by
+    assert shim_by.BondYieldFetcher is canon_by.BondYieldFetcher
 
+    import data_sources.cftc_cot as shim_cot
+    import monika.infrastructure.data_ingestion.sources.cftc_cot as canon_cot
+    assert shim_cot.CFTCCOTFetcher is canon_cot.CFTCCOTFetcher
 
+    import data_sources.circuit_breaker as shim_cb
+    import monika.infrastructure.data_ingestion.sources.circuit_breaker as canon_cb
+    assert shim_cb.DataFeedCircuitBreaker is canon_cb.DataFeedCircuitBreaker
+
+    # 2. Scrapers identity
+    import scrapers.base_scraper as shim_bs
+    import monika.infrastructure.data_ingestion.scrapers.base_scraper as canon_bs
+    assert shim_bs.BaseScraper is canon_bs.BaseScraper
+
+    import scrapers.macro.cme_fedwatch as shim_fw
+    import monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch as canon_fw
+    assert shim_fw.FedWatchScraper is canon_fw.FedWatchScraper
+
+    import scrapers.news.rss_base as shim_rss
+    import monika.infrastructure.data_ingestion.scrapers.news.rss_base as canon_rss
+    assert shim_rss.RssBaseScraper is canon_rss.RssBaseScraper
+
+    # 3. Market Data Service identity
+    import services.market_data_service as shim_mds
+    import monika.application.services.market_data_service as canon_mds
+    assert shim_mds.MarketDataService is canon_mds.MarketDataService

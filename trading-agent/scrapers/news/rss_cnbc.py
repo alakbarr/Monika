@@ -1,12 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_cnbc.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy rss_cnbc.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc.
+"""
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
-class CnbcRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="cnbc_economy",
-            feed_url="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362"
-        )
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_cnbc import (
+    CnbcRssScraper,
+)
+
+__all__ = ['CnbcRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

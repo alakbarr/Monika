@@ -1,56 +1,27 @@
-# ==============================================================================
-# File: scrapers/models.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy models.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.models.
+"""
 
-from dataclasses import dataclass
-from typing import Optional, List
+from __future__ import annotations
 
-@dataclass
-class CalendarEvent:
-    time: str
-    currency: str
-    impact: str # contoh: High, Medium, Low
-    event_name: str
-    actual: Optional[str] = None
-    forecast: Optional[str] = None
-    previous: Optional[str] = None
-    country: Optional[str] = None
-    surprise_score: Optional[float] = None
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.models as _canonical
 
-@dataclass
-class ScrapedNews:
-    title: str
-    url: str
-    source: str
-    timestamp: str
-    summary: Optional[str] = None
-    impact: Optional[str] = None
-    sentiment: Optional[str] = None
-    key_data_point: Optional[str] = None
+from monika.infrastructure.data_ingestion.scrapers.models import (
+    CalendarEvent,
+    FedMeeting,
+    FedProbability,
+    ScrapedNews,
+    ScrapedTweet,
+)
 
-@dataclass
-class ScrapedTweet:
-    id: str
-    username: str
-    content: str
-    url: str
-    timestamp: str
-    is_retweet: bool = False
-    retweet_context: Optional[str] = None
-    media_urls: Optional[List[str]] = None
+__all__ = ['CalendarEvent', 'FedMeeting', 'FedProbability', 'ScrapedNews', 'ScrapedTweet']
 
-@dataclass
-class FedProbability:
-    target_range: str
-    probability: float
-    action: str
-    prior_1d: Optional[float] = None
-    prior_1w: Optional[float] = None
-    prior_1m: Optional[float] = None
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
 
-@dataclass
-class FedMeeting:
-    meeting_date: str
-    current_rate_ref: float
-    probabilities: List[FedProbability]
-    most_likely: str
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

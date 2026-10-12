@@ -1,19 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_boe.py
-# ==============================================================================
 """
-Bank of England news RSS feed scraper.
-
-Source: bankofengland.co.uk official RSS — primary source for BOE rate decisions,
-MPC minutes, and speeches. Critical for GBPUSD analysis.
+Compatibility facade shim for legacy rss_boe.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_boe.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_boe as _canonical
 
-class BoeRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="boe_official",
-            feed_url="https://www.bankofengland.co.uk/rss/news",
-        )
+from monika.infrastructure.data_ingestion.scrapers.news.rss_boe import (
+    BoeRssScraper,
+)
+
+__all__ = ['BoeRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
