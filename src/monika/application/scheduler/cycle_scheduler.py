@@ -595,7 +595,7 @@ class CycleScheduler:
             
             # LLM Executive Synthesis for Weekly Edge Assessment
             try:
-                from monika.application.analysis.providers.llm_factory import get_client_for_task
+                from monika.infrastructure.providers.llm_factory import get_client_for_task
                 client = get_client_for_task("report_synthesizer", self.settings)
                 prompt = (
                     "Synthesize the following weekly edge assessment metrics into a concise executive narrative "
@@ -871,7 +871,7 @@ class CycleScheduler:
                 
                 # LLM Executive Synthesis for Daily Report
                 try:
-                    from monika.application.analysis.providers.llm_factory import get_client_for_task
+                    from monika.infrastructure.providers.llm_factory import get_client_for_task
                     client = get_client_for_task("report_synthesizer", self.settings)
                     raw_report = "\n".join(lines)
                     prompt = (

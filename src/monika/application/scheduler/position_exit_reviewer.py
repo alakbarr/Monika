@@ -105,7 +105,7 @@ class PositionExitReviewer:
 
         # Jev System One Pre-Screen: Check if thesis is clearly intact to save expensive Stage 2 run
         try:
-            from monika.application.analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from utils.typesafe.jev_primitives import build_exit_review_prescreen
             jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
             if hasattr(jev_exit_client, "classify_json"):

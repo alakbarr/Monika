@@ -1,16 +1,13 @@
-# ==============================================================================
-# File: evals/oracles/__init__.py
-# Description: Programmatic mechanical zero-LLM ground-truth oracles.
-# ==============================================================================
+"""Shim package: monika.application.evals.oracles."""
 
-from .smc_geometry_oracle import evaluate_smc_geometry
-from .risk_compliance_oracle import evaluate_risk_compliance
-from .trade_discipline_oracle import evaluate_trade_discipline
-from .macro_regime_oracle import evaluate_macro_regime
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "evaluate_smc_geometry",
-    "evaluate_risk_compliance",
-    "evaluate_trade_discipline",
-    "evaluate_macro_regime",
-]
+_canonical = _importlib.import_module("monika.application.evals.oracles")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

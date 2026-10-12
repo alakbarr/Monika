@@ -908,7 +908,7 @@ class TriggerChecker:
         using TypeSafe Jev System One decision primitives.
         """
         try:
-            from monika.application.analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from typesafe_sdk import Noul, Score
             client = get_client_for_task("jev_trigger_validator", self.settings)
             

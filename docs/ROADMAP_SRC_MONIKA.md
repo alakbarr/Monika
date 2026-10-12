@@ -502,7 +502,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 > [!IMPORTANT]
 > Pembagian Sub-Siklus PR-7 (185 file):
 > - **PR-7a:** `scheduler/` (27) + `governance/` (2) = 29 file (STATUS: 100% COMPLETE & VERIFIED ✅)
-> - **PR-7b:** `backtest/` (21) + `evals/` (12) = 33 file
+> - **PR-7b:** `backtest/` (21) + `evals/` (12) = 33 file (STATUS: 100% COMPLETE & VERIFIED ✅)
 > - **PR-7c:** `benchmark/` (19) + `plugins/` (11) + Entrypoints/Services (4) = 34 file
 > - **PR-7d:** Distribusi Utilitas Sisa `utils/` (89 file)
 
@@ -510,7 +510,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 
 `unified_cron_engine.py`, `universal_cron_scheduler.py`, `cycle_scheduler.py`, `graph_cycle_scheduler.py`, `cron_nlp_parser.py`, `task_plugin.py`, `active_calendar_poller.py`, `adhoc_proxy.py`, `alpha_discovery_scheduler.py`, `detached_cron_worker.py`, `digest_slice_scheduler.py`, `edge_strategy_runner.py`, `flash_crash_detector.py`, `macro_data_scheduler.py`, `market_data_scheduler.py`, `news_watcher.py`, `order_reconciler.py`, `playbook_curator.py`, `position_exit_reviewer.py`, `position_guardian.py`, `position_supervisor.py`, `post_release_analyzer.py`, `scraper_runner.py`, `strategy_synthesis_scheduler.py`, `trailing_stop_manager.py`, `trigger_checker.py`, `__init__.py`.
 
-### 9.2 `src/monika/application/backtest/` (21 file)
+### 9.2 `src/monika/application/backtest/` (21 file — PR-7b COMPLETE ✅)
 
 - **Root Engines (16 file):** `alpha_validation.py`, `batch_scenario_runner.py`, `benchmark_tracker.py`, `decision_memory.py`, `isolated_strategy_harness.py`, `matrix_alignment.py`, `monte_carlo_engine.py`, `offline_signal_engine.py`, `outcome_evaluator.py`, `point_in_time_engine.py`, `report_generator.py`, `run_card.py`, `statistical_tests.py`, `time_machine.py`, `walk_forward_engine.py`, `__init__.py`.
 - **Asset Specific Engines (5 file):** `engines/crypto_engine.py`, `engines/equity_engine.py`, `engines/forex_engine.py`, `engines/futures_engine.py`, `engines/__init__.py`.
@@ -519,7 +519,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 
 `alpha_arena.py`, `config.py`, `db_access.py`, `db_models.py`, `deterministic.py`, `fixture_loader.py`, `invoker.py`, `judge.py`, `model_registry.py`, `paired_evaluator.py`, `pricing.py`, `prompt_evolution.py`, `report.py`, `runner.py`, `system_one_scorer.py`, `task_specs.py`, `token_drift_tracker.py`, `trade_trajectory_logger.py`, `__init__.py`.
 
-### 9.4 `src/monika/application/evals/` (12 file)
+### 9.4 `src/monika/application/evals/` (12 file — PR-7b COMPLETE ✅)
 
 - **Root Evals (6 file):** `eval_metrics.py`, `eval_runner.py`, `hostile_market_probe.py`, `runner.py`, `simulation_clock.py`, `__init__.py`.
 - **Oracles (6 file):** `oracles/macro_regime_oracle.py`, `oracles/risk_compliance_oracle.py`, `oracles/smc_geometry_oracle.py`, `oracles/tool_safety_oracle.py`, `oracles/trade_discipline_oracle.py`, `oracles/__init__.py`.
