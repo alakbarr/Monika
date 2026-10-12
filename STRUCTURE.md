@@ -736,14 +736,7 @@ Monika/
     │   ├── schemas.py
     │   ├── security.py
     │   ├── settings.py
-    │   ├── settings.yaml
-    │   ├── settings.yaml.20260914_194627.bak
-    │   ├── settings.yaml.20260914_194638.bak
-    │   ├── settings.yaml.20260914_194943.bak
-    │   ├── settings.yaml.20260914_194946.bak
-    │   ├── settings.yaml.20260914_195011.bak
-    │   ├── settings.yaml.bak
-    │   └── settings.yaml.good
+    │   ├── settings.example.yaml
     ├── data
     │   ├── .gitkeep
     │   └── README.md

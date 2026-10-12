@@ -2597,8 +2597,8 @@ This document provides an exhaustive structural index of all directories, files,
     - `get_installation_tier()`
       - *Docstring*: Return configured installation tier ('trial', 'full', 'unconfigured') via configuration cascade hierarchy.
 
-**File:** `settings.yaml`
-  - **Description**: Global trading agent configuration (trading parameters, risk management, execution, schedulers, and llm.task_roles including `summarizer` and `context_compaction`).
+**File:** `settings.example.yaml`
+  - **Description**: Template for global trading agent configuration (trading parameters, risk management, execution, schedulers, and llm.task_roles including `summarizer` and `context_compaction`). Copied to gitignored `settings.yaml` for local deployment.
 
 **File:** `TRADING_SOUL.md`
   - **Docstring**: Core identity and operating philosophy document (Layer 0 permanent memory).

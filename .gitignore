@@ -6,6 +6,10 @@
 *.key
 *credentials*.json
 !*credentials*.json.example
+settings.yaml
+trading-agent/config/settings.yaml
+!settings.example.yaml
+!trading-agent/config/settings.example.yaml
 
 # Python Virtual Environments & Packages
 venv/

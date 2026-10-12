@@ -32,12 +32,13 @@ websocket_router = router
 
 def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
     origin = websocket.headers.get("origin")
-    if not origin or is_localhost:
-        return True
+    if not origin:
+        # Direct non-browser clients (CLI, python scripts)
+        return is_localhost
     allowed_raw = os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
     allowed = [o.strip() for o in allowed_raw.split(",") if o.strip()] or [
-        "http://localhost:5173", "http://localhost:4173", "http://localhost:3000",
-        "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000",
+        "http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "http://localhost:8000",
+        "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000", "http://127.0.0.1:8000",
     ]
     if "*" in allowed:
         return True
@@ -775,6 +776,12 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
         auth_header = websocket.headers.get("authorization", "")
         bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
         client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+
+        # Terminal shell requires explicit token or ticket even on localhost to prevent CSWSH attacks
+        if not client_key and not ticket_param:
+            logger.warning(f"[PtyBridge] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}")
+            await websocket.close(code=1008, reason="Forbidden: Terminal shell requires explicit ticket or API key")
+            return
 
         try:
             role = resolve_role(str(client_key), is_localhost=is_localhost)

@@ -78,7 +78,7 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         if "enabled" in paper_cfg:
             paper_enabled = bool(paper_cfg["enabled"])
         elif "paper_trading" in self.settings:
-            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", False))
+            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", True))
         else:
             paper_enabled = False
         self.dry_run = dry_run or paper_enabled
