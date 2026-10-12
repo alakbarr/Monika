@@ -70,14 +70,20 @@ class SqliteMcpServer:
         ]
 
     def _get_default_db(self) -> str:
-        root = Path(__file__).resolve().parent.parent.parent.parent
+        from monika.infrastructure.infra.paths import get_repo_root
+        root = get_repo_root()
         chk = root / "checkpoints.db"
         if chk.exists():
             return str(chk)
-        # Search for any .db in trading-agent
+        data_db = root / "data" / "monika.db"
+        if data_db.exists():
+            return str(data_db)
+        # Search for any .db in repo root or data
         for d in root.glob("*.db"):
             return str(d)
-        return str(root / "monika.db")
+        for d in (root / "data").glob("*.db"):
+            return str(d)
+        return str(data_db)
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         db_path = arguments.get("db_path") or self._get_default_db()

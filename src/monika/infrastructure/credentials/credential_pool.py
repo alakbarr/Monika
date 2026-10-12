@@ -13,7 +13,7 @@ import os
 import time
 from typing import Dict, List, Optional, Any, Union
 
-from provider.error_taxonomy import FailoverReason
+from monika.infrastructure.credentials.error_taxonomy import FailoverReason
 
 logger = logging.getLogger("TradingAgent.Provider.CredentialPool")
 

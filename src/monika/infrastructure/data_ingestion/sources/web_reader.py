@@ -136,10 +136,7 @@ class WebReader:
     def _read_url_with_browser_sync(self, url: str) -> Optional[Dict[str, Any]]:
         """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
         try:
-            try:
-                from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
-            except ImportError:
-                from trading_agent.scrapers.base_scraper import BaseScraper
+            from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
             scraper = BaseScraper(headless=True, profile_name=None)
         except Exception as e:
             logger.warning(f"WebReader browser fallback unavailable (BaseScraper error): {e}")

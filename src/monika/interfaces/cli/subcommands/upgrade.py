@@ -205,8 +205,6 @@ class UpgradeSubcommand(Subcommand):
             console.print(f"  {stamp_ok('ENV')} Environment credentials updated in .env.")
 
         settings_path = "config/settings.yaml"
-        if not os.path.exists(settings_path) and os.path.exists("trading-agent/config/settings.yaml"):
-            settings_path = "trading-agent/config/settings.yaml"
 
         try:
             AtomicConfigWriter.update_in_place(settings_path, settings_updates)

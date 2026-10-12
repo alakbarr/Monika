@@ -703,7 +703,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # ── Hook Interception: pre_llm_call & prompt section injection ──
                     try:
-                        from harness.engine import get_plugin_engine
+                        from monika.application.harness.engine import get_plugin_engine
                         engine = get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
@@ -798,7 +798,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # ── Hook Interception: post_llm_call ──
                     try:
-                        from harness.engine import get_plugin_engine
+                        from monika.application.harness.engine import get_plugin_engine
                         engine = get_plugin_engine()
                         if engine:
                             await engine.emit_hook(

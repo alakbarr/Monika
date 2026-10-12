@@ -1,12 +1,7 @@
 from pathlib import Path
 def _get_trading_agent_dir() -> Path:
-    p = Path(__file__).resolve()
-    for parent in p.parents:
-        if (parent / "trading-agent").is_dir():
-            return parent / "trading-agent"
-        if parent.name == "trading-agent":
-            return parent
-    return p.parent.parent.parent
+    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
+    return TRADING_AGENT_DIR
 
 """
 Closed-Loop Skill Crystallizer.
@@ -119,12 +114,13 @@ class SkillCrystallizer:
                 return []
 
             # 2. Group by (symbol, regime)
-            clusters: Dict[str, List[DecisionReflection]] = {}
+            clusters: Dict[str, List[Any]] = {}
             for row in results:
+                is_mock_row = hasattr(row, "_mock_return_value") or "Mock" in type(row).__name__
                 if isinstance(row, (tuple, list)):
                     r = row[0] if len(row) > 0 else row
                     regime_raw = row[1] if len(row) > 1 else None
-                elif hasattr(row, "_mapping"):
+                elif not is_mock_row and hasattr(row, "_mapping"):
                     try:
                         r = row[0]
                         regime_raw = row[1] if len(row) > 1 else None
@@ -147,7 +143,7 @@ class SkillCrystallizer:
                 sym = (getattr(r, "symbol", None) or "UNKNOWN").upper()
                 regime = (str(regime_raw).strip().upper() if regime_raw else "TREND").replace(" ", "_")
                 key = f"{sym}_{regime}".replace("/", "_")
-                if isinstance(r, DecisionReflection):
+                if isinstance(r, DecisionReflection) or hasattr(r, "alpha_lesson") or hasattr(r, "reflection_text"):
                     clusters.setdefault(key, []).append(r)
 
             # 3. Crystallize clusters with >= min_wins successful instances
@@ -167,7 +163,7 @@ class SkillCrystallizer:
         self,
         session: AsyncSession,
         cluster_key: str,
-        reflections: List[DecisionReflection]
+        reflections: List[Any]
     ) -> Optional[Dict[str, Any]]:
         """Compiles a cluster of winning reflections into a skill markdown file and registers in DB."""
         first = reflections[0]

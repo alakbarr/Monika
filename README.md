@@ -381,13 +381,13 @@ Monika coordinates multiple asynchronous loops managed through Python's `asyncio
 ## 6. Supported Assets & Model Configuration
 
 ### Supported Instruments
-Configured via `trading-agent/config/settings.yaml`:
+Configured via `config/settings.yaml`:
 - **Commodities:** `XAUUSD` (Spot Gold), `XTIUSD` (WTI Crude Oil), `XBRUSD` (Brent Crude Oil)
 - **Major Forex:** `EURUSD`, `GBPUSD`, `USDJPY`, `AUDUSD`
 - **Cryptocurrency:** `BTCUSD` (Bitcoin)
 
 ### Model Routing Configuration
-Model selection is decoupled from application code. Tasks request an abstract role (e.g. `stage1_fundamental`, `debate_bull`, `debate_judge`), which is mapped to a provider and model in `trading-agent/config/settings.yaml`.
+Model selection is decoupled from application code. Tasks request an abstract role (e.g. `stage1_fundamental`, `debate_bull`, `debate_judge`), which is mapped to a provider and model in `config/settings.yaml`.
 
 Supported providers:
 - **Google Gemini:** Direct Google GenAI SDK integration with key rotation.
@@ -396,7 +396,7 @@ Supported providers:
 - **Anthropic / OpenAI / DeepSeek:** Standard compatible endpoints.
 - **Local Ollama:** For local, self-hosted environments.
 
-Example configuration in `trading-agent/config/settings.yaml`:
+Example configuration in `config/settings.yaml`:
 ```yaml
 llm:
   task_roles:
@@ -456,7 +456,7 @@ Clone or download this repository, then simply **double-click**:
 ```cmd
 start_monika.bat
 ```
-*The launcher automatically verifies Python (accepting Python >= 3.11, with automated winget fallback), prepares `trading-agent\venv`, and launches the interactive setup wizard.*
+*The launcher automatically verifies Python (accepting Python >= 3.11, with automated winget fallback), prepares `venv`, and launches the interactive setup wizard.*
 
 #### Linux / macOS / VPS (Ubuntu 22.04+)
 ```bash
@@ -549,28 +549,28 @@ Run automated unit and integration tests across risk calculation, indicators, an
 
 ```bash
 # Run full test suite (Windows PowerShell):
-$env:PYTHONPATH="trading-agent"; python -m pytest trading-agent/tests -v
+pytest tests -v
 
 # Run full test suite (Linux/macOS):
-PYTHONPATH=trading-agent pytest trading-agent/tests -v
+pytest tests -v
 
 # Run RiskGate validation tests:
-PYTHONPATH=trading-agent pytest trading-agent/tests/risk/test_risk_gate.py -v
+pytest tests/risk/test_risk_gate.py -v
 
 # Run market structure indicator tests:
-PYTHONPATH=trading-agent pytest trading-agent/tests/indicators/test_structure.py -v
+pytest tests/indicators/test_structure.py -v
 ```
 
 ### Offline Backtesting
 Evaluate strategy logic against historical data:
 ```bash
-python trading-agent/cli/main.py backtest --symbol XAUUSD --days 30
+python -m monika.interfaces.cli.main backtest --symbol XAUUSD --days 30
 ```
 
 ### Model Benchmarks
 Evaluate reasoning consistency across different models using recorded test fixtures:
 ```bash
-python trading-agent/cli/main.py benchmark --models model_a,model_b
+python -m monika.interfaces.cli.main benchmark --models model_a,model_b
 ```
 
 ---
@@ -614,26 +614,16 @@ Monika/
 ├── STRUCTURE.md               # Directory and file inventory
 ├── deploy/                    # Linux / Wine deployment scripts & Dockerfiles
 ├── docs/                      # Screenshots, architecture diagrams, assets
+├── frontend/                  # React + Vite web dashboard
 ├── scripts/                   # Migration, benchmark, and utility scripts
-└── trading-agent/             # Core application codebase
-    ├── main.py                # Top-level runtime and asyncio orchestrator
-    ├── agent/                 # Lifecycle managers, health monitors, watchdogs
-    ├── analysis/              # Multi-agent debate, indicator math, LLM clients
-    │   ├── arbitration/       # Signal arbitration (rule-based vs. LLM)
-    │   ├── calculators/       # Technical indicators (FVG, volume, surprise)
-    │   ├── debate/            # Bull, Bear, and Judge debate prompts
-    │   ├── memory/            # Storage for context, daily summaries, and notes
-    │   └── providers/         # Multi-provider LLM integrations & caching
-    ├── backtest/              # Offline backtesting engine
-    ├── benchmark/             # Model benchmarking tools
-    ├── cli/                   # Command-line tools and TUI (Textual)
-    ├── config/                # settings.yaml and schema validators
-    ├── database/              # SQLAlchemy models, migrations, advisory locks
-    ├── logging_observability/ # Activity logs, metrics, React Web Dashboard
-    ├── risk/                  # Deterministic RiskGate rules and lot sizing
-    ├── scheduler/             # Background task loops (news, triggers, guardians)
-    ├── scrapers/              # Scraping utilities (FRED, news RSS, calendar)
-    └── telegram_bot/          # Telegram bot handlers
+├── skills/                    # Domain trading playbooks & specialized skills
+├── tests/                     # Comprehensive automated test suite
+└── src/monika/                # Clean Architecture application codebase
+    ├── core/                  # Telemetry, configuration, base types, settings
+    ├── domain/                # Financial invariants, RiskGate, trading rules
+    ├── application/           # Multi-agent graph, harness, and orchestrators
+    ├── infrastructure/        # Brokers (MT5), DB, LLM providers, scrapers
+    └── interfaces/            # CLI (Textual TUI), Web Dashboard API, Telegram
 ```
 
 ---

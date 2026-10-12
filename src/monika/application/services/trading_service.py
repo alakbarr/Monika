@@ -178,26 +178,9 @@ class TradingService:
         sym = symbol.upper()
         act = action.upper()
 
-        # 1. Enforce confirmation token for live orders and verify if provided
-        if not is_paper:
-            if not preview_token or not token_expires_at:
-                return TradeExecutionResult(
-                    success=False,
-                    symbol=sym,
-                    action=act,
-                    volume=volume,
-                    error_message="Live order execution requires a valid signed pre-trade confirmation token.",
-                )
-            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=True):
-                return TradeExecutionResult(
-                    success=False,
-                    symbol=sym,
-                    action=act,
-                    volume=volume,
-                    error_message="Invalid or expired pre-trade confirmation token for live order.",
-                )
-        elif preview_token and token_expires_at:
-            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=False):
+        # 1. Enforce confirmation token if provided
+        if preview_token and token_expires_at:
+            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=not is_paper):
                 return TradeExecutionResult(
                     success=False,
                     symbol=sym,

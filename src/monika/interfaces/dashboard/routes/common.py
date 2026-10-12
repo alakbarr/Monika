@@ -225,22 +225,20 @@ CrystallizeSkillRequest.model_rebuild()
 def _get_settings_path() -> str:
     """Resolve absolute path to settings.yaml with active profile support."""
     # Check for active profile marker first
-    for p_cand in ("profiles/active_profile", "trading-agent/profiles/active_profile"):
-        if os.path.exists(p_cand):
-            try:
-                with open(p_cand, "r", encoding="utf-8") as pf:
-                    p_name = pf.read().strip()
-                    if p_name and p_name != "default":
-                        for cand_cfg in (f"profiles/{p_name}/settings.yaml", f"trading-agent/profiles/{p_name}/settings.yaml"):
-                            if os.path.exists(cand_cfg):
-                                return os.path.abspath(cand_cfg)
-            except Exception:
-                pass
+    if os.path.exists("profiles/active_profile"):
+        try:
+            with open("profiles/active_profile", "r", encoding="utf-8") as pf:
+                p_name = pf.read().strip()
+                if p_name and p_name != "default":
+                    cand_cfg = f"profiles/{p_name}/settings.yaml"
+                    if os.path.exists(cand_cfg):
+                        return os.path.abspath(cand_cfg)
+        except Exception:
+            pass
 
     candidates = [
         os.getenv("SETTINGS_PATH"),
         "config/settings.yaml",
-        "trading-agent/config/settings.yaml",
         os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "config", "settings.yaml"),
     ]
     for c in candidates:

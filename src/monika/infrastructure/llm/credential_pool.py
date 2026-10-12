@@ -3,7 +3,7 @@ Multi-provider Credential Pooling and Automatic Rotation (Phase 8 - I7).
 Re-exports LLMCredentialPool and CredentialState from `provider.credential_pool`.
 """
 
-from provider.credential_pool import (
+from monika.infrastructure.credentials.credential_pool import (
     CredentialState,
     LLMCredentialPool,
 )

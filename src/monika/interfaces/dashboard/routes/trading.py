@@ -1837,6 +1837,7 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
             is_paper=is_paper,
             actor="operator:dashboard",
             broker_adapter=mt5_client,
+            risk_gate=risk_gate,
         )
 
     if not exec_res.success:

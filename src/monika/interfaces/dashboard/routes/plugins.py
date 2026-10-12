@@ -14,7 +14,7 @@ from monika.interfaces.dashboard.routes.common import (
     broadcast_live_event,
     _get_settings_path,
 )
-from harness.installer import (
+from monika.application.harness.installer import (
     validate_package_spec,
     run_pip_install,
     run_pip_uninstall,

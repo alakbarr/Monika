@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.contract import TradingPlugin, PluginMetadata, PluginCategory, PluginOrigin
+from monika.application.harness.contract import TradingPlugin, PluginMetadata, PluginCategory, PluginOrigin
 from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.Risk.Plugin")

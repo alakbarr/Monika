@@ -30,7 +30,7 @@ services:
       retries: 5
       start_period: 15s
 
-  trading-agent:
+  monika:
     build: .
     container_name: monika-core
     restart: unless-stopped
@@ -42,14 +42,14 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - ./trading-agent/database:/app/trading-agent/database
-      - ./trading-agent/logs:/app/trading-agent/logs
-      - ./trading-agent/config/settings.yaml:/app/trading-agent/config/settings.yaml
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config/settings.yaml:/app/config/settings.yaml
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app/trading-agent
+      - PYTHONPATH=/app/src
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-changeme_docker_secure_password}@db:5432/${POSTGRES_DB:-monika_trading}
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000

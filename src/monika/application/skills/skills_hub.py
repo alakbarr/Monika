@@ -319,7 +319,8 @@ class SkillsHub:
                 report,
             )
 
-        target_base = Path("trading-agent/skills") / category.lower() / skill_name
+        from monika.infrastructure.infra.paths import get_skills_dir
+        target_base = get_skills_dir() / category.lower() / skill_name
         target_base.parent.mkdir(parents=True, exist_ok=True)
 
         try:

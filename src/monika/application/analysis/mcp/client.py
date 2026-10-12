@@ -22,6 +22,7 @@ from monika.application.analysis.mcp.mcp_schema_cache import McpSchemaCache
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import default_tool_registry, ToolDefinition
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
+from monika.infrastructure.infra.paths import get_repo_root
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.MCP.Client")
@@ -137,12 +138,23 @@ class McpServerProcess:
                 )
             else:
                 # Default stdio
-                resolved_cmd = shutil.which(self.command) or self.command
-                cmd = [resolved_cmd] + self.args
-                base_dir = str(Path(__file__).resolve().parent.parent.parent)
+                resolved_cmd = sys.executable if self.command in ("python", "python3") else (shutil.which(self.command) or self.command)
+                repo_root = get_repo_root()
+                base_dir = str(repo_root)
+                src_dir = str(repo_root / "src")
+                args: List[str] = []
+                for arg in self.args:
+                    if arg.startswith("analysis.mcp.servers."):
+                        args.append(f"monika.application.{arg}")
+                    else:
+                        args.append(arg)
+                cmd = [resolved_cmd] + args
                 env = dict(self.env)
                 cur_pythonpath = env.get("PYTHONPATH", "")
-                env["PYTHONPATH"] = f"{base_dir}{os.pathsep}{cur_pythonpath}".rstrip(os.pathsep) if cur_pythonpath else base_dir
+                pythonpath_parts = [src_dir, base_dir]
+                if cur_pythonpath:
+                    pythonpath_parts.append(cur_pythonpath)
+                env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
                 self.process = await asyncio.create_subprocess_exec(
                     *cmd,
                     stdin=asyncio.subprocess.PIPE,
@@ -311,6 +323,10 @@ class McpServerProcess:
             pass
         except Exception as e:
             logger.debug(f"MCP server '{self.name}' reader stopped: {e}")
+        finally:
+            for fut in list(self._pending_futures.values()):
+                if not fut.done():
+                    fut.set_exception(RuntimeError(f"MCP server '{self.name}' process exited unexpectedly"))
 
     async def _drain_stderr(self):
         """Continuously drain stderr from child process to prevent pipe buffer deadlock."""

@@ -13,10 +13,9 @@ def flatten_dict(d, parent_key='', sep='.'):
     return dict(items)
 
 def audit_keys():
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    settings_path = os.path.join(base_dir, 'trading-agent', 'config', 'settings.yaml')
-    if not os.path.exists(settings_path):
-        settings_path = os.path.join(base_dir, 'config', 'settings.yaml')
+    from monika.infrastructure.infra.paths import get_repo_root
+    base_dir = str(get_repo_root())
+    settings_path = os.path.join(base_dir, 'config', 'settings.yaml')
     if not os.path.exists(settings_path):
         print(f"settings.yaml not found at {settings_path}")
         return

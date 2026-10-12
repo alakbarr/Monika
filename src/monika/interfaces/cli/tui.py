@@ -763,7 +763,7 @@ class TradingDashboard(App):
     async def refresh_plugins_table(self) -> None:
         """Fetch unified plugin statuses and refresh DataTable."""
         try:
-            from harness.installer import list_all_plugins_status
+            from monika.application.harness.installer import list_all_plugins_status
             plugins = list_all_plugins_status()
             table = self.query_one("#plugins_table", DataTable)
             table.clear()
@@ -809,7 +809,7 @@ class TradingDashboard(App):
                 return
 
             plugin_id = str(row_key.value)
-            from harness.installer import list_all_plugins_status, toggle_plugin_state
+            from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
             plugins = {p["id"]: p for p in list_all_plugins_status()}
             if plugin_id in plugins:
                 p = plugins[plugin_id]
@@ -1932,7 +1932,7 @@ class TradingDashboard(App):
         elif cmd in ("plugin", "plugins"):
             if len(parts) > 1 and parts[1].lower() == "install":
                 if len(parts) > 2:
-                    from harness.installer import run_pip_install
+                    from monika.application.harness.installer import run_pip_install
                     pkg = parts[2]
                     activity_log.write(f"[bold cyan]Installing plugin via pip:[/] {pkg}...")
                     success, out = await asyncio.to_thread(run_pip_install, pkg)
@@ -1946,7 +1946,7 @@ class TradingDashboard(App):
             elif len(parts) > 1 and parts[1].lower() in ("toggle", "on", "off"):
                 if len(parts) > 2:
                     target_id = parts[2].lower()
-                    from harness.installer import list_all_plugins_status, toggle_plugin_state
+                    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
                     plugins = {p["id"]: p for p in list_all_plugins_status()}
                     if target_id in plugins:
                         p = plugins[target_id]

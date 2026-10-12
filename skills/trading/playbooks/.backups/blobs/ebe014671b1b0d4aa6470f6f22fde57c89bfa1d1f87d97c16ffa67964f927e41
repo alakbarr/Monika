@@ -1,0 +1,23 @@
+---
+symbol: EURUSD
+regime: ANY
+timeframe: H4
+min_rr: 1.3
+win_rate: 1.00
+sample_size: 4
+---
+# Micro-Playbook: EURUSD in BALANCED Regime
+*Compiled autonomously by SkillEvolutionCompiler on 2026-09-28 17:54 UTC*
+
+## Entry Conditions & Triggers
+- **Lesson**: SMC liquidity sweep at London open verified #0 -> *Adjustment*: Wait for 15m displacement
+- **Lesson**: SMC liquidity sweep at London open verified #1 -> *Adjustment*: Wait for 15m displacement
+- **Lesson**: SMC liquidity sweep at London open verified #2 -> *Adjustment*: Wait for 15m displacement
+- **Lesson**: SMC liquidity sweep at London open verified #3 -> *Adjustment*: Wait for 15m displacement
+- Enter when higher timeframe trend aligns with multi-timeframe D1 and H4 structure.
+- Wait for liquidity sweep and displacement confirmation before triggering market entry.
+
+## Invalidation & Stop Loss Rules
+- Invalidate thesis immediately on break of swing high/low prior to entry block.
+- Enforce Stop Loss >= 1.0x verified ATR 14 buffer.
+- Ensure Take Profit satisfies minimum 1.3:1 Reward-to-Risk within ADR bounds.

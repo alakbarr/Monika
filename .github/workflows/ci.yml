@@ -63,22 +63,22 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r trading-agent/requirements.txt
+          pip install -r requirements.txt
+          pip install -e .
 
       - name: Run Pytest
         env:
-          PYTHONPATH: trading-agent
+          PYTHONPATH: src
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
         run: |
-          python -m pytest trading-agent/tests -v
-
+          python -m pytest tests -v
 
   frontend-build:
     name: Dashboard Frontend Build
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: trading-agent/logging_observability/dashboard/frontend
+        working-directory: frontend
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -88,7 +88,7 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: trading-agent/logging_observability/dashboard/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         run: |

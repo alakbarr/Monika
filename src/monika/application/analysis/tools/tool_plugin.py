@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Callable, Optional, Union
 import logging
 
-from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
 
 logger = logging.getLogger("TradingAgent.ToolPlugin")
 

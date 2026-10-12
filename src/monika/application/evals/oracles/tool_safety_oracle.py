@@ -45,7 +45,6 @@ class ToolSafetyOracle:
             candidates = [
                 Path(__file__).parent.parent / "fixtures" / path.name,
                 Path("evals/fixtures") / path.name,
-                Path("trading-agent/evals/fixtures") / path.name,
             ]
             for c in candidates:
                 if c.exists():

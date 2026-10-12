@@ -2,7 +2,7 @@
 LLM Utilities and Provider Abstractions for Monika Trading Agent.
 """
 
-from provider.error_taxonomy import (
+from monika.infrastructure.credentials.error_taxonomy import (
     FailoverReason,
     ErrorCategory,
     RecoveryAction,

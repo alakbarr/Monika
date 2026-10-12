@@ -7,7 +7,7 @@ Credential Pool & Multi-Key Health Tracker (M2).
 Re-exports unified APICredentialPool from `provider.credential_pool`.
 """
 
-from provider.credential_pool import (
+from monika.infrastructure.credentials.credential_pool import (
     KeyHealth,
     APICredentialPool,
     CredentialPool,

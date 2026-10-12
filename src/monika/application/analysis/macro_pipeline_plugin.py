@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.contract import PluginCategory, PluginMetadata
+from monika.application.harness.contract import PluginCategory, PluginMetadata
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
 from monika.domain.risk.trade_proposal import TradeProposal
 

@@ -399,7 +399,7 @@ class ToolRegistry:
 
         # 1. Pre-tool Hook Interception with fail-closed safety
         try:
-            from harness.engine import get_plugin_engine
+            from monika.application.harness.engine import get_plugin_engine
 
             engine = get_plugin_engine()
             if engine:
@@ -434,7 +434,7 @@ class ToolRegistry:
 
             # 2. Post-tool Hook Interception
             try:
-                from harness.engine import get_plugin_engine
+                from monika.application.harness.engine import get_plugin_engine
 
                 engine = get_plugin_engine()
                 if engine:

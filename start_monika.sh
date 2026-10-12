@@ -6,8 +6,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AGENT_DIR="${SCRIPT_DIR}/trading-agent"
-VENV_DIR="${AGENT_DIR}/venv"
+VENV_DIR="${SCRIPT_DIR}/venv"
+[ ! -d "${VENV_DIR}" ] && [ -d "${SCRIPT_DIR}/.venv" ] && VENV_DIR="${SCRIPT_DIR}/.venv"
 PYTHON_BIN="${VENV_DIR}/bin/python"
 
 echo "============================================================"
@@ -38,13 +38,13 @@ echo "[OK] Python ${PY_VER} detected."
 
 # ── 2. Setup Virtual Environment ──────────────────────────────
 if [ ! -f "${PYTHON_BIN}" ]; then
-    echo "[*] [1/3] Preparing virtual environment at trading-agent/venv..."
+    echo "[*] [1/3] Preparing virtual environment at venv..."
     python3 -m venv "${VENV_DIR}"
     echo "[OK] Virtual environment created."
 
     echo "[*] [2/3] Installing core dependencies (please wait ~1-2 minutes)..."
     "${VENV_DIR}/bin/pip" install --upgrade pip >/dev/null 2>&1
-    "${VENV_DIR}/bin/pip" install -r "${AGENT_DIR}/requirements.txt"
+    "${VENV_DIR}/bin/pip" install -r "${SCRIPT_DIR}/requirements.txt"
     echo "[OK] Core dependencies installed successfully."
 else
     echo "[OK] Python virtual environment detected."
@@ -54,15 +54,14 @@ fi
 if [ "$1" = "setup" ] || [ "$1" = "--setup" ]; then
     echo ""
     echo "[*] Launching Interactive Setup Wizard..."
-    cd "${AGENT_DIR}"
-    export PYTHONPATH="${AGENT_DIR}"
-    "${PYTHON_BIN}" -m cli.main setup
-    "${PYTHON_BIN}" -m cli.main doctor --fix
+    cd "${SCRIPT_DIR}"
+    export PYTHONPATH="${SCRIPT_DIR}/src"
+    "${PYTHON_BIN}" -m monika.interfaces.cli.main setup
+    "${PYTHON_BIN}" -m monika.interfaces.cli.main doctor --fix
 fi
 
 ENV_FOUND=0
 [ -f "${SCRIPT_DIR}/.env" ] && ENV_FOUND=1
-[ -f "${AGENT_DIR}/.env" ] && ENV_FOUND=1
 
 if [ $ENV_FOUND -eq 0 ]; then
     echo ""
@@ -70,9 +69,9 @@ if [ $ENV_FOUND -eq 0 ]; then
     echo "[*] Launching Interactive Setup Wizard..."
     echo ""
 
-    cd "${AGENT_DIR}"
-    export PYTHONPATH="${AGENT_DIR}"
-    "${PYTHON_BIN}" -m cli.main setup
+    cd "${SCRIPT_DIR}"
+    export PYTHONPATH="${SCRIPT_DIR}/src"
+    "${PYTHON_BIN}" -m monika.interfaces.cli.main setup
     if [ $? -ne 0 ]; then
         echo ""
         echo "[ERROR] Setup wizard did not finish. Run ./start_monika.sh again when ready."
@@ -81,7 +80,7 @@ if [ $ENV_FOUND -eq 0 ]; then
 
     echo ""
     echo "[*] Running automated system health verification (Doctor --fix)..."
-    "${PYTHON_BIN}" -m cli.main doctor --fix
+    "${PYTHON_BIN}" -m monika.interfaces.cli.main doctor --fix
     echo ""
     echo "[OK] Configuration and system verification completed successfully!"
     echo ""
@@ -91,8 +90,6 @@ fi
 CURRENT_TIER=""
 if [ -f "${SCRIPT_DIR}/.monika_tier" ]; then
     CURRENT_TIER=$(cat "${SCRIPT_DIR}/.monika_tier" | tr -d '[:space:]')
-elif [ -f "${AGENT_DIR}/.monika_tier" ]; then
-    CURRENT_TIER=$(cat "${AGENT_DIR}/.monika_tier" | tr -d '[:space:]')
 fi
 
 if [ "$1" = "full" ]; then
@@ -134,10 +131,10 @@ case "${TIER_CHOICE}" in
         exit 0
         ;;
     [sS]|[sS]etup)
-        cd "${AGENT_DIR}"
-        export PYTHONPATH="${AGENT_DIR}"
-        "${PYTHON_BIN}" -m cli.main setup
-        "${PYTHON_BIN}" -m cli.main doctor --fix
+        cd "${SCRIPT_DIR}"
+        export PYTHONPATH="${SCRIPT_DIR}/src"
+        "${PYTHON_BIN}" -m monika.interfaces.cli.main setup
+        "${PYTHON_BIN}" -m monika.interfaces.cli.main doctor --fix
         exec "$0"
         ;;
     2|[fF]ull|[fF])
@@ -149,7 +146,6 @@ case "${TIER_CHOICE}" in
 esac
 
 echo "${CURRENT_TIER}" > "${SCRIPT_DIR}/.monika_tier"
-echo "${CURRENT_TIER}" > "${AGENT_DIR}/.monika_tier"
 
 echo ""
 if [ "${CURRENT_TIER}" = "trial" ]; then
@@ -159,7 +155,7 @@ if [ "${CURRENT_TIER}" = "trial" ]; then
     echo "[*] Active Package Tier: Trial Package"
     echo "[*] Engine: Zero-Config SQLite + Paper Trading Simulation."
     echo "[*] Control: Interactive CLI + Telegram Alerts."
-    echo "[*] Note: Upgrade anytime to Full Package via: python -m cli.main upgrade"
+    echo "[*] Note: Upgrade anytime to Full Package via: python -m monika.interfaces.cli.main upgrade"
 else
     export MONIKA_TIER="full"
     unset DATABASE_URL
@@ -173,15 +169,15 @@ fi
 echo ""
 
 # ── 5. Run Monika Trading Agent ──────────────────────────────
-cd "${AGENT_DIR}"
-export PYTHONPATH="${AGENT_DIR}"
+cd "${SCRIPT_DIR}"
+export PYTHONPATH="${SCRIPT_DIR}/src"
 
 while true; do
-    "${PYTHON_BIN}" -m cli.main run "$@"
+    "${PYTHON_BIN}" -m monika.interfaces.cli.main run "$@"
     EXIT_CODE=$?
 
-    if [ -f "${AGENT_DIR}/data/clean_shutdown.flag" ]; then
-        rm -f "${AGENT_DIR}/data/clean_shutdown.flag"
+    if [ -f "${SCRIPT_DIR}/data/clean_shutdown.flag" ]; then
+        rm -f "${SCRIPT_DIR}/data/clean_shutdown.flag"
         echo "[*] Monika agent stopped gracefully by operator. Exiting."
         break
     fi
@@ -205,11 +201,11 @@ while true; do
     case "${ERR_CHOICE}" in
         [dD])
             echo "[*] Running Monika Doctor diagnostics and auto-repair..."
-            "${PYTHON_BIN}" -m cli.main doctor --fix
+            "${PYTHON_BIN}" -m monika.interfaces.cli.main doctor --fix
             read -r -p "Press Enter to retry running Monika..."
             ;;
         [sS])
-            "${PYTHON_BIN}" -m cli.main setup
+            "${PYTHON_BIN}" -m monika.interfaces.cli.main setup
             ;;
         [tT])
             if [ "${CURRENT_TIER}" = "trial" ]; then
@@ -218,7 +214,6 @@ while true; do
                 unset DATABASE_URL
                 unset PAPER_TRADING_MODE
                 echo "full" > "${SCRIPT_DIR}/.monika_tier"
-                echo "full" > "${AGENT_DIR}/.monika_tier"
                 echo "[*] Switched tier to: Full Package."
             else
                 CURRENT_TIER="trial"
@@ -226,7 +221,6 @@ while true; do
                 export DATABASE_URL="sqlite+aiosqlite:///data/monika.db"
                 export PAPER_TRADING_MODE="true"
                 echo "trial" > "${SCRIPT_DIR}/.monika_tier"
-                echo "trial" > "${AGENT_DIR}/.monika_tier"
                 echo "[*] Switched tier to: Trial Package."
             fi
             ;;

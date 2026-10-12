@@ -16,8 +16,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-from harness.contract import PluginCategory, PluginOrigin
-from harness.engine import PluginEngine
+from monika.application.harness.contract import PluginCategory, PluginOrigin
+from monika.application.harness.engine import PluginEngine
 from monika.core.config.settings import load_all_config
 from monika.interfaces.cli.theme import (
     get_console,
@@ -62,7 +62,7 @@ def _create_engine(settings: Optional[dict] = None) -> PluginEngine:
         engine.register_plugin_instance(ep_plugin)
 
     plugins_cfg = cfg.get("plugins", {})
-    auto_dirs = plugins_cfg.get("directories", ["trading-agent/plugins", "custom_plugins"])
+    auto_dirs = plugins_cfg.get("directories", ["plugins", "custom_plugins"])
     for d in auto_dirs:
         import os
         abs_d = d if os.path.isabs(d) else os.path.join(os.getcwd(), d)
@@ -206,7 +206,7 @@ def cmd_plugin_enable(args) -> int:
         console.print("[red]Error: Plugin ID is required to enable (e.g. monika plugin enable discord_alert)[/red]")
         return 1
 
-    from harness.installer import list_all_plugins_status, toggle_plugin_state
+    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)
     category = target["category"] if target else "middleware"
@@ -227,7 +227,7 @@ def cmd_plugin_disable(args) -> int:
         console.print("[red]Error: Plugin ID is required to disable (e.g. monika plugin disable discord_alert)[/red]")
         return 1
 
-    from harness.installer import list_all_plugins_status, toggle_plugin_state
+    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)
     category = target["category"] if target else "middleware"
