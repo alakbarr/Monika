@@ -271,7 +271,7 @@ class RiskGate:
             ("correlation_exposure", self._check_correlation(session, symbol, direction, simulated_positions=simulated_positions, as_of=as_of, volume=getattr(sizing, 'recommended_lots', getattr(sizing, 'lot_size', None)) if sizing else None)),
             ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
             ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest)),
+            ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, direction, sizing, is_backtest=is_backtest, proposal=analysis)),
             ("schmitt_regime", self._check_schmitt_regime(session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest)),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             ("adv_liquidity_floor", self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest)),
@@ -516,21 +516,47 @@ class RiskGate:
             return False, f"Data freshness check failed: {e}"
 
     async def _check_timesfm_expectancy(
-        self, session: AsyncSession, symbol: str, direction: str, sizing: SizingResult, is_backtest: bool = False
+        self,
+        session: AsyncSession,
+        symbol: str,
+        direction: str,
+        sizing: SizingResult,
+        is_backtest: bool = False,
+        proposal: Optional[Any] = None,
     ) -> tuple[bool, str]:
-        """Validasi ekspektansi probabilistik menggunakan kuantil TimesFM 3.0."""
+        """Validasi ekspektansi probabilistik menggunakan kuantil TimesFM 3.0 tanpa dependensi ML engine."""
         tfm_cfg = self.settings.get("timesfm", {})
         if not tfm_cfg.get("enabled", True) or not tfm_cfg.get("expectancy_gate", {}).get("enabled", True):
             return True, "TimesFM expectancy gate disabled"
 
         try:
-            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
-            engine = TimesFMEngine(self.settings)
-            fc = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
-            if not fc or "quantiles" not in fc:
+            q: Optional[Dict[str, Any]] = None
+            if proposal and hasattr(proposal, "metadata") and isinstance(proposal.metadata, dict):
+                q = proposal.metadata.get("timesfm_quantiles") or proposal.metadata.get("timesfm_forecast", {}).get("quantiles")
+
+            if not q:
+                # Lightweight database query without loading TimesFMEngine or PyTorch
+                import json
+                from datetime import datetime, timezone, timedelta
+                from sqlalchemy import select, desc
+                from monika.infrastructure.database.models import TimesFMForecast
+
+                max_age = float(tfm_cfg.get("cache_ttl_hours", 8.0))
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age)
+                stmt = (
+                    select(TimesFMForecast)
+                    .where(TimesFMForecast.symbol == symbol, TimesFMForecast.timeframe == "H1")
+                    .where(TimesFMForecast.generated_at >= cutoff)
+                    .order_by(desc(TimesFMForecast.generated_at))
+                    .limit(1)
+                )
+                record = (await session.execute(stmt)).scalar_one_or_none()
+                if record and record.quantiles_json:
+                    q = json.loads(record.quantiles_json)
+
+            if not q:
                 return True, "No fresh TimesFM forecast available — gate bypassed"
 
-            q = fc["quantiles"]
             entry = sizing.entry_price
             tp = sizing.take_profit
             sl = sizing.stop_loss
