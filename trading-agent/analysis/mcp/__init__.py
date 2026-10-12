@@ -1,9 +1,12 @@
-"""
-Monika Model Context Protocol (MCP) package.
-Provides MCP Client Manager, Native MCP Server, and pre-built MCP servers.
-"""
+"""Shim package: monika.application.analysis.mcp."""
+import sys as _sys
+import importlib as _importlib
 
-from analysis.mcp.client import McpClientManager
-from analysis.mcp.server import MonikaMcpServer, run_mcp_server
+_canonical = _importlib.import_module("monika.application.analysis.mcp")
 
-__all__ = ["McpClientManager", "MonikaMcpServer", "run_mcp_server"]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

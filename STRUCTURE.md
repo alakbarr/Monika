@@ -219,6 +219,106 @@ Monika/
 │       │   │   ├── turn_preflight_gate.py
 │       │   │   ├── turn_stop_gates.py
 │       │   │   └── turn_tool_round.py
+│       │   ├── analysis
+│       │   │   ├── __init__.py
+│       │   │   ├── arbitration
+│       │   │   │   ├── __init__.py
+│       │   │   └── signal_arbitrator.py
+│       │   │   ├── event_broadcaster.py
+│       │   │   ├── grounding
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── declared_figures.py
+│       │   │   │   ├── provenance_tagger.py
+│       │   │   │   └── surgical_redaction.py
+│       │   │   ├── harness
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── agent_harness.py
+│       │   │   │   ├── context_compressor.py
+│       │   │   │   ├── error_classifier.py
+│       │   │   │   ├── harness_state.py
+│       │   │   │   ├── message_repair.py
+│       │   │   │   ├── repetition_guard.py
+│       │   │   │   ├── stall_guard.py
+│       │   │   │   ├── structured_output.py
+│       │   │   │   ├── symbol_segment_planner.py
+│       │   │   │   ├── tool_batch_planner.py
+│       │   │   │   ├── tool_repair.py
+│       │   │   │   ├── trade_stop_gates.py
+│       │   │   │   └── verification_evidence_ledger.py
+│       │   │   ├── journal
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── attribution_engine.py
+│       │   │   │   ├── behavioral_diagnostics.py
+│       │   │   │   ├── journal_parser.py
+│       │   │   │   └── shadow_extractor.py
+│       │   │   ├── macro_pipeline_plugin.py
+│       │   │   ├── mcp
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── client.py
+│       │   │   │   ├── dispatcher.py
+│       │   │   │   ├── event_bridge.py
+│       │   │   │   ├── mcp_death_supervisor.py
+│       │   │   │   ├── mcp_schema_cache.py
+│       │   │   │   ├── mcp_serve.py
+│       │   │   │   ├── oauth_handler.py
+│       │   │   │   ├── protocol.py
+│       │   │   │   ├── server.py
+│       │   │   │   └── servers
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── excel_server.py
+│       │   │   │       ├── fetch_server.py
+│       │   │   │       ├── filesystem_server.py
+│       │   │   │       ├── google_sheets_server.py
+│       │   │   └── sqlite_server.py
+│       │   │   ├── pipeline_plugin.py
+│       │   │   ├── prefetch
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── digest_slice_generator.py
+│       │   │   │   ├── macro_preprocessor.py
+│       │   │   │   ├── news_digest.py
+│       │   │   │   ├── sentiment_aggregator.py
+│       │   │   │   ├── stage1_prefetcher.py
+│       │   │   │   └── stage2_prefetcher.py
+│       │   │   ├── prompt_sections.py
+│       │   │   ├── research
+│       │   │   │   └── macro_playbook_runner.py
+│       │   │   ├── scenario_tree.py
+│       │   │   ├── schemas
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── pydantic_schemas.py
+│       │   │   │   └── schemas.py
+│       │   │   ├── stages
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── fundamental_stage.py
+│       │   │   │   ├── fundamental_stage_recovery.py
+│       │   │   │   ├── per_asset
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── context_builder.py
+│       │   │   │   │   ├── runner.py
+│       │   │   │   │   ├── specialist_council.py
+│       │   │   │   │   ├── specialist_pipeline.py
+│       │   │   │   │   └── verifiers.py
+│       │   │   │   ├── per_asset_stage.py
+│       │   │   │   └── preflight_gate.py
+│       │   │   ├── subagent
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── adhoc_manager.py
+│       │   │   │   └── isolated_harness.py
+│       │   │   ├── subagent_blackboard.py
+│       │   │   ├── subagent_spawner.py
+│       │   │   └── validators
+│       │   │       ├── __init__.py
+│       │   │       ├── adjudication_verifier.py
+│       │   │       ├── adversarial_check.py
+│       │   │       ├── confluence_verifier.py
+│       │   │       ├── core_data_validator.py
+│       │   │       ├── cross_timeframe_gate.py
+│       │   │       ├── float_coercion.py
+│       │   │       ├── fundamental_verifier.py
+│       │   │       ├── in_harness_grounding.py
+│       │   │       ├── market_snapshot.py
+│       │   │       ├── output_verifier.py
+│       │   │       └── precommit_gate.py
 │       │   ├── graph
 │       │   │   ├── __init__.py
 │       │   │   ├── grounding.py

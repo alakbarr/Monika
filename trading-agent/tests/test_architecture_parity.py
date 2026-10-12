@@ -441,3 +441,69 @@ def test_agent_and_graph_layer_identity_and_parity():
     import monika.infrastructure.graph.checkpointers.dual_checkpointer as canon_dcp
     assert shim_dcp.DualCheckpointSaver is canon_dcp.DualCheckpointSaver
 
+
+def test_analysis_core_framework_identity_and_parity():
+    """Verify PR-6b analysis core framework shims preserve exact object identity and runtime contracts."""
+    # 1. Harness & state
+    import analysis.harness.agent_harness as shim_ah
+    import monika.application.analysis.harness.agent_harness as canon_ah
+    assert shim_ah.AgentHarness is canon_ah.AgentHarness
+
+    import analysis.harness.harness_state as shim_hs
+    import monika.application.analysis.harness.harness_state as canon_hs
+    assert shim_hs.HarnessState is canon_hs.HarnessState
+
+    import analysis.harness.structured_output as shim_so
+    import monika.application.analysis.harness.structured_output as canon_so
+    assert shim_so.invoke_structured_or_freetext is canon_so.invoke_structured_or_freetext
+
+    # 2. Stages & per_asset runner
+    import analysis.stages.per_asset.runner as shim_par
+    import monika.application.analysis.stages.per_asset.runner as canon_par
+    assert shim_par.PerAssetRunner is canon_par.PerAssetRunner
+
+    import analysis.stages.preflight_gate as shim_pfg
+    import monika.application.analysis.stages.preflight_gate as canon_pfg
+    assert shim_pfg.PreFlightTurnGate is canon_pfg.PreFlightTurnGate
+
+    # 3. Grounding & validators
+    import analysis.validators.output_verifier as shim_ov
+    import monika.application.analysis.validators.output_verifier as canon_ov
+    assert shim_ov.OutputVerifier is canon_ov.OutputVerifier
+
+    import analysis.validators.in_harness_grounding as shim_ihg
+    import monika.application.analysis.validators.in_harness_grounding as canon_ihg
+    assert shim_ihg.InHarnessGroundingValidator is canon_ihg.InHarnessGroundingValidator
+
+    import analysis.validators.precommit_gate as shim_pcg
+    import monika.application.analysis.validators.precommit_gate as canon_pcg
+    assert shim_pcg.TradePreCommitGate is canon_pcg.TradePreCommitGate
+
+    import analysis.arbitration.signal_arbitrator as shim_sa
+    import monika.application.analysis.arbitration.signal_arbitrator as canon_sa
+    assert shim_sa.SignalArbitrator is canon_sa.SignalArbitrator
+
+    # 4. Prefetch & subagent
+    import analysis.prefetch.news_digest as shim_nd
+    import monika.application.analysis.prefetch.news_digest as canon_nd
+    assert shim_nd.NewsDigestProcessor is canon_nd.NewsDigestProcessor
+
+    import analysis.subagent_spawner as shim_ss
+    import monika.application.analysis.subagent_spawner as canon_ss
+    assert shim_ss.DynamicSubagentPool is canon_ss.DynamicSubagentPool
+    assert shim_ss.SubagentSpec is canon_ss.SubagentSpec
+
+    import analysis.subagent_blackboard as shim_sb
+    import monika.application.analysis.subagent_blackboard as canon_sb
+    assert shim_sb.SubagentBlackboard is canon_sb.SubagentBlackboard
+
+    # 5. MCP framework
+    import analysis.mcp.protocol as shim_mcp_proto
+    import monika.application.analysis.mcp.protocol as canon_mcp_proto
+    assert shim_mcp_proto.JsonRpcRequest is canon_mcp_proto.JsonRpcRequest
+    assert shim_mcp_proto.JsonRpcResponse is canon_mcp_proto.JsonRpcResponse
+
+    import analysis.mcp.client as shim_mcp_cli
+    import monika.application.analysis.mcp.client as canon_mcp_cli
+    assert shim_mcp_cli.McpClientManager is canon_mcp_cli.McpClientManager
+

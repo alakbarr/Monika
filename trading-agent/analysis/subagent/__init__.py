@@ -1,4 +1,12 @@
-"""Subagent isolation package."""
-from analysis.subagent.isolated_harness import IsolatedSubagentRunner
+"""Shim package: monika.application.analysis.subagent."""
+import sys as _sys
+import importlib as _importlib
 
-__all__ = ["IsolatedSubagentRunner"]
+_canonical = _importlib.import_module("monika.application.analysis.subagent")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

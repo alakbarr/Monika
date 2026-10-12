@@ -1,26 +1,8 @@
-"""
-Structured error classification and recovery strategy assignment (Phase 3).
-Re-exports unified taxonomy from `provider.error_taxonomy`.
-"""
+"""Shim module: monika.application.analysis.harness.error_classifier."""
+import sys as _sys
+import importlib as _importlib
 
-from provider.error_taxonomy import (
-    FailoverReason,
-    ErrorCategory,
-    RecoveryAction,
-    ClassifiedError,
-    ErrorClassifier,
-    sanitize_unicode_surrogates,
-    fallback_multimodal_to_text,
-    _extract_retry_after,
-)
+from monika.application.analysis.harness.error_classifier import *
 
-__all__ = [
-    "FailoverReason",
-    "ErrorCategory",
-    "RecoveryAction",
-    "ClassifiedError",
-    "ErrorClassifier",
-    "sanitize_unicode_surrogates",
-    "fallback_multimodal_to_text",
-    "_extract_retry_after",
-]
+_canonical = _importlib.import_module("monika.application.analysis.harness.error_classifier")
+_sys.modules[__name__] = _canonical
