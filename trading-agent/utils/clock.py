@@ -1,86 +1,30 @@
 """
-Clock Abstraction Module for Deterministic Time and Point-in-Time Simulation.
+Compatibility facade shim for legacy clock.py.
+Re-exports from canonical monika.core.primitives.clock.
 """
-from datetime import datetime, timezone
-from contextvars import ContextVar
-from contextlib import contextmanager, asynccontextmanager
-from typing import Optional
 
-_simulated_now: ContextVar[Optional[datetime]] = ContextVar('_simulated_now', default=None)
+from __future__ import annotations
 
+import monika.core.primitives.clock as _canonical
 
-def now() -> datetime:
-    """
-    Returns the current simulated datetime if set, or real datetime.now(timezone.utc).
-    Always timezone-aware in UTC.
-    """
-    sim = _simulated_now.get()
-    if sim is not None:
-        if sim.tzinfo is None:
-            return sim.replace(tzinfo=timezone.utc)
-        return sim
-    return datetime.now(timezone.utc)
+from monika.core.primitives.clock import (
+    async_frozen_time,
+    ensure_utc,
+    frozen_time,
+    get_simulated_now,
+    is_simulated,
+    now,
+    set_simulated_now,
+    utc_now_iso,
+)
+
+__all__ = ['async_frozen_time', 'ensure_utc', 'frozen_time', 'get_simulated_now', 'is_simulated', 'now', 'set_simulated_now', 'utc_now_iso']
 
 
-def set_simulated_now(dt: Optional[datetime]) -> None:
-    """Sets the simulated datetime globally in the current context."""
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    _simulated_now.set(dt)
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-
-def get_simulated_now() -> Optional[datetime]:
-    """Returns the currently active simulated datetime, or None if live."""
-    return _simulated_now.get()
-
-
-def is_simulated() -> bool:
-    """Returns True if a simulated clock is currently active."""
-    return _simulated_now.get() is not None
-
-
-def utc_now_iso() -> str:
-    """Returns current UTC timestamp in ISO 8601 string format."""
-    return now().isoformat()
-
-
-def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
-    """
-    Ensures datetime is timezone-aware in UTC.
-    If dt is naive (e.g. retrieved from SQLite), attaches timezone.utc.
-    If dt is aware, converts to UTC.
-    If dt is None, returns None.
-    """
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-@contextmanager
-def frozen_time(dt: Optional[datetime]):
-    """
-    Synchronous context manager to freeze simulated time deterministically per task/thread.
-    """
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    token = _simulated_now.set(dt)
-    try:
-        yield
-    finally:
-        _simulated_now.reset(token)
-
-
-@asynccontextmanager
-async def async_frozen_time(dt: Optional[datetime]):
-    """
-    Asynchronous context manager to freeze simulated time deterministically per coroutine.
-    """
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    token = _simulated_now.set(dt)
-    try:
-        yield
-    finally:
-        _simulated_now.reset(token)
+import sys as _sys
+_sys.modules[__name__] = _canonical

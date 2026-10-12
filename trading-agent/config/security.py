@@ -1,24 +1,23 @@
 """
-File: config/security.py
-Security validation and environment mutation guards for Monika.
-Prevents unauthorized modifications to critical system variables.
+Compatibility facade shim for legacy security.py.
+Re-exports from canonical monika.core.config.security.
 """
 
-from typing import FrozenSet
+from __future__ import annotations
 
-BLOCKED_ENV_VARS: FrozenSet[str] = frozenset({
-    "PATH", "PYTHONPATH", "LD_PRELOAD", "SHELL", "COMSPEC",
-    "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "DATABASE_URL"
-})
+import monika.core.config.security as _canonical
+
+from monika.core.config.security import (
+    validate_env_mutation,
+)
+
+__all__ = ['validate_env_mutation']
 
 
-def validate_env_mutation(key: str) -> None:
-    """Validates whether an environment variable is safe to mutate via CLI/API.
-    
-    Raises:
-        ValueError: If key is in the security blocked denylist.
-    """
-    if key.upper() in BLOCKED_ENV_VARS:
-        raise ValueError(
-            f"Modifikasi variabel lingkungan '{key}' dilarang demi keamanan sistem."
-        )
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
+
+import sys as _sys
+_sys.modules[__name__] = _canonical

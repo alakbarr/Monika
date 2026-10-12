@@ -168,7 +168,62 @@ Monika/
 │       │       ├── portfolio_service.py
 │       │       └── trading_service.py
 │       ├── core
-│       │   └── __init__.py
+│       │   ├── __init__.py
+│       │   ├── config
+│       │   │   ├── __init__.py
+│       │   │   ├── atomic_writer.py
+│       │   │   ├── config_manager.py
+│       │   │   ├── config_migrations.py
+│       │   │   ├── hot_reload.py
+│       │   │   ├── key_validator.py
+│       │   │   ├── migrations.py
+│       │   │   ├── profile_applicator.py
+│       │   │   ├── protocols.py
+│       │   │   ├── schemas.py
+│       │   │   ├── security.py
+│       │   │   └── settings.py
+│       │   ├── primitives
+│       │   │   ├── __init__.py
+│       │   │   ├── clock.py
+│       │   │   ├── constants.py
+│       │   │   ├── content_distiller.py
+│       │   │   ├── event_bus.py
+│       │   │   ├── jev_primitives.py
+│       │   │   ├── retry.py
+│       │   │   ├── turn_marker.py
+│       │   │   └── worktree.py
+│       │   ├── security
+│       │   │   ├── __init__.py
+│       │   │   ├── credential_vault.py
+│       │   │   ├── nt_guard.py
+│       │   │   ├── prompt_injection_scanner.py
+│       │   │   ├── ssrf_guard.py
+│       │   │   ├── supply_chain_quarantine.py
+│       │   │   └── terminal_guard.py
+│       │   └── telemetry
+│       │       ├── __init__.py
+│       │       ├── activity_logger.py
+│       │       ├── delegation_live_log.py
+│       │       ├── metrics_exporter.py
+│       │       ├── operator_feedback.py
+│       │       ├── report_writer.py
+│       │       ├── reporting
+│       │       │   ├── __init__.py
+│       │       │   ├── docx_report_generator.py
+│       │       │   ├── pdf_report_generator.py
+│       │       │   ├── pptx_deck_generator.py
+│       │       │   └── tearsheet_generator.py
+│       │       ├── run_card.py
+│       │       ├── sinks.py
+│       │       ├── token_budgeter.py
+│       │       ├── tracing
+│       │       │   ├── __init__.py
+│       │       │   ├── context.py
+│       │       │   ├── exporters.py
+│       │       │   ├── otlp_exporter.py
+│       │       │   ├── spans.py
+│       │       │   └── tracer.py
+│       │       └── trading_cycle_event_log.py
 │       ├── domain
 │       │   ├── __init__.py
 │       │   ├── execution

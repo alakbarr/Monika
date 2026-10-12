@@ -1,0 +1,93 @@
+# ==============================================================================
+# Monika Universal Plugin Catalog
+# Curated and verified plugins for Monika Trading Platform
+# ==============================================================================
+
+version: "1.0.0"
+
+plugins:
+  - id: "telegram_extended"
+    name: "Telegram Extended Controls"
+    package: "monika-plugin-telegram-extended"
+    category: "notification"
+    version: "1.0.0"
+    author: "Monika Core Team"
+    ecosystem: ["monika"]
+    description: "Interactive inline charts, order slips, and instant confirmation callback controls for Telegram."
+    default_enabled: true
+    capabilities: ["network"]
+
+  - id: "crypto_ccxt"
+    name: "CCXT Universal Crypto Broker"
+    package: "monika-plugin-crypto-ccxt"
+    category: "broker"
+    version: "1.2.0"
+    author: "Community / QuantLab"
+    ecosystem: ["monika"]
+    description: "Spot and perpetual futures execution across Binance, Bybit, OKX, and Deribit via CCXT."
+    default_enabled: false
+    capabilities: ["network", "broker.execute"]
+
+  - id: "deepseek_reasoner"
+    name: "DeepSeek R1 / V3 Provider"
+    package: "monika-plugin-deepseek"
+    category: "llm_provider"
+    version: "1.1.0"
+    author: "DeepSeek / Quant"
+    ecosystem: ["monika", "community"]
+    description: "High-speed reasoning LLM provider adapter for Stage 1 macro and Stage 2 asset debate."
+    default_enabled: false
+    capabilities: ["network"]
+
+  - id: "calendar_pro"
+    name: "Economic Calendar Pro"
+    package: "monika-plugin-economic-calendar-pro"
+    category: "data_source"
+    version: "1.0.4"
+    author: "Forex Live Feeds"
+    ecosystem: ["monika"]
+    description: "Sub-second low latency macroeconomic release scraper and calendar event socket."
+    default_enabled: false
+    capabilities: ["network"]
+
+  - id: "kelly_sizing"
+    name: "Fractional Kelly Criterion Sizing"
+    package: "monika-plugin-kelly-sizing"
+    category: "dynamic_sizing"
+    version: "1.0.1"
+    author: "Quant Risk Systems"
+    ecosystem: ["monika"]
+    description: "Dynamic volatility-adjusted fractional Kelly sizing plugin for RiskGate."
+    default_enabled: false
+    capabilities: []
+
+  - id: "discord_alerts"
+    name: "Discord Multi-Channel Webhook"
+    package: "monika-plugin-discord-alerts"
+    category: "notification"
+    version: "1.0.0"
+    author: "Monika Community"
+    ecosystem: ["monika", "community"]
+    description: "Broadcasts trade signals, risk breaches, and daily performance slips to Discord channels."
+    default_enabled: false
+    capabilities: ["network"]
+
+  - id: "disk_cleanup"
+    name: "Disk & Ephemeral File Cleanup"
+    package: "monika-plugin-disk-cleanup"
+    category: "middleware"
+    version: "2.0.0"
+    author: "Monika Community"
+    ecosystem: ["monika", "community"]
+    description: "Auto-track and clean up temporary test files and logs created during agent sessions."
+    default_enabled: false
+    capabilities: ["filesystem"]
+
+# Kill list: revoked, vulnerable, or malicious packages rejected across all surfaces
+kill_list:
+  - id: "malicious_telemetry"
+    package: "monika-telemetry-unauthorized"
+    reason: "Exfiltrates unredacted credentials to remote endpoint"
+  - id: "insecure_broker_v0"
+    package: "monika-broker-insecure"
+    reason: "Critical authentication bypass in order submission routine"
