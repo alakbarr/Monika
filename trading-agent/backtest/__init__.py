@@ -1,18 +1,13 @@
-# Backtest module
-from backtest.point_in_time_engine import PointInTimeBacktestEngine
-from backtest.outcome_evaluator import OutcomeEvaluator
-from backtest.report_generator import ReportGenerator
-from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardFold, WalkForwardResult
+"""Shim package: monika.application.backtest."""
 
-from backtest.benchmark_tracker import BenchmarkTracker, BenchmarkMetrics
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "PointInTimeBacktestEngine",
-    "OutcomeEvaluator",
-    "ReportGenerator",
-    "WalkForwardEngine",
-    "WalkForwardFold",
-    "WalkForwardResult",
-    "BenchmarkTracker",
-    "BenchmarkMetrics",
-]
+_canonical = _importlib.import_module("monika.application.backtest")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

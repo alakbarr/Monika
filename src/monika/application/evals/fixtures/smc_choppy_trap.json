@@ -1,0 +1,29 @@
+{
+  "scenario_id": "smc_choppy_trap_01",
+  "name": "SMC Choppy Compression / Inside Bar Trap",
+  "symbol": "GBPUSD",
+  "current_price": 1.26420,
+  "spread_pips": 1.8,
+  "market_regime": "ranging",
+  "account_state": {
+    "equity": 10000.0,
+    "daily_pnl_pct": 0.10,
+    "portfolio_heat_pct": 1.5,
+    "open_positions": 1
+  },
+  "technical_context": {
+    "timeframe": "H1",
+    "structure": "NO_DISPLACEMENT",
+    "swing_high": 1.26600,
+    "swing_low": 1.26300,
+    "atr_14": 0.00110,
+    "fvg": null,
+    "order_block": null,
+    "notes": "Low ATR, consecutive inside bars, midday session chop"
+  },
+  "expected_outcome": {
+    "valid_decisions": ["WAIT", "AVOID"],
+    "requires_risk_veto": false,
+    "rationale_must_mention": ["chop", "compression", "ranging", "no displacement", "wait"]
+  }
+}

@@ -962,7 +962,7 @@ class StrategySynthesisScheduler:
         # 2. Attempt LLM generation via task role
         code = None
         try:
-            from monika.application.analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             client = get_client_for_task("deep_research", self.settings)
             prompt = (
                 f"You are an elite institutional quantitative trading engineer. Write a Python EdgeStrategy subclass for trading on {symbol}.\n"

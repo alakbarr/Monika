@@ -1,20 +1,13 @@
-# ==============================================================================
-# File: backtest/engines/__init__.py
-# Monika Multi-Market Simulation Engines
-# ==============================================================================
+"""Shim package: monika.application.backtest.engines."""
 
-from backtest.engines.forex_engine import ForexEngine, ForexMarketRules
-from backtest.engines.crypto_engine import CryptoEngine, CryptoMarketRules
-from backtest.engines.equity_engine import EquityEngine, EquityMarketRules
-from backtest.engines.futures_engine import FuturesEngine, FuturesContractSpec
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "ForexEngine",
-    "ForexMarketRules",
-    "CryptoEngine",
-    "CryptoMarketRules",
-    "EquityEngine",
-    "EquityMarketRules",
-    "FuturesEngine",
-    "FuturesContractSpec",
-]
+_canonical = _importlib.import_module("monika.application.backtest.engines")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

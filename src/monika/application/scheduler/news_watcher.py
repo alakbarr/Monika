@@ -926,7 +926,7 @@ class NewsWatcher:
     async def evaluate_realtime_news_shock(self, news_item: Any, open_positions: Optional[list] = None) -> dict:
         """Instant sub-100ms news impact & position threat assessment via TypeSafe Jev System One."""
         try:
-            from monika.application.analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from utils.typesafe.jev_primitives import build_realtime_news_questions
             client = get_client_for_task("jev_news_realtime", self.settings)
             questions = build_realtime_news_questions(open_positions=open_positions)

@@ -887,6 +887,46 @@ Monika/
 │       │   │   ├── state.py
 │       │   │   ├── team_compiler.py
 │       │   │   └── workflow.py
+│       │   ├── backtest
+│       │   │   ├── __init__.py
+│       │   │   ├── alpha_validation.py
+│       │   │   ├── batch_scenario_runner.py
+│       │   │   ├── benchmark_tracker.py
+│       │   │   ├── decision_memory.py
+│       │   │   ├── engines
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── crypto_engine.py
+│       │   │   │   ├── equity_engine.py
+│       │   │   │   ├── forex_engine.py
+│       │   │   │   └── futures_engine.py
+│       │   │   ├── fixtures
+│       │   │   │   ├── full_replay_candles.json
+│       │   │   │   └── replay_candles.json
+│       │   │   ├── isolated_strategy_harness.py
+│       │   │   ├── matrix_alignment.py
+│       │   │   ├── monte_carlo_engine.py
+│       │   │   ├── offline_signal_engine.py
+│       │   │   ├── outcome_evaluator.py
+│       │   │   ├── point_in_time_engine.py
+│       │   │   ├── report_generator.py
+│       │   │   ├── run_card.py
+│       │   │   ├── statistical_tests.py
+│       │   │   ├── time_machine.py
+│       │   │   └── walk_forward_engine.py
+│       │   ├── evals
+│       │   │   ├── __init__.py
+│       │   │   ├── eval_metrics.py
+│       │   │   ├── eval_runner.py
+│       │   │   ├── hostile_market_probe.py
+│       │   │   ├── oracles
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── macro_regime_oracle.py
+│       │   │   │   ├── risk_compliance_oracle.py
+│       │   │   │   ├── smc_geometry_oracle.py
+│       │   │   │   ├── tool_safety_oracle.py
+│       │   │   │   └── trade_discipline_oracle.py
+│       │   │   ├── runner.py
+│       │   │   └── simulation_clock.py
 │       │   ├── execution
 │       │   │   ├── __init__.py
 │       │   │   ├── broker_registry.py

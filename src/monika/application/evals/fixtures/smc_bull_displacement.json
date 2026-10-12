@@ -1,0 +1,39 @@
+{
+  "scenario_id": "smc_bull_displacement_01",
+  "name": "SMC Bullish Displacement & FVG Retest",
+  "symbol": "EURUSD",
+  "current_price": 1.08550,
+  "spread_pips": 0.8,
+  "market_regime": "trending",
+  "account_state": {
+    "equity": 10000.0,
+    "daily_pnl_pct": 0.45,
+    "portfolio_heat_pct": 1.2,
+    "open_positions": 1
+  },
+  "technical_context": {
+    "timeframe": "H1",
+    "structure": "BOS_BULLISH",
+    "swing_high": 1.08800,
+    "swing_low": 1.08150,
+    "atr_14": 0.00350,
+    "fvg": {
+      "direction": "bullish",
+      "gap_low": 1.08400,
+      "gap_high": 1.08520,
+      "unmitigated": true
+    },
+    "order_block": {
+      "direction": "bullish",
+      "price_low": 1.08250,
+      "price_high": 1.08380
+    }
+  },
+  "expected_outcome": {
+    "valid_decisions": ["BUY"],
+    "min_rr": 1.3,
+    "max_sl": 1.08240,
+    "min_tp": 1.08800,
+    "requires_risk_veto": false
+  }
+}

@@ -585,4 +585,40 @@ def test_pr7a_identity_and_parity():
     assert shim_rm.RunManifestGenerator is canon_rm.RunManifestGenerator
 
 
+def test_pr7b_identity_and_parity():
+    """Verify PR-7b backtest and evals identity parity."""
+    # 1. Backtest
+    import backtest.walk_forward_engine as shim_wfe
+    import monika.application.backtest.walk_forward_engine as canon_wfe
+    assert shim_wfe.WalkForwardEngine is canon_wfe.WalkForwardEngine
+    assert shim_wfe.WalkForwardResult is canon_wfe.WalkForwardResult
+
+    import backtest.outcome_evaluator as shim_oe
+    import monika.application.backtest.outcome_evaluator as canon_oe
+    assert shim_oe.OutcomeEvaluator is canon_oe.OutcomeEvaluator
+    assert shim_oe.ASSET_FRICTION_PROFILE is canon_oe.ASSET_FRICTION_PROFILE
+
+    import backtest.monte_carlo_engine as shim_mce
+    import monika.application.backtest.monte_carlo_engine as canon_mce
+    assert shim_mce.MonteCarloStressTester is canon_mce.MonteCarloStressTester
+
+    import backtest.alpha_validation as shim_av
+    import monika.application.backtest.alpha_validation as canon_av
+    assert shim_av.validate_alpha is canon_av.validate_alpha
+
+    # 2. Evals
+    import evals.eval_runner as shim_er
+    import monika.application.evals.eval_runner as canon_er
+    assert shim_er.ABEvalRunner is canon_er.ABEvalRunner
+
+    import evals.hostile_market_probe as shim_hmp
+    import monika.application.evals.hostile_market_probe as canon_hmp
+    assert shim_hmp.HostileMarketProbe is canon_hmp.HostileMarketProbe
+
+    import evals.oracles.tool_safety_oracle as shim_tso
+    import monika.application.evals.oracles.tool_safety_oracle as canon_tso
+    assert shim_tso.ToolSafetyOracle is canon_tso.ToolSafetyOracle
+
+
+
 

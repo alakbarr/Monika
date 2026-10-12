@@ -548,7 +548,7 @@ class PositionGuardian:
         Evaluates adverse momentum and stop-loss vulnerability without generating text.
         """
         try:
-            from monika.application.analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             from utils.typesafe.jev_primitives import build_position_guard_questions
             client = get_client_for_task("jev_position_guard", self.settings)
             if not hasattr(client, "classify_json"):
