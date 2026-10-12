@@ -237,9 +237,12 @@ class TradingService:
 
         # 2. Check kill switch status
         cfg_repo = SystemConfigRepository(session)
-        kill_cfg = await cfg_repo.get("emergency_kill_active")
-        if kill_cfg and kill_cfg.lower() == "true":
-            logger.warning(f"[TradingService] Order rejected: Emergency kill switch is active.")
+        is_kill_active = await cfg_repo.is_kill_switch_active()
+        if not is_kill_active:
+            emergency_kill = await cfg_repo.get("emergency_kill_active")
+            is_kill_active = bool(emergency_kill and emergency_kill.lower() == "true")
+        if is_kill_active:
+            logger.warning("[TradingService] Order rejected: Emergency kill switch is active.")
             return TradeExecutionResult(
                 success=False,
                 symbol=sym,
@@ -394,6 +397,7 @@ class TradingService:
         cfg_repo = SystemConfigRepository(session)
         activity_repo = ActivityLogRepository(session)
 
+        await cfg_repo.set_kill_switch(True)
         await cfg_repo.set("emergency_kill_active", "true")
         await cfg_repo.set("emergency_kill_reason", reason)
         await cfg_repo.set("emergency_kill_timestamp", datetime.now(timezone.utc).isoformat())

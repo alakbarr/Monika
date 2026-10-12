@@ -418,7 +418,15 @@ class RiskGate:
                     rejection_reasons=failure_msgs,
                 )
         except Exception as e:
-            logger.debug(f"Runtime invariant registry check error: {e}")
+            logger.error(f"[{proposal.symbol}] Runtime invariant registry check critical error: {e}")
+            return RiskVerdict(
+                approved=False,
+                symbol=proposal.symbol,
+                proposed_lots=proposal.lot_size,
+                checks_passed=[],
+                checks_failed=["invariant_registry_error"],
+                rejection_reasons=[f"Runtime invariant registry check error (fail-closed): {e}"],
+            )
 
         if proposal.direction == "WAIT":
             return RiskVerdict(
@@ -554,8 +562,8 @@ class RiskGate:
 
             return True, "TimesFM expectancy passed (target within Q10-Q90 cone)"
         except Exception as e:
-            logger.debug(f"TimesFM expectancy check non-fatal error: {e}")
-            return True, f"TimesFM check exception bypassed: {e}"
+            logger.error(f"[{symbol}] TimesFM expectancy check error (fail-closed): {e}")
+            return False, f"TimesFM expectancy check failed (fail-closed): {e}"
 
     async def _check_flash_crash_cooldown(self, symbol: str) -> tuple[bool, str]:
         """Pastikan simbol tidak sedang dalam status karantina Flash Crash circuit breaker."""
@@ -571,7 +579,7 @@ class RiskGate:
         if getattr(analysis, 'decision_source', None) == 'edge_registry':
             if analysis.confidence is None or analysis.confidence < 0.3:
                 return False, f"edge_registry signal confidence too low ({analysis.confidence})"
-            return True, "edge_registry_scoring_bypass"
+            return True, "edge_registry_quantitative_signal_passed"
 
         if analysis.confluence_score is None:
             return (False, 

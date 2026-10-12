@@ -426,6 +426,8 @@ async def run_dashboard_async(host: Optional[str] = None, port: Optional[int] = 
     )
     server = uvicorn.Server(config)
     setattr(server, "install_signal_handlers", lambda: None)
+    app.state.server = server
+    app.state.shutdown_event = shutdown_event
 
     try:
         if shutdown_event is not None:

@@ -302,3 +302,32 @@ async def get_auth_role(request: Request):
         "role": role.value if isinstance(role, Role) else str(role),
         "is_localhost": is_localhost,
     }
+
+
+@router.post("/api/actions/shutdown", tags=["System"])
+async def shutdown_system(request: Request):
+    """Gracefully request system/daemon shutdown."""
+    import asyncio
+    from monika.application.agent.task_registry import mark_clean_shutdown
+
+    logger.info("Shutdown requested via /api/actions/shutdown")
+    try:
+        mark_clean_shutdown()
+    except Exception as e:
+        logger.warning(f"Could not mark clean shutdown flag: {e}")
+
+    async def _do_shutdown():
+        await asyncio.sleep(0.5)
+        ev = getattr(request.app.state, "shutdown_event", None)
+        if ev and hasattr(ev, "set"):
+            ev.set()
+        server = getattr(request.app.state, "server", None)
+        if server and hasattr(server, "should_exit"):
+            server.should_exit = True
+        else:
+            import signal
+            os.kill(os.getpid(), signal.SIGINT)
+
+    asyncio.create_task(_do_shutdown())
+    return {"status": "shutting_down", "message": "Graceful shutdown initiated"}
+
