@@ -740,10 +740,9 @@ class TelegramBot:
 
         positions = []
         try:
-            from database.repositories import PositionRepository
+            from services.portfolio_service import PortfolioService
             async with get_session() as session:
-                pos_repo = PositionRepository(session)
-                positions = list(await pos_repo.get_open_positions())
+                positions = await PortfolioService.get_open_positions(session)
         except Exception as e:
             await update.message.reply_text(f"[ GAGAL ] Error: {e}")
             return
@@ -3624,6 +3623,14 @@ class TelegramBot:
                 self._active_nonces.pop(nonce, None)
 
             await query.edit_message_text("[MEMPROSES] Menjalankan kill switch...")
+            from database.db import get_session
+            from services.trading_service import TradingService
+            try:
+                async with get_session() as session:
+                    await TradingService.emergency_kill(session, reason="Telegram kill switch", actor="telegram_admin")
+            except Exception as e:
+                logger.warning(f"[TelegramBot] TradingService kill switch record: {e}")
+
             if self.execution_service:
                 result = await self.execution_service.kill_switch("Telegram kill switch")
                 await query.edit_message_text(
@@ -3632,7 +3639,7 @@ class TelegramBot:
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
-                await query.edit_message_text("[PERINGATAN] ExecutionService tidak terhubung.")
+                await query.edit_message_text("[BERHENTI] Kill switch diaktifkan di database. ExecutionService tidak terhubung.")
             return
 
         if data.startswith("close:"):

@@ -1,5 +1,6 @@
 {
   "include": [
+    "src",
     "trading-agent/risk",
     "trading-agent/execution",
     "trading-agent/database"
@@ -20,7 +21,7 @@
   "stubPath": "typings",
   "venvPath": "trading-agent",
   "venv": "venv",
-  "extraPaths": ["trading-agent", "."],
+  "extraPaths": ["src", "trading-agent", "."],
   "typeCheckingMode": "standard",
   "reportMissingTypeStubs": false,
   "reportMissingImports": false,

@@ -5,6 +5,7 @@ Provides modular command descriptors, categories, and routing maps.
 from telegram_bot.handlers.trading_commands import (
     CommandDescriptor,
     TRADING_COMMAND_DESCRIPTORS,
+    execute_trading_command,
 )
 from telegram_bot.handlers.market_commands import (
     MarketCommandDescriptor,
@@ -18,6 +19,7 @@ from telegram_bot.handlers.system_commands import (
 __all__ = [
     "CommandDescriptor",
     "TRADING_COMMAND_DESCRIPTORS",
+    "execute_trading_command",
     "MarketCommandDescriptor",
     "MARKET_COMMAND_DESCRIPTORS",
     "SystemCommandDescriptor",

@@ -1800,66 +1800,45 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
                 },
             )
 
-    res = None
-    if is_paper:
-        # Mechanical Fortress: Paper trading is strictly isolated from MT5 broker
-        entry_price = payload.price
-        if not entry_price and mt5_client and hasattr(mt5_client, "get_current_price"):
-            try:
-                tick = await mt5_client.get_current_price(sym)
-                if tick:
-                    entry_price = tick.get("ask") if direction == "buy" else tick.get("bid")
-            except Exception:
-                pass
-        if not entry_price or entry_price <= 0:
-            entry_price = payload.price or 1.0
+    entry_price = payload.price
+    if not entry_price and mt5_client and hasattr(mt5_client, "get_current_price"):
+        try:
+            tick = await mt5_client.get_current_price(sym)
+            if tick:
+                entry_price = tick.get("ask") if direction == "buy" else tick.get("bid")
+        except Exception:
+            pass
+    if not entry_price or entry_price <= 0:
+        entry_price = payload.price or 1.0
 
-        synthetic_ticket = int(datetime.now(timezone.utc).timestamp() * 1000) % 2147483647
-        res = {
-            "success": True,
-            "ticket": synthetic_ticket,
-            "price": entry_price,
-            "is_paper": True,
-            "message": "Paper order executed successfully without broker risk",
-        }
-    else:
-        # Live broker execution - strictly gated by RiskGate approval and explicit is_paper=False
-        if mt5_client and hasattr(mt5_client, "place_order"):
-            res = await mt5_client.place_order(
-                symbol=sym,
-                direction=direction,
-                volume=volume,
-                price=payload.price,
-                sl=payload.sl,
-                tp=payload.tp,
-                comment=payload.comment or "Manual:dashboard",
-                order_type=payload.order_type,
-            )
-        else:
-            return JSONResponse(
-                status_code=503,
-                content={"status": "error", "message": "MT5 client tidak tersedia untuk eksekusi live."},
-            )
-
+    from services.trading_service import TradingService
     async with AsyncSessionLocal() as session:
-        session.add(ActivityLog(
-            category="trading",
-            description=f"Manual order submitted ({'PAPER' if is_paper else 'LIVE'}): {direction.upper()} {volume} {sym}",
-            actor="operator",
-        ))
-        if res and res.get("success") and res.get("ticket"):
-            session.add(Position(
-                mt5_ticket=res.get("ticket"),
-                symbol=sym,
-                direction=direction,
-                volume=volume,
-                entry_price=res.get("price") or payload.price or 0.0,
-                sl=payload.sl,
-                tp=payload.tp,
-                status="open",
-                is_paper=is_paper,
-            ))
-        await session.commit()
+        exec_res = await TradingService.submit_order(
+            session=session,
+            symbol=sym,
+            action=direction,
+            volume=volume,
+            entry_price=entry_price,
+            stop_loss=payload.sl,
+            take_profit=payload.tp,
+            is_paper=is_paper,
+            actor="operator:dashboard",
+            broker_adapter=mt5_client,
+        )
+
+    if not exec_res.success:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": exec_res.error_message or "Order execution failed"},
+        )
+
+    res = {
+        "success": True,
+        "ticket": exec_res.ticket,
+        "price": exec_res.price,
+        "is_paper": exec_res.is_paper,
+        "message": "Order executed successfully via TradingService",
+    }
 
     await broadcast_live_event("manual_order_submitted", {
         "symbol": sym,

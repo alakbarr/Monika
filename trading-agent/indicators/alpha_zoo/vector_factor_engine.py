@@ -239,3 +239,15 @@ class VectorFactorEngine:
             factor_count=len(top_factors),
             top_factors=top_factors,
         )
+
+
+_GLOBAL_VECTOR_FACTOR_ENGINE: Optional[VectorFactorEngine] = None
+
+
+def get_vector_factor_engine() -> VectorFactorEngine:
+    """Return process singleton VectorFactorEngine."""
+    global _GLOBAL_VECTOR_FACTOR_ENGINE
+    if _GLOBAL_VECTOR_FACTOR_ENGINE is None:
+        _GLOBAL_VECTOR_FACTOR_ENGINE = VectorFactorEngine()
+    return _GLOBAL_VECTOR_FACTOR_ENGINE
+

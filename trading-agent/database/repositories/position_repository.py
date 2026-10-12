@@ -18,11 +18,17 @@ class PositionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_open_positions(self, symbol: Optional[str] = None) -> Sequence[Position]:
-        """Fetch all currently open positions, optionally filtered by symbol."""
+    async def get_open_positions(
+        self,
+        symbol: Optional[str] = None,
+        is_paper: Optional[bool] = None,
+    ) -> Sequence[Position]:
+        """Fetch all currently open positions, optionally filtered by symbol and paper mode."""
         stmt = select(Position).where(Position.status == "open")
         if symbol:
             stmt = stmt.where(Position.symbol == symbol)
+        if is_paper is not None:
+            stmt = stmt.where(Position.is_paper == is_paper)
         stmt = stmt.order_by(Position.opened_at.desc())
         res = await self.session.execute(stmt)
         return res.scalars().all()
