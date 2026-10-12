@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 MAX5: formula = \\mathrm{ts\\_max}(\\mathrm{high}, 5) / \\mathrm{close}."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/moving_average_x5.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.moving_average_x5
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div, ts_max
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.moving_average_x5
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.moving_average_x5 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_max5',
@@ -17,9 +22,18 @@ __alpha_meta__ = {
     'min_warmup_bars': 5,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.moving_average_x5 import (
+    annotations,
+    compute,
+    safe_div,
+    ts_max,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 MAX5 on the supplied OHLCV panel."""
-    h = panel['high']
-    c = panel['close']
-    return safe_div(ts_max(h, 5), c)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+    "ts_max",
+]

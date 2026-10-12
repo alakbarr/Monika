@@ -1,20 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_133.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_133
+# ==============================================================================
 
-"""GTJA Alpha 133 (Guotai Junan, 2017-06-15).
-
-Formula (report appendix; source linked in gtja191/LICENSE.md):
-    ((20-HIGHDAY(HIGH,20))/20)*100 - ((20-LOWDAY(LOW,20))/20)*100
-
-HIGHDAY/LOWDAY count bars since the extreme: today is 0, not 1.
-The report does not specify ties; this port chooses the most recent extreme.
-Reversing each complete window makes that convention independent of the
-optional bottleneck backend used by the shared ts_argmax/ts_argmin operators.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_133
+"""
 
-import numpy as np
-import pandas as pd
-
-ALPHA_ID = "gtja191_133"
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_133 as _canonical
 
 __alpha_meta__ = {
     'id': 'gtja191_133',
@@ -29,20 +24,16 @@ __alpha_meta__ = {
     'notes': 'Days since the most recent extreme; today=0. Ties choose the latest bar (port policy).',
 }
 
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_133 import (
+    ALPHA_ID,
+    annotations,
+    compute,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_133.
+sys.modules[__name__] = _canonical
 
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    highday = panel["high"].rolling(20, min_periods=20).apply(
-        lambda window: np.argmax(window[::-1]), raw=True
-    )
-    lowday = panel["low"].rolling(20, min_periods=20).apply(
-        lambda window: np.argmin(window[::-1]), raw=True
-    )
-    return (20.0 - highday) / 20.0 * 100.0 - (20.0 - lowday) / 20.0 * 100.0
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+]

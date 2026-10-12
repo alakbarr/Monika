@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_186.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_186
+# ==============================================================================
 
-"""GTJA Alpha 186 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    (MEAN(ABS(SUM((LD>0 & LD>HD)?LD:0,14)*100/SUM(TR,14)-SUM((HD>0 & HD>LD)?HD:0,14)*100/SUM(TR,14))/(...)*100,6)+DELAY(...,6))/2
-
-Notes: alpha172 averaged with its 6-day lag.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_186
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_186 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_186',
+    'theme': ['momentum'],
+    'formula_latex': 'see body (alpha172 averaged with its 6-day lag)',
+    'columns_required': ['close', 'high', 'low'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 14,
+    'min_warmup_bars': 27,
+    'notes': 'alpha172 averaged with its 6-day lag.',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_186 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,49 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_186"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_186',
-    'theme': ['momentum'],
-    'formula_latex': 'see body (alpha172 averaged with its 6-day lag)',
-    'columns_required': ['close', 'high', 'low'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 14,
-    'min_warmup_bars': 27,
-    'notes': 'alpha172 averaged with its 6-day lag.',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_186.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    HD = h - h.shift(1)
-    LD = l.shift(1) - l
-    prev = c.shift(1)
-    a = (h - l).to_numpy(dtype=np.float64, na_value=np.nan)
-    b = (prev - h).abs().to_numpy(dtype=np.float64, na_value=np.nan)
-    d = (prev - l).abs().to_numpy(dtype=np.float64, na_value=np.nan)
-    TR = pd.DataFrame(np.maximum(np.maximum(a, b), d), index=c.index, columns=c.columns)
-    ld_cond = ((LD > 0) & (LD > HD)).astype("float64")
-    hd_cond = ((HD > 0) & (HD > LD)).astype("float64")
-    dm_plus = (LD * ld_cond).rolling(14).sum() * 100.0
-    dm_minus = (HD * hd_cond).rolling(14).sum() * 100.0
-    tr14 = TR.rolling(14).sum()
-    di_p = safe_div(dm_plus, tr14)
-    di_m = safe_div(dm_minus, tr14)
-    dx = safe_div((di_p - di_m).abs(), di_p + di_m) * 100.0
-    a172 = ts_mean(dx, 6)
-    out = (a172 + a172.shift(6)) / 2.0
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

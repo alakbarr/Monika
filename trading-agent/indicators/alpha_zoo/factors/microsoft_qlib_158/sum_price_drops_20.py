@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 SUMD20: formula = \\mathrm{SUMP}_w - \\mathrm{SUMN}_w."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/sum_price_drops_20.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_price_drops_20
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_price_drops_20
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_price_drops_20 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_sumd20',
@@ -17,15 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 20,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_price_drops_20 import (
+    annotations,
+    compute,
+    safe_div,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 SUMD20 on the supplied OHLCV panel."""
-    c = panel['close']
-    diff = c - c.shift(1)
-    pos = diff.where(diff > 0, 0.0)
-    neg = (-diff).where(diff < 0, 0.0)
-    absd = diff.abs()
-    num_p = pos.rolling(window=20, min_periods=20).sum()
-    num_n = neg.rolling(window=20, min_periods=20).sum()
-    den = absd.rolling(window=20, min_periods=20).sum()
-    return safe_div(num_p - num_n, den)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+]

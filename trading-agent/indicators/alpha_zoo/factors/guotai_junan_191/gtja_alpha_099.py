@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_099.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_099
+# ==============================================================================
 
-"""GTJA Alpha #99.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_099
+"""
 
-Formula: (-1*RANK(COVIANCE(RANK(CLOSE),RANK(VOLUME),5)))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 99."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_099 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_099",
+    "theme": ['volume'],
+    "formula_latex": '(-1*RANK(COVIANCE(RANK(CLOSE),RANK(VOLUME),5)))',
+    "columns_required": ['close', 'volume'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 6,
+    "notes": 'Negated rank of 5d cov(rank close, rank volume).',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_099 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,19 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_099",
-    "theme": ['volume'],
-    "formula_latex": '(-1*RANK(COVIANCE(RANK(CLOSE),RANK(VOLUME),5)))',
-    "columns_required": ['close', 'volume'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 5,
-    "min_warmup_bars": 6,
-    "notes": 'Negated rank of 5d cov(rank close, rank volume).',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    return -1.0 * rank(ts_cov(rank(panel["close"]), rank(panel["volume"]), 5))
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

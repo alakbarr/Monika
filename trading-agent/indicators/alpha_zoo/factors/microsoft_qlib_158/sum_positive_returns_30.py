@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 SUMP30: formula = \\sum \\max(\\Delta\\mathrm{close}, 0) / \\sum |\\Delta\\mathrm{close}|."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/sum_positive_returns_30.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_positive_returns_30
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_positive_returns_30
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_positive_returns_30 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_sump30',
@@ -17,13 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 30,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.sum_positive_returns_30 import (
+    annotations,
+    compute,
+    safe_div,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 SUMP30 on the supplied OHLCV panel."""
-    c = panel['close']
-    diff = c - c.shift(1)
-    pos = diff.where(diff > 0, 0.0)
-    absd = diff.abs()
-    num = pos.rolling(window=30, min_periods=30).sum()
-    den = absd.rolling(window=30, min_periods=30).sum()
-    return safe_div(num, den)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+]

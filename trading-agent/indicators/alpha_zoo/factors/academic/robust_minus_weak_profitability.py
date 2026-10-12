@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/robust_minus_weak_profitability.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.robust_minus_weak_profitability
+# ==============================================================================
 
-"""academic RMW: profitability factor as inverse 60-day return volatility.
-
-Reference:
-    Fama, E. F., & French, K. R. (2015). "A five-factor asset pricing model."
-    Journal of Financial Economics, 116(1), 1-22.
-
-This is a price-based proxy: the original RMW (Robust Minus Weak) sorts on
-operating profitability from income statements. We use the negative of trailing
-60-day realized return volatility — robust (profitable) firms historically
-exhibit lower idiosyncratic volatility (the "low-vol anomaly" overlap). Higher
-z-scores = lower volatility = quality proxy.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.robust_minus_weak_profitability
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, safe_div, ts_std
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.robust_minus_weak_profitability as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_rmw',
@@ -37,24 +30,22 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.robust_minus_weak_profitability import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    safe_div,
+    ts_std,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse 60-day return-volatility z-score per stock."""
-    close = panel['close']
-    ret_1d = safe_div(delta(close, 1), close.shift(1))
-    vol_60 = ts_std(ret_1d, 60)
-    return _cross_sectional_zscore(-vol_60)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "safe_div",
+    "ts_std",
+]

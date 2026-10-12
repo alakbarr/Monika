@@ -1,16 +1,36 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_070.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_070
+# ==============================================================================
 
-"""Kakushadze Alpha #70.
-
-Formula (paper appendix): (rank(delta(vwap,1))^Ts_Rank(correlation(IndNeutralize(close,industry), adv50, 18), 18)) * -1
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 70.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_070
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_070 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_070',
+    'nickname': 'Kakushadze Alpha #70',
+    'theme': ['momentum', 'volume'],
+    'formula_latex': '(rank(delta(vwap,1))^Ts_Rank(correlation(IndNeutralize(close,industry), adv50, 18), 18)) * -1',
+    'columns_required': ['close', 'volume', 'vwap'],
+    'extras_required': [],
+    'requires_sector': True,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 84,
+    'notes': "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_070 import (
+    ALPHA_ID,
+    _ind_neutralize,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -28,66 +48,26 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_070"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_070',
-    'nickname': 'Kakushadze Alpha #70',
-    'theme': ['momentum', 'volume'],
-    'formula_latex': '(rank(delta(vwap,1))^Ts_Rank(correlation(IndNeutralize(close,industry), adv50, 18), 18)) * -1',
-    'columns_required': ['close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': True,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 84,
-    'notes': "Industry neutralization implemented via per-row sector group demean (panel['sector'] required). When sector tag is absent the registry rejects via SkipAlpha; the compute() also has a degraded global demean fallback. This is a partial approximation of the paper's IndClass.industry/subindustry/sector neutralization.",
-}
-
-
-def _ind_neutralize(x: pd.DataFrame, panel: dict) -> pd.DataFrame:
-    """Industry/sector neutralize: subtract the row-wise sector group mean.
-
-    If panel has a 'sector' DataFrame (same shape as close), subtract the
-    per-sector cross-sectional mean per row. If absent, degrade to global
-    cross-sectional demean (subtract row mean). This is a degraded fallback
-    relative to the paper's industry/subindustry neutralization; see notes.
-    """
-    sector_df = panel.get("sector")
-    if sector_df is None:
-        row_mean = x.mean(axis=1, skipna=True)
-        return x.sub(row_mean, axis=0)
-    # Per-row group demean. Iterate rows; numpy-fast enough for small panels.
-    arr = x.to_numpy(dtype=np.float64, na_value=np.nan).copy()
-    sec_arr = sector_df.to_numpy()
-    n_rows = arr.shape[0]
-    for i in range(n_rows):
-        row = arr[i]
-        sec_row = sec_arr[i]
-        for tag in pd.unique(sec_row):
-            mask = sec_row == tag
-            vals = row[mask]
-            finite = vals[~np.isnan(vals)]
-            if finite.size == 0:
-                continue
-            mean = finite.mean()
-            row[mask] = vals - mean
-        arr[i] = row
-    return pd.DataFrame(arr, index=x.index, columns=x.columns)
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    volume = panel["volume"]
-    vwap = panel["vwap"]
-    adv5 = ts_mean(volume, 5)
-    adv50 = ts_mean(volume, 50)
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    ind_neutralize = _ind_neutralize
-    lhs = rank(delta(vwap, 1))
-    rhs = ts_rank(ts_corr(ind_neutralize(close, panel), adv50, 18), 18)
-    out = (lhs * rhs) * -1.0
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "_ind_neutralize",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

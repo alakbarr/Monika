@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_021.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_021
+# ==============================================================================
 
-"""GTJA Alpha #21.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_021
+"""
 
-Formula: REGBETA(MEAN(CLOSE,6), SEQUENCE(6))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 21."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_021 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_021",
+    "theme": ['momentum'],
+    "formula_latex": 'REGBETA(MEAN(CLOSE,6), SEQUENCE(6))',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 6,
+    "min_warmup_bars": 12,
+    "notes": 'Rolling 6-day slope of MA6(close) vs time index. REGBETA proxied by ts_cov / ts_std**2.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_021 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,26 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_021",
-    "theme": ['momentum'],
-    "formula_latex": 'REGBETA(MEAN(CLOSE,6), SEQUENCE(6))',
-    "columns_required": ['close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 6,
-    "min_warmup_bars": 12,
-    "notes": 'Rolling 6-day slope of MA6(close) vs time index. REGBETA proxied by ts_cov / ts_std**2.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    ma6 = ts_mean(c, 6)
-    # build a sequence DataFrame: 1..N broadcast on every column
-    seq = pd.DataFrame(
-        np.broadcast_to(np.arange(1, c.shape[0] + 1, dtype=float)[:, None], c.shape).copy(),
-        index=c.index, columns=c.columns,
-    )
-    return safe_div(ts_cov(ma6, seq, 6), ts_std(seq, 6) ** 2)
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,26 +1,15 @@
-"""academic Betting-Against-Beta (BAB): cross-sectional negative-beta ranking.
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/betting_against_beta.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.betting_against_beta
+# ==============================================================================
 
-Reference:
-    Frazzini, A., & Pedersen, L. H. (2014). "Betting against beta."
-    Journal of Financial Economics, 111(1), 1-25.
-
-BAB longs low-beta assets and shorts high-beta assets (both leverage-adjusted
-in the original paper). We reproduce the core cross-sectional ranking signal
-using only OHLCV inputs: rolling per-stock beta against an equal-weighted
-market return (cross-sectional mean of daily returns), then rank stocks by
-negative beta so low-beta names score highest. This differs from the
-original construction, which uses a value-weighted market portfolio,
-shrinkage-adjusted betas, and separate long-run correlation / short-run
-volatility estimation windows (5y correlation, 1y volatility). We use a
-single rolling window for both covariance and market variance, which is a
-simplification.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.betting_against_beta
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import ts_cov, ts_std
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.betting_against_beta as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_bab',
@@ -43,41 +32,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.betting_against_beta import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    ts_cov,
+    ts_std,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return cross-sectional z-scored negative rolling beta (BAB long leg).
-
-    Market return is the equal-weighted cross-sectional mean of per-stock
-    daily returns, broadcast back to every column so ts_cov/ts_std (which
-    operate per-column) see the same market series against each stock.
-    """
-    close = panel['close']
-    returns = close.pct_change(fill_method=None)
-
-    market_ret = returns.mean(axis=1, skipna=True)
-    market_df = pd.DataFrame(
-        {col: market_ret for col in returns.columns},
-        index=returns.index,
-    )
-
-    window = 252
-    cov = ts_cov(returns, market_df, window)
-    market_var = ts_std(market_df, window) ** 2
-    beta = cov.div(market_var.where(market_var > 0))
-    beta = beta.replace([np.inf, -np.inf], np.nan)
-
-    return _cross_sectional_zscore(-beta)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "ts_cov",
+    "ts_std",
+]

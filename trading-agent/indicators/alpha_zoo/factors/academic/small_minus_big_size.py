@@ -1,21 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/small_minus_big_size.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.small_minus_big_size
+# ==============================================================================
 
-"""academic SMB: size factor as inverse log of 60-day average dollar volume.
-
-Reference:
-    Fama, E. F., & French, K. R. (1993). "Common risk factors in the returns on
-    stocks and bonds." Journal of Financial Economics, 33(1), 3-56.
-
-This is a price-based proxy: the original SMB (Small Minus Big) sorts on market
-capitalization, which we do not carry in the OHLCV panel. We use average daily
-dollar volume (close * volume) as a liquidity-weighted size proxy — small caps
-typically have low dollar volume. Higher z-scores = smaller (illiquid) names.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.small_minus_big_size
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import ts_mean
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.small_minus_big_size as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_smb',
@@ -36,26 +30,18 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.small_minus_big_size import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    ts_mean,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse log 60-day dollar-volume z-score per stock."""
-    close = panel['close']
-    volume = panel['volume']
-    dollar_volume = volume * close
-    avg = ts_mean(dollar_volume, 60)
-    log_size = np.log(avg + 1.0)
-    return _cross_sectional_zscore(-log_size)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "ts_mean",
+]

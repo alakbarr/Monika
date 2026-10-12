@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_131.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_131
+# ==============================================================================
 
-"""GTJA Alpha 131 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    (RANK(DELAT(VWAP,1))^TSRANK(CORR(CLOSE,MEAN(VOLUME,50),18),18))
-
-Notes: DELAT in report typo = DELTA.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_131
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_131 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_131',
+    'theme': ['volume'],
+    'formula_latex': 'rank(delta(vwap,1))^tsrank(corr(close,mean(v,50),18),18)',
+    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 50,
+    'min_warmup_bars': 84,
+    'notes': 'DELAT in report typo = DELTA.',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_131 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -30,38 +46,26 @@ from indicators.factor_primitives import (
     vwap,
 )
 
-ALPHA_ID = "gtja191_131"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_131',
-    'theme': ['volume'],
-    'formula_latex': 'rank(delta(vwap,1))^tsrank(corr(close,mean(v,50),18),18)',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 50,
-    'min_warmup_bars': 84,
-    'notes': 'DELAT in report typo = DELTA.',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_131.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    v = panel["volume"]
-    vw = vwap(panel, "equity_cn")
-
-    left = rank(delta(vw, 1))
-    right = ts_rank(ts_corr(c, ts_mean(v, 50), 18), 18)
-    arr = np.power(left.to_numpy(dtype=np.float64, na_value=np.nan),
-                   right.to_numpy(dtype=np.float64, na_value=np.nan))
-    out = pd.DataFrame(arr, index=left.index, columns=left.columns)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+    "vwap",
+]

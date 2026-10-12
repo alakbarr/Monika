@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 RANK20: formula = \\mathrm{ts\\_rank}(\\mathrm{close}, 20)."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/percentile_price_rank_20.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.percentile_price_rank_20
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import ts_rank, rank
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.percentile_price_rank_20
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.percentile_price_rank_20 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_rank20',
@@ -17,8 +22,18 @@ __alpha_meta__ = {
     'min_warmup_bars': 20,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.percentile_price_rank_20 import (
+    annotations,
+    compute,
+    rank,
+    ts_rank,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 RANK20 on the supplied OHLCV panel."""
-    c = panel['close']
-    return ts_rank(c, 20)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "rank",
+    "ts_rank",
+]

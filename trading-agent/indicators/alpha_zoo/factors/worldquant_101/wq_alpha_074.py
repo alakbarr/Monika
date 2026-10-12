@@ -1,16 +1,36 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_074.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_074
+# ==============================================================================
 
-"""Kakushadze Alpha #74.
-
-Formula (paper appendix): (rank(correlation(close, sum(adv30,37), 15)) < rank(correlation(rank(0.026*high+0.974*vwap), rank(volume), 11))) * -1
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 74.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_074
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_074 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_074',
+    'nickname': 'Kakushadze Alpha #74',
+    'theme': ['volume'],
+    'formula_latex': '(rank(correlation(close, sum(adv30,37), 15)) < rank(correlation(rank(0.026*high+0.974*vwap), rank(volume), 11))) * -1',
+    'columns_required': ['high', 'close', 'volume', 'vwap'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 60,
+    'notes': '',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_074 import (
+    ALPHA_ID,
+    _rolling_sum,
+    annotations,
+    compute,
     decay_linear,
     delta,
     observed_over,
@@ -29,46 +49,27 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_074"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_074',
-    'nickname': 'Kakushadze Alpha #74',
-    'theme': ['volume'],
-    'formula_latex': '(rank(correlation(close, sum(adv30,37), 15)) < rank(correlation(rank(0.026*high+0.974*vwap), rank(volume), 11))) * -1',
-    'columns_required': ['high', 'close', 'volume', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 60,
-    'notes': '',
-}
-
-
-def _rolling_sum(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Rolling window sum; warmup -> NaN."""
-    return df.rolling(window=n, min_periods=n).sum()
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    high = panel["high"]
-    volume = panel["volume"]
-    vwap = panel["vwap"]
-    adv30 = ts_mean(volume, 30)
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    rolling_sum = _rolling_sum
-    lhs = rank(ts_corr(close, rolling_sum(adv30, 37), 15))
-    mix = high * 0.0261661 + vwap * (1.0 - 0.0261661)
-    rhs = rank(ts_corr(rank(mix), rank(volume), 11))
-    out = (lhs < rhs).astype(float) * -1.0
-    # A NaN comparison is False, not NaN, so lhs/rhs's warmup NaN falls
-    # through to a fabricated finite value instead of propagating NaN.
-    # Mask on the inputs' reach, not the operands' NaN: a constant window's
-    # correlation is undefined on complete data and keeps its verdict (#1452).
-    # volume: adv30 + sum 37 + corr 15; close: corr 15; high/vwap: corr 11.
-    return out.where(observed_over((volume, 80), (close, 15), (high, 11), (vwap, 11)))
+__all__ = [
+    "ALPHA_ID",
+    "_rolling_sum",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "observed_over",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

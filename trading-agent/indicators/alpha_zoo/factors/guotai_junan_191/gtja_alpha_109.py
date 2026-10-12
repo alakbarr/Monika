@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_109.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_109
+# ==============================================================================
 
-"""GTJA Alpha 109 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    SMA(HIGH-LOW,10,2) / SMA(SMA(HIGH-LOW,10,2),10,2)
-
-Notes: SMA -> ewm(alpha=2/10).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_109
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_109 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_109',
+    'theme': ['volatility'],
+    'formula_latex': 'sma(high-low,10,2)/sma(sma(high-low,10,2),10,2)',
+    'columns_required': ['close', 'high', 'low'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 10,
+    'min_warmup_bars': 20,
+    'notes': 'SMA -> ewm(alpha=2/10).',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_109 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,38 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_109"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_109',
-    'theme': ['volatility'],
-    'formula_latex': 'sma(high-low,10,2)/sma(sma(high-low,10,2),10,2)',
-    'columns_required': ['close', 'high', 'low'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 10,
-    'min_warmup_bars': 20,
-    'notes': 'SMA -> ewm(alpha=2/10).',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_109.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    def _sma(x, n, m):
-        """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
-        return x.ewm(alpha=m / n, adjust=False).mean()
-    h = panel["high"]
-    l = panel["low"]
-    hl = h - l
-    num = _sma(hl, 10, 2)
-    den = _sma(num, 10, 2)
-    out = safe_div(num, den)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

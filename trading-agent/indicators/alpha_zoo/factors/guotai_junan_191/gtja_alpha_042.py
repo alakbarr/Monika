@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_042.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_042
+# ==============================================================================
 
-"""GTJA Alpha #42.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_042
+"""
 
-Formula: ((-1*RANK(STD(HIGH,10)))*CORR(HIGH,VOLUME,10))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 42."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_042 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_042",
+    "theme": ['volume', 'volatility'],
+    "formula_latex": '((-1*RANK(STD(HIGH,10)))*CORR(HIGH,VOLUME,10))',
+    "columns_required": ['high', 'volume'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 10,
+    "min_warmup_bars": 11,
+    "notes": 'Negative rank of 10d std(high) times 10d corr(high, volume).',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_042 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,21 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_042",
-    "theme": ['volume', 'volatility'],
-    "formula_latex": '((-1*RANK(STD(HIGH,10)))*CORR(HIGH,VOLUME,10))',
-    "columns_required": ['high', 'volume'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 10,
-    "min_warmup_bars": 11,
-    "notes": 'Negative rank of 10d std(high) times 10d corr(high, volume).',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    h = panel["high"]
-    v = panel["volume"]
-    return (-1.0 * rank(ts_std(h, 10))) * ts_corr(h, v, 10)
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

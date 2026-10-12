@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/carhart_momentum.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.carhart_momentum
+# ==============================================================================
 
-"""academic Carhart momentum: 12-month return excluding the most recent month.
-
-Reference:
-    Carhart, M. M. (1997). "On persistence in mutual fund performance."
-    The Journal of Finance, 52(1), 57-82.
-
-This is the canonical UMD (Up Minus Down) momentum factor: trailing 12-month
-return less the most recent month, capturing intermediate-term momentum while
-avoiding short-term reversal contamination. Computed directly from prices —
-no fundamental data required — so this matches the original construction
-modulo the cross-sectional z-score wrapper used for long-short ranking.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.carhart_momentum
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, safe_div
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.carhart_momentum as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_carhart_mom',
@@ -37,29 +30,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.carhart_momentum import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    safe_div,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return 252-day minus 21-day return z-score (Carhart UMD).
-
-    Uses canonical (252, 21) windows without silent shrink on short panels.
-    Short panels produce all-NaN; the registry surfaces this as >95% NaN
-    (RegistryError) rather than returning a misleading shrunk-window value.
-    """
-    close = panel['close']
-    ret_long = safe_div(delta(close, 252), close.shift(252))
-    ret_short = safe_div(delta(close, 21), close.shift(21))
-    return _cross_sectional_zscore(ret_long - ret_short)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "safe_div",
+]

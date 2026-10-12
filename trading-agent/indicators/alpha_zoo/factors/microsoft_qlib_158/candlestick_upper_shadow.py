@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 KUP: formula = (\\mathrm{high} - \\max(\\mathrm{open}, \\mathrm{close})) / \\mathrm{open}."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/candlestick_upper_shadow.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_upper_shadow
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_upper_shadow
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_upper_shadow as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_kup',
@@ -17,11 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 1,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_upper_shadow import (
+    annotations,
+    compute,
+    safe_div,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 KUP on the supplied OHLCV panel."""
-    o = panel['open']
-    c = panel['close']
-    h = panel['high']
-    upper = o.where(o >= c, c)
-    return safe_div(h - upper, o)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+]

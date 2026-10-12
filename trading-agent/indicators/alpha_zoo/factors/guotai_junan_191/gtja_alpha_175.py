@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_175.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_175
+# ==============================================================================
 
-"""GTJA Alpha 175 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    MEAN(MAX(MAX(HIGH-LOW,ABS(DELAY(CLOSE,1)-HIGH)),ABS(DELAY(CLOSE,1)-LOW)),6)
-
-Notes: ATR(6).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_175
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_175 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_175',
+    'theme': ['volatility'],
+    'formula_latex': 'mean(true_range,6)',
+    'columns_required': ['close', 'high', 'low'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 6,
+    'min_warmup_bars': 7,
+    'notes': 'ATR(6).',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_175 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,39 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_175"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_175',
-    'theme': ['volatility'],
-    'formula_latex': 'mean(true_range,6)',
-    'columns_required': ['close', 'high', 'low'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 6,
-    'min_warmup_bars': 7,
-    'notes': 'ATR(6).',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_175.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    prev = c.shift(1)
-    a = (h - l).to_numpy(dtype=np.float64, na_value=np.nan)
-    b = (prev - h).abs().to_numpy(dtype=np.float64, na_value=np.nan)
-    d = (prev - l).abs().to_numpy(dtype=np.float64, na_value=np.nan)
-    tr = np.maximum(np.maximum(a, b), d)
-    tr_df = pd.DataFrame(tr, index=c.index, columns=c.columns)
-    out = ts_mean(tr_df, 6)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

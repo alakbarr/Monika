@@ -1,11 +1,15 @@
-"""Fundamental earnings-yield value factor."""
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/fundamental/earnings_yield.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.fundamental.earnings_yield
+# ==============================================================================
 
-from __future__ import annotations
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.fundamental.earnings_yield
+"""
 
-import pandas as pd
-
-from indicators.factor_primitives import safe_div
-from indicators.factor_primitives import zscore
+import sys
+import monika.domain.indicators.alpha_zoo.factors.fundamental.earnings_yield as _canonical
 
 __alpha_meta__ = {
     "id": "fund_earnings_yield",
@@ -28,9 +32,18 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.fundamental.earnings_yield import (
+    annotations,
+    compute,
+    safe_div,
+    zscore,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return cross-sectional z-scored earnings yield."""
-    market_cap = panel["close"] * panel["fund:shares_diluted"]
-    earnings_yield = safe_div(panel["fund:net_income"], market_cap)
-    return zscore(earnings_yield)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+    "zscore",
+]

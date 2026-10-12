@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/short_term_reversal.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.short_term_reversal
+# ==============================================================================
 
-"""academic short-term reversal: inverse trailing 21-day return.
-
-Reference:
-    Jegadeesh, N. (1990). "Evidence of predictable behavior of security
-    returns." The Journal of Finance, 45(3), 881-898.
-
-The canonical one-month reversal factor: stocks with low past-month returns
-tend to outperform stocks with high past-month returns over the following
-month. Computed directly from prices as the negative of the trailing 21-day
-return, then cross-sectional z-scored per date. Higher z-scores = larger
-recent losers (the long leg).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.short_term_reversal
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, safe_div
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.short_term_reversal as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_strev',
@@ -36,23 +29,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.short_term_reversal import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    safe_div,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse 21-day return cross-sectional z-score per stock."""
-    close = panel['close']
-    ret = safe_div(delta(close, 21), close.shift(21))
-    return _cross_sectional_zscore(-ret)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "safe_div",
+]

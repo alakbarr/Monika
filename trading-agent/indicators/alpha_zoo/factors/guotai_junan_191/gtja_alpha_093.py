@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_093.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_093
+# ==============================================================================
 
-"""GTJA Alpha #93.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_093
+"""
 
-Formula: SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 93."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_093 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_093",
+    "theme": ['microstructure'],
+    "formula_latex": 'SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)',
+    "columns_required": ['open', 'low'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 22,
+    "notes": 'Sum of downside range moves over 20 days.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_093 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,26 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_093",
-    "theme": ['microstructure'],
-    "formula_latex": 'SUM((OPEN>=DELAY(OPEN,1)?0:MAX(OPEN-LOW,OPEN-DELAY(OPEN,1))),20)',
-    "columns_required": ['open', 'low'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 20,
-    "min_warmup_bars": 22,
-    "notes": 'Sum of downside range moves over 20 days.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    o = panel["open"]
-    l = panel["low"]
-    po = o.shift(1)
-    move = pd.DataFrame(np.maximum((o - l).to_numpy(), (o - po).to_numpy()),
-                        index=o.index, columns=o.columns)
-    # A missing open, prior open or low is neither a down move nor a zero (#1463).
-    keep = move.where(o < po, 0.0).where(o.notna() & po.notna() & l.notna())
-    return keep.rolling(20, min_periods=20).sum()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

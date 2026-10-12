@@ -1,11 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 CORR5: formula = \\mathrm{ts\\_corr}(\\mathrm{close}, \\log(\\mathrm{volume}+1), 5)."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/price_volume_correlation_5.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.price_volume_correlation_5
+# ==============================================================================
 
-import numpy as np
-import pandas as pd
-from indicators.factor_primitives import ts_corr
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.price_volume_correlation_5
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.price_volume_correlation_5 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_corr5',
@@ -18,10 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 5,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.price_volume_correlation_5 import (
+    annotations,
+    compute,
+    ts_corr,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 CORR5 on the supplied OHLCV panel."""
-    c = panel['close']
-    v = panel['volume']
-    logv = np.log1p(v)
-    return ts_corr(c, logv, 5)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "ts_corr",
+]

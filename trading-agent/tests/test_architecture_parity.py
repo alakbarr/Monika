@@ -179,3 +179,41 @@ def test_market_intel_service_alpha_evaluation():
     assert result.regime == "trending"
     prompt_context = result.to_prompt_context()
     assert "EURUSD" in prompt_context
+
+
+def test_domain_core_class_identity_and_functional_parity():
+    """Verify PR-1 domain core shims preserve exact object identity and runtime state."""
+    # 1. Risk Domain Identity
+    import risk.trade_proposal as shim_tp
+    import monika.domain.risk.trade_proposal as canon_tp
+    assert shim_tp.TradeProposal is canon_tp.TradeProposal
+
+    import risk.risk_gate as shim_rg
+    import monika.domain.risk.risk_gate as canon_rg
+    assert shim_rg.RiskGate is canon_rg.RiskGate
+
+    import risk.position_sizing as shim_ps
+    import monika.domain.risk.position_sizing as canon_ps
+    assert shim_ps.PositionSizer is canon_ps.PositionSizer
+
+    # 2. Execution Domain Identity
+    import execution.broker_plugin as shim_bp
+    import monika.domain.execution.broker_plugin as canon_bp
+    assert shim_bp.BrokerPlugin is canon_bp.BrokerPlugin
+
+    import execution.verification_engine as shim_ve
+    import monika.domain.execution.verification_engine as canon_ve
+    assert shim_ve.EvidenceFirstVerifier is canon_ve.EvidenceFirstVerifier
+
+    # 3. Indicators / Alpha Zoo Identity & Shared Registry State
+    import indicators.alpha_zoo.registry as shim_reg
+    import monika.domain.indicators.alpha_zoo.registry as canon_reg
+    assert shim_reg.FactorRegistry is canon_reg.FactorRegistry
+
+    # Ensure factors registered via canonical or shim are visible in both
+    import indicators.alpha_zoo as shim_zoo
+    import monika.domain.indicators.alpha_zoo as canon_zoo
+    assert shim_zoo.FactorRegistry is canon_zoo.FactorRegistry
+    assert len(shim_zoo.FactorRegistry.list_factors()) >= 10
+    assert len(canon_zoo.FactorRegistry.list_factors()) >= 10
+

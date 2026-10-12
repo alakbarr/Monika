@@ -1,16 +1,35 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_068.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_068
+# ==============================================================================
 
-"""Kakushadze Alpha #68.
-
-Formula (paper appendix): (Ts_Rank(correlation(rank(high), rank(adv15), 9), 14) < rank(delta(0.518*close+0.482*low, 1))) * -1
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 68.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_068
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_068 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_068',
+    'nickname': 'Kakushadze Alpha #68',
+    'theme': ['volume'],
+    'formula_latex': '(Ts_Rank(correlation(rank(high), rank(adv15), 9), 14) < rank(delta(0.518*close+0.482*low, 1))) * -1',
+    'columns_required': ['high', 'low', 'close', 'volume'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 36,
+    'notes': '',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_068 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     observed_over,
@@ -29,37 +48,26 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_068"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_068',
-    'nickname': 'Kakushadze Alpha #68',
-    'theme': ['volume'],
-    'formula_latex': '(Ts_Rank(correlation(rank(high), rank(adv15), 9), 14) < rank(delta(0.518*close+0.482*low, 1))) * -1',
-    'columns_required': ['high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 36,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    high = panel["high"]
-    low = panel["low"]
-    volume = panel["volume"]
-    adv15 = ts_mean(volume, 15)
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    lhs = ts_rank(ts_corr(rank(high), rank(adv15), 9), 14)
-    mix = close * 0.518371 + low * (1.0 - 0.518371)
-    rhs = rank(delta(mix, 1))
-    out = (lhs < rhs).astype(float) * -1.0
-    # Reach of each input through the nested windows; a gap inside it is not a verdict (#1463).
-    # volume: adv15 + corr 9 + ts_rank 14; high: corr 9 + ts_rank 14; close/low: delta 1.
-    return out.where(observed_over((volume, 36), (high, 22), (close, 2), (low, 2)))
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "observed_over",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

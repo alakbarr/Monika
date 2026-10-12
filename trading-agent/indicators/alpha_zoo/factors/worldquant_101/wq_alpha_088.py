@@ -1,16 +1,35 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_088.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_088
+# ==============================================================================
 
-"""Kakushadze Alpha #88.
-
-Formula (paper appendix): min(rank(decay_linear((rank(open)+rank(low))-(rank(high)+rank(close)),8)), Ts_Rank(decay_linear(correlation(Ts_Rank(close,8),Ts_Rank(adv60,20),8),7),3))
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 88.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_088
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_088 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_088',
+    'nickname': 'Kakushadze Alpha #88',
+    'theme': ['volume'],
+    'formula_latex': 'min(rank(decay_linear((rank(open)+rank(low))-(rank(high)+rank(close)),8)), Ts_Rank(decay_linear(correlation(Ts_Rank(close,8),Ts_Rank(adv60,20),8),7),3))',
+    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 94,
+    'notes': '',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_088 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     observed_over,
@@ -29,40 +48,26 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_088"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_088',
-    'nickname': 'Kakushadze Alpha #88',
-    'theme': ['volume'],
-    'formula_latex': 'min(rank(decay_linear((rank(open)+rank(low))-(rank(high)+rank(close)),8)), Ts_Rank(decay_linear(correlation(Ts_Rank(close,8),Ts_Rank(adv60,20),8),7),3))',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 94,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    open_ = panel["open"]
-    high = panel["high"]
-    low = panel["low"]
-    volume = panel["volume"]
-    adv60 = ts_mean(volume, 60)
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    a = rank(decay_linear((rank(open_) + rank(low)) - (rank(high) + rank(close)), 8))
-    b = ts_rank(decay_linear(ts_corr(ts_rank(close, 8), ts_rank(adv60, 20), 8), 7), 3)
-    arr_a = a.to_numpy(dtype=np.float64, na_value=np.nan)
-    arr_b = b.to_numpy(dtype=np.float64, na_value=np.nan)
-    out = pd.DataFrame(np.fmin(arr_a, arr_b), index=close.index, columns=close.columns)
-    # np.fmin returns the other side when one is missing; mask where a gap sits
-    # inside an input's reach (#1463). volume: adv60 + ts_rank 20 + corr 8 + decay 7 + ts_rank 3; close: ts_rank 8 + corr 8 + decay 7 + ts_rank 3; open/high/low: decay 8.
-    out = out.where(observed_over((volume, 94), (close, 23), (open_, 8), (high, 8), (low, 8)))
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "observed_over",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 KLEN: formula = (\\mathrm{high} - \\mathrm{low}) / \\mathrm{open}."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/candlestick_length.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_length
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_length
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_length as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_klen',
@@ -17,10 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 1,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.candlestick_length import (
+    annotations,
+    compute,
+    safe_div,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 KLEN on the supplied OHLCV panel."""
-    o = panel['open']
-    h = panel['high']
-    lo = panel['low']
-    return safe_div(h - lo, o)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+]

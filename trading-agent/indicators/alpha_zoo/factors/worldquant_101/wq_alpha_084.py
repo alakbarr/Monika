@@ -1,16 +1,35 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_084.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_084
+# ==============================================================================
 
-"""Kakushadze Alpha #84.
-
-Formula (paper appendix): SignedPower(Ts_Rank(vwap-ts_max(vwap,15), 21), delta(close,5))
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 84.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_084
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_084 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_084',
+    'nickname': 'Kakushadze Alpha #84',
+    'theme': ['momentum'],
+    'formula_latex': 'SignedPower(Ts_Rank(vwap-ts_max(vwap,15), 21), delta(close,5))',
+    'columns_required': ['close', 'vwap'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 35,
+    'notes': "SignedPower with a delta(close,5) exponent can produce non-finite values when the exponent is large; non-finite outputs are clipped to NaN to satisfy the registry's no-inf invariant.",
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_084 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -28,36 +47,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_084"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_084',
-    'nickname': 'Kakushadze Alpha #84',
-    'theme': ['momentum'],
-    'formula_latex': 'SignedPower(Ts_Rank(vwap-ts_max(vwap,15), 21), delta(close,5))',
-    'columns_required': ['close', 'vwap'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 35,
-    'notes': "SignedPower with a delta(close,5) exponent can produce non-finite values when the exponent is large; non-finite outputs are clipped to NaN to satisfy the registry's no-inf invariant.",
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    vwap = panel["vwap"]
-
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    base = ts_rank(vwap - ts_max(vwap, 15), 21)
-    exponent_df = delta(close, 5)
-    base_arr = base.to_numpy(dtype=np.float64, na_value=np.nan)
-    exp_arr = exponent_df.to_numpy(dtype=np.float64, na_value=np.nan)
-    out_arr = np.sign(base_arr) * np.power(np.abs(base_arr), exp_arr)
-    out_arr = np.where(np.isfinite(out_arr), out_arr, np.nan)
-    out = pd.DataFrame(out_arr, index=close.index, columns=close.columns)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

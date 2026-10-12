@@ -1,10 +1,15 @@
-"""Fundamental asset-growth investment factor."""
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/fundamental/asset_growth.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.fundamental.asset_growth
+# ==============================================================================
 
-from __future__ import annotations
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.fundamental.asset_growth
+"""
 
-import pandas as pd
-
-from indicators.factor_primitives import zscore
+import sys
+import monika.domain.indicators.alpha_zoo.factors.fundamental.asset_growth as _canonical
 
 __alpha_meta__ = {
     "id": "fund_asset_growth",
@@ -23,7 +28,16 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.fundamental.asset_growth import (
+    annotations,
+    compute,
+    zscore,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return negative cross-sectional z-scored asset growth."""
-    return -zscore(panel["fund:asset_growth"])
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "zscore",
+]

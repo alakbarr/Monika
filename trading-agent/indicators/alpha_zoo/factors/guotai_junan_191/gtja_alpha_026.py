@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_026.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_026
+# ==============================================================================
 
-"""GTJA Alpha #26.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_026
+"""
 
-Formula: ((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 26."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_026 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_026",
+    "theme": ['momentum', 'microstructure'],
+    "formula_latex": '((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))',
+    "columns_required": ['close', 'volume', 'amount'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 7,
+    "min_warmup_bars": 35,
+    "notes": '230d corr approximated with 30d window; see notes.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_026 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,24 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_026",
-    "theme": ['momentum', 'microstructure'],
-    "formula_latex": '((((SUM(CLOSE,7)/7)-CLOSE))+((CORR(VWAP,DELAY(CLOSE,5),230))))',
-    "columns_required": ['close', 'volume', 'amount'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 7,
-    "min_warmup_bars": 35,
-    "notes": '230d corr approximated with 30d window; see notes.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    v = panel["volume"]
-    vw = safe_div(panel["amount"], v * 100.0 + 1.0)
-    term1 = ts_mean(c, 7) - c
-    term2 = ts_corr(vw, c.shift(5), 30)
-    return term1 + term2
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

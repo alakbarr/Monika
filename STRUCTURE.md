@@ -170,7 +170,73 @@ Monika/
 │       ├── core
 │       │   └── __init__.py
 │       ├── domain
-│       │   └── __init__.py
+│       │   ├── __init__.py
+│       │   ├── execution
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   ├── broker_plugin.py
+│       │   │   ├── order_creator.py
+│       │   │   ├── order_emulator.py
+│       │   │   ├── sizing_calculator.py
+│       │   │   ├── state_machine.py
+│       │   │   └── verification_engine.py
+│       │   ├── indicators
+│       │   │   ├── __init__.py
+│       │   │   ├── alpha_zoo
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── academic_factors.py
+│       │   │   │   ├── alpha101.py
+│       │   │   │   ├── factors
+│       │   │   │   ├── fundamental_factors.py
+│       │   │   │   ├── meta.py
+│       │   │   │   ├── microstructure_factors.py
+│       │   │   │   ├── qlib158.py
+│       │   │   │   ├── registry.py
+│       │   │   │   └── vector_factor_engine.py
+│       │   │   ├── candlestick_patterns.py
+│       │   │   ├── chart_patterns.py
+│       │   │   ├── divergence.py
+│       │   │   ├── econometrics.py
+│       │   │   ├── factor_primitives.py
+│       │   │   ├── micro_alpha_zoo.py
+│       │   │   ├── microstructure.py
+│       │   │   ├── order_flow.py
+│       │   │   ├── pattern_similarity
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── context_scorer.py
+│       │   │   │   ├── context_verifier.py
+│       │   │   │   ├── engine.py
+│       │   │   │   ├── feature_extractor.py
+│       │   │   │   ├── models.py
+│       │   │   │   ├── normalizer.py
+│       │   │   │   ├── outcome_analyzer.py
+│       │   │   │   └── scanner.py
+│       │   │   ├── regime_detector.py
+│       │   │   ├── smc_advanced.py
+│       │   │   ├── structure.py
+│       │   │   └── technical.py
+│       │   └── risk
+│       │       ├── __init__.py
+│       │       ├── approval_hub.py
+│       │       ├── correlation_matrix.py
+│       │       ├── crypto_audit_ledger.py
+│       │       ├── execution_simulator.py
+│       │       ├── instruments
+│       │       │   ├── __init__.py
+│       │       │   └── instruments.py
+│       │       ├── invariants
+│       │       │   ├── __init__.py
+│       │       │   ├── position_count_invariant.py
+│       │       │   ├── registry.py
+│       │       │   ├── risk_gate_invariant.py
+│       │       │   └── state_immutability_invariant.py
+│       │       ├── pending_action.py
+│       │       ├── portfolio_correlation_gate.py
+│       │       ├── portfolio_optimizer.py
+│       │       ├── position_sizing.py
+│       │       ├── risk_gate.py
+│       │       ├── risk_rule_plugin.py
+│       │       └── trade_proposal.py
 │       ├── infrastructure
 │       │   └── __init__.py
 │       └── interfaces

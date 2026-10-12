@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 RSV10: formula = (\\mathrm{close} - \\mathrm{ts\\_min}(\\mathrm{low}, 10)) / (\\mathrm{ts\\_max}(\\mathrm{high}, 10) - \\mathrm{ts\\_min}(\\mathrm{low}, 10))."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/raw_stochastic_value_10.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.raw_stochastic_value_10
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div, ts_max, ts_min
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.raw_stochastic_value_10
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.raw_stochastic_value_10 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_rsv10',
@@ -17,12 +22,20 @@ __alpha_meta__ = {
     'min_warmup_bars': 10,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.raw_stochastic_value_10 import (
+    annotations,
+    compute,
+    safe_div,
+    ts_max,
+    ts_min,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 RSV10 on the supplied OHLCV panel."""
-    c = panel['close']
-    h = panel['high']
-    lo = panel['low']
-    hh = ts_max(h, 10)
-    ll = ts_min(lo, 10)
-    return safe_div(c - ll, hh - ll)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+    "ts_max",
+    "ts_min",
+]

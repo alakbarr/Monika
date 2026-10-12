@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_190.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_190
+# ==============================================================================
 
-"""GTJA Alpha 190 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    LOG((COUNT(CLOSE/DELAY(CLOSE,1)-1>(CLOSE/DELAY(CLOSE,19))^(1/20)-1,20) - 1) * SUMIF((CLOSE/DELAY(CLOSE,1)-1-(CLOSE/DELAY(CLOSE,19))^(1/20)-1)^2, ..., 20) / ((COUNT(...) ) * SUMIF(..., ..., 20)))
-
-Notes: Complex log of ratio of conditional squared deviations.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_190
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_190 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_190',
+    'theme': ['momentum'],
+    'formula_latex': 'see body',
+    'columns_required': ['close'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 20,
+    'min_warmup_bars': 39,
+    'notes': 'Complex log of ratio of conditional squared deviations.',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_190 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,39 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_190"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_190',
-    'theme': ['momentum'],
-    'formula_latex': 'see body',
-    'columns_required': ['close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 39,
-    'notes': 'Complex log of ratio of conditional squared deviations.',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_190.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    ret = safe_div(c, c.shift(1)) - 1.0
-    geo = signed_power(safe_div(c, c.shift(19)), 1.0 / 20.0) - 1.0
-    cond_up = (ret > geo).astype("float64")
-    cond_dn = (ret < geo).astype("float64")
-    cnt_up = cond_up.rolling(20).sum() - 1.0
-    cnt_dn = cond_dn.rolling(20).sum()
-    sumif_dn = (((ret - geo) ** 2) * cond_dn).rolling(20).sum()
-    sumif_up = (((ret - geo) ** 2) * cond_up).rolling(20).sum()
-    out = np.log(safe_div(cnt_up * sumif_dn, cnt_dn * sumif_up).replace([0, np.inf, -np.inf], np.nan))
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

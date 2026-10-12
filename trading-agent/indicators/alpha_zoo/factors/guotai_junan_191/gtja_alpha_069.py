@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_069.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_069
+# ==============================================================================
 
-"""GTJA Alpha #69.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_069
+"""
 
-Formula: (SUM(DTM,20)>SUM(DBM,20)?(SUM(DTM,20)-SUM(DBM,20))/SUM(DTM,20):(SUM(DTM,20)=SUM(DBM,20)?0:(SUM(DTM,20)-SUM(DBM,20))/SUM(DBM,20)))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 69."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_069 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_069",
+    "theme": ['microstructure'],
+    "formula_latex": '(SUM(DTM,20)>SUM(DBM,20)?(SUM(DTM,20)-SUM(DBM,20))/SUM(DTM,20):(SUM(DTM,20)=SUM(DBM,20)?0:(SUM(DTM,20)-SUM(DBM,20))/SUM(DBM,20)))',
+    "columns_required": ['open', 'high', 'low'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 22,
+    "notes": 'DTM/DBM as in GTJA spec.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_069 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,37 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_069",
-    "theme": ['microstructure'],
-    "formula_latex": '(SUM(DTM,20)>SUM(DBM,20)?(SUM(DTM,20)-SUM(DBM,20))/SUM(DTM,20):(SUM(DTM,20)=SUM(DBM,20)?0:(SUM(DTM,20)-SUM(DBM,20))/SUM(DBM,20)))',
-    "columns_required": ['open', 'high', 'low'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 20,
-    "min_warmup_bars": 22,
-    "notes": 'DTM/DBM as in GTJA spec.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    o = panel["open"]
-    h = panel["high"]
-    l = panel["low"]
-    po = o.shift(1)
-    dtm = pd.DataFrame(np.where(o <= po, 0.0,
-                                np.maximum((h - o).to_numpy(), (o - po).to_numpy())),
-                       index=o.index, columns=o.columns)
-    dbm = pd.DataFrame(np.where(o >= po, 0.0,
-                                np.maximum((o - l).to_numpy(), (o - po).to_numpy())),
-                       index=o.index, columns=o.columns)
-    sd = dtm.rolling(20, min_periods=20).sum()
-    sb = dbm.rolling(20, min_periods=20).sum()
-    res = pd.DataFrame(np.where(sd > sb, (safe_div(sd - sb, sd)).to_numpy(),
-                                np.where(sd < sb, (safe_div(sd - sb, sb)).to_numpy(), 0.0)),
-                       index=o.index, columns=o.columns)
-    # NaN comparisons are False, not NaN, so a gap in sd/sb's 20-day
-    # window (a halt inside the lookback, not just series warmup) would
-    # otherwise fall through to the tie branch's hard-coded 0.0.
-    return res.where(sd.notna() & sb.notna())
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

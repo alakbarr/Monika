@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 VSTD10: formula = \\mathrm{ts\\_std}(\\mathrm{volume}, 10) / \\mathrm{volume}."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/volume_volatility_10.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_volatility_10
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div, ts_std
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_volatility_10
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_volatility_10 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_vstd10',
@@ -17,8 +22,18 @@ __alpha_meta__ = {
     'min_warmup_bars': 10,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_volatility_10 import (
+    annotations,
+    compute,
+    safe_div,
+    ts_std,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 VSTD10 on the supplied OHLCV panel."""
-    v = panel['volume']
-    return safe_div(ts_std(v, 10), v + 1e-12)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+    "ts_std",
+]

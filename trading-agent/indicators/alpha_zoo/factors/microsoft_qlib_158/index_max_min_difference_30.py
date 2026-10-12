@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 IMXD30: formula = (\\mathrm{ts\\_argmax}(\\mathrm{high}, 30) - \\mathrm{ts\\_argmin}(\\mathrm{low}, 30)) / 30."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/index_max_min_difference_30.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_max_min_difference_30
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import ts_argmax, ts_argmin
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_max_min_difference_30
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_max_min_difference_30 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_imxd30',
@@ -17,9 +22,18 @@ __alpha_meta__ = {
     'min_warmup_bars': 30,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_max_min_difference_30 import (
+    annotations,
+    compute,
+    ts_argmax,
+    ts_argmin,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 IMXD30 on the supplied OHLCV panel."""
-    h = panel['high']
-    lo = panel['low']
-    return (ts_argmax(h, 30) - ts_argmin(lo, 30)) / float(30)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "ts_argmax",
+    "ts_argmin",
+]
