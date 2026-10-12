@@ -155,6 +155,25 @@ Monika/
 │   │   └── __init__.pyi
 │   └── ib_insync
 │       └── __init__.pyi
+├── src
+│   └── monika
+│       ├── __init__.py
+│       ├── application
+│       │   ├── __init__.py
+│       │   └── services
+│       │       ├── __init__.py
+│       │       ├── general_harness_service.py
+│       │       ├── market_intel_service.py
+│       │       ├── portfolio_service.py
+│       │       └── trading_service.py
+│       ├── core
+│       │   └── __init__.py
+│       ├── domain
+│       │   └── __init__.py
+│       ├── infrastructure
+│       │   └── __init__.py
+│       └── interfaces
+│           └── __init__.py
 └── trading-agent
     ├── .env.example
     ├── PRD.md
@@ -1306,9 +1325,12 @@ Monika/
     │   └── terminal_guard.py
     ├── services
     │   ├── __init__.py
+    │   ├── general_harness_service.py
     │   ├── market_data_service.py
+    │   ├── market_intel_service.py
     │   ├── portfolio_service.py
-    │   └── system_status_service.py
+    │   ├── system_status_service.py
+    │   └── trading_service.py
     ├── skills
     │   ├── __init__.py
     │   ├── continuous_learning.py
