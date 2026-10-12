@@ -182,7 +182,78 @@ Monika/
 │   └── monika
 │       ├── __init__.py
 │       ├── application
-│       │   ├── __init__.py
+│       │   ├── agent
+│       │   │   ├── __init__.py
+│       │   │   ├── agent_loop.py
+│       │   │   ├── auxiliary_model_router.py
+│       │   │   ├── bounded_response.py
+│       │   │   ├── chat_agent.py
+│       │   │   ├── deadline.py
+│       │   │   ├── empty_response_guard.py
+│       │   │   ├── error_classifier.py
+│       │   │   ├── estop.py
+│       │   │   ├── moa_alternation.py
+│       │   │   ├── moa_loop.py
+│       │   │   ├── moa_trace.py
+│       │   │   ├── monitors
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── db_health.py
+│       │   │   │   ├── drawdown_monitor.py
+│       │   │   │   ├── margin_monitor.py
+│       │   │   │   ├── paper_trade_monitor.py
+│       │   │   │   ├── scraper_loop.py
+│       │   │   │   └── startup_watchdog.py
+│       │   │   ├── readonly_replay_cache.py
+│       │   │   ├── repetition_guard.py
+│       │   │   ├── scratchpad_guard.py
+│       │   │   ├── socket_lifecycle_guard.py
+│       │   │   ├── startup_checks.py
+│       │   │   ├── state_rewind.py
+│       │   │   ├── task_registry.py
+│       │   │   ├── thinking_timeout_guidance.py
+│       │   │   ├── three_part_context_compressor.py
+│       │   │   ├── trajectory_compressor.py
+│       │   │   ├── turn_lease_manager.py
+│       │   │   ├── turn_liveness.py
+│       │   │   ├── turn_phase_machine.py
+│       │   │   ├── turn_preflight_gate.py
+│       │   │   ├── turn_stop_gates.py
+│       │   │   └── turn_tool_round.py
+│       │   ├── graph
+│       │   │   ├── __init__.py
+│       │   │   ├── grounding.py
+│       │   │   ├── nodes
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── data_node.py
+│       │   │   │   ├── debate
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── bear_dissent_node.py
+│       │   │   │   │   ├── bull_advocate_node.py
+│       │   │   │   │   ├── debate_judge_node.py
+│       │   │   │   │   ├── helpers.py
+│       │   │   │   │   ├── rebuttal_node.py
+│       │   │   │   │   ├── risk_evaluator_node.py
+│       │   │   │   │   ├── round_robin_risk_nodes.py
+│       │   │   │   │   └── subgraph.py
+│       │   │   │   ├── debate_node.py
+│       │   │   │   ├── execution_node.py
+│       │   │   │   ├── fundamental_node.py
+│       │   │   │   ├── per_asset_node.py
+│       │   │   │   ├── plan_refinement_node.py
+│       │   │   │   ├── reflection_node.py
+│       │   │   │   ├── risk
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── level_synthesizer.py
+│       │   │   │   │   ├── portfolio_synthesis.py
+│       │   │   │   │   ├── proposal_notifier.py
+│       │   │   │   │   ├── quant_arbitration.py
+│       │   │   │   │   └── rejection_auditor.py
+│       │   │   │   ├── risk_gate_node.py
+│       │   │   │   └── state_pruner.py
+│       │   │   ├── reactive_graph.py
+│       │   │   ├── state.py
+│       │   │   ├── team_compiler.py
+│       │   │   └── workflow.py
 │       │   └── services
 │       │       ├── __init__.py
 │       │       ├── general_harness_service.py
@@ -456,6 +527,12 @@ Monika/
 │       │   │       ├── vix_fetcher.py
 │       │   │       ├── vix_yfinance.py
 │       │   │       └── world_bank.py
+│       │   ├── graph
+│       │   │   ├── __init__.py
+│       │   │   └── checkpointers
+│       │   │       ├── __init__.py
+│       │   │       ├── dual_checkpointer.py
+│       │   │       └── sqlite_checkpointer.py
 │       │   ├── ml
 │       │   │   ├── __init__.py
 │       │   │   └── timesfm_engine.py
