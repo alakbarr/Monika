@@ -49,6 +49,9 @@ interface DashboardState {
   addActivity: (event: Record<string, unknown>) => void;
 }
 
+let pendingTicks: Record<string, Record<string, unknown>> = {};
+let tickRafId: number | null = null;
+
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   health: null,
   overview: null,
@@ -200,40 +203,93 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   updateTickPrice: (tick) => {
     const sym = tick.symbol as string;
     if (!sym) return;
-    const bid = typeof tick.bid === 'number' ? tick.bid : Number(tick.bid) || 0;
-    const floatingPnl =
-      typeof tick.floating_pnl === 'number'
-        ? tick.floating_pnl
-        : tick.floating_pnl != null
-          ? Number(tick.floating_pnl)
-          : undefined;
 
-    const positions = get().positions.map((p) =>
-      p.symbol === sym
-        ? {
-            ...p,
-            current_price: bid,
-            floating_pnl: floatingPnl,
-            pnl: floatingPnl !== undefined ? floatingPnl : p.pnl,
+    pendingTicks[sym] = tick;
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      if (tickRafId === null) {
+        tickRafId = window.requestAnimationFrame(() => {
+          tickRafId = null;
+          const ticksToApply = pendingTicks;
+          pendingTicks = {};
+
+          let positions = get().positions;
+          let marketQuotes = { ...get().marketQuotes };
+
+          for (const [s, t] of Object.entries(ticksToApply)) {
+            const bid = typeof t.bid === 'number' ? t.bid : Number(t.bid) || 0;
+            const floatingPnl =
+              typeof t.floating_pnl === 'number'
+                ? t.floating_pnl
+                : t.floating_pnl != null
+                  ? Number(t.floating_pnl)
+                  : undefined;
+
+            positions = positions.map((p) =>
+              p.symbol === s
+                ? {
+                    ...p,
+                    current_price: bid,
+                    floating_pnl: floatingPnl,
+                    pnl: floatingPnl !== undefined ? floatingPnl : p.pnl,
+                  }
+                : p
+            );
+
+            const existingQuote = marketQuotes[s];
+            const rawChange = t.change_pct ?? t.changePct ?? t.pct_change;
+            const changePct =
+              typeof rawChange === 'number'
+                ? rawChange
+                : rawChange != null
+                  ? Number(rawChange) || 0
+                  : existingQuote && existingQuote.price > 0
+                    ? ((bid - existingQuote.price) / existingQuote.price) * 100
+                    : 0;
+
+            marketQuotes[s] = { price: bid, changePct };
           }
-        : p
-    );
-    const existingQuote = get().marketQuotes[sym];
-    const rawChange = tick.change_pct ?? tick.changePct ?? tick.pct_change;
-    const changePct =
-      typeof rawChange === 'number'
-        ? rawChange
-        : rawChange != null
-          ? Number(rawChange) || 0
-          : existingQuote && existingQuote.price > 0
-            ? ((bid - existingQuote.price) / existingQuote.price) * 100
-            : 0;
 
-    const marketQuotes = {
-      ...get().marketQuotes,
-      [sym]: { price: bid, changePct },
-    };
-    set({ positions, marketQuotes });
+          set({ positions, marketQuotes });
+        });
+      }
+    } else {
+      // Immediate fallback for non-browser or test environments
+      const bid = typeof tick.bid === 'number' ? tick.bid : Number(tick.bid) || 0;
+      const floatingPnl =
+        typeof tick.floating_pnl === 'number'
+          ? tick.floating_pnl
+          : tick.floating_pnl != null
+            ? Number(tick.floating_pnl)
+            : undefined;
+
+      const positions = get().positions.map((p) =>
+        p.symbol === sym
+          ? {
+              ...p,
+              current_price: bid,
+              floating_pnl: floatingPnl,
+              pnl: floatingPnl !== undefined ? floatingPnl : p.pnl,
+            }
+          : p
+      );
+      const existingQuote = get().marketQuotes[sym];
+      const rawChange = tick.change_pct ?? tick.changePct ?? tick.pct_change;
+      const changePct =
+        typeof rawChange === 'number'
+          ? rawChange
+          : rawChange != null
+            ? Number(rawChange) || 0
+            : existingQuote && existingQuote.price > 0
+              ? ((bid - existingQuote.price) / existingQuote.price) * 100
+              : 0;
+
+      const marketQuotes = {
+        ...get().marketQuotes,
+        [sym]: { price: bid, changePct },
+      };
+      set({ positions, marketQuotes });
+    }
   },
 
   addActivity: (event) => {

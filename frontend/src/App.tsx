@@ -17,21 +17,22 @@ import { PerformancePanel } from './components/panels/PerformancePanel';
 import { EdgeMetricsPanel } from './components/panels/EdgeMetricsPanel';
 import { MarketDataPanel } from './components/panels/MarketDataPanel';
 import { SystemPanel } from './components/panels/SystemPanel';
-import { ObservabilityPanel } from './components/panels/ObservabilityPanel';
-import { TokenAuditPanel } from './components/panels/TokenAuditPanel';
-import { SignalsTriggersPanel } from './components/panels/SignalsTriggersPanel';
-import { DebateOutcomesPanel } from './components/panels/DebateOutcomesPanel';
 import { AgentChatPanel } from './components/panels/AgentChatPanel';
-import { SessionBrowserPanel } from './components/panels/SessionBrowserPanel';
-import { ConfigEditorPanel } from './components/panels/ConfigEditorPanel';
-import { GraphVisualizerPanel } from './components/panels/GraphVisualizerPanel';
 import { RiskPanel } from './components/panels/RiskPanel';
-import { MemoryBrowserPanel } from './components/panels/MemoryBrowserPanel';
-import { BacktestPanel } from './components/panels/BacktestPanel';
-import { SkillManagerPanel } from './components/panels/SkillManagerPanel';
-import { PluginManagerPanel } from './components/panels/PluginManagerPanel';
-import { BenchmarkPanel } from './components/panels/BenchmarkPanel';
-import { TerminalPanel } from './components/panels/TerminalPanel';
+
+const ObservabilityPanel = React.lazy(() => import('./components/panels/ObservabilityPanel').then(m => ({ default: m.ObservabilityPanel })));
+const TokenAuditPanel = React.lazy(() => import('./components/panels/TokenAuditPanel').then(m => ({ default: m.TokenAuditPanel })));
+const SignalsTriggersPanel = React.lazy(() => import('./components/panels/SignalsTriggersPanel').then(m => ({ default: m.SignalsTriggersPanel })));
+const DebateOutcomesPanel = React.lazy(() => import('./components/panels/DebateOutcomesPanel').then(m => ({ default: m.DebateOutcomesPanel })));
+const SessionBrowserPanel = React.lazy(() => import('./components/panels/SessionBrowserPanel').then(m => ({ default: m.SessionBrowserPanel })));
+const ConfigEditorPanel = React.lazy(() => import('./components/panels/ConfigEditorPanel').then(m => ({ default: m.ConfigEditorPanel })));
+const GraphVisualizerPanel = React.lazy(() => import('./components/panels/GraphVisualizerPanel').then(m => ({ default: m.GraphVisualizerPanel })));
+const MemoryBrowserPanel = React.lazy(() => import('./components/panels/MemoryBrowserPanel').then(m => ({ default: m.MemoryBrowserPanel })));
+const BacktestPanel = React.lazy(() => import('./components/panels/BacktestPanel').then(m => ({ default: m.BacktestPanel })));
+const SkillManagerPanel = React.lazy(() => import('./components/panels/SkillManagerPanel').then(m => ({ default: m.SkillManagerPanel })));
+const PluginManagerPanel = React.lazy(() => import('./components/panels/PluginManagerPanel').then(m => ({ default: m.PluginManagerPanel })));
+const BenchmarkPanel = React.lazy(() => import('./components/panels/BenchmarkPanel').then(m => ({ default: m.BenchmarkPanel })));
+const TerminalPanel = React.lazy(() => import('./components/panels/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
 import { CommandPalette } from './components/ui/CommandPalette';
 import { MarkdownRenderer } from './components/ui/MarkdownRenderer';
 import { useDashboardStore } from './store/dashboardStore';
@@ -328,7 +329,9 @@ const App: React.FC = () => {
             </div>
             <div style={{ display: activeTab === 'terminal' ? 'block' : 'none' }}>
               <ErrorBoundary>
-                <TerminalPanel />
+                <Suspense fallback={<SkeletonFallback />}>
+                  <TerminalPanel />
+                </Suspense>
               </ErrorBoundary>
             </div>
 

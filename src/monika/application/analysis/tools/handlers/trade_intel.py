@@ -7,6 +7,7 @@ Trade intelligence and history tool handlers.
 Direct execution without circular trampolines.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -1149,7 +1150,8 @@ async def handle_run_monte_carlo_simulation(
             returns = [0.018 if rng.random() < 0.55 else -0.01 for _ in range(50)]
 
         tester = MonteCarloStressTester(seed=42)
-        res = tester.simulate_trade_sequence(
+        res = await asyncio.to_thread(
+            tester.simulate_trade_sequence,
             trade_returns=returns,
             num_simulations=num_simulations,
             initial_equity=initial_equity,

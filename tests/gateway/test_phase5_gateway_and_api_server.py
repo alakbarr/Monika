@@ -293,3 +293,66 @@ async def test_slack_platform_adapter_webhook_and_events(monkeypatch):
     await adapter.stop()
 
 
+# ==============================================================================
+# 3. Security Hardening Tests: API Key Auth & CSWSH Protection
+# ==============================================================================
+
+@pytest.mark.asyncio
+async def test_api_server_chat_completions_api_key_auth(monkeypatch):
+    monkeypatch.setenv("DASHBOARD_API_KEY", "secret-test-key-12345")
+    mock_agent = MagicMock()
+    mock_agent.handle = AsyncMock(return_value=("Authenticated response.", None))
+
+    with patch("gateway.api_server.get_default_chat_agent", return_value=mock_agent):
+        transport = ASGITransport(app=api_server_app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            req_body = {
+                "model": "monika-trader",
+                "messages": [{"role": "user", "content": "Ping with key"}],
+            }
+
+            # 1. Missing / invalid API key -> 401
+            res_fail = await client.post("/v1/chat/completions", json=req_body)
+            assert res_fail.status_code == 401
+            assert "Unauthorized" in res_fail.json()["detail"]
+
+            # 2. Valid Bearer token in header -> 200
+            res_ok = await client.post(
+                "/v1/chat/completions",
+                json=req_body,
+                headers={"Authorization": "Bearer secret-test-key-12345"},
+            )
+            assert res_ok.status_code == 200
+            assert "Authenticated response." in res_ok.json()["choices"][0]["message"]["content"]
+
+
+def test_api_server_ws_terminal_security():
+    from starlette.testclient import TestClient
+    from starlette.websockets import WebSocketDisconnect
+    from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
+
+    client = TestClient(api_server_app)
+
+    # 1. Disallowed origin -> closed with 1008
+    with pytest.raises(WebSocketDisconnect) as exc_origin:
+        with client.websocket_connect("/ws/terminal", headers={"origin": "http://malicious-site.com"}):
+            pass
+    assert exc_origin.value.code == 1008
+
+    # 2. Localhost without explicit token or ticket -> closed with 1008
+    with pytest.raises(WebSocketDisconnect) as exc_no_auth:
+        with client.websocket_connect("/ws/terminal"):
+            pass
+    assert exc_no_auth.value.code == 1008
+
+    # 3. Valid admin ticket -> successfully accepts and receives initial banner
+    ticket = get_ws_ticket_manager().create_ticket(role="admin")
+    with client.websocket_connect(f"/ws/terminal?ticket={ticket}") as ws:
+        banner = ws.receive_text()
+        assert "MONIKA INTERACTIVE CONSOLE INITIALIZED" in banner
+        ws.send_text("exit")
+        close_msg = ws.receive_text()
+        assert "Closing terminal session" in close_msg
+
+
+
