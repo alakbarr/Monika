@@ -253,35 +253,21 @@ class PositionSizer:
             paper_cfg = getattr(self, "settings", {}).get("trading", {}).get("paper_trading", {}) if isinstance(getattr(self, "settings", None), dict) else {}
             streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
             if streak_policy == "warn_and_scale":
-                from monika.infrastructure.database.models import PaperTradeRecord
-                from sqlalchemy import select
-                recent_stmt = (
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.symbol == symbol)
-                    .where(PaperTradeRecord.status == 'closed')
-                )
-                if as_of is not None:
-                    recent_stmt = recent_stmt.where(PaperTradeRecord.closed_at <= as_of)
-                recent = (await session.execute(
-                    recent_stmt.order_by(PaperTradeRecord.closed_at.desc()).limit(3)
-                )).scalars().all()
-                if len(recent) >= 3 and all((t.pnl_pct is not None and t.pnl_pct < 0) or t.exit_reason == 'sl_hit' for t in recent):
+                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+                repo = SqlAlchemyRiskRepository(session=session)
+                streak_count = await repo.get_loss_streak(is_paper=True, session=session)
+                if streak_count >= 3:
                     scale_mult = float(paper_cfg.get("streak_risk_scale_factor", 0.5))
                     risk_pct *= scale_mult
-                    logger.info(f"[{symbol}] Streak loss risk scaling applied: {scale_mult:.2f}x (3+ consecutive losses)")
+                    logger.info(f"[{symbol}] Streak loss risk scaling applied: {scale_mult:.2f}x ({streak_count} consecutive losses)")
         except Exception as streak_err:
             logger.debug(f"[{symbol}] Streak loss sizing adjustment non-fatal: {streak_err}")
 
         # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
         try:
-            from monika.infrastructure.database.models import Order
-            from sqlalchemy import select, func
-            lookback_24h = (as_of or clock.now()) - timedelta(hours=24)
-            stmt = select(func.count(Order.id)).where(
-                Order.symbol == symbol,
-                Order.created_at >= lookback_24h
-            )
-            recent_count = (await session.execute(stmt)).scalar() or 0
+            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+            repo = SqlAlchemyRiskRepository(session=session)
+            recent_count = await repo.get_daily_trades_count(symbol=symbol, is_paper=False, session=session)
             if recent_count >= 3:
                 churn_mult = max(0.4, 1.0 / (1.0 + 0.15 * float(recent_count - 2)))
                 risk_pct *= churn_mult
@@ -792,29 +778,11 @@ class PositionSizer:
             
             # Update USD-base pip value berdasarkan harga terkini dari DB
             if symbol in ("USDJPY", "USDCAD", "USDCHF"):
-                from monika.infrastructure.database.models import PriceOHLCV
-                from sqlalchemy import select
-                sim_time = as_of or clock.now()
-                if symbol == "USDJPY":
-                    stmt = (
-                        select(PriceOHLCV)
-                        .where(PriceOHLCV.symbol == "USDJPY")
-                        .where(PriceOHLCV.timeframe == 'H4')
-                    )
-                else:
-                    stmt = (
-                        select(PriceOHLCV)
-                        .where(PriceOHLCV.symbol == symbol)
-                        .where(PriceOHLCV.timeframe == 'H4')
-                    )
-                if sim_time is not None:
-                    stmt = stmt.where(PriceOHLCV.timestamp <= sim_time)
-                last_bar = (await session.execute(
-                    stmt.order_by(PriceOHLCV.timestamp.desc()).limit(1)
-                )).scalar_one_or_none()
-                
-                if last_bar and last_bar.close > 0:
-                    dynamic_pip_value = (spec.contract_size * spec.pip_size) / last_bar.close
+                from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+                repo = SqlAlchemyRiskRepository(session=session)
+                bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="H4", limit=1, session=session)
+                if bars and bars[-1].get("close", 0) > 0:
+                    dynamic_pip_value = (spec.contract_size * spec.pip_size) / float(bars[-1]["close"])
                     spec = dataclasses.replace(spec, pip_value_usd=round(dynamic_pip_value, 4))
             
             spec._source = "default"

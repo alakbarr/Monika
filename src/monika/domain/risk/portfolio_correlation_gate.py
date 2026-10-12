@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import logging
 import math
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,22 +64,18 @@ async def filter_correlated_proposals(
     if not actionable_trades:
         return ([], [])
     
-    # 0. Query existing open positions from DB to enforce true portfolio risk
-    from monika.infrastructure.database.models import Position
-    from sqlalchemy import select
-    import math
-
-    open_positions = []
+    # 0. Query existing open positions to enforce true portfolio risk
+    open_positions: List[Any] = []
     if session is not None:
         try:
-            stmt = select(Position).where(Position.status == "open")
-            res = await session.execute(stmt)
-            open_positions = res.scalars().all()
+            from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+            repo = SqlAlchemyRiskRepository(session=session)
+            open_positions = await repo.get_open_positions(is_paper=False, session=session)
         except Exception as e:
-            logger.warning(f"Correlation Gate: Failed to query open positions from DB: {e}")
+            logger.warning(f"Correlation Gate: Failed to query open positions from repository: {e}")
 
     # Calculate starting net USD exposure and sector counts from existing open positions
-    from monika.domain.risk.portfolio_optimizer import DEFAULT_GROUP_MAP, DEFAULT_GROUP_CAPS
+    from monika.domain.risk.portfolio_optimizer import DEFAULT_GROUP_MAP
     GROUP_POSITION_LIMITS = {
         "USD_MAJORS": 3,
         "METALS": 2,
@@ -91,9 +87,10 @@ async def filter_correlated_proposals(
     net_usd_exposure = 0
     group_counts: Dict[str, int] = {k: 0 for k in GROUP_POSITION_LIMITS}
     for pos in open_positions:
-        p_dir = str(pos.direction or "").lower()
-        net_usd_exposure += _get_usd_directional_delta(pos.symbol, p_dir)
-        grp = DEFAULT_GROUP_MAP.get(pos.symbol.upper(), "OTHER")
+        p_dir = str(getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "") or "").lower()
+        p_sym = str(getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else "") or "")
+        net_usd_exposure += _get_usd_directional_delta(p_sym, p_dir)
+        grp = DEFAULT_GROUP_MAP.get(p_sym.upper(), "OTHER")
         group_counts[grp] = group_counts.get(grp, 0) + 1
 
     sorted_trades = sorted(actionable_trades, key=lambda x: x[1].get('confidence') or 0.0, reverse=True)
@@ -129,8 +126,8 @@ async def filter_correlated_proposals(
         conflict_reason = ''
         
         for pos in open_positions:
-            pos_sym = pos.symbol
-            pos_dir = str(pos.direction or "").lower()
+            pos_sym = str(getattr(pos, "symbol", None) or (pos.get("symbol") if isinstance(pos, dict) else "") or "")
+            pos_dir = str(getattr(pos, "direction", None) or (pos.get("direction") if isinstance(pos, dict) else "") or "").lower()
             if pos_sym.upper() == sym.upper():
                 continue
             if session is not None:
