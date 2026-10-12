@@ -41,7 +41,9 @@ DEFAULT_QUOTA = {k: v * _num_keys for k, v in DEFAULT_QUOTA_PER_KEY.items()}
 import json
 from pathlib import Path
 
-_STATE_FILE = Path(__file__).parent.parent.parent / "data" / "groq_rate_limit_state.json"
+from monika.infrastructure.infra.paths import DATA_DIR
+
+_STATE_FILE = DATA_DIR / "groq_rate_limit_state.json"
 
 class GroqRateLimiter:
     """Sliding window rate limiter untuk Groq API — keyed per (model, key_id)."""

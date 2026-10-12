@@ -91,7 +91,8 @@ class VectorFactorEngine:
 
     def __init__(self, catalog_path: Optional[Path | str] = None) -> None:
         if catalog_path is None:
-            self.catalog_path = Path(__file__).resolve().parent.parent.parent / "data" / "alpha_catalog" / "factors.json"
+            from monika.infrastructure.infra.paths import DATA_DIR
+            self.catalog_path = DATA_DIR / "alpha_catalog" / "factors.json"
         else:
             self.catalog_path = Path(catalog_path)
 

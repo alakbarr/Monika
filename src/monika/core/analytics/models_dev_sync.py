@@ -11,10 +11,12 @@ import os
 import time
 from typing import Any, Dict, Optional
 
+from monika.infrastructure.infra.paths import DATA_DIR
+
 logger = logging.getLogger("TradingAgent.PricingSync")
 
 API_URL = "https://models.dev/api.json"
-CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "models_dev_cache.json")
+CACHE_PATH = str(DATA_DIR / "models_dev_cache.json")
 CACHE_TTL_SECONDS = 86400  # 24 hours
 
 
