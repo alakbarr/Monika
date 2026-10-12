@@ -1,0 +1,904 @@
+{
+  "version": "1.0",
+  "total_count": 111,
+  "strategies": {
+    "alpha_audusd_27c20d": {
+      "strategy_id": "alpha_audusd_27c20d",
+      "file_name": "alpha_audusd_27c20d.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "htf_lookback": 24,
+        "ltf_lookback": 5,
+        "displacement_mult": 1.2,
+        "rsi_period": 14,
+        "rsi_ob": 65,
+        "rsi_os": 35
+      },
+      "code_lines": 191
+    },
+    "alpha_audusd_3a4246": {
+      "strategy_id": "alpha_audusd_3a4246",
+      "file_name": "alpha_audusd_3a4246.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 156
+    },
+    "alpha_audusd_5f9ce8": {
+      "strategy_id": "alpha_audusd_5f9ce8",
+      "file_name": "alpha_audusd_5f9ce8.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 208
+    },
+    "alpha_audusd_8acf60": {
+      "strategy_id": "alpha_audusd_8acf60",
+      "file_name": "alpha_audusd_8acf60.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 165
+    },
+    "alpha_audusd_932927": {
+      "strategy_id": "alpha_audusd_932927",
+      "file_name": "alpha_audusd_932927.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 149
+    },
+    "alpha_audusd_aacbcf": {
+      "strategy_id": "alpha_audusd_aacbcf",
+      "file_name": "alpha_audusd_aacbcf.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 176
+    },
+    "alpha_audusd_abe552": {
+      "strategy_id": "alpha_audusd_abe552",
+      "file_name": "alpha_audusd_abe552.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 183
+    },
+    "alpha_audusd_c2eab6": {
+      "strategy_id": "alpha_audusd_c2eab6",
+      "file_name": "alpha_audusd_c2eab6.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 213
+    },
+    "alpha_audusd_ce0c59": {
+      "strategy_id": "alpha_audusd_ce0c59",
+      "file_name": "alpha_audusd_ce0c59.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "base_lookback": 20,
+        "min_lookback": 10,
+        "max_lookback": 40,
+        "volume_ma_period": 20,
+        "volume_factor": 5.0,
+        "trend_filter_period": 200,
+        "volume_threshold_ratio": 1.1
+      },
+      "code_lines": 171
+    },
+    "alpha_audusd_de5e1e": {
+      "strategy_id": "alpha_audusd_de5e1e",
+      "file_name": "alpha_audusd_de5e1e.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 141
+    },
+    "alpha_audusd_eb3084": {
+      "strategy_id": "alpha_audusd_eb3084",
+      "file_name": "alpha_audusd_eb3084.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 188
+    },
+    "alpha_btcusd_1230d3": {
+      "strategy_id": "alpha_btcusd_1230d3",
+      "file_name": "alpha_btcusd_1230d3.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 52
+    },
+    "alpha_btcusd_486acc": {
+      "strategy_id": "alpha_btcusd_486acc",
+      "file_name": "alpha_btcusd_486acc.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 87
+    },
+    "alpha_btcusd_50c0eb": {
+      "strategy_id": "alpha_btcusd_50c0eb",
+      "file_name": "alpha_btcusd_50c0eb.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 215
+    },
+    "alpha_btcusd_52d670": {
+      "strategy_id": "alpha_btcusd_52d670",
+      "file_name": "alpha_btcusd_52d670.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "sma_period": 20,
+        "exhaustion_mult": 2.0
+      },
+      "code_lines": 102
+    },
+    "alpha_btcusd_8b05ec": {
+      "strategy_id": "alpha_btcusd_8b05ec",
+      "file_name": "alpha_btcusd_8b05ec.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "period": 20,
+        "vol_threshold": 1.2
+      },
+      "code_lines": 95
+    },
+    "alpha_btcusd_96feb9": {
+      "strategy_id": "alpha_btcusd_96feb9",
+      "file_name": "alpha_btcusd_96feb9.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 191
+    },
+    "alpha_btcusd_adf9b6": {
+      "strategy_id": "alpha_btcusd_adf9b6",
+      "file_name": "alpha_btcusd_adf9b6.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 153
+    },
+    "alpha_btcusd_b22661": {
+      "strategy_id": "alpha_btcusd_b22661",
+      "file_name": "alpha_btcusd_b22661.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 176
+    },
+    "alpha_btcusd_bd9200": {
+      "strategy_id": "alpha_btcusd_bd9200",
+      "file_name": "alpha_btcusd_bd9200.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 196
+    },
+    "alpha_btcusd_cbd98f": {
+      "strategy_id": "alpha_btcusd_cbd98f",
+      "file_name": "alpha_btcusd_cbd98f.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 227
+    },
+    "alpha_btcusd_ce0d23": {
+      "strategy_id": "alpha_btcusd_ce0d23",
+      "file_name": "alpha_btcusd_ce0d23.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 151
+    },
+    "alpha_btcusd_db91cc": {
+      "strategy_id": "alpha_btcusd_db91cc",
+      "file_name": "alpha_btcusd_db91cc.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "period": 20,
+        "vol_period": 20,
+        "vol_mult": 1.2
+      },
+      "code_lines": 86
+    },
+    "alpha_btcusd_f91b83": {
+      "strategy_id": "alpha_btcusd_f91b83",
+      "file_name": "alpha_btcusd_f91b83.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 274
+    },
+    "alpha_eurusd_6c25e3": {
+      "strategy_id": "alpha_eurusd_6c25e3",
+      "file_name": "alpha_eurusd_6c25e3.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 206
+    },
+    "alpha_eurusd_6d622a": {
+      "strategy_id": "alpha_eurusd_6d622a",
+      "file_name": "alpha_eurusd_6d622a.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 215
+    },
+    "alpha_eurusd_76877d": {
+      "strategy_id": "alpha_eurusd_76877d",
+      "file_name": "alpha_eurusd_76877d.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 178
+    },
+    "alpha_eurusd_8060ed": {
+      "strategy_id": "alpha_eurusd_8060ed",
+      "file_name": "alpha_eurusd_8060ed.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 117
+    },
+    "alpha_eurusd_920843": {
+      "strategy_id": "alpha_eurusd_920843",
+      "file_name": "alpha_eurusd_920843.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 136
+    },
+    "alpha_eurusd_974ead": {
+      "strategy_id": "alpha_eurusd_974ead",
+      "file_name": "alpha_eurusd_974ead.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 156
+    },
+    "alpha_eurusd_a25dcb": {
+      "strategy_id": "alpha_eurusd_a25dcb",
+      "file_name": "alpha_eurusd_a25dcb.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 180
+    },
+    "alpha_eurusd_b7af66": {
+      "strategy_id": "alpha_eurusd_b7af66",
+      "file_name": "alpha_eurusd_b7af66.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 143
+    },
+    "alpha_eurusd_c89ba5": {
+      "strategy_id": "alpha_eurusd_c89ba5",
+      "file_name": "alpha_eurusd_c89ba5.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 143
+    },
+    "alpha_eurusd_fa2e45": {
+      "strategy_id": "alpha_eurusd_fa2e45",
+      "file_name": "alpha_eurusd_fa2e45.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 193
+    },
+    "alpha_gbpusd_1c9869": {
+      "strategy_id": "alpha_gbpusd_1c9869",
+      "file_name": "alpha_gbpusd_1c9869.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 187
+    },
+    "alpha_gbpusd_1fb4c5": {
+      "strategy_id": "alpha_gbpusd_1fb4c5",
+      "file_name": "alpha_gbpusd_1fb4c5.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "ema_period": 20,
+        "atr_multiplier": 2.5,
+        "rsi_period": 14,
+        "rsi_overbought": 70.0,
+        "rsi_oversold": 30.0
+      },
+      "code_lines": 165
+    },
+    "alpha_gbpusd_4947d0": {
+      "strategy_id": "alpha_gbpusd_4947d0",
+      "file_name": "alpha_gbpusd_4947d0.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 160
+    },
+    "alpha_gbpusd_634767": {
+      "strategy_id": "alpha_gbpusd_634767",
+      "file_name": "alpha_gbpusd_634767.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 153
+    },
+    "alpha_gbpusd_867953": {
+      "strategy_id": "alpha_gbpusd_867953",
+      "file_name": "alpha_gbpusd_867953.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 167
+    },
+    "alpha_gbpusd_9f0652": {
+      "strategy_id": "alpha_gbpusd_9f0652",
+      "file_name": "alpha_gbpusd_9f0652.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 175
+    },
+    "alpha_gbpusd_b14ef8": {
+      "strategy_id": "alpha_gbpusd_b14ef8",
+      "file_name": "alpha_gbpusd_b14ef8.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 237
+    },
+    "alpha_gbpusd_b3f4b6": {
+      "strategy_id": "alpha_gbpusd_b3f4b6",
+      "file_name": "alpha_gbpusd_b3f4b6.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 167
+    },
+    "alpha_gbpusd_e73efc": {
+      "strategy_id": "alpha_gbpusd_e73efc",
+      "file_name": "alpha_gbpusd_e73efc.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "lookback_period": 20,
+        "volume_ma_period": 20,
+        "atr_period": 14,
+        "confidence_threshold": 0.65
+      },
+      "code_lines": 119
+    },
+    "alpha_usdjpy_131b6e": {
+      "strategy_id": "alpha_usdjpy_131b6e",
+      "file_name": "alpha_usdjpy_131b6e.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "ma_period": 20,
+        "atr_mult_threshold": 2.2,
+        "rsi_period": 14,
+        "rsi_overbought": 68.0,
+        "rsi_oversold": 32.0,
+        "atr_ma_period": 50,
+        "atr_exhaustion_ratio": 1.15
+      },
+      "code_lines": 176
+    },
+    "alpha_usdjpy_13a603": {
+      "strategy_id": "alpha_usdjpy_13a603",
+      "file_name": "alpha_usdjpy_13a603.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "htf_ema_fast": 21,
+        "htf_ema_slow": 55,
+        "swing_lookback": 5,
+        "atr_period": 14,
+        "displacement_atr_mult": 1.5,
+        "sweep_wick_ratio": 0.55,
+        "fvg_lookback": 3,
+        "risk_atr_mult": 1.2,
+        "reward_atr_mult": 2.0,
+        "confidence_threshold": 0.55,
+        "htf_limit": 200,
+        "mtf_limit": 200,
+        "ltf_limit": 100
+      },
+      "code_lines": 241
+    },
+    "alpha_usdjpy_159711": {
+      "strategy_id": "alpha_usdjpy_159711",
+      "file_name": "alpha_usdjpy_159711.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 131
+    },
+    "alpha_usdjpy_41ec5b": {
+      "strategy_id": "alpha_usdjpy_41ec5b",
+      "file_name": "alpha_usdjpy_41ec5b.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 162
+    },
+    "alpha_usdjpy_4a7cd2": {
+      "strategy_id": "alpha_usdjpy_4a7cd2",
+      "file_name": "alpha_usdjpy_4a7cd2.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 153
+    },
+    "alpha_usdjpy_55884a": {
+      "strategy_id": "alpha_usdjpy_55884a",
+      "file_name": "alpha_usdjpy_55884a.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 140
+    },
+    "alpha_usdjpy_7c9264": {
+      "strategy_id": "alpha_usdjpy_7c9264",
+      "file_name": "alpha_usdjpy_7c9264.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 155
+    },
+    "alpha_usdjpy_8102fa": {
+      "strategy_id": "alpha_usdjpy_8102fa",
+      "file_name": "alpha_usdjpy_8102fa.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 185
+    },
+    "alpha_usdjpy_da40ef": {
+      "strategy_id": "alpha_usdjpy_da40ef",
+      "file_name": "alpha_usdjpy_da40ef.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 156
+    },
+    "alpha_usdjpy_e3c1b2": {
+      "strategy_id": "alpha_usdjpy_e3c1b2",
+      "file_name": "alpha_usdjpy_e3c1b2.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 162
+    },
+    "alpha_xauusd_133dfb": {
+      "strategy_id": "alpha_xauusd_133dfb",
+      "file_name": "alpha_xauusd_133dfb.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 189
+    },
+    "alpha_xauusd_3af460": {
+      "strategy_id": "alpha_xauusd_3af460",
+      "file_name": "alpha_xauusd_3af460.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "sma_period": 50,
+        "exhaustion_mult": 2.5,
+        "timeframe": "H1",
+        "limit": 100
+      },
+      "code_lines": 120
+    },
+    "alpha_xauusd_5044bf": {
+      "strategy_id": "alpha_xauusd_5044bf",
+      "file_name": "alpha_xauusd_5044bf.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 158
+    },
+    "alpha_xauusd_59cf5d": {
+      "strategy_id": "alpha_xauusd_59cf5d",
+      "file_name": "alpha_xauusd_59cf5d.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 199
+    },
+    "alpha_xauusd_5e8d45": {
+      "strategy_id": "alpha_xauusd_5e8d45",
+      "file_name": "alpha_xauusd_5e8d45.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 157
+    },
+    "alpha_xauusd_61842a": {
+      "strategy_id": "alpha_xauusd_61842a",
+      "file_name": "alpha_xauusd_61842a.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "lookback": 24,
+        "volume_ma_period": 20,
+        "expansion_factor": 0.18,
+        "trend_filter_period": 50,
+        "atr_period": 14,
+        "timeframe": "H1"
+      },
+      "code_lines": 185
+    },
+    "alpha_xauusd_63216a": {
+      "strategy_id": "alpha_xauusd_63216a",
+      "file_name": "alpha_xauusd_63216a.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "ema_period": 20,
+        "rsi_period": 14,
+        "atr_exhaustion_threshold": 2.2,
+        "rsi_overbought": 68.0,
+        "rsi_oversold": 32.0,
+        "candle_limit": 100
+      },
+      "code_lines": 156
+    },
+    "alpha_xauusd_6e46d9": {
+      "strategy_id": "alpha_xauusd_6e46d9",
+      "file_name": "alpha_xauusd_6e46d9.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 202
+    },
+    "alpha_xauusd_72bf31": {
+      "strategy_id": "alpha_xauusd_72bf31",
+      "file_name": "alpha_xauusd_72bf31.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "ma_period": 50,
+        "exhaustion_threshold": 2.2
+      },
+      "code_lines": 115
+    },
+    "alpha_xauusd_7358c1": {
+      "strategy_id": "alpha_xauusd_7358c1",
+      "file_name": "alpha_xauusd_7358c1.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 177
+    },
+    "alpha_xauusd_754250": {
+      "strategy_id": "alpha_xauusd_754250",
+      "file_name": "alpha_xauusd_754250.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "htf_lookback": 24,
+        "atr_period": 14,
+        "displacement_mult": 0.75,
+        "min_confidence": 0.6
+      },
+      "code_lines": 170
+    },
+    "alpha_xauusd_75d1dc": {
+      "strategy_id": "alpha_xauusd_75d1dc",
+      "file_name": "alpha_xauusd_75d1dc.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 150
+    },
+    "alpha_xauusd_78210e": {
+      "strategy_id": "alpha_xauusd_78210e",
+      "file_name": "alpha_xauusd_78210e.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 130
+    },
+    "alpha_xauusd_94ad53": {
+      "strategy_id": "alpha_xauusd_94ad53",
+      "file_name": "alpha_xauusd_94ad53.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 240
+    },
+    "alpha_xauusd_96d26b": {
+      "strategy_id": "alpha_xauusd_96d26b",
+      "file_name": "alpha_xauusd_96d26b.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 176
+    },
+    "alpha_xauusd_a6d004": {
+      "strategy_id": "alpha_xauusd_a6d004",
+      "file_name": "alpha_xauusd_a6d004.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 152
+    },
+    "alpha_xauusd_a84e8d": {
+      "strategy_id": "alpha_xauusd_a84e8d",
+      "file_name": "alpha_xauusd_a84e8d.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 184
+    },
+    "alpha_xauusd_b01980": {
+      "strategy_id": "alpha_xauusd_b01980",
+      "file_name": "alpha_xauusd_b01980.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 163
+    },
+    "alpha_xauusd_b256b3": {
+      "strategy_id": "alpha_xauusd_b256b3",
+      "file_name": "alpha_xauusd_b256b3.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 175
+    },
+    "alpha_xauusd_b68a11": {
+      "strategy_id": "alpha_xauusd_b68a11",
+      "file_name": "alpha_xauusd_b68a11.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 141
+    },
+    "alpha_xauusd_bb1cfa": {
+      "strategy_id": "alpha_xauusd_bb1cfa",
+      "file_name": "alpha_xauusd_bb1cfa.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 158
+    },
+    "alpha_xauusd_ca7c75": {
+      "strategy_id": "alpha_xauusd_ca7c75",
+      "file_name": "alpha_xauusd_ca7c75.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "atr_period": 14,
+        "ma_period": 20,
+        "stretch_threshold": 2.0,
+        "rsi_period": 14,
+        "rsi_overbought": 70.0,
+        "rsi_oversold": 30.0,
+        "min_candles": 30
+      },
+      "code_lines": 150
+    },
+    "alpha_xauusd_dfbed8": {
+      "strategy_id": "alpha_xauusd_dfbed8",
+      "file_name": "alpha_xauusd_dfbed8.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 198
+    },
+    "alpha_xbrusd_042cd9": {
+      "strategy_id": "alpha_xbrusd_042cd9",
+      "file_name": "alpha_xbrusd_042cd9.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 214
+    },
+    "alpha_xbrusd_0d2342": {
+      "strategy_id": "alpha_xbrusd_0d2342",
+      "file_name": "alpha_xbrusd_0d2342.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 149
+    },
+    "alpha_xbrusd_0f1bd3": {
+      "strategy_id": "alpha_xbrusd_0f1bd3",
+      "file_name": "alpha_xbrusd_0f1bd3.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 183
+    },
+    "alpha_xbrusd_176316": {
+      "strategy_id": "alpha_xbrusd_176316",
+      "file_name": "alpha_xbrusd_176316.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 133
+    },
+    "alpha_xbrusd_3e1575": {
+      "strategy_id": "alpha_xbrusd_3e1575",
+      "file_name": "alpha_xbrusd_3e1575.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "lookback": 20,
+        "volume_threshold": 1.2
+      },
+      "code_lines": 103
+    },
+    "alpha_xbrusd_3fe51d": {
+      "strategy_id": "alpha_xbrusd_3fe51d",
+      "file_name": "alpha_xbrusd_3fe51d.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 172
+    },
+    "alpha_xbrusd_5af3d8": {
+      "strategy_id": "alpha_xbrusd_5af3d8",
+      "file_name": "alpha_xbrusd_5af3d8.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 225
+    },
+    "alpha_xbrusd_6e7089": {
+      "strategy_id": "alpha_xbrusd_6e7089",
+      "file_name": "alpha_xbrusd_6e7089.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 150
+    },
+    "alpha_xbrusd_87e8fa": {
+      "strategy_id": "alpha_xbrusd_87e8fa",
+      "file_name": "alpha_xbrusd_87e8fa.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 166
+    },
+    "alpha_xbrusd_945526": {
+      "strategy_id": "alpha_xbrusd_945526",
+      "file_name": "alpha_xbrusd_945526.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "donchian_period": 20,
+        "volume_multiplier": 1.5
+      },
+      "code_lines": 108
+    },
+    "alpha_xbrusd_9e8436": {
+      "strategy_id": "alpha_xbrusd_9e8436",
+      "file_name": "alpha_xbrusd_9e8436.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "period": 20,
+        "volume_ma_period": 20,
+        "volume_mult": 1.2
+      },
+      "code_lines": 91
+    },
+    "alpha_xbrusd_beb0e3": {
+      "strategy_id": "alpha_xbrusd_beb0e3",
+      "file_name": "alpha_xbrusd_beb0e3.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 143
+    },
+    "alpha_xbrusd_d4aee9": {
+      "strategy_id": "alpha_xbrusd_d4aee9",
+      "file_name": "alpha_xbrusd_d4aee9.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 212
+    },
+    "alpha_xbrusd_d7ab4a": {
+      "strategy_id": "alpha_xbrusd_d7ab4a",
+      "file_name": "alpha_xbrusd_d7ab4a.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 167
+    },
+    "alpha_xbrusd_e55dbf": {
+      "strategy_id": "alpha_xbrusd_e55dbf",
+      "file_name": "alpha_xbrusd_e55dbf.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "swing_window": 10,
+        "atr_period": 14,
+        "displacement_mult": 1.5,
+        "sweep_lookback": 8,
+        "min_confidence": 0.6,
+        "htf_limit": 200,
+        "ltf_limit": 200
+      },
+      "code_lines": 197
+    },
+    "alpha_xbrusd_e87a0b": {
+      "strategy_id": "alpha_xbrusd_e87a0b",
+      "file_name": "alpha_xbrusd_e87a0b.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 167
+    },
+    "alpha_xbrusd_eadd31": {
+      "strategy_id": "alpha_xbrusd_eadd31",
+      "file_name": "alpha_xbrusd_eadd31.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 145
+    },
+    "alpha_xbrusd_ec8f88": {
+      "strategy_id": "alpha_xbrusd_ec8f88",
+      "file_name": "alpha_xbrusd_ec8f88.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 162
+    },
+    "alpha_xtiusd_09ce88": {
+      "strategy_id": "alpha_xtiusd_09ce88",
+      "file_name": "alpha_xtiusd_09ce88.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 179
+    },
+    "alpha_xtiusd_16dc64": {
+      "strategy_id": "alpha_xtiusd_16dc64",
+      "file_name": "alpha_xtiusd_16dc64.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 143
+    },
+    "alpha_xtiusd_1793d0": {
+      "strategy_id": "alpha_xtiusd_1793d0",
+      "file_name": "alpha_xtiusd_1793d0.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 195
+    },
+    "alpha_xtiusd_2c4e39": {
+      "strategy_id": "alpha_xtiusd_2c4e39",
+      "file_name": "alpha_xtiusd_2c4e39.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 170
+    },
+    "alpha_xtiusd_374fa7": {
+      "strategy_id": "alpha_xtiusd_374fa7",
+      "file_name": "alpha_xtiusd_374fa7.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 170
+    },
+    "alpha_xtiusd_403155": {
+      "strategy_id": "alpha_xtiusd_403155",
+      "file_name": "alpha_xtiusd_403155.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 188
+    },
+    "alpha_xtiusd_43ae5f": {
+      "strategy_id": "alpha_xtiusd_43ae5f",
+      "file_name": "alpha_xtiusd_43ae5f.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 172
+    },
+    "alpha_xtiusd_487183": {
+      "strategy_id": "alpha_xtiusd_487183",
+      "file_name": "alpha_xtiusd_487183.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 150
+    },
+    "alpha_xtiusd_592069": {
+      "strategy_id": "alpha_xtiusd_592069",
+      "file_name": "alpha_xtiusd_592069.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 186
+    },
+    "alpha_xtiusd_83031c": {
+      "strategy_id": "alpha_xtiusd_83031c",
+      "file_name": "alpha_xtiusd_83031c.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 196
+    },
+    "alpha_xtiusd_880297": {
+      "strategy_id": "alpha_xtiusd_880297",
+      "file_name": "alpha_xtiusd_880297.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 84
+    },
+    "alpha_xtiusd_9ffd6d": {
+      "strategy_id": "alpha_xtiusd_9ffd6d",
+      "file_name": "alpha_xtiusd_9ffd6d.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 171
+    },
+    "alpha_xtiusd_dae3f9": {
+      "strategy_id": "alpha_xtiusd_dae3f9",
+      "file_name": "alpha_xtiusd_dae3f9.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 269
+    },
+    "alpha_xtiusd_f30ff5": {
+      "strategy_id": "alpha_xtiusd_f30ff5",
+      "file_name": "alpha_xtiusd_f30ff5.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 180
+    },
+    "alpha_xtiusd_fd5506": {
+      "strategy_id": "alpha_xtiusd_fd5506",
+      "file_name": "alpha_xtiusd_fd5506.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 200
+    },
+    "mock_pass": {
+      "strategy_id": "mock_pass",
+      "file_name": "mock_pass.py",
+      "applicable_symbols": [],
+      "parameters": {},
+      "code_lines": 21
+    },
+    "alpha_btcusd_467904": {
+      "strategy_id": "alpha_btcusd_467904",
+      "file_name": "alpha_btcusd_467904.py",
+      "applicable_symbols": [],
+      "parameters": {
+        "swing_window": 5,
+        "sweep_lookback": 12,
+        "displacement_multiplier": 1.5
+      },
+      "code_lines": 199
+    }
+  }
+}

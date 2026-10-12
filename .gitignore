@@ -91,12 +91,15 @@ trading-agent/skills/crystallized/mt5_slippage_defense/
 /trading-agent/data/*
 !/trading-agent/data/.gitkeep
 !/trading-agent/data/README.md
+!/trading-agent/data/alpha_catalog/
+!/trading-agent/data/alpha_catalog/*
 results/
 trading-agent/results/
 !trading-agent/benchmark/results/
 
 # Scripts and Prompts
 scripts/*
+!scripts/compile_alphas_to_catalog.py
 !scripts/install.ps1
 !scripts/install.sh
 !scripts/install_uv_managed.ps1

@@ -99,6 +99,34 @@ class SignalArbitrator:
                     "damped_risk_multiplier": new_mult,
                 }
 
+        # Alpha Factor Engine Confirmation / Penalty
+        alpha_score = kwargs.get("alpha_score") or kwargs.get("composite_alpha_score")
+        if alpha_score is None and kwargs.get("alpha_result") is not None:
+            alpha_res = kwargs["alpha_result"]
+            alpha_score = getattr(alpha_res, "composite_alpha_score", None)
+
+        if alpha_score is not None and res.decision in ("buy", "sell") and res.risk_multiplier > 0:
+            try:
+                a_score = float(alpha_score)
+                if not isinstance(res.meta, dict):
+                    res.meta = {}
+                res.meta["alpha_factor_score"] = a_score
+
+                # Concordant Factor Flow Confirmation
+                if (res.decision == "buy" and a_score >= 0.20) or (res.decision == "sell" and a_score <= -0.20):
+                    res.confidence = min(0.95, round(res.confidence + 0.03, 2))
+                    res.arbitration_reason += f" [Alpha Factor Confirmed: {a_score:+.2f} (+3% conf)]"
+                    res.meta["alpha_factor_concordance"] = True
+                # Conflicting Factor Flow Penalty
+                elif (res.decision == "buy" and a_score <= -0.30) or (res.decision == "sell" and a_score >= 0.30):
+                    old_rm = res.risk_multiplier
+                    new_rm = round(old_rm * 0.85, 2)
+                    res.risk_multiplier = new_rm
+                    res.arbitration_reason += f" [Alpha Factor Divergence: {a_score:+.2f} -> risk damped 0.85x to {new_rm:.2f}]"
+                    res.meta["alpha_factor_concordance"] = False
+            except (ValueError, TypeError):
+                pass
+
         if session is not None:
             try:
                 from database.event_store import TradingEventStore

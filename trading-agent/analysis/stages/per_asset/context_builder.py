@@ -616,6 +616,34 @@ class ContextBuilderMixin:
         except Exception as e:
             logger.debug(f'[{symbol}] Quant edge signals context injection failed (non-fatal): {e}')
 
+        # H6: Institutional Vector Alpha Factor Engine
+        try:
+            import pandas as pd
+            from indicators.alpha_zoo.vector_factor_engine import VectorFactorEngine
+            from database.models import PriceOHLCV
+
+            p_stmt = (
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol)
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(60)
+            )
+            price_rows = (await session.execute(p_stmt)).scalars().all()
+            if len(price_rows) >= 15:
+                sorted_rows = sorted(price_rows, key=lambda r: r.timestamp)
+                df_bars = pd.DataFrame([{
+                    "open": float(r.open),
+                    "high": float(r.high),
+                    "low": float(r.low),
+                    "close": float(r.close),
+                    "volume": float(r.volume or 1.0),
+                } for r in sorted_rows])
+                vfe = VectorFactorEngine.get_instance()
+                vf_res = vfe.evaluate(df_bars, symbol=symbol, regime=quant_regime or "trending", top_k=5)
+                if vf_res.factor_count > 0:
+                    context_blocks.append(('INSTITUTIONAL ALPHA FACTOR SIGNALS', vf_res.to_prompt_context()))
+        except Exception as e:
+            logger.debug(f'[{symbol}] Vector factor engine injection failed (non-fatal): {e}')
 
         if extra_context:
             context_blocks.append(('ADDITIONAL CONTEXT', extra_context))
