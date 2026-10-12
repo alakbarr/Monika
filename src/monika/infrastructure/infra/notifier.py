@@ -29,7 +29,7 @@ def sanitize_telegram_html(text: str) -> str:
         return ""
     
     try:
-        from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
+        from monika.core.streaming.sanitizer import strip_emojis_and_emoticons
         text = strip_emojis_and_emoticons(text)
     except Exception:
         pass
@@ -273,6 +273,21 @@ class AgentNotifier:
                         lines.append(f"• {sym}: {decision} (keyakinan: {conf:.2f})")
                     
         await self._send("\n".join(lines))
+
+    @staticmethod
+    def build_confirm_keyboard(action_id: str):
+        """Create inline keyboard for AI action proposal confirmation (3-Tier Session Gate)."""
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+        return InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("[OK] Allow Once", callback_data=f"confirm:{action_id}"),
+                InlineKeyboardButton("[PROSES] Allow for Session (4h)", callback_data=f"allow_session:{action_id}"),
+            ],
+            [
+                InlineKeyboardButton("[GAGAL] Deny", callback_data=f"reject:{action_id}"),
+            ],
+        ])
 
 
 def get_notifier() -> AgentNotifier:

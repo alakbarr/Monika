@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
-from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import Position, Order
@@ -43,14 +42,8 @@ class PortfolioService:
         is_paper: Optional[bool] = None,
     ) -> List[Position]:
         """Fetch recently closed positions with pagination and filters."""
-        stmt = select(Position).where(Position.status == "closed")
-        if symbol:
-            stmt = stmt.where(Position.symbol == symbol.upper())
-        if is_paper is not None:
-            stmt = stmt.where(Position.is_paper == is_paper)
-        stmt = stmt.order_by(desc(Position.closed_at)).limit(limit)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
+        repo = PositionRepository(session)
+        return list(await repo.get_closed_positions(limit=limit, symbol=symbol, is_paper=is_paper))
 
     @staticmethod
     async def get_portfolio_metrics(
@@ -58,50 +51,8 @@ class PortfolioService:
         is_paper: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Calculate high-level portfolio performance metrics (Win Rate, Total PnL, Volume)."""
-        stmt = select(Position).where(Position.status == "closed")
-        if is_paper is not None:
-            stmt = stmt.where(Position.is_paper == is_paper)
-        result = await session.execute(stmt)
-        closed_positions = list(result.scalars().all())
-
-        if not closed_positions:
-            return {
-                "total_trades": 0,
-                "winning_trades": 0,
-                "losing_trades": 0,
-                "win_rate": 0.0,
-                "win_rate_pct": 0.0,
-                "total_pnl": 0.0,
-                "total_realized_pnl": 0.0,
-                "profit_factor": 0.0,
-                "average_trade_pnl": 0.0,
-                "total_volume": 0.0,
-            }
-
-        total_trades = len(closed_positions)
-        winning_trades = sum(1 for p in closed_positions if (p.pnl or 0.0) > 0.0)
-        losing_trades = sum(1 for p in closed_positions if (p.pnl or 0.0) < 0.0)
-        total_pnl = sum(float(p.pnl or 0.0) for p in closed_positions)
-        gross_profit = sum(float(p.pnl or 0.0) for p in closed_positions if (p.pnl or 0.0) > 0.0)
-        gross_loss = abs(sum(float(p.pnl or 0.0) for p in closed_positions if (p.pnl or 0.0) < 0.0))
-        total_volume = sum(float(p.volume or 0.0) for p in closed_positions)
-
-        win_rate = (winning_trades / total_trades * 100.0) if total_trades > 0 else 0.0
-        profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
-        avg_pnl = total_pnl / total_trades if total_trades > 0 else 0.0
-
-        return {
-            "total_trades": total_trades,
-            "winning_trades": winning_trades,
-            "losing_trades": losing_trades,
-            "win_rate": round(win_rate, 2),
-            "win_rate_pct": round(win_rate, 2),
-            "total_pnl": round(total_pnl, 2),
-            "total_realized_pnl": round(total_pnl, 2),
-            "profit_factor": round(profit_factor, 2),
-            "average_trade_pnl": round(avg_pnl, 2),
-            "total_volume": round(total_volume, 2),
-        }
+        repo = PositionRepository(session)
+        return await repo.get_portfolio_metrics(is_paper=is_paper)
 
     @staticmethod
     async def get_active_orders(
@@ -110,12 +61,8 @@ class PortfolioService:
         limit: int = 50,
     ) -> List[Order]:
         """Fetch pending or in-flight orders."""
-        stmt = select(Order).where(Order.status.in_(["pending", "executing", "submitted"]))
-        if symbol:
-            stmt = stmt.where(Order.symbol == symbol.upper())
-        stmt = stmt.order_by(desc(Order.created_at)).limit(limit)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
+        repo = PositionRepository(session)
+        return list(await repo.get_active_orders(symbol=symbol, limit=limit))
 
     @staticmethod
     async def get_portfolio_exposure(

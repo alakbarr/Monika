@@ -32,7 +32,7 @@ from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import TelegramConversation, ActivityLog, Position, RiskState, FundamentalBrief
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS, PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
-from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
+from monika.application.agent.chat_tool_router import ChatToolRouter
 
 logger = logging.getLogger("TradingAgent.ChatAgent")
 
@@ -67,7 +67,7 @@ def _sanitize_telegram_format_impl(text: str) -> str:
     
     # 1. Hapus emoji Unicode dan text emoticons secara mutlak
     try:
-        from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
+        from monika.core.streaming.sanitizer import strip_emojis_and_emoticons
         text = strip_emojis_and_emoticons(text)
     except Exception:
         pass
@@ -1686,7 +1686,7 @@ class ChatAgent:
                     f"Ticket: {result.mt5_ticket}"
                 )
                 try:
-                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
+                    from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
                     j_res = record_trade_to_workspace(self.settings, {
                         "symbol": result.symbol,
                         "action": result.decision.upper(),
@@ -1725,7 +1725,7 @@ class ChatAgent:
             if result.get("success"):
                 msg = f"[OK] Position #{ticket} closed. Profit: {result.get('profit', 'N/A')}"
                 try:
-                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
+                    from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
                     j_res = record_trade_to_workspace(self.settings, {
                         "symbol": params.get("symbol", "POSITION"),
                         "action": "CLOSE",
@@ -1826,7 +1826,7 @@ class ChatAgent:
                 await session.commit()
                 msg = f"[OK] Paper trade #{trade.id} ({trade.symbol}) closed manually @ {exit_p:.5f}. Realized PnL: {pnl_pct:+.2f}%"
                 try:
-                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
+                    from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
                     record_trade_to_workspace(self.settings, {
                         "symbol": trade.symbol,
                         "action": f"CLOSE_{trade.direction.upper()}",
@@ -2579,7 +2579,7 @@ class ChatAgent:
         selected_rows = list(reversed(selected_rows))
 
         messages = [{"role": role, "content": content} for role, content in selected_rows]
-        from monika.interfaces.telegram.chat_compaction import ChatMicroCompactor
+        from monika.application.agent.chat_compaction import ChatMicroCompactor
         compactor = ChatMicroCompactor(max_history_tokens=MAX_HISTORY_CHARS // 4)
         messages = compactor.compact_history(messages)
         return messages

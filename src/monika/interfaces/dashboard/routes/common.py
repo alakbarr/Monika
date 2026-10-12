@@ -107,6 +107,12 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
         except Exception:
             pass
 
+try:
+    from monika.application.analysis.event_broadcaster import register_event_listener
+    register_event_listener(broadcast_live_event)
+except Exception:
+    pass
+
 
 class TriggerCycleRequest(BaseModel):
     forced: bool = Field(default=True, description="Force execution even if scheduled time hasn't arrived")

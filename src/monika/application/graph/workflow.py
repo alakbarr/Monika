@@ -1,16 +1,17 @@
-# pyright: reportMissingImports=false
-from typing import Optional, Any
+from __future__ import annotations
+
 import logging
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 try:
-    from langgraph.graph import StateGraph, END  # type: ignore
-    from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.graph import END, StateGraph
 except ImportError:
-    StateGraph = None  # type: ignore
+    StateGraph: Any = None
     END = "END"
-    MemorySaver = None  # type: ignore
+    MemorySaver: Any = None
 
 from monika.application.graph.state import TradingState
 from monika.application.graph.nodes.data_node import fetch_data_node
@@ -268,12 +269,41 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
         return _traced_sync_node_fn
 
 
-def build_trading_graph(db_url: Optional[str] = None) -> Any:
+def build_trading_graph(db_url: Optional[str] = None, checkpointer: Optional[Any] = None) -> Any:
     """
     Menyusun graf yang merepresentasikan siklus penuh AI Trading Agent.
     """
     if StateGraph is None:
         raise RuntimeError("LangGraph is not installed. Please install langgraph to use the trading graph workflow.")
+
+    # PR-04: Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
+    if checkpointer is None:
+        if db_url:
+            pg_url = db_url.replace('+asyncpg', '').replace('postgresql+psycopg2', 'postgresql')
+            if pg_url.startswith(('postgresql://', 'postgres://')):
+                try:
+                    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+                    from psycopg_pool import AsyncConnectionPool
+                    pool: Any = AsyncConnectionPool(
+                        conninfo=pg_url,
+                        max_size=20,
+                        kwargs={"autocommit": True, "prepare_threshold": 0},
+                        open=False
+                    )
+                    pg_checkpointer = AsyncPostgresSaver(pool)
+                    setattr(pg_checkpointer, "_needs_setup", True)
+                    checkpointer = pg_checkpointer
+                    logger.info('LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)')
+                except ImportError:
+                    logger.warning('langgraph-checkpoint-postgres not installed, using MemorySaver fallback')
+                    checkpointer = MemorySaver() if MemorySaver is not None else None
+                except Exception as e:
+                    logger.error(f'PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.')
+                    checkpointer = MemorySaver() if MemorySaver is not None else None
+            else:
+                checkpointer = MemorySaver() if MemorySaver is not None else None
+        else:
+            checkpointer = MemorySaver() if MemorySaver is not None else None
 
     workflow = StateGraph(TradingState)
     
@@ -283,10 +313,9 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
     workflow.add_node("prune_fundamental", _wrap_traced_node("prune_fundamental", prune_after_fundamental))
     workflow.add_node("per_asset_analysis", _wrap_traced_node("per_asset_analysis", per_asset_analysis_node))
     
-    # LangGraph multi-agent debate decomposition: wire decomposed debate subgraph with checkpointing and node tracing
+    # LangGraph multi-agent debate decomposition: wire decomposed debate subgraph with unified checkpointer and node tracing
     try:
-        sub_checkpointer = MemorySaver() if MemorySaver is not None else None
-        debate_subgraph = build_debate_subgraph(checkpointer=sub_checkpointer, node_wrapper=_wrap_traced_node)
+        debate_subgraph = build_debate_subgraph(checkpointer=checkpointer, node_wrapper=_wrap_traced_node)
         workflow.add_node("debate", debate_subgraph)
     except Exception as e:
         logger.warning(f"Could not compile debate subgraph ({e}), falling back to debate_node facade")
@@ -401,33 +430,4 @@ def build_trading_graph(db_url: Optional[str] = None) -> Any:
     workflow.add_edge("prune_execution", "execution")
     workflow.add_edge("execution", END)
     
-    # PR-04: Authoritative PostgreSQL checkpointer (no SQLite dual-write overhead)
-    checkpointer = None
-    if db_url:
-        pg_url = db_url.replace('+asyncpg', '').replace('postgresql+psycopg2', 'postgresql')
-        if pg_url.startswith(('postgresql://', 'postgres://')):
-            try:
-                from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
-                from psycopg_pool import AsyncConnectionPool  # type: ignore
-                pool: Any = AsyncConnectionPool(
-                    conninfo=pg_url,
-                    max_size=20,
-                    kwargs={"autocommit": True, "prepare_threshold": 0},
-                    open=False
-                )
-                pg_checkpointer = AsyncPostgresSaver(pool)
-                setattr(pg_checkpointer, "_needs_setup", True)
-                checkpointer = pg_checkpointer
-                logger.info('LangGraph: Authoritative PostgreSQL checkpointer created (setup pending)')
-            except ImportError:
-                logger.warning('langgraph-checkpoint-postgres not installed, using MemorySaver fallback')
-                checkpointer = MemorySaver() if MemorySaver is not None else None
-            except Exception as e:
-                logger.error(f'PostgreSQL checkpointer init failed: {e}. Using MemorySaver fallback.')
-                checkpointer = MemorySaver() if MemorySaver is not None else None
-        else:
-            checkpointer = MemorySaver() if MemorySaver is not None else None
-    else:
-        checkpointer = MemorySaver() if MemorySaver is not None else None
-        
     return workflow.compile(checkpointer=checkpointer)

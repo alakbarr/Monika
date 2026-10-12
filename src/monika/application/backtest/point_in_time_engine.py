@@ -645,6 +645,25 @@ class PointInTimeBacktestEngine:
                     async def run(self, *args, **kwargs):
                         return {"market_regime": "NORMAL", "macro_outlook": "NEUTRAL", "bias": {}}
                 self._fundamental = _MockFundamental()
+                self._per_asset = None
+
+            @property
+            def fundamental_stage(self):
+                return self._fundamental
+
+            @property
+            def per_asset_stage(self):
+                return self._per_asset
+
+            @property
+            def paper_tracker(self):
+                return self._paper_tracker
+
+            async def should_skip_full_cycle(self):
+                return False, ""
+
+            async def log(self, session, msg, *args, **kwargs):
+                logger.debug(f"[MockScheduler] {msg}")
 
             async def _should_skip_full_cycle(self):
                 return False, ""

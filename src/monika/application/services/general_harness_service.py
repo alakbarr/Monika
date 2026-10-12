@@ -21,7 +21,7 @@ from monika.application.analysis.tools.unified_registry import (
     RESEARCH_TOOLSET,
     TOOLSETS,
 )
-from monika.interfaces.dashboard.pty_bridge import get_pty_bridge_manager, PtySession
+from monika.infrastructure.sandboxes.pty_bridge import get_pty_bridge_manager, PtySession
 
 logger = logging.getLogger("Monika.Application.GeneralHarnessService")
 

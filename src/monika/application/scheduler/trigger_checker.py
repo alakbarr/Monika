@@ -257,8 +257,7 @@ class TriggerChecker:
                                         
                                         keyboard = None
                                         try:
-                                            from monika.interfaces.telegram.command_router import CommandRouter
-                                            keyboard = CommandRouter.build_confirm_keyboard(str(ana_id))
+                                            keyboard = AgentNotifier.build_confirm_keyboard(str(ana_id))
                                         except Exception as kb_err:
                                             logger.debug(f"Could not build inline keyboard for trade proposal: {kb_err}")
 

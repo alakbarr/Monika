@@ -31,12 +31,15 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         return {"summary": summary, "should_pause": True}
     
     # Cek Smart Skip
-    should_skip, skip_reason = await scheduler._should_skip_full_cycle()
+    skip_fn = getattr(scheduler, "should_skip_full_cycle", getattr(scheduler, "_should_skip_full_cycle", None))
+    should_skip, skip_reason = await skip_fn() if skip_fn is not None else (False, "")
     if should_skip:
         logger.info(f"[Optimization] Full cycle skipped: {skip_reason}")
         summary["skipped_reason"] = skip_reason
-        async with get_session() as session:
-            await scheduler._log(session, f"Smart skip: {skip_reason}")
+        log_fn = getattr(scheduler, "log", getattr(scheduler, "_log", None))
+        if log_fn is not None:
+            async with get_session() as session:
+                await log_fn(session, f"Smart skip: {skip_reason}")
         return {"summary": summary, "should_pause": True}
         
     weekend_symbols_override = state.get("weekend_symbols_override")
@@ -59,8 +62,11 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             await asyncio.sleep(wait_time)
         
         try:
+            fundamental_stage = getattr(scheduler, "fundamental_stage", getattr(scheduler, "_fundamental", None))
+            if fundamental_stage is None:
+                raise RuntimeError("Fundamental stage not available on scheduler")
             async with get_session() as session:
-                fund_result = await scheduler._fundamental.run(
+                fund_result = await fundamental_stage.run(
                     session, forced=forced, 
                     weekend_btc_only_mode=is_weekend_restricted,
                     user_market_intel=state.get("user_market_intel"),
@@ -93,13 +99,19 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
     }
 
     if not fund_result.get("success"):
-        scheduler._stage1_consecutive_failures += 1
-        logger.error(f"Fundamental Stage failed — skipping per-asset stage (failures: {scheduler._stage1_consecutive_failures})")
-        if scheduler._stage1_consecutive_failures >= scheduler._max_stage1_failures_before_alert:
+        record_fail_fn = getattr(scheduler, "record_stage1_failure", None)
+        if record_fail_fn is not None:
+            consecutive_failures = record_fail_fn()
+        else:
+            scheduler._stage1_consecutive_failures = getattr(scheduler, "_stage1_consecutive_failures", 0) + 1
+            consecutive_failures = scheduler._stage1_consecutive_failures
+        max_failures = getattr(scheduler, "max_stage1_failures_before_alert", getattr(scheduler, "_max_stage1_failures_before_alert", 2))
+        logger.error(f"Fundamental Stage failed — skipping per-asset stage (failures: {consecutive_failures})")
+        if consecutive_failures >= max_failures:
             try:
                 from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_critical(
-                    f"[KRITIS] <b>Stage 1 Consecutive Failures: {scheduler._stage1_consecutive_failures}</b>\n"
+                    f"[KRITIS] <b>Stage 1 Consecutive Failures: {consecutive_failures}</b>\n"
                     f"Last error: {fund_result.get('error', 'unknown')[:200]}"
                 )
             except Exception as notif_err:
@@ -138,7 +150,11 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             "fundamental_retry_count": retry_count
         }
     else:
-        scheduler._stage1_consecutive_failures = 0
+        reset_fail_fn = getattr(scheduler, "reset_stage1_failures", None)
+        if reset_fail_fn is not None:
+            reset_fail_fn()
+        elif hasattr(scheduler, "_stage1_consecutive_failures"):
+            scheduler._stage1_consecutive_failures = 0
         
         # --- FUNDAMENTAL NARRATIVE SHIFT DETECTION ---
         try:
