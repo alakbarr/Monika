@@ -1,0 +1,12 @@
+id: "macro_to_asset"
+name: "Macro-to-Asset Two-Stage Analysis Pipeline"
+version: "1.0.0"
+category: "analysis_pipeline"
+description: "Institutional 2-stage macro-to-asset pipeline with multi-agent dialectical debate and reflection"
+author: "Monika Core Team"
+entrypoint: "macro_to_asset_pipeline:MacroToAssetPipeline"
+is_core: true
+dependencies: []
+config:
+  enable_debate: true
+  stage1_self_consistency: true

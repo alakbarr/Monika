@@ -88,6 +88,7 @@ class TelegramBot:
         self.execution_service   = execution_service
         self.cycle_scheduler     = cycle_scheduler
         self._activity_log: Optional[Any] = None
+        self.task_registry: Optional[Any] = None
 
         self.token         = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.admin_chat_id = int(os.getenv("TELEGRAM_ADMIN_CHAT_ID", 0) or 0)

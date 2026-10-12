@@ -1,0 +1,8 @@
+{
+  "symbol": "GBPUSD",
+  "snapshot_date": "2026-10-01",
+  "bull_case": "{\"bull_thesis\": \"Fallback to original rationale due to parse error: Empty response from LLM\", \"strength_score\": 3, \"evidence_cited\": [\"Context data evaluated via fallback\"], \"parse_error\": true, \"ungrounded_penalty\": true}",
+  "bear_case": "{\"bear_dissent\": \"Failed to generate dissent due to parse error: Empty response from LLM\", \"risk_severity\": 3, \"evidence_cited\": [\"Context data evaluated via fallback\"], \"parse_error\": true, \"ungrounded_penalty\": true}",
+  "judge_reasoning": "CRITICAL: Investment Judge evaluation failed or crashed (Empty or invalid response from LLM: None). Trade rejected for capital protection.",
+  "debate_verdict": "avoid"
+}

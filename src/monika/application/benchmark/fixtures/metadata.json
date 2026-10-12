@@ -1,0 +1,27 @@
+{
+  "dataset_name": "Monika Benchmark Golden Production Fixtures",
+  "snapshot_date": "2026-10-01",
+  "extracted_at": "2026-10-05T07:08:56.829069+00:00",
+  "database_engine": "PostgreSQL 16.3 (Local)",
+  "mt5_terminal_build": "6230 (FBS-Demo)",
+  "total_task_roles_covered": 56,
+  "symbols_covered": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "XAUUSD",
+    "BTCUSD",
+    "XTIUSD"
+  ],
+  "layers": [
+    "Layer 1: Macro & Fundamental Synthesis (9 roles)",
+    "Layer 2: Stage 2 Asset Pipeline & Screening (4 roles)",
+    "Layer 3: Specialized Domain Intelligence (5 roles)",
+    "Layer 4: Dialectical Debate & Adjudication (5 roles)",
+    "Layer 5: Risk Fortress, Portfolio & Self-Reflection (8 roles)",
+    "Layer 6: News Processing, Categorization & COT Engine (7 roles)",
+    "Layer 7: System One Fast-Path Reflexes JEV (7 roles)",
+    "Layer 8: Omnichannel Chat & Interactive Intelligence (8 roles)",
+    "Harness Verification Probes (3 tasks)"
+  ]
+}

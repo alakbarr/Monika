@@ -1,0 +1,28 @@
+{
+  "fixture_id": "risk_xauusd_high_vix_defensive_2026_09",
+  "symbol": "XAUUSD",
+  "scenario": "high_vix_defensive_sizing",
+  "current_price": 4260.00,
+  "vix": 31.5,
+  "vix_threshold": 25.0,
+  "account_state": {
+    "equity": 50000.0,
+    "daily_pnl_pct": 0.5,
+    "portfolio_heat_pct": 1.2,
+    "open_positions": 1
+  },
+  "proposed_trade": {
+    "direction": "BUY",
+    "entry": 4260.00,
+    "stop_loss": 4235.00,
+    "take_profit": 4310.00,
+    "confluence_score": 13,
+    "priced_in_score": 2
+  },
+  "expected_outcome": {
+    "approved": true,
+    "size_multiplier_max": 0.5,
+    "veto_reason": "High VIX regime (31.5) requires defensive position sizing reduction (0.5x multiplier)",
+    "requires_hard_block": false
+  }
+}

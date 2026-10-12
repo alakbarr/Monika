@@ -1,0 +1,24 @@
+{
+  "symbol": "EURUSD",
+  "snapshot_date": "2026-10-01",
+  "regime": "BULLISH_CONTINUATION_AT_SUPPORT",
+  "timeframe_h4": {
+    "trend": "BULLISH",
+    "ema_20": 1.1045,
+    "ema_50": 1.101,
+    "ema_200": 1.092,
+    "rsi": 53.8,
+    "adx": 32.1
+  },
+  "smc_confluences": {
+    "key_demand_zone": [
+      1.103,
+      1.105
+    ],
+    "unmitigated_fvg_h1": [
+      1.1055,
+      1.1065
+    ],
+    "last_structure_break": "BOS_BULLISH_H4"
+  }
+}

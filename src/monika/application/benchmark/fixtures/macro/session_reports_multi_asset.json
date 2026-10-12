@@ -1,0 +1,17 @@
+{
+  "session": "LONDON_CLOSE_TRANSITION",
+  "date": "2026-10-01",
+  "reports": {
+    "EURUSD": "EURUSD initiated London open at 1.1082, tested liquidity at 1.1095 before institutional rejection initiated by US 10Y yield surge to 3.820%. Closed London session at 1.1054 (-28 pips). Price tested the unmitigated H4 Fair Value Gap (1.1035-1.1055) with significant volume absorption. Order flow shows clear selling pressure above 1.1080. Bearish continuation thesis intact with next target at 1.1010 liquidity pool.",
+    "GBPUSD": "GBPUSD traded heavy following Bank of England split commentary and UK housing prints. Dropped from 1.3345 down to 1.3308 intraday low. Retail buyers absorbed aggressively at 1.3300 psychological support, but depth-of-market order book reflects persistent institutional iceberg selling on pullbacks to 1.3330. Invalidation for short bias sits above 1.3365 swing high.",
+    "USDJPY": "USDJPY gained 65 pips from 143.80 to 144.45 driven by widening 10Y US-JP yield spread (+267 bps). Asian session dip to 143.50 swept previous day low and triggered institutional buy program. Japanese Ministry of Finance verbal intervention risk remains modest below 147.50. Upside trajectory targets the 145.20 H4 liquidity pool.",
+    "XAUUSD": "Gold (XAUUSD) demonstrated extraordinary resilience against broader Dollar strength, dipping briefly to $2,652.00 before an aggressive institutional bid lifted price back to $2,661.50 into the NY close. Safe-haven inflows remain active amid escalating Middle East Levant maritime risks. The unmitigated H1 FVG at $2,650.00 provided strong structural support. Bullish target remains $2,685.00 resistance.",
+    "XTIUSD": "WTI crude oil (XTIUSD) surged +2.4% to $71.85 following confirmed maritime drone attacks on commercial tankers in the southern Red Sea and Bab el-Mandeb strait. Technical breakout above the H4 200 EMA confirmed with expanding volume and positive momentum delta. Pullbacks into $70.80-$71.20 demand zone offer high probability continuation entries targeting $74.50.",
+    "BTCUSD": "Bitcoin consolidated within a compressed horizontal range between $83,800 and $84,600 following the prior week's institutional run-up. CME basis spreads remain stable at 7.2% annualized, while US spot Bitcoin ETF flows recorded a neutral +$18M net inflow on the day. Market structure maintains higher lows on H4 with primary support anchored at $83,200."
+  },
+  "portfolio_pnl_summary": {
+    "realized_usd": -350.0,
+    "unrealized_usd": 840.0,
+    "win_rate_session": 0.67
+  }
+}

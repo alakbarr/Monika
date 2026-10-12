@@ -1,61 +1,9 @@
-# ==============================================================================
-# File: plugin_kernel/__init__.py
-# Description: Monika Plugin Kernel — Universal Plugin Architecture
-# ==============================================================================
+"""Shim package: monika.application.plugins.kernel."""
 
-"""
-Monika Plugin Kernel — Universal Plugin Architecture.
-Provides unified interfaces, lifecycle state machine, dependency injection,
-and reactive event dispatching.
-"""
+import sys as _sys
+import importlib as _importlib
 
-from harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
-    PluginCategory,
-    PluginOrigin,
-    PluginState,
-    ServiceContainerProtocol,
-    EventBusProtocol,
-    TaskRegistryProtocol,
-)
-from harness.engine import PluginEngine, get_plugin_engine
-from harness.installer import (
-    list_all_plugins_status,
-    toggle_plugin_state,
-    get_community_catalog,
-    run_pip_install,
-    run_pip_uninstall,
-    validate_package_spec,
-)
-from harness.lifecycle import (
-    ReplacementCoordinator,
-    ReplacementLease,
-    get_replacement_coordinator,
-    safe_dispatch_hook,
-    get_plugin_storage_dir,
-)
+from monika.application.plugins.kernel import *
 
-__all__ = [
-    "TradingPlugin",
-    "PluginMetadata",
-    "PluginCategory",
-    "PluginOrigin",
-    "PluginState",
-    "ServiceContainerProtocol",
-    "EventBusProtocol",
-    "TaskRegistryProtocol",
-    "PluginEngine",
-    "get_plugin_engine",
-    "list_all_plugins_status",
-    "toggle_plugin_state",
-    "get_community_catalog",
-    "run_pip_install",
-    "run_pip_uninstall",
-    "validate_package_spec",
-    "ReplacementCoordinator",
-    "ReplacementLease",
-    "get_replacement_coordinator",
-    "safe_dispatch_hook",
-    "get_plugin_storage_dir",
-]
+_canonical = _importlib.import_module("monika.application.plugins.kernel")
+_sys.modules[__name__] = _canonical

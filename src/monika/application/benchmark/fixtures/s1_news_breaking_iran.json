@@ -1,0 +1,35 @@
+{
+  "fixture_id": "s1_news_iran_hormuz_2026_09",
+  "mode": "system_one",
+  "latency_target_ms": 100.0,
+  "state": {
+    "title": "BREAKING: Iran IRGC launches cruise missile strike on oil tankers in Strait of Hormuz",
+    "summary": "Three commercial crude oil tankers struck in the Strait of Hormuz. US Fifth Fleet deploying strike group. Brent crude surges +7.5% in 10 minutes to $114/bbl. Emergency UN Security Council session called.",
+    "open_positions": ["XAUUSD", "EURUSD", "USDJPY"]
+  },
+  "questions": [
+    {
+      "name": "market_sentiment",
+      "type": "Score",
+      "range": [1, 5],
+      "description": "1: Risk-Off Panic, 3: Neutral, 5: Risk-On Euphoria"
+    },
+    {
+      "name": "threatens_positions",
+      "type": "Noul",
+      "description": "Does this headline introduce immediate severe volatility threat to open positions?"
+    },
+    {
+      "name": "requires_circuit_breaker",
+      "type": "Noul",
+      "description": "Is this an extreme systemic shock requiring emergency circuit breaker or stop tightening?"
+    }
+  ],
+  "expected_answers": {
+    "market_sentiment": 1,
+    "threatens_positions": true,
+    "threatens_positions_confidence_min": 0.85,
+    "requires_circuit_breaker": true,
+    "requires_circuit_breaker_confidence_min": 0.90
+  }
+}
