@@ -10,9 +10,16 @@ import monika.application.protocol.brief_contamination_guard as _canonical
 from monika.application.protocol.brief_contamination_guard import (
     BriefContaminationGuard,
     func_abs,
+    _build_warning_context,
+    _build_contextmerge_prompt,
 )
 
-__all__ = ['BriefContaminationGuard', 'func_abs']
+__all__ = [
+    'BriefContaminationGuard',
+    'func_abs',
+    '_build_warning_context',
+    '_build_contextmerge_prompt',
+]
 
 
 # Direct module reference forwarding

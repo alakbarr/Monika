@@ -1096,7 +1096,7 @@ class AgentHarness:
 
                     # ── Silent Overflow Detection (Input Token Ingestion Guard) ──
                     if in_tok > 0 and not _overflow_recovery_attempted:
-                        from utils.llm.model_capabilities import MODEL_CAPABILITIES
+                        from monika.infrastructure.llm.model_capabilities import MODEL_CAPABILITIES
                         model_name_check = getattr(self.llm_client, "model", "")
                         cap = MODEL_CAPABILITIES.get(model_name_check, None)
                         context_window = getattr(cap, "context_window", 0) if cap else (cap.get("context_window", 0) if isinstance(cap, dict) else 0)
@@ -1728,18 +1728,22 @@ class AgentHarness:
             is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
             if is_stall_terminate and stall_msg:
                 logger.warning(f"[{stage_name}][AgentHarness] STALL GUARD FORCE TERMINATION: {stall_msg}")
-                if current_messages and isinstance(current_messages[-1].get("content"), list):
-                    current_messages[-1]["content"].append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
-                elif current_messages:
-                    current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
+                if current_messages:
+                    last_content = current_messages[-1].get("content")
+                    if isinstance(last_content, list):
+                        last_content.append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
+                    else:
+                        current_messages[-1]["content"] = f"{last_content or ''}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
                 if effective_max_turns > turns + 1:
                     effective_max_turns = turns + 1
             elif is_stall_warn and stall_msg:
                 logger.info(f"[{stage_name}][AgentHarness] STALL GUARD WARNING: {stall_msg}")
-                if current_messages and isinstance(current_messages[-1].get("content"), list):
-                    current_messages[-1]["content"].append({"type": "text", "text": f"\n[STALL GUARD WARNING]: {stall_msg}"})
-                elif current_messages:
-                    current_messages[-1]["content"] = f"{current_messages[-1].get('content', '')}\n\n[STALL GUARD WARNING]: {stall_msg}"
+                if current_messages:
+                    last_content = current_messages[-1].get("content")
+                    if isinstance(last_content, list):
+                        last_content.append({"type": "text", "text": f"\n[STALL GUARD WARNING]: {stall_msg}"})
+                    else:
+                        current_messages[-1]["content"] = f"{last_content or ''}\n\n[STALL GUARD WARNING]: {stall_msg}"
 
             # I7: PTC Iteration Budget Refund
             # If sole tool call was execute_analysis_code, refund the iteration

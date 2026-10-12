@@ -743,7 +743,7 @@ class BaseLLMClient(ABC):
 
             # Track cache miss diagnostics
             try:
-                from utils.llm.cache_miss_detector import global_cache_miss_detector
+                from monika.infrastructure.llm.cache_miss_detector import global_cache_miss_detector
                 c_key = f"{resolved_subsystem or 'subsystem'}:{resolved_role or task_name or 'role'}:{resolved_symbol or 'global'}"
                 global_cache_miss_detector.check(
                     cached_tokens=cached_tokens,

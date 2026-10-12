@@ -1130,7 +1130,7 @@ async def _case_harness_hallucination_detect(session, settings, ex) -> Benchmark
     )
 
 async def _case_harness_context_efficiency(session, settings, ex) -> BenchmarkCase:
-    from utils.llm.prompt_compressor import ContextCompressor
+    from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
     compressor = ContextCompressor(settings)
     raw_data = "Sample market structure text with extensive descriptions.\n" * 50
     compressed = compressor.compress_stage1_bundle(raw_data, max_tokens=200)

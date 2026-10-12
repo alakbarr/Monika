@@ -3,7 +3,7 @@ Benchmark Pricing compatibility shim.
 Re-exports all pricing tables and functions from utils.analytics.pricing.
 """
 
-from utils.analytics.pricing import (
+from monika.core.analytics.pricing import (
     Price,
     PRICING,
     OPENROUTER_PRICING_MAP,

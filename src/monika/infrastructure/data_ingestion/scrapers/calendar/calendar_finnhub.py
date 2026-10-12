@@ -23,7 +23,7 @@ from datetime import date, timedelta
 from typing import List
 import aiohttp
 
-from utils.api.http_retry import _CIRCUIT_BREAKER
+from monika.infrastructure.api.http_retry import _CIRCUIT_BREAKER
 
 logger = logging.getLogger("TradingAgent.FinnhubCalendar")
 

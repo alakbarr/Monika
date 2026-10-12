@@ -792,7 +792,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
         
         bundle = raw_bundle
         try:
-            from utils.llm.prompt_compressor import ContextCompressor
+            from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
             compressor = ContextCompressor(self.executor.settings if hasattr(self, 'executor') else self.settings)
             bundle = compressor.compress_stage2_bundle(bundle, symbol=symbol, max_tokens=8000)
         except Exception:

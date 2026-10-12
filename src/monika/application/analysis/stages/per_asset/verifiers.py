@@ -133,15 +133,14 @@ class VerifiersMixin:
         """Memeriksa koherensi konteks SSVP untuk mencegah drift/kontaminasi."""
         coherence_injection = ''
         try:
-            from utils.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds
-            from utils.protocol.brief_contamination_guard import _build_warning_context, _build_contextmerge_prompt
+            from monika.application.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds
+            from monika.application.protocol.brief_contamination_guard import _build_warning_context, _build_contextmerge_prompt
             import json as _j
-            from database.models import SystemConfig
-            from database.db import get_session
+            from monika.infrastructure.database.models import SystemConfig, AssetAnalysis
+            from monika.infrastructure.database.db import get_session
             
             if brief_check and brief_check.structured_json:
                 b_data = _j.loads(brief_check.structured_json)
-                from database.models import AssetAnalysis
                 from sqlalchemy import select as _asel
                 last_tradeable = (await session.execute(
                     _asel(AssetAnalysis.decision)

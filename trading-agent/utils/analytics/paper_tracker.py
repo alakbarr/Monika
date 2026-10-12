@@ -9,9 +9,11 @@ import monika.core.analytics.paper_tracker as _canonical
 
 from monika.core.analytics.paper_tracker import (
     PaperTracker,
+    _group_by_symbol,
+    _group_by_symbol_direction,
 )
 
-__all__ = ['PaperTracker']
+__all__ = ['PaperTracker', '_group_by_symbol', '_group_by_symbol_direction']
 
 
 # Direct module reference forwarding

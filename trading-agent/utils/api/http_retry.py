@@ -12,9 +12,10 @@ from monika.infrastructure.api.http_retry import (
     RateLimitError,
     fetch_with_retry,
     format_api_error_summary,
+    _CIRCUIT_BREAKER,
 )
 
-__all__ = ['APIStatusError', 'RateLimitError', 'fetch_with_retry', 'format_api_error_summary']
+__all__ = ['APIStatusError', 'RateLimitError', 'fetch_with_retry', 'format_api_error_summary', '_CIRCUIT_BREAKER']
 
 
 # Direct module reference forwarding

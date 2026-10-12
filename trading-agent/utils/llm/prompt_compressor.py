@@ -9,11 +9,12 @@ import monika.infrastructure.llm.prompt_compressor as _canonical
 
 from monika.infrastructure.llm.prompt_compressor import (
     PromptBundleCompressor,
+    ContextCompressor,
     estimate_tokens,
     truncate_to_budget,
 )
 
-__all__ = ['PromptBundleCompressor', 'estimate_tokens', 'truncate_to_budget']
+__all__ = ['PromptBundleCompressor', 'ContextCompressor', 'estimate_tokens', 'truncate_to_budget']
 
 
 # Direct module reference forwarding

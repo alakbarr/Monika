@@ -8,11 +8,12 @@ from __future__ import annotations
 import monika.infrastructure.llm.model_capabilities as _canonical
 
 from monika.infrastructure.llm.model_capabilities import (
+    MODEL_CAPABILITIES,
     ModelCapabilities,
     get_capabilities,
 )
 
-__all__ = ['ModelCapabilities', 'get_capabilities']
+__all__ = ['MODEL_CAPABILITIES', 'ModelCapabilities', 'get_capabilities']
 
 
 # Direct module reference forwarding

@@ -7,7 +7,7 @@ providing single source of truth for provider pricing lookups.
 """
 
 from typing import Optional, Dict, Any
-from utils.analytics.pricing import (
+from monika.core.analytics.pricing import (
     Price,
     PRICING,
     FREE_TIER_MODELS,

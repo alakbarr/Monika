@@ -14,9 +14,10 @@ from monika.domain.market.dynamic_correlation import (
     get_correlation_uncertainty_multiplier,
     get_rolling_correlation,
     is_crypto_or_commodity_symbol,
+    _static_fallback,
 )
 
-__all__ = ['STATIC_CORRELATION_FALLBACK', 'YIELD_TENOR_MAP', 'compute_cross_asset_macro_correlation', 'get_correlation_uncertainty_multiplier', 'get_rolling_correlation', 'is_crypto_or_commodity_symbol']
+__all__ = ['STATIC_CORRELATION_FALLBACK', 'YIELD_TENOR_MAP', 'compute_cross_asset_macro_correlation', 'get_correlation_uncertainty_multiplier', 'get_rolling_correlation', 'is_crypto_or_commodity_symbol', '_static_fallback']
 
 
 # Direct module reference forwarding

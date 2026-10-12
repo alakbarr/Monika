@@ -11,9 +11,10 @@ from monika.infrastructure.llm.cache_miss_detector import (
     CACHE_TTL_MS,
     CacheMissDetector,
     CacheMissReport,
+    global_cache_miss_detector,
 )
 
-__all__ = ['CACHE_TTL_MS', 'CacheMissDetector', 'CacheMissReport']
+__all__ = ['CACHE_TTL_MS', 'CacheMissDetector', 'CacheMissReport', 'global_cache_miss_detector']
 
 
 # Direct module reference forwarding
