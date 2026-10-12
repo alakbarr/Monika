@@ -157,6 +157,10 @@ def setup_logging(
         )
         _queue_listener.start()
 
+    # Mute noisy third-party loggers to eliminate polling log spam
+    for noisy_logger in ("httpx", "httpcore", "asyncpg", "apscheduler", "urllib3", "watchfiles"):
+        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
     root.info(f"Logging initialized. Log dir: {os.path.abspath(log_dir)}")
     return root
 

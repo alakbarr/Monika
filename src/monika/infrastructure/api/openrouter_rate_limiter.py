@@ -56,7 +56,9 @@ DEFAULT_PAID_QUOTA = {"rpm": 100, "rpd": 10000}
 import json
 from pathlib import Path
 
-_STATE_FILE = Path(__file__).parent.parent.parent / "data" / "openrouter_rate_limit_state.json"
+from monika.infrastructure.infra.paths import DATA_DIR
+
+_STATE_FILE = DATA_DIR / "openrouter_rate_limit_state.json"
 
 class OpenRouterRateLimiter:
     """Sliding window rate limiter untuk OpenRouter API — keyed per (model, key_id)."""

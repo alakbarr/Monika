@@ -16,7 +16,9 @@ from pathlib import Path
 from collections import deque
 from typing import ClassVar
 
-_OUTBOX_FILE = Path(__file__).parent.parent.parent / "data" / "notifier_outbox.json"
+from monika.infrastructure.infra.paths import DATA_DIR
+
+_OUTBOX_FILE = DATA_DIR / "notifier_outbox.json"
 
 def sanitize_telegram_html(text: str) -> str:
     """

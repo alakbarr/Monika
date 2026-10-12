@@ -22,7 +22,8 @@ class TwitterWatchScraper(BaseScraper):
         # Gunakan profil sementara untuk memastikan kondisi bersih sebelum injeksi cookie
         super().__init__(headless=headless, profile_name=None)
         
-        self.session_dir = Path(__file__).resolve().parent.parent.parent / "data" / "sessions"
+        from monika.infrastructure.infra.paths import DATA_DIR
+        self.session_dir = DATA_DIR / "sessions"
         self.session_dir.mkdir(parents=True, exist_ok=True)
         self.rotation_state_file = self.session_dir / "twitter_pool_state.json"
         self.quarantined_file = self.session_dir / "twitter_quarantined.json"
