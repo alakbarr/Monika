@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_132.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_132
+# ==============================================================================
 
-"""GTJA Alpha 132 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    MEAN(AMOUNT,20)
-
-Notes: 
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_132
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_132 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_132',
+    'theme': ['liquidity'],
+    'formula_latex': 'mean(amount,20)',
+    'columns_required': ['close', 'amount'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 20,
+    'min_warmup_bars': 20,
+    'notes': '',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_132 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,31 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_132"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_132',
-    'theme': ['liquidity'],
-    'formula_latex': 'mean(amount,20)',
-    'columns_required': ['close', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 20,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_132.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    amt = panel["amount"]
-    out = ts_mean(amt, 20)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

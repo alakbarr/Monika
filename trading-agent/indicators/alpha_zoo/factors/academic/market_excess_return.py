@@ -1,21 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/market_excess_return.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.market_excess_return
+# ==============================================================================
 
-"""academic MKT_RF: market factor as 21-day return, cross-sectionally z-scored.
-
-Reference:
-    Sharpe, W. F. (1964). "Capital Asset Prices: A Theory of Market Equilibrium
-    under Conditions of Risk." The Journal of Finance, 19(3), 425-442.
-
-This is a price-based proxy: the original CAPM market factor is the
-value-weighted excess return of the market portfolio. We approximate the
-per-stock market-factor exposure as the 21-day total return cross-sectionally
-z-scored, suitable for ranking long-short portfolios.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.market_excess_return
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, safe_div
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.market_excess_return as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_mkt_rf',
@@ -35,20 +29,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.market_excess_return import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    safe_div,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std; zero/NaN std rows -> NaN."""
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    # std.where(std > 0) turns 0 / NaN std rows into NaN, which propagates
-    # through div to NaN — no silent inf.
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return 21-day return cross-sectional z-score per stock."""
-    close = panel['close']
-    ret = safe_div(delta(close, 21), close.shift(21))
-    return _cross_sectional_zscore(ret)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "safe_div",
+]

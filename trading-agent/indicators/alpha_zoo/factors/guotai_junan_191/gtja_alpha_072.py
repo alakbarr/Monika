@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_072.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_072
+# ==============================================================================
 
-"""GTJA Alpha #72.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_072
+"""
 
-Formula: SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,15,1)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 72."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_072 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_072",
+    "theme": ['reversal'],
+    "formula_latex": 'SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,15,1)',
+    "columns_required": ['close', 'high', 'low'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 15,
+    "min_warmup_bars": 16,
+    "notes": 'Williams %R style with SMA(15,1).',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_072 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,25 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_072",
-    "theme": ['reversal'],
-    "formula_latex": 'SMA((TSMAX(HIGH,6)-CLOSE)/(TSMAX(HIGH,6)-TSMIN(LOW,6))*100,15,1)',
-    "columns_required": ['close', 'high', 'low'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 15,
-    "min_warmup_bars": 16,
-    "notes": 'Williams %R style with SMA(15,1).',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    hi6 = ts_max(h, 6)
-    lo6 = ts_min(l, 6)
-    raw = safe_div(hi6 - c, hi6 - lo6) * 100.0
-    return raw.ewm(alpha=1.0 / 15.0, adjust=False).mean()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_144.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_144
+# ==============================================================================
 
-"""GTJA Alpha 144 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    SUMIF(ABS(CLOSE/DELAY(CLOSE,1)-1)/AMOUNT, CLOSE<DELAY(CLOSE,1),20)/COUNT(CLOSE<DELAY(CLOSE,1),20)
-
-Notes: SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_144
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_144 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_144',
+    'theme': ['liquidity'],
+    'formula_latex': 'see body',
+    'columns_required': ['close', 'amount'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 20,
+    'min_warmup_bars': 21,
+    'notes': 'SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_144 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,37 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_144"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_144',
-    'theme': ['liquidity'],
-    'formula_latex': 'see body',
-    'columns_required': ['close', 'amount'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 20,
-    'min_warmup_bars': 21,
-    'notes': 'SUMIF -> (x*cond).rolling(n).sum(); COUNT -> cond.rolling(n).sum().',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_144.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    amt = panel["amount"]
-    dc = c - c.shift(1)
-    cond = (dc < 0).astype("float64")
-    x = safe_div((safe_div(c, c.shift(1)) - 1.0).abs(), amt)
-    sumif = (x * cond).rolling(20).sum()
-    cnt = cond.rolling(20).sum().where(lambda d: d > 0)
-    out = safe_div(sumif, cnt)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

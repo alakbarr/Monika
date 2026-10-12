@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/proximity_52_week_high.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.proximity_52_week_high
+# ==============================================================================
 
-"""academic 52-week-high momentum: closeness of price to its 252-day high.
-
-Reference:
-    George, T. J., & Hwang, C.-Y. (2004). "The 52-Week High and Momentum
-    Investing." The Journal of Finance, 59(5), 2145-2176.
-
-Stocks trading near their 52-week high tend to earn higher future returns —
-the ratio of current price to the trailing 252-day high predicts momentum
-better than past returns alone. Computed as close / ts_max(close, 252), then
-cross-sectional z-scored per date. Higher z-scores = closer to the 52-week
-high (the long leg).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.proximity_52_week_high
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import safe_div, ts_max
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.proximity_52_week_high as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_high52w',
@@ -37,23 +30,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.proximity_52_week_high import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    safe_div,
+    ts_max,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return close-to-252d-high ratio cross-sectional z-score per stock."""
-    close = panel['close']
-    ratio = safe_div(close, ts_max(close, 252))
-    return _cross_sectional_zscore(ratio)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "safe_div",
+    "ts_max",
+]

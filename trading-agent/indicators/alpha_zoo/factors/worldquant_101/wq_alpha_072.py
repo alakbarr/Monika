@@ -1,16 +1,35 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_072.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_072
+# ==============================================================================
 
-"""Kakushadze Alpha #72.
-
-Formula (paper appendix): rank(decay_linear(correlation((high+low)/2, adv40, 9), 10)) / rank(decay_linear(correlation(Ts_Rank(vwap,4), Ts_Rank(volume,19), 7), 3))
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 72.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_072
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_072 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_072',
+    'nickname': 'Kakushadze Alpha #72',
+    'theme': ['volume'],
+    'formula_latex': 'rank(decay_linear(correlation((high+low)/2, adv40, 9), 10)) / rank(decay_linear(correlation(Ts_Rank(vwap,4), Ts_Rank(volume,19), 7), 3))',
+    'columns_required': ['high', 'low', 'volume', 'vwap', 'close'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 57,
+    'notes': '',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_072 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -28,34 +47,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_072"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_072',
-    'nickname': 'Kakushadze Alpha #72',
-    'theme': ['volume'],
-    'formula_latex': 'rank(decay_linear(correlation((high+low)/2, adv40, 9), 10)) / rank(decay_linear(correlation(Ts_Rank(vwap,4), Ts_Rank(volume,19), 7), 3))',
-    'columns_required': ['high', 'low', 'volume', 'vwap', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 57,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    high = panel["high"]
-    low = panel["low"]
-    volume = panel["volume"]
-    vwap = panel["vwap"]
-    adv40 = ts_mean(volume, 40)
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    num = rank(decay_linear(ts_corr((high + low) / 2.0, adv40, 9), 10))
-    denom = rank(decay_linear(ts_corr(ts_rank(vwap, 4), ts_rank(volume, 19), 7), 3))
-    out = safe_div(num, denom)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_051.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_051
+# ==============================================================================
 
-"""GTJA Alpha #51.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_051
+"""
 
-Formula: SUM(up_move,12)/(SUM(up_move,12)+SUM(dn_move,12))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 51."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_051 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_051",
+    "theme": ['reversal'],
+    "formula_latex": 'SUM(up_move,12)/(SUM(up_move,12)+SUM(dn_move,12))',
+    "columns_required": ['high', 'low'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 12,
+    "min_warmup_bars": 13,
+    "notes": 'Up-range share over 12 days.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_051 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,34 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_051",
-    "theme": ['reversal'],
-    "formula_latex": 'SUM(up_move,12)/(SUM(up_move,12)+SUM(dn_move,12))',
-    "columns_required": ['high', 'low'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 12,
-    "min_warmup_bars": 13,
-    "notes": 'Up-range share over 12 days.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    h = panel["high"]
-    l = panel["low"]
-    hl = h + l
-    phl = h.shift(1) + l.shift(1)
-    move = pd.DataFrame(
-        np.maximum(np.abs(h.to_numpy() - h.shift(1).to_numpy()),
-                   np.abs(l.to_numpy() - l.shift(1).to_numpy())),
-        index=h.index, columns=h.columns,
-    )
-    # A missing high/low today or yesterday is neither an up nor a down move (#1463).
-    valid = hl.notna() & phl.notna() & move.notna()
-    up = move.where(hl > phl, 0.0).where(valid)
-    dn = move.where(hl < phl, 0.0).where(valid)
-    s_up = up.rolling(12, min_periods=12).sum()
-    s_dn = dn.rolling(12, min_periods=12).sum()
-    return safe_div(s_up, s_up + s_dn)
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

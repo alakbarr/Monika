@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_003.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_003
+# ==============================================================================
 
-"""GTJA Alpha #3.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_003
+"""
 
-Formula: SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),6)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 3."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_003 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_003",
+    "theme": ['momentum'],
+    "formula_latex": 'SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),6)',
+    "columns_required": ['close', 'high', 'low'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 6,
+    "min_warmup_bars": 7,
+    "notes": 'Wilder-style accumulation of signed daily moves over 6 days.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_003 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,34 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_003",
-    "theme": ['momentum'],
-    "formula_latex": 'SUM((CLOSE=DELAY(CLOSE,1)?0:CLOSE-(CLOSE>DELAY(CLOSE,1)?MIN(LOW,DELAY(CLOSE,1)):MAX(HIGH,DELAY(CLOSE,1)))),6)',
-    "columns_required": ['close', 'high', 'low'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 6,
-    "min_warmup_bars": 7,
-    "notes": 'Wilder-style accumulation of signed daily moves over 6 days.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    pc = c.shift(1)
-    up = c > pc
-    dn = c < pc
-    ref = pd.DataFrame(np.where(up, np.minimum(l, pc), np.where(dn, np.maximum(h, pc), c)),
-                       index=c.index, columns=c.columns)
-    move = (c - ref).where(up | dn, 0.0)
-    # A NaN comparison is False, not NaN, so a missing close/prior-close
-    # (a halt, a gap) reads the same as a real "unchanged" tie and gets
-    # the 0.0 above instead of NaN. Mask those back to NaN so the rolling
-    # sum's own min_periods correctly turns NaN for every window still
-    # touching the gap, instead of silently summing a fabricated 0.0.
-    move = move.mask(c.isna() | pc.isna())
-    return move.rolling(6, min_periods=6).sum()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

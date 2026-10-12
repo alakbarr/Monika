@@ -1,10 +1,15 @@
-"""Fundamental ROE quality factor."""
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/fundamental/return_on_equity.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.fundamental.return_on_equity
+# ==============================================================================
 
-from __future__ import annotations
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.fundamental.return_on_equity
+"""
 
-import pandas as pd
-
-from indicators.factor_primitives import zscore
+import sys
+import monika.domain.indicators.alpha_zoo.factors.fundamental.return_on_equity as _canonical
 
 __alpha_meta__ = {
     "id": "fund_roe",
@@ -23,7 +28,16 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.fundamental.return_on_equity import (
+    annotations,
+    compute,
+    zscore,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return cross-sectional z-scored ROE."""
-    return zscore(panel["fund:roe"])
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "zscore",
+]

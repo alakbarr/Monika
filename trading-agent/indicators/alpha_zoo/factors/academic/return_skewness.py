@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/return_skewness.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.return_skewness
+# ==============================================================================
 
-"""academic return skewness: inverse trailing skewness of daily returns.
-
-Reference:
-    Harvey, C. R., & Siddique, A. (2000). "Conditional Skewness in Asset
-    Pricing Tests." The Journal of Finance, 55(3), 1263-1295.
-
-Investors pay a premium for positively-skewed (lottery-like) payoffs, so
-positively-skewed stocks earn lower subsequent returns and negatively-skewed
-stocks earn higher ones. Computed as the negative of the trailing 60-day
-skewness of daily returns, then cross-sectional z-scored per date. Higher
-z-scores = more negatively-skewed names (the long leg of the skewness premium).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.return_skewness
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import safe_div
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.return_skewness as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_retskew',
@@ -37,24 +30,18 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.return_skewness import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    safe_div,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse 60-day return-skewness cross-sectional z-score per stock."""
-    close = panel['close']
-    daily_ret = safe_div(close - close.shift(1), close.shift(1))
-    skew = daily_ret.rolling(window=60, min_periods=60).skew()
-    return _cross_sectional_zscore(-skew)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "safe_div",
+]

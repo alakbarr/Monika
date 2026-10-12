@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_015.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_015
+# ==============================================================================
 
-"""GTJA Alpha #15.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_015
+"""
 
-Formula: (OPEN/DELAY(CLOSE,1) - 1)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 15."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_015 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_015",
+    "theme": ['reversal'],
+    "formula_latex": '(OPEN/DELAY(CLOSE,1) - 1)',
+    "columns_required": ['open', 'close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 1,
+    "min_warmup_bars": 2,
+    "notes": 'Overnight gap return.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_015 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,22 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_015",
-    "theme": ['reversal'],
-    "formula_latex": '(OPEN/DELAY(CLOSE,1) - 1)',
-    "columns_required": ['open', 'close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 1,
-    "min_warmup_bars": 2,
-    "notes": 'Overnight gap return.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    o = panel["open"]
-    c = panel["close"]
-    pc = c.shift(1)
-    return safe_div(o, pc) - 1.0
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

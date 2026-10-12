@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 VSUMN60: formula = \\sum \\max(-\\Delta v, 0) / \\sum |\\Delta v|."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/volume_sum_negative_60.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_sum_negative_60
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import safe_div
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_sum_negative_60
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_sum_negative_60 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_vsumn60',
@@ -17,13 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 60,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.volume_sum_negative_60 import (
+    annotations,
+    compute,
+    safe_div,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 VSUMN60 on the supplied OHLCV panel."""
-    v = panel['volume']
-    diff = v - v.shift(1)
-    neg = (-diff).where(diff < 0, 0.0)
-    absd = diff.abs()
-    num = neg.rolling(window=60, min_periods=60).sum()
-    den = absd.rolling(window=60, min_periods=60).sum()
-    return safe_div(num, den)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "safe_div",
+]

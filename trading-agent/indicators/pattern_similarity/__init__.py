@@ -1,45 +1,52 @@
 # ==============================================================================
 # File: indicators/pattern_similarity/__init__.py
+# Description: Backward-compatibility shim for monika.domain.indicators.pattern_similarity
 # ==============================================================================
 
 """
-Context-Aware Historical Chart Pattern Similarity Screening Engine.
-Multi-timeframe, cross-symbol pattern recognition and outcome forecasting.
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.pattern_similarity
 """
 
-from .models import (
-    PatternMatch,
-    MarketContext,
+import sys
+import monika.domain.indicators.pattern_similarity as _canonical
+
+from monika.domain.indicators.pattern_similarity import (
     ContextAnnotation,
+    ContextScorer,
     ContextVerdict,
-    PatternOutcome,
-    OutcomeStatistics,
-    SingleTimeframeResult,
+    FeatureExtractor,
+    FeatureVector,
+    MarketContext,
     MultiTimeframeScreeningResult,
+    OutcomeAnalyzer,
+    OutcomeStatistics,
+    PatternContextVerifier,
+    PatternMatch,
+    PatternOutcome,
+    PatternSimilarityEngine,
+    PriceNormalizer,
+    SimilarityScanner,
+    SingleTimeframeResult,
 )
-from .normalizer import PriceNormalizer
-from .feature_extractor import FeatureExtractor, FeatureVector
-from .scanner import SimilarityScanner
-from .context_scorer import ContextScorer
-from .context_verifier import PatternContextVerifier
-from .outcome_analyzer import OutcomeAnalyzer
-from .engine import PatternSimilarityEngine
+
+sys.modules[__name__] = _canonical
 
 __all__ = [
-    "PatternMatch",
-    "MarketContext",
     "ContextAnnotation",
+    "ContextScorer",
     "ContextVerdict",
-    "PatternOutcome",
-    "OutcomeStatistics",
-    "SingleTimeframeResult",
-    "MultiTimeframeScreeningResult",
-    "PriceNormalizer",
     "FeatureExtractor",
     "FeatureVector",
-    "SimilarityScanner",
-    "ContextScorer",
-    "PatternContextVerifier",
+    "MarketContext",
+    "MultiTimeframeScreeningResult",
     "OutcomeAnalyzer",
+    "OutcomeStatistics",
+    "PatternContextVerifier",
+    "PatternMatch",
+    "PatternOutcome",
     "PatternSimilarityEngine",
+    "PriceNormalizer",
+    "SimilarityScanner",
+    "SingleTimeframeResult",
 ]

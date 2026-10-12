@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/high_minus_low_value.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.high_minus_low_value
+# ==============================================================================
 
-"""academic HML: value factor as inverse 252-day return (long-term reversal proxy).
-
-Reference:
-    Fama, E. F., & French, K. R. (1993). "Common risk factors in the returns on
-    stocks and bonds." Journal of Financial Economics, 33(1), 3-56.
-
-This is a price-based proxy: the original HML (High Minus Low) sorts on book-
-to-market, which requires fundamental book equity. We use the negative of the
-trailing 252-day return — value names tend to be long-term underperformers
-whose prices have declined relative to book value. Higher z-scores = larger
-long-term drawdowns (deeper value).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.high_minus_low_value
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, safe_div
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.high_minus_low_value as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_hml',
@@ -38,29 +31,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.high_minus_low_value import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    safe_div,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse 252-day return cross-sectional z-score per stock.
-
-    Uses the canonical 252-day window without silent shrink on short panels.
-    Short panels produce an all-NaN result, which the registry surfaces as a
-    >95% NaN error (RegistryError) so the user sees "insufficient history"
-    instead of a misleading shrunk-window value.
-    """
-    close = panel['close']
-    ret = safe_div(delta(close, 252), close.shift(252))
-    return _cross_sectional_zscore(-ret)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "safe_div",
+]

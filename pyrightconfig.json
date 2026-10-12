@@ -14,6 +14,7 @@
     "trading-agent/logs",
     "trading-agent/data",
     "trading-agent/logging_observability/dashboard/frontend",
+    "src/monika/domain/indicators",
     "**/site-packages",
     "**/dist",
     ".git"

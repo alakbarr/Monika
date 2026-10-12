@@ -1,10 +1,15 @@
-"""Fundamental gross-profitability quality factor."""
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/fundamental/gross_profitability.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.fundamental.gross_profitability
+# ==============================================================================
 
-from __future__ import annotations
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.fundamental.gross_profitability
+"""
 
-import pandas as pd
-
-from indicators.factor_primitives import zscore
+import sys
+import monika.domain.indicators.alpha_zoo.factors.fundamental.gross_profitability as _canonical
 
 __alpha_meta__ = {
     "id": "fund_gross_profitability",
@@ -22,7 +27,16 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.fundamental.gross_profitability import (
+    annotations,
+    compute,
+    zscore,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return cross-sectional z-scored gross profitability."""
-    return zscore(panel["fund:gross_profitability"])
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "zscore",
+]

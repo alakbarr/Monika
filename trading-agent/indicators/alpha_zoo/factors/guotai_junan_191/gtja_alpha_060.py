@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_060.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_060
+# ==============================================================================
 
-"""GTJA Alpha #60.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_060
+"""
 
-Formula: SUM(((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW)*VOLUME, 20)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 60."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_060 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_060",
+    "theme": ['volume', 'microstructure'],
+    "formula_latex": 'SUM(((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW)*VOLUME, 20)',
+    "columns_required": ['close', 'high', 'low', 'volume'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 21,
+    "notes": '20-day version of alpha #11.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_060 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,24 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_060",
-    "theme": ['volume', 'microstructure'],
-    "formula_latex": 'SUM(((CLOSE-LOW)-(HIGH-CLOSE))/(HIGH-LOW)*VOLUME, 20)',
-    "columns_required": ['close', 'high', 'low', 'volume'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 20,
-    "min_warmup_bars": 21,
-    "notes": '20-day version of alpha #11.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    v = panel["volume"]
-    mfm = safe_div((c - l) - (h - c), h - l)
-    return (mfm * v).rolling(20, min_periods=20).sum()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_107.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_107
+# ==============================================================================
 
-"""GTJA Alpha 107 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    (((-1 * RANK((OPEN - DELAY(HIGH, 1)))) * RANK((OPEN - DELAY(CLOSE, 1)))) * RANK((OPEN - DELAY(LOW, 1))))
-
-Notes: 
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_107
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_107 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_107',
+    'theme': ['reversal'],
+    'formula_latex': '-1*rank(open-delay(high,1))*rank(open-delay(close,1))*rank(open-delay(low,1))',
+    'columns_required': ['open', 'high', 'low', 'close'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 1,
+    'min_warmup_bars': 2,
+    'notes': '',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_107 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,34 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_107"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_107',
-    'theme': ['reversal'],
-    'formula_latex': '-1*rank(open-delay(high,1))*rank(open-delay(close,1))*rank(open-delay(low,1))',
-    'columns_required': ['open', 'high', 'low', 'close'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 1,
-    'min_warmup_bars': 2,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_107.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    o = panel["open"]
-    h = panel["high"]
-    l = panel["low"]
-    out = (-1.0 * rank(o - h.shift(1))) * rank(o - c.shift(1)) * rank(o - l.shift(1))
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

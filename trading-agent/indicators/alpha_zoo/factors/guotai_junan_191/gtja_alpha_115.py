@@ -1,17 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_115.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_115
+# ==============================================================================
 
-"""GTJA Alpha 115 ( 191  alpha , 2014).
-
-Formula (verbatim from the report):
-    RANK(CORR(((HIGH*0.9)+(CLOSE*0.1)),MEAN(VOLUME,30),10))^RANK(CORR(TSRANK(((HIGH+LOW)/2),4),TSRANK(VOLUME,10),7))
-
-Notes: x^y -> np.power after rank.
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_115
+"""
 
-import numpy as np
-import pandas as pd
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_115 as _canonical
 
-from indicators.factor_primitives import (
+__alpha_meta__ = {
+    'id': 'gtja191_115',
+    'theme': ['volume'],
+    'formula_latex': 'rank(corr(0.9h+0.1c,mean(v,30),10))^rank(corr(tsrank((h+l)/2,4),tsrank(v,10),7))',
+    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
+    'extras_required': [],
+    'universe': ['equity_cn'],
+    'frequency': ['1d'],
+    'decay_horizon': 30,
+    'min_warmup_bars': 40,
+    'notes': 'x^y -> np.power after rank.',
+}
+
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_115 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -29,38 +45,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "gtja191_115"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'gtja191_115',
-    'theme': ['volume'],
-    'formula_latex': 'rank(corr(0.9h+0.1c,mean(v,30),10))^rank(corr(tsrank((h+l)/2,4),tsrank(v,10),7))',
-    'columns_required': ['open', 'high', 'low', 'close', 'volume'],
-    'extras_required': [],
-    'universe': ['equity_cn'],
-    'frequency': ['1d'],
-    'decay_horizon': 30,
-    'min_warmup_bars': 40,
-    'notes': 'x^y -> np.power after rank.',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute gtja191_115.
-
-    Args:
-        panel: dict[str, pd.DataFrame] with at least the required columns.
-
-    Returns:
-        pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
-    """
-    c = panel["close"]
-    h = panel["high"]
-    l = panel["low"]
-    v = panel["volume"]
-    left = rank(ts_corr(h * 0.9 + c * 0.1, ts_mean(v, 30), 10))
-    right = rank(ts_corr(ts_rank((h + l) / 2.0, 4), ts_rank(v, 10), 7))
-    arr = np.power(left.to_numpy(dtype=np.float64, na_value=np.nan),
-                   right.to_numpy(dtype=np.float64, na_value=np.nan))
-    out = pd.DataFrame(arr, index=left.index, columns=left.columns)
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,22 +1,15 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/academic/conservative_minus_aggressive.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.academic.conservative_minus_aggressive
+# ==============================================================================
 
-"""academic CMA: investment factor as inverse 60-day volume growth.
-
-Reference:
-    Fama, E. F., & French, K. R. (2015). "A five-factor asset pricing model."
-    Journal of Financial Economics, 116(1), 1-22.
-
-This is a price-based proxy: the original CMA (Conservative Minus Aggressive)
-sorts on asset growth from balance-sheet data. We use the negative of 60-day
-log-volume change — firms aggressively scaling activity tend to show rising
-trading volume; conservative firms show stable / shrinking volume. Higher
-z-scores = volume contraction (conservative).
 """
-from __future__ import annotations
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.academic.conservative_minus_aggressive
+"""
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import delta, ts_mean
+import sys
+import monika.domain.indicators.alpha_zoo.factors.academic.conservative_minus_aggressive as _canonical
 
 __alpha_meta__ = {
     'id': 'academic_cma',
@@ -38,30 +31,20 @@ __alpha_meta__ = {
     ),
 }
 
+from monika.domain.indicators.alpha_zoo.factors.academic.conservative_minus_aggressive import (
+    _cross_sectional_zscore,
+    annotations,
+    compute,
+    delta,
+    ts_mean,
+)
 
-def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-row z-score: (x - row_mean) / row_std. Supports single-asset time-series (axis=0) when shape[1] == 1."""
-    if df.shape[1] == 1:
-        mean = df.mean(axis=0, skipna=True)
-        std = df.std(axis=0, ddof=1, skipna=True)
-        res = df.sub(mean, axis=1).div(std.where(std > 0), axis=1)
-        return res.replace([np.inf, -np.inf], np.nan)
-    mean = df.mean(axis=1, skipna=True)
-    std = df.std(axis=1, ddof=1, skipna=True)
-    centered = df.sub(mean, axis=0)
-    result = centered.div(std.where(std > 0), axis=0)
-    return result.replace([np.inf, -np.inf], np.nan)
+sys.modules[__name__] = _canonical
 
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return inverse 60-day log-volume change z-score per stock.
-
-    Uses the canonical 60-bar rolling mean + 60-bar delta windows without
-    silent shrink on short panels. Short panels produce all-NaN; the
-    registry surfaces this as >95% NaN (RegistryError) so the user sees
-    "insufficient history" rather than a misleading shrunk-window value.
-    """
-    volume = panel['volume']
-    log_avg_vol = np.log(ts_mean(volume, 60) + 1.0)
-    growth = delta(log_avg_vol, 60)
-    return _cross_sectional_zscore(-growth)
+__all__ = [
+    "_cross_sectional_zscore",
+    "annotations",
+    "compute",
+    "delta",
+    "ts_mean",
+]

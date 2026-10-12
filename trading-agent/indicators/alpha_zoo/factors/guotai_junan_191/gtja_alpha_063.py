@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_063.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_063
+# ==============================================================================
 
-"""GTJA Alpha #63.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_063
+"""
 
-Formula: SMA(MAX(CLOSE-DELAY(CLOSE,1),0),6,1)/SMA(ABS(CLOSE-DELAY(CLOSE,1)),6,1)*100
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 63."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_063 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_063",
+    "theme": ['momentum'],
+    "formula_latex": 'SMA(MAX(CLOSE-DELAY(CLOSE,1),0),6,1)/SMA(ABS(CLOSE-DELAY(CLOSE,1)),6,1)*100',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 6,
+    "min_warmup_bars": 7,
+    "notes": 'RSI-6 style.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_063 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,25 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_063",
-    "theme": ['momentum'],
-    "formula_latex": 'SMA(MAX(CLOSE-DELAY(CLOSE,1),0),6,1)/SMA(ABS(CLOSE-DELAY(CLOSE,1)),6,1)*100',
-    "columns_required": ['close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 6,
-    "min_warmup_bars": 7,
-    "notes": 'RSI-6 style.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    diff = c - c.shift(1)
-    up_part = diff.clip(lower=0)
-    abs_part = diff.abs()
-    u = up_part.ewm(alpha=1.0 / 6.0, adjust=False).mean()
-    a = abs_part.ewm(alpha=1.0 / 6.0, adjust=False).mean()
-    return safe_div(u, a) * 100.0
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

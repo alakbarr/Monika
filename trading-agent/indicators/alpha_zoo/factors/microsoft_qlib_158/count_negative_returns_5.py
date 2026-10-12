@@ -1,9 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 CNTN5: formula = \\mathrm{rolling\\_mean}(\\mathrm{1}[\\mathrm{close}<\\mathrm{close}_{{-1}}], 5)."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/count_negative_returns_5.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.count_negative_returns_5
+# ==============================================================================
 
-import pandas as pd
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.count_negative_returns_5
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.count_negative_returns_5 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_cntn5',
@@ -17,10 +23,14 @@ __alpha_meta__ = {
     'notes': 'A missing close leaves window+1 rolling rows NaN; on sparse panels this can trigger the >95% NaN registry guard (from ~40% missing bars).',
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.count_negative_returns_5 import (
+    annotations,
+    compute,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 CNTN5 on the supplied OHLCV panel."""
-    c = panel['close']
-    prev = c.shift(1)
-    dn = (c < prev).astype('float64').where(c.notna() & prev.notna())  # a missing close is not a down day
-    return dn.rolling(window=5, min_periods=5).mean()
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+]

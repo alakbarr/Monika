@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_024.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_024
+# ==============================================================================
 
-"""GTJA Alpha #24.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_024
+"""
 
-Formula: SMA(CLOSE-DELAY(CLOSE,5),5,1)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 24."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_024 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_024",
+    "theme": ['momentum'],
+    "formula_latex": 'SMA(CLOSE-DELAY(CLOSE,5),5,1)',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 6,
+    "notes": 'SMA(5, m=1) of 5d delta(close).',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_024 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,20 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_024",
-    "theme": ['momentum'],
-    "formula_latex": 'SMA(CLOSE-DELAY(CLOSE,5),5,1)',
-    "columns_required": ['close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 5,
-    "min_warmup_bars": 6,
-    "notes": 'SMA(5, m=1) of 5d delta(close).',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    return delta(c, 5).ewm(alpha=1.0 / 5.0, adjust=False).mean()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

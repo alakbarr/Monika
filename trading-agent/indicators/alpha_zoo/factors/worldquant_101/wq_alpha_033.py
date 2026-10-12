@@ -1,16 +1,35 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_033.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_033
+# ==============================================================================
 
-"""Kakushadze Alpha #33.
-
-Formula (paper appendix): rank(-1*(1-open/close))
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 33.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_033
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_033 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_033',
+    'nickname': 'Kakushadze Alpha #33',
+    'theme': ['reversal'],
+    'formula_latex': 'rank(-1*(1-open/close))',
+    'columns_required': ['open', 'close'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 1,
+    'notes': '',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_033 import (
+    ALPHA_ID,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -28,30 +47,25 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_033"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_033',
-    'nickname': 'Kakushadze Alpha #33',
-    'theme': ['reversal'],
-    'formula_latex': 'rank(-1*(1-open/close))',
-    'columns_required': ['open', 'close'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 1,
-    'notes': '',
-}
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    open_ = panel["open"]
-
-
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    out = rank(-1.0 * (1.0 - safe_div(open_, close)))
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

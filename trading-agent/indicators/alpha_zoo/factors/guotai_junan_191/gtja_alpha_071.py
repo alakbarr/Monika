@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_071.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_071
+# ==============================================================================
 
-"""GTJA Alpha #71.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_071
+"""
 
-Formula: (CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 71."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_071 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_071",
+    "theme": ['reversal'],
+    "formula_latex": '(CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 24,
+    "min_warmup_bars": 25,
+    "notes": 'Bias-24.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_071 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,21 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_071",
-    "theme": ['reversal'],
-    "formula_latex": '(CLOSE-MEAN(CLOSE,24))/MEAN(CLOSE,24)*100',
-    "columns_required": ['close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 24,
-    "min_warmup_bars": 25,
-    "notes": 'Bias-24.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    m24 = ts_mean(c, 24)
-    return safe_div(c - m24, m24) * 100.0
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

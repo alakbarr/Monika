@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_017.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_017
+# ==============================================================================
 
-"""GTJA Alpha #17.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_017
+"""
 
-Formula: (RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 17."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_017 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_017",
+    "theme": ['reversal'],
+    "formula_latex": '(RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))',
+    "columns_required": ['close', 'volume', 'amount'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 15,
+    "min_warmup_bars": 16,
+    "notes": 'rank(vwap - 15d max(vwap)) is non-positive; we use signed_power for safety.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_017 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,29 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_017",
-    "theme": ['reversal'],
-    "formula_latex": '(RANK(VWAP - MAX(VWAP,15))^DELTA(CLOSE,5))',
-    "columns_required": ['close', 'volume', 'amount'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 15,
-    "min_warmup_bars": 16,
-    "notes": 'rank(vwap - 15d max(vwap)) is non-positive; we use signed_power for safety.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    v = panel["volume"]
-    vw = safe_div(panel["amount"], v * 100.0 + 1.0)
-    base = rank(vw - ts_max(vw, 15))
-    expo = delta(c, 5)
-    # Combine via signed_power(base, mean_exp): use elementwise sign-preserving |base|**expo proxy
-    out_arr = np.sign(base.to_numpy(dtype=float, na_value=np.nan)) * np.power(
-        np.abs(base.to_numpy(dtype=float, na_value=np.nan)),
-        np.abs(expo.to_numpy(dtype=float, na_value=np.nan)),
-    )
-    return pd.DataFrame(out_arr, index=c.index, columns=c.columns)
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

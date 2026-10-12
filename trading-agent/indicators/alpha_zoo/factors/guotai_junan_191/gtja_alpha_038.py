@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_038.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_038
+# ==============================================================================
 
-"""GTJA Alpha #38.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_038
+"""
 
-Formula: (((SUM(HIGH,20)/20)<HIGH)?(-1*DELTA(HIGH,2)):0)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 38."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_038 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_038",
+    "theme": ['reversal'],
+    "formula_latex": '(((SUM(HIGH,20)/20)<HIGH)?(-1*DELTA(HIGH,2)):0)',
+    "columns_required": ['high'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 20,
+    "min_warmup_bars": 21,
+    "notes": 'When current high > MA20(high), output -delta(high,2); else 0.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_038 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,26 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_038",
-    "theme": ['reversal'],
-    "formula_latex": '(((SUM(HIGH,20)/20)<HIGH)?(-1*DELTA(HIGH,2)):0)',
-    "columns_required": ['high'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 20,
-    "min_warmup_bars": 21,
-    "notes": 'When current high > MA20(high), output -delta(high,2); else 0.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    h = panel["high"]
-    m20 = ts_mean(h, 20)
-    cond = m20 < h
-    out = (-1.0 * delta(h, 2)).where(cond, 0.0)
-    # A NaN comparison is False, not NaN, so cond is False (never NaN) for
-    # every bar in m20's warmup or a gap's 20-day window, and out falls
-    # through to the finite 0.0 branch instead of NaN.
-    return out.where(m20.notna())
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

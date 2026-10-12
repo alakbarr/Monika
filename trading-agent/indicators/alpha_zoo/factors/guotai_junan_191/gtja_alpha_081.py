@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_081.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_081
+# ==============================================================================
 
-"""GTJA Alpha #81.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_081
+"""
 
-Formula: SMA(VOLUME,21,2)
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 81."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_081 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_081",
+    "theme": ['volume'],
+    "formula_latex": 'SMA(VOLUME,21,2)',
+    "columns_required": ['volume'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 21,
+    "min_warmup_bars": 22,
+    "notes": 'SMA(21, m=2) of volume.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_081 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,19 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_081",
-    "theme": ['volume'],
-    "formula_latex": 'SMA(VOLUME,21,2)',
-    "columns_required": ['volume'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 21,
-    "min_warmup_bars": 22,
-    "notes": 'SMA(21, m=2) of volume.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    return panel["volume"].ewm(alpha=2.0 / 21.0, adjust=False).mean()
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

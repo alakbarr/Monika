@@ -1,21 +1,26 @@
 # ==============================================================================
 # File: indicators/alpha_zoo/__init__.py
-# Monika Quantitative Factor Zoo Package
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo
 # ==============================================================================
 
 """
-Monika Quantitative Alpha Zoo Package.
-
-Exports the enterprise factor registry, schema metadata, and automatically registers
-quantitative factors for MetaTrader 5 markets.
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo
 """
 
-from indicators.alpha_zoo.meta import AlphaCategory, AlphaDirection, AlphaMeta
-from indicators.alpha_zoo.registry import FactorRegistry, RegistryError, load_alpha_meta_from_py
-from indicators.alpha_zoo.vector_factor_engine import (
+import sys
+import monika.domain.indicators.alpha_zoo as _canonical
+
+from monika.domain.indicators.alpha_zoo import (
+    AlphaCategory,
+    AlphaDirection,
+    AlphaMeta,
+    FactorRegistry,
+    FactorSignal,
+    RegistryError,
     VectorFactorEngine,
     VectorFactorResult,
-    FactorSignal,
+    load_alpha_meta_from_py,
 )
 
 # Auto-register standard formulations
@@ -30,10 +35,9 @@ __all__ = [
     "AlphaDirection",
     "AlphaMeta",
     "FactorRegistry",
+    "FactorSignal",
     "RegistryError",
-    "load_alpha_meta_from_py",
     "VectorFactorEngine",
     "VectorFactorResult",
-    "FactorSignal",
+    "load_alpha_meta_from_py",
 ]
-

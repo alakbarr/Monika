@@ -1,10 +1,15 @@
-# Adapted from microsoft/qlib@d5379c520f66a39953bad76234a7019a72796fd0:qlib/contrib/data/handler.py
-# (Apache-2.0). Copyright (c) Microsoft Corporation.
-"""qlib158 IMIN10: formula = \\mathrm{ts\\_argmin}(\\mathrm{low}, 10) / 10."""
-from __future__ import annotations
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/microsoft_qlib_158/index_min_low_10.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_min_low_10
+# ==============================================================================
 
-import pandas as pd
-from indicators.factor_primitives import ts_argmin
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_min_low_10
+"""
+
+import sys
+import monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_min_low_10 as _canonical
 
 __alpha_meta__ = {
     'id': 'qlib158_imin10',
@@ -17,8 +22,16 @@ __alpha_meta__ = {
     'min_warmup_bars': 10,
 }
 
+from monika.domain.indicators.alpha_zoo.factors.microsoft_qlib_158.index_min_low_10 import (
+    annotations,
+    compute,
+    ts_argmin,
+)
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Return qlib158 IMIN10 on the supplied OHLCV panel."""
-    lo = panel['low']
-    return ts_argmin(lo, 10) / float(10)
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "annotations",
+    "compute",
+    "ts_argmin",
+]

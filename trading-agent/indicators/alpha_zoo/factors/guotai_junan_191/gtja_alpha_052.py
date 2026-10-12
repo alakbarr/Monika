@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_052.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_052
+# ==============================================================================
 
-"""GTJA Alpha #52.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_052
+"""
 
-Formula: SUM(MAX(0,HIGH-DELAY((HIGH+LOW+CLOSE)/3,1)),26) / SUM(MAX(0,DELAY((HIGH+LOW+CLOSE)/3,1)-LOW),26) * 100
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 52."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_052 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_052",
+    "theme": ['microstructure'],
+    "formula_latex": 'SUM(MAX(0,HIGH-DELAY((HIGH+LOW+CLOSE)/3,1)),26) / SUM(MAX(0,DELAY((HIGH+LOW+CLOSE)/3,1)-LOW),26) * 100',
+    "columns_required": ['high', 'low', 'close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 26,
+    "min_warmup_bars": 27,
+    "notes": 'Bull power / bear power ratio over 26 days.',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_052 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,27 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_052",
-    "theme": ['microstructure'],
-    "formula_latex": 'SUM(MAX(0,HIGH-DELAY((HIGH+LOW+CLOSE)/3,1)),26) / SUM(MAX(0,DELAY((HIGH+LOW+CLOSE)/3,1)-LOW),26) * 100',
-    "columns_required": ['high', 'low', 'close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 26,
-    "min_warmup_bars": 27,
-    "notes": 'Bull power / bear power ratio over 26 days.',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    h = panel["high"]
-    l = panel["low"]
-    c = panel["close"]
-    typ = (h + l + c) / 3.0
-    p_typ = typ.shift(1)
-    bull = (h - p_typ).clip(lower=0)
-    bear = (p_typ - l).clip(lower=0)
-    return safe_div(bull.rolling(26, min_periods=26).sum(),
-                    bear.rolling(26, min_periods=26).sum()) * 100.0
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

@@ -1,16 +1,36 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/worldquant_101/wq_alpha_039.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_039
+# ==============================================================================
 
-"""Kakushadze Alpha #39.
-
-Formula (paper appendix): (-1*rank(delta(close,7)*(1-rank(decay_linear(volume/adv20,9))))) * (1+rank(sum(returns,250)))
-Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 39.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_039
 """
 
-from __future__ import annotations
+import sys
+import monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_039 as _canonical
 
-import numpy as np
-import pandas as pd
+__alpha_meta__ = {
+    'id': 'alpha101_039',
+    'nickname': 'Kakushadze Alpha #39',
+    'theme': ['momentum', 'volume'],
+    'formula_latex': '(-1*rank(delta(close,7)*(1-rank(decay_linear(volume/adv20,9))))) * (1+rank(sum(returns,250)))',
+    'columns_required': ['close', 'volume'],
+    'extras_required': [],
+    'requires_sector': False,
+    'universe': ['equity_us', 'equity_in', 'equity_kr'],
+    'frequency': ['1D'],
+    'decay_horizon': 5,
+    'min_warmup_bars': 250,
+    'notes': 'Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.',
+}
 
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.worldquant_101.wq_alpha_039 import (
+    ALPHA_ID,
+    _rolling_sum,
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -28,36 +48,26 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-ALPHA_ID = "alpha101_039"
+sys.modules[__name__] = _canonical
 
-__alpha_meta__ = {
-    'id': 'alpha101_039',
-    'nickname': 'Kakushadze Alpha #39',
-    'theme': ['momentum', 'volume'],
-    'formula_latex': '(-1*rank(delta(close,7)*(1-rank(decay_linear(volume/adv20,9))))) * (1+rank(sum(returns,250)))',
-    'columns_required': ['close', 'volume'],
-    'extras_required': [],
-    'requires_sector': False,
-    'universe': ['equity_us', 'equity_in', 'equity_kr'],
-    'frequency': ['1D'],
-    'decay_horizon': 5,
-    'min_warmup_bars': 250,
-    'notes': 'Very long lookback (>= ~100 bars); produces NaN warmup on short panels which may trigger the >95% NaN registry guard.',
-}
-
-
-def _rolling_sum(df: pd.DataFrame, n: int) -> pd.DataFrame:
-    """Rolling window sum; warmup -> NaN."""
-    return df.rolling(window=n, min_periods=n).sum()
-
-
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    """Compute the alpha on the OHLCV+ panel and return a wide DataFrame."""
-    close = panel["close"]
-    volume = panel["volume"]
-    adv20 = ts_mean(volume, 20)
-    returns = close.pct_change(fill_method=None)
-    # Helper aliases (local closures keep the file standalone & purity-safe).
-    rolling_sum = _rolling_sum
-    out = (-1.0 * rank(delta(close, 7) * (1.0 - rank(decay_linear(safe_div(volume, adv20), 9))))) * (1.0 + rank(rolling_sum(returns, 250)))
-    return out
+__all__ = [
+    "ALPHA_ID",
+    "_rolling_sum",
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "scale",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]

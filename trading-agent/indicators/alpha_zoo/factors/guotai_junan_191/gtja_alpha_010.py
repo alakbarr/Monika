@@ -1,15 +1,33 @@
+# ==============================================================================
+# File: indicators/alpha_zoo/factors/guotai_junan_191/gtja_alpha_010.py
+# Description: Backward-compatibility shim for monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_010
+# ==============================================================================
 
-"""GTJA Alpha #10.
+"""
+Backward-compatibility shim.
+Canonical implementation: monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_010
+"""
 
-Formula: RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))
-Source: Guotai Junan Securities 191 Alpha Research (2014), alpha 10."""
+import sys
+import monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_010 as _canonical
 
-from __future__ import annotations
+__alpha_meta__ = {
+    "id": "gtja191_010",
+    "theme": ['volatility', 'reversal'],
+    "formula_latex": 'RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))',
+    "columns_required": ['close'],
+    "extras_required": [],
+    "requires_sector": False,
+    "universe": ["equity_cn"],
+    "frequency": ["1d"],
+    "decay_horizon": 5,
+    "min_warmup_bars": 21,
+    "notes": 'Per-day return = pct_change(1) via (close - delay(close,1))/delay(close,1).',
+}
 
-import numpy as np
-import pandas as pd
-
-from indicators.factor_primitives import (
+from monika.domain.indicators.alpha_zoo.factors.guotai_junan_191.gtja_alpha_010 import (
+    annotations,
+    compute,
     decay_linear,
     delta,
     rank,
@@ -26,26 +44,23 @@ from indicators.factor_primitives import (
     ts_std,
 )
 
-__alpha_meta__ = {
-    "id": "gtja191_010",
-    "theme": ['volatility', 'reversal'],
-    "formula_latex": 'RANK(MAX(((RET<0)?STD(RET,20):CLOSE)^2,5))',
-    "columns_required": ['close'],
-    "extras_required": [],
-    "requires_sector": False,
-    "universe": ["equity_cn"],
-    "frequency": ["1d"],
-    "decay_horizon": 5,
-    "min_warmup_bars": 21,
-    "notes": 'Per-day return = pct_change(1) via (close - delay(close,1))/delay(close,1).',
-}
+sys.modules[__name__] = _canonical
 
-def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
-    c = panel["close"]
-    pc = c.shift(1)
-    ret = safe_div(c - pc, pc)
-    s20 = ts_std(ret, 20)
-    pick = ret.copy()
-    pick = pick.where(ret < 0, c)
-    pick = pick.where(~(ret < 0), s20)
-    return rank(ts_max(pick * pick, 5))
+__all__ = [
+    "annotations",
+    "compute",
+    "decay_linear",
+    "delta",
+    "rank",
+    "safe_div",
+    "signed_power",
+    "ts_argmax",
+    "ts_argmin",
+    "ts_corr",
+    "ts_cov",
+    "ts_max",
+    "ts_mean",
+    "ts_min",
+    "ts_rank",
+    "ts_std",
+]
