@@ -99,23 +99,20 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
         if path is None:
             # Check for active profile marker first
             active_profile_path = None
-            for p_cand in ("profiles/active_profile", "trading-agent/profiles/active_profile"):
-                if os.path.exists(p_cand):
-                    try:
-                        with open(p_cand, "r", encoding="utf-8") as pf:
-                            p_name = pf.read().strip()
-                            if p_name and p_name != "default":
-                                cand_cfg = f"profiles/{p_name}/settings.yaml" if os.path.exists(f"profiles/{p_name}/settings.yaml") else f"trading-agent/profiles/{p_name}/settings.yaml"
-                                if os.path.exists(cand_cfg):
-                                    active_profile_path = cand_cfg
-                    except Exception:
-                        pass
+            if os.path.exists("profiles/active_profile"):
+                try:
+                    with open("profiles/active_profile", "r", encoding="utf-8") as pf:
+                        p_name = pf.read().strip()
+                        if p_name and p_name != "default":
+                            cand_cfg = f"profiles/{p_name}/settings.yaml"
+                            if os.path.exists(cand_cfg):
+                                active_profile_path = cand_cfg
+                except Exception:
+                    pass
             if active_profile_path:
                 path = active_profile_path
             elif os.path.exists("config/settings.yaml"):
                 path = "config/settings.yaml"
-            elif os.path.exists("trading-agent/config/settings.yaml"):
-                path = "trading-agent/config/settings.yaml"
             else:
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 path = os.path.join(base_dir, "config", "settings.yaml")
@@ -315,7 +312,7 @@ def load_settings(path: Union[str, Dict[str, Any], None] = None, validate: bool 
             cp_cfg = llm_cfg.get("credential_pool")
             if isinstance(cp_cfg, dict):
                 try:
-                    from provider.credential_pool import get_credential_pool
+                    from monika.infrastructure.credentials.credential_pool import get_credential_pool
                     pool = get_credential_pool()
                     if "base_cooldown_seconds" in cp_cfg:
                         pool.base_cooldown_seconds = float(cp_cfg["base_cooldown_seconds"])

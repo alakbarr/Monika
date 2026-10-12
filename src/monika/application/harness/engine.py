@@ -472,7 +472,7 @@ class PluginEngine:
         if cat == PluginCategory.STRATEGY and hasattr(plugin, "get_strategy_class"):
             try:
                 from monika.application.analysis.strategies.registry import StrategyRegistry
-                from monika.application.analysis.strategies.base import EdgeStrategy
+                from monika.application.analysis.strategies.base_strategy import EdgeStrategy
 
                 strat_fn = getattr(plugin, "get_strategy_class")
                 if callable(strat_fn):
@@ -824,7 +824,7 @@ class PluginEngine:
         4. Execute on_register & on_preflight
         """
         plugins_cfg = settings.get("plugins", settings) if "plugins" in settings else settings
-        auto_dirs = plugins_cfg.get("directories", ["trading-agent/plugins", "custom_plugins"])
+        auto_dirs = plugins_cfg.get("directories", ["plugins", "custom_plugins"])
 
         # 1. Discover
         for ep_plugin in self.discover_entrypoints():

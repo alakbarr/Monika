@@ -10,8 +10,10 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 $RootDir = $PSScriptRoot
-$AgentDir = Join-Path $RootDir "trading-agent"
-$VenvDir = Join-Path $AgentDir "venv"
+$VenvDir = Join-Path $RootDir "venv"
+if (-not (Test-Path (Join-Path $VenvDir "Scripts\python.exe")) -and (Test-Path (Join-Path $RootDir ".venv\Scripts\python.exe"))) {
+    $VenvDir = Join-Path $RootDir ".venv"
+}
 $PythonExe = Join-Path $VenvDir "Scripts\python.exe"
 
 # 1. Verify Python
@@ -48,7 +50,7 @@ if (-not (Test-Path $PythonExe)) {
 Write-Host "`n[3/4] Installing core dependencies (< 30s)..." -ForegroundColor Yellow
 $PipExe = Join-Path $VenvDir "Scripts\pip.exe"
 & $PythonExe -m pip install --upgrade pip 2>$null | Out-Null
-& $PipExe install -r (Join-Path $AgentDir "requirements.txt")
+& $PipExe install -r (Join-Path $RootDir "requirements.txt")
 Write-Host "[OK] Core dependencies installed successfully." -ForegroundColor Green
 
 # 4. Check .env
@@ -65,10 +67,10 @@ Write-Host "  Dependencies ready. Launching Monika Interactive Setup...  " -Fore
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 
-Push-Location $AgentDir
-$env:PYTHONPATH = $AgentDir
+Push-Location $RootDir
+$env:PYTHONPATH = Join-Path $RootDir "src"
 try {
-    & $PythonExe -m cli.main setup
+    & $PythonExe -m monika.interfaces.cli.main setup
 } finally {
     Pop-Location
 }

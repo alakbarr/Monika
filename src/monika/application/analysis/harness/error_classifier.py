@@ -3,7 +3,7 @@ Structured error classification and recovery strategy assignment (Phase 3).
 Re-exports unified taxonomy from `provider.error_taxonomy`.
 """
 
-from provider.error_taxonomy import (
+from monika.infrastructure.credentials.error_taxonomy import (
     FailoverReason,
     ErrorCategory,
     RecoveryAction,

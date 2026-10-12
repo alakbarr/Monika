@@ -139,7 +139,7 @@ async def get_config_schema(request: Request):
 @require_role(Role.VIEWER)
 async def get_all_plugin_config_schemas(request: Request):
     """Return dictionary of plugin_id -> JSON Schema for registered plugins."""
-    from harness.engine import get_plugin_engine
+    from monika.application.harness.engine import get_plugin_engine
     engine = get_plugin_engine()
     schemas = {}
     if engine:
@@ -167,7 +167,7 @@ async def get_all_plugin_config_schemas(request: Request):
 @require_role(Role.VIEWER)
 async def get_plugin_config_schema(plugin_id: str, request: Request):
     """Return JSON Schema for a specific plugin configuration if available."""
-    from harness.engine import get_plugin_engine
+    from monika.application.harness.engine import get_plugin_engine
     engine = get_plugin_engine()
     if engine and plugin_id in engine.plugins:
         plugin = engine.plugins[plugin_id]

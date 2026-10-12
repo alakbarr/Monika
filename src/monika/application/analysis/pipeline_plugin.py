@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
 from monika.domain.risk.trade_proposal import TradeProposal
 
 

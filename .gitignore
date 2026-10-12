@@ -7,12 +7,16 @@
 *credentials*.json
 !*credentials*.json.example
 settings.yaml
+config/settings.yaml
+config/settings.yaml.*
 trading-agent/config/settings.yaml
 !settings.example.yaml
+!config/settings.example.yaml
 !trading-agent/config/settings.example.yaml
 
 # Python Virtual Environments & Packages
 venv/
+.venv/
 env/
 __pycache__/
 *.pyc
@@ -88,14 +92,15 @@ trading-agent/skills/crystallized/mt5_slippage_defense/
 # Local Data and Results
 /data/
 /data/*
-/trading-agent/data/*
-!/trading-agent/data/.gitkeep
-!/trading-agent/data/README.md
-!/trading-agent/data/alpha_catalog/
-!/trading-agent/data/alpha_catalog/*
+!/data/.gitkeep
+!/data/README.md
+!/data/alpha_catalog/
+!/data/alpha_catalog/*
 results/
-trading-agent/results/
-!trading-agent/benchmark/results/
+!src/monika/application/benchmark/results/
+src/monika/data/
+src/monika/application/data/
+**/.backups/
 
 # Scripts and Prompts
 scripts/*

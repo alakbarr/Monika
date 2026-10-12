@@ -1,28 +1,34 @@
-# Stage 1: Build React Frontend
+# Stage 1: Build React 19 Frontend
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY trading-agent/logging_observability/dashboard/frontend/package*.json ./
+COPY frontend/package*.json ./
 RUN npm ci
-COPY trading-agent/logging_observability/dashboard/frontend/ ./
+COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Core Trading Agent
-FROM python:3.11-slim
+# Stage 2: Core Trading Agent (Clean Architecture)
+FROM python:3.14-slim
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client curl && rm -rf /var/lib/apt/lists/*
 
-COPY trading-agent/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir --no-deps -e .
 
-COPY trading-agent/ ./trading-agent/
-COPY --from=frontend-builder /app/frontend/dist /app/trading-agent/logging_observability/dashboard/frontend/dist
-ENV PYTHONPATH=/app/trading-agent
+COPY src/ ./src/
+COPY config/ ./config/
+COPY skills/ ./skills/
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
 
 USER appuser
-CMD ["python", "trading-agent/main.py"]
+CMD ["python", "-m", "monika.interfaces.cli.main", "run"]

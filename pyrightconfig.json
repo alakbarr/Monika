@@ -1,28 +1,26 @@
 {
   "include": [
-    "src",
-    "trading-agent/risk",
-    "trading-agent/execution",
-    "trading-agent/database"
+    "src"
   ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
     "**/.pytest_cache",
     "**/venv",
-    "trading-agent/venv",
-    "trading-agent/logs",
-    "trading-agent/data",
-    "trading-agent/logging_observability/dashboard/frontend",
+    "venv",
+    ".venv",
+    "logs",
+    "data",
+    "frontend",
     "src/monika/domain/indicators",
     "**/site-packages",
     "**/dist",
     ".git"
   ],
   "stubPath": "typings",
-  "venvPath": "trading-agent",
+  "venvPath": ".",
   "venv": "venv",
-  "extraPaths": ["src", "trading-agent", "."],
+  "extraPaths": ["src", "."],
   "typeCheckingMode": "standard",
   "reportMissingTypeStubs": false,
   "reportMissingImports": false,

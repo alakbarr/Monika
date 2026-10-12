@@ -44,14 +44,14 @@ from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
 def get_session(*args, **kwargs):
-    es = sys.modules.get("execution.execution_service")
+    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get("execution.execution_service")
     if es and hasattr(es, "get_session"):
         return es.get_session(*args, **kwargs)
     return _db_mod.get_session(*args, **kwargs)
 
 
 def transactional_advisory_lock(*args, **kwargs):
-    es = sys.modules.get("execution.execution_service")
+    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get("execution.execution_service")
     if es and hasattr(es, "transactional_advisory_lock"):
         return es.transactional_advisory_lock(*args, **kwargs)
     return _db_mod.transactional_advisory_lock(*args, **kwargs)
@@ -309,7 +309,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         # Pre-order waterfall hook
         try:
-            from harness.engine import get_plugin_engine
+            from monika.application.harness.engine import get_plugin_engine
 
             engine = get_plugin_engine()
             if engine:
@@ -355,7 +355,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         # Post-order hook
         try:
-            from harness.engine import get_plugin_engine
+            from monika.application.harness.engine import get_plugin_engine
 
             engine = get_plugin_engine()
             if engine:

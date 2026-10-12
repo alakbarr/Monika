@@ -1,12 +1,7 @@
 from pathlib import Path
 def _get_trading_agent_dir() -> Path:
-    p = Path(__file__).resolve()
-    for parent in p.parents:
-        if (parent / "trading-agent").is_dir():
-            return parent / "trading-agent"
-        if parent.name == "trading-agent":
-            return parent
-    return p.parent.parent.parent
+    from monika.infrastructure.infra.paths import TRADING_AGENT_DIR
+    return TRADING_AGENT_DIR
 
 """
 4-Layer Memory System.

@@ -23,9 +23,19 @@ from monika.application.harness.engine import PluginEngine, get_plugin_engine
 
 logger = logging.getLogger("TradingAgent.Harness.Installer")
 
-# Base settings and catalog file locations
-SETTINGS_PATH = Path(__file__).resolve().parent.parent / "config" / "settings.yaml"
-CATALOG_PATH = Path(__file__).resolve().parent.parent / "config" / "plugin_catalog.yaml"
+def _resolve_config_path(filename: str) -> Path:
+    from monika.infrastructure.infra.paths import CONFIG_DIR
+    p = CONFIG_DIR / filename
+    if p.exists():
+        return p
+    core_p = Path(__file__).resolve().parents[2] / "core" / "config" / filename
+    if core_p.exists():
+        return core_p
+    return p
+
+
+SETTINGS_PATH = _resolve_config_path("settings.yaml")
+CATALOG_PATH = _resolve_config_path("plugin_catalog.yaml")
 
 # Regex patterns for safe package specification
 _SAFE_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_\-\.]*([=><~^!]=?[a-zA-Z0-9_\-\.]+)?$")

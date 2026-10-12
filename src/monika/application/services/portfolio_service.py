@@ -69,10 +69,13 @@ class PortfolioService:
                 "total_trades": 0,
                 "winning_trades": 0,
                 "losing_trades": 0,
+                "win_rate": 0.0,
                 "win_rate_pct": 0.0,
+                "total_pnl": 0.0,
                 "total_realized_pnl": 0.0,
                 "profit_factor": 0.0,
                 "average_trade_pnl": 0.0,
+                "total_volume": 0.0,
             }
 
         total_trades = len(closed_positions)
@@ -81,6 +84,7 @@ class PortfolioService:
         total_pnl = sum(float(p.pnl or 0.0) for p in closed_positions)
         gross_profit = sum(float(p.pnl or 0.0) for p in closed_positions if (p.pnl or 0.0) > 0.0)
         gross_loss = abs(sum(float(p.pnl or 0.0) for p in closed_positions if (p.pnl or 0.0) < 0.0))
+        total_volume = sum(float(p.volume or 0.0) for p in closed_positions)
 
         win_rate = (winning_trades / total_trades * 100.0) if total_trades > 0 else 0.0
         profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
@@ -90,10 +94,13 @@ class PortfolioService:
             "total_trades": total_trades,
             "winning_trades": winning_trades,
             "losing_trades": losing_trades,
+            "win_rate": round(win_rate, 2),
             "win_rate_pct": round(win_rate, 2),
+            "total_pnl": round(total_pnl, 2),
             "total_realized_pnl": round(total_pnl, 2),
             "profit_factor": round(profit_factor, 2),
             "average_trade_pnl": round(avg_pnl, 2),
+            "total_volume": round(total_volume, 2),
         }
 
     @staticmethod

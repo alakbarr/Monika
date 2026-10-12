@@ -10,8 +10,8 @@ set "ROOT_DIR=%~dp0"
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 cd /d "%ROOT_DIR%"
 
-set "AGENT_DIR=%ROOT_DIR%\trading-agent"
-set "VENV_DIR=%AGENT_DIR%\venv"
+set "VENV_DIR=%ROOT_DIR%\venv"
+if not exist "%VENV_DIR%\Scripts\python.exe" if exist "%ROOT_DIR%\.venv\Scripts\python.exe" set "VENV_DIR=%ROOT_DIR%\.venv"
 set "PYTHON_EXE=%VENV_DIR%\Scripts\python.exe"
 
 echo ============================================================
@@ -60,7 +60,7 @@ echo [OK] System Python detected: !SYS_PYTHON! (!PY_VER!)
 :: ── 2. Setup Virtual Environment & Install Dependencies ──────
 if not exist "%PYTHON_EXE%" (
     echo.
-    echo [*] [1/3] Creating virtual environment at trading-agent\venv...
+    echo [*] [1/3] Creating virtual environment at venv...
     !SYS_PYTHON! -m venv "%VENV_DIR%"
     if %ERRORLEVEL% neq 0 (
         echo [ERROR] Failed to create virtual environment.
@@ -71,7 +71,7 @@ if not exist "%PYTHON_EXE%" (
 
     echo [*] [2/3] Installing dependencies - this takes 1-2 minutes on first run...
     "%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip >nul 2>&1
-    "%VENV_DIR%\Scripts\pip.exe" install -r "%AGENT_DIR%\requirements.txt"
+    "%VENV_DIR%\Scripts\pip.exe" install -r "%ROOT_DIR%\requirements.txt"
     if %ERRORLEVEL% neq 0 (
         echo [WARN] Some dependencies encountered warnings. Continuing to pre-flight checks...
     ) else (
@@ -93,7 +93,6 @@ if /i "%~1"=="--setup" (
 
 set "ENV_EXISTS=0"
 if exist "%ROOT_DIR%\.env" set "ENV_EXISTS=1"
-if exist "%AGENT_DIR%\.env" set "ENV_EXISTS=1"
 
 if "!ENV_EXISTS!"=="0" goto :run_initial_setup
 goto :tier_selection
@@ -105,9 +104,9 @@ echo [*] Launching Interactive Setup Wizard...
 echo.
 
 :force_setup
-pushd "%AGENT_DIR%"
-set "PYTHONPATH=%AGENT_DIR%"
-"%PYTHON_EXE%" -m cli.main setup
+pushd "%ROOT_DIR%"
+set "PYTHONPATH=%ROOT_DIR%\src"
+"%PYTHON_EXE%" -m monika.interfaces.cli.main setup
 set "SETUP_ERR=%ERRORLEVEL%"
 if %SETUP_ERR% neq 0 (
     echo.
@@ -119,7 +118,7 @@ if %SETUP_ERR% neq 0 (
 
 echo.
 echo [*] Running automated system health verification: Doctor --fix...
-"%PYTHON_EXE%" -m cli.main doctor --fix
+"%PYTHON_EXE%" -m monika.interfaces.cli.main doctor --fix
 popd
 echo.
 echo [OK] Setup and system verification completed successfully!
@@ -129,7 +128,6 @@ echo.
 :: ── 4. Detect or Select Installation Tier (Trial vs Full) ────
 set "CURRENT_TIER="
 if exist "%ROOT_DIR%\.monika_tier" set /p CURRENT_TIER=<"%ROOT_DIR%\.monika_tier"
-if not defined CURRENT_TIER if exist "%AGENT_DIR%\.monika_tier" set /p CURRENT_TIER=<"%AGENT_DIR%\.monika_tier"
 if not defined CURRENT_TIER set "CURRENT_TIER=trial"
 
 if /i "%~1"=="full" (
@@ -189,7 +187,6 @@ if "!TIER_KEY!"=="2" (
 )
 
 echo !CURRENT_TIER!>"%ROOT_DIR%\.monika_tier"
-echo !CURRENT_TIER!>"%AGENT_DIR%\.monika_tier"
 
 echo.
 if /i "!CURRENT_TIER!"=="trial" (
@@ -199,7 +196,7 @@ if /i "!CURRENT_TIER!"=="trial" (
     echo [*] Active Package Tier: Trial Package
     echo [*] Engine: Zero-Config SQLite + Paper Trading Simulation.
     echo [*] Control: Interactive CLI + Telegram Alerts.
-    echo [*] Note: Upgrade anytime to Full Package via: python -m cli.main upgrade
+    echo [*] Note: Upgrade anytime to Full Package via: python -m monika.interfaces.cli.main upgrade
 ) else (
     set "MONIKA_TIER=full"
     set "DATABASE_URL="
@@ -211,15 +208,15 @@ if /i "!CURRENT_TIER!"=="trial" (
 echo.
 
 :: ── 5. Run Monika Trading Agent ──────────────────────────────
-pushd "%AGENT_DIR%"
-set "PYTHONPATH=%AGENT_DIR%"
+pushd "%ROOT_DIR%"
+set "PYTHONPATH=%ROOT_DIR%\src"
 
 :run_loop
-"%PYTHON_EXE%" -m cli.main run %*
+"%PYTHON_EXE%" -m monika.interfaces.cli.main run %*
 set "EXIT_CODE=%ERRORLEVEL%"
 
-if exist "%AGENT_DIR%\data\clean_shutdown.flag" (
-    del "%AGENT_DIR%\data\clean_shutdown.flag" 2>nul
+if exist "%ROOT_DIR%\data\clean_shutdown.flag" (
+    del "%ROOT_DIR%\data\clean_shutdown.flag" 2>nul
     echo.
     echo [*] Monika agent has shut down gracefully.
     popd
@@ -251,7 +248,7 @@ set /p ERR_CHOICE="Select an action [R=Retry / D=Doctor / S=Setup / T=Switch Tie
 if /i "!ERR_CHOICE!"=="d" (
     echo.
     echo [*] Running Monika Doctor diagnostics and auto-repair...
-    "%PYTHON_EXE%" -m cli.main doctor --fix
+    "%PYTHON_EXE%" -m monika.interfaces.cli.main doctor --fix
     echo.
     echo [*] Press any key to retry running Monika...
     pause >nul
@@ -259,7 +256,7 @@ if /i "!ERR_CHOICE!"=="d" (
 )
 
 if /i "!ERR_CHOICE!"=="s" (
-    "%PYTHON_EXE%" -m cli.main setup
+    "%PYTHON_EXE%" -m monika.interfaces.cli.main setup
     goto :run_loop
 )
 
@@ -270,7 +267,6 @@ if /i "!ERR_CHOICE!"=="t" (
         set "DATABASE_URL="
         set "PAPER_TRADING_MODE="
         echo full>"%ROOT_DIR%\.monika_tier"
-        echo full>"%AGENT_DIR%\.monika_tier"
         echo [*] Switched tier to: Full Package.
     ) else (
         set "CURRENT_TIER=trial"
@@ -278,7 +274,6 @@ if /i "!ERR_CHOICE!"=="t" (
         set "DATABASE_URL=sqlite+aiosqlite:///data/monika.db"
         set "PAPER_TRADING_MODE=true"
         echo trial>"%ROOT_DIR%\.monika_tier"
-        echo trial>"%AGENT_DIR%\.monika_tier"
         echo [*] Switched tier to: Trial Package (SQLite + Paper Trading).
     )
     goto :run_loop

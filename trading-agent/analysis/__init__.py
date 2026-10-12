@@ -1,3 +1,0 @@
-"""
-Analysis package for Monika.
-"""

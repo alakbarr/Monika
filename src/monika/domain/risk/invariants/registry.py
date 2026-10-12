@@ -25,7 +25,7 @@ class InvariantResult:
     status: InvariantStatus
     message: str = ""
     details: Dict[str, Any] = field(default_factory=dict)
-    package_name: str = "risk.invariants"
+    package_name: str = "monika.domain.risk.invariants"
 
     @property
     def passed(self) -> bool:

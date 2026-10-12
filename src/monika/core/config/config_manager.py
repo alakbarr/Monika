@@ -27,7 +27,7 @@ class ConfigManager:
     def __init__(self, config_paths: Optional[List[str]] = None):
         if config_paths is None:
             resolved_paths: List[str] = []
-            for cand in ["config/settings.yaml", "trading-agent/config/settings.yaml"]:
+            for cand in ["config/settings.yaml"]:
                 if os.path.exists(cand):
                     resolved_paths.append(cand)
             if not resolved_paths:

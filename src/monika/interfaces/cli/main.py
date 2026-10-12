@@ -4,15 +4,15 @@ import logging
 import os
 import sys
 
-# Ensure repo root, src, and trading-agent directories are on path
+# Ensure repo root and src directories are on path
 _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-for _p in (_repo_root, os.path.join(_repo_root, "src"), os.path.join(_repo_root, "trading-agent")):
+for _p in (_repo_root, os.path.join(_repo_root, "src")):
     if os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
-_parent_dir = os.path.join(_repo_root, "trading-agent")
+_parent_dir = _repo_root
 
-from bootstrap import install_bootstrap_hardening
+from monika.application.bootstrap import install_bootstrap_hardening
 
 install_bootstrap_hardening()
 
@@ -131,7 +131,7 @@ def is_daemon_running(api_url: Optional[str] = None) -> bool:
 def spawn_daemon_background(mode: str = "paper", config_path: Optional[str] = None) -> Optional[int]:
     """Spawn the Monika trading daemon as a persistent background process."""
     import subprocess
-    cmd = [sys.executable, "-m", "cli.main", "run", "--mode", mode]
+    cmd = [sys.executable, "-m", "monika.interfaces.cli.main", "run", "--mode", mode]
     if mode == "live":
         cmd.append("--confirm-live")
     if config_path:
@@ -794,14 +794,13 @@ async def _cmd_config_set(args):
         if not settings_path:
             for cand in (
                 os.path.join(_parent_dir, "config", "settings.yaml"),
-                "trading-agent/config/settings.yaml",
                 "config/settings.yaml",
             ):
                 if os.path.exists(cand):
                     settings_path = cand
                     break
         if not settings_path:
-            settings_path = "trading-agent/config/settings.yaml"
+            settings_path = "config/settings.yaml"
 
         existing = load_settings(settings_path)
         merged = _deep_merge(existing, update_dict)
@@ -906,7 +905,6 @@ async def _cmd_config_edit(args):
         plugin_cands = [
             os.path.join(_parent_dir, "config", "plugins", f"{plugin_id}.yaml"),
             f"config/plugins/{plugin_id}.yaml",
-            f"trading-agent/config/plugins/{plugin_id}.yaml",
         ]
         target_path = None
         for cand in plugin_cands:
@@ -924,11 +922,6 @@ async def _cmd_config_edit(args):
         is_plugin = True
     else:
         settings_path = getattr(args, "config", None) or "config/settings.yaml"
-        if not os.path.exists(settings_path):
-            for cand in ("trading-agent/config/settings.yaml", "config/settings.yaml"):
-                if os.path.exists(cand):
-                    settings_path = cand
-                    break
         edit_target = settings_path
         is_plugin = False
 

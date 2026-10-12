@@ -578,7 +578,6 @@ def persist_theme_to_settings(theme_name: str, config_path: Optional[str] = None
         config_path,
         os.getenv("SETTINGS_PATH"),
         "config/settings.yaml",
-        "trading-agent/config/settings.yaml",
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "settings.yaml"),
     ]
     target_path = None

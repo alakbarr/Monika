@@ -2771,7 +2771,7 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         try:
-            from harness.installer import list_all_plugins_status
+            from monika.application.harness.installer import list_all_plugins_status
             plugins = list_all_plugins_status()
             if not plugins:
                 await update.message.reply_text("[INFORMASI] Belum ada modul plugin yang terdaftar di sistem.")
@@ -2789,7 +2789,7 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         try:
-            from harness.installer import get_community_catalog
+            from monika.application.harness.installer import get_community_catalog
             catalog = get_community_catalog()
             lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
             kb = []
@@ -2814,7 +2814,7 @@ class TelegramBot:
             return
 
         pkg = ctx.args[0].strip()
-        from harness.installer import validate_package_spec, run_pip_install
+        from monika.application.harness.installer import validate_package_spec, run_pip_install
         valid, err = validate_package_spec(pkg)
         if not valid:
             await update.message.reply_text(f"[GAGAL] <b>Validasi Paket Ditolak:</b>\n{err}", parse_mode=ParseMode.HTML)
@@ -2837,7 +2837,7 @@ class TelegramBot:
             return
 
         pkg = ctx.args[0].strip()
-        from harness.installer import run_pip_uninstall
+        from monika.application.harness.installer import run_pip_uninstall
         msg = await update.message.reply_text(f"[MEMPROSES] <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML)
         success, out = await asyncio.to_thread(run_pip_uninstall, pkg)
         status_icon = "[BERHASIL]" if success else "[GAGAL]"
@@ -2852,7 +2852,7 @@ class TelegramBot:
             return
 
         plugin_id = ctx.args[0].strip()
-        from harness.installer import list_all_plugins_status, toggle_plugin_state
+        from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
         plugins = {p["id"]: p for p in list_all_plugins_status()}
         if plugin_id in plugins:
             p = plugins[plugin_id]
@@ -3458,7 +3458,7 @@ class TelegramBot:
             return
 
         if data.startswith("plg:"):
-            from harness.installer import (
+            from monika.application.harness.installer import (
                 list_all_plugins_status,
                 toggle_plugin_state,
                 run_pip_install,

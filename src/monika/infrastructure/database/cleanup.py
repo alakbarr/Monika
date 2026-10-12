@@ -337,7 +337,7 @@ async def reset_paper_trading_history(
     Args:
         session: AsyncSession SQLAlchemy aktif.
         create_backup: Apakah membuat backup JSON sebelum penghapusan.
-        backup_dir: Direktori penyimpanan backup. Jika None, gunakan 'trading-agent/database/backups'.
+        backup_dir: Direktori penyimpanan backup. Jika None, gunakan 'data/backups'.
         unlock_all: Apakah membuka seluruh kuncian/suspensi dan mereset streak.
         
     Returns:

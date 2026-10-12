@@ -40,7 +40,7 @@ class _AsyncSessionLocalProxy:
 
     def __call__(self, *args, **kwargs):
         import sys
-        mod = sys.modules.get("database.db")
+        mod = sys.modules.get("monika.infrastructure.database.db") or sys.modules.get("database.db")
         if mod is not None:
             current = getattr(mod, "AsyncSessionLocal", None)
             if current is not None and current is not self:
@@ -50,7 +50,7 @@ class _AsyncSessionLocalProxy:
 
     def __getattr__(self, name):
         import sys
-        mod = sys.modules.get("database.db")
+        mod = sys.modules.get("monika.infrastructure.database.db") or sys.modules.get("database.db")
         if mod is not None:
             current = getattr(mod, "AsyncSessionLocal", None)
             if current is not None and current is not self:
@@ -242,8 +242,10 @@ async def init_db() -> None:
         try:
             from alembic.config import Config
             from alembic import command
-            from pathlib import Path
-            alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+            from monika.infrastructure.infra.paths import get_repo_root
+            alembic_ini = get_repo_root() / "alembic.ini"
+            if not alembic_ini.exists():
+                alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
             if alembic_ini.exists():
                 alembic_cfg = Config(str(alembic_ini))
                 eng = engine if engine is not None else get_engine()

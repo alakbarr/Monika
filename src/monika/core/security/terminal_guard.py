@@ -149,6 +149,14 @@ def is_hardline_blocked_command(cmd_line: str) -> Tuple[bool, str]:
     return False, ""
 
 
+def _resolve_repo_root() -> Path:
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        if (parent / "pyproject.toml").is_file():
+            return parent
+    return p.parents[4] if len(p.parents) > 4 else p.parents[-1]
+
+
 def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) -> str:
     """
     Ensure the target write path is inside MONIKA_WRITE_SAFE_ROOT and does not target
@@ -161,7 +169,7 @@ def assert_safe_write_path(target_path: str, safe_root: Optional[str] = None) ->
     root_env = safe_root or os.environ.get("MONIKA_WRITE_SAFE_ROOT")
     if not root_env:
         # Default safe root is the repository root
-        root_path = Path(__file__).resolve().parent.parent.parent
+        root_path = _resolve_repo_root()
         allow_temp = True
     else:
         root_path = Path(root_env).resolve()
@@ -236,7 +244,7 @@ def assert_safe_read_path(target_path: str, safe_root: Optional[str] = None) -> 
 
     root_env = safe_root or os.environ.get("MONIKA_WRITE_SAFE_ROOT")
     if not root_env:
-        root_path = Path(__file__).resolve().parent.parent.parent
+        root_path = _resolve_repo_root()
         allow_temp = True
     else:
         root_path = Path(root_env).resolve()

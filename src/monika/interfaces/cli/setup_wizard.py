@@ -825,10 +825,8 @@ class SetupWizard:
 
         # 3. Write .monika_tier marker in root directory
         try:
-            root_cand = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if os.path.basename(root_cand) == "trading-agent":
-                root_cand = os.path.dirname(root_cand)
-            tier_marker = os.path.join(root_cand, ".monika_tier")
+            from monika.infrastructure.infra.paths import get_repo_root
+            tier_marker = os.path.join(str(get_repo_root()), ".monika_tier")
             with open(tier_marker, "w", encoding="utf-8") as f:
                 f.write(installed_tier.strip().lower() + "\n")
         except Exception:

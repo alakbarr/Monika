@@ -5,12 +5,17 @@ Runs on the main asyncio event loop without raw OS threads to preserve asyncpg p
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Set, FrozenSet
+from typing import Any, Dict, Optional, Set, FrozenSet, Protocol
 
 logger = logging.getLogger("TradingAgent.BackgroundReview")
 
 
+class ReflectorProtocol(Protocol):
+    async def reflect_on_trade(self, *args: Any, **kwargs: Any) -> Any: ...
+
+
 class BackgroundReviewEngine:
+    reflector: Optional[ReflectorProtocol]
     """
     Decoupled async worker that processes closed trade outcomes in the background.
     Reflects on trade performance, filters transient/infrastructure errors from permanent memory,
@@ -127,8 +132,11 @@ class BackgroundReviewEngine:
             try:
                 if hasattr(self.reflector, "reflect_on_trade"):
                     import inspect
+                    sig_params = list(inspect.signature(self.reflector.reflect_on_trade).parameters.values())
                     reflection_id = outcome.get("reflection_id") or outcome.get("ticket")
-                    if reflection_id:
+                    if len(sig_params) == 1:
+                        reflection = await self.reflector.reflect_on_trade(outcome)
+                    elif reflection_id:
                         from monika.infrastructure.database.async_db import get_session
                         async with get_session() as session:
                             reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))

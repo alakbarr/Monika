@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 logger = logging.getLogger("TradingAgent.Agent.ErrorClassifier")
 
 
-from provider.error_taxonomy import FailoverReason  # noqa: F401 (canonical re-export)
+from monika.infrastructure.credentials.error_taxonomy import FailoverReason  # noqa: F401 (canonical re-export)
 
 
 

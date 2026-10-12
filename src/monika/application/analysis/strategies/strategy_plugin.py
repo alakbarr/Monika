@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Type, Optional, Dict, Any, List
 import logging
 
-from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy
 
 logger = logging.getLogger("TradingAgent.StrategyPlugin")

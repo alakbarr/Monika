@@ -19,6 +19,7 @@ from monika.application.analysis.mcp.protocol import (
     make_error_response,
     make_result_response,
 )
+from monika.infrastructure.infra.paths import get_repo_root
 
 
 class FilesystemMcpServer:
@@ -27,7 +28,7 @@ class FilesystemMcpServer:
     def __init__(self):
         self.name = "workspace-filesystem-server"
         self.version = "2.0.0"
-        self.root_dir = Path(__file__).resolve().parent.parent.parent.parent
+        self.root_dir = get_repo_root()
 
     def get_tool_definitions(self) -> List[Dict[str, Any]]:
         return [

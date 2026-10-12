@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Callable
 
-from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
+from monika.application.harness.contract import TradingPlugin, PluginCategory, PluginMetadata
 
 logger = logging.getLogger("TradingAgent.ProviderRegistry")
 

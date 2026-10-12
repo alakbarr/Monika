@@ -14,6 +14,7 @@ import asyncio
 import logging
 import logging.handlers
 import os
+import queue
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -35,11 +36,7 @@ DATE_FORMAT        = "%Y-%m-%d %H:%M:%S"
 # 1. Python stdlib logging setup
 # ---------------------------------------------------------------------------
 
-import queue
-try:
-    from monika.infrastructure.infra.log_redactor import RedactingFormatter
-except ImportError:
-    from ..utils.infra.log_redactor import RedactingFormatter
+from monika.infrastructure.infra.log_redactor import RedactingFormatter
 
 _queue_listener: Optional[logging.handlers.QueueListener] = None
 

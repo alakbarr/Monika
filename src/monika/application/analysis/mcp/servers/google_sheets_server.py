@@ -24,6 +24,7 @@ from monika.application.analysis.mcp.protocol import (
     make_error_response,
     make_result_response,
 )
+from monika.infrastructure.infra.paths import get_repo_root
 
 
 class GoogleSheetsMcpServer:
@@ -35,7 +36,7 @@ class GoogleSheetsMcpServer:
         
         self.creds_path = creds_path or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or "config/google_credentials.json"
         if not os.path.isabs(self.creds_path):
-            base_dir = Path(__file__).resolve().parent.parent.parent.parent
+            base_dir = get_repo_root()
             self.creds_path = str(base_dir / self.creds_path)
             
         self.default_folder_id = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
