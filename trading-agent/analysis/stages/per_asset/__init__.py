@@ -1,30 +1,12 @@
-# ==============================================================================
-# File: analysis/stages/per_asset/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.analysis.stages.per_asset."""
+import sys as _sys
+import importlib as _importlib
 
-from analysis.stages.per_asset.context_builder import (
-    ContextBuilderMixin,
-    SYMBOL_TO_COT,
-    SYSTEM_PROMPT_STATIC,
-    SYSTEM_PROMPT_TEMPLATE,
-    SPECIALIST_PROMPTS,
-    _flatten_system_prompt,
-    _render_specialist_prompt,
-)
-from analysis.stages.per_asset.specialist_pipeline import SpecialistPipelineMixin
-from analysis.stages.per_asset.verifiers import VerifiersMixin, _get_symbol_sl_streak
-from analysis.stages.per_asset.runner import PerAssetRunner
+_canonical = _importlib.import_module("monika.application.analysis.stages.per_asset")
 
-__all__ = [
-    "PerAssetRunner",
-    "ContextBuilderMixin",
-    "SpecialistPipelineMixin",
-    "VerifiersMixin",
-    "SYMBOL_TO_COT",
-    "SYSTEM_PROMPT_STATIC",
-    "SYSTEM_PROMPT_TEMPLATE",
-    "SPECIALIST_PROMPTS",
-    "_flatten_system_prompt",
-    "_render_specialist_prompt",
-    "_get_symbol_sl_streak",
-]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

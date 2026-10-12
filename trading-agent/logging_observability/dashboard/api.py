@@ -15,9 +15,21 @@ from monika.interfaces.dashboard.api import (
     serve_setup_page,
     submit_setup_configuration,
     verify_api_key,
+    broadcast_live_event,
+    _active_websockets,
 )
 
-__all__ = ['app', 'logger', 'run_dashboard', 'run_dashboard_async', 'serve_setup_page', 'submit_setup_configuration', 'verify_api_key']
+__all__ = [
+    'app',
+    'logger',
+    'run_dashboard',
+    'run_dashboard_async',
+    'serve_setup_page',
+    'submit_setup_configuration',
+    'verify_api_key',
+    'broadcast_live_event',
+    '_active_websockets',
+]
 
 
 # Direct module reference forwarding
