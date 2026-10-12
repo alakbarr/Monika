@@ -299,7 +299,7 @@ async def handle_run_system_doctor_check(
 ) -> dict:
     """Run comprehensive diagnostic doctor check (directories, APIs, MT5, dependencies, database)."""
     try:
-        from monika.interfaces.cli.doctor import SystemDoctor
+        from monika.core.telemetry.doctor import SystemDoctor
 
         doctor = SystemDoctor(fix=False, live_probes=True, verbose=False)
         await doctor.run_diagnostics()

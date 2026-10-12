@@ -53,6 +53,39 @@ class CycleScheduler:
         self._stop_event = asyncio.Event()
         self._background_tasks: set[asyncio.Task] = set()
 
+    @property
+    def fundamental_stage(self) -> Any:
+        return self._fundamental
+
+    @property
+    def per_asset_stage(self) -> Any:
+        return self._per_asset
+
+    @property
+    def paper_tracker(self) -> Any:
+        return self._paper_tracker
+
+    async def should_skip_full_cycle(self) -> tuple[bool, str]:
+        return await self._should_skip_full_cycle()
+
+    async def log(self, session: Any, message: str, *args: Any, **kwargs: Any) -> None:
+        await self._log(session, message, *args, **kwargs)
+
+    def record_stage1_failure(self) -> int:
+        self._stage1_consecutive_failures += 1
+        return self._stage1_consecutive_failures
+
+    def reset_stage1_failures(self) -> None:
+        self._stage1_consecutive_failures = 0
+
+    @property
+    def max_stage1_failures_before_alert(self) -> int:
+        return self._max_stage1_failures_before_alert
+
+    @property
+    def stage1_consecutive_failures(self) -> int:
+        return self._stage1_consecutive_failures
+
     @staticmethod
     def _default_times_from_interval(cycle_hours: float) -> list[str]:
         """

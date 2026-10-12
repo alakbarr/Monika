@@ -255,8 +255,8 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                             f"tok={inv.input_tokens}/{inv.output_tokens} score={overall} err={inv.error}")
 
                 try:
-                    from monika.interfaces.dashboard.routes.common import broadcast_live_event
-                    asyncio.create_task(broadcast_live_event("benchmark_model_done", {
+                    from monika.application.analysis.event_broadcaster import emit_analysis_event
+                    emit_analysis_event("benchmark_model_done", {
                         "run_id": run_id,
                         "task_id": task_id,
                         "model_name": model_name,
@@ -270,7 +270,7 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                         "cached_tokens": actual_cached,
                         "schema_valid": schema_valid,
                         "error": inv.error,
-                    }))
+                    })
                 except Exception:
                     pass
 

@@ -168,6 +168,8 @@ Monika/
 │       │   │   ├── auxiliary_model_router.py
 │       │   │   ├── bounded_response.py
 │       │   │   ├── chat_agent.py
+│       │   │   ├── chat_compaction.py
+│       │   │   ├── chat_tool_router.py
 │       │   │   ├── deadline.py
 │       │   │   ├── empty_response_guard.py
 │       │   │   ├── error_classifier.py
@@ -1095,6 +1097,7 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── activity_logger.py
 │       │   │   ├── delegation_live_log.py
+│       │   │   ├── doctor.py
 │       │   │   ├── metrics_exporter.py
 │       │   │   ├── operator_feedback.py
 │       │   │   ├── report_writer.py
@@ -1450,12 +1453,14 @@ Monika/
 │       │   │   └── tool_condenser.py
 │       │   ├── storage
 │       │   │   ├── __init__.py
+│       │   │   ├── journal_helper.py
 │       │   │   └── spill_store.py
 │       │   └── sandboxes
 │       │       ├── __init__.py
 │       │       ├── base.py
 │       │       ├── docker_backend.py
-│       │       └── local_backend.py
+│       │       ├── local_backend.py
+│       │       └── pty_bridge.py
 │       └── interfaces
 │           ├── __init__.py
 │           ├── cli

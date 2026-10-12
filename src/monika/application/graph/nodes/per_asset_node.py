@@ -23,9 +23,13 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     
     logger.info("[Step 7/7] Running Per-Asset Stage (Stage 2 — Per-Asset Analysis)...")
     
-    async with get_session() as session:
-        await scheduler._paper_tracker.check_and_suspend_poor_performers(session, scheduler.settings)
-        suspended_symbols = await scheduler._paper_tracker.get_suspended_symbols(session)
+    paper_tracker = getattr(scheduler, "paper_tracker", getattr(scheduler, "_paper_tracker", None))
+    if paper_tracker is not None:
+        async with get_session() as session:
+            await paper_tracker.check_and_suspend_poor_performers(session, scheduler.settings)
+            suspended_symbols = await paper_tracker.get_suspended_symbols(session)
+    else:
+        suspended_symbols = []
 
     now = clock.now()
     hour = now.hour
@@ -96,13 +100,18 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     if ssvp_context or per_symbol_contexts:
         logger.info(f"[SSVP] Injecting reconciliation context into {len(symbols_to_analyze)} Stage 2 analyses")
 
-    pa_results = await scheduler._per_asset.run_all(
-        session_factory=_gs,
-        symbols=symbols_to_analyze,
-        extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
-        per_symbol_contexts=per_symbol_contexts,
-        user_market_intel=state.get('user_market_intel'),
-    )
+    per_asset_stage = getattr(scheduler, "per_asset_stage", getattr(scheduler, "_per_asset", None))
+    if per_asset_stage is not None:
+        pa_results = await per_asset_stage.run_all(
+            session_factory=_gs,
+            symbols=symbols_to_analyze,
+            extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
+            per_symbol_contexts=per_symbol_contexts,
+            user_market_intel=state.get('user_market_intel'),
+        )
+    else:
+        logger.warning("Per-asset stage not available on scheduler")
+        pa_results = {}
     
     # ============================================================
     # SSVP: CROSS-AGENT SELECTIVE SYNCHRONIZATION

@@ -27,6 +27,7 @@ from monika.infrastructure.database.repositories.position_repository import Posi
 from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
 from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
 from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
+from monika.domain.risk.position_sizing import get_instrument_spec
 
 logger = logging.getLogger("Monika.Application.TradingService")
 
@@ -123,18 +124,25 @@ class TradingService:
         act = action.upper()
         expires_at = time.time() + 60.0  # 60s TTL
 
+        spec = get_instrument_spec(sym)
+        pip_size = spec.pip_size if spec.pip_size > 0 else 0.0001
+        pip_val = spec.pip_value_usd if spec.pip_value_usd > 0 else 10.0
+        contract_size = spec.contract_size if spec.contract_size > 0 else 100_000.0
+
         # Calculate estimated risk / reward
         est_risk = 0.0
         est_reward = 0.0
         if stop_loss and entry_price:
             diff = abs(entry_price - stop_loss)
-            est_risk = diff * volume * 100.0  # Normalized pip/point scale
+            pips = diff / pip_size
+            est_risk = pips * pip_val * volume
         if take_profit and entry_price:
             diff = abs(take_profit - entry_price)
-            est_reward = diff * volume * 100.0
+            pips = diff / pip_size
+            est_reward = pips * pip_val * volume
 
         rr_ratio = (est_reward / est_risk) if est_risk > 0 else 0.0
-        margin_est = (entry_price * volume * 1000.0) / 100.0  # Standard 1:100 leverage estimate
+        margin_est = (entry_price * volume * contract_size) / 100.0  # Standard 1:100 leverage estimate
 
         token = cls.generate_preview_token(sym, act, volume, expires_at)
 

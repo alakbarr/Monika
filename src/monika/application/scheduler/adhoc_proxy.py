@@ -82,6 +82,18 @@ class AdHocSchedulerProxy:
             self._paper_tracker = None
 
     @property
+    def fundamental_stage(self) -> Any:
+        return self._fundamental
+
+    @property
+    def per_asset_stage(self) -> Any:
+        return self._per_asset
+
+    @property
+    def paper_tracker(self) -> Any:
+        return self._paper_tracker
+
+    @property
     def execution_service(self):
         return self._execution_service
 
