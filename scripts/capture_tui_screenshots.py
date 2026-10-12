@@ -8,12 +8,18 @@ import os
 import sys
 from pathlib import Path
 
-# Add trading-agent directory to Python path
+# Add src directory to Python path
 REPO_ROOT = Path(__file__).resolve().parent.parent
-TRADING_AGENT_DIR = REPO_ROOT / "trading-agent"
-sys.path.insert(0, str(TRADING_AGENT_DIR))
+_src_dir = REPO_ROOT / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 
-from cli.tui import TradingDashboard
+from monika.interfaces.cli.tui import TradingDashboard
 from textual.widgets import TabbedContent
 
 OUTPUT_DIR = REPO_ROOT / "docs" / "images" / "dashboard"

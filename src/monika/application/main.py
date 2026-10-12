@@ -119,7 +119,7 @@ for _fence_key, _fence_val in _initial_host_env.items():
 # ---------------------------------------------------------------------------
 # Bootstrap runtime & network hardening (RFC 8305 Happy Eyeballs & Windows UTF-8)
 # ---------------------------------------------------------------------------
-from bootstrap import install_bootstrap_hardening
+from monika.application.bootstrap import install_bootstrap_hardening
 install_bootstrap_hardening()
 
 # ---------------------------------------------------------------------------

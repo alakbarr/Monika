@@ -18,8 +18,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Set up paths
-REPO_ROOT = Path(r"D:\Monika")
-sys.path.insert(0, str(REPO_ROOT / "trading-agent"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_src_dir = REPO_ROOT / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -106,8 +113,8 @@ MODELS_TO_BENCHMARK = [
     },
 ]
 
-JSON_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_debate_results.json"
-MARKDOWN_OUTPUT_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_debate_openrouter.md"
+JSON_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_results.json"
+MARKDOWN_OUTPUT_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_debate_openrouter.md"
 
 
 class BenchmarkingDebateClient(OpenRouterProvider):

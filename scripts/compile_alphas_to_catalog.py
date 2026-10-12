@@ -17,10 +17,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("AlphaCompiler")
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-TRADING_AGENT_DIR = ROOT_DIR / "trading-agent"
-FACTORS_DIR = TRADING_AGENT_DIR / "indicators" / "alpha_zoo" / "factors"
-SYNTHESIZED_DIR = TRADING_AGENT_DIR / "analysis" / "strategies" / "synthesized"
-CATALOG_DIR = TRADING_AGENT_DIR / "data" / "alpha_catalog"
+FACTORS_DIR = ROOT_DIR / "src" / "monika" / "domain" / "indicators" / "alpha_zoo" / "factors"
+SYNTHESIZED_DIR = ROOT_DIR / "src" / "monika" / "application" / "analysis" / "strategies" / "synthesized"
+CATALOG_DIR = ROOT_DIR / "data" / "alpha_catalog"
 
 
 def map_category(theme_list: Optional[List[str]]) -> str:

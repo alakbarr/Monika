@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FRONTEND_SRC = REPO_ROOT / "trading-agent" / "logging_observability" / "dashboard" / "frontend" / "src"
+FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
 
 def lin(c: float) -> float:
     c /= 255.0

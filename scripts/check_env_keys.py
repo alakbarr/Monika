@@ -12,12 +12,9 @@ OPTIONAL = ["EIA_API_KEY", "DASHBOARD_PORT", "MT5_COMMON_FILES_PATH", "TELEGRAM_
 
 def check_keys():
     root_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-    agent_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), "trading-agent", ".env")
     
     if os.path.exists(root_env):
         env_path = root_env
-    elif os.path.exists(agent_env):
-        env_path = agent_env
     else:
         print("File .env tidak ditemukan!")
         return

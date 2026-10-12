@@ -221,7 +221,7 @@ class TrailingStopManager:
 
         if static_pips is None and self.settings.get("timesfm", {}).get("volatility_trailing_adjustment", True) and not getattr(pos, "trailing_override_json", None):
             try:
-                from monika.domain.indicators.timesfm_engine import TimesFMEngine
+                from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
                 tfm_engine = TimesFMEngine(self.settings)
                 tfm_fc = await tfm_engine.get_latest_forecast(session, pos.symbol, timeframe='H1', max_age_hours=8.0)
                 if tfm_fc:
@@ -235,7 +235,7 @@ class TrailingStopManager:
 
         profit_distance = 0.0
         if static_pips is not None and static_pips > 0:
-            from monika.application.execution.broker_adapter import _get_pip_size
+            from monika.infrastructure.brokers.broker_adapter import _get_pip_size
             pip_size = _get_pip_size(pos.symbol)
             trail_dist = static_pips * pip_size
             be_dist = (static_be_pips * pip_size) if static_be_pips is not None else trail_dist
