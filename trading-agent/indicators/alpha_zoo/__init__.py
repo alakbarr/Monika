@@ -12,6 +12,11 @@ quantitative factors for MetaTrader 5 markets.
 
 from indicators.alpha_zoo.meta import AlphaCategory, AlphaDirection, AlphaMeta
 from indicators.alpha_zoo.registry import FactorRegistry, RegistryError, load_alpha_meta_from_py
+from indicators.alpha_zoo.vector_factor_engine import (
+    VectorFactorEngine,
+    VectorFactorResult,
+    FactorSignal,
+)
 
 # Auto-register standard formulations
 import indicators.alpha_zoo.qlib158  # noqa: F401
@@ -27,5 +32,8 @@ __all__ = [
     "FactorRegistry",
     "RegistryError",
     "load_alpha_meta_from_py",
+    "VectorFactorEngine",
+    "VectorFactorResult",
+    "FactorSignal",
 ]
 

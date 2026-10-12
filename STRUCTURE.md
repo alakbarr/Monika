@@ -744,7 +744,10 @@ Monika/
     │   ├── settings.example.yaml
     ├── data
     │   ├── .gitkeep
-    │   └── README.md
+    │   ├── README.md
+    │   └── alpha_catalog
+    │       ├── factors.json
+    │       └── synthesized_strategies.json
     ├── data_sources
     │   ├── __init__.py
     │   ├── academic_search.py
@@ -964,7 +967,8 @@ Monika/
     │   │   ├── meta.py
     │   │   ├── microstructure_factors.py
     │   │   ├── qlib158.py
-    │   │   └── registry.py
+    │   │   ├── registry.py
+    │   │   └── vector_factor_engine.py
     │   ├── candlestick_patterns.py
     │   ├── chart_patterns.py
     │   ├── factor_primitives.py
