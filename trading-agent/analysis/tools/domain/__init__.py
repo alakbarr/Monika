@@ -1,41 +1,13 @@
-"""Domain-specific tool handlers for modular tool execution."""
+"""Shim package: monika.application.analysis.tools.domain."""
 
-from analysis.tools.domain import (
-    browser_tool,
-    clarify_tool,
-    code_execution_tool,
-    code_search_tool,
-    computer_use_tool,
+import sys as _sys
+import importlib as _importlib
 
-    cron_tool,
-    delegate_tool,
-    file_tools,
-    kanban_tools,
-    multimodal_tools,
-    skill_tools,
-    spill_reader_tool,
-    terminal_tools,
-    todo_tool,
-    tool_search_tools,
-    web_tools,
-)
+_canonical = _importlib.import_module("monika.application.analysis.tools.domain")
 
-__all__ = [
-    "browser_tool",
-    "clarify_tool",
-    "code_execution_tool",
-    "code_search_tool",
-    "computer_use_tool",
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
 
-    "cron_tool",
-    "delegate_tool",
-    "file_tools",
-    "kanban_tools",
-    "multimodal_tools",
-    "skill_tools",
-    "spill_reader_tool",
-    "terminal_tools",
-    "todo_tool",
-    "tool_search_tools",
-    "web_tools",
-]
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

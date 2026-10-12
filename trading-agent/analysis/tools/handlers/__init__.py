@@ -1,64 +1,13 @@
-"""
-Modular tool handlers package with decorator auto-registration (Phase 5).
-Imports all legacy and modular handler submodules to trigger registration into default_tool_registry.
-"""
+"""Shim package: monika.application.analysis.tools.handlers."""
 
-from analysis.tools.handlers import (
-    market_data,
-    macro_data,
-    sentiment_data,
-    position_mgmt,
-    trade_intel,
-    system_info,
-    analysis_submit,
-    scratchpad,
-    intelligence,
-    timesfm,
-    phase_transition,
-    category_loader,
-    verified_snapshot,
-    # Phase 5 modular handlers
-    market_data_tools,
-    macro_tools,
-    sentiment_tools,
-    news_tools,
-    trading_tools,
-    smc_tools,
-    db_tools,
-    execution_handlers,
-    ptc_handler,
-    skills_tools,
-    pattern_similarity_tools,
-    analytical_query_builder,
-    advanced_quant_tools,
-    chart_bridge_tools,
-)
-from analysis.tools.domain import spill_reader_tool
-from analysis.tools import domain
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "market_data",
-    "macro_data",
-    "sentiment_data",
-    "position_mgmt",
-    "trade_intel",
-    "system_info",
-    "analysis_submit",
-    "scratchpad",
-    "intelligence",
-    "timesfm",
-    "phase_transition",
-    "category_loader",
-    "verified_snapshot",
-    "market_data_tools",
-    "macro_tools",
-    "sentiment_tools",
-    "news_tools",
-    "trading_tools",
-    "smc_tools",
-    "db_tools",
-    "execution_handlers",
-    "skills_tools",
-    "pattern_similarity_tools",
-    "analytical_query_builder",
-]
+_canonical = _importlib.import_module("monika.application.analysis.tools.handlers")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

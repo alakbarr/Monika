@@ -1,35 +1,13 @@
-# ==============================================================================
-# File: analysis/tools/core/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.analysis.tools.core."""
 
-"""
-Core Unified Tooling Subsystem.
-"""
+import sys as _sys
+import importlib as _importlib
 
-from analysis.tools.core.coercion import coerce_arguments, coerce_value
-from analysis.tools.core.decorator import monika_tool
-from analysis.tools.core.definition import (
-    ExecutionTier,
-    ToolCategory,
-    ToolDefinition,
-    ToolParameter,
-)
-from analysis.tools.core.dispatcher import ToolDispatcher, ToolExecutionResult
-from analysis.tools.core.toolset_registry import (
-    ToolsetRegistry,
-    get_toolset_registry,
-)
+_canonical = _importlib.import_module("monika.application.analysis.tools.core")
 
-__all__ = [
-    "ExecutionTier",
-    "ToolCategory",
-    "ToolDefinition",
-    "ToolParameter",
-    "coerce_arguments",
-    "coerce_value",
-    "monika_tool",
-    "ToolDispatcher",
-    "ToolExecutionResult",
-    "ToolsetRegistry",
-    "get_toolset_registry",
-]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

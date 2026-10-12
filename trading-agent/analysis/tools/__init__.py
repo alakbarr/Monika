@@ -1,38 +1,13 @@
-"""
-Monika Quantitative Tool Ecosystem.
-Consolidates UnifiedToolRegistry (canonical declarative schemas & execution),
-ToolRegistry (dynamic auto-discovery & handler execution),
-and ProgressiveToolRegistry (stage/asset-specific prompt filtering).
-"""
+"""Shim package: monika.application.analysis.tools."""
 
-from analysis.tools.unified_registry import (
-    UnifiedToolRegistry,
-    unified_tool_registry,
-    TRADING_TOOLSET,
-    DEVELOPER_TOOLSET,
-    RESEARCH_TOOLSET,
-    TOOLSETS,
-)
-from analysis.tools.registry import (
-    ToolRegistry,
-    default_tool_registry,
-    register_tool,
-)
-from analysis.tools.tool_registry import (
-    ProgressiveToolRegistry,
-    default_registry,
-)
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "UnifiedToolRegistry",
-    "unified_tool_registry",
-    "ToolRegistry",
-    "default_tool_registry",
-    "register_tool",
-    "ProgressiveToolRegistry",
-    "default_registry",
-    "TRADING_TOOLSET",
-    "DEVELOPER_TOOLSET",
-    "RESEARCH_TOOLSET",
-    "TOOLSETS",
-]
+_canonical = _importlib.import_module("monika.application.analysis.tools")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__
