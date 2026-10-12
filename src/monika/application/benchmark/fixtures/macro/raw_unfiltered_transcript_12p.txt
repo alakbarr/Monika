@@ -1,0 +1,130 @@
+ECONOMIC CALENDAR AND FINANCIAL TELETYPE RAW FEED - 24 HOUR CYCLE LOG
+=== SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES & SQUAWKS ===
+TIMESTAMP 2026-10-01 00:01:14 GMT [TELETYPE SQUAWK 01] Tokyo market open: Nikkei 225 opens +0.4% at 38,920. BoJ Summary of Opinions indicates two board members urged readiness for rate hike at December meeting if wage trends align with baseline forecasts. USDJPY traded 143.82.
+TIMESTAMP 2026-10-01 01:15:22 GMT [DATA RELEASE] Australia August Building Approvals MoM actual -3.8% vs forecast -1.5%, previous +10.4%. AUDUSD softens from 0.6734 to 0.6718.
+TIMESTAMP 2026-10-01 02:45:00 GMT [DATA RELEASE] China Caixin Manufacturing PMI September actual 49.3 vs forecast 50.5, previous 50.4. Enters contraction territory. Offshore Yuan USDCNH ticks up to 7.0850.
+TIMESTAMP 2026-10-01 04:30:11 GMT [NEWS SQUAWK] Bank of Japan Governor Ueda speech in Osaka: Economic activity and prices developing in line with projections; central bank will adjust degree of monetary easing if economic outlook realized. JGB 10-year yield rises 1.5 bps to 1.155%.
+TIMESTAMP 2026-10-01 06:00:45 GMT [DATA RELEASE] Germany August Retail Sales MoM actual +1.6% vs forecast +0.1%, previous -1.5%. Year-on-year actual +2.1% vs forecast -0.4%. Temporary boost from back-to-school promotional activity.
+TIMESTAMP 2026-10-01 07:00:10 GMT [DATA RELEASE] UK Nationwide House Prices MoM September actual +0.7% vs forecast +0.2%, previous -0.2%. Annual pace accelerates to 3.2% YoY. GBPUSD rises to 1.3340.
+TIMESTAMP 2026-10-01 07:55:00 GMT [DATA RELEASE] Germany September Manufacturing PMI Final actual 40.6 vs forecast 40.3, previous 40.3. Sector remains in deep contraction; respondents cite weak automotive demand and energy input uncertainty.
+TIMESTAMP 2026-10-01 08:00:00 GMT [DATA RELEASE] Eurozone September Manufacturing PMI Final actual 45.0 vs forecast 44.8, previous 44.8. Output continues downward trajectory across core European economies.
+TIMESTAMP 2026-10-01 08:30:00 GMT [DATA RELEASE] UK September Manufacturing PMI Final actual 51.5 vs forecast 51.5, previous 51.5. Steady expansion sustained by domestic consumer goods orders.
+TIMESTAMP 2026-10-01 09:00:00 GMT [DATA RELEASE] Eurozone August Unemployment Rate actual 6.4% vs forecast 6.4%, previous 6.4%. Matches all-time record low for currency union.
+TIMESTAMP 2026-10-01 09:45:12 GMT [SPEECH] ECB Chief Economist Philip Lane in Milan: Disinflationary process remains well on track, but services inflation at 4.1% requires vigilance before considering further interest rate recalibration. EURUSD drifts to 1.1075.
+TIMESTAMP 2026-10-01 11:30:00 GMT [ENERGY INVENTORY] US API Crude Oil Stock change reported +1.45M barrels vs expectation -1.20M barrels. WTI crude temporarily eases from $71.60 to $71.20 before rebounding.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August JOLTS Job Openings actual 8.040M vs forecast 7.640M, previous revised to 7.711M from 7.673M. Substantial upward surprise demonstrates persistent labor market resilience.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August Factory Orders MoM actual -0.2% vs forecast -0.1%, previous +4.9%.
+
+=== SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ===
+TIMESTAMP 2026-10-01 13:00:00 GMT [SOVEREIGN BOND YIELD CURVE] US 10-Year Treasury Yield surges from 3.755% to 3.820% immediately following JOLTS release. US 2-Year Treasury Yield advances from 3.590% to 3.650%. 10Y-2Y yield curve spread un-inverts to +17.0 bps. Germany 10-Year Bund Yield at 2.385%, DE 2-Year at 2.150%. Spread US-DE 10Y widens to +143.5 bps favoring USD carry. UK 10Y Gilt Yield at 4.180%, Japan 10Y JGB at 1.150%. US Dollar Index (DXY) rallies through 101.40 resistance to 101.55.
+
+=== SECTION 3: REAL-TIME COMMODITY, DERIVATIVE & MACRO FLOWS ===
+TIMESTAMP 2026-10-01 14:00:00 GMT [DATA RELEASE] US September ISM Manufacturing PMI actual 47.2 vs forecast 47.5, previous 47.2. Prices Paid sub-index plunges to 48.3 from 52.9 (sharp disinflation in raw materials), New Orders sub-index improves to 46.1 from 44.6, Employment sub-index declines to 43.9 from 46.0.
+TIMESTAMP 2026-10-01 14:15:30 GMT [GEOPOLITICAL SQUAWK] Reuters breaking: Explosions reported near port facility in Hodeidah, Yemen; merchant vessel reported minor hull damage from uncrewed surface craft. WTI Crude spikes $1.20 to $71.85. Spot Gold catches bid from $2,654 to $2,662.
+TIMESTAMP 2026-10-01 15:30:00 GMT [CENTRAL BANK WATCH] CME FedWatch probability for November FOMC meeting shifts: 25 bps cut probability drops from 34.0% to 18.0%; probability of unchanged target range (3.75%-4.00%) rises to 82.0%. Zero probability of rate hike priced.
+TIMESTAMP 2026-10-01 16:30:00 GMT [EQUITY CLOSE] European equities close mixed: Euro Stoxx 50 -0.4%, DAX -0.3%, FTSE 100 +0.1%. US S&P 500 flat at 5,745, Nasdaq -0.2%.
+TIMESTAMP 2026-10-01 18:00:00 GMT [CFTC REPORT DIGEST] Leveraged funds in EUR futures increase gross short exposure by 8,200 contracts. Asset managers in Gold maintain net long exposure at 218,000 contracts, unchanged from prior week.
+ECONOMIC CALENDAR AND FINANCIAL TELETYPE RAW FEED - 24 HOUR CYCLE LOG
+=== SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES & SQUAWKS ===
+TIMESTAMP 2026-10-01 00:01:14 GMT [TELETYPE SQUAWK 01] Tokyo market open: Nikkei 225 opens +0.4% at 38,920. BoJ Summary of Opinions indicates two board members urged readiness for rate hike at December meeting if wage trends align with baseline forecasts. USDJPY traded 143.82.
+TIMESTAMP 2026-10-01 01:15:22 GMT [DATA RELEASE] Australia August Building Approvals MoM actual -3.8% vs forecast -1.5%, previous +10.4%. AUDUSD softens from 0.6734 to 0.6718.
+TIMESTAMP 2026-10-01 02:45:00 GMT [DATA RELEASE] China Caixin Manufacturing PMI September actual 49.3 vs forecast 50.5, previous 50.4. Enters contraction territory. Offshore Yuan USDCNH ticks up to 7.0850.
+TIMESTAMP 2026-10-01 04:30:11 GMT [NEWS SQUAWK] Bank of Japan Governor Ueda speech in Osaka: Economic activity and prices developing in line with projections; central bank will adjust degree of monetary easing if economic outlook realized. JGB 10-year yield rises 1.5 bps to 1.155%.
+TIMESTAMP 2026-10-01 06:00:45 GMT [DATA RELEASE] Germany August Retail Sales MoM actual +1.6% vs forecast +0.1%, previous -1.5%. Year-on-year actual +2.1% vs forecast -0.4%. Temporary boost from back-to-school promotional activity.
+TIMESTAMP 2026-10-01 07:00:10 GMT [DATA RELEASE] UK Nationwide House Prices MoM September actual +0.7% vs forecast +0.2%, previous -0.2%. Annual pace accelerates to 3.2% YoY. GBPUSD rises to 1.3340.
+TIMESTAMP 2026-10-01 07:55:00 GMT [DATA RELEASE] Germany September Manufacturing PMI Final actual 40.6 vs forecast 40.3, previous 40.3. Sector remains in deep contraction; respondents cite weak automotive demand and energy input uncertainty.
+TIMESTAMP 2026-10-01 08:00:00 GMT [DATA RELEASE] Eurozone September Manufacturing PMI Final actual 45.0 vs forecast 44.8, previous 44.8. Output continues downward trajectory across core European economies.
+TIMESTAMP 2026-10-01 08:30:00 GMT [DATA RELEASE] UK September Manufacturing PMI Final actual 51.5 vs forecast 51.5, previous 51.5. Steady expansion sustained by domestic consumer goods orders.
+TIMESTAMP 2026-10-01 09:00:00 GMT [DATA RELEASE] Eurozone August Unemployment Rate actual 6.4% vs forecast 6.4%, previous 6.4%. Matches all-time record low for currency union.
+TIMESTAMP 2026-10-01 09:45:12 GMT [SPEECH] ECB Chief Economist Philip Lane in Milan: Disinflationary process remains well on track, but services inflation at 4.1% requires vigilance before considering further interest rate recalibration. EURUSD drifts to 1.1075.
+TIMESTAMP 2026-10-01 11:30:00 GMT [ENERGY INVENTORY] US API Crude Oil Stock change reported +1.45M barrels vs expectation -1.20M barrels. WTI crude temporarily eases from $71.60 to $71.20 before rebounding.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August JOLTS Job Openings actual 8.040M vs forecast 7.640M, previous revised to 7.711M from 7.673M. Substantial upward surprise demonstrates persistent labor market resilience.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August Factory Orders MoM actual -0.2% vs forecast -0.1%, previous +4.9%.
+
+=== SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ===
+TIMESTAMP 2026-10-01 13:00:00 GMT [SOVEREIGN BOND YIELD CURVE] US 10-Year Treasury Yield surges from 3.755% to 3.820% immediately following JOLTS release. US 2-Year Treasury Yield advances from 3.590% to 3.650%. 10Y-2Y yield curve spread un-inverts to +17.0 bps. Germany 10-Year Bund Yield at 2.385%, DE 2-Year at 2.150%. Spread US-DE 10Y widens to +143.5 bps favoring USD carry. UK 10Y Gilt Yield at 4.180%, Japan 10Y JGB at 1.150%. US Dollar Index (DXY) rallies through 101.40 resistance to 101.55.
+
+=== SECTION 3: REAL-TIME COMMODITY, DERIVATIVE & MACRO FLOWS ===
+TIMESTAMP 2026-10-01 14:00:00 GMT [DATA RELEASE] US September ISM Manufacturing PMI actual 47.2 vs forecast 47.5, previous 47.2. Prices Paid sub-index plunges to 48.3 from 52.9 (sharp disinflation in raw materials), New Orders sub-index improves to 46.1 from 44.6, Employment sub-index declines to 43.9 from 46.0.
+TIMESTAMP 2026-10-01 14:15:30 GMT [GEOPOLITICAL SQUAWK] Reuters breaking: Explosions reported near port facility in Hodeidah, Yemen; merchant vessel reported minor hull damage from uncrewed surface craft. WTI Crude spikes $1.20 to $71.85. Spot Gold catches bid from $2,654 to $2,662.
+TIMESTAMP 2026-10-01 15:30:00 GMT [CENTRAL BANK WATCH] CME FedWatch probability for November FOMC meeting shifts: 25 bps cut probability drops from 34.0% to 18.0%; probability of unchanged target range (3.75%-4.00%) rises to 82.0%. Zero probability of rate hike priced.
+TIMESTAMP 2026-10-01 16:30:00 GMT [EQUITY CLOSE] European equities close mixed: Euro Stoxx 50 -0.4%, DAX -0.3%, FTSE 100 +0.1%. US S&P 500 flat at 5,745, Nasdaq -0.2%.
+TIMESTAMP 2026-10-01 18:00:00 GMT [CFTC REPORT DIGEST] Leveraged funds in EUR futures increase gross short exposure by 8,200 contracts. Asset managers in Gold maintain net long exposure at 218,000 contracts, unchanged from prior week.
+ECONOMIC CALENDAR AND FINANCIAL TELETYPE RAW FEED - 24 HOUR CYCLE LOG
+=== SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES & SQUAWKS ===
+TIMESTAMP 2026-10-01 00:01:14 GMT [TELETYPE SQUAWK 01] Tokyo market open: Nikkei 225 opens +0.4% at 38,920. BoJ Summary of Opinions indicates two board members urged readiness for rate hike at December meeting if wage trends align with baseline forecasts. USDJPY traded 143.82.
+TIMESTAMP 2026-10-01 01:15:22 GMT [DATA RELEASE] Australia August Building Approvals MoM actual -3.8% vs forecast -1.5%, previous +10.4%. AUDUSD softens from 0.6734 to 0.6718.
+TIMESTAMP 2026-10-01 02:45:00 GMT [DATA RELEASE] China Caixin Manufacturing PMI September actual 49.3 vs forecast 50.5, previous 50.4. Enters contraction territory. Offshore Yuan USDCNH ticks up to 7.0850.
+TIMESTAMP 2026-10-01 04:30:11 GMT [NEWS SQUAWK] Bank of Japan Governor Ueda speech in Osaka: Economic activity and prices developing in line with projections; central bank will adjust degree of monetary easing if economic outlook realized. JGB 10-year yield rises 1.5 bps to 1.155%.
+TIMESTAMP 2026-10-01 06:00:45 GMT [DATA RELEASE] Germany August Retail Sales MoM actual +1.6% vs forecast +0.1%, previous -1.5%. Year-on-year actual +2.1% vs forecast -0.4%. Temporary boost from back-to-school promotional activity.
+TIMESTAMP 2026-10-01 07:00:10 GMT [DATA RELEASE] UK Nationwide House Prices MoM September actual +0.7% vs forecast +0.2%, previous -0.2%. Annual pace accelerates to 3.2% YoY. GBPUSD rises to 1.3340.
+TIMESTAMP 2026-10-01 07:55:00 GMT [DATA RELEASE] Germany September Manufacturing PMI Final actual 40.6 vs forecast 40.3, previous 40.3. Sector remains in deep contraction; respondents cite weak automotive demand and energy input uncertainty.
+TIMESTAMP 2026-10-01 08:00:00 GMT [DATA RELEASE] Eurozone September Manufacturing PMI Final actual 45.0 vs forecast 44.8, previous 44.8. Output continues downward trajectory across core European economies.
+TIMESTAMP 2026-10-01 08:30:00 GMT [DATA RELEASE] UK September Manufacturing PMI Final actual 51.5 vs forecast 51.5, previous 51.5. Steady expansion sustained by domestic consumer goods orders.
+TIMESTAMP 2026-10-01 09:00:00 GMT [DATA RELEASE] Eurozone August Unemployment Rate actual 6.4% vs forecast 6.4%, previous 6.4%. Matches all-time record low for currency union.
+TIMESTAMP 2026-10-01 09:45:12 GMT [SPEECH] ECB Chief Economist Philip Lane in Milan: Disinflationary process remains well on track, but services inflation at 4.1% requires vigilance before considering further interest rate recalibration. EURUSD drifts to 1.1075.
+TIMESTAMP 2026-10-01 11:30:00 GMT [ENERGY INVENTORY] US API Crude Oil Stock change reported +1.45M barrels vs expectation -1.20M barrels. WTI crude temporarily eases from $71.60 to $71.20 before rebounding.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August JOLTS Job Openings actual 8.040M vs forecast 7.640M, previous revised to 7.711M from 7.673M. Substantial upward surprise demonstrates persistent labor market resilience.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August Factory Orders MoM actual -0.2% vs forecast -0.1%, previous +4.9%.
+
+=== SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ===
+TIMESTAMP 2026-10-01 13:00:00 GMT [SOVEREIGN BOND YIELD CURVE] US 10-Year Treasury Yield surges from 3.755% to 3.820% immediately following JOLTS release. US 2-Year Treasury Yield advances from 3.590% to 3.650%. 10Y-2Y yield curve spread un-inverts to +17.0 bps. Germany 10-Year Bund Yield at 2.385%, DE 2-Year at 2.150%. Spread US-DE 10Y widens to +143.5 bps favoring USD carry. UK 10Y Gilt Yield at 4.180%, Japan 10Y JGB at 1.150%. US Dollar Index (DXY) rallies through 101.40 resistance to 101.55.
+
+=== SECTION 3: REAL-TIME COMMODITY, DERIVATIVE & MACRO FLOWS ===
+TIMESTAMP 2026-10-01 14:00:00 GMT [DATA RELEASE] US September ISM Manufacturing PMI actual 47.2 vs forecast 47.5, previous 47.2. Prices Paid sub-index plunges to 48.3 from 52.9 (sharp disinflation in raw materials), New Orders sub-index improves to 46.1 from 44.6, Employment sub-index declines to 43.9 from 46.0.
+TIMESTAMP 2026-10-01 14:15:30 GMT [GEOPOLITICAL SQUAWK] Reuters breaking: Explosions reported near port facility in Hodeidah, Yemen; merchant vessel reported minor hull damage from uncrewed surface craft. WTI Crude spikes $1.20 to $71.85. Spot Gold catches bid from $2,654 to $2,662.
+TIMESTAMP 2026-10-01 15:30:00 GMT [CENTRAL BANK WATCH] CME FedWatch probability for November FOMC meeting shifts: 25 bps cut probability drops from 34.0% to 18.0%; probability of unchanged target range (3.75%-4.00%) rises to 82.0%. Zero probability of rate hike priced.
+TIMESTAMP 2026-10-01 16:30:00 GMT [EQUITY CLOSE] European equities close mixed: Euro Stoxx 50 -0.4%, DAX -0.3%, FTSE 100 +0.1%. US S&P 500 flat at 5,745, Nasdaq -0.2%.
+TIMESTAMP 2026-10-01 18:00:00 GMT [CFTC REPORT DIGEST] Leveraged funds in EUR futures increase gross short exposure by 8,200 contracts. Asset managers in Gold maintain net long exposure at 218,000 contracts, unchanged from prior week.
+ECONOMIC CALENDAR AND FINANCIAL TELETYPE RAW FEED - 24 HOUR CYCLE LOG
+=== SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES & SQUAWKS ===
+TIMESTAMP 2026-10-01 00:01:14 GMT [TELETYPE SQUAWK 01] Tokyo market open: Nikkei 225 opens +0.4% at 38,920. BoJ Summary of Opinions indicates two board members urged readiness for rate hike at December meeting if wage trends align with baseline forecasts. USDJPY traded 143.82.
+TIMESTAMP 2026-10-01 01:15:22 GMT [DATA RELEASE] Australia August Building Approvals MoM actual -3.8% vs forecast -1.5%, previous +10.4%. AUDUSD softens from 0.6734 to 0.6718.
+TIMESTAMP 2026-10-01 02:45:00 GMT [DATA RELEASE] China Caixin Manufacturing PMI September actual 49.3 vs forecast 50.5, previous 50.4. Enters contraction territory. Offshore Yuan USDCNH ticks up to 7.0850.
+TIMESTAMP 2026-10-01 04:30:11 GMT [NEWS SQUAWK] Bank of Japan Governor Ueda speech in Osaka: Economic activity and prices developing in line with projections; central bank will adjust degree of monetary easing if economic outlook realized. JGB 10-year yield rises 1.5 bps to 1.155%.
+TIMESTAMP 2026-10-01 06:00:45 GMT [DATA RELEASE] Germany August Retail Sales MoM actual +1.6% vs forecast +0.1%, previous -1.5%. Year-on-year actual +2.1% vs forecast -0.4%. Temporary boost from back-to-school promotional activity.
+TIMESTAMP 2026-10-01 07:00:10 GMT [DATA RELEASE] UK Nationwide House Prices MoM September actual +0.7% vs forecast +0.2%, previous -0.2%. Annual pace accelerates to 3.2% YoY. GBPUSD rises to 1.3340.
+TIMESTAMP 2026-10-01 07:55:00 GMT [DATA RELEASE] Germany September Manufacturing PMI Final actual 40.6 vs forecast 40.3, previous 40.3. Sector remains in deep contraction; respondents cite weak automotive demand and energy input uncertainty.
+TIMESTAMP 2026-10-01 08:00:00 GMT [DATA RELEASE] Eurozone September Manufacturing PMI Final actual 45.0 vs forecast 44.8, previous 44.8. Output continues downward trajectory across core European economies.
+TIMESTAMP 2026-10-01 08:30:00 GMT [DATA RELEASE] UK September Manufacturing PMI Final actual 51.5 vs forecast 51.5, previous 51.5. Steady expansion sustained by domestic consumer goods orders.
+TIMESTAMP 2026-10-01 09:00:00 GMT [DATA RELEASE] Eurozone August Unemployment Rate actual 6.4% vs forecast 6.4%, previous 6.4%. Matches all-time record low for currency union.
+TIMESTAMP 2026-10-01 09:45:12 GMT [SPEECH] ECB Chief Economist Philip Lane in Milan: Disinflationary process remains well on track, but services inflation at 4.1% requires vigilance before considering further interest rate recalibration. EURUSD drifts to 1.1075.
+TIMESTAMP 2026-10-01 11:30:00 GMT [ENERGY INVENTORY] US API Crude Oil Stock change reported +1.45M barrels vs expectation -1.20M barrels. WTI crude temporarily eases from $71.60 to $71.20 before rebounding.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August JOLTS Job Openings actual 8.040M vs forecast 7.640M, previous revised to 7.711M from 7.673M. Substantial upward surprise demonstrates persistent labor market resilience.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August Factory Orders MoM actual -0.2% vs forecast -0.1%, previous +4.9%.
+
+=== SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ===
+TIMESTAMP 2026-10-01 13:00:00 GMT [SOVEREIGN BOND YIELD CURVE] US 10-Year Treasury Yield surges from 3.755% to 3.820% immediately following JOLTS release. US 2-Year Treasury Yield advances from 3.590% to 3.650%. 10Y-2Y yield curve spread un-inverts to +17.0 bps. Germany 10-Year Bund Yield at 2.385%, DE 2-Year at 2.150%. Spread US-DE 10Y widens to +143.5 bps favoring USD carry. UK 10Y Gilt Yield at 4.180%, Japan 10Y JGB at 1.150%. US Dollar Index (DXY) rallies through 101.40 resistance to 101.55.
+
+=== SECTION 3: REAL-TIME COMMODITY, DERIVATIVE & MACRO FLOWS ===
+TIMESTAMP 2026-10-01 14:00:00 GMT [DATA RELEASE] US September ISM Manufacturing PMI actual 47.2 vs forecast 47.5, previous 47.2. Prices Paid sub-index plunges to 48.3 from 52.9 (sharp disinflation in raw materials), New Orders sub-index improves to 46.1 from 44.6, Employment sub-index declines to 43.9 from 46.0.
+TIMESTAMP 2026-10-01 14:15:30 GMT [GEOPOLITICAL SQUAWK] Reuters breaking: Explosions reported near port facility in Hodeidah, Yemen; merchant vessel reported minor hull damage from uncrewed surface craft. WTI Crude spikes $1.20 to $71.85. Spot Gold catches bid from $2,654 to $2,662.
+TIMESTAMP 2026-10-01 15:30:00 GMT [CENTRAL BANK WATCH] CME FedWatch probability for November FOMC meeting shifts: 25 bps cut probability drops from 34.0% to 18.0%; probability of unchanged target range (3.75%-4.00%) rises to 82.0%. Zero probability of rate hike priced.
+TIMESTAMP 2026-10-01 16:30:00 GMT [EQUITY CLOSE] European equities close mixed: Euro Stoxx 50 -0.4%, DAX -0.3%, FTSE 100 +0.1%. US S&P 500 flat at 5,745, Nasdaq -0.2%.
+TIMESTAMP 2026-10-01 18:00:00 GMT [CFTC REPORT DIGEST] Leveraged funds in EUR futures increase gross short exposure by 8,200 contracts. Asset managers in Gold maintain net long exposure at 218,000 contracts, unchanged from prior week.
+ECONOMIC CALENDAR AND FINANCIAL TELETYPE RAW FEED - 24 HOUR CYCLE LOG
+=== SECTION 1: GLOBAL ECONOMIC CALENDAR RELEASES & SQUAWKS ===
+TIMESTAMP 2026-10-01 00:01:14 GMT [TELETYPE SQUAWK 01] Tokyo market open: Nikkei 225 opens +0.4% at 38,920. BoJ Summary of Opinions indicates two board members urged readiness for rate hike at December meeting if wage trends align with baseline forecasts. USDJPY traded 143.82.
+TIMESTAMP 2026-10-01 01:15:22 GMT [DATA RELEASE] Australia August Building Approvals MoM actual -3.8% vs forecast -1.5%, previous +10.4%. AUDUSD softens from 0.6734 to 0.6718.
+TIMESTAMP 2026-10-01 02:45:00 GMT [DATA RELEASE] China Caixin Manufacturing PMI September actual 49.3 vs forecast 50.5, previous 50.4. Enters contraction territory. Offshore Yuan USDCNH ticks up to 7.0850.
+TIMESTAMP 2026-10-01 04:30:11 GMT [NEWS SQUAWK] Bank of Japan Governor Ueda speech in Osaka: Economic activity and prices developing in line with projections; central bank will adjust degree of monetary easing if economic outlook realized. JGB 10-year yield rises 1.5 bps to 1.155%.
+TIMESTAMP 2026-10-01 06:00:45 GMT [DATA RELEASE] Germany August Retail Sales MoM actual +1.6% vs forecast +0.1%, previous -1.5%. Year-on-year actual +2.1% vs forecast -0.4%. Temporary boost from back-to-school promotional activity.
+TIMESTAMP 2026-10-01 07:00:10 GMT [DATA RELEASE] UK Nationwide House Prices MoM September actual +0.7% vs forecast +0.2%, previous -0.2%. Annual pace accelerates to 3.2% YoY. GBPUSD rises to 1.3340.
+TIMESTAMP 2026-10-01 07:55:00 GMT [DATA RELEASE] Germany September Manufacturing PMI Final actual 40.6 vs forecast 40.3, previous 40.3. Sector remains in deep contraction; respondents cite weak automotive demand and energy input uncertainty.
+TIMESTAMP 2026-10-01 08:00:00 GMT [DATA RELEASE] Eurozone September Manufacturing PMI Final actual 45.0 vs forecast 44.8, previous 44.8. Output continues downward trajectory across core European economies.
+TIMESTAMP 2026-10-01 08:30:00 GMT [DATA RELEASE] UK September Manufacturing PMI Final actual 51.5 vs forecast 51.5, previous 51.5. Steady expansion sustained by domestic consumer goods orders.
+TIMESTAMP 2026-10-01 09:00:00 GMT [DATA RELEASE] Eurozone August Unemployment Rate actual 6.4% vs forecast 6.4%, previous 6.4%. Matches all-time record low for currency union.
+TIMESTAMP 2026-10-01 09:45:12 GMT [SPEECH] ECB Chief Economist Philip Lane in Milan: Disinflationary process remains well on track, but services inflation at 4.1% requires vigilance before considering further interest rate recalibration. EURUSD drifts to 1.1075.
+TIMESTAMP 2026-10-01 11:30:00 GMT [ENERGY INVENTORY] US API Crude Oil Stock change reported +1.45M barrels vs expectation -1.20M barrels. WTI crude temporarily eases from $71.60 to $71.20 before rebounding.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August JOLTS Job Openings actual 8.040M vs forecast 7.640M, previous revised to 7.711M from 7.673M. Substantial upward surprise demonstrates persistent labor market resilience.
+TIMESTAMP 2026-10-01 12:30:00 GMT [DATA RELEASE] US August Factory Orders MoM actual -0.2% vs forecast -0.1%, previous +4.9%.
+
+=== SECTION 2: SOVEREIGN BOND YIELD CURVE & INTERBANK DATA ===
+TIMESTAMP 2026-10-01 13:00:00 GMT [SOVEREIGN BOND YIELD CURVE] US 10-Year Treasury Yield surges from 3.755% to 3.820% immediately following JOLTS release. US 2-Year Treasury Yield advances from 3.590% to 3.650%. 10Y-2Y yield curve spread un-inverts to +17.0 bps. Germany 10-Year Bund Yield at 2.385%, DE 2-Year at 2.150%. Spread US-DE 10Y widens to +143.5 bps favoring USD carry. UK 10Y Gilt Yield at 4.180%, Japan 10Y JGB at 1.150%. US Dollar Index (DXY) rallies through 101.40 resistance to 101.55.
+
+=== SECTION 3: REAL-TIME COMMODITY, DERIVATIVE & MACRO FLOWS ===
+TIMESTAMP 2026-10-01 14:00:00 GMT [DATA RELEASE] US September ISM Manufacturing PMI actual 47.2 vs forecast 47.5, previous 47.2. Prices Paid sub-index plunges to 48.3 from 52.9 (sharp disinflation in raw materials), New Orders sub-index improves to 46.1 from 44.6, Employment sub-index declines to 43.9 from 46.0.
+TIMESTAMP 2026-10-01 14:15:30 GMT [GEOPOLITICAL SQUAWK] Reuters breaking: Explosions reported near port facility in Hodeidah, Yemen; merchant vessel reported minor hull damage from uncrewed surface craft. WTI Crude spikes $1.20 to $71.85. Spot Gold catches bid from $2,654 to $2,662.
+TIMESTAMP 2026-10-01 15:30:00 GMT [CENTRAL BANK WATCH] CME FedWatch probability for November FOMC meeting shifts: 25 bps cut probability drops from 34.0% to 18.0%; probability of unchanged target range (3.75%-4.00%) rises to 82.0%. Zero probability of rate hike priced.
+TIMESTAMP 2026-10-01 16:30:00 GMT [EQUITY CLOSE] European equities close mixed: Euro Stoxx 50 -0.4%, DAX -0.3%, FTSE 100 +0.1%. US S&P 500 flat at 5,745, Nasdaq -0.2%.
+TIMESTAMP 2026-10-01 18:00:00 GMT [CFTC REPORT DIGEST] Leveraged funds in EUR futures increase gross short exposure by 8,200 contracts. Asset managers in Gold maintain net long exposure at 218,000 contracts, unchanged from prior week.

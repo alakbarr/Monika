@@ -1,0 +1,13 @@
+id: "paper_trading"
+name: "High-Fidelity Paper Trading Broker Engine"
+version: "1.0.0"
+category: "broker"
+description: "Realistic virtual simulation engine with dynamic spreads, ATR slippage, and fill latency"
+author: "Monika Core Team"
+entrypoint: "paper_plugin:PaperTradingBrokerPlugin"
+is_core: false
+dependencies: []
+config:
+  initial_balance: 10000.0
+  leverage: 100.0
+  slippage_pips: 0.5

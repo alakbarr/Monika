@@ -620,5 +620,42 @@ def test_pr7b_identity_and_parity():
     assert shim_tso.ToolSafetyOracle is canon_tso.ToolSafetyOracle
 
 
+def test_pr7c_identity_and_parity():
+    """Verify PR-7c benchmark, plugins, and entrypoint identity parity."""
+    # 1. Benchmark
+    import benchmark.runner as shim_brun
+    import monika.application.benchmark.runner as canon_brun
+    assert shim_brun.run_benchmark is canon_brun.run_benchmark
+
+    import benchmark.model_registry as shim_bmr
+    import monika.application.benchmark.model_registry as canon_bmr
+    assert shim_bmr.get_candidate_models is canon_bmr.get_candidate_models
+
+    import benchmark.task_specs as shim_bts
+    import monika.application.benchmark.task_specs as canon_bts
+    assert shim_bts.TASKS is canon_bts.TASKS
+
+    # 2. Plugins & Plugin Kernel
+    import plugin_kernel as shim_pk
+    import monika.application.plugins.kernel as canon_pk
+    assert shim_pk.TradingPlugin is canon_pk.TradingPlugin
+    assert shim_pk.PluginEngine is canon_pk.PluginEngine
+
+    import plugins.loader as shim_pl
+    import monika.application.plugins.loader as canon_pl
+    assert shim_pl.PluginLoader is canon_pl.PluginLoader
+    assert shim_pl.topological_sort_plugins is canon_pl.topological_sort_plugins
+
+    # 3. Entrypoints & Services
+    import bootstrap as shim_boot
+    import monika.application.bootstrap as canon_boot
+    assert shim_boot.race_dual_stack_socket is canon_boot.race_dual_stack_socket
+
+    import services.system_status_service as shim_sss
+    import monika.application.services.system_status_service as canon_sss
+    assert shim_sss.SystemStatusService is canon_sss.SystemStatusService
+
+
+
 
 

@@ -1,0 +1,67 @@
+{
+  "snapshot_id": "2026_09_GLOBAL_MACRO",
+  "as_of_date": "2026-09-25T09:00:00Z",
+  "comment": "Real-world global market snapshot compiled as of September 25, 2026",
+  "fx_prices": {
+    "EURUSD": 1.1377,
+    "GBPUSD": 1.3217,
+    "USDJPY": 158.80,
+    "XAUUSD": 4260.00,
+    "BTCUSD": 84200.00,
+    "DXY": 101.25
+  },
+  "volatility": {
+    "vix": 15.68,
+    "market_regime": "low_volatility_bull_selective",
+    "tail_risk_cost": "elevated",
+    "energy_shock_drag": true
+  },
+  "central_banks": {
+    "fed": {
+      "target_rate": "3.75% - 4.00%",
+      "last_action": "+25 bps hike (Sept 16, 2026)",
+      "stance": "hawkish",
+      "forward_guidance": "at least one more +25 bps hike projected in late 2026"
+    },
+    "ecb": {
+      "deposit_rate": "2.50%",
+      "last_action": "+25 bps hike (Sept 10, 2026)",
+      "stance": "hawkish_data_dependent",
+      "forward_guidance": "inflation above 2% target until late 2027"
+    },
+    "boj": {
+      "policy_rate": "1.25%",
+      "last_action": "+25 bps hike (Sept 18, 2026)",
+      "stance": "hawkish_normalization",
+      "ycc_status": "fully_normalized"
+    },
+    "boe": {
+      "bank_rate": "3.75%",
+      "last_action": "hold at 3.75% (6-3 split, Sept 17, 2026)",
+      "stance": "neutral_to_hawkish"
+    }
+  },
+  "inflation_data": {
+    "us_cpi_yoy": "3.4%",
+    "us_core_pce_yoy": "3.3%",
+    "eurozone_cpi_yoy": "3.2%",
+    "uk_cpi_yoy": "3.1%",
+    "japan_cpi_yoy": "1.9%"
+  },
+  "commodities": {
+    "brent_crude": 106.00,
+    "wti_crude": 95.00,
+    "natural_gas_henry_hub": 3.18
+  },
+  "geopolitical": {
+    "middle_east": "Active conflict — Strait of Hormuz shipping restricted",
+    "sanctions": "US Sanctioning Russia and Iran Act of 2026 enacted Sept 18",
+    "us_china": "Fragile trade truce held ahead of summit"
+  },
+  "adr_pips": {
+    "EURUSD": 55,
+    "GBPUSD": 70,
+    "USDJPY": 90,
+    "XAUUSD": 12000
+  }
+}

@@ -1,59 +1,9 @@
-"""
-Custom Indicator Reference Plugin for Monika.
-Demonstrates custom volatility and VWAP indicator calculation without modifying core codebase.
-"""
+"""Shim module: monika.application.plugins.indicators.custom_indicator.custom_indicator."""
 
-from typing import Dict, Any, Optional
+import sys as _sys
+import importlib as _importlib
 
+from monika.application.plugins.indicators.custom_indicator.custom_indicator import *
 
-from harness.contract import (
-    TradingPlugin,
-    PluginMetadata,
-    PluginCategory,
-    PluginOrigin,
-)
-
-
-def calculate_vwap_deviation(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Calculates Volume-Weighted Average Price (VWAP) deviation for a symbol."""
-    symbol = str(args.get("symbol", "EURUSD")).upper()
-    current_price = float(args.get("current_price", 1.0850))
-    vwap_reference = float(args.get("vwap_reference", 1.0820))
-    deviation_pct = (current_price - vwap_reference) / vwap_reference * 100.0
-    return {
-        "symbol": symbol,
-        "current_price": current_price,
-        "vwap_reference": vwap_reference,
-        "deviation_pct": round(deviation_pct, 3),
-        "status": "calculated",
-    }
-
-
-class CustomIndicatorPlugin(TradingPlugin):
-    """Custom technical indicator plugin for volume and price analysis."""
-    metadata = PluginMetadata(
-        id="custom_indicator_plugin",
-        name="Custom Indicator Plugin",
-        version="1.0.0",
-        category=PluginCategory.TOOL,
-        description="Reference custom technical indicator plugin for volume and price analysis",
-        origin=PluginOrigin.LOCAL_DIRECTORY,
-    )
-
-    def calculate(self, symbol: str, current_price: float, vwap_reference: float) -> Dict[str, Any]:
-        return calculate_vwap_deviation({
-            "symbol": symbol,
-            "current_price": current_price,
-            "vwap_reference": vwap_reference,
-        })
-
-
-def initialize(manager: Optional[Any] = None, config: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
-    """Plugin startup lifecycle initialization."""
-    pass
-
-
-def post_cycle(cycle_data: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
-    """Invoked after trading cycle completion."""
-    pass
-
+_canonical = _importlib.import_module("monika.application.plugins.indicators.custom_indicator.custom_indicator")
+_sys.modules[__name__] = _canonical

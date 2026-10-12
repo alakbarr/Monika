@@ -913,6 +913,29 @@ Monika/
 │       │   │   ├── statistical_tests.py
 │       │   │   ├── time_machine.py
 │       │   │   └── walk_forward_engine.py
+│       │   ├── benchmark
+│       │   │   ├── __init__.py
+│       │   │   ├── alpha_arena.py
+│       │   │   ├── config.py
+│       │   │   ├── db_access.py
+│       │   │   ├── db_models.py
+│       │   │   ├── deterministic.py
+│       │   │   ├── fixture_loader.py
+│       │   │   ├── fixtures
+│       │   │   ├── invoker.py
+│       │   │   ├── judge.py
+│       │   │   ├── model_registry.py
+│       │   │   ├── paired_evaluator.py
+│       │   │   ├── pricing.py
+│       │   │   ├── prompt_evolution.py
+│       │   │   ├── report.py
+│       │   │   ├── results
+│       │   │   ├── runner.py
+│       │   │   ├── system_one_scorer.py
+│       │   │   ├── task_specs.py
+│       │   │   ├── token_drift_tracker.py
+│       │   │   └── trade_trajectory_logger.py
+│       │   ├── bootstrap.py
 │       │   ├── evals
 │       │   │   ├── __init__.py
 │       │   │   ├── eval_metrics.py
@@ -956,6 +979,25 @@ Monika/
 │       │   │   ├── engine.py
 │       │   │   ├── installer.py
 │       │   │   └── lifecycle.py
+│       │   ├── main.py
+│       │   ├── plugins
+│       │   │   ├── __init__.py
+│       │   │   ├── alerts
+│       │   │   │   └── discord_alert
+│       │   │   ├── analysis_pipelines
+│       │   │   │   ├── macro_to_asset
+│       │   │   │   └── technical_scalping
+│       │   │   ├── brokers
+│       │   │   │   ├── mt5_local
+│       │   │   │   └── paper_trading
+│       │   │   ├── indicators
+│       │   │   │   └── custom_indicator
+│       │   │   ├── kernel.py
+│       │   │   ├── loader.py
+│       │   │   ├── manifest.py
+│       │   │   └── scrapers
+│       │   │       └── example_scraper
+│       │   ├── run_benchmark.py
 │       │   ├── scheduler
 │       │   │   ├── __init__.py
 │       │   │   ├── active_calendar_poller.py
@@ -990,6 +1032,7 @@ Monika/
 │       │   │   ├── market_data_service.py
 │       │   │   ├── market_intel_service.py
 │       │   │   ├── portfolio_service.py
+│       │   │   ├── system_status_service.py
 │       │   │   └── trading_service.py
 │       │   └── skills
 │       │       ├── __init__.py

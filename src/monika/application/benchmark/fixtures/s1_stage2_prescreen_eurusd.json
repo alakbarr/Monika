@@ -1,0 +1,32 @@
+{
+  "fixture_id": "s1_stage2_prescreen_eurusd_2026_09",
+  "mode": "system_one",
+  "latency_target_ms": 100.0,
+  "state": {
+    "symbol": "EURUSD",
+    "current_price": 1.1377,
+    "spread_pips": 1.2,
+    "vix": 15.68,
+    "trading_paused": false,
+    "session_open": "London",
+    "adr_exhaustion_pct": 35.0
+  },
+  "questions": [
+    {
+      "name": "proceed_to_full_analysis",
+      "type": "Noul",
+      "description": "Should EURUSD proceed to full expensive multi-agent LLM analysis?"
+    },
+    {
+      "name": "market_liquidity_score",
+      "type": "Score",
+      "range": [1, 5],
+      "description": "1: Illiquid/Dead, 3: Normal, 5: Peak London/NY Liquidity"
+    }
+  ],
+  "expected_answers": {
+    "proceed_to_full_analysis": true,
+    "proceed_to_full_analysis_confidence_min": 0.85,
+    "market_liquidity_score": 5
+  }
+}

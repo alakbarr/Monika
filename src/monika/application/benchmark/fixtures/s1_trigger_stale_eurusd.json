@@ -1,0 +1,31 @@
+{
+  "fixture_id": "s1_trigger_stale_eurusd_2026_09",
+  "mode": "system_one",
+  "latency_target_ms": 100.0,
+  "state": {
+    "symbol": "EURUSD",
+    "trigger_type": "breakout_buy",
+    "trigger_condition": {"level": 1.1460, "timeframe": "M15"},
+    "current_price": 1.1377,
+    "age_hours": 18.5,
+    "macro_context": "Hawkish Fed hike + DXY break above 101.20 has shifted market structure to bearish H1."
+  },
+  "questions": [
+    {
+      "name": "is_still_valid",
+      "type": "Noul",
+      "description": "Is this trade trigger still structurally valid and actionable given price action and elapsed time?"
+    },
+    {
+      "name": "invalidation_risk",
+      "type": "Score",
+      "range": [1, 4],
+      "description": "1: No risk, 2: Low risk, 3: Moderate risk, 4: High risk of invalidation"
+    }
+  ],
+  "expected_answers": {
+    "is_still_valid": false,
+    "is_still_valid_confidence_min": 0.85,
+    "invalidation_risk": 4
+  }
+}

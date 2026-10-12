@@ -1,0 +1,24 @@
+{
+  "symbol": "EURUSD",
+  "current_conditions": {
+    "date": "2026-10-01",
+    "summary": "Fed pause at 3.75-4.00%, Middle East escalation pushing crude to $72, DXY at 101.48, VIX at 16.7."
+  },
+  "historical_match": {
+    "match_date": "2024-04-12",
+    "symbol": "EURUSD",
+    "shape_similarity_pct": 84.5,
+    "hist_vix": 14.8,
+    "hist_vix_cat": "NORMAL",
+    "hist_dxy_trend": "BULLISH_REBOUND",
+    "hist_asset_trend": "BEARISH_CONTINUATION_BREAKDOWN",
+    "recorded_chronicle": "Geopolitical tension in Middle East + sticky US inflation prints driving USD haven bid."
+  },
+  "expected_verdict": {
+    "relevance": "high",
+    "historical_context_summary": "In April 2024, Middle East tensions drove safe-haven USD demand similar to current oil shock dynamics.",
+    "is_macro_driver_similar": true,
+    "adjustment_factor": 0.85,
+    "verdict_reason": "Macro drivers align well; both periods featured elevated geopolitical uncertainty and sticky inflation."
+  }
+}

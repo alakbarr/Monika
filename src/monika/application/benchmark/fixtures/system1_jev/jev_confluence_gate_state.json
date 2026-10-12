@@ -1,0 +1,18 @@
+{
+  "symbol": "EURUSD",
+  "inputs": {
+    "trend_h4_aligned": true,
+    "rsi_value": 52.5,
+    "adx_strength": 31.2,
+    "unmitigated_fvg_count": 2,
+    "spread_points": 8
+  },
+  "weights": {
+    "trend": 0.35,
+    "momentum": 0.25,
+    "structure": 0.4
+  },
+  "calculated_score": 8.4,
+  "threshold": 7.0,
+  "gate_passed": true
+}

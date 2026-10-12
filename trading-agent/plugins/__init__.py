@@ -1,23 +1,13 @@
-"""
-Plugin System for Monika Trading Agent.
-Provides manifest validation, dependency resolution, topological loading, and lifecycle hook dispatching.
-"""
+"""Shim package: monika.application.plugins."""
 
-from plugins.manifest import PluginManifest, SUPPORTED_HOOKS
-from plugins.loader import (
-    PluginLoader,
-    PluginDependencyError,
-    CircularDependencyError,
-    MissingDependencyError,
-    topological_sort_plugins,
-)
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "PluginManifest",
-    "SUPPORTED_HOOKS",
-    "PluginLoader",
-    "PluginDependencyError",
-    "CircularDependencyError",
-    "MissingDependencyError",
-    "topological_sort_plugins",
-]
+_canonical = _importlib.import_module("monika.application.plugins")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

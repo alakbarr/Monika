@@ -1,0 +1,32 @@
+{
+  "fixture_id": "smc_gbpusd_h1_chop_2026_09",
+  "symbol": "GBPUSD",
+  "timeframe": "H1",
+  "current_price": 1.3217,
+  "spread_pips": 1.4,
+  "market_regime": "choppy_consolidation",
+  "account_state": {
+    "equity": 50000.0,
+    "daily_pnl_pct": -0.1,
+    "portfolio_heat_pct": 0.0,
+    "open_positions": 0
+  },
+  "technical_context": {
+    "structure": "INSIDE_BAR_COMPRESSION",
+    "swing_high": 1.3250,
+    "swing_low": 1.3200,
+    "atr_14": 0.0022,
+    "adr_5d": 0.0070,
+    "session": "Asian_Late"
+  },
+  "macro_context": {
+    "boe_stance": "neutral_hold_at_3.75",
+    "dxy": 101.25,
+    "vix": 15.68
+  },
+  "expected_outcome": {
+    "valid_decisions": ["WAIT"],
+    "rationale_must_mention": ["chop", "compression", "inside bar", "range", "no displacement"],
+    "requires_risk_veto": false
+  }
+}
