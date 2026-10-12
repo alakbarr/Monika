@@ -1,12 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_coindesk.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy rss_coindesk.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk.
+"""
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
-class CoindeskRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="coindesk", 
-            feed_url="https://www.coindesk.com/arc/outboundfeeds/rss/"
-        )
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_coindesk import (
+    CoindeskRssScraper,
+)
+
+__all__ = ['CoindeskRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

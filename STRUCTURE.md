@@ -186,6 +186,7 @@ Monika/
 │       │   └── services
 │       │       ├── __init__.py
 │       │       ├── general_harness_service.py
+│       │       ├── market_data_service.py
 │       │       ├── market_intel_service.py
 │       │       ├── portfolio_service.py
 │       │       └── trading_service.py
@@ -382,6 +383,79 @@ Monika/
 │       │   │   ├── session_db.py
 │       │   │   ├── sqlite_concurrency.py
 │       │   │   └── user_market_intel.py
+│       │   ├── data_ingestion
+│       │   │   ├── __init__.py
+│       │   │   ├── scrapers
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base_scraper.py
+│       │   │   │   ├── calendar
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── calendar_forexfactory.py
+│       │   │   │   │   └── calendar_investing.py
+│       │   │   │   ├── macro
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── bank_indonesia.py
+│       │   │   │   │   ├── bps_stats.py
+│       │   │   │   │   ├── central_bank_doc_scraper.py
+│       │   │   │   │   ├── cot_scraper.py
+│       │   │   │   │   ├── esdm_scraper.py
+│       │   │   │   │   ├── fed_calendar.py
+│       │   │   │   │   ├── fitch_ratings.py
+│       │   │   │   │   ├── moody_ratings.py
+│       │   │   │   │   ├── s_and_p_ratings.py
+│       │   │   │   │   └── sovereign_yield_spreads.py
+│       │   │   │   ├── news
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── base_news.py
+│       │   │   │   │   ├── bisnis_com.py
+│       │   │   │   │   ├── bloomberg_commodities.py
+│       │   │   │   │   ├── cnbc_indonesia.py
+│       │   │   │   │   ├── content_fetcher.py
+│       │   │   │   │   ├── detik_finance.py
+│       │   │   │   │   ├── investing_news.py
+│       │   │   │   │   ├── kontan.py
+│       │   │   │   │   ├── reuters_commodities.py
+│       │   │   │   │   └── web_search.py
+│       │   │   │   ├── playwright_scraper.py
+│       │   │   │   ├── scraper_factory.py
+│       │   │   │   ├── sentiment
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── cme_fedwatch.py
+│       │   │   │   │   ├── fear_and_greed.py
+│       │   │   │   │   ├── fxstreet_sentiment.py
+│       │   │   │   │   ├── myfxbook_sentiment.py
+│       │   │   │   │   └── retail_sentiment.py
+│       │   │   │   └── social
+│       │   │   │       ├── __init__.py
+│       │   │   │       ├── stocktwits.py
+│       │   │   │       ├── twitter_nitter.py
+│       │   │   │       └── twitter_scraper.py
+│       │   │   └── sources
+│       │   │       ├── __init__.py
+│       │   │       ├── base_fetcher.py
+│       │   │       ├── bi_rate.py
+│       │   │       ├── cftc_cot.py
+│       │   │       ├── crypto_fear_greed.py
+│       │   │       ├── dxy_fred.py
+│       │   │       ├── dxy_yfinance.py
+│       │   │       ├── eia_petroleum.py
+│       │   │       ├── gold_rates.py
+│       │   │       ├── icdx_data.py
+│       │   │       ├── idr_interbank.py
+│       │   │       ├── idx_market.py
+│       │   │       ├── metals_rates.py
+│       │   │       ├── myfxbook_api.py
+│       │   │       ├── news_fetcher.py
+│       │   │       ├── oil_price.py
+│       │   │       ├── oil_rates.py
+│       │   │       ├── s_and_p_commodity.py
+│       │   │       ├── treasury_yields.py
+│       │   │       ├── us_cpi.py
+│       │   │       ├── us_nonfarm_payrolls.py
+│       │   │       ├── us_retail_sales.py
+│       │   │       ├── vix_fetcher.py
+│       │   │       ├── vix_yfinance.py
+│       │   │       └── world_bank.py
 │       │   ├── ml
 │       │   │   ├── __init__.py
 │       │   │   └── timesfm_engine.py

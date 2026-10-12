@@ -1,19 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_ecb.py
-# ==============================================================================
 """
-European Central Bank press release RSS feed scraper.
-
-Source: ecb.europa.eu official press releases — primary source for ECB rate
-decisions, statements, and speeches. Critical for EURUSD and GBPUSD analysis.
+Compatibility facade shim for legacy rss_ecb.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_ecb.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_ecb as _canonical
 
-class EcbRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="ecb_official",
-            feed_url="https://www.ecb.europa.eu/rss/press.html",
-        )
+from monika.infrastructure.data_ingestion.scrapers.news.rss_ecb import (
+    EcbRssScraper,
+)
+
+__all__ = ['EcbRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

@@ -1,12 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_bloomberg.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy rss_bloomberg.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg.
+"""
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
-class BloombergRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="bloomberg_markets", 
-            feed_url="https://feeds.bloomberg.com/markets/news.rss"
-        )
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_bloomberg import (
+    BloombergRssScraper,
+)
+
+__all__ = ['BloombergRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

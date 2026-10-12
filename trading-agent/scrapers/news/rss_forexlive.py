@@ -1,12 +1,23 @@
-# ==============================================================================
-# File: scrapers/news/rss_forexlive.py
-# ==============================================================================
+"""
+Compatibility facade shim for legacy rss_forexlive.py.
+Re-exports from canonical monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive.
+"""
 
-from scrapers.news.rss_base import RssBaseScraper
+from __future__ import annotations
 
-class ForexliveRssScraper(RssBaseScraper):
-    def __init__(self):
-        super().__init__(
-            source_name="forexlive_main", 
-            feed_url="https://www.forexlive.com/feed"
-        )
+import sys as _sys
+import monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive as _canonical
+
+from monika.infrastructure.data_ingestion.scrapers.news.rss_forexlive import (
+    ForexliveRssScraper,
+)
+
+__all__ = ['ForexliveRssScraper']
+
+# Module identity forwarding
+_sys.modules[__name__] = _canonical
+
+# Attribute forwarding fallback
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
