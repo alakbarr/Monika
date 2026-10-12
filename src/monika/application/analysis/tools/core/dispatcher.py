@@ -141,7 +141,8 @@ class ToolDispatcher:
         if self.db is not None and session_id is not None:
             try:
                 out_str = raw_output if isinstance(raw_output, str) else json.dumps(raw_output)
-                self.db.record_tool_execution(
+                await asyncio.to_thread(
+                    self.db.record_tool_execution,
                     session_id=session_id,
                     turn_ordinal=turn_ordinal,
                     tool_name=tool_name,

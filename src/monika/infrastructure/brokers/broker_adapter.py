@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import Order, OrderStatus
@@ -990,11 +990,14 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
     def __init__(
         self,
         gateway_url: str = "http://127.0.0.1:8080",
-        api_token: Optional[str] = None,
+        api_token: Optional[Union[str, Any]] = None,
         timeout: float = 10.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
-        self.api_token = api_token
+        if hasattr(api_token, "get_secret_value"):
+            self.api_token = api_token.get_secret_value()
+        else:
+            self.api_token = str(api_token) if api_token is not None else None
         self.timeout = timeout
         self._connected = False
 

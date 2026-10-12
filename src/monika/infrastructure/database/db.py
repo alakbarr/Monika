@@ -254,8 +254,11 @@ async def init_db() -> None:
                 await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
                 logger.info("Database schema synchronized to Alembic head successfully.")
                 return
+            else:
+                raise FileNotFoundError(f"Alembic configuration file not found at {alembic_ini}")
         except Exception as e:
-            logger.warning(f"Alembic migration failed ({e}); falling back to metadata.create_all.")
+            logger.critical(f"Alembic migration failed in operational environment: {e}")
+            raise RuntimeError(f"Database schema migration failed in operational environment: {e}") from e
 
     try:
         eng = engine if engine is not None else get_engine()

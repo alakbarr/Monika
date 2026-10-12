@@ -132,12 +132,16 @@ class WebReader:
         self.max_body_bytes = max_body_bytes
         self.browser_fallback = browser_fallback
         self.browser_timeout_seconds = browser_timeout_seconds
+        self._active_scraper: Optional[Any] = None
+        self._active_browser_pid: Optional[int] = None
 
     def _read_url_with_browser_sync(self, url: str) -> Optional[Dict[str, Any]]:
         """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
         try:
             from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
             scraper = BaseScraper(headless=True, profile_name=None)
+            self._active_scraper = scraper
+            self._active_browser_pid = getattr(scraper, "browser_pid", None)
         except Exception as e:
             logger.warning(f"WebReader browser fallback unavailable (BaseScraper error): {e}")
             return None
@@ -145,6 +149,9 @@ class WebReader:
         try:
             logger.info(f"WebReader attempting headless browser fallback for: {url}")
             success = scraper.navigate_with_fallback(url, disable_fallback=True, timeout=15)
+            if getattr(scraper, "browser_pid", None):
+                self._active_browser_pid = scraper.browser_pid
+
             if not success or not scraper.page:
                 logger.warning(f"WebReader browser fallback failed to navigate: {url}")
                 return None
@@ -168,9 +175,13 @@ class WebReader:
                 scraper.close()
             except Exception:
                 pass
+            self._active_scraper = None
+            self._active_browser_pid = None
 
     async def _read_url_with_browser(self, url: str) -> Optional[Dict[str, Any]]:
         """Asynchronously executes browser fallback in a worker thread with a timeout."""
+        self._active_scraper = None
+        self._active_browser_pid = None
         try:
             return await asyncio.wait_for(
                 asyncio.to_thread(self._read_url_with_browser_sync, url),
@@ -178,6 +189,19 @@ class WebReader:
             )
         except asyncio.TimeoutError:
             logger.warning(f"WebReader browser fallback timed out for {url}")
+            active_pid = self._active_browser_pid
+            if active_pid is not None:
+                try:
+                    from monika.infrastructure.data_ingestion.scrapers.base_scraper import kill_process_tree
+                    kill_process_tree(active_pid)
+                except Exception as k_err:
+                    logger.debug(f"Failed to kill timed out browser process: {k_err}")
+            active_sc = self._active_scraper
+            if active_sc is not None:
+                try:
+                    active_sc.close()
+                except Exception:
+                    pass
             return None
     def _extract_pdf_content(self, url: str, raw_bytes: bytes) -> Optional[Dict[str, Any]]:
         """Extracts clean text from binary PDF payload using pypdf."""
