@@ -42,6 +42,7 @@ class PtySession:
     query_responder: PtyQueryResponder = field(default_factory=PtyQueryResponder)
     _output_buffer: List[str] = field(default_factory=list)
     _max_buffer_lines: int = 2000
+    _input_line_buffer: str = field(default="")
     is_closed: bool = False
     _h_pc: Any = None
 
@@ -90,15 +91,65 @@ class PtySession:
             except Exception as e:
                 logger.debug(f"[PtySession] ResizePseudoConsole error: {e}")
 
+    async def _log_security_violation(self, command: str, reason: str) -> None:
+        """Asynchronously persist security violation audit record to database."""
+        try:
+            from database.db import get_session
+            from database.repositories.activity_log_repository import ActivityLogRepository
+            async with get_session() as session:
+                repo = ActivityLogRepository(session)
+                await repo.log_activity(
+                    category="SECURITY",
+                    description=f"TerminalGuard blocked prohibited command: {command[:200]} ({reason})",
+                    actor=f"pty:{self.session_id[:8]}",
+                )
+                await session.commit()
+        except Exception as log_err:
+            logger.debug(f"[PtySession] Failed to log terminal security violation: {log_err}")
+
     async def write_input(self, data: str) -> None:
-        """Writes user input/keystrokes to the underlying subprocess stdin."""
+        """Writes user input/keystrokes to the underlying subprocess stdin with TerminalGuard security enforcement."""
         self.last_active = time.time()
-        if self.process and self.process.stdin and not self.is_closed:
-            try:
-                self.process.stdin.write(data.encode("utf-8"))
-                await self.process.stdin.drain()
-            except Exception as e:
-                logger.debug(f"[PtySession] Stdin write error: {e}")
+        if not self.process or not self.process.stdin or self.is_closed:
+            return
+
+        # Check for Enter/Return execution trigger
+        if "\r" in data or "\n" in data:
+            candidate_line = (self._input_line_buffer + data).strip()
+            self._input_line_buffer = ""
+
+            from security.terminal_guard import is_hardline_blocked_command
+            is_blocked, reason = is_hardline_blocked_command(candidate_line)
+            if is_blocked:
+                logger.warning(
+                    f"[PtySession] Prohibited command blocked by TerminalGuard in session '{self.session_id}': {candidate_line} ({reason})"
+                )
+                # Send SIGINT (Ctrl+C) to cancel line execution in shell
+                try:
+                    self.process.stdin.write(b"\x03")
+                    await self.process.stdin.drain()
+                except Exception:
+                    pass
+
+                # Emit visual red warning back to user terminal output buffer
+                alert_banner = (
+                    f"\r\n\x1b[31;1m[SECURITY ALERT] Command execution blocked by TerminalGuard:\x1b[0m\r\n"
+                    f"\x1b[33mReason: {reason}\x1b[0m\r\n"
+                    f"\x1b[90mCommand: {candidate_line}\x1b[0m\r\n\r\n"
+                )
+                self._output_buffer.append(alert_banner)
+                asyncio.create_task(self._log_security_violation(candidate_line, reason))
+                return
+        else:
+            self._input_line_buffer += data
+            if len(self._input_line_buffer) > 4096:
+                self._input_line_buffer = self._input_line_buffer[-4096:]
+
+        try:
+            self.process.stdin.write(data.encode("utf-8"))
+            await self.process.stdin.drain()
+        except Exception as e:
+            logger.debug(f"[PtySession] Stdin write error: {e}")
 
     async def close_process(self) -> None:
         """Terminate underlying subprocess cleanly."""

@@ -13,11 +13,48 @@ import asyncio
 import inspect
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 from pydantic import BaseModel
 from analysis.tools.kernel.output_spiller import truncate_and_spill_output
 
 logger = logging.getLogger("TradingAgent.Tools.UnifiedRegistry")
+
+# ==============================================================================
+# Standard Modular Toolset Definitions (Phase 4)
+# ==============================================================================
+TRADING_TOOLSET: Set[str] = {
+    # Market Data & Analysis
+    "get_market_data", "fetch_market_data", "get_economic_calendar", "fetch_economic_calendar",
+    "calculate_technical_indicators", "get_smc_levels", "get_order_flow",
+    # Position & Execution
+    "get_open_positions", "get_account_balance", "propose_trade", "modify_position", "close_position",
+    # Alpha Factors
+    "evaluate_alpha_factors", "get_alpha_catalog",
+}
+
+DEVELOPER_TOOLSET: Set[str] = {
+    # Code Execution & Sandboxing
+    "execute_python_code", "execute_code", "run_terminal_command",
+    # File Operations
+    "read_file", "write_file", "patch_file", "list_directory", "search_files",
+    # Workspace & Tasks
+    "manage_todo", "update_kanban_board", "retrieve_spilled_context",
+}
+
+RESEARCH_TOOLSET: Set[str] = {
+    # Web & Academic Research
+    "web_search", "web_fetch", "search_academic_papers", "summarize_document",
+    # Visual & Multimodal
+    "inspect_chart_image", "describe_image", "browse_web_page",
+    # Skills & Knowledge
+    "search_skills", "invoke_skill", "ask_clarification",
+}
+
+TOOLSETS: Dict[str, Set[str]] = {
+    "TRADING": TRADING_TOOLSET,
+    "DEVELOPER": DEVELOPER_TOOLSET,
+    "RESEARCH": RESEARCH_TOOLSET,
+}
 
 
 def _sanitize_schema_for_gemini(schema: dict) -> dict:
@@ -258,6 +295,29 @@ class UnifiedToolRegistry:
         """Return list of Gemini-compatible function declarations, canonically sorted."""
         tools = self.list_tools(category=category, only_available=True)
         return [t.get_gemini_schema() for t in tools]
+
+    def list_toolset_names(self, toolset: str) -> List[str]:
+        """Return canonical list of tool names belonging to the given toolset ('TRADING', 'DEVELOPER', 'RESEARCH')."""
+        key = toolset.upper()
+        allowed = TOOLSETS.get(key)
+        if allowed is None:
+            raise ValueError(f"Unknown toolset: '{toolset}'. Available: {list(TOOLSETS.keys())}")
+        return [t.name for t in self.list_tools(only_available=False) if t.name in allowed]
+
+    def get_toolset(self, toolset: str, format: str = "openai") -> List[Dict[str, Any]]:
+        """Return serialized tool schemas for specified toolset in specified provider format ('openai', 'anthropic', 'gemini')."""
+        key = toolset.upper()
+        allowed = TOOLSETS.get(key)
+        if allowed is None:
+            raise ValueError(f"Unknown toolset: '{toolset}'. Available: {list(TOOLSETS.keys())}")
+        tools = [t for t in self.list_tools(only_available=True) if t.name in allowed]
+        fmt = format.lower()
+        if fmt == "anthropic":
+            return [t.get_anthropic_schema() for t in tools]
+        elif fmt == "gemini":
+            return [t.get_gemini_schema() for t in tools]
+        else:
+            return [t.get_openai_schema() for t in tools]
 
     def _run_security_interceptors(self, name: str, arguments: Dict[str, Any]) -> None:
         """

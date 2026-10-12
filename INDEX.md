@@ -165,16 +165,16 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `trading-agent/utils/calibration`](#folder-trading-agentutilscalibration) - Line 6425
       - [Folder: `trading-agent/utils/infra`](#folder-trading-agentutilsinfra) - Line 6437
       - [Folder: `trading-agent/utils/llm`](#folder-trading-agentutilsllm) - Line 6492
-      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6609
-      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6650
-      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6663
-      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6688
-      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6701
-      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6726
-      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6735
-      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6751
-      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6778
-      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6793
+      - [Folder: `trading-agent/utils/market`](#folder-trading-agentutilsmarket) - Line 6614
+      - [Folder: `trading-agent/utils/plugins`](#folder-trading-agentutilsplugins) - Line 6655
+      - [Folder: `trading-agent/utils/protocol`](#folder-trading-agentutilsprotocol) - Line 6668
+      - [Folder: `trading-agent/utils/scheduling`](#folder-trading-agentutilsscheduling) - Line 6693
+      - [Folder: `trading-agent/utils/security`](#folder-trading-agentutilssecurity) - Line 6706
+      - [Folder: `trading-agent/utils/storage`](#folder-trading-agentutilsstorage) - Line 6731
+      - [Folder: `trading-agent/utils/streaming`](#folder-trading-agentutilsstreaming) - Line 6740
+      - [Folder: `trading-agent/utils/typesafe`](#folder-trading-agentutilstypesafe) - Line 6756
+      - [Folder: `trading-agent/utils/validation`](#folder-trading-agentutilsvalidation) - Line 6783
+      - [Folder: `trading-agent/utils/workspace`](#folder-trading-agentutilsworkspace) - Line 6798
 
 ## Root Directory: `Monika/`
 
@@ -6517,6 +6517,11 @@ This document provides an exhaustive structural index of all directories, files,
   - **Classes**: `ContextCompactionEngine` (Methods: `micro_prune`, `check_and_compact`, `compact_with_summary_model`, `mask_aged_observations`, `_extract_decisive_state` [expanded with optimal levels, sweeps, COT, macro], `check_tool_family_quota`, `_prune_ohlcv_output`)
   - **Variables**: `TOOL_FAMILIES`, `FAMILY_QUOTAS`, `DEFAULT_FAMILY_QUOTA`
   - **Functions**: `mask_aged_observations`
+
+**File:** `context_compressor.py`
+  - **Docstring**: Unified Context Compressor & Memory Compaction Facade.
+  - **Classes**: `ContextCompressor`
+  - **Functions**: `get_context_compressor()`, `compress_context()`, `prune_oversized_tool_results()`, `prune_tool_result_content()`, `safe_unicode_slice()`, `safe_unicode_tail()`, `offload_historical_charts()`
 
 **File:** `context_tracker.py`
   - **Classes**: `ContextTracker` (Methods: `record_usage()`, `get_stats()`, `reset()`, `get_utilization()`, `get_context_summary()`, `get_history()`, `export_dict()`)
