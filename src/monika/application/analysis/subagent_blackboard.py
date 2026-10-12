@@ -17,7 +17,7 @@ instead of dumping massive raw unparsed text histories into subsequent turns.
 from typing import Dict, Any, Optional, List
 import json
 import logging
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.SubagentBlackboard")
 

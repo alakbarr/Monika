@@ -26,11 +26,11 @@ import numpy as np
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from analysis.strategies.registry import StrategyRegistry
-from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
-from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
-from indicators.timesfm_engine import TimesFMEngine
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
 logger = logging.getLogger("TradingAgent.TriConvergentAlpha")
 

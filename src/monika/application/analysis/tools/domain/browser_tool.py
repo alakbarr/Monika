@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from pydantic import BaseModel, Field
 

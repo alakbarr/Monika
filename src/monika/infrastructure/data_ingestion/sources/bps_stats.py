@@ -91,7 +91,7 @@ class BPSStatsFetcher:
 
     async def fetch_all_idr_macro(self) -> Dict[str, Any]:
         """Consolidates BI Rate, JISDOR, Inflation, and Trade Balance."""
-        from scrapers.macro.bank_indonesia import BankIndonesiaFetcher
+        from monika.infrastructure.data_ingestion.scrapers.macro.bank_indonesia import BankIndonesiaFetcher
         bi = BankIndonesiaFetcher()
         bi_rate_res, jisdor_res, cpi_res, trade_res = await asyncio.gather(
             bi.fetch_bi_rate(),

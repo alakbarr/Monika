@@ -355,7 +355,7 @@ class UnifiedToolRegistry:
 
         # Stage 1: Prompt Injection Scanner
         try:
-            from security.prompt_injection_scanner import PromptInjectionScanner
+            from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
 
             for k, v in arguments.items():
                 if isinstance(v, str) and len(v) > 20:
@@ -367,7 +367,7 @@ class UnifiedToolRegistry:
 
         # Stage 2: SSRF Guard
         try:
-            from security.ssrf_guard import validate_request_url
+            from monika.core.security.ssrf_guard import validate_request_url
 
             for k, v in arguments.items():
                 if isinstance(v, str) and (
@@ -380,7 +380,7 @@ class UnifiedToolRegistry:
 
         # Stage 3: Terminal Guard
         try:
-            from security.terminal_guard import is_hardline_blocked_command, CommandSecurityViolationError
+            from monika.core.security.terminal_guard import is_hardline_blocked_command, CommandSecurityViolationError
 
             for k, v in arguments.items():
                 if isinstance(v, str) and k in ("command", "cmd", "exec_cmd"):
@@ -393,8 +393,8 @@ class UnifiedToolRegistry:
 
         # Stage 4: Path Read / Write Guard
         try:
-            from security.terminal_guard import assert_safe_read_path, assert_safe_write_path
-            from security.nt_guard import SecurityViolationError
+            from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
+            from monika.core.security.nt_guard import SecurityViolationError
 
             for k, v in arguments.items():
                 if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):

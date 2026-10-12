@@ -137,7 +137,7 @@ class WebReader:
         """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
         try:
             try:
-                from scrapers.base_scraper import BaseScraper
+                from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
             except ImportError:
                 from trading_agent.scrapers.base_scraper import BaseScraper
             scraper = BaseScraper(headless=True, profile_name=None)

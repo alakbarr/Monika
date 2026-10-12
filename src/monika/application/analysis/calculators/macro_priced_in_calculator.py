@@ -2,12 +2,12 @@ import json
 import logging
 from typing import Optional, Any
 from datetime import datetime
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import FedWatchProbability, COTReport, NewsDigest
-from utils.market.usd_strength_proxy import compute_usd_strength_proxy
-from utils.calibration.cot_thresholds import cot_extreme_score
+from monika.infrastructure.database.models import FedWatchProbability, COTReport, NewsDigest
+from monika.domain.market.usd_strength_proxy import compute_usd_strength_proxy
+from monika.core.calibration.cot_thresholds import cot_extreme_score
 
 logger = logging.getLogger('TradingAgent.MacroPricedInCalculator')
 

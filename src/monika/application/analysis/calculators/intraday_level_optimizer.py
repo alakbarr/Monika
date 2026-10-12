@@ -3,15 +3,15 @@ import logging
 from typing import Optional, Dict, Any, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import OrderBlock, FVGZone, SRZone, SwingPoint, LiquidityZone, TechnicalIndicator
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.infrastructure.database.models import OrderBlock, FVGZone, SRZone, SwingPoint, LiquidityZone, TechnicalIndicator
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 logger = logging.getLogger('TradingAgent.IntradayLevelOptimizer')
 
 ZONE_WEIGHTS = {'order_block': 3.0, 'fvg': 2.5, 'sr_zone': 2.0, 'liquidity': 1.5, 'swing': 1.0}
 
 
-from utils.validation.indicator_sanitizer import safe_float
+from monika.core.validation.indicator_sanitizer import safe_float
 
 async def _get_atr(session: AsyncSession, symbol: str) -> float:
     row = (await session.execute(
@@ -93,7 +93,7 @@ async def compute_optimal_levels(
         atr = 0.005 * entry_price
     zones = await _collect_zones(session, symbol)
     try:
-        from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+        from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
         sweep = await detect_liquidity_sweep(session, symbol, settings)
         if sweep.get('sweep_detected') and sweep.get('sweep_price'):
             pad = (atr * 0.15) if atr else abs(sweep['sweep_price']) * 0.0005
@@ -117,7 +117,7 @@ async def compute_optimal_levels(
     # TimesFM 3.0 Reachability Integration
     tfm_forecast = None
     try:
-        from indicators.timesfm_engine import TimesFMEngine
+        from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
         tfm_engine = TimesFMEngine(settings)
         tfm_forecast = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0)
     except Exception as tfm_err:

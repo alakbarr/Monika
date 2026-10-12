@@ -2,7 +2,7 @@
 # File: scrapers/news/rss_reuters.py
 # ==============================================================================
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 class ReutersRssScraper(RssBaseScraper):
     def __init__(self):

@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from database.models import SystemConfig
-from utils.infra.notifier import AgentNotifier
+from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.infra.notifier import AgentNotifier
 
 logger = logging.getLogger("TradingAgent.CostTracker")
 
@@ -47,7 +47,7 @@ class CostTracker:
         # 1. Coba agregasikan biaya riil dari TokenUsageLog jika cycle_id ada
         if cycle_id:
             try:
-                from database.models import TokenUsageLog
+                from monika.infrastructure.database.models import TokenUsageLog
                 db_cycle_cost = (await session.execute(
                     select(func.sum(TokenUsageLog.cost_estimate))
                     .where(TokenUsageLog.cycle_id == str(cycle_id))
@@ -59,7 +59,7 @@ class CostTracker:
 
         # 2. Fallback ke kalkulasi manual jika belum terhitung
         if calculated_cost is None:
-            from utils.analytics.pricing import cost_usd, infer_provider_from_model
+            from monika.core.analytics.pricing import cost_usd, infer_provider_from_model
             p1 = task_roles.get("stage1_fundamental", {}).get("provider") or infer_provider_from_model(stage1_model)
             p2 = task_roles.get("stage2_per_asset_primary", {}).get("provider") or infer_provider_from_model(stage2_model)
             cost_stage1 = cost_usd(stage1_model, stage1_input, stage1_output, provider=p1)
@@ -122,7 +122,7 @@ class CostTracker:
             dict ringkasan status budget (mtd_cost, monthly_budget, usage_pct, daily_cost, daily_budget, is_paused).
         """
         cost_cfg = (settings or {}).get("cost_tracking", {})
-        from config.settings import DEFAULT_MONTHLY_BUDGET_USD
+        from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
         budget_usd: float = float(cost_cfg.get("monthly_budget_usd", DEFAULT_MONTHLY_BUDGET_USD))
         if not budget_usd or budget_usd <= 0:
             budget_usd = DEFAULT_MONTHLY_BUDGET_USD
@@ -139,7 +139,7 @@ class CostTracker:
 
         # 1. Query SSOT dari TokenUsageLog untuk MTD, Daily Cost, dan Daily Token Usage per Provider
         try:
-            from database.models import TokenUsageLog
+            from monika.infrastructure.database.models import TokenUsageLog
             from unittest.mock import MagicMock, AsyncMock
 
             def _extract_scalar(res: Any, default: float = 0.0) -> float:
@@ -387,7 +387,7 @@ class CostTracker:
         seven_days_ago = now - timedelta(days=7)
 
         try:
-            from database.models import TokenUsageLog
+            from monika.infrastructure.database.models import TokenUsageLog
             cost_7d_db = (await session.execute(
                 select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0))
                 .where(TokenUsageLog.timestamp >= seven_days_ago)

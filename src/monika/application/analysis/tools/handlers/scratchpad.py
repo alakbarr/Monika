@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from analysis.memory.working_scratchpad import WorkingScratchpad
+from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
 
 
 def _resolve_symbol(args: dict, executor: Optional[Any] = None) -> str:

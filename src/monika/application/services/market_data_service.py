@@ -20,8 +20,8 @@ import pandas as pd
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.infra.container import ServiceContainer, get_container
-from utils.market.instrument_identity import resolve_instrument_identity
+from monika.infrastructure.infra.container import ServiceContainer, get_container
+from monika.domain.market.instrument_identity import resolve_instrument_identity
 
 logger = logging.getLogger("TradingAgent.Services.MarketData")
 
@@ -164,7 +164,7 @@ class MarketDataService:
         # 2. Try Database Cache
         if session:
             try:
-                from database.models import PriceOHLCV
+                from monika.infrastructure.database.models import PriceOHLCV
                 rows = (await session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == sym, PriceOHLCV.timeframe == timeframe)

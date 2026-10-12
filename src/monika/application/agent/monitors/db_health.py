@@ -14,7 +14,7 @@ async def run_db_health_check(agent: Any) -> None:
     """Monitor Database connection pool health."""
     while not agent.shutdown_event.is_set():
         try:
-            from database.db import get_engine
+            from monika.infrastructure.database.db import get_engine
             from sqlalchemy import text
 
             eng = get_engine()
@@ -23,7 +23,7 @@ async def run_db_health_check(agent: Any) -> None:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(
                     f"[DARURAT] <b>CRITICAL: Database Health Check Failed!</b>\n"

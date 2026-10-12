@@ -76,8 +76,8 @@ class InMemoryTraceStore:
                 from monika.infrastructure.database.db import get_session
                 from monika.infrastructure.database.models import TradingEvent
             except ImportError:
-                from database.db import get_session
-                from database.models import TradingEvent
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.models import TradingEvent
             import uuid
             count = 0
             async with get_session() as session:

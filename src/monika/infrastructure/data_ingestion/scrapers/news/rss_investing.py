@@ -2,7 +2,7 @@
 # File: scrapers/news/rss_investing.py
 # ==============================================================================
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 class InvestingRssScraper(RssBaseScraper):
     def __init__(self):

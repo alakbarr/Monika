@@ -61,7 +61,7 @@ async def get_metrics():
 @router.get("/api/health", tags=["System"])
 async def get_health():
     """Mengecek uptime, koneksi DB, dan status koneksi MT5 (Liveness Probe)."""
-    from database.db import get_engine
+    from monika.infrastructure.database.db import get_engine
     engine = get_engine()
 
     db_ok = False
@@ -102,7 +102,7 @@ async def get_health():
 @router.get("/api/health/diagnostics", tags=["System"])
 async def get_health_diagnostics():
     """Diagnostik internal mendalam: kuota LLM, freshness data, heartbeat, biaya API."""
-    from database.db import get_engine
+    from monika.infrastructure.database.db import get_engine
     engine = get_engine()
 
     db_ok = False
@@ -182,9 +182,9 @@ async def get_health_diagnostics():
 
     gemini_quota = {}
     try:
-        from database.db import AsyncSessionLocal
+        from monika.infrastructure.database.db import AsyncSessionLocal
         async with AsyncSessionLocal() as session:
-            from utils.api.gemini_rate_limiter import GeminiRateLimiter
+            from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
             limiter = GeminiRateLimiter(session)
             gemini_quota["flash"] = await limiter.get_usage("flash")
             gemini_quota["flash_lite"] = await limiter.get_usage("flash_lite")
@@ -212,8 +212,8 @@ async def get_health_diagnostics():
 @router.get("/api/gemini-quota", tags=["System"])
 async def get_gemini_quota():
     """Cek kuota rate limiter API Gemini (harian)."""
-    from database.db import AsyncSessionLocal
-    from utils.api.gemini_rate_limiter import GeminiRateLimiter
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
 
     try:
         async with AsyncSessionLocal() as session:
@@ -240,8 +240,8 @@ async def get_gemini_quota():
 @router.get("/api/vix", tags=["Market Data"])
 async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
     """Data historis VIX untuk chart sparkline."""
-    from database.db import AsyncSessionLocal
-    from database.models import VIXData
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import VIXData
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
@@ -261,8 +261,8 @@ async def get_vix(limit: int = Query(default=30, ge=1, le=90)):
 @router.get("/api/brief", tags=["Analysis"])
 async def get_brief():
     """Ringkasan Stage 1 (Fundamental Brief) paling baru."""
-    from database.db import AsyncSessionLocal
-    from database.models import FundamentalBrief
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import FundamentalBrief
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:

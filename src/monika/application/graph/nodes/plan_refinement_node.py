@@ -2,8 +2,8 @@ import logging
 from typing import Dict, Any, List, Optional
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from database.db import get_session
-from database.models import AssetAnalysis
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis
 
 logger = logging.getLogger("TradingAgent.Graph.PlanRefinementNode")
 
@@ -118,7 +118,7 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
             if adjusted:
                 # Recalculate position sizing after risk multiplier or SL/TP adjustment (Fix 4.12)
                 try:
-                    from risk.position_sizing import PositionSizer
+                    from monika.domain.risk.position_sizing import PositionSizer
                     sizer = PositionSizer(settings)
                     equity = float(trade.get("account_equity") or 10000.0)
                     sizing_res = await sizer.calculate_with_session(

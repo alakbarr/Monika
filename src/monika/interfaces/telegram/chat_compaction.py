@@ -8,7 +8,7 @@ import logging
 import json
 import re
 from typing import List, Dict, Any, Optional
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.ChatCompaction")
 

@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from typing import Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Position, MT5Signal, OrderLog, ActivityLog, AssetAnalysis
-from risk.position_sizing import SizingResult
+from monika.infrastructure.database.models import Position, MT5Signal, OrderLog, ActivityLog, AssetAnalysis
+from monika.domain.risk.position_sizing import SizingResult
 
 logger = logging.getLogger("TradingAgent.ExecutionService.AuditLogger")
 
@@ -42,7 +42,7 @@ class TradeAuditLogger:
             exec_price = float(mt5_result.get('price') or getattr(sizing, 'entry_price', 0.0) or 0.0)
             req_price = float(getattr(sizing, 'entry_price', 0.0) or exec_price)
 
-            from risk.position_sizing import get_instrument_spec
+            from monika.domain.risk.position_sizing import get_instrument_spec
             spec = get_instrument_spec(analysis.symbol)
             pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
             slippage_pips = round(abs(exec_price - req_price) / pip_size, 2)

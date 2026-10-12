@@ -20,7 +20,7 @@ from decimal import Decimal, ROUND_HALF_UP, ROUND_FLOOR
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PositionSizing")
 
@@ -113,7 +113,7 @@ class PositionSizer:
 
     async def _get_regime_size_multiplier(self, session, symbol: str, as_of: Optional[datetime] = None) -> float:
         try:
-            from analysis.calculators.regime_classifier import classify_market_regime
+            from monika.application.analysis.calculators.regime_classifier import classify_market_regime
             regime = await classify_market_regime(session, symbol, self.settings, as_of=as_of)
             mult = regime.get('size_multiplier', 1.0)
             if mult < 1.0:
@@ -222,8 +222,8 @@ class PositionSizer:
 
         # TimesFM 3.0 Dispersion / Tail-Risk Sizing Adjustment
         try:
-            from indicators.timesfm_engine import TimesFMEngine
-            from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+            from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
             tfm_engine = TimesFMEngine(self.settings)
             tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0, as_of=as_of)
             if tfm_fc:
@@ -253,7 +253,7 @@ class PositionSizer:
             paper_cfg = getattr(self, "settings", {}).get("trading", {}).get("paper_trading", {}) if isinstance(getattr(self, "settings", None), dict) else {}
             streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
             if streak_policy == "warn_and_scale":
-                from database.models import PaperTradeRecord
+                from monika.infrastructure.database.models import PaperTradeRecord
                 from sqlalchemy import select
                 recent_stmt = (
                     select(PaperTradeRecord)
@@ -274,7 +274,7 @@ class PositionSizer:
 
         # Turnover-Aware Churn Penalty: Dampen sizing if recent trades indicate high churn
         try:
-            from database.models import Order
+            from monika.infrastructure.database.models import Order
             from sqlalchemy import select, func
             lookback_24h = (as_of or clock.now()) - timedelta(hours=24)
             stmt = select(func.count(Order.id)).where(
@@ -792,7 +792,7 @@ class PositionSizer:
             
             # Update USD-base pip value berdasarkan harga terkini dari DB
             if symbol in ("USDJPY", "USDCAD", "USDCHF"):
-                from database.models import PriceOHLCV
+                from monika.infrastructure.database.models import PriceOHLCV
                 from sqlalchemy import select
                 sim_time = as_of or clock.now()
                 if symbol == "USDJPY":
@@ -965,7 +965,7 @@ async def calculate_lot_size(
 
     if mt5_client is None and settings:
         try:
-            from execution.mt5_client import get_mt5_client
+            from monika.infrastructure.brokers.mt5_client import get_mt5_client
             mt5_client = get_mt5_client(settings)
         except Exception:
             mt5_client = None

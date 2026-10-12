@@ -3,7 +3,7 @@ import asyncio
 from typing import Dict, Any, Optional
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from database.db import get_session
+from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.Graph.FundamentalNode")
 
@@ -97,7 +97,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         logger.error(f"Fundamental Stage failed — skipping per-asset stage (failures: {scheduler._stage1_consecutive_failures})")
         if scheduler._stage1_consecutive_failures >= scheduler._max_stage1_failures_before_alert:
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_critical(
                     f"[KRITIS] <b>Stage 1 Consecutive Failures: {scheduler._stage1_consecutive_failures}</b>\n"
                     f"Last error: {fund_result.get('error', 'unknown')[:200]}"
@@ -108,7 +108,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         summary["per_asset"] = {"skipped": True, "reason": "fundamental_failed"}
         
         try:
-            from utils.analytics.cost_tracker import CostTracker
+            from monika.core.analytics.cost_tracker import CostTracker
             cycle_id_val = state.get("cycle_id")
             s1_in = int(summary.get("fundamental", {}).get("input_tokens", 0) or 0)
             s1_out = int(summary.get("fundamental", {}).get("output_tokens", 0) or 0)
@@ -142,7 +142,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         
         # --- FUNDAMENTAL NARRATIVE SHIFT DETECTION ---
         try:
-            from database.models import FundamentalBrief, Position
+            from monika.infrastructure.database.models import FundamentalBrief, Position
             from sqlalchemy import select
             import json
             
@@ -217,15 +217,15 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
                             for pos in affected_positions:
                                 alert_lines.append(f'• {pos["symbol"]} {pos["direction"].upper()} (ticket {pos["ticket"]}): {pos["reason"]}')
                             alert_lines.append('\nConsider reviewing these positions manually.')
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
                             await AgentNotifier().send_warning('\n'.join(alert_lines))
                             logger.warning(f'Fundamental shift detected affecting {len(affected_positions)} positions')
         except Exception as e:
             logger.debug(f'Fundamental shift detection failed (non-fatal): {e}')
         
         # SSVP: Verify context coherence after Stage 1 completes
-        from utils.protocol.ssvp_coordinator import SSVPCoordinator
-        from database.models import FundamentalBrief
+        from monika.application.protocol.ssvp_coordinator import SSVPCoordinator
+        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
         
         ssvp = SSVPCoordinator(settings=scheduler.settings)

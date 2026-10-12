@@ -17,7 +17,7 @@ from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger("TradingAgent.Providers.StructuredFallback")
 
-from analysis.providers.base_provider import extract_and_parse_json
+from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
 
 @dataclass

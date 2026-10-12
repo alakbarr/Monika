@@ -230,7 +230,7 @@ class PromptBundleCompressor:
         Adaptive LLMLingua-2 (auto-routed to GPU when available, or CPU-only).
         """
         try:
-            from utils.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
+            from monika.infrastructure.llm.llmlingua_compressor import AdaptiveLLMLinguaCompressor
             return AdaptiveLLMLinguaCompressor.get_instance().compress_text(text, rate=rate)
         except Exception as e:
             logger.debug(f"Adaptive LLMLingua compression fallback: {e}")

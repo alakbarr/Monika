@@ -4,7 +4,7 @@ import json
 from typing import Optional, Tuple, List, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
 
 logger = logging.getLogger('TradingAgent.ConfidenceCalibrator')
 

@@ -53,8 +53,8 @@ async def compute_spatial_cds(
     
     Returns: 0.0 (no divergence) to 1.0 (maximum divergence)
     """
-    from database.models import PriceOHLCV
-    from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+    from monika.infrastructure.database.models import PriceOHLCV
+    from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
     
     signal_threshold = get_signal_threshold(symbol)
 
@@ -96,7 +96,7 @@ async def compute_spatial_cds(
         base_implied = 'bearish'
         quote_implied = 'bullish'
 
-    from utils.market.bias_utils import normalize_bias
+    from monika.domain.market.bias_utils import normalize_bias
     base_brief_bias = normalize_bias(brief_currency_bias.get(base_currency, 'neutral'))
     quote_brief_bias = normalize_bias(brief_currency_bias.get(quote_currency, 'neutral'))
 
@@ -142,10 +142,10 @@ async def compute_temporal_cds(
     
     Returns: 0.0 (all data synchronized) to 1.0 (maximum temporal spread)
     """
-    from database.models import (
+    from monika.infrastructure.database.models import (
         PriceOHLCV, TechnicalIndicator, FundamentalBrief, VIXData
     )
-    from utils.clock import now as get_clock_now
+    from monika.core.primitives.clock import now as get_clock_now
 
     now = get_clock_now()
     weekday = now.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
@@ -244,7 +244,7 @@ async def compute_task_cds(
     
     Returns: 0.0 (consistent with history) to 1.0 (contradicts history)
     """
-    from database.models import AssetAnalysis
+    from monika.infrastructure.database.models import AssetAnalysis
 
     if not current_decision or current_decision not in ('buy', 'sell'):
         return 0.0  # WAIT/AVOID decisions don't create consistency risk
@@ -367,7 +367,7 @@ def get_cds_thresholds(settings: Optional[dict] = None) -> dict:
 
 async def get_cds_thresholds_async(session: AsyncSession, settings: Optional[dict] = None) -> dict:
     """Get CDS thresholds, prioritizing dynamic overrides from DB."""
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
     import json
     
     base = get_cds_thresholds(settings)

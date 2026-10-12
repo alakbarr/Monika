@@ -29,8 +29,8 @@ import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import TreasuryYield, InterestRate
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import TreasuryYield, InterestRate
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.FRED")
 
@@ -150,7 +150,7 @@ class FREDDataFetcher:
             f"Interest rates: {rate_saved} new."
         )
         try:
-            from data_sources.circuit_breaker import record_feed_heartbeat
+            from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
             record_feed_heartbeat("fred", metadata={"treasury_saved": treasury_saved, "rate_saved": rate_saved})
         except Exception:
             pass
@@ -307,12 +307,12 @@ class FREDDataFetcher:
 async def _test():
     import os
     from dotenv import load_dotenv
-    from database.db import get_session, init_db
+    from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()
     await init_db()
 
-    from config.settings import load_settings
+    from monika.core.config.settings import load_settings
     settings = load_settings()
     fred_config = settings["data_sources"]["fred"]
 

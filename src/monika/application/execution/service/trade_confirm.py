@@ -60,7 +60,7 @@ class TradeConfirmManager:
 
         # Cross-surface synchronization with ApprovalHub
         try:
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
 
             sym = str(payload.get("symbol") or "ALL")
             ApprovalHub.get_instance().create_request(
@@ -84,7 +84,7 @@ class TradeConfirmManager:
 
         # Cross-check with ApprovalHub state: if already resolved elsewhere, invalidate local
         try:
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
 
             hub_req = ApprovalHub.get_instance()._requests.get(confirm_id)
             if hub_req and hub_req.status != "pending":
@@ -98,7 +98,7 @@ class TradeConfirmManager:
             self._pending_actions.pop(confirm_id, None)
             logger.warning(f"Pending action {confirm_id} expired and was discarded.")
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 hub = ApprovalHub.get_instance()
                 if confirm_id in hub._requests:
@@ -126,7 +126,7 @@ class TradeConfirmManager:
 
         if time.time() - action.created_at > action.ttl_seconds:
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 hub = ApprovalHub.get_instance()
                 if confirm_id in hub._requests:
@@ -151,7 +151,7 @@ class TradeConfirmManager:
             result = await handler(action.payload)
             # Sync approval to ApprovalHub
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 hub = ApprovalHub.get_instance()
                 if confirm_id in hub._requests:
@@ -163,7 +163,7 @@ class TradeConfirmManager:
         except Exception as exec_err:
             logger.error(f"Execution error on confirmed action {confirm_id}: {exec_err}", exc_info=True)
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 hub = ApprovalHub.get_instance()
                 if confirm_id in hub._requests:
@@ -179,7 +179,7 @@ class TradeConfirmManager:
             self._pending_actions.pop(confirm_id, None)
             logger.info(f"Pending action {confirm_id} was cancelled by operator.")
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
 
                 hub = ApprovalHub.get_instance()
                 if confirm_id in hub._requests:

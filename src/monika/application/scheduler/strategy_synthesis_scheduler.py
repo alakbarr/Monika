@@ -855,7 +855,7 @@ class StrategySynthesisScheduler:
         and multi-timeframe zero-lookahead caching.
         Returns list of real trade returns (pnl_pct as decimals).
         """
-        from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 
         harness = IsolatedStrategyBacktestHarness(
             strategy=strategy_cls,
@@ -946,7 +946,7 @@ class StrategySynthesisScheduler:
         market_context_str = ""
         try:
             from monika.application.analysis.calculators.regime_classifier import classify_market_regime
-            from backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+            from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
             fprofile = ASSET_FRICTION_PROFILE.get(symbol, {"spread_pips": 2.0, "pip_value": 1.0})
             async with get_session() as mkt_session:
                 reg_info = await classify_market_regime(mkt_session, symbol, self.settings)
@@ -1260,7 +1260,7 @@ class StrategySynthesisScheduler:
             if simulated_returns is not None:
                 wf_res = self.run_walk_forward_validation(strat_cls, symbol, returns=returns)
             else:
-                from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+                from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
                 harness = IsolatedStrategyBacktestHarness(
                     strategy=strat_cls,
                     symbol=symbol,

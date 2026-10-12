@@ -80,7 +80,7 @@ class VoiceHandler:
                         await status_msg.edit_text(f"[SUARA] \"{transcript}\"\n\n[PERINGATAN] {proposal.error}")
                     return
 
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
                 import uuid
                 req_id = f"voice_{uuid.uuid4().hex[:8]}"
                 hub = ApprovalHub.get_instance()
@@ -218,7 +218,7 @@ class VoiceHandler:
 
         # 1. Try via LLM provider factory
         try:
-            from analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             task_roles = (self.settings or {}).get("llm", {}).get("task_roles", {})
             if "voice_transcription" in task_roles:
                 client = get_client_for_task("voice_transcription", self.settings)
@@ -281,7 +281,7 @@ class VoiceHandler:
             or os.getenv("OPENROUTER_API_KEY")
         )
         if not openrouter_key:
-            from utils.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+            from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key, get_free_keys
             openrouter_key = get_paid_key() or (get_free_keys()[0] if get_free_keys() else None)
 
         groq_key = (
@@ -289,7 +289,7 @@ class VoiceHandler:
             or os.getenv("GROQ_API_KEY")
         )
         if not groq_key:
-            from utils.api.groq_rate_limiter import get_api_keys
+            from monika.infrastructure.api.groq_rate_limiter import get_api_keys
             g_keys = get_api_keys()
             if g_keys:
                 groq_key = g_keys[0]

@@ -6,7 +6,7 @@ Margin level watcher and threshold alerting monitor (MarginGuardian).
 import asyncio
 import logging
 from typing import Any, Optional
-from utils.infra.notifier import AgentNotifier
+from monika.infrastructure.infra.notifier import AgentNotifier
 
 logger = logging.getLogger("TradingAgent.MarginMonitor")
 

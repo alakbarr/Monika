@@ -9,7 +9,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import TradeTrigger, MT5Signal
+from monika.infrastructure.database.models import TradeTrigger, MT5Signal
 
 
 class TradeProposalRepository:

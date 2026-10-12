@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Callable, Awaitable, Union, Sequence
 import numpy as np
 
-from backtest.statistical_tests import deflated_sharpe_ratio, compute_sample_moments
+from monika.application.backtest.statistical_tests import deflated_sharpe_ratio, compute_sample_moments
 
 logger = logging.getLogger("TradingAgent.QuantPlateauOptimizer")
 

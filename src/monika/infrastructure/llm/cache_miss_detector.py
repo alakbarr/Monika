@@ -84,7 +84,7 @@ class CacheMissDetector:
                 reason = "prefix_changed"
 
             # Estimate waste: cost of re-writing the cached tokens that were lost
-            from utils.analytics.pricing import cost_usd
+            from monika.core.analytics.pricing import cost_usd
             missed_cost = cost_usd(
                 model_name=state.last_model or model,
                 input_tokens=state.last_cached_tokens,

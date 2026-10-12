@@ -2,9 +2,9 @@ import logging
 from typing import Dict, Any, Optional
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from database.db import get_session
+from monika.infrastructure.database.db import get_session
 from datetime import datetime, timezone, timedelta
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Graph.DataNode")
 
@@ -21,7 +21,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     if scheduler is None:
         if is_ad_hoc:
             logger.info("Scheduler not found in config for ad-hoc pipeline, initializing AdHocSchedulerProxy fallback.")
-            from scheduler.adhoc_proxy import AdHocSchedulerProxy
+            from monika.application.scheduler.adhoc_proxy import AdHocSchedulerProxy
             scheduler = AdHocSchedulerProxy(
                 settings=configurable.get("settings"),
                 symbols=list(state.get("symbols") or [s for s, _ in state.get("actionable_trades", [])] or ["XAUUSD"]),
@@ -35,7 +35,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     try:
         scraping_info: Dict[str, Any] = {"status": "moved to background loop"}
         summary["scraping"] = scraping_info
-        from analysis.calculators.economic_surprise import compute_surprise_scores
+        from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
         async with get_session() as session:
             updated = await compute_surprise_scores(session)
             if updated > 0:
@@ -49,7 +49,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Cek freshness kalender
     try:
         from sqlalchemy import func, select as _sel
-        from database.models import EconomicCalendar, SystemConfig
+        from monika.infrastructure.database.models import EconomicCalendar, SystemConfig
         async with get_session() as session:
             latest_cal = None
             now_curr = clock.now()
@@ -83,7 +83,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 if cal_age > 8 and future_cov is None:
                     logger.warning(f"Calendar data is {cal_age:.1f}h old with no future coverage — risk gate protection reduced")
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
                             f"[PERINGATAN] Economic calendar data is {cal_age:.1f}h old with no upcoming events in DB.\n"
                             f"Calendar scrapers may have failed. Risk gate will block trades until calendar is refreshed."
@@ -98,7 +98,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 1.5: LLM News Digest
     logger.info("[Step 1.5/7] Processing news with LLM...")
     try:
-        from analysis.prefetch.news_digest import NewsDigestProcessor
+        from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
         processor = NewsDigestProcessor(scheduler.settings)
         async with get_session() as session:
             classified = await processor.classify_unscored_news(session, hours_back=8)
@@ -109,8 +109,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
         # Health report and auto-tightening
         async with get_session() as session:
-            from analysis.prefetch.news_digest import get_classification_health_report
-            from database.models import SystemConfig
+            from monika.application.analysis.prefetch.news_digest import get_classification_health_report
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             health = await get_classification_health_report(session)
             if health.get('anomaly_alert'):
@@ -120,7 +120,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 else: session.add(SystemConfig(key='news_auto_tighten', value="1"))
                 await session.commit()
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(f"[PERINGATAN] <b>News Classification Anomaly</b>\nHigh breaking rate detected: {health.get('breaking_rate_pct')}%. Auto-tightening activated.")
                 except Exception as notif_err:
                     logger.warning(f"Failed to send news anomaly alert: {notif_err}")
@@ -171,7 +171,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 4: Technical indicators
     logger.info(f"[Step 4/7] Computing technical indicators for {len(target_symbols)} symbols...")
     try:
-        from indicators.technical import TechnicalIndicatorCalculator
+        from monika.domain.indicators.technical import TechnicalIndicatorCalculator
         async with get_session() as session:
             calc = TechnicalIndicatorCalculator(session, scheduler.settings.get("trading", {}))
             indicator_timeframes = [tf for tf in scheduler.mt5_timeframes if tf != 'M15']
@@ -185,7 +185,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5: Structure analysis
     logger.info(f"[Step 5/7] Analyzing market structure for {len(target_symbols)} symbols (swings, SR, FVG)...")
     try:
-        from indicators.structure import MarketStructureAnalyzer
+        from monika.domain.indicators.structure import MarketStructureAnalyzer
         async with get_session() as session:
             analyzer = MarketStructureAnalyzer(session, scheduler.settings)
             indicator_timeframes = [tf for tf in scheduler.mt5_timeframes if tf != 'M15']
@@ -199,7 +199,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5.5: Macro Precomputations
     logger.info("[Step 5.5/7] Running Macro pre-computations...")
     try:
-        from analysis.prefetch.macro_preprocessor import MacroPreprocessor
+        from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
         processor = MacroPreprocessor(settings=scheduler.settings)
         async with get_session() as session:
             await processor.run_all_and_save(session, scheduler.asset_universe, scheduler.mt5_timeframes)
@@ -219,12 +219,12 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
             else:
                 should_regen, reason = False, "no_paper_tracker"
             
-            from utils.analytics.performance_reviewer import should_regenerate_fundamental_notes, generate_fundamental_performance_review
+            from monika.core.analytics.performance_reviewer import should_regenerate_fundamental_notes, generate_fundamental_performance_review
             should_regen_fund, fund_reason = await should_regenerate_fundamental_notes(session)
             if should_regen_fund and not should_regen:
                 fund_content = await generate_fundamental_performance_review(session)
                 if fund_content:
-                    from database.models import SystemConfig
+                    from monika.infrastructure.database.models import SystemConfig
                     from sqlalchemy import select
                     cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'fundamental_notes_last_gen'))).scalar_one_or_none()
                     now_iso = clock.now().isoformat()
@@ -235,14 +235,14 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     
             if should_regen:
                 logger.info(f"Regenerating performance notes (Reason: {reason})")
-                from utils.analytics.performance_reviewer import generate_weekly_review
+                from monika.core.analytics.performance_reviewer import generate_weekly_review
                 review_content = await generate_weekly_review(session, scheduler.settings)
                 
                 # Regenerate fundamental performance notes as well
                 fund_content = await generate_fundamental_performance_review(session)
                 
                 if review_content:
-                    from database.models import SystemConfig
+                    from monika.infrastructure.database.models import SystemConfig
                     from sqlalchemy import select
                     import json
                     last_gen_key = "performance_notes_last_gen"
@@ -252,7 +252,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     if cfg: cfg.value = json.dumps(gen_data)
                     else: session.add(SystemConfig(key=last_gen_key, value=json.dumps(gen_data)))
                     await session.commit()
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_info(f"[LAPORAN] <b>Performance Notes Regenerated</b>\nReason: {reason}\nUpdated in skills/trading/performance_notes.md and fundamental_performance_notes.md")
                 summary["performance_notes"] = {"regenerated": True, "reason": reason}
             else:
@@ -264,8 +264,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5.7: Score Inflation Detection
     logger.info("[Step 5.7/7] Running score inflation drift check (lightweight, every cycle)...")
     try:
-        from utils.analytics.analysis_tracker import detect_score_inflation
-        from database.models import SystemConfig
+        from monika.core.analytics.analysis_tracker import detect_score_inflation
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select as _sel_infl
         import json as _json_infl
         async with get_session() as session:
@@ -291,14 +291,14 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5.8: Factor Point Override Computation
     logger.info("[Step 5.8/7] Computing factor point overrides...")
     try:
-        from utils.analytics.analysis_tracker import compute_and_persist_factor_point_overrides
+        from monika.core.analytics.analysis_tracker import compute_and_persist_factor_point_overrides
         async with get_session() as session:
             await compute_and_persist_factor_point_overrides(session)
     except Exception as e:
         logger.error(f'Factor point override computation failed: {e}')
 
     # Validasi kesegaran data
-    from utils.validation.data_validator import validate_data_freshness
+    from monika.core.validation.data_validator import validate_data_freshness
     weekend_symbols_override = state.get("weekend_symbols_override")
     target_symbols = weekend_symbols_override if (weekend_symbols_override and len(weekend_symbols_override) > 0) else scheduler.asset_universe
     async with get_session() as session:
@@ -334,7 +334,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         reason = "macro_data_stale" if has_global_macro_error else "all_data_stale"
         logger.error(f"Critical data freshness failure ({reason})! Skipping Stage 2. Errors: {validation['errors']}")
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
             await AgentNotifier().send_critical(
                 f"[DARURAT] <b>CRITICAL: Data Freshness Failure ({reason})!</b>\nStage 2 analysis SKIPPED this cycle.\n"
                 f"Errors: {', '.join(validation['errors'][:3])}\nCheck MT5 connection and data fetching."
@@ -354,7 +354,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
     # === VIX SYSTEM HALT CHECK ===
     try:
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select as _sel2
         async with get_session() as vix_check_session:
             vix_latest = (await vix_check_session.execute(
@@ -376,7 +376,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                         'threshold': vix_pause_threshold
                     }
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
                             f'[PERINGATAN] <b>VIX System Halt</b>\n'
                             f'VIX={vix_latest.close:.1f} >= {vix_pause_threshold} (pause threshold)\n'
@@ -399,7 +399,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     vix_latest_close = None
 
     try:
-        from database.models import VIXData, DXYData
+        from monika.infrastructure.database.models import VIXData, DXYData
         from sqlalchemy import select as _sel3
         async with get_session() as session:
             vix_row = (await session.execute(
@@ -442,7 +442,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Fetch Active User Market Intelligence & Directives
     active_user_intel = []
     try:
-        from database.models import UserMarketIntel
+        from monika.infrastructure.database.models import UserMarketIntel
         from sqlalchemy import select as _sel_intel, or_ as _or_intel
         async with get_session() as session:
             now_intel = clock.now()
@@ -485,7 +485,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         }
 
     try:
-        from database.event_store import TradingEventStore
+        from monika.infrastructure.database.event_store import TradingEventStore
         async with get_session() as ds_session:
             await TradingEventStore.emit(
                 session=ds_session,

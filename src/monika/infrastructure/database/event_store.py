@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import TradingEvent
+from monika.infrastructure.database.models import TradingEvent
 
 logger = logging.getLogger("TradingAgent.EventStore")
 

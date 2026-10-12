@@ -13,9 +13,9 @@ import logging
 from typing import Optional, Dict, Any, Tuple, List, Union
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.calculators.confluence_calculator import calculate_confluence, calculate_priced_in_subscores
-import utils.clock as clock
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.calculators.confluence_calculator import calculate_confluence, calculate_priced_in_subscores
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Stage2Prefetcher")
 
@@ -149,7 +149,7 @@ class Stage2DataBundler:
         warnings = []
         is_forex_closed = False
         try:
-            from utils.validation.data_validator import is_forex_market_closed
+            from monika.core.validation.data_validator import is_forex_market_closed
             is_forex_closed = is_forex_market_closed(now)
         except Exception:
             pass
@@ -203,7 +203,7 @@ class Stage2DataBundler:
         # Validate pipeline data freshness
         freshness_warnings = []
         try:
-            from utils.validation.data_validator import validate_data_freshness
+            from monika.core.validation.data_validator import validate_data_freshness
             freshness = await validate_data_freshness(
                 self.executor.session, [symbol], ["M15", "H1", "H4", "D1"], require_macro_data=False
             )
@@ -303,7 +303,7 @@ class Stage2DataBundler:
                 fetch_errors.append(f"cot_report: {str(e)[:40]}")
 
         try:
-            from utils.protocol.context_coherence import get_base_quote_tags
+            from monika.application.protocol.context_coherence import get_base_quote_tags
             currency_filter = get_base_quote_tags(symbol)
             news_res = await self.executor.execute('get_news_items', {'currency': currency_filter, 'currency_filter': currency_filter, 'symbol': symbol, 'hours_back': 12, 'limit': 8})
             if 'error' not in news_res:
@@ -330,7 +330,7 @@ class Stage2DataBundler:
 
         # TimesFM 3.0 Multivariate Forecast fetch
         try:
-            from indicators.timesfm_engine import TimesFMEngine
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
             tfm_engine = TimesFMEngine(self.settings)
             tfm_fc = await tfm_engine.get_latest_forecast(self.executor.session, symbol, timeframe='H1', max_age_hours=8.0)
             if tfm_fc:
@@ -368,7 +368,7 @@ class Stage2DataBundler:
         cost_mode = settings.get('trading', {}).get('cost_mode', 'standard')
         
         if cost_mode != 'lite':
-            from utils.validation.data_validator import check_data_coherence
+            from monika.core.validation.data_validator import check_data_coherence
             active_settings = self.settings or settings or {}
             coherence = await check_data_coherence(
                 self.executor.session, 
@@ -390,7 +390,7 @@ class Stage2DataBundler:
 
         # IMP-10: Temporal consistency check
         try:
-            from utils.validation.data_temporal_validator import DataTemporalValidator
+            from monika.core.validation.data_temporal_validator import DataTemporalValidator
             temporal_warning = await DataTemporalValidator.validate_and_warn(
                 self.executor.session, symbol
             )
@@ -402,7 +402,7 @@ class Stage2DataBundler:
             logger.debug(f'Temporal validation failed (non-fatal): {e}')
         # === CROSS-DATA COHERENCE CHECK (SSVP-inspired) ===
         try:
-            from utils.protocol.context_coherence import compute_bundle_coherence_issues
+            from monika.application.protocol.context_coherence import compute_bundle_coherence_issues
             coherence_issues = compute_bundle_coherence_issues(data)
             if coherence_issues:
                 lines.append('── [PERINGATAN]  CROSS-DATA COHERENCE ALERTS (READ BEFORE PROCEEDING) ──')
@@ -535,7 +535,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             data['confluence_precompute'] = calc_res
 
             try:
-                from analysis.calculators.daily_range_calculator import compute_daily_range_context
+                from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
                 adr_ctx = await compute_daily_range_context(self.executor.session, symbol, self.executor.settings)
                 if 'error' not in adr_ctx:
                     lines.append('── DAILY RANGE CONTEXT (ADR) — MANDATORY INTRADAY TP/SL TARGET BAND ──')
@@ -571,8 +571,8 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             try:
                 ps_cfg = self.settings.get("pattern_similarity", {})
                 if ps_cfg.get("enabled", True) and ps_cfg.get("inject_to_prefetch", True):
-                    from indicators.pattern_similarity import PatternSimilarityEngine
-                    from database.models import PatternScreeningCache
+                    from monika.domain.indicators.pattern_similarity import PatternSimilarityEngine
+                    from monika.infrastructure.database.models import PatternScreeningCache
 
                     ps_engine = PatternSimilarityEngine(session=self.executor.session, settings=self.settings)
                     ps_result = await ps_engine.screen(symbol=symbol)
@@ -630,7 +630,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                     'symbol': symbol
                 })
                 from sqlalchemy import select
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 existing_pi_cfg = (await self.executor.session.execute(
                     select(SystemConfig).where(SystemConfig.key == auto_pi_key)
                 )).scalar_one_or_none()
@@ -646,7 +646,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
 
         # Inject alpha lessons
         try:
-            from database.models import DecisionReflection
+            from monika.infrastructure.database.models import DecisionReflection
             from sqlalchemy import select, desc
             
             stmt = select(DecisionReflection).where(

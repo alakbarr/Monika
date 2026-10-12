@@ -8,7 +8,7 @@ Source: bankofengland.co.uk official RSS — primary source for BOE rate decisio
 MPC minutes, and speeches. Critical for GBPUSD analysis.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 
 class BoeRssScraper(RssBaseScraper):

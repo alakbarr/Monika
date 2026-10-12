@@ -23,7 +23,7 @@ class McpSubcommand(Subcommand):
         return parser
 
     async def execute(self, args: argparse.Namespace) -> int:
-        from analysis.mcp.dispatcher import MonikaMcpDispatcher
+        from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
         from monika.core.config.settings import load_settings
         
         cfg = load_settings(getattr(args, "config", None))

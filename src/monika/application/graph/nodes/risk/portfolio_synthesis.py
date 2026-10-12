@@ -30,10 +30,10 @@ async def ai_portfolio_synthesis(
     """
     Executes AI portfolio-level synthesis when multiple trades are proposed simultaneously.
     """
-    from analysis.providers.llm_factory import get_client_for_task
-    from database.models import FundamentalBrief, VIXData
+    from monika.infrastructure.providers.llm_factory import get_client_for_task
+    from monika.infrastructure.database.models import FundamentalBrief, VIXData
     from sqlalchemy import select
-    from utils.market.dynamic_correlation import get_rolling_correlation
+    from monika.domain.market.dynamic_correlation import get_rolling_correlation
 
     trade_summaries = []
     proposed_trades = []
@@ -155,8 +155,8 @@ async def apply_portfolio_synthesis_reduction(
     Invokes AI portfolio synthesis when >= 3 trades are proposed, applies size adjustments,
     and records paper what-ifs for trimmed positions.
     """
-    from database.db import get_session
-    from database.models import AssetAnalysis
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import AssetAnalysis
 
     if len(actionable) < 3:
         return actionable, []

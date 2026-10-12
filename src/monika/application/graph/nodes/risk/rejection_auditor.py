@@ -32,7 +32,7 @@ async def audit_trade_rejection(
     ana = analysis_record
     if not ana and analysis_id and session:
         try:
-            from database.models import AssetAnalysis
+            from monika.infrastructure.database.models import AssetAnalysis
             ana = await session.get(AssetAnalysis, analysis_id)
         except Exception:
             ana = None
@@ -43,7 +43,7 @@ async def audit_trade_rejection(
     # 1. Paper What-If Persistence
     if session and analysis_id:
         try:
-            from analysis.memory.decision_log import DecisionLogger
+            from monika.application.analysis.memory.decision_log import DecisionLogger
             reason_summary = "; ".join(reasons) if reasons else stage
             await DecisionLogger.log_paper_whatif(
                 session,
@@ -62,7 +62,7 @@ async def audit_trade_rejection(
 
     # 2. Benchmark Trajectory Persistence
     try:
-        from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+        from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
         TradeTrajectoryLogger().log_trajectory(
             symbol=symbol,
             decision="REJECTED",

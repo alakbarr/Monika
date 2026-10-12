@@ -17,11 +17,11 @@ from unittest.mock import MagicMock
 
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
-import database.db as _db_mod
-from database.safe_ops import safe_commit
-from database.models import (
+import monika.infrastructure.database.db as _db_mod
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.models import (
     AssetAnalysis,
     Position,
     OrderLog,
@@ -37,9 +37,9 @@ from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
 from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
-from risk.position_sizing import PositionSizer, SizingResult, get_instrument_spec
-from risk.risk_gate import RiskGate
-from utils.infra.notifier import AgentNotifier
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult, get_instrument_spec
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.infra.notifier import AgentNotifier
 from monika.application.execution.effect_gate import EffectGate, AbortRequested
 
 
@@ -204,7 +204,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         If admitted and approved, executes order.
         """
         start = clock.now()
-        from agent.estop import is_estop_active, get_estop_details
+        from monika.application.agent.estop import is_estop_active, get_estop_details
 
         if is_estop_active():
             estop_info = get_estop_details() or {}
@@ -232,7 +232,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 elapsed_ms=elapsed,
             )
 
-        from risk.trade_proposal import FortressAdmissionValidator
+        from monika.domain.risk.trade_proposal import FortressAdmissionValidator
 
         admitted, rejections = FortressAdmissionValidator.validate_proposal(proposal)
         if not admitted:
@@ -590,7 +590,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             )
             if max_slippage_pips is not None:
                 max_slip_pips_val = float(max_slippage_pips)
-                from utils.market.instrument_identity import resolve_instrument_identity
+                from monika.domain.market.instrument_identity import resolve_instrument_identity
 
                 pip_size = resolve_instrument_identity(symbol).pip_size or 0.0001
                 actual_slippage_pips = abs(current_price - target_price) / pip_size
@@ -622,7 +622,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         if not self.dry_run:
             try:
-                from utils.validation.data_validator import is_spread_acceptable
+                from monika.core.validation.data_validator import is_spread_acceptable
 
                 if hasattr(self, "broker_adapter") and self.broker_adapter is not None:
                     tick = await self.broker_adapter.get_tick(symbol)
@@ -847,7 +847,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             await session.flush()
 
             try:
-                from database.event_store import TradingEventStore
+                from monika.infrastructure.database.event_store import TradingEventStore
 
                 await TradingEventStore.emit(
                     session=session,
@@ -1530,7 +1530,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
                 try:
-                    from utils.analytics.paper_tracker import PaperTracker
+                    from monika.core.analytics.paper_tracker import PaperTracker
 
                     paper_tracker = PaperTracker(self.settings)
                     await paper_tracker.open_paper_trade(session, primary, risk_pct=sizing_primary.risk_percent)
@@ -1926,7 +1926,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             )
 
         # Check ESTOP (Emergency Stop Sentinel)
-        from agent.estop import is_estop_active, get_estop_details
+        from monika.application.agent.estop import is_estop_active, get_estop_details
 
         if is_estop_active():
             estop_info = get_estop_details() or {}
@@ -1962,7 +1962,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 "execution", {}
             ).get("force_live_override", False):
                 min_paper_trades = 0
-            from database.models import PaperTradeRecord
+            from monika.infrastructure.database.models import PaperTradeRecord
 
             try:
                 # Use the existing session passed to the function
@@ -2087,7 +2087,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         # Check fundamental brief age — don't execute on outdated macro thesis
         if analysis.brief_id:
             try:
-                from database.models import FundamentalBrief
+                from monika.infrastructure.database.models import FundamentalBrief
                 from sqlalchemy import select as _sel
 
                 async with get_session() as brief_session:
@@ -2127,8 +2127,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                             )
 
                         # Check jika ada high-impact event terjadi setelah brief dibuat
-                        from database.models import EconomicCalendar
-                        from utils.market.currency_utils import get_symbol_currencies
+                        from monika.infrastructure.database.models import EconomicCalendar
+                        from monika.domain.market.currency_utils import get_symbol_currencies
 
                         sym_currencies = get_symbol_currencies(symbol)
                         brief_created = (
@@ -2177,7 +2177,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                             )
 
                         try:
-                            from utils.protocol.brief_contamination_guard import BriefContaminationGuard
+                            from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
                             is_stale_mag, stale_reason = await BriefContaminationGuard.check_magnitude_based_staleness(
                                 brief_session, symbol, gen_at, self.settings
@@ -2209,7 +2209,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 logger.debug(f"Brief age check failed (non-fatal): {brief_err}")
 
         # Cegah eksekusi order duplikat (Phase 5)
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
 
         # Memory cache check to prevent race conditions
         global _EXECUTED_ANALYSIS_IDS
@@ -2307,8 +2307,8 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 is_post_release = True
 
         # News Blackout Check
-        from database.models import EconomicCalendar
-        from utils.market.currency_utils import get_symbol_currencies
+        from monika.infrastructure.database.models import EconomicCalendar
+        from monika.domain.market.currency_utils import get_symbol_currencies
 
         news_window_minutes = self.settings.get("trading", {}).get("risk", {}).get("news_window_minutes", 30)
         blackout_window = timedelta(minutes=news_window_minutes)
@@ -2404,7 +2404,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
         if not is_stale and not self.dry_run:
             try:
-                from utils.validation.data_validator import is_spread_acceptable
+                from monika.core.validation.data_validator import is_spread_acceptable
 
                 if hasattr(self, "broker_adapter") and self.broker_adapter is not None:
                     tick = await self.broker_adapter.get_tick(symbol)
@@ -2553,7 +2553,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
         # Ambil level VIX terbaru untuk risiko dinamis
         vix_level = 18.0
         try:
-            from database.models import VIXData
+            from monika.infrastructure.database.models import VIXData
 
             vix_row = (
                 await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
@@ -2711,7 +2711,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
             if self.settings.get("trading", {}).get("risk", {}).get("confluence_verifier_enabled", True):
                 try:
-                    from analysis.validators.confluence_verifier import verify_confluence
+                    from monika.application.analysis.validators.confluence_verifier import verify_confluence
 
                     verification = await verify_confluence(session, analysis, self.settings)
                     if not verification["verified"]:
@@ -2774,7 +2774,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                 except Exception:
                     pass
             if not adv:
-                from analysis.validators.adversarial_check import run_adversarial_check
+                from monika.application.analysis.validators.adversarial_check import run_adversarial_check
 
                 adv = await run_adversarial_check(session, analysis, self.settings)
             if adv.get("hard_block"):
@@ -2862,7 +2862,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             # Concurrency safety: Re-check portfolio limits under execution lock
             # immediately prior to MT5 order placement to prevent concurrent execution races.
             try:
-                from database.models import Position as _Position
+                from monika.infrastructure.database.models import Position as _Position
                 from sqlalchemy import select as _select, func as _func
 
                 is_paper_mode = getattr(self, "dry_run", False) or bool(
@@ -2902,7 +2902,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                         elapsed_ms=elapsed,
                     )
 
-                from database.models import Order as _Order, OrderStatus as _OrderStatus
+                from monika.infrastructure.database.models import Order as _Order, OrderStatus as _OrderStatus
 
                 re_check_open_count = (
                     await session.execute(
@@ -3285,7 +3285,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
                     if reported_slippage is not None:
                         slippage = float(reported_slippage)
                     elif exec_price is not None and entry_price:
-                        from utils.market.instrument_identity import resolve_instrument_identity
+                        from monika.domain.market.instrument_identity import resolve_instrument_identity
 
                         sym_id = resolve_instrument_identity(order.symbol or symbol)
                         slippage = SizingCalculator.compute_slippage_pips(
@@ -3384,7 +3384,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                         # Buka record paper trade untuk pelacakan (berlaku untuk dry-run & live)
                         try:
-                            from utils.analytics.paper_tracker import PaperTracker
+                            from monika.core.analytics.paper_tracker import PaperTracker
 
                             paper_tracker = PaperTracker(self.settings)
                             eff_risk_pct = sizing.risk_percent
@@ -3398,7 +3398,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 # Stateful Multi-Phase Trade Plan (Probe 30%, Runner 70%)
                 try:
-                    from database.models import TradePlan, TradePlanLeg, TechnicalIndicator
+                    from monika.infrastructure.database.models import TradePlan, TradePlanLeg, TechnicalIndicator
 
                     total_lots = sizing.recommended_lots
                     if total_lots <= 0.01:
@@ -3501,7 +3501,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
 
                 # Log AI Decision (Real Trade)
                 try:
-                    from analysis.memory.decision_log import DecisionLogger
+                    from monika.application.analysis.memory.decision_log import DecisionLogger
 
                     await DecisionLogger.log_decision(
                         session=session,
@@ -3694,7 +3694,7 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             analysis_id=analysis_id,
         )
         try:
-            from logging_observability.metrics_exporter import metrics
+            from monika.core.telemetry.metrics_exporter import metrics
 
             if result.executed:
                 metrics.inc_counter("trades_executed_total", 1.0, labels={"symbol": result.symbol})

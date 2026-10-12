@@ -249,7 +249,7 @@ async def submit_setup_configuration(request: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid JSON payload"})
 
     try:
-        from utils.infra.env_file_manager import EnvFileManager
+        from monika.infrastructure.infra.env_file_manager import EnvFileManager
         from monika.core.config.profile_applicator import ProfileApplicator
         from monika.core.config.atomic_writer import AtomicConfigWriter
 
@@ -329,7 +329,7 @@ async def submit_setup_configuration(request: Request):
 
         # 6. Initialize database tables
         try:
-            from database.db import init_db
+            from monika.infrastructure.database.db import init_db
             await init_db()
         except Exception as dberr:
             logger.warning(f"Database init warning during web setup: {dberr}")

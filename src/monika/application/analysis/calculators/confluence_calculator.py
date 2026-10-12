@@ -2,7 +2,7 @@ import json
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-from database.models import (
+from monika.infrastructure.database.models import (
     StructureBreak, FVGZone, OrderBlock, VIXData, TechnicalIndicator,
     FundamentalBrief, DXYData, COTReport, SRZone, FedWatchProbability, PriceOHLCV, SwingPoint,
     PatternScreeningCache
@@ -10,9 +10,9 @@ from database.models import (
 
 logger = logging.getLogger('TradingAgent.ConfluenceCalculator')
 
-from utils.calibration.cot_thresholds import cot_extreme_score
+from monika.core.calibration.cot_thresholds import cot_extreme_score
 from datetime import datetime, timezone
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 from typing import Optional
 
@@ -175,7 +175,7 @@ async def calculate_confluence(
     Jika direction/entry_price tidak diberikan (pre-hoc bundler), 
     mengembalikan skor potensial untuk BUY dan SELL berdasarkan current price.
     """
-    from analysis.calculators.daily_range_calculator import compute_daily_range_context
+    from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
     settings = settings or {}
     risk_cfg = settings.get('trading', {}).get('risk', {})
     min_rr_ratio = float(risk_cfg.get('min_rr_ratio', 1.3))
@@ -312,7 +312,7 @@ async def calculate_confluence(
     
     cot_alignment_val = await _get_cot_alignment_value(session, symbol, as_of=as_of)
     
-    from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+    from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
     sweep_result = await detect_liquidity_sweep(session, symbol, settings or {}, as_of=as_of)
 
     # Microstructure Order Flow Snapshot (F11)
@@ -334,7 +334,7 @@ async def calculate_confluence(
     # Quant Strategy Edge Signals
     quant_signals = []
     try:
-        from analysis.strategies.registry import StrategyRegistry
+        from monika.application.analysis.strategies.registry import StrategyRegistry
         quant_signals = await StrategyRegistry.evaluate_all(session=session, symbol=symbol, settings=settings, as_of=as_of)
     except Exception as q_err:
         logger.debug(f"Confluence quant signals check skipped: {q_err}")
@@ -598,7 +598,7 @@ async def calculate_confluence(
         # Pre-hoc context, we don't know the exact entry. Use last close price if entry is not provided
         price_to_test = entry_price
         if not price_to_test:
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.models import PriceOHLCV
             price_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol)
             if as_of:
                 price_stmt = price_stmt.where(PriceOHLCV.timestamp <= as_of)

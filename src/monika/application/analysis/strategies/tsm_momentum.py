@@ -1,12 +1,12 @@
 import logging
 from typing import Any
 from sqlalchemy import select
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from database.models import PriceOHLCV, StructureBreak
-from analysis.calculators.regime_classifier import classify_market_regime
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.infrastructure.database.models import PriceOHLCV, StructureBreak
+from monika.application.analysis.calculators.regime_classifier import classify_market_regime
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.TSMMomentum")
 
@@ -88,7 +88,7 @@ class TimeSeriesMomentum(EdgeStrategy):
             "tp_sl_multiplier": float(self.cfg.get("tp_sl_multiplier", 2.5)),
         }
         try:
-            from indicators.timesfm_engine import TimesFMEngine
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
             tfm_engine = TimesFMEngine(settings)
             tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0)
             if tfm_fc:

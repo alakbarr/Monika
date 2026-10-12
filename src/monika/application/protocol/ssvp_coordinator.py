@@ -29,7 +29,7 @@ class SSVPCoordinator:
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
-        from utils.protocol.enhanced_cds import get_cds_thresholds
+        from monika.application.protocol.enhanced_cds import get_cds_thresholds
         self.thresholds = get_cds_thresholds(settings)
         self.warning_threshold = self.thresholds['warning']
         self.sync_threshold = self.thresholds['sync_trigger']
@@ -38,7 +38,7 @@ class SSVPCoordinator:
 
     async def _refresh_thresholds(self, session: AsyncSession):
         """Refresh dynamic thresholds from database."""
-        from utils.protocol.enhanced_cds import get_cds_thresholds_async
+        from monika.application.protocol.enhanced_cds import get_cds_thresholds_async
         self.thresholds = await get_cds_thresholds_async(session, self.settings)
         self.warning_threshold = self.thresholds['warning']
         self.sync_threshold = self.thresholds['sync_trigger']
@@ -58,8 +58,8 @@ class SSVPCoordinator:
         Note: Even if should_proceed=True, individual symbols may still have
         high CDS and need ContextMerge. Use compute_per_symbol_safety() for that.
         """
-        from database.models import FundamentalBrief
-        from utils.protocol.brief_contamination_guard import BriefContaminationGuard
+        from monika.infrastructure.database.models import FundamentalBrief
+        from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
         # Get latest brief
         brief = (await session.execute(
@@ -108,7 +108,7 @@ class SSVPCoordinator:
         )
 
         # Phase 5: Budget-aware SSVP
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         budget_cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == "api_cost_tracking")
         )).scalar_one_or_none()
@@ -169,7 +169,7 @@ class SSVPCoordinator:
         Only symbols with CDS > warning threshold get context injection.
         Others get empty string (no unnecessary noise).
         """
-        from utils.protocol.brief_contamination_guard import BriefContaminationGuard
+        from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
         await self._refresh_thresholds(session)
         
@@ -211,7 +211,7 @@ class SSVPCoordinator:
         if not ssvp_enabled:
             return pa_results, []
 
-        from utils.protocol.cross_agent_sync import CrossAgentSynchronizer
+        from monika.application.protocol.cross_agent_sync import CrossAgentSynchronizer
 
         synchronizer = CrossAgentSynchronizer(
             contradiction_threshold=self.settings.get('ssvp', {}).get(

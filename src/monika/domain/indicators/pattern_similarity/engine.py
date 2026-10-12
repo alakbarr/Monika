@@ -113,7 +113,7 @@ class PatternSimilarityEngine:
         import numpy as np
         from datetime import timezone
         from dateutil import parser
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
 
         try:
@@ -335,7 +335,7 @@ class PatternSimilarityEngine:
         """Invokes LLM context verifier on top matches."""
         if not llm_client:
             try:
-                from analysis.providers.llm_factory import get_client_for_task
+                from monika.infrastructure.providers.llm_factory import get_client_for_task
                 llm_client = get_client_for_task("pattern_context_verifier", self.settings)
             except Exception:
                 return
@@ -360,7 +360,7 @@ class PatternSimilarityEngine:
         self, symbol: str, timeframe: str, count: int
     ) -> Optional[np.ndarray]:
         """Fetches recent closed bars from DB or MT5."""
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
 
         stmt = (
             select(PriceOHLCV)
@@ -386,7 +386,7 @@ class PatternSimilarityEngine:
         self, symbol: str, timeframe: str, lookback_years: float
     ) -> Optional[np.ndarray]:
         """Fetches historical price bars up to lookback_years."""
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
 
         since = datetime.now(timezone.utc) - timedelta(days=int(lookback_years * 365))
         stmt = (

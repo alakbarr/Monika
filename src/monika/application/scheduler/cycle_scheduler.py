@@ -44,7 +44,7 @@ class CycleScheduler:
         self._scraper_runner = ScraperRunner(settings)
         self._stage1_consecutive_failures = 0
         self._max_stage1_failures_before_alert = 2
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.core.analytics.paper_tracker import PaperTracker
         self._paper_tracker = PaperTracker(settings)
         self._execution_service: Optional[Any] = None
         self._risk_gate: Optional[Any] = None
@@ -79,7 +79,7 @@ class CycleScheduler:
     async def _pre_cycle_setup(self, forced: bool=False) -> dict:
         result = {'should_skip': False, 'skip_reason': None, 'weekend_symbols_override': None, 'effective_auto_execute': self.settings.get('trading', {}).get('auto_execute', False)}
         try:
-            from utils.analytics.cost_tracker import CostTracker
+            from monika.core.analytics.cost_tracker import CostTracker
             async with get_session() as budget_check:
                 try:
                     from monika.application.analysis.tools.tool_executor import ToolExecutor
@@ -95,7 +95,7 @@ class CycleScheduler:
                     else:
                         logger.warning("[PreCycleSetup] API budget is paused, but cycle is FORCED (forced=True). Proceeding anyway...")
                 rolling = await CostTracker.get_rolling_7day_cost(budget_check)
-                from config.settings import DEFAULT_MONTHLY_BUDGET_USD
+                from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
                 budget = self.settings.get('cost_tracking', {}).get('monthly_budget_usd', DEFAULT_MONTHLY_BUDGET_USD)
                 if rolling['projected_monthly'] > budget * 0.95 and (not forced):
                     logger.warning(f"[PreCycleSetup] Cycle SKIPPED: Projected monthly cost ${rolling['projected_monthly']:.2f} > 95% of budget ${budget:.2f}.")
@@ -104,7 +104,7 @@ class CycleScheduler:
         except Exception as e:
             logger.debug(f'Pre-cycle budget check failed (non-fatal): {e}')
         if not forced:
-            from utils.validation.data_validator import validate_data_freshness
+            from monika.core.validation.data_validator import validate_data_freshness
             async with get_session() as session:
                 proxy = self.asset_universe[0:1] if self.asset_universe else ['EURUSD']
                 data_quality_cfg = self.settings.get('data_quality', {})
@@ -119,7 +119,7 @@ class CycleScheduler:
         min_paper_wr = self.settings.get('trading', {}).get('min_paper_win_rate_pct', 45.0)
         for attempt in range(2):
             try:
-                from utils.analytics.paper_tracker import PaperTracker
+                from monika.core.analytics.paper_tracker import PaperTracker
                 from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select
                 async with get_session() as perf_session:
@@ -156,7 +156,7 @@ class CycleScheduler:
                         result['effective_auto_execute'] = self.settings.get('trading', {}).get('auto_execute', False)
                     if paper_trades >= min_paper_trades:
                         try:
-                            from utils.analytics.edge_tracker import compute_edge_status
+                            from monika.core.analytics.edge_tracker import compute_edge_status
                             edge_status = await compute_edge_status(perf_session)
                             if edge_status.get('status') == 'no_edge' and edge_status.get('total_trades', 0) >= 50:
                                 result['effective_auto_execute'] = False
@@ -323,7 +323,7 @@ class CycleScheduler:
             else:
                 msg_lines.append(f'\nConsider closing positions manually before Forex market close (~21:00 UTC).')
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_warning('\n'.join(msg_lines))
             except Exception as e:
                 logger.warning(f'Weekend alert failed: {e}')
@@ -331,7 +331,7 @@ class CycleScheduler:
 
     async def start(self) -> None:
         self._running = True
-        from utils.scheduling.wall_clock import parse_time_list, sleep_until_next
+        from monika.application.scheduler.wall_clock import parse_time_list, sleep_until_next
 
         logger.info(
             f'Cycle scheduler starting. Scheduled run times ({self.timezone_name}): '
@@ -368,7 +368,7 @@ class CycleScheduler:
         loop siklus analisis utama agar waktunya presisi, tidak lagi
         tergantung kapan loop siklus utama kebetulan bangun dari sleep.
         """
-        from utils.scheduling.wall_clock import parse_time_list, sleep_until_next, get_tzinfo
+        from monika.application.scheduler.wall_clock import parse_time_list, sleep_until_next, get_tzinfo
 
         self._reports_running = True
         logger.info(
@@ -377,7 +377,7 @@ class CycleScheduler:
         )
         while self._reports_running:
             try:
-                from config.settings import load_settings
+                from monika.core.config.settings import load_settings
                 fresh_settings = load_settings()
                 sched_cfg = fresh_settings.get('trading', {}).get('schedule', {})
                 self.timezone_name = sched_cfg.get('timezone', self.timezone_name)
@@ -424,7 +424,7 @@ class CycleScheduler:
                 
                 # 0. Strategy Edge tracker
                 try:
-                    from utils.analytics.strategy_edge_tracker import apply_disable_flags
+                    from monika.core.analytics.strategy_edge_tracker import apply_disable_flags
                     disabled = await apply_disable_flags(session, self.settings)
                     if disabled:
                         logger.info(f"EdgeStrategyRunner disabled underperforming strategies: {disabled}")
@@ -433,7 +433,7 @@ class CycleScheduler:
 
                 # 1. CDS Threshold Calibration
                 try:
-                    from utils.calibration.cds_threshold_calibrator import run_calibration_if_due
+                    from monika.core.calibration.cds_threshold_calibrator import run_calibration_if_due
                     cds_result = await run_calibration_if_due(session, self.settings)
                     if cds_result.get('status') == 'calibrated' and cds_result.get('recommendations'):
                         logger.info(f"CDS thresholds auto-calibrated: {cds_result['recommendations']}")
@@ -441,7 +441,7 @@ class CycleScheduler:
                     logger.error(f"CDS threshold calibration failed: {e}")
                 
                 try:
-                    from utils.analytics.cds_outcome_tracker import auto_calibrate_cds_threshold
+                    from monika.core.analytics.cds_outcome_tracker import auto_calibrate_cds_threshold
                     new_thresh, reason = await auto_calibrate_cds_threshold(session)
                     logger.info(f"CDS Outcome auto-calibration: {new_thresh} ({reason})")
                 except Exception as e:
@@ -449,7 +449,7 @@ class CycleScheduler:
                 
                 # 2. Adversarial Correlation Check
                 try:
-                    from utils.analytics.adversarial_outcome_tracker import compute_adversarial_check_correlation
+                    from monika.core.analytics.adversarial_outcome_tracker import compute_adversarial_check_correlation
                     adv_result = await compute_adversarial_check_correlation(session)
                     if adv_result.get('status') == 'analyzed':
                         logger.info(f"Adversarial logic analyzed: {adv_result.get('recommendation')}")
@@ -471,7 +471,7 @@ class CycleScheduler:
 
                 # IMP-2: News classification calibration
                 try:
-                    from utils.analytics.news_classification_tracker import compute_news_classification_calibration
+                    from monika.core.analytics.news_classification_tracker import compute_news_classification_calibration
                     news_calib = await compute_news_classification_calibration(session)
                     if news_calib.get('over_classification_suspected'):
                         cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'news_auto_tighten'))).scalar_one_or_none()
@@ -486,7 +486,7 @@ class CycleScheduler:
 
                 # IMP-9: Confidence calibration
                 try:
-                    from utils.calibration.confidence_calibrator import apply_calibration_correction
+                    from monika.core.calibration.confidence_calibrator import apply_calibration_correction
                     await apply_calibration_correction(session, self.settings)
                 except (ImportError, AttributeError) as e:
                     logger.warning(f"Calibration correction not yet implemented: {e}")
@@ -522,10 +522,10 @@ class CycleScheduler:
 
     async def _send_weekly_edge_assessment(self) -> None:
         try:
-            from utils.analytics.analysis_tracker import get_direction_accuracy_report, compute_factor_effectiveness, analyze_debate_impact
-            from utils.analytics.edge_tracker import compute_edge_status
-            from utils.llm.memory_compressor import compress_agent_memory
-            from utils.protocol.coherence_flag_tracker import compute_coherence_override_impact
+            from monika.core.analytics.analysis_tracker import get_direction_accuracy_report, compute_factor_effectiveness, analyze_debate_impact
+            from monika.core.analytics.edge_tracker import compute_edge_status
+            from monika.infrastructure.llm.memory_compressor import compress_agent_memory
+            from monika.application.protocol.coherence_flag_tracker import compute_coherence_override_impact
             from monika.infrastructure.database.db import get_session
             from sqlalchemy import select
             async with get_session() as session:
@@ -540,7 +540,7 @@ class CycleScheduler:
                 await compress_agent_memory(session, self.settings)
                 
                 # IMP-10: Cek kualitas model specialist
-                from utils.analytics.specialist_tracker import check_specialist_model_quality
+                from monika.core.analytics.specialist_tracker import check_specialist_model_quality
                 spec_qual = await check_specialist_model_quality(session, self.settings)
 
                 from monika.infrastructure.database.models import PaperTradeRecord
@@ -563,7 +563,7 @@ class CycleScheduler:
             msg = '[LAPORAN] *WEEKLY EDGE ASSESSMENT*\n\n'
             msg += f"• *Win Rate (Paper):* {stats.get('win_rate_pct', 0)}% (Total: {stats.get('total_trades', 0)})\n"
             try:
-                from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
+                from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
                 if all_paper:
                     ts_res = QuantTearsheetGenerator.generate_from_trades(all_paper)
                     msg += f"• *Quant Tearsheet (All-Time):* Sharpe: `{ts_res.annualized_sharpe:.2f}` | Sortino: `{ts_res.annualized_sortino:.2f}` | Calmar: `{ts_res.calmar_ratio:.2f}`\n"
@@ -608,7 +608,7 @@ class CycleScheduler:
             except Exception as llm_err:
                 logger.debug(f"LLM weekly edge assessment synthesis fallback to raw: {llm_err}")
 
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
             await AgentNotifier().send_markdown(msg)
         except Exception as e:
             logger.error(f'Failed to send weekly edge assessment: {e}')
@@ -632,7 +632,7 @@ class CycleScheduler:
                 
                 paper_stats = {}
                 try:
-                    from utils.analytics.paper_tracker import PaperTracker
+                    from monika.core.analytics.paper_tracker import PaperTracker
                     tracker = PaperTracker()
                     paper_stats = await tracker.get_statistics(session)
                 except Exception as e:
@@ -642,9 +642,9 @@ class CycleScheduler:
                 if not getattr(self, '_mt5', None):
                     health_score -= 3
                 try:
-                    from utils.analytics.cost_tracker import CostTracker
+                    from monika.core.analytics.cost_tracker import CostTracker
                     rolling = await CostTracker.get_rolling_7day_cost(session)
-                    from config.settings import DEFAULT_MONTHLY_BUDGET_USD
+                    from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
                     budget = self.settings.get('cost_tracking', {}).get('monthly_budget_usd', DEFAULT_MONTHLY_BUDGET_USD)
                     if rolling.get('projected_monthly', 0) > budget:
                         health_score -= 2
@@ -669,7 +669,7 @@ class CycleScheduler:
                 lines.append(f'\n<b>Open Positions ({len(open_pos)}):</b>')
                 
                 try:
-                    from utils.analytics.analysis_tracker import get_confluence_calibration_status
+                    from monika.core.analytics.analysis_tracker import get_confluence_calibration_status
                     calib = await get_confluence_calibration_status(session)
                     if not calib.get('insufficient_data'):
                         rec = calib.get('recommendation', 'MAINTAIN')
@@ -715,7 +715,7 @@ class CycleScheduler:
                     logger.warning(f'Paper stats in report failed: {e}')
 
                 try:
-                    from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
+                    from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
                     if paper_7d and len(paper_7d) >= 3:
                         ts_res = QuantTearsheetGenerator.generate_from_trades(paper_7d)
                         lines.append(
@@ -728,7 +728,7 @@ class CycleScheduler:
                     logger.debug(f"Quant tearsheet in daily report failed: {e}")
                 
                 try:
-                    from utils.analytics.analysis_tracker import compute_analysis_quality_report
+                    from monika.core.analytics.analysis_tracker import compute_analysis_quality_report
                     quality_report = await compute_analysis_quality_report(session, days_back=30)
                     if quality_report.get('total_outcomes', 0) >= 5:
                         lines.append(f"\n<b>Analysis Quality (30d, {quality_report['total_outcomes']} trades):</b>")
@@ -742,7 +742,7 @@ class CycleScheduler:
                     logger.warning(f'Analysis quality report failed: {e}')
                 
                 try:
-                    from utils.calibration.prescreen_calibrator import compute_prescreen_skip_quality
+                    from monika.core.calibration.prescreen_calibrator import compute_prescreen_skip_quality
                     skip_qual = await compute_prescreen_skip_quality(session)
                     if not skip_qual.get("insufficient_data"):
                         false_skip_rate = skip_qual.get("false_skip_rate", 0)
@@ -754,7 +754,7 @@ class CycleScheduler:
                     logger.warning(f'Prescreen skip quality check failed: {e}')
                 
                 try:
-                    from utils.analytics.analysis_tracker import detect_score_inflation
+                    from monika.core.analytics.analysis_tracker import detect_score_inflation
                     inflation_data = await detect_score_inflation(session, days_back=30)
                     if not inflation_data.get('insufficient_data') and inflation_data.get('alert'):
                         direction = inflation_data.get('direction', 'UNKNOWN')
@@ -786,7 +786,7 @@ class CycleScheduler:
                 
                 lines.append(f"\n<b> System Health:</b>")
                 try:
-                    from utils.scheduling.wall_clock import parse_time_list, next_occurrence
+                    from monika.application.scheduler.wall_clock import parse_time_list, next_occurrence
                     times = parse_time_list(self.cycle_times_local)
                     next_dt = next_occurrence(times, self.timezone_name, now)
                     diff_h = max(0.0, (next_dt - now).total_seconds() / 3600)
@@ -806,7 +806,7 @@ class CycleScheduler:
                     logger.debug(f'Failed to check M15 data freshness: {e}')
                 
                 try:
-                    from utils.api.gemini_rate_limiter import GeminiRateLimiter
+                    from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
                     limiter = GeminiRateLimiter(session)
                     await GeminiRateLimiter._ensure_initialized(session)
                     flash_usage = await limiter.get_usage('flash')
@@ -817,7 +817,7 @@ class CycleScheduler:
                 
                 # Phase 5.1: Agent Performance Metrics (Stage 1 Bias Accuracy)
                 try:
-                    from utils.analytics.agent_performance_monitor import compute_agent_accuracy_report
+                    from monika.core.analytics.agent_performance_monitor import compute_agent_accuracy_report
                     agent_report = await compute_agent_accuracy_report(session, days_back=7)
                     stage1_acc = agent_report.get('stage1_bias_accuracy', {})
                     if stage1_acc.get('total_checked', 0) >= 10:
@@ -832,7 +832,7 @@ class CycleScheduler:
                 
                 # Phase 5.2: Model Source Performance
                 try:
-                    from utils.analytics.analysis_tracker import compute_model_source_performance
+                    from monika.core.analytics.analysis_tracker import compute_model_source_performance
                     model_perf = await compute_model_source_performance(session, days_back=7)
                     if model_perf.get('by_source'):
                         lines.append(f"\n<b>Model Source Performance (7d):</b>")
@@ -847,7 +847,7 @@ class CycleScheduler:
                 try:
                     from monika.infrastructure.database.models import SystemConfig
                     import json as _json
-                    from utils.analytics.agent_performance_monitor import get_currency_confidence_ceiling
+                    from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
                     
                     cal_cfg = (await session.execute(
                         select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
@@ -885,7 +885,7 @@ class CycleScheduler:
                 except Exception as llm_err:
                     logger.debug(f"LLM daily report synthesis fallback to raw: {llm_err}")
 
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_info("\n".join(lines))
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
@@ -938,7 +938,7 @@ class CycleScheduler:
 
     async def _safe_run_once(self) -> None:
         try:
-            from config.settings import load_settings
+            from monika.core.config.settings import load_settings
             self.settings = load_settings()
             asset_cfg = self.settings.get('trading', {})
             new_universe = asset_cfg.get('asset_universe', self.asset_universe)
@@ -978,7 +978,7 @@ class CycleScheduler:
             if hasattr(self, '_risk_gate') and self._risk_gate:
                 self._risk_gate.settings = self.settings
             try:
-                from utils.infra.db_backup import create_backup
+                from monika.infrastructure.infra.db_backup import create_backup
                 backup_cfg = self.settings.get('database', {}).get('backup', {})
                 if backup_cfg.get('enabled', False):
                     now = datetime.now(timezone.utc)

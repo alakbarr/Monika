@@ -23,13 +23,13 @@ class AdaptiveRiskPolicy:
         If the symbol has a statistically significant high win rate, we can lower the threshold.
         If the symbol has a low win rate, we increase the threshold.
         """
-        from database.models import PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import cast, Integer
         
-        from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+        from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
         
         from datetime import timedelta
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         
         lookback_days = int(self.settings.get('trading', {}).get('risk', {}).get('adaptive_policy_lookback_days', 60))
         max_trades_cap = int(self.settings.get('trading', {}).get('risk', {}).get('adaptive_policy_max_trades', 100))

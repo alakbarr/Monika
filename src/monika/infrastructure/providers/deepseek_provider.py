@@ -2,7 +2,7 @@ import logging
 import json
 from typing import Dict, Any, Optional
 import os
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 

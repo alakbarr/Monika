@@ -21,7 +21,7 @@ class TechnicalToolHandlers:
     async def get_price_history(
         self, symbol: str, timeframe: str = "H4", count: int = 100, session: Optional[AsyncSession] = None, **kwargs
     ) -> Any:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         return await client.get_rates(symbol=symbol, timeframe=timeframe, count=count)
@@ -39,7 +39,7 @@ class TechnicalToolHandlers:
         self, symbol: str, timeframe: str = "H4", period: int = 14, session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         if session:
-            from indicators.technical import TechnicalIndicatorCalculator
+            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
             calc = TechnicalIndicatorCalculator(session, self.settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
@@ -51,7 +51,7 @@ class TechnicalToolHandlers:
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         if session:
-            from database.models import SRZone, OrderBlock, FVGZone
+            from monika.infrastructure.database.models import SRZone, OrderBlock, FVGZone
             from sqlalchemy import select
 
             sr_rows = (
@@ -121,7 +121,7 @@ class TechnicalToolHandlers:
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         if session:
-            from database.models import StructureBreak
+            from monika.infrastructure.database.models import StructureBreak
             from sqlalchemy import select
 
             breaks = (

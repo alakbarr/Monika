@@ -17,10 +17,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
-from analysis.subagent_spawner import SubagentSpec, SubagentWorker, SubagentResult
+from monika.application.analysis.subagent_spawner import SubagentSpec, SubagentWorker, SubagentResult
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
-from logging_observability.delegation_live_log import LiveTranscriptWriter
-from utils.worktree import SubagentWorktree
+from monika.core.telemetry.delegation_live_log import LiveTranscriptWriter
+from monika.core.primitives.worktree import SubagentWorktree
 
 logger = logging.getLogger("TradingAgent.Tools.Delegate")
 

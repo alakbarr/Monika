@@ -1,7 +1,7 @@
 import json
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import FundamentalBrief
+from monika.infrastructure.database.models import FundamentalBrief
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger('TradingAgent.FundamentalVerifier')
@@ -59,7 +59,7 @@ Overall Confidence: {structured.get('confidence')}
 Invalidation Conditions: {json.dumps(structured.get('invalidation_conditions', {}))}
 Strongest Counter Thesis: {structured.get('strongest_counter_thesis')}"""
 
-        from utils.typesafe.jev_primitives import build_fundamental_verifier_questions
+        from monika.core.primitives.jev_primitives import build_fundamental_verifier_questions
         jev_q = build_fundamental_verifier_questions()
 
         result = await client.classify_json(

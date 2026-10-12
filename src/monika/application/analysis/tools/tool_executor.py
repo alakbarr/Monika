@@ -9,7 +9,7 @@ Delegates to modular ToolExecutor in analysis.tools.executor and ToolRegistry.
 
 from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 from monika.application.analysis.tools.executor import (
     ToolExecutor as _PrimaryToolExecutor,
@@ -20,7 +20,7 @@ from monika.application.analysis.tools.executor import (
 )
 
 # Re-export models and types for any downstream code expecting them in tool_executor
-from database.models import (
+from monika.infrastructure.database.models import (
     NewsItem,
     EconomicCalendar,
     TreasuryYield,

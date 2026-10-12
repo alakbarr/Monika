@@ -149,7 +149,7 @@ class DeferredLLMDispatcher:
 
     def estimate_batch_savings(self, input_tokens: int, output_tokens: int, model: str) -> float:
         """Estimate 50% cost savings for deferred batch processing vs. real-time."""
-        from utils.analytics.pricing import cost_usd
+        from monika.core.analytics.pricing import cost_usd
         full_cost = cost_usd(model_name=model, input_tokens=input_tokens, output_tokens=output_tokens)
         return round(full_cost * 0.50, 6)
 

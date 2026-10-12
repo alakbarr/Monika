@@ -9,12 +9,12 @@ dan mensimulasikan hasil jika harga mengenai SL atau TP.
 """
 import logging
 from datetime import datetime, timezone, timedelta
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
-from database.models import AssetAnalysis, PriceOHLCV, PaperTradeRecord, Position
-from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, PriceOHLCV, PaperTradeRecord, Position
+from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
 import asyncio
 logger = logging.getLogger("TradingAgent.PaperTracker")
@@ -207,7 +207,7 @@ class PaperTracker:
         if bar_timestamp is None:
             return False
         try:
-            from database.models import EconomicCalendar
+            from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select
             from datetime import timedelta
             # Extract base currency from symbol (e.g. EURUSD -> EUR, XAUUSD -> XAU)
@@ -358,7 +358,7 @@ class PaperTracker:
             if holding_hours > 24:
                 swap_enabled = self.settings.get('trading', {}).get('edge_strategy', {}).get('swap_modeling_enabled', True)
                 if swap_enabled:
-                    from utils.market.swap_estimator import estimate_swap_cost
+                    from monika.domain.market.swap_estimator import estimate_swap_cost
                     lots = getattr(trade, 'lots', None) or getattr(trade, 'volume', None) or 1.0
                     mt5_client = getattr(self, '_mt5', None)
                     swap_abs = await estimate_swap_cost(
@@ -437,7 +437,7 @@ class PaperTracker:
                             if age_hours > 24:
                                 swap_enabled = self.settings.get('trading', {}).get('edge_strategy', {}).get('swap_modeling_enabled', True)
                                 if swap_enabled:
-                                    from utils.market.swap_estimator import estimate_swap_cost
+                                    from monika.domain.market.swap_estimator import estimate_swap_cost
                                     lots = getattr(trade, 'lots', None) or getattr(trade, 'volume', None) or 1.0
                                     swap_abs = await estimate_swap_cost(
                                         symbol=trade.symbol,
@@ -517,7 +517,7 @@ class PaperTracker:
                             logger.debug(f'Factor outcome recording failed (non-fatal): {e}')
                             
                         try:
-                            from utils.analytics.trade_autopsy import run_trade_autopsy
+                            from monika.core.analytics.trade_autopsy import run_trade_autopsy
                             await run_trade_autopsy(session, trade)
                         except Exception as e:
                             logger.debug(f'Trade autopsy failed (non-fatal): {e}')
@@ -529,7 +529,7 @@ class PaperTracker:
                             
                         if trade.analysis_id:
                             try:
-                                from analysis.memory.outcome_linker import OutcomeLinker
+                                from monika.application.analysis.memory.outcome_linker import OutcomeLinker
                                 await OutcomeLinker(self.settings).process_closed_position(
                                     session, 
                                     analysis_id=trade.analysis_id, 
@@ -559,7 +559,7 @@ class PaperTracker:
     async def _record_factor_outcomes(self, session: AsyncSession, trade: PaperTradeRecord) -> None:
         """IMP-11: Record individual confluence factor outcomes after a trade closes."""
         import json as _json
-        from database.models import AssetAnalysis, ConfluenceFactorOutcome
+        from monika.infrastructure.database.models import AssetAnalysis, ConfluenceFactorOutcome
 
         if not trade.analysis_id:
             return
@@ -607,7 +607,7 @@ class PaperTracker:
         if not trade.analysis_id:
             return
         try:
-            from database.models import AssetAnalysis
+            from monika.infrastructure.database.models import AssetAnalysis
             analysis = await session.get(AssetAnalysis, trade.analysis_id)
             if analysis is None:
                 res = await session.execute(
@@ -617,7 +617,7 @@ class PaperTracker:
 
             strat_id = getattr(analysis, "source_strategy_id", None) if analysis else None
             if analysis and strat_id is not None:
-                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                 mon = get_strategy_decay_monitor()
                 mon.record_trade_outcome(
                     strategy_id=str(strat_id),
@@ -669,7 +669,7 @@ class PaperTracker:
         return False
     async def get_suspended_symbols(self, session: AsyncSession) -> list[str]:
         """Return list of symbols currently suspended due to poor performance"""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         
         cfg = (await session.execute(
@@ -702,7 +702,7 @@ class PaperTracker:
         Returns list of newly suspended symbols.
         Respects trading.paper_trading.streak_loss_policy and prevents infinite re-suspension loop.
         """
-        from database.models import PaperTradeRecord, SystemConfig
+        from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
         from sqlalchemy import select
         import json
         
@@ -786,7 +786,7 @@ class PaperTracker:
                 logger.warning(f'AUTO-SUSPENDED {symbol}: {consecutive_losses} consecutive SL hits. Suspended for {suspension_hours}h.')
                 
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
                         f'[DIJEDA] <b>{symbol} Auto-Suspended</b>\n'
                         f'{consecutive_losses} consecutive losses detected.\n'
@@ -809,7 +809,7 @@ class PaperTracker:
         self, session: AsyncSession, symbol: str, duration_hours: float = 24.0, reason: str = "manual_command"
     ) -> dict:
         """Suspend trading untuk simbol tertentu secara manual dengan durasi waktu."""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         import json
         from datetime import timedelta
@@ -851,7 +851,7 @@ class PaperTracker:
 
     async def unsuspend_symbol(self, session: AsyncSession, symbol: str) -> bool:
         """Buka suspensi untuk simbol tertentu."""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         import json
 
@@ -874,7 +874,7 @@ class PaperTracker:
 
     async def unsuspend_all(self, session: AsyncSession) -> list[str]:
         """Buka suspensi untuk semua simbol."""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         import json
 
@@ -896,7 +896,7 @@ class PaperTracker:
 
     async def get_streak_status(self, session: AsyncSession, symbol: str) -> dict:
         """Mengambil status streak loss dan suspensi untuk simbol tertentu."""
-        from database.models import PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import select
         
         recent = (await session.execute(
@@ -1194,7 +1194,7 @@ class PaperTracker:
             
             logger.warning(f"Win rate alert: {win_rate:.1f}% < {alert_threshold:.1f}%")
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_critical(msg)
             except Exception:
                 pass
@@ -1204,7 +1204,7 @@ class PaperTracker:
         Returns (should_regenerate: bool, reason: str).
         Triggers on: win rate < 40% after 10+ trades, or 10+ new trades since last generation.
         """
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         
         stats = await self.get_statistics(session)
@@ -1322,7 +1322,7 @@ class PaperTracker:
                 f"Consider pausing and reviewing recent analyses."
             )
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 await AgentNotifier().send_critical(msg)
             except Exception:
                 pass
@@ -1379,7 +1379,7 @@ class PaperTracker:
 
 def _group_by_symbol(history):
     by_sym = {}
-    from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+    from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
     for t in history:
         sym = t.get("symbol")
         if not sym:
@@ -1417,7 +1417,7 @@ def _group_by_symbol(history):
 
 def _group_by_symbol_direction(history):
     by_sym_dir = {}
-    from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+    from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
     for t in history:
         sym = t.get("symbol")
         direction = t.get("direction")

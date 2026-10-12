@@ -4,8 +4,8 @@ import json
 from typing import Dict, Any, Union
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.tools.tool_executor import ToolExecutor
-from utils.llm.caveman_compressor import compress_tool_payload
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 
 logger = logging.getLogger("TradingAgent.Stage1Prefetcher")
 
@@ -119,7 +119,7 @@ class Stage1DataBundler:
 
         # Extra parallel zero-browser real-time feeds
         async def _fetch_crypto_depth():
-            from data_sources.crypto_orderbook_depth import CryptoOrderbookDepth
+            from monika.infrastructure.data_ingestion.sources.crypto_orderbook_depth import CryptoOrderbookDepth
             snap = await CryptoOrderbookDepth.fetch_snapshot("BTCUSD")
             return {
                 "exchange": snap.exchange,
@@ -131,11 +131,11 @@ class Stage1DataBundler:
             } if snap else {"error": "L2 depth unavailable"}
 
         async def _fetch_sovereign_spreads():
-            from data_sources.sovereign_yield_spreads import SovereignYieldSpreads
+            from monika.infrastructure.data_ingestion.sources.sovereign_yield_spreads import SovereignYieldSpreads
             return await SovereignYieldSpreads.get_spreads()
 
         async def _fetch_gold_radar():
-            from data_sources.gold_physical_radar import GoldPhysicalRadar
+            from monika.infrastructure.data_ingestion.sources.gold_physical_radar import GoldPhysicalRadar
             radar = await GoldPhysicalRadar.fetch_radar()
             return {
                 "flow_bias": radar.institutional_flow_bias,
@@ -163,7 +163,7 @@ class Stage1DataBundler:
             events_by_time = {}
             if isinstance(ec_data, dict) and isinstance(ec_data.get("events"), list):
                 from datetime import datetime, timezone
-                import utils.clock as clock
+                import monika.core.primitives.clock as clock
                 now_utc = clock.now()
                 usd_past_events = []
                 for ev in ec_data["events"]:
@@ -334,7 +334,7 @@ class Stage1DataBundler:
                 
         # Validate macro & market data freshness
         try:
-            from utils.validation.data_validator import validate_data_freshness
+            from monika.core.validation.data_validator import validate_data_freshness
             symbols = (
                 self.settings.get("trading", {}).get("asset_universe")
                 or self.settings.get("trading", {}).get("symbols")
@@ -350,7 +350,7 @@ class Stage1DataBundler:
 
         # Update DataFeedCircuitBreaker heartbeats and evaluate critical feeds
         try:
-            from data_sources.circuit_breaker import get_data_feed_circuit_breaker
+            from monika.infrastructure.data_ingestion.sources.circuit_breaker import get_data_feed_circuit_breaker
             breaker = get_data_feed_circuit_breaker()
             ec_data = bundled_data.get("economic_calendar")
             if ec_data and isinstance(ec_data, dict) and "error" not in ec_data and ec_data.get("events"):

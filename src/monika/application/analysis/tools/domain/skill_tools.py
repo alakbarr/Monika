@@ -19,7 +19,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
-from skills.skills_hub import SkillsHub
+from monika.application.skills.skills_hub import SkillsHub
 
 logger = logging.getLogger("TradingAgent.Tools.SkillTools")
 
@@ -117,7 +117,7 @@ async def handle_skill_manage(
     context: Optional[Any] = None,
 ) -> str:
     """Manage domain skills lifecycle: create, edit, delete, inspect info, or hot-reload."""
-    from skills.skill_manager import SkillManager
+    from monika.application.skills.skill_manager import SkillManager
 
     manager = SkillManager(skills_hub=_SKILLS_HUB)
 

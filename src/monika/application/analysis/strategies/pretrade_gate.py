@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-import utils.clock as clock
-from analysis.calculators.volume_profile import compute_volume_profile
-from analysis.calculators.regime_classifier import compute_bollinger_donchian_chop, classify_market_regime
+import monika.core.primitives.clock as clock
+from monika.application.analysis.calculators.volume_profile import compute_volume_profile
+from monika.application.analysis.calculators.regime_classifier import compute_bollinger_donchian_chop, classify_market_regime
 
 from typing import Optional
 

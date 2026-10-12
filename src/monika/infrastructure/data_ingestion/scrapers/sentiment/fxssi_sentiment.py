@@ -14,8 +14,8 @@ from typing import Any
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import SystemConfig
-from scrapers.base_scraper import BaseScraper
+from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 import asyncio
 
 logger = logging.getLogger("TradingAgent.FXSSISentiment")

@@ -182,7 +182,7 @@ class FrozenSnapshotManager:
         # 3. Load Layer 1A Stable Core Memory
         stable_core = ""
         try:
-            from analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
             mgr = LayeredMemoryManager(self.settings)
             stable_core = await mgr.get_stable_core_memory(session)
         except Exception as e:
@@ -191,7 +191,7 @@ class FrozenSnapshotManager:
         # 4. Load Active Playbooks
         active_playbooks: Dict[str, Any] = {}
         try:
-            from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+            from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
             lifecycle = PlaybookLifecycleManager()
             all_pbs = lifecycle.list_all_playbooks() if hasattr(lifecycle, "list_all_playbooks") else {}
             for sym, pb in (all_pbs or {}).items():

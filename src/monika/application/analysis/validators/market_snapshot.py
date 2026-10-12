@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-from database.models import PriceOHLCV, TechnicalIndicator
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
 logger = logging.getLogger("TradingAgent.MarketSnapshot")
 

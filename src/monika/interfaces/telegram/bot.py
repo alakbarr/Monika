@@ -572,8 +572,8 @@ class TelegramBot:
 
     async def _build_stats_text(self) -> str:
         try:
-            from database.db import get_session
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.db import get_session
+            from monika.core.analytics.paper_tracker import PaperTracker
             from monika.interfaces.telegram.message_formatter import format_stats_slip
             
             async with get_session() as session:
@@ -591,8 +591,8 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
         
         try:
-            from database.db import get_session
-            from utils.analytics.cost_tracker import CostTracker
+            from monika.infrastructure.database.db import get_session
+            from monika.core.analytics.cost_tracker import CostTracker
             async with get_session() as session:
                 b_stat = await CostTracker.check_and_update_budget_status(session, self.settings)
                 rolling = await CostTracker.get_rolling_7day_cost(session)
@@ -628,11 +628,11 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
         
         try:
-            from database.db import get_session
-            from database.models import SystemConfig
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             import json as _json
-            from utils.analytics.agent_performance_monitor import get_currency_confidence_ceiling
+            from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
             
             async with get_session() as session:
                 cal_cfg = (await session.execute(
@@ -653,13 +653,13 @@ class TelegramBot:
                     for cur, cap in ceilings.items():
                         lines.append(f"• `{cur}`: Max {cap}")
                 
-                from utils.protocol.enhanced_cds import get_cds_thresholds_async
+                from monika.application.protocol.enhanced_cds import get_cds_thresholds_async
                 cds_thr = await get_cds_thresholds_async(session, self.settings)
                 lines.append('\n[ANALISIS] *SSVP CDS Thresholds:*')
                 for k, v in cds_thr.items():
                     lines.append(f'• `{k}`: {v}')
                 
-                from utils.analytics.specialist_tracker import compute_specialist_reliability
+                from monika.core.analytics.specialist_tracker import compute_specialist_reliability
                 spec_rel = await compute_specialist_reliability(session)
                 if spec_rel.get('specialists'):
                     lines.append('\n[OPERATOR]‍[PORTOFOLIO] *Specialist Trust Weights:*')
@@ -673,7 +673,7 @@ class TelegramBot:
                     lines.append(f"\n[LAPORAN] *Score Inflation Correction:* threshold={infl_data.get('threshold')} (set {infl_data.get('set_at','')[:10]})")
 
                 try:
-                    from utils.calibration.confidence_calibrator import compute_confidence_calibration
+                    from monika.core.calibration.confidence_calibrator import compute_confidence_calibration
                     cal_rep = await compute_confidence_calibration(session)
                     brier = cal_rep.get("brier_score")
                     ece = cal_rep.get("ece")
@@ -692,9 +692,9 @@ class TelegramBot:
     async def _cmd_edge(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
-        from utils.analytics.analysis_tracker import get_direction_accuracy_report, compute_factor_effectiveness
-        from utils.analytics.paper_tracker import PaperTracker
-        from database.db import get_session
+        from monika.core.analytics.analysis_tracker import get_direction_accuracy_report, compute_factor_effectiveness
+        from monika.core.analytics.paper_tracker import PaperTracker
+        from monika.infrastructure.database.db import get_session
         
         await update.message.reply_text("[MEMPROSES] Menghitung edge assessment... (bisa memakan waktu beberapa detik)")
         
@@ -735,14 +735,14 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
-        from database.db import get_session
-        from database.models import Position
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_positions_slip
 
         positions = []
         try:
-            from services.portfolio_service import PortfolioService
+            from monika.application.services.portfolio_service import PortfolioService
             async with get_session() as session:
                 positions = await PortfolioService.get_open_positions(session)
         except Exception as e:
@@ -824,7 +824,7 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
-        from risk.approval_hub import ApprovalHub
+        from monika.domain.risk.approval_hub import ApprovalHub
         from monika.interfaces.telegram.message_formatter import format_approvals_slip
         try:
             hub = ApprovalHub.get_instance()
@@ -859,8 +859,8 @@ class TelegramBot:
         # Handle per-ticket override: /trailing <ticket> <trail_mult> [be_mult]
         # or /trailing <ticket> disable / reset
         import json
-        from database.db import get_session
-        from database.models import Position
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position
         from sqlalchemy import select, or_
 
         ticket_str = ctx.args[0].strip().replace("#", "")
@@ -974,8 +974,8 @@ class TelegramBot:
             if len(args) > 1 and args[1].strip().isdigit():
                 days = int(args[1].strip())
 
-        from database.db import get_session
-        from analysis.tools.handlers.macro_tools import handle_get_weekly_macro_summary
+        from monika.infrastructure.database.db import get_session
+        from monika.application.analysis.tools.handlers.macro_tools import handle_get_weekly_macro_summary
         async with get_session() as session:
             res = await handle_get_weekly_macro_summary(
                 {"days_ahead": days, "currencies": curr},
@@ -1000,8 +1000,8 @@ class TelegramBot:
             trade_id = int(args[0])
             sl_delta = float(args[1]) if len(args) > 1 else 10.0
             tp_delta = float(args[2]) if len(args) > 2 else 0.0
-            from analysis.memory.counterfactual_simulator import CounterfactualSimulator
-            from database.db import get_session
+            from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
+            from monika.infrastructure.database.db import get_session
             sim = CounterfactualSimulator()
             async with get_session() as sess:
                 res = await sim.simulate_single_trade_counterfactual(sess, trade_id, sl_delta, tp_delta)
@@ -1038,7 +1038,7 @@ class TelegramBot:
         args = ctx.args or []
         month = args[0] if args else None
         year = int(args[1]) if len(args) > 1 else None
-        from analysis.tools.handlers.trade_intel import handle_get_market_chronicle
+        from monika.application.analysis.tools.handlers.trade_intel import handle_get_market_chronicle
         res = await handle_get_market_chronicle({"month": month, "year": year or 2026, "limit": 10})
         chronicles = res.get("chronicles", [])
         if not chronicles:
@@ -1069,7 +1069,7 @@ class TelegramBot:
                 pass
 
 
-        from analysis.tools.handlers.trade_intel import handle_run_monte_carlo_simulation
+        from monika.application.analysis.tools.handlers.trade_intel import handle_run_monte_carlo_simulation
         res = await handle_run_monte_carlo_simulation({"num_simulations": sims, "symbol": symbol})
         fe = res.get("final_equity_distribution", {})
         text = (
@@ -1095,9 +1095,9 @@ class TelegramBot:
         import io
         import json
         from sqlalchemy import select
-        from database.db import get_session
-        from database.models import TelegramConversation
-        from analysis.memory.sharegpt_exporter import ShareGptExporter
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import TelegramConversation
+        from monika.application.analysis.memory.sharegpt_exporter import ShareGptExporter
 
         user_id = str(update.effective_user.id)
         limit = 50
@@ -1132,8 +1132,8 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
-        from database.db import get_session
-        from database.models import TelegramConversation
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import TelegramConversation
         from sqlalchemy import select, delete
 
         user_id = str(update.effective_user.id)
@@ -1156,8 +1156,8 @@ class TelegramBot:
             await session.commit()
 
         try:
-            from database.session_db_wal import SessionDbWal, DEFAULT_SESSION_DB_PATH
-            from agent.state_rewind import StateRewindManager
+            from monika.infrastructure.database.session_db_wal import SessionDbWal, DEFAULT_SESSION_DB_PATH
+            from monika.application.agent.state_rewind import StateRewindManager
             if DEFAULT_SESSION_DB_PATH.exists():
                 wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
                 rewinder = StateRewindManager(wal_db)
@@ -1177,7 +1177,7 @@ class TelegramBot:
         if not self._is_admin(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
-        from utils.infra.db_backup import create_backup
+        from monika.infrastructure.infra.db_backup import create_backup
         res = await create_backup(self.settings, force=True)
         if res.get("success"):
             text = (
@@ -1196,7 +1196,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         import time
-        from evals.hostile_market_probe import HostileMarketProbe
+        from monika.application.evals.hostile_market_probe import HostileMarketProbe
 
         symbol = ctx.args[0].upper() if ctx.args else "EURUSD"
         probe = HostileMarketProbe(reference_price=1.0850, symbol=symbol)
@@ -1262,7 +1262,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            from monika.application.analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
             registry = CronRegistry(DEFAULT_CRON_FILE)
             args = ctx.args or []
             subcmd = args[0].lower() if args else "list"
@@ -1318,7 +1318,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
             from monika.core.config.settings import get_settings
 
             registry = RuntimeModelRegistry.get_instance()
@@ -1396,10 +1396,10 @@ class TelegramBot:
         tf = args[1].strip().upper() if len(args) > 1 else "H1"
 
         try:
-            from database.db import get_session
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import PriceOHLCV
             from sqlalchemy import select
-            from utils.chart_generator import generate_candlestick_chart_async
+            from monika.core.analytics.chart_generator import generate_candlestick_chart_async
 
             rows = []
             async with get_session() as session:
@@ -1461,10 +1461,10 @@ class TelegramBot:
         tf = args[1].strip().upper() if len(args) > 1 else "H1"
 
         try:
-            from database.db import get_session
-            from database.models import PriceOHLCV, OrderBlock, FVGZone
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import PriceOHLCV, OrderBlock, FVGZone
             from sqlalchemy import select
-            from utils.chart_generator import generate_smc_candlestick_chart
+            from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
 
             rows = []
             fvg_list = []
@@ -1537,7 +1537,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from execution.mt5_client import _get_orders
+            from monika.infrastructure.brokers.mt5_client import _get_orders
             orders = _get_orders()
         except Exception:
             orders = []
@@ -1573,7 +1573,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from indicators.micro_alpha_zoo import MicroAlphaZoo
+            from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
             factors = MicroAlphaZoo.list_factors()
             if not factors:
                 await update.message.reply_text("[ INFO ] Belum ada faktor terdaftar di MicroAlphaZoo.", parse_mode=ParseMode.HTML)
@@ -1616,10 +1616,10 @@ class TelegramBot:
         factor_name = args[1].strip().lower()
 
         try:
-            from indicators.micro_alpha_zoo import MicroAlphaZoo
+            from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
             import pandas as pd
-            from database.db import get_session
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import PriceOHLCV
             from sqlalchemy import select
 
             async with get_session() as session:
@@ -1739,10 +1739,10 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         
-        from database.db import get_session
-        from database.models import UserMarketIntel
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import UserMarketIntel
         from sqlalchemy import select, or_
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
 
         now = clock.now()
         async with get_session() as session:
@@ -1790,8 +1790,8 @@ class TelegramBot:
             return
 
         intel_id = int(ctx.args[0].strip())
-        from database.db import get_session
-        from database.models import UserMarketIntel, ActivityLog
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import UserMarketIntel, ActivityLog
         from sqlalchemy import select
 
         async with get_session() as session:
@@ -1875,8 +1875,8 @@ class TelegramBot:
             )
             return
 
-        from database.db import get_session
-        from risk.risk_gate import RiskGate
+        from monika.infrastructure.database.db import get_session
+        from monika.domain.risk.risk_gate import RiskGate
         gate = RiskGate(self.settings)
         async with get_session() as session:
             await gate.pause_trading(session, reason, duration_hours=duration_hours)
@@ -1887,9 +1887,9 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         if not self._is_admin(update): return await self._reject_non_admin(update)
-        from database.db import get_session
-        from risk.risk_gate import RiskGate
-        from utils.analytics.cost_tracker import CostTracker
+        from monika.infrastructure.database.db import get_session
+        from monika.domain.risk.risk_gate import RiskGate
+        from monika.core.analytics.cost_tracker import CostTracker
         async with get_session() as session:
             if hasattr(self, "execution_service") and self.execution_service and hasattr(self.execution_service, "resume_trading"):
                 await self.execution_service.resume_trading(session, requested_by="telegram_admin")
@@ -1904,8 +1904,8 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
         if not self._is_admin(update): return await self._reject_non_admin(update)
 
-        from database.db import get_session
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.infrastructure.database.db import get_session
+        from monika.core.analytics.paper_tracker import PaperTracker
 
         tracker = PaperTracker(self.settings)
 
@@ -1973,8 +1973,8 @@ class TelegramBot:
             return
 
         target = ctx.args[0].strip().upper()
-        from database.db import get_session
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.infrastructure.database.db import get_session
+        from monika.core.analytics.paper_tracker import PaperTracker
 
         tracker = PaperTracker(self.settings)
         async with get_session() as session:
@@ -2070,8 +2070,8 @@ class TelegramBot:
             if vol_arg.endswith("%"):
                 try:
                     pct = float(vol_arg.rstrip("%")) / 100.0
-                    from database.db import get_session
-                    from database.models import Position
+                    from monika.infrastructure.database.db import get_session
+                    from monika.infrastructure.database.models import Position
                     from sqlalchemy import select, or_
                     async with get_session() as session:
                         pos = (await session.execute(
@@ -2189,7 +2189,7 @@ class TelegramBot:
         await update.message.chat.send_action(ChatAction.TYPING)
 
         try:
-            from agent.task_registry import TaskRegistry
+            from monika.application.agent.task_registry import TaskRegistry
             table_md = TaskRegistry.get_formatted_status_table(getattr(self, "task_registry", None))
             await update.message.reply_text(table_md, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
@@ -2205,9 +2205,9 @@ class TelegramBot:
         symbol = ctx.args[0].upper().strip().replace("/", "") if ctx.args else "XAUUSD"
         await update.message.reply_text(f"[DEBAT] Memulai Multi-Agent Debate untuk *{symbol}*...\n_Bull Specialist vs Bear Specialist vs Investment Judge_", parse_mode=ParseMode.MARKDOWN)
 
-        from database.db import get_session
-        from analysis.debate.debate_orchestrator import DebateOrchestrator
-        from analysis.prefetch.pipeline import prefetch_pipeline
+        from monika.infrastructure.database.db import get_session
+        from monika.application.analysis.debate.debate_orchestrator import DebateOrchestrator
+        from monika.application.analysis.prefetch.pipeline import prefetch_pipeline
 
         try:
             async with get_session() as session:
@@ -2361,8 +2361,8 @@ class TelegramBot:
             )
             return
 
-        from database.db import get_session
-        from database.models import SystemConfig, ActivityLog
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import SystemConfig, ActivityLog
         from sqlalchemy import select
         import json
 
@@ -2421,9 +2421,9 @@ class TelegramBot:
         symbol = ctx.args[0].upper().strip() if ctx.args else "XAUUSD"
         await update.message.reply_text(f"[TELUSURI] Menganalisis rezim pasar untuk *{symbol}*...", parse_mode=ParseMode.MARKDOWN)
 
-        from database.db import get_session
-        from database.models import FundamentalBrief, VIXData
-        from analysis.calculators.regime_classifier import classify_market_regime
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FundamentalBrief, VIXData
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
         from sqlalchemy import select, desc
 
         async with get_session() as session:
@@ -2465,13 +2465,13 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
-        from database.db import get_session
-        from database.models import Position, AssetAnalysis
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position, AssetAnalysis
         from sqlalchemy import select, desc
 
         ticket_arg = int(ctx.args[0]) if ctx.args and ctx.args[0].isdigit() else None
 
-        from database.repositories import PositionRepository
+        from monika.infrastructure.database.repositories import PositionRepository
         async with get_session() as session:
             pos_repo = PositionRepository(session)
             if ticket_arg:
@@ -2588,8 +2588,8 @@ class TelegramBot:
             return
         try:
             from typing import cast
-            from backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
-            from backtest.walk_forward_engine import WalkForwardEngine
+            from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
+            from monika.application.backtest.walk_forward_engine import WalkForwardEngine
             end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(days=days)
 
@@ -2665,8 +2665,8 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
-        from database.db import AsyncSessionLocal
-        from database.models import EconomicCalendar
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import EconomicCalendar
         from sqlalchemy import select
 
         currency = ctx.args[0].upper() if ctx.args else None
@@ -2707,7 +2707,7 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         try:
-            from skills.loader import list_skills
+            from monika.application.skills.loader import list_skills
             all_s = list_skills()
             playbooks = [s for s in all_s if "playbook" in s.lower() or s.startswith("alpha_")]
             core = [s for s in all_s if s not in playbooks]
@@ -2870,8 +2870,8 @@ class TelegramBot:
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
         query = " ".join(ctx.args).strip() if ctx.args else ""
-        from database.db import AsyncSessionLocal
-        from database.models import DecisionReflection
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import DecisionReflection
         from sqlalchemy import select, or_
 
         try:
@@ -2915,8 +2915,8 @@ class TelegramBot:
         if not update.message: return
         if not self._is_authorized(update): return await self._reject_unauthorized(update)
 
-        from database.db import AsyncSessionLocal
-        from database.models import PlaybookRuleAttribution
+        from monika.infrastructure.database.db import AsyncSessionLocal
+        from monika.infrastructure.database.models import PlaybookRuleAttribution
         from sqlalchemy import select
 
         try:
@@ -3403,8 +3403,8 @@ class TelegramBot:
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
-            from database.db import get_session
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.db import get_session
+            from monika.core.analytics.paper_tracker import PaperTracker
             tracker = PaperTracker(self.settings)
             async with get_session() as session:
                 cleared = await tracker.unsuspend_all(session)
@@ -3423,8 +3423,8 @@ class TelegramBot:
                 return
             updated_fields = stored.get("updated_fields", {})
             param = stored.get("param", "")
-            from database.db import get_session
-            from database.models import SystemConfig, ActivityLog
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import SystemConfig, ActivityLog
             from sqlalchemy import select
             import json
 
@@ -3601,8 +3601,8 @@ class TelegramBot:
                     duration_desc = entry.get("duration_desc", "")
                 self._active_nonces.pop(nonce, None)
 
-            from database.db import get_session
-            from risk.risk_gate import RiskGate
+            from monika.infrastructure.database.db import get_session
+            from monika.domain.risk.risk_gate import RiskGate
             gate = RiskGate(self.settings)
             async with get_session() as session:
                 await gate.pause_trading(session, reason, duration_hours=duration_hours)
@@ -3631,8 +3631,8 @@ class TelegramBot:
                 self._active_nonces.pop(nonce, None)
 
             await query.edit_message_text("[MEMPROSES] Menjalankan kill switch...")
-            from database.db import get_session
-            from services.trading_service import TradingService
+            from monika.infrastructure.database.db import get_session
+            from monika.application.services.trading_service import TradingService
             try:
                 async with get_session() as session:
                     await TradingService.emergency_kill(session, reason="Telegram kill switch", actor="telegram_admin")
@@ -3678,7 +3678,7 @@ class TelegramBot:
                 return
             ticket = int(data.split(":", 1)[1])
             await query.edit_message_text(f"[MEMPROSES] Menggeser Stop Loss #{ticket} ke breakeven...")
-            from execution.execution_service import ExecutionService
+            from monika.application.execution.execution_service import ExecutionService
             sync = ExecutionService(self.settings)
             res = await sync.apply_immediate_breakeven(ticket=ticket)
             if res.get("status") == "success":
@@ -3692,7 +3692,7 @@ class TelegramBot:
                 await query.answer("[AKSES DITOLAK] Hanya Admin yang dapat memindahkan SL ke breakeven.", show_alert=True)
                 return
             await query.edit_message_text("[MEMPROSES] Menggeser seluruh posisi profit ke breakeven...")
-            from execution.execution_service import ExecutionService
+            from monika.application.execution.execution_service import ExecutionService
             sync = ExecutionService(self.settings)
             res = await sync.apply_immediate_breakeven(only_profit=True)
             cnt = res.get("breakeven_count", 0)
@@ -3704,7 +3704,7 @@ class TelegramBot:
                 await query.answer("[AKSES DITOLAK] Approval hanya diizinkan untuk Admin.", show_alert=True)
                 return
             token = data.split(":", 1)[1]
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             hub = ApprovalHub.get_instance()
             success, msg = await hub.approve(token, operator=f"tg_{user_id}")
             icon = "✅ [DISETUJUI]" if success else "⚠️ [GAGAL]"
@@ -3716,7 +3716,7 @@ class TelegramBot:
                 await query.answer("[AKSES DITOLAK] Penolakan hanya diizinkan untuk Admin.", show_alert=True)
                 return
             token = data.split(":", 1)[1]
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             hub = ApprovalHub.get_instance()
             success, msg = await hub.reject(token, operator=f"tg_{user_id}", reason="Ditolak via tombol Telegram")
             await query.edit_message_text(f"❌ [DITOLAK] Permintaan approval #{token[:8]} dibatalkan.")
@@ -3752,7 +3752,7 @@ class TelegramBot:
             parts = data.split(":", 3)
             role = parts[2]
             model_name = parts[3]
-            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
             RuntimeModelRegistry.get_instance().set_role_model(role, model_name, slot="primary")
             await query.edit_message_text(
                 f"✅ <b>Model Berhasil Diganti</b>\nRole: <code>{role}</code>\nPrimary Model: <code>{model_name}</code>",
@@ -3761,7 +3761,7 @@ class TelegramBot:
             return
 
         if data == "mdl:reset_all":
-            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
             RuntimeModelRegistry.get_instance().clear_overrides()
             await query.edit_message_text("♻️ Seluruh model override telah direset ke default settings.yaml.", parse_mode=ParseMode.HTML)
             return
@@ -3772,7 +3772,7 @@ class TelegramBot:
                 return
             action_id = data.split(":", 1)[1]
 
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             hub = ApprovalHub.get_instance()
             req = hub.get_request(action_id)
             if req:
@@ -3789,8 +3789,8 @@ class TelegramBot:
                         sl = float(trade["stop_loss"]) if trade.get("stop_loss") is not None else None
                         tp = float(trade["take_profit"]) if trade.get("take_profit") is not None else None
 
-                        from database.db import get_session
-                        from database.models import AssetAnalysis
+                        from monika.infrastructure.database.db import get_session
+                        from monika.infrastructure.database.models import AssetAnalysis
                         import json
 
                         async with get_session() as session:
@@ -3867,7 +3867,7 @@ class TelegramBot:
                 return
             action_id = data.split(":", 1)[1]
 
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             hub = ApprovalHub.get_instance()
             if hub.get_request(action_id):
                 success, msg = await hub.reject(action_id, operator=f"tg_{user_id}", reason="Dibatalkan via Telegram")
@@ -3877,8 +3877,8 @@ class TelegramBot:
             agent = await self._resolve_action_agent(user_id, action_id, query)
             if not agent:
                 if action_id.isdigit():
-                    from database.db import get_session
-                    from database.models import ActivityLog, AssetAnalysis, PaperTradeRecord
+                    from monika.infrastructure.database.db import get_session
+                    from monika.infrastructure.database.models import ActivityLog, AssetAnalysis, PaperTradeRecord
                     from sqlalchemy import update as sql_update
                     async with get_session() as session:
                         session.add(ActivityLog(
@@ -3921,8 +3921,8 @@ class TelegramBot:
     # ------------------------------------------------------------------
 
     async def _build_status_text(self) -> str:
-        from database.db import get_session
-        from database.models import Position, RiskState, AssetAnalysis
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position, RiskState, AssetAnalysis
         from sqlalchemy import select, func
         from monika.interfaces.telegram.message_formatter import format_status_slip
 
@@ -3930,7 +3930,7 @@ class TelegramBot:
             async with get_session() as session:
                 now = datetime.now(timezone.utc)
 
-                from database.repositories import PositionRepository
+                from monika.infrastructure.database.repositories import PositionRepository
                 pos_repo = PositionRepository(session)
                 pos_count = await pos_repo.count_open_positions()
 
@@ -3982,13 +3982,13 @@ class TelegramBot:
             return f"[ GAGAL ] Error mengambil status: {e}"
 
     async def _build_positions_text(self) -> str:
-        from database.db import get_session
-        from database.models import Position
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_positions_slip
 
         try:
-            from database.repositories import PositionRepository
+            from monika.infrastructure.database.repositories import PositionRepository
             async with get_session() as session:
                 pos_repo = PositionRepository(session)
                 positions = list(await pos_repo.get_open_positions())
@@ -3997,8 +3997,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_brief_text(self) -> str:
-        from database.db import get_session
-        from database.models import FundamentalBrief
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
 
         try:
@@ -4019,8 +4019,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_analysis_text(self, symbol: str) -> str:
-        from database.db import get_session
-        from database.models import AssetAnalysis
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import AssetAnalysis
         from sqlalchemy import select
         
         try:
@@ -4048,8 +4048,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_history_text(self) -> str:
-        from database.db import get_session
-        from database.models import ActivityLog
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import ActivityLog
         from sqlalchemy import select
 
         try:
@@ -4081,10 +4081,10 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_risk_text(self) -> str:
-        from database.db import get_session
-        from database.models import RiskState
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import RiskState
         from sqlalchemy import select
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.core.analytics.paper_tracker import PaperTracker
         from monika.interfaces.telegram.message_formatter import format_risk_slip
 
         try:
@@ -4127,8 +4127,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_risk_deep_text(self) -> str:
-        from database.db import get_session
-        from risk.risk_gate import RiskGate
+        from monika.infrastructure.database.db import get_session
+        from monika.domain.risk.risk_gate import RiskGate
         from monika.interfaces.telegram.message_formatter import format_risk_deep_slip
 
         try:
@@ -4139,7 +4139,7 @@ class TelegramBot:
             # Statistical edge info
             edge_summary = None
             try:
-                from utils.analytics.paper_tracker import PaperTracker
+                from monika.core.analytics.paper_tracker import PaperTracker
                 tracker = PaperTracker(self.settings)
                 async with get_session() as session:
                     stats = await tracker.get_statistics(session)
@@ -4189,8 +4189,8 @@ class TelegramBot:
                     last_run = last_time.strftime("%Y-%m-%d %H:%M UTC")
 
             try:
-                from database.db import get_session
-                from database.models import AssetAnalysis
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.models import AssetAnalysis
                 from sqlalchemy import select
                 async with get_session() as session:
                     stmt = select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1)
@@ -4213,7 +4213,7 @@ class TelegramBot:
             return f"[ FAILED ] Error: {e}"
 
     async def _build_approvals_text(self) -> str:
-        from risk.approval_hub import ApprovalHub
+        from monika.domain.risk.approval_hub import ApprovalHub
         from monika.interfaces.telegram.message_formatter import format_approvals_slip
 
         try:
@@ -4224,8 +4224,8 @@ class TelegramBot:
             return f"[ FAILED ] Error: {e}"
 
     async def _build_trailing_text(self) -> str:
-        from database.db import get_session
-        from database.models import Position
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_trailing_slip
 
@@ -4249,7 +4249,7 @@ class TelegramBot:
             return f"[ FAILED ] Error: {e}"
 
     async def _build_reconcile_text(self) -> str:
-        from scheduler.order_reconciler import OrderReconciler
+        from monika.application.scheduler.order_reconciler import OrderReconciler
         from monika.interfaces.telegram.message_formatter import format_reconcile_slip
 
         try:
@@ -4260,8 +4260,8 @@ class TelegramBot:
             return f"[ FAILED ] Error: {e}"
 
     async def _build_fedwatch_text(self) -> str:
-        from database.db import get_session
-        from database.models import FedWatchProbability, CentralBankRateExpectation
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FedWatchProbability, CentralBankRateExpectation
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_fedwatch_slip
         import json
@@ -4301,8 +4301,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_yields_text(self) -> str:
-        from database.db import get_session
-        from database.models import TreasuryYield, BondYieldData
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import TreasuryYield, BondYieldData
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_yields_slip
 
@@ -4334,8 +4334,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_fear_greed_text(self) -> str:
-        from database.db import get_session
-        from database.models import SystemConfig
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_fear_greed_slip
         import json
@@ -4353,8 +4353,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_cot_text(self, market_code: Optional[str] = None) -> str:
-        from database.db import get_session
-        from database.models import COTReport
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import COTReport
         from sqlalchemy import select
         from monika.interfaces.telegram.message_formatter import format_cot_slip
 
@@ -4384,7 +4384,7 @@ class TelegramBot:
     async def _build_playbooks_text(self) -> str:
         from monika.interfaces.telegram.message_formatter import format_playbooks_slip
         try:
-            from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+            from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
             mgr = PlaybookLifecycleManager()
             all_pb = mgr.list_all_playbooks()
             items = []
@@ -4408,7 +4408,7 @@ class TelegramBot:
     async def _build_rollback_text(self, name: str) -> str:
         from monika.interfaces.telegram.message_formatter import format_rollback_slip
         try:
-            from analysis.memory.playbook_ledger import PlaybookLedger
+            from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
             ledger = PlaybookLedger()
             success = ledger.rollback(name)
             res = {
@@ -4423,7 +4423,7 @@ class TelegramBot:
     async def _build_crystallized_text(self) -> str:
         from monika.interfaces.telegram.message_formatter import format_crystallized_slip
         try:
-            from analysis.memory.skill_crystallizer import SkillCrystallizer
+            from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
             import yaml
             crystallizer = SkillCrystallizer()
             skills_dir = crystallizer.SKILLS_DIR
@@ -4453,8 +4453,8 @@ class TelegramBot:
             return f"[ GAGAL ] Error: {e}"
 
     async def _build_vix_text(self) -> str:
-        from database.db import get_session
-        from database.models import VIXData
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select
 
         try:
@@ -4484,7 +4484,7 @@ class TelegramBot:
 
     async def _build_tokens_text(self) -> str:
         try:
-            from utils.analytics.token_auditor import TokenAuditor
+            from monika.core.analytics.token_auditor import TokenAuditor
             summary = await TokenAuditor.get_summary(hours=24)
             if not summary or summary["total_calls"] == 0:
                 return "[LAPORAN] *Belum ada konsumsi token tercatat hari ini (24 jam terakhir).*"
@@ -4519,7 +4519,7 @@ class TelegramBot:
 
     async def _build_credits_text(self) -> str:
         try:
-            from utils.api.credit_balance_tracker import CreditBalanceTracker
+            from monika.infrastructure.api.credit_balance_tracker import CreditBalanceTracker
             rep = await CreditBalanceTracker.get_full_credit_report()
 
             lines = ["*[KUOTA] LAPORAN SISA KREDIT & KUOTA API*\n"]
@@ -4760,7 +4760,7 @@ class TelegramBot:
         try:
             result = await self.execution_service.execute_by_analysis_id(analysis_id)
             try:
-                from risk.approval_hub import ApprovalHub
+                from monika.domain.risk.approval_hub import ApprovalHub
                 user_id = update.effective_user.id if update.effective_user else "unknown"
                 await ApprovalHub.get_instance().approve(str(analysis_id), operator=f"telegram:{user_id}")
             except Exception:
@@ -4783,15 +4783,15 @@ class TelegramBot:
         analysis_id_str = ctx.args[0]
         
         try:
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             user_id = update.effective_user.id if update.effective_user else "unknown"
             await ApprovalHub.get_instance().reject(str(analysis_id_str), operator=f"telegram:{user_id}", reason="Rejected via Telegram by admin")
         except Exception:
             pass
 
-        from database.db import get_session
+        from monika.infrastructure.database.db import get_session
         async with get_session() as session:
-            from database.models import ActivityLog, PaperTradeRecord
+            from monika.infrastructure.database.models import ActivityLog, PaperTradeRecord
             from sqlalchemy import select, update as sql_update
             
             session.add(ActivityLog(
@@ -4803,7 +4803,7 @@ class TelegramBot:
             try:
                 analysis_id = int(analysis_id_str)
                 
-                from database.models import AssetAnalysis
+                from monika.infrastructure.database.models import AssetAnalysis
                 await session.execute(
                     sql_update(AssetAnalysis)
                     .where(AssetAnalysis.id == analysis_id)
@@ -4844,7 +4844,7 @@ class TelegramBot:
         symbol = ctx.args[0].upper().strip()
         instruction = " ".join(ctx.args[1:]).strip()
 
-        from risk.approval_hub import ApprovalHub
+        from monika.domain.risk.approval_hub import ApprovalHub
         user_id = update.effective_user.id if update.effective_user else "unknown"
         operator_tag = f"telegram:{user_id}"
         await ApprovalHub.get_instance().steer(symbol, instruction, operator=operator_tag)
@@ -4870,8 +4870,8 @@ class TelegramBot:
             except ValueError:
                 days = 30
 
-        from database.db import get_session
-        from database.models import PaperTradeRecord, Position
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import PaperTradeRecord, Position
         from sqlalchemy import select
         from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
 
@@ -4903,7 +4903,7 @@ class TelegramBot:
 
             # Generate and send graphical equity curve snapshot
             try:
-                from utils.chart_generator import generate_equity_curve_chart
+                from monika.core.analytics.chart_generator import generate_equity_curve_chart
                 trade_records = []
                 for t in trades:
                     t_time = getattr(t, "closed_at", getattr(t, "opened_at", None))
@@ -4932,8 +4932,8 @@ class TelegramBot:
             await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
 
     async def _build_weekly_report(self) -> str:
-        from database.db import get_session
-        from database.models import Position, PaperTradeRecord, TokenUsageLog, CyclePerformance
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import Position, PaperTradeRecord, TokenUsageLog, CyclePerformance
         from sqlalchemy import select, func
         from datetime import timedelta
         
@@ -4994,7 +4994,7 @@ class TelegramBot:
             
             # Fetch tracker stats for expectancy and suspended symbols
             try:
-                from utils.analytics.paper_tracker import PaperTracker
+                from monika.core.analytics.paper_tracker import PaperTracker
                 tracker = PaperTracker()
                 async with get_session() as tracker_session:
                     stats = await tracker.get_statistics(tracker_session)
@@ -5013,7 +5013,7 @@ class TelegramBot:
                         lines.append(f"  [DIJEDA] Suspended Symbols: {', '.join(suspended)}")
                     lines.append("")
                     
-                    from utils.analytics.analysis_tracker import get_direction_accuracy_report
+                    from monika.core.analytics.analysis_tracker import get_direction_accuracy_report
                     dir_acc = await get_direction_accuracy_report(tracker_session, 7)
                     if dir_acc and "error" not in dir_acc and not dir_acc.get('insufficient_data'):
                         lines.append("*Analysis Quality:*")
@@ -5061,7 +5061,7 @@ class TelegramBot:
                 for sym, data in sorted(by_symbol.items(), key=lambda x: x[1]["pnl"], reverse=True):
                     lines.append(f"  {sym}: {data['count']} trades, `{'${:+.2f}'.format(data['pnl'])}`")
             try:
-                from utils.analytics.analysis_tracker import compute_model_source_performance
+                from monika.core.analytics.analysis_tracker import compute_model_source_performance
                 async with get_session() as src_session:
                     source_perf = await compute_model_source_performance(src_session, days_back=7)
                 if source_perf.get('by_decision_source'):

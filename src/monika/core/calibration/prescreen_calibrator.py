@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
-from database.models import PrescreenLog, PriceOHLCV
+from monika.infrastructure.database.models import PrescreenLog, PriceOHLCV
 
 logger = logging.getLogger('TradingAgent.PrescreenCalibrator')
 
@@ -46,7 +46,7 @@ async def compute_prescreen_skip_quality(session) -> dict:
 
     out = {'status': 'analyzed', 'total_skips_checked': len(skips)}
     async def _get_atr_pct(symbol: str) -> float:
-        from database.models import TechnicalIndicator, PriceOHLCV
+        from monika.infrastructure.database.models import TechnicalIndicator, PriceOHLCV
         import json as _j
         try:
             atr_row = (await session.execute(

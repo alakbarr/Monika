@@ -25,10 +25,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.db import get_session
-from database.models import AssetAnalysis, ActivityLog, TradeTrigger, SystemConfig
-from execution.execution_service import ExecutionService
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis, ActivityLog, TradeTrigger, SystemConfig
+from monika.application.execution.execution_service import ExecutionService
 from monika.application.graph.state import TradingState, merge_dicts, merge_lists
 from langchain_core.runnables.config import RunnableConfig
 
@@ -112,7 +112,7 @@ async def event_ingestion_node(state: ReactiveState, config: Optional[RunnableCo
     if not market_regime:
         try:
             async with get_session() as session:
-                from database.models import FundamentalBrief
+                from monika.infrastructure.database.models import FundamentalBrief
                 row = (await session.execute(
                     select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
                 )).scalar_one_or_none()

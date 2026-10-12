@@ -336,7 +336,7 @@ def toggle_plugin_state(
 
         # Update in-place to strictly preserve comments, formatting, and AST
         try:
-            from config.atomic_writer import AtomicConfigWriter
+            from monika.core.config.atomic_writer import AtomicConfigWriter
 
             update_delta: Dict[str, Any] = {}
             if cat_norm in ("analysis_pipeline", "analysis_pipelines"):
@@ -366,7 +366,7 @@ def toggle_plugin_state(
             AtomicConfigWriter.update_in_place(path, {"plugins": update_delta}, create_backup=True)
         except Exception as write_err:
             logger.debug(f"[Harness.Installer] update_in_place fallback to write: {write_err}")
-            from config.atomic_writer import AtomicConfigWriter
+            from monika.core.config.atomic_writer import AtomicConfigWriter
 
             AtomicConfigWriter.write(path, cfg, create_backup=True)
 

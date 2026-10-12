@@ -21,7 +21,7 @@ import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
-from database.models import PriceOHLCV
+from monika.infrastructure.database.models import PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.Risk.ExecutionSimulator")
 

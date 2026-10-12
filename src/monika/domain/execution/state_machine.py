@@ -10,7 +10,7 @@ Manages Order -> OrderEvent audit trail and EventBus lifecycle broadcast.
 import logging
 from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import Order, OrderStatus, OrderEvent
+from monika.infrastructure.database.models import Order, OrderStatus, OrderEvent
 
 logger = logging.getLogger("TradingAgent.ExecutionService.StateMachine")
 
@@ -55,7 +55,7 @@ class OrderStateMachine:
 
         # Emit to TradingEventStore
         try:
-            from database.event_store import TradingEventStore
+            from monika.infrastructure.database.event_store import TradingEventStore
             await TradingEventStore.emit(
                 session=session,
                 event_type="order.state_changed",
@@ -76,7 +76,7 @@ class OrderStateMachine:
 
         # Publish to EventBus
         try:
-            from utils.protocol.event_bus import get_event_bus, OrderStateChangedEvent
+            from monika.application.protocol.event_bus import get_event_bus, OrderStateChangedEvent
             bus = get_event_bus()
             bus_details = details or {}
             if ticket:

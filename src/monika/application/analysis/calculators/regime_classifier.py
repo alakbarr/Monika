@@ -1,10 +1,10 @@
 import json
 import logging
 from datetime import datetime, timezone
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import TechnicalIndicator, VIXData, PriceOHLCV
+from monika.infrastructure.database.models import TechnicalIndicator, VIXData, PriceOHLCV
 
 logger = logging.getLogger('TradingAgent.RegimeClassifier')
 
@@ -58,7 +58,7 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
     a confluence-threshold modifier and a position-size multiplier."""
     settings = settings or {}
     adx_data = await _get_latest_adx(session, symbol, 'D1', as_of=as_of)
-    from utils.validation.indicator_sanitizer import safe_float
+    from monika.core.validation.indicator_sanitizer import safe_float
     adx_val = safe_float(adx_data.get('adx')) if adx_data else None
 
     atr_series = await _get_atr_series(session, symbol, 'H4', 20, as_of=as_of)
@@ -173,7 +173,7 @@ async def classify_market_regime(session: AsyncSession, symbol: str, settings: O
 
 async def compute_bollinger_donchian_chop(session, symbol: str, timeframe: str, settings: dict, as_of: Optional[datetime] = None) -> dict:
     import json
-    from utils.validation.indicator_sanitizer import safe_float
+    from monika.core.validation.indicator_sanitizer import safe_float
     cfg = settings.get('trading', {}).get('edge_strategy', {}).get('volatility_regime', {})
     if not cfg.get('enabled', True):
         return {'chop_block': False, 'reason': 'disabled_in_settings'}

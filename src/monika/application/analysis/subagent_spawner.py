@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Callable, Set
 
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.SubagentSpawner")
 
@@ -363,7 +363,7 @@ class DynamicSubagentPool:
         # --- Base Specialist 1: Macro & Rates ---
         cb_framework_text = ""
         try:
-            from skills.loader import load_skill
+            from monika.application.skills.loader import load_skill
             cb_skill = load_skill("central_banks_framework")
             if cb_skill:
                 cb_framework_text = f"\n\n[AUTHORITATIVE CENTRAL BANK KNOWLEDGE]\n{cb_skill}\n"

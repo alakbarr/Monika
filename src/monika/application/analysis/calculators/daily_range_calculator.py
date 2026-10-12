@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime, timezone
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PriceOHLCV
+from monika.infrastructure.database.models import PriceOHLCV
 logger = logging.getLogger('TradingAgent.DailyRangeCalculator')
 
 DEFAULT_LOOKBACK_FX = 5
@@ -131,7 +131,7 @@ async def compute_daily_range_context(
     # SOTA TimesFM 3.0 Predictive Volatility & Range Integration
     timesfm_data = None
     try:
-        from indicators.timesfm_engine import TimesFMEngine
+        from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
         engine = TimesFMEngine(settings)
         timesfm_data = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of)
     except Exception as tfm_err:

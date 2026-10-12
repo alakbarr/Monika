@@ -147,7 +147,7 @@ class StartupChecker:
 
     def _check_critical_constants(self) -> Tuple[bool, List[str]]:
         try:
-            from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+            from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
             if not MARKET_OUTCOME_EXIT_REASONS:
                 raise ValueError("MARKET_OUTCOME_EXIT_REASONS is empty")
             logger.info(f"  [OK] utils.constants importable (MARKET_OUTCOME_EXIT_REASONS={MARKET_OUTCOME_EXIT_REASONS})")
@@ -158,7 +158,7 @@ class StartupChecker:
 
     def _check_specialist_prompts(self) -> Tuple[bool, List[str]]:
         try:
-            from analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, _render_specialist_prompt
+            from monika.application.analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, _render_specialist_prompt
             for role, template in SPECIALIST_PROMPTS.items():
                 _render_specialist_prompt(template, "TESTUSD", "TEST", "USD")
             logger.info("  [OK] Specialist prompt templates render without error")
@@ -169,7 +169,7 @@ class StartupChecker:
 
     def _check_preflight_baselines(self) -> Tuple[bool, List[str]]:
         try:
-            from analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
+            from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate, EMPIRICAL_ACTIVE_MEDIANS
             if not EMPIRICAL_ACTIVE_MEDIANS:
                 raise ValueError("EMPIRICAL_ACTIVE_MEDIANS is empty")
             logger.info(f"  [OK] PreFlightTurnGate empirical baselines verified ({len(EMPIRICAL_ACTIVE_MEDIANS)} symbols)")
@@ -260,8 +260,8 @@ class StartupChecker:
             warnings.append("min_paper_trades_before_live too low")
 
         try:
-            from database.db import AsyncSessionLocal
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.db import AsyncSessionLocal
+            from monika.core.analytics.paper_tracker import PaperTracker
             async with AsyncSessionLocal() as session:
                 tracker = PaperTracker(self.settings)
                 stats = await tracker.get_statistics(session)
@@ -305,7 +305,7 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from database.db import engine, get_engine
+            from monika.infrastructure.database.db import engine, get_engine
             from sqlalchemy import text
 
             eng = self.db_engine or engine or get_engine()
@@ -331,7 +331,7 @@ class StartupChecker:
                 logger.info("  [OK] Database connection")
 
                 try:
-                    from database.models import Base
+                    from monika.infrastructure.database.models import Base
                     critical_tables = [
                         "news_items", "economic_calendar", "asset_analysis",
                         "fundamental_briefs", "paper_trade_records", "trade_outcomes",
@@ -428,10 +428,10 @@ class StartupChecker:
                         pass
 
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import delete, select
-                from database.db import AsyncSessionLocal
-                from database.safe_ops import safe_commit
+                from monika.infrastructure.database.db import AsyncSessionLocal
+                from monika.infrastructure.database.safe_ops import safe_commit
                 async with AsyncSessionLocal() as startup_session:
                     await startup_session.execute(
                         delete(SystemConfig).where(SystemConfig.key.like("pending_specialist_biases_%"))
@@ -452,7 +452,7 @@ class StartupChecker:
 
                     # Pre-boot integrity verification of synthesized strategies
                     import json
-                    from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+                    from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
                     synth_rows = (await startup_session.execute(
                         select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
                     )).scalars().all()
@@ -487,8 +487,8 @@ class StartupChecker:
                 logger.warning(f"  [WARN] Startup specialist biases cleanup failed (non-fatal): {e}")
 
             try:
-                from utils.analytics.cost_tracker import CostTracker
-                from database.db import AsyncSessionLocal
+                from monika.core.analytics.cost_tracker import CostTracker
+                from monika.infrastructure.database.db import AsyncSessionLocal
                 async with AsyncSessionLocal() as budget_session:
                     b_stat = await CostTracker.check_and_update_budget_status(budget_session, self.settings)
                     logger.info(
@@ -500,8 +500,8 @@ class StartupChecker:
                 logger.warning(f"  [WARN] AI Budget synchronization check failed (non-fatal): {e}")
 
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
-                from database.db import AsyncSessionLocal
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.infrastructure.database.db import AsyncSessionLocal
                 async with AsyncSessionLocal() as chronicle_session:
                     c_writer = ChronicleWriter(self.settings)
                     synced = await c_writer.sync_macro_reality_from_file(chronicle_session)
@@ -536,7 +536,7 @@ class StartupChecker:
         model_catalog = self.settings.get("llm", {}).get("model_catalog", {})
 
         try:
-            from analysis.providers.llm_factory import LLMFactory
+            from monika.infrastructure.providers.llm_factory import LLMFactory
             factory = LLMFactory(self.settings)
 
             for provider_name, config in providers_cfg.items():
@@ -589,7 +589,7 @@ class StartupChecker:
                 try:
                     if provider_name in ("ninerouter", "9router", "nine_router"):
                         try:
-                            from analysis.providers.nine_router_provider import NineRouterProvider
+                            from monika.infrastructure.providers.nine_router_provider import NineRouterProvider
                             NineRouterProvider.ensure_running()
                         except Exception:
                             pass
@@ -614,7 +614,7 @@ class StartupChecker:
 
         # Groq model alias check
         try:
-            from analysis.providers.groq_provider import GROQ_MODEL_ALIASES
+            from monika.infrastructure.providers.groq_provider import GROQ_MODEL_ALIASES
             if providers_cfg.get("groq", {}).get("enabled", False) and any(_get_env(k) for k in ["GROQ_API_KEYS"]):
                 import httpx
                 groq_keys_raw = _get_env("GROQ_API_KEYS", "")
@@ -661,11 +661,11 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
             mt5 = ensure_mt5_module()
             mode_desc = "native Windows" if is_native_mt5_available() else ("Linux RPC bridge" if is_mt5linux_available() else "fallback")
             logger.info(f"  [OK] MetaTrader5 library available ({mode_desc})")
-            from execution.mt5_client import MT5Client
+            from monika.infrastructure.brokers.mt5_client import MT5Client
             test_client = self.mt5_client or MT5Client(self.settings)
             if await test_client.connect():
                 logger.info("  [OK] MetaTrader5 connection validated")
@@ -697,18 +697,18 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from analysis.tools.tool_executor import ToolExecutor
-            from analysis.tools.tools_definitions import ALL_TOOLS
-            from database.db import AsyncSessionLocal
-            from analysis.tools.registry import default_tool_registry
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tools_definitions import ALL_TOOLS
+            from monika.infrastructure.database.db import AsyncSessionLocal
+            from monika.application.analysis.tools.registry import default_tool_registry
 
             async with AsyncSessionLocal() as session:
                 executor = ToolExecutor(session)
 
             # Trigger full handler registration (decorators + module-level ToolDefinition lists)
             try:
-                import analysis.tools.handlers  # noqa: F401
-                import analysis.tools.domain  # noqa: F401
+                import monika.application.analysis.tools.handlers  # noqa: F401
+                import monika.application.analysis.tools.domain  # noqa: F401
             except Exception as reg_err:
                 logger.error(f"  [FAIL] Tool handler registration import: {reg_err}")
                 ok = False
@@ -731,7 +731,7 @@ class StartupChecker:
                 if default_tool_registry.resolve_name(tool_name) != tool_name:
                     return True
                 try:
-                    from analysis.tools.unified_registry import unified_tool_registry
+                    from monika.application.analysis.tools.unified_registry import unified_tool_registry
                     if tool_name in unified_tool_registry._tools or tool_name in unified_tool_registry._aliases:
                         return True
                 except Exception:
@@ -747,7 +747,7 @@ class StartupChecker:
                 logger.info(f"  [OK] All {len(ALL_TOOLS)} tool schemas resolve to a handler")
 
             try:
-                from database.models import OrderBlock
+                from monika.infrastructure.database.models import OrderBlock
                 logger.info("  [OK] OrderBlock model importable")
             except ImportError as e:
                 logger.error(f"  [FAIL] OrderBlock import: {e}")
@@ -755,7 +755,7 @@ class StartupChecker:
 
             try:
                 from sqlalchemy import text
-                from database.db import engine, get_engine
+                from monika.infrastructure.database.db import engine, get_engine
                 eng = self.db_engine or engine or get_engine()
                 async with eng.connect() as conn:
                     await conn.execute(text("SELECT 1 FROM dxy_data LIMIT 1"))
@@ -772,8 +772,8 @@ class StartupChecker:
         ok = True
         warnings = []
         try:
-            from utils.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
-            from skills.loader import _SKILLS_DIR
+            from monika.core.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
+            from monika.application.skills.loader import _SKILLS_DIR
             if not PERFORMANCE_NOTES_PATH.resolve().is_relative_to(_SKILLS_DIR.resolve()):
                 logger.error(f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside skills read path {_SKILLS_DIR}")
                 ok = False
@@ -793,7 +793,7 @@ class StartupChecker:
             "stage2_session_trigger", "specialist_technical", "specialist_sentiment",
             "specialist_macro", "news_digest", "cot_precompute",
         }
-        from analysis.providers.llm_factory import LLMFactory
+        from monika.infrastructure.providers.llm_factory import LLMFactory
         resolver = LLMFactory(self.settings)
         for role in critical_roles:
             role_cfg = task_roles_cfg.get(role, {})

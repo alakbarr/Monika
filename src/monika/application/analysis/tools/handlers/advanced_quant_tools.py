@@ -23,9 +23,9 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, and_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.registry import register_tool
-from database.models import PaperTradeRecord, Position, AssetAnalysis, SystemConfig, PriceOHLCV, OrderBlock, FVGZone
+from monika.infrastructure.database.models import PaperTradeRecord, Position, AssetAnalysis, SystemConfig, PriceOHLCV, OrderBlock, FVGZone
 
 logger = logging.getLogger("TradingAgent.Tools.AdvancedQuant")
 
@@ -200,7 +200,7 @@ async def handle_run_walk_forward_optimization(args: dict, **ctx) -> dict:
 
     try:
         from datetime import datetime, timezone, timedelta
-        from backtest.walk_forward_engine import WalkForwardEngine
+        from monika.application.backtest.walk_forward_engine import WalkForwardEngine
 
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=90 * n_folds)
@@ -299,7 +299,7 @@ async def handle_run_model_benchmark(args: dict, **ctx) -> dict:
     rounds = int(args.get("rounds", 3))
 
     try:
-        from benchmark.alpha_arena import AlphaArenaTournament
+        from monika.application.benchmark.alpha_arena import AlphaArenaTournament
 
         tournament = AlphaArenaTournament()
         leaderboard = tournament.get_leaderboard()

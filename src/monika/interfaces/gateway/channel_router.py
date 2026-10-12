@@ -16,7 +16,7 @@ import asyncio
 import logging
 from typing import Any, Callable, Dict, Optional
 
-from database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 from monika.interfaces.gateway.platform_base import BasePlatformAdapter
 
 logger = logging.getLogger("TradingAgent.Gateway.ChannelRouter")

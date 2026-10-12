@@ -8,7 +8,7 @@ import math
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PriceOHLCV, DXYData, TreasuryYield
+from monika.infrastructure.database.models import PriceOHLCV, DXYData, TreasuryYield
 
 logger = logging.getLogger('TradingAgent.DynamicCorrelation')
 
@@ -83,7 +83,7 @@ async def get_rolling_correlation(
     if symbol1 == symbol2:
         return (1.0, 'identity')
     try:
-        from database.models import TreasuryYield
+        from monika.infrastructure.database.models import TreasuryYield
 
         def _build_stmt(sym: str):
             sym_clean = (sym or "").upper().replace("/", "")
@@ -163,7 +163,7 @@ async def compute_cross_asset_macro_correlation(
     Computes cross-asset macro correlations joining DB Treasury Yields (US10Y, US02Y),
     Gold (XAUUSD), and Forex pairs (USDJPY, EURUSD).
     """
-    from database.models import TreasuryYield, PriceOHLCV
+    from monika.infrastructure.database.models import TreasuryYield, PriceOHLCV
     from datetime import datetime, timezone, timedelta
     import numpy as np
 

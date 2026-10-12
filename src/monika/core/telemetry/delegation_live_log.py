@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("TradingAgent.Logging.DelegationLiveLog")
 
-from utils.infra.paths import SUBAGENT_LOGS_DIR
+from monika.infrastructure.infra.paths import SUBAGENT_LOGS_DIR
 
 DEFAULT_LOG_DIR = SUBAGENT_LOGS_DIR
 

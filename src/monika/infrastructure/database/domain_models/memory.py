@@ -1,6 +1,6 @@
 """Memory, reflection, and chronicle models (Phase 7)."""
 
-from database.models import (
+from monika.infrastructure.database.models import (
     DecisionReflection,
     CandidateLesson,
     MarketChronicle,

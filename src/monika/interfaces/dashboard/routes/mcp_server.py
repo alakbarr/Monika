@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from analysis.mcp.dispatcher import MonikaMcpDispatcher
+from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
 
 logger = logging.getLogger("TradingAgent.Dashboard.MCP")
 

@@ -54,7 +54,7 @@ async def create_backup(settings: dict, force: bool = False) -> dict:
     env["PGPASSWORD"] = db_pass
 
     try:
-        from utils.infra.platform_compat import safe_subprocess_run
+        from monika.infrastructure.infra.platform_compat import safe_subprocess_run
 
         cmd = [
             "pg_dump",

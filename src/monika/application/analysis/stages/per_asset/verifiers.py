@@ -11,7 +11,7 @@ from typing import Optional, Any, Callable, Dict, List, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PerAsset.Verifiers")
 
@@ -23,7 +23,7 @@ def _get_clock():
 
 
 async def _get_symbol_sl_streak(session, symbol: str) -> int:
-    from database.models import PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord
     from sqlalchemy import select
     recent = (await session.execute(
         select(PaperTradeRecord).where(PaperTradeRecord.symbol == symbol)
@@ -52,7 +52,7 @@ class VerifiersMixin:
         self, session: AsyncSession, symbol: str, start_time: datetime
     ) -> tuple[Optional[dict], Optional[Any], list[tuple[str, str]]]:
         """Memeriksa keberadaan, kesegaran, dan kualitas FundamentalBrief."""
-        from database.models import FundamentalBrief
+        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
 
         context_blocks: list[tuple[str, str]] = []
@@ -191,7 +191,7 @@ class VerifiersMixin:
 
     async def _check_minimum_data_quality(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Check if minimum data quality requirements are met for analysis."""
-        from database.models import PriceOHLCV, TechnicalIndicator
+        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
         from sqlalchemy import select
         
         # Cek apakah ada data harga
@@ -218,7 +218,7 @@ class VerifiersMixin:
 
     async def _verify_data_currency(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Verify data freshness (H4 candle age)."""
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
         from datetime import datetime, timezone
         last_h4 = (await session.execute(
@@ -247,7 +247,7 @@ class VerifiersMixin:
         if not is_crypto and is_weekend:
             return True, "ok"
             
-        from utils.constants import H4_DATA_MAX_AGE_HOURS
+        from monika.core.primitives.constants import H4_DATA_MAX_AGE_HOURS
         effective_max = H4_DATA_MAX_AGE_HOURS + (48.0 if (not is_crypto and is_reopen) else 0.0)
         if age_hours > effective_max:
             return False, f"H4 data is too old ({age_hours:.1f} hours). Latest: {dt_stamp}"
@@ -256,7 +256,7 @@ class VerifiersMixin:
 
     async def _check_data_coherence_for_analysis(self, session: AsyncSession, symbol: str) -> tuple[bool, str]:
         """Verify key data points are internally consistent."""
-        from database.models import PriceOHLCV, TechnicalIndicator
+        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
         from sqlalchemy import select
         import json
         
@@ -276,7 +276,7 @@ class VerifiersMixin:
                 return False, f"Failed to parse ATR_14 value: {e}"
         
         # 1. Check TechnicalIndicator vs OHLCV coherence
-        from utils.validation.data_validator import check_data_coherence
+        from monika.core.validation.data_validator import check_data_coherence
         coherence = await check_data_coherence(
             session, 
             symbol,
@@ -313,7 +313,7 @@ class VerifiersMixin:
         is_weekend = (now_dt.weekday() == 5) or (now_dt.weekday() == 6 and now_dt.hour < 22) or (now_dt.weekday() == 4 and now_dt.hour >= 22)
         is_reopen = (now_dt.weekday() == 6 and now_dt.hour >= 22) or (now_dt.weekday() == 0 and now_dt.hour < 4)
         
-        from utils.constants import H4_DATA_MAX_AGE_HOURS
+        from monika.core.primitives.constants import H4_DATA_MAX_AGE_HOURS
         ATR_MAX_AGE_HOURS = H4_DATA_MAX_AGE_HOURS + (48.0 if (not is_crypto and (is_weekend or is_reopen)) else 0.0)
         if not (not is_crypto and is_weekend) and atr_age_hours > ATR_MAX_AGE_HOURS:
             return (
@@ -323,7 +323,7 @@ class VerifiersMixin:
             )
         
         # 3. Check VIX data must exist (needed for VIX_OK confluence factor)
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         vix = await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
         vix_row = vix.scalar_one_or_none()
         if not vix_row:

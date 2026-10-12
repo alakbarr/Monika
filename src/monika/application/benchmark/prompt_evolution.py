@@ -11,7 +11,7 @@ Evolves trading system prompts offline using multi-objective Pareto optimization
 import json
 import logging
 from typing import Optional, List, Dict, Any, Tuple
-from utils.llm.prompt_compressor import estimate_tokens
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
 logger = logging.getLogger("TradingAgent.GEPA")
 
@@ -110,7 +110,7 @@ class GEPALiteEvolver:
     def _load_current(self, component: str) -> str:
         if component == "stage2_system_prompt":
             try:
-                from analysis.stages.per_asset_stage import SYSTEM_PROMPT_TEMPLATE
+                from monika.application.analysis.stages.per_asset_stage import SYSTEM_PROMPT_TEMPLATE
                 return SYSTEM_PROMPT_TEMPLATE
             except Exception:
                 pass

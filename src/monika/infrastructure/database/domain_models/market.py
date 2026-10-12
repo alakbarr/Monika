@@ -1,6 +1,6 @@
 """Market, price, technical, and SMC models (Phase 7)."""
 
-from database.models import (
+from monika.infrastructure.database.models import (
     PriceOHLCV,
     TechnicalIndicator,
     SwingPoint,

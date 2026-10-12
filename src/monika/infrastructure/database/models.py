@@ -26,7 +26,7 @@ TSVECTOR = TSVECTOR_TYPE
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, synonym, validates
 
 
-from utils.clock import now as _clock_now
+from monika.core.primitives.clock import now as _clock_now
 
 def _utcnow() -> datetime:
     """Mengembalikan waktu saat ini dalam UTC (timezone-aware)."""

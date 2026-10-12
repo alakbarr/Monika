@@ -16,9 +16,9 @@ from typing import List, Optional
 
 from dateutil import parser as dateutil_parser
 
-from scrapers.models import CalendarEvent, ScrapedNews, ScrapedTweet, FedMeeting
-from database.models import NewsItem, EconomicCalendar, FedWatchProbability, SystemConfig
-from database.safe_ops import safe_commit
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent, ScrapedNews, ScrapedTweet, FedMeeting
+from monika.infrastructure.database.models import NewsItem, EconomicCalendar, FedWatchProbability, SystemConfig
+from monika.infrastructure.database.safe_ops import safe_commit
 
 logger = logging.getLogger("TradingAgent.Adapters")
 
@@ -198,7 +198,7 @@ def fed_meeting_to_models(meeting: FedMeeting) -> List[FedWatchProbability]:
 async def batch_save_news(session, news_list: List[ScrapedNews]) -> int:
     """Konversi dan simpan berita secara batch, lewati duplikat berdasarkan URL."""
     from sqlalchemy import select
-    from database.models import VIXData
+    from monika.infrastructure.database.models import VIXData
 
     # Ambil VIX terbaru
     vix_row = (await session.execute(

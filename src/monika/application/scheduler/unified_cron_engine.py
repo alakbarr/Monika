@@ -578,7 +578,7 @@ class UnifiedCronEngine:
             elif not job.no_agent and job.prompt:
                 # Default headless ChatAgent execution for conversational / analytical tasks
                 try:
-                    from config.settings import load_settings
+                    from monika.core.config.settings import load_settings
                     from monika.application.agent.chat_agent import ChatAgent
                     settings = load_settings()
                     agent = ChatAgent(settings, user_id=job.target_destination or "cron_scheduler", is_admin=True)
@@ -625,7 +625,7 @@ class UnifiedCronEngine:
                     if self._channel_dispatcher:
                         self._channel_dispatcher(job, execution_output)
                     elif job.target_delivery == "telegram":
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         notifier = AgentNotifier()
                         header = f"<b>[JADWAL OTOMATIS: {job.name or job.job_id}]</b>\n\n"
                         msg = header + execution_output

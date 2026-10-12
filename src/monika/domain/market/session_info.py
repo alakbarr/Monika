@@ -1,7 +1,7 @@
 """Market session tracking and timing rules utility."""
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 
 def get_current_market_session(dt: Optional[datetime] = None) -> Dict[str, Any]:

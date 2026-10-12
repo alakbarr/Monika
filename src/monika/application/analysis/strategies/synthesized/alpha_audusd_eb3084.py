@@ -1,4 +1,4 @@
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math

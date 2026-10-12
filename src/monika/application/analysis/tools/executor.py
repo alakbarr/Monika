@@ -13,13 +13,13 @@ import inspect
 import json
 import logging
 from pydantic import ValidationError
-from analysis.schemas.schemas import SubmitFundamentalBriefSchema, SubmitAssetAnalysisSchema
+from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema, SubmitAssetAnalysisSchema
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import select, desc, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import (
+from monika.infrastructure.database.models import (
     NewsItem,
     EconomicCalendar,
     TreasuryYield,
@@ -51,7 +51,7 @@ from database.models import (
     MarketChronicle,
 )
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.registry import default_tool_registry, ToolRegistry
 import monika.application.analysis.tools.handlers  # Auto-registers all modular tool handlers
 
@@ -112,7 +112,7 @@ class ToolExecutor:
         self.verification_ledger: Optional[Any] = None
         self.is_admin: bool = False
         try:
-            from utils.llm.data_dedup import DataFetchDeduplicator
+            from monika.infrastructure.llm.data_dedup import DataFetchDeduplicator
 
             self.deduplicator = DataFetchDeduplicator()
         except Exception:
@@ -176,7 +176,7 @@ class ToolExecutor:
 
         if sym and isinstance(sym, str):
             try:
-                from utils.market.instrument_identity import resolve_instrument_identity
+                from monika.domain.market.instrument_identity import resolve_instrument_identity
 
                 clean_sym = resolve_instrument_identity(sym).canonical_symbol
             except Exception:
@@ -284,7 +284,7 @@ class ToolExecutor:
             if cfg and cfg.value:
                 try:
                     data = json.loads(cfg.value)
-                    from data_sources.validators import is_intraday_cache_expired
+                    from monika.infrastructure.data_ingestion.sources.validators import is_intraday_cache_expired
 
                     ttl_sec = actual_cache_hours * 3600
                     if not is_intraday_cache_expired(data["timestamp"], ttl_seconds=ttl_sec, now=clock.now()):
@@ -785,7 +785,7 @@ class ToolExecutor:
                         logger.debug(f"Write-then-readback check non-fatal error: {rb_err}")
 
             if self.settings.get("trading", {}).get("caveman_mode", False):
-                from utils.llm.caveman_compressor import compress_tool_payload
+                from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 
                 result = compress_tool_payload(result)
 
@@ -800,7 +800,7 @@ class ToolExecutor:
                 result, (dict, list)
             ):
                 try:
-                    from utils.llm.tool_condenser import ToolObservationCondenser
+                    from monika.infrastructure.llm.tool_condenser import ToolObservationCondenser
 
                     condenser = ToolObservationCondenser(self.settings)
                     condensed_str = await condenser.condense_observation(
@@ -870,7 +870,7 @@ class ToolExecutor:
     async def _tool_update_scratchpad(self, inp: dict) -> dict:
         """Updates active working scratchpad with intermediate calculation anchors."""
         symbol = self._resolve_symbol(inp) or self.symbol or "DEFAULT"
-        from analysis.memory.working_scratchpad import WorkingScratchpad
+        from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
 
         updated = WorkingScratchpad.update_scratchpad(symbol, inp)
         summary = WorkingScratchpad.get_summary_text(symbol)
@@ -884,7 +884,7 @@ class ToolExecutor:
     async def _tool_read_scratchpad(self, inp: dict) -> dict:
         """Reads active working scratchpad anchors for the current analysis session."""
         symbol = self._resolve_symbol(inp) or self.symbol or "DEFAULT"
-        from analysis.memory.working_scratchpad import WorkingScratchpad
+        from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
 
         state = WorkingScratchpad.read_scratchpad(symbol)
         summary = WorkingScratchpad.get_summary_text(symbol)
@@ -921,7 +921,7 @@ class ToolExecutor:
         return await handle_get_timesfm_forecast(executor=self, session=self.session, settings=self.settings, **inp)
 
     async def _tool_get_paper_trading_performance(self, inp: dict) -> dict:
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.core.analytics.paper_tracker import PaperTracker
 
         days_back = int(inp["days_back"]) if inp.get("days_back") is not None else None
         tracker = PaperTracker(self.settings)
@@ -1441,7 +1441,7 @@ class ToolExecutor:
                 and not (is_weekend and (has_crypto_sentiment or pi.get("dominant_driver")))
             ):
                 try:
-                    from analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
+                    from monika.application.analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
 
                     baseline = await calculate_macro_priced_in_baseline(self.session)
                     if baseline.get("cot_positioning_percentile") is not None:
@@ -1711,7 +1711,7 @@ class ToolExecutor:
         return errors
 
     async def _cross_check_all_currencies_priced_in(self, inp: dict) -> list[str]:
-        from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
+        from monika.application.analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
 
         warnings = []
         fedwatch_res = await self.execute("get_fedwatch_probabilities", {"compare_hours_ago": 24})
@@ -1868,7 +1868,7 @@ class ToolExecutor:
 
         # Ceiling check
         try:
-            from utils.analytics.agent_performance_monitor import get_currency_confidence_ceiling
+            from monika.core.analytics.agent_performance_monitor import get_currency_confidence_ceiling
 
             ceilings = await get_currency_confidence_ceiling(self.session)
             currency_conf = inp.get("currency_confidence", {})
@@ -1904,7 +1904,7 @@ class ToolExecutor:
                 inp["_data_quality_degraded"] = True
                 inp["_degradation_reasons"] = completeness_errors
 
-        from utils.protocol.brief_contamination_guard import BriefContaminationGuard
+        from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
         brief_data_for_check = {
             "currency_bias": inp.get("currency_bias", {}),
@@ -2132,7 +2132,7 @@ class ToolExecutor:
 
         # Macro Regime Shift Auto-Recording to MarketChronicle
         try:
-            from analysis.memory.chronicle_writer import ChronicleWriter
+            from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
 
             prev_brief = (
                 await self.session.execute(
@@ -3150,7 +3150,7 @@ class ToolExecutor:
 
         if factors and "fundamental_bias" in factors and decision in ("buy", "sell"):
             try:
-                from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+                from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
 
                 pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
                 if pair_info:
@@ -3224,7 +3224,7 @@ class ToolExecutor:
 
         if "liquidity_sweep_confirmed" in factors and decision in ("buy", "sell"):
             try:
-                from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+                from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
 
                 sweep_check = await detect_liquidity_sweep(self.session, symbol, self.settings)
                 if not (sweep_check.get("structure_confirmed") and sweep_check.get("valid_for_direction") == decision):
@@ -3238,13 +3238,13 @@ class ToolExecutor:
         try:
             edge_cfg = self.settings.get("trading", {}).get("edge_strategy", {})
             if edge_cfg.get("macro_bias", {}).get("enabled", True):
-                from analysis.calculators.macro_bias_filter import evaluate_macro_alignment
+                from monika.application.analysis.calculators.macro_bias_filter import evaluate_macro_alignment
 
                 macro_check = await evaluate_macro_alignment(self.session, symbol, decision, self.settings)
                 if macro_check.get("strong_conflict"):
                     logger.warning(f"MACRO BIAS WARNING for {symbol}: {'; '.join(macro_check['reasons'])}")
             if edge_cfg.get("volatility_regime", {}).get("enabled", True):
-                from analysis.calculators.regime_classifier import compute_bollinger_donchian_chop
+                from monika.application.analysis.calculators.regime_classifier import compute_bollinger_donchian_chop
 
                 chop = await compute_bollinger_donchian_chop(self.session, symbol, "H4", self.settings)
                 if chop.get("chop_block"):
@@ -3336,7 +3336,7 @@ class ToolExecutor:
                 "intraday_range_strategy_enabled", True
             ) and decision in ("buy", "sell"):
                 try:
-                    from analysis.calculators.daily_range_calculator import compute_daily_range_context
+                    from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
                     _adr_probe = await compute_daily_range_context(self.session, symbol, self.settings)
                     if "error" in _adr_probe:
@@ -3644,7 +3644,7 @@ class ToolExecutor:
 
         # UNIFIED THRESHOLD ENFORCEMENT
         try:
-            from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+            from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
 
             final_threshold, threshold_reason = await compute_unified_confluence_threshold(
                 self.session, symbol, self.settings
@@ -3749,8 +3749,8 @@ class ToolExecutor:
         # ============================================================
         if decision in ("buy", "sell"):
             try:
-                from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
-                from utils.market.bias_utils import normalize_bias
+                from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+                from monika.domain.market.bias_utils import normalize_bias
                 import json as _json
 
                 pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
@@ -3834,7 +3834,7 @@ class ToolExecutor:
             context_snapshot_id = None
             context_cds_score = None
             try:
-                from utils.protocol.context_snapshot import compute_context_snapshot_id
+                from monika.application.protocol.context_snapshot import compute_context_snapshot_id
                 import json as _j
 
                 context_snapshot_id, _ = await compute_context_snapshot_id(self.session)
@@ -3905,7 +3905,7 @@ class ToolExecutor:
         # Hard ceiling: non-deterministic uplift cap
         if decision in ("buy", "sell") and inp.get("confluence_score"):
             submitted_score = inp["confluence_score"]
-            from analysis.calculators.confluence_calculator import calculate_confluence
+            from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 
             det_calc = await calculate_confluence(
                 self.session, symbol, decision, entry_price, sl_price, tp_price, settings=self.settings
@@ -3929,7 +3929,7 @@ class ToolExecutor:
                     f"[{symbol}] Confluence uplift soft-warning: reported={submitted_score}, verified_base={det_score}, uplift={non_det_uplift}. Capping effective_score to {effective_score} for threshold re-validation."
                 )
                 try:
-                    from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+                    from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
 
                     recheck_threshold, recheck_reason = await compute_unified_confluence_threshold(
                         self.session, symbol, self.settings
@@ -4247,8 +4247,8 @@ class ToolExecutor:
         prompt = inp.get("task_prompt", "")
         symbol = inp.get("symbol", "")
 
-        from analysis.subagent.isolated_harness import IsolatedSubagentRunner
-        from analysis.providers.llm_factory import get_client_for_task
+        from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
+        from monika.infrastructure.providers.llm_factory import get_client_for_task
         from monika.application.analysis.tools.tools_definitions import STAGE2_ESSENTIAL_TOOLS, STAGE1_TOOLS
 
         runner = IsolatedSubagentRunner(settings=self.settings)

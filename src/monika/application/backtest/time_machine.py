@@ -41,12 +41,12 @@ class TimeMachine:
 
     async def __aenter__(self):
         self._token = _virtual_time.set(self.virtual_time)
-        from utils.clock import set_simulated_now
+        from monika.core.primitives.clock import set_simulated_now
         set_simulated_now(self.virtual_time)
         return self
 
     async def __aexit__(self, *args):
         if self._token is not None:
             _virtual_time.reset(self._token)
-        from utils.clock import set_simulated_now
+        from monika.core.primitives.clock import set_simulated_now
         set_simulated_now(None)

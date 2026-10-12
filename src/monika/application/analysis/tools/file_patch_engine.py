@@ -87,7 +87,7 @@ class StaleOverwriteGuard:
         Returns (True, None) if safe, or (False, error_reason) if unsafe.
         """
         try:
-            from security.terminal_guard import assert_safe_write_path
+            from monika.core.security.terminal_guard import assert_safe_write_path
 
             assert_safe_write_path(path)
         except Exception as sec_exc:
@@ -348,7 +348,7 @@ class FilePatchEngine:
         Reads file content with 1-indexed line numbers and records read timestamp.
         """
         try:
-            from security.terminal_guard import assert_safe_read_path
+            from monika.core.security.terminal_guard import assert_safe_read_path
 
             assert_safe_read_path(path)
         except Exception as sec_exc:

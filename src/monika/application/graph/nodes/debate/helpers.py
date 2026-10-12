@@ -10,16 +10,16 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 
-import utils.clock as clock
-from database.db import get_session
-from database.models import AssetAnalysis, RiskState, Position, SystemConfig
-from analysis.providers.llm_factory import get_client_for_task
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis, RiskState, Position, SystemConfig
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.Helpers")
 
 
 async def _get_recent_sl_streak(session, symbol: str) -> int:
-    from database.models import PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord
     from sqlalchemy import select
     recent = (await session.execute(
         select(PaperTradeRecord).where(PaperTradeRecord.symbol == symbol)
@@ -37,8 +37,8 @@ async def _get_recent_sl_streak(session, symbol: str) -> int:
 
 
 async def _get_correlated_exposure_summary(session, symbol: str) -> List[str]:
-    from database.models import Position
-    from utils.market.dynamic_correlation import get_rolling_correlation
+    from monika.infrastructure.database.models import Position
+    from monika.domain.market.dynamic_correlation import get_rolling_correlation
     from sqlalchemy import select
     open_positions = (await session.execute(select(Position).where(Position.status == 'open'))).scalars().all()
     summary = []
@@ -166,7 +166,7 @@ async def compute_actual_risk_state(session, settings: dict, mt5_client=None) ->
 
     portfolio_heat_pct = 0.0
     try:
-        from risk.position_sizing import PositionSizer
+        from monika.domain.risk.position_sizing import PositionSizer
         sizer = PositionSizer(settings, mt5_client=mt5_client)
         heat_usd = 0.0
         for pos in open_pos_rows:
@@ -255,7 +255,7 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
 
     # 1. Specialist Reliability & Trust Weights
     try:
-        from utils.analytics.specialist_tracker import compute_specialist_reliability
+        from monika.core.analytics.specialist_tracker import compute_specialist_reliability
         rel = await compute_specialist_reliability(session, days_back=45)
         specialists = rel.get("specialists", {})
         if specialists:
@@ -273,7 +273,7 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
 
     # 2. News Classification Directives & Accuracy
     try:
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from sqlalchemy import select
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")

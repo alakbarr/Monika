@@ -11,8 +11,8 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import (
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import (
     PriceOHLCV,
     TechnicalIndicator,
     SwingPoint,
@@ -65,7 +65,7 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
     rates = None
     if not as_of_dt:
         try:
-            from services.market_data_service import MarketDataService
+            from monika.application.services.market_data_service import MarketDataService
 
             rates = await MarketDataService.ensure_bars(
                 symbol=symbol, timeframe=timeframe, count=count, session=session
@@ -119,7 +119,7 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "H4")
     if session:
         try:
-            from indicators.technical import TechnicalIndicatorCalculator
+            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
             calc = TechnicalIndicatorCalculator(session, settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
@@ -133,7 +133,7 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
             rsi_divergence = None
             macd_divergence = None
             try:
-                from indicators.technical import detect_rsi_divergence, detect_macd_divergence
+                from monika.domain.indicators.technical import detect_rsi_divergence, detect_macd_divergence
 
                 df = await calc._load_ohlcv(symbol, timeframe)
                 if df is not None and len(df) >= 20:
@@ -180,7 +180,7 @@ async def handle_get_synthetic_cross_rate(args: dict, **ctx) -> dict:
         return {"error": "Missing required pair or cross_symbol parameter"}
 
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         live_tick = await client.get_latest_tick(cross_symbol)
@@ -200,7 +200,7 @@ async def handle_get_synthetic_cross_rate(args: dict, **ctx) -> dict:
 
     # Synthetic triangular calculations
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         eurusd = await client.get_latest_tick("EURUSD")
@@ -275,7 +275,7 @@ async def handle_get_atr(args: dict, **ctx) -> dict:
 
     if session:
         try:
-            from indicators.technical import TechnicalIndicatorCalculator
+            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
             calc = TechnicalIndicatorCalculator(session, settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
@@ -650,7 +650,7 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
             pass
     if current_price is None and session:
         try:
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.models import PriceOHLCV
 
             latest_bar = (
                 await session.execute(
@@ -720,7 +720,7 @@ async def handle_get_optimal_intraday_levels(args: dict, **ctx) -> dict:
         return {"symbol": symbol, "direction": direction, "entry_price": entry_price, "levels": {}}
 
     try:
-        from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+        from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
 
         return await compute_optimal_levels(session, symbol, direction, entry_price, settings)
     except Exception as e:
@@ -739,7 +739,7 @@ async def handle_get_daily_range_context(args: dict, **ctx) -> dict:
     lookback_val = int(lookback_days) if lookback_days is not None else None
 
     try:
-        from analysis.calculators.daily_range_calculator import compute_daily_range_context
+        from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
         return await compute_daily_range_context(session, symbol, settings, lookback_days=lookback_val)
     except Exception as e:
@@ -755,7 +755,7 @@ async def handle_export_historical_data_csv(args: dict, **ctx) -> dict:
     days_back = int(args.get("days_back", 30))
     limit = int(args.get("limit", 5000))
 
-    from database.models import PriceOHLCV
+    from monika.infrastructure.database.models import PriceOHLCV
     from datetime import timedelta
     import os
     import csv
@@ -781,7 +781,7 @@ async def handle_export_historical_data_csv(args: dict, **ctx) -> dict:
     # Fallback to MT5 fetch if DB has insufficient data
     if len(rows) < 10:
         try:
-            from execution.mt5_client import get_mt5_client
+            from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
             client = get_mt5_client(settings)
             if client:
@@ -1014,7 +1014,7 @@ async def handle_get_multi_timeframe_summary(args: dict, **ctx) -> dict:
     mtf_data = {}
 
     if session:
-        from indicators.technical import TechnicalIndicatorCalculator
+        from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
         calc = TechnicalIndicatorCalculator(session, settings or {})
 
@@ -1196,7 +1196,7 @@ async def handle_get_chart(args: dict, **ctx) -> dict:
         ]
     else:
         try:
-            from services.market_data_service import MarketDataService
+            from monika.application.services.market_data_service import MarketDataService
 
             bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=limit, session=session)
             if bars and len(bars) >= 5:
@@ -1230,8 +1230,8 @@ async def handle_get_chart(args: dict, **ctx) -> dict:
         chart_buf = None
         if include_smc and session is not None:
             try:
-                from database.models import FVGZone, SwingPoint
-                from utils.chart_generator import generate_smc_candlestick_chart
+                from monika.infrastructure.database.models import FVGZone, SwingPoint
+                from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
 
                 fvg_rows = (
                     (
@@ -1276,7 +1276,7 @@ async def handle_get_chart(args: dict, **ctx) -> dict:
                 logger.debug(f"[handle_get_chart] SMC overlay render fallback: {smc_err}")
 
         if chart_buf is None:
-            from utils.chart_generator import generate_candlestick_chart
+            from monika.core.analytics.chart_generator import generate_candlestick_chart
 
             chart_buf = generate_candlestick_chart(
                 ohlcv_data, symbol=symbol, timeframe=timeframe, show_volume=True, show_ma=(20, 50)
@@ -1314,11 +1314,11 @@ async def handle_get_spread_snapshot(args: dict, **ctx) -> dict:
                 .get("asset_universe", ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "BTCUSD"])
             )
 
-    from risk.position_sizing import DEFAULT_INSTRUMENTS
+    from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
 
     mt5_client = None
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         mt5_client = get_mt5_client(settings)
     except Exception:
@@ -1406,7 +1406,7 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
 
-    from risk.position_sizing import DEFAULT_INSTRUMENTS
+    from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
 
     clean_sym = symbol.strip().upper().replace("/", "")
     spec = DEFAULT_INSTRUMENTS.get(clean_sym)
@@ -1415,7 +1415,7 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
     # 1. Try fetching current live tick from MT5 if connected
     tick = None
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client(settings)
         if hasattr(client, "get_current_price"):
@@ -1566,7 +1566,7 @@ async def handle_detect_candlestick_patterns(args: dict, **ctx) -> dict:
             for r in reversed(rows)
         ]
 
-    from indicators.candlestick_patterns import detect_candlestick_patterns
+    from monika.domain.indicators.candlestick_patterns import detect_candlestick_patterns
 
     res = detect_candlestick_patterns(candles, lookback=lookback)
     res["symbol"] = symbol
@@ -1617,7 +1617,7 @@ async def handle_plot_price_chart(args: dict, **ctx) -> dict:
     swing_points = []
     if overlay_smc:
         try:
-            from database.models import FVGZone, SwingPoint
+            from monika.infrastructure.database.models import FVGZone, SwingPoint
 
             fvgs = (
                 (
@@ -1649,7 +1649,7 @@ async def handle_plot_price_chart(args: dict, **ctx) -> dict:
         except Exception as e:
             logger.debug(f"Failed fetching SMC overlays for chart: {e}")
 
-    from utils.chart_generator import generate_smc_candlestick_chart
+    from monika.core.analytics.chart_generator import generate_smc_candlestick_chart
 
     try:
         buf, saved_path = generate_smc_candlestick_chart(
@@ -1690,8 +1690,8 @@ async def handle_plot_equity_curve(args: dict, **ctx) -> dict:
     days_back = int(args.get("days_back", 90))
     since = clock.now() - timedelta(days=days_back)
 
-    from database.models import PaperTradeRecord, Position
-    from utils.chart_generator import generate_equity_curve_chart
+    from monika.infrastructure.database.models import PaperTradeRecord, Position
+    from monika.core.analytics.chart_generator import generate_equity_curve_chart
 
     # Query closed trades
     records = []
@@ -1765,14 +1765,14 @@ async def handle_get_symbol_specification(args: dict, **ctx) -> dict:
     session, symbol, settings = _get_session_and_symbol(args, ctx)
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
-    from utils.market.instrument_identity import resolve_instrument_identity
+    from monika.domain.market.instrument_identity import resolve_instrument_identity
 
     norm_sym = resolve_instrument_identity(symbol).canonical_symbol
 
     executor = ctx.get("executor")
     client = ctx.get("mt5_client") or ctx.get("client") or getattr(executor, "mt5_client", None)
 
-    from risk.position_sizing import get_instrument_spec
+    from monika.domain.risk.position_sizing import get_instrument_spec
 
     spec = get_instrument_spec(norm_sym, mt5_client=client)
 
@@ -2044,7 +2044,7 @@ async def handle_get_pivot_points(args: dict, **ctx) -> dict:
     method = args.get("method", "classic")
     timeframe = args.get("timeframe", "D1")
 
-    from services.market_data_service import MarketDataService
+    from monika.application.services.market_data_service import MarketDataService
 
     bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=5, session=session)
     if not bars or len(bars) < 2:
@@ -2056,7 +2056,7 @@ async def handle_get_pivot_points(args: dict, **ctx) -> dict:
     close = float(prev_bar.get("close", 0.0))
     cur_price = float(bars[-1].get("close", close))
 
-    from indicators.technical import compute_pivot_points
+    from monika.domain.indicators.technical import compute_pivot_points
 
     levels = compute_pivot_points(high=high, low=low, close=close, method=method)
     levels["symbol"] = symbol
@@ -2073,7 +2073,7 @@ async def handle_get_ichimoku(args: dict, **ctx) -> dict:
         symbol = "XAUUSD"
     timeframe = args.get("timeframe", "H4")
 
-    from services.market_data_service import MarketDataService
+    from monika.application.services.market_data_service import MarketDataService
 
     bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=100, session=session)
     if not bars or len(bars) < 52:
@@ -2082,7 +2082,7 @@ async def handle_get_ichimoku(args: dict, **ctx) -> dict:
     import pandas as pd
 
     df = pd.DataFrame(bars)
-    from indicators.technical import compute_ichimoku
+    from monika.domain.indicators.technical import compute_ichimoku
 
     res = compute_ichimoku(df)
     res["symbol"] = symbol
@@ -2099,7 +2099,7 @@ async def handle_scan_chart_patterns(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "H4")
     order = int(args.get("order", 5))
 
-    from services.market_data_service import MarketDataService
+    from monika.application.services.market_data_service import MarketDataService
 
     bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe=timeframe, count=120, session=session)
     if not bars or len(bars) < 25:
@@ -2108,7 +2108,7 @@ async def handle_scan_chart_patterns(args: dict, **ctx) -> dict:
     import pandas as pd
 
     df = pd.DataFrame(bars)
-    from indicators.chart_patterns import scan_all_chart_patterns
+    from monika.domain.indicators.chart_patterns import scan_all_chart_patterns
 
     res = scan_all_chart_patterns(df, order=order)
     res["symbol"] = symbol
@@ -2123,7 +2123,7 @@ async def handle_get_seasonality(args: dict, **ctx) -> dict:
         symbol = "XAUUSD"
     mode = args.get("type", "all").lower()
 
-    from services.market_data_service import MarketDataService
+    from monika.application.services.market_data_service import MarketDataService
 
     bars = await MarketDataService.ensure_bars(symbol=symbol, timeframe="D1", count=750, session=session)
     if not bars or len(bars) < 30:
@@ -2132,7 +2132,7 @@ async def handle_get_seasonality(args: dict, **ctx) -> dict:
     import pandas as pd
 
     df = pd.DataFrame(bars)
-    from analysis.calculators.seasonality import SeasonalityCalculator
+    from monika.application.analysis.calculators.seasonality import SeasonalityCalculator
 
     out = {"symbol": symbol, "status": "success"}
     if mode in ("monthly", "all"):
@@ -2153,10 +2153,10 @@ async def handle_get_divergences(args: dict, **ctx) -> dict:
     if isinstance(tfs, str):
         tfs = [t.strip().upper() for t in tfs.split(",") if t.strip()]
 
-    from services.market_data_service import MarketDataService
+    from monika.application.services.market_data_service import MarketDataService
     import pandas as pd
     import ta
-    from indicators.technical import detect_rsi_divergence, detect_macd_divergence
+    from monika.domain.indicators.technical import detect_rsi_divergence, detect_macd_divergence
 
     results = {}
     for tf in tfs:

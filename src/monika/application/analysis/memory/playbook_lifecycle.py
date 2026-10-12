@@ -24,7 +24,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field, asdict
 
-from analysis.memory.playbook_ledger import (
+from monika.application.analysis.memory.playbook_ledger import (
     PlaybookLedger,
     PlaybookState,
     PlaybookStatus,

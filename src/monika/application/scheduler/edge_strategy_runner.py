@@ -8,8 +8,8 @@ from monika.application.analysis.strategies.base_strategy import EdgeSignal
 from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
-import utils.clock as clock
-from utils.validation.data_validator import validate_data_freshness
+import monika.core.primitives.clock as clock
+from monika.core.validation.data_validator import validate_data_freshness
 from datetime import timezone
 
 logger = logging.getLogger('TradingAgent.EdgeStrategyRunner')

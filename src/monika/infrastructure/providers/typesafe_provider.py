@@ -12,8 +12,8 @@ import time
 import logging
 from typing import Optional, Any, Dict, List, Union
 
-from analysis.providers.base_provider import BaseLLMClient
-from utils.typesafe.jev_primitives import (
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+from monika.core.primitives.jev_primitives import (
     schema_to_jev_questions,
     list_to_jev_questions,
     parse_jev_response_to_dict,

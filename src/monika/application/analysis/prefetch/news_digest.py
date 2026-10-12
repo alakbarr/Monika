@@ -19,10 +19,10 @@ from typing import Optional, Any, Sequence, List, Dict, Union
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import NewsItem
+from monika.infrastructure.database.models import NewsItem
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from utils.market.news_impact_keywords import SHOCK_KEYWORDS
-from utils.clock import ensure_utc
+from monika.domain.market.news_impact_keywords import SHOCK_KEYWORDS
+from monika.core.primitives.clock import ensure_utc
 import re
 _re_module = re
 
@@ -304,7 +304,7 @@ def _deduplicate_items_by_title(items: list, threshold: float = 0.78) -> list:
             unique.append(item)
     return unique
 
-from utils.market.news_impact_keywords import (
+from monika.domain.market.news_impact_keywords import (
     HIGH_IMPACT_KEYWORDS, SHOCK_KEYWORDS, DEESCALATION_KEYWORDS, REHASH_KEYWORDS
 )
 
@@ -340,7 +340,7 @@ def _keyword_fallback_classify(title: str, summary: str) -> dict:
         impact = 'MEDIUM'
     else:
         impact = 'LOW'
-    from database.adapters import extract_currency_tags
+    from monika.infrastructure.database.adapters import extract_currency_tags
     tags_str = extract_currency_tags(f"{title} {summary or ''}")
     currencies = [c for c in (tags_str.split(',') if tags_str else []) if c] or ['NON']
     # FIX (P0): sertakan confidence RENDAH secara eksplisit. Tanpa field ini,
@@ -672,7 +672,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         dengan arsitektur Hybrid Event-Driven Caching (TTL default 60 menit + Reactive Invalidation saat
         terdapat FundamentalBrief baru atau berita BREAKING baru).
         """
-        from database.models import FundamentalBrief, NewsItem
+        from monika.infrastructure.database.models import FundamentalBrief, NewsItem
         from sqlalchemy import select, func
 
         # Check for reactive invalidation triggers (new brief or new breaking news)
@@ -717,7 +717,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
                 macro_summary = f"Regime: {str(regime).upper()} | Risk: {str(risk).upper()} | Biases: {bias_str}"
 
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=4)
                 if c_bullets:
@@ -758,7 +758,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
             # SOTA Memory Grounding: Inject active structural chronicles (ongoing wars, central bank leadership, tariffs)
             chronicle_block = ""
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, days_back=60, limit=5)
                 if c_bullets:
@@ -931,7 +931,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         return corrected
 
     async def _get_calendar_impact_priors(self, session: AsyncSession, batch: list[NewsItem], now_utc: datetime) -> dict[int, Optional[str]]:
-        from database.models import EconomicCalendar
+        from monika.infrastructure.database.models import EconomicCalendar
         from sqlalchemy import select
         priors: dict[int, Optional[str]] = {}
         MIN_TOKEN_OVERLAP = 2       # FIX: sebelumnya 1 — terlalu longgar, rawan false-match
@@ -990,7 +990,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         if any(tag in text for tag in URGENT_TAGS):
             return True
 
-        from utils.market.news_impact_keywords import GEOPOLITICAL_HOTSPOT_ENTITIES, GEOPOLITICAL_LEADERS
+        from monika.domain.market.news_impact_keywords import GEOPOLITICAL_HOTSPOT_ENTITIES, GEOPOLITICAL_LEADERS
         # 1.1 Geopolitical Hotspot + Leader combination (e.g. Trump + Iran, Putin + Xi)
         has_leader = any(leader in text for leader in GEOPOLITICAL_LEADERS)
         has_hotspot = any(spot in text for spot in GEOPOLITICAL_HOTSPOT_ENTITIES)
@@ -1001,7 +1001,7 @@ Example 8 — LOW Speculative Altcoin / Minor Token Noise (Not Bitcoin/Macro):
         if any(w in text for w in ('trilateral', 'bilateral', 'summit', 'diplomatic', 'accord')):
             return True
 
-        from database.adapters import CURRENCY_KEYWORDS
+        from monika.infrastructure.database.adapters import CURRENCY_KEYWORDS
         for keywords in CURRENCY_KEYWORDS.values():
             if any(kw in text for kw in keywords):
                 return True
@@ -1152,7 +1152,7 @@ Respond JSON array of objects:
     async def classify_unscored_news(self, session: AsyncSession, hours_back: int=6) -> int:
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         try:
-            from analysis.calculators.economic_surprise import compute_surprise_scores
+            from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
             await compute_surprise_scores(session)
         except Exception as e:
             logger.debug(f'Surprise score refresh sebelum klasifikasi gagal (non-fatal): {e}')
@@ -1196,7 +1196,7 @@ Respond JSON array of objects:
                 if not is_dup:
                     logger.debug(f'[PrefilterAudit] Dropped (no keyword match): "{item.title[:100]}"')
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 key = f"prefilter_audit_sample_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
                 existing = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
                 titles = [i.title for i, d in sample if not d]
@@ -1243,7 +1243,7 @@ Respond JSON array of objects:
 
             tier_directives_str = ''
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel
                 cfg = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == 'news_tier_calibration_directives'))).scalar_one_or_none()
                 if cfg and cfg.value:
@@ -1366,7 +1366,7 @@ Return ONLY valid JSON matching schema."""
             # --- Fast Path: Try TypeSafe Jev System One parallel classification ---
             result = None
             try:
-                from utils.typesafe.jev_primitives import classify_news_batch_with_jev
+                from monika.core.primitives.jev_primitives import classify_news_batch_with_jev
                 result = await classify_news_batch_with_jev(
                     client=self._classifier,
                     batch=batch,
@@ -1399,7 +1399,7 @@ Return ONLY valid JSON matching schema."""
                     logger.error(f'[NewsClassification] LLM classify failed TWICE for {len(batch)} items. Using keyword fallback to avoid silently downgrading breaking news to MEDIUM.')
                     result = [{'index': j + 1, 'news_id': item.id, **_keyword_fallback_classify(item.title, item.summary)} for j, item in enumerate(batch)]
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(f'[PERINGATAN] News classification LLM gagal 2x; fallback keyword dipakai untuk {len(batch)} item.')
                     except Exception:
                         pass
@@ -1547,7 +1547,7 @@ Return ONLY valid JSON matching schema."""
             
             await session.commit()
 
-            from utils.analytics.news_classification_tracker import snapshot_classification_for_tracking
+            from monika.core.analytics.news_classification_tracker import snapshot_classification_for_tracking
             for news_item in batch:
                 if news_item.impact in ('BREAKING', 'HIGH', 'MEDIUM'):
                     try:
@@ -1632,7 +1632,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         
         # Simpan classification quality stats
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select as _sel
             stats_key = f'news_classification_stats_{datetime.now(timezone.utc).strftime("%Y%m%d_%H")}'
             existing = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == stats_key))).scalar_one_or_none()
@@ -1730,7 +1730,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                     
             # Auto-tightening validation
             if impact == 'BREAKING':
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select
                 cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'news_auto_tighten'))).scalar_one_or_none()
                 if cfg and cfg.value == "1":
@@ -1829,7 +1829,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
     async def _is_duplicate_breaking_event(self, session: AsyncSession, news_item, now_utc: datetime) -> bool:
         """Check database for recent BREAKING news on the same theme."""
         from sqlalchemy import select
-        from database.models import NewsItem
+        from monika.infrastructure.database.models import NewsItem
         
         check_time = ensure_utc(news_item.fetched_at) or now_utc
         since = check_time - timedelta(hours=4)
@@ -1867,7 +1867,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
     async def _cross_check_breaking_against_calendar(self, session: AsyncSession, news_item, now_utc: datetime) -> bool:
         """Check if there was a HIGH impact calendar event in the last 4 hours."""
         try:
-            from database.models import EconomicCalendar
+            from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select, or_
             
             # Check window: 4 hours before fetched time
@@ -1890,7 +1890,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         """Memvalidasi bahwa klasifikasi BREAKING untuk data release didukung oleh surprise_score
         aktual yang tersimpan di EconomicCalendar (bukan sekadar klaim LLM)."""
         try:
-            from database.models import EconomicCalendar
+            from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select
             check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
@@ -1906,7 +1906,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
             max_abs_surprise = max(abs(e.surprise_score or 0.0) for e in events)
             MIN_SURPRISE_FOR_BREAKING = 15.0  # tinjau ulang periodik via compute_news_classification_calibration
 
-            from analysis.calculators.economic_surprise import _parse_numeric
+            from monika.application.analysis.calculators.economic_surprise import _parse_numeric
             # Check relative score (>= 15.0) AND indicator-specific absolute thresholds
             has_major_surprise = False
             for e in events:
@@ -1952,8 +1952,8 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         if breaking_pct > 20:
             logger.warning(f'[NewsClassification] RATE ANOMALY: {breaking_pct:.0f}% item BREAKING (ambang: 20%).')
             try:
-                from utils.analytics.news_classification_tracker import compute_news_classification_calibration
-                from database.models import SystemConfig
+                from monika.core.analytics.news_classification_tracker import compute_news_classification_calibration
+                from monika.infrastructure.database.models import SystemConfig
                 calib = await compute_news_classification_calibration(session, days_back=3)
                 breaking_stats = calib.get('by_impact', {}).get('BREAKING', {})
                 match_rate = breaking_stats.get('match_rate_pct', 100)
@@ -1972,7 +1972,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                                 f"(3d BREAKING match_rate={match_rate}% dari {sample} sampel). news_auto_tighten={new_val}")
             except Exception as e:
                 logger.debug(f'Outcome-corroborated anomaly check gagal, fallback ke rate-only: {e}')
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         import json
         hour_key = f"news_cls_dist_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
         existing = (await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))).scalar_one_or_none()
@@ -1982,7 +1982,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
 
     async def _should_use_cache(self, session: AsyncSession, cache_hours: float) -> tuple[bool, Optional[str]]:
         """Determine if existing digest is still valid."""
-        from database.models import NewsDigest
+        from monika.infrastructure.database.models import NewsDigest
         since = datetime.now(timezone.utc) - timedelta(hours=cache_hours)
         digest = (await session.execute(
             select(NewsDigest)
@@ -2028,7 +2028,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
         }
 
     async def _build_structured_metadata_dict(self, session: AsyncSession, all_significant: Sequence[NewsItem] | list) -> dict:
-        from database.models import VIXData, DXYData, NewsItem
+        from monika.infrastructure.database.models import VIXData, DXYData, NewsItem
         from sqlalchemy import select, func
         INTERNAL_TAGS = {'IRRELEVANT_PREFILTERED', 'DUPLICATE_PREFILTERED', 'IRRELEVANT', 'DUPLICATE'}
         theme_counts = {}
@@ -2206,7 +2206,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
 
         target_currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'XAU', 'XTI', 'BTC']
         
-        from database.models import VIXData, DXYData, FedWatchProbability
+        from monika.infrastructure.database.models import VIXData, DXYData, FedWatchProbability
         market_ctx = {}
         try:
             # VIX
@@ -2249,7 +2249,7 @@ MARKET DATA CONTEXT (use to enrich your analysis, not to replace news):
         curr_meta_dict = await self._build_structured_metadata_dict(session, all_significant)
         
         # Get previous digest for delta-awareness
-        from database.models import NewsDigest
+        from monika.infrastructure.database.models import NewsDigest
         prev_digest = (await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))).scalar_one_or_none()
         prev_digest_text = prev_digest.digest_text if prev_digest else "No previous digest."
         prev_meta_dict = self._extract_prior_metadata(prev_digest_text) if prev_digest else {}
@@ -2539,7 +2539,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
 
         # Save to DB
         if digest:
-            from database.models import NewsDigest
+            from monika.infrastructure.database.models import NewsDigest
             entry = NewsDigest(
                 generated_at=datetime.now(timezone.utc),
                 period_hours=hours_back,
@@ -2566,7 +2566,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
         try:
             # Jev System One fast gating: check if digest is clean in sub-100ms
             try:
-                from utils.typesafe.jev_primitives import build_digest_consistency_questions
+                from monika.core.primitives.jev_primitives import build_digest_consistency_questions
                 jev_client = None
                 if getattr(self._verifier, "provider_name", None) == "typesafe":
                     jev_client = self._verifier
@@ -2625,7 +2625,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
 
     async def _compute_coverage_gaps(self, session: AsyncSession, digest_text: str) -> str:
         """Cek aset utama yang absen dari digest via DB query, beri peringatan agar pipeline tahu."""
-        from database.models import NewsItem
+        from monika.infrastructure.database.models import NewsItem
         from sqlalchemy import select, func
         since = datetime.now(timezone.utc) - timedelta(hours=12)
         major_assets = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
@@ -2651,7 +2651,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
     async def _cleanup_old_digests(self, session: AsyncSession) -> None:
         """Hapus digests lama lebih dari 24 jam untuk menghemat storage."""
         try:
-            from database.models import NewsDigest
+            from monika.infrastructure.database.models import NewsDigest
             from sqlalchemy import delete
             cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             await session.execute(delete(NewsDigest).where(NewsDigest.generated_at < cutoff))
@@ -2661,7 +2661,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
 
     async def get_latest_digest(self, session: AsyncSession, hours_back: int = 12) -> Optional[str]:
         """Mengambil rangkuman berita (digest) terbaru dari DB (cache read)."""
-        from database.models import NewsDigest
+        from monika.infrastructure.database.models import NewsDigest
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back + 2)
         
         digest = (await session.execute(
@@ -2680,7 +2680,7 @@ async def get_classification_health_report(session) -> dict:
     """
     since = datetime.now(timezone.utc) - timedelta(hours=24)
     
-    from database.models import NewsItem
+    from monika.infrastructure.database.models import NewsItem
     from sqlalchemy import select, func
     
     total = (await session.execute(

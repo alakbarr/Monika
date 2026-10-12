@@ -65,7 +65,7 @@ class MacroDataScheduler:
 
             # 1. Coinglass Funding
             try:
-                from data_sources.coinglass_funding import CoinglasFundingFetcher
+                from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
                 async with get_session() as session:
                     fetcher = CoinglasFundingFetcher(session)
                     fg = await fetcher.fetch()
@@ -77,7 +77,7 @@ class MacroDataScheduler:
 
             # 2. Binance Sentiment
             try:
-                from scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
                 async with get_session() as session:
                     fetcher = BinanceSentimentFetcher(session)
                     sentiment = await fetcher.fetch()
@@ -89,7 +89,7 @@ class MacroDataScheduler:
 
             # 3. MyFxBook Sentiment
             try:
-                from scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
                 async with get_session() as session:
                     fetcher = MyFxBookSentimentFetcher(session)
                     sentiment = await fetcher.fetch()
@@ -101,7 +101,7 @@ class MacroDataScheduler:
 
             # 4. FXSSI Sentiment
             try:
-                from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+                from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
                 async with get_session() as session:
                     fetcher = FXSSISentimentFetcher(session)
                     sentiment = await fetcher.fetch()
@@ -113,7 +113,7 @@ class MacroDataScheduler:
 
             # 5. VIX (Multi-tier: Yahoo Direct, CBOE CDN, FRED, yfinance)
             try:
-                from data_sources.vix_yfinance import VIXFetcher
+                from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
                 fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
                 async with get_session() as session:
                     fetcher = VIXFetcher(session, fred_api_key=fred_key)
@@ -126,7 +126,7 @@ class MacroDataScheduler:
 
             # 6. FRED Treasury Yields
             try:
-                from data_sources.fred_treasury_yield import FREDDataFetcher
+                from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import FREDDataFetcher
                 async with get_session() as session:
                     fetcher = FREDDataFetcher(session, self.settings.get('data_sources', {}).get('fred', {}))
                     r = await fetcher.fetch_all()
@@ -138,7 +138,7 @@ class MacroDataScheduler:
 
             # 7. CFTC COT Report
             try:
-                from data_sources.cftc_cot import CFTCCOTFetcher
+                from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
                 async with get_session() as session:
                     fetcher = CFTCCOTFetcher(session, self.settings.get('data_sources', {}).get('cftc_cot', {}))
                     n = await fetcher.fetch_all()
@@ -150,7 +150,7 @@ class MacroDataScheduler:
 
             # 8. DXY (Yahoo Finance)
             try:
-                from data_sources.dxy_yfinance import DXYFetcher
+                from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
                 async with get_session() as session:
                     fetcher = DXYFetcher(session)
                     n = await fetcher.fetch(period='15d')
@@ -162,7 +162,7 @@ class MacroDataScheduler:
 
             # 9. Bond Yields (Yahoo Finance)
             try:
-                from data_sources.bond_yields_fetcher import BondYieldFetcher
+                from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
                 async with get_session() as session:
                     fetcher = BondYieldFetcher(session)
                     r = await fetcher.fetch(period='15d')
@@ -174,7 +174,7 @@ class MacroDataScheduler:
 
             # 10. Crypto Fear & Greed Index
             try:
-                from data_sources.fear_greed import FearGreedFetcher
+                from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
                 async with get_session() as session:
                     fetcher = FearGreedFetcher(session)
                     fg = await fetcher.fetch()
@@ -189,7 +189,7 @@ class MacroDataScheduler:
 
             # 11. EIA Oil Inventory
             try:
-                from data_sources.eia_oil_inventory import EIAInventoryFetcher
+                from monika.infrastructure.data_ingestion.sources.eia_oil_inventory import EIAInventoryFetcher
                 is_wednesday = datetime.now(timezone.utc).weekday() == 2
                 if is_wednesday:
                     async with get_session() as session:
@@ -205,7 +205,7 @@ class MacroDataScheduler:
 
             # 12. Central Bank Watch Rate Expectations & Sovereign Curves (Fed, ECB, BoE, BoJ, RBA)
             try:
-                from data_sources.central_bank_watch import CentralBankWatchFetcher
+                from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
                 async with get_session() as session:
                     fetcher = CentralBankWatchFetcher(session)
                     cbw = await fetcher.fetch_all()
@@ -220,8 +220,8 @@ class MacroDataScheduler:
 
             # 13. Fed H.4.1 Net Liquidity, Treasury Auctions & Market Stress
             try:
-                from data_sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
-                from data_sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
+                from monika.infrastructure.data_ingestion.sources.fed_liquidity_h41_fetcher import FedLiquidityH41Fetcher
+                from monika.infrastructure.data_ingestion.sources.market_stress_auction_fetcher import MarketStressAuctionFetcher
                 async with get_session() as session:
                     fed_fetcher = FedLiquidityH41Fetcher(session)
                     stress_fetcher = MarketStressAuctionFetcher(session)
@@ -240,7 +240,7 @@ class MacroDataScheduler:
 
             # 14. Central Bank Documents & Macro Decomposition Warmup
             try:
-                from scrapers.macro.macro_trigger_router import MacroTriggerRouter
+                from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
                 async with get_session() as session:
                     router = MacroTriggerRouter(session)
                     await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")

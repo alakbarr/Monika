@@ -104,7 +104,7 @@ class TrailingStopManager:
             for pos in open_positions:
                 if pos.pair_group_id and not pos.pair_group_id.startswith("tranche_"):
                     continue
-                from utils.validation.data_validator import is_crypto_symbol
+                from monika.core.validation.data_validator import is_crypto_symbol
                 if self._is_forex_blocked and not is_crypto_symbol(pos.symbol):
                     continue
                 result = await self._check_position(session, pos)
@@ -119,7 +119,7 @@ class TrailingStopManager:
             return {}
 
         # Per-position news window check
-        from utils.market.currency_utils import get_symbol_currencies
+        from monika.domain.market.currency_utils import get_symbol_currencies
         from monika.infrastructure.database.models import EconomicCalendar
         from datetime import timedelta
         news_window_minutes = self.settings.get('trading', {}).get('risk', {}).get('news_window_minutes', 30)
@@ -366,7 +366,7 @@ class TrailingStopManager:
                             tracked.last_sl_update = datetime.now(timezone.utc).timestamp()
                         if pos.analysis_id:
                             try:
-                                from utils.analytics.paper_tracker import PaperTracker
+                                from monika.core.analytics.paper_tracker import PaperTracker
                                 tracker = PaperTracker()
                                 await tracker.update_paper_trade_sl(session, pos.analysis_id, new_sl)
                             except Exception as e:
@@ -483,7 +483,7 @@ class TrailingStopManager:
                 for pos in positions:
                     if pos.pair_group_id:
                         continue
-                    from utils.validation.data_validator import is_crypto_symbol
+                    from monika.core.validation.data_validator import is_crypto_symbol
                     if self._is_forex_blocked and not is_crypto_symbol(pos.symbol):
                         continue
 

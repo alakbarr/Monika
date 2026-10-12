@@ -40,7 +40,7 @@ class ContextTracker:
     def __init__(self, default_model: Optional[str] = None):
         if not default_model:
             try:
-                from utils.config import load_settings
+                from monika.core.config.settings import load_settings
                 s = load_settings()
                 default_model = s.get("llm", {}).get("default_model") or s.get("llm", {}).get("task_roles", {}).get("stage1_fundamental", {}).get("primary")
             except Exception:

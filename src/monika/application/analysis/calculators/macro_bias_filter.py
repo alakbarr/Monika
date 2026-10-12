@@ -2,10 +2,10 @@ import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import TreasuryYield, InterestRate
-from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+from monika.infrastructure.database.models import TreasuryYield, InterestRate
+from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
 from typing import Optional
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 logger = logging.getLogger('TradingAgent.MacroBiasFilter')
 _CCY_TO_BANK = {'USD': 'FED', 'EUR': 'ECB', 'GBP': 'BOE', 'JPY': 'BOJ', 'AUD': 'RBA'}
 
@@ -55,11 +55,11 @@ async def compute_currency_macro_score(session: AsyncSession, currency: str, set
     y = await _yield_momentum_score(session, lookback, as_of=as_of) if currency == 'USD' else 0.0
     r = await _rate_score(session, currency, as_of=as_of)
 
-    from utils.market.usd_strength_proxy import compute_usd_strength_proxy
+    from monika.domain.market.usd_strength_proxy import compute_usd_strength_proxy
     proxy = await compute_usd_strength_proxy(session, lookback_bars=20, timeframe='H4', as_of=as_of)
     dxy = max(-1.0, min(1.0, proxy.get('weighted_usd_change_pct', 0.0) / 2.0))
 
-    from database.models import VIXData
+    from monika.infrastructure.database.models import VIXData
     from sqlalchemy import select
     vix_stmt = select(VIXData)
     if as_of:

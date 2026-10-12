@@ -140,7 +140,7 @@ INSTRUCTIONS:
         )
 
         try:
-            from utils.typesafe.jev_primitives import build_pattern_context_questions
+            from monika.core.primitives.jev_primitives import build_pattern_context_questions
             jev_q = build_pattern_context_questions(symbol=symbol, match_date_str=match_date_str)
 
             resp = await asyncio.wait_for(
@@ -193,7 +193,7 @@ INSTRUCTIONS:
     async def _get_chronicle_text(self, session: AsyncSession, match_dt: datetime) -> str:
         """Pulls recorded chronicle headlines near match date."""
         try:
-            from database.models import MarketChronicle
+            from monika.infrastructure.database.models import MarketChronicle
 
             window_start = match_dt - timedelta(days=10)
             window_end = match_dt + timedelta(days=10)
@@ -215,8 +215,8 @@ INSTRUCTIONS:
     ) -> str:
         """On-demand web search fallback with self-caching to MarketChronicle."""
         try:
-            from data_sources.web_search import get_web_search_service
-            from database.models import MarketChronicle
+            from monika.infrastructure.data_ingestion.sources.web_search import get_web_search_service
+            from monika.infrastructure.database.models import MarketChronicle
 
             search_service = get_web_search_service(self.settings)
             query = f"{symbol} major financial news market drivers {match_dt.strftime('%B %Y')}"

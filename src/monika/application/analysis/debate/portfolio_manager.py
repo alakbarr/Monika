@@ -1,6 +1,6 @@
 import logging
 import json
-from analysis.providers.base_provider import BaseLLMClient, extract_and_parse_json
+from monika.infrastructure.providers.base_provider import BaseLLMClient, extract_and_parse_json
 
 logger = logging.getLogger("TradingAgent.PortfolioManager")
 

@@ -26,7 +26,7 @@ from monika.application.analysis.mcp.protocol import (
     make_result_response,
 )
 from monika.application.analysis.mcp.server import MonikaMcpServer
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 logger = logging.getLogger("TradingAgent.MCP.Dispatcher")
 

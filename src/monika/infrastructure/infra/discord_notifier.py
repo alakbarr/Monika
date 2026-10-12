@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.DiscordNotifier")
 

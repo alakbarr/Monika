@@ -8,8 +8,8 @@ import time
 from bs4 import BeautifulSoup
 from typing import List, Optional, Any
 
-from scrapers.base_scraper import BaseScraper
-from scrapers.models import FedProbability, FedMeeting
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import FedProbability, FedMeeting
 
 logger = logging.getLogger("TradingAgent.FedWatchScraper")
 
@@ -120,8 +120,8 @@ class FedWatchScraper(BaseScraper):
         import asyncio
         # 1. Try DB
         try:
-            from database.db import get_session
-            from database.models import InterestRate, SystemConfig
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import InterestRate, SystemConfig
             from sqlalchemy import select, desc
             
             async def _query():
@@ -166,7 +166,7 @@ class FedWatchScraper(BaseScraper):
 
         # 2. Try settings
         try:
-            from config.settings import get_settings
+            from monika.core.config.settings import get_settings
             settings = get_settings()
             macro_cfg = settings.get("macro") if isinstance(settings, dict) else getattr(settings, "macro", None)
             if macro_cfg:

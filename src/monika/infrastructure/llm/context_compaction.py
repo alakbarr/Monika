@@ -12,7 +12,7 @@ import re
 import os
 import hashlib
 from typing import List, Dict, Any, Optional
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
 logger = logging.getLogger("TradingAgent.ContextCompaction")
 
@@ -805,7 +805,7 @@ class ContextCompactionEngine:
             return messages
 
         try:
-            from analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             cfg = settings or self.settings or {}
             client = get_client_for_task('context_compaction', cfg)
             if client:

@@ -21,8 +21,8 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import SystemConfig
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.DataSources.PredictionMarket")
 
@@ -231,7 +231,7 @@ class PredictionMarketClient:
             else:
                 self.session.add(SystemConfig(key=cfg_key, value=payload))
 
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             await safe_commit(self.session, label="PredictionMarket")
             logger.info(f"Ingested {len(events)} macro events from Polymarket (Bias={sentiment_bias})")
 

@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from utils.market.bias_utils import normalize_bias
+from monika.domain.market.bias_utils import normalize_bias
 
 logger = logging.getLogger('TradingAgent.ContextCoherence')
 
@@ -75,7 +75,7 @@ async def compute_brief_price_divergence(
     - cds_score  : 0.0 = coherent, 0.5 = one conflict, 1.0 = both currencies conflict
     - note       : Human-readable reconciliation instruction for agent context
     """
-    from database.models import PriceOHLCV
+    from monika.infrastructure.database.models import PriceOHLCV
 
     pair_info = SYMBOL_CURRENCY_MAP.get(symbol)
     if not pair_info:
@@ -123,7 +123,7 @@ async def compute_brief_price_divergence(
     # For inverted pairs logic remains the same (base=USD for USDJPY)
 
     # --- Compare with brief bias ---
-    from utils.market.bias_utils import normalize_bias
+    from monika.domain.market.bias_utils import normalize_bias
     base_bias  = normalize_bias(brief_currency_bias.get(base_currency, 'neutral'))
     quote_bias = normalize_bias(brief_currency_bias.get(quote_currency, 'neutral'))
 

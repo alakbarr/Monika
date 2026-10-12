@@ -152,7 +152,7 @@ async def handle_manage_cron(
             description=params.description or "",
         )
         try:
-            from scheduler.unified_cron_engine import get_unified_cron_engine
+            from monika.application.scheduler.unified_cron_engine import get_unified_cron_engine
 
             engine = get_unified_cron_engine()
             engine.register_job(
@@ -187,7 +187,7 @@ async def handle_manage_cron(
         if not ok:
             return {"success": False, "error": f"Cron job '{params.name}' not found."}
         try:
-            from scheduler.unified_cron_engine import get_unified_cron_engine
+            from monika.application.scheduler.unified_cron_engine import get_unified_cron_engine
 
             engine = get_unified_cron_engine()
             engine.unregister_job(params.name)
@@ -198,7 +198,7 @@ async def handle_manage_cron(
     elif act == "clear":
         cleared = _cron_registry.clear()
         try:
-            from scheduler.unified_cron_engine import get_unified_cron_engine
+            from monika.application.scheduler.unified_cron_engine import get_unified_cron_engine
 
             engine = get_unified_cron_engine()
             for j in engine.list_jobs():

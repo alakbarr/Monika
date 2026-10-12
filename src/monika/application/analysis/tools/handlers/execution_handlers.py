@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from utils.infra.platform_compat import safe_subprocess_run
+from monika.infrastructure.infra.platform_compat import safe_subprocess_run
 
 logger = logging.getLogger("TradingAgent.Tools.ExecutionHandlers")
 
@@ -37,7 +37,7 @@ async def handle_compile_mql5_ea(
         return {"status": "error", "error": f"File must be an MQL5 source file (.mq5): {source_path.name}"}
 
     # Locate metaeditor64.exe
-    from config.settings import load_settings
+    from monika.core.config.settings import load_settings
 
     settings = load_settings()
     mt5_path = os.getenv("MT5_PATH") or settings.get("mt5", {}).get("path")
@@ -121,7 +121,7 @@ async def handle_get_mt5_broker_logs(
                     if log_file.exists():
                         log_candidates.append(log_file)
 
-    from config.settings import load_settings
+    from monika.core.config.settings import load_settings
 
     settings = load_settings()
     mt5_path = os.getenv("MT5_PATH") or settings.get("mt5", {}).get("path")
@@ -165,7 +165,7 @@ async def handle_get_mt5_terminal_info(
 ) -> Dict[str, Any]:
     """Retrieve MetaTrader 5 terminal status, trade permissions (Green/Red button), and broker connection."""
     try:
-        from execution.mt5_compat import ensure_mt5_module
+        from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
 
         mt5 = ensure_mt5_module()
         term_info = mt5.terminal_info()

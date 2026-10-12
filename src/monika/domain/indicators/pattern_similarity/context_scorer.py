@@ -132,7 +132,7 @@ class ContextScorer:
     ) -> Tuple[float, str]:
         """Fetches VIX from DB or falls back to Yang-Zhang Realized Volatility."""
         try:
-            from database.models import VIXData
+            from monika.infrastructure.database.models import VIXData
 
             stmt = select(VIXData)
             if match_date:
@@ -163,7 +163,7 @@ class ContextScorer:
     ) -> Tuple[str, str]:
         """Fetches DXY trend from DB or falls back to compute_usd_strength_proxy."""
         try:
-            from database.models import DXYData
+            from monika.infrastructure.database.models import DXYData
 
             stmt = select(DXYData)
             if match_date:
@@ -189,7 +189,7 @@ class ContextScorer:
 
         # Fallback: compute USD strength proxy from Forex basket
         try:
-            from utils.market.usd_strength_proxy import compute_usd_strength_proxy
+            from monika.domain.market.usd_strength_proxy import compute_usd_strength_proxy
             proxy_res = await compute_usd_strength_proxy(
                 self.session, lookback_bars=20, timeframe="D1", as_of=match_date
             )
@@ -202,7 +202,7 @@ class ContextScorer:
     async def _get_rate_cycle(self, match_date: Optional[datetime]) -> Tuple[str, str]:
         """Determines monetary policy cycle from interest_rates table."""
         try:
-            from database.models import InterestRate
+            from monika.infrastructure.database.models import InterestRate
 
             stmt = select(InterestRate).where(InterestRate.bank == "FED")
             if match_date:
@@ -387,7 +387,7 @@ class ContextScorer:
         self, matches: List[PatternMatch], limit: int = 5
     ) -> List[ContextAnnotation]:
         """Tier 2: Annotates top matches with historical narrative from MarketChronicle."""
-        from database.models import MarketChronicle
+        from monika.infrastructure.database.models import MarketChronicle
 
         annotations: List[ContextAnnotation] = []
         top_slice = sorted(matches, key=lambda m: m.similarity, reverse=True)[:limit]

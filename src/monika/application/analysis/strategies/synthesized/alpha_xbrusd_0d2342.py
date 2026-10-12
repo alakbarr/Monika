@@ -6,7 +6,7 @@ import logging
 import decimal
 from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 
 
 class SynthesizedStrategy_alpha_xbrusd_0d2342(EdgeStrategy):

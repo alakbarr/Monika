@@ -106,7 +106,7 @@ class PositionExitReviewer:
         # Jev System One Pre-Screen: Check if thesis is clearly intact to save expensive Stage 2 run
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
-            from utils.typesafe.jev_primitives import build_exit_review_prescreen
+            from monika.core.primitives.jev_primitives import build_exit_review_prescreen
             jev_exit_client = get_client_for_task("jev_exit_prescreen", self.settings)
             if hasattr(jev_exit_client, "classify_json"):
                 exit_q = build_exit_review_prescreen(position.symbol, position.direction)
@@ -172,12 +172,12 @@ class PositionExitReviewer:
                 logger.warning(f'AUTO-CLOSE: {position.symbol} ticket={position.mt5_ticket} held {holding_hours:.1f}h, PnL={current_pnl_pct:.2f}%, AI recommends exit.')
                 try:
                     close_result = await self._execution_service.close_position_by_ticket(position.mt5_ticket, requested_by='position_exit_reviewer', reason=f'AI review: thesis invalidated after {holding_hours:.1f}h')
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_info(f"[AI] <b>Auto-Close: {position.symbol}</b>\nThesis invalidated after {holding_hours:.1f}h\nPnL: {current_pnl_pct:.2f}%\nResult: {('[OK] Closed' if close_result.get('success') else '[GAGAL] Failed: ' + str(close_result.get('error')))}")
                 except Exception as e:
                     logger.error(f'Auto-close failed for {position.mt5_ticket}: {e}')
             else:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 rationale = result.get('rationale', 'No rationale provided')[:300]
                 await AgentNotifier().send_warning(f'[SYNC] <b>Position Exit Signal — {position.symbol}</b>\nAI Recommends: EXIT\nHolding: {holding_hours:.1f}h, PnL: {current_pnl_pct:.2f}%\nReason: {rationale}\n\nUse /close {position.mt5_ticket} to confirm.')
         return {'position_id': position.id, 'symbol': position.symbol, 'ai_decision': ai_decision, 'claude_decision': ai_decision, 'should_exit': should_exit}

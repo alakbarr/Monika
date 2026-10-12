@@ -12,8 +12,8 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import SystemConfig
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.BinanceSentiment")
 

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Callable, Awaitable, Sequence
 
-from utils.protocol.event_bus import EventBus, TickPriceEvent
+from monika.application.protocol.event_bus import EventBus, TickPriceEvent
 
 logger = logging.getLogger("TradingAgent.Execution.OrderEmulator")
 

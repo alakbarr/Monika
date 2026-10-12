@@ -1,6 +1,6 @@
 import logging
 import json
-from analysis.providers.llm_factory import get_client_for_task
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.MacroJudge")
 

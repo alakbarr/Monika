@@ -6,28 +6,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("Benchmark.TaskSpecs")
 
-from skills.loader import compose_system_prompt
-from analysis.prefetch.stage1_prefetcher import Stage1DataBundler
-from analysis.prefetch.stage2_prefetcher import Stage2DataBundler
-from analysis.stages.fundamental_stage import USER_MESSAGE as STAGE1_USER_MESSAGE_TEXT
-from analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, SYMBOL_TO_COT, _render_specialist_prompt, PerAssetStage
-from analysis.schemas.schemas import get_tool_schema, SubmitFundamentalBriefSchema
-from analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_TOOLS, TELEGRAM_TOOLS
-from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
-from analysis.debate.fact_sheet import build_fact_sheet
-from analysis.debate.bull_analyst import generate_bull_advocacy
-from analysis.debate.bear_analyst import generate_bear_dissent
-from analysis.debate.investment_judge import evaluate_debate
-from analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
-from analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
-from analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
-from analysis.debate.portfolio_manager import make_portfolio_decision
-from analysis.debate.deterministic_risk import analyze_risk_conservative, analyze_risk_aggressive, analyze_risk_neutral
-from analysis.validators.fundamental_verifier import VERIFIER_SCHEMA, FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT
-from analysis.memory.reflector import REFLECTION_SCHEMA, TradeReflector
-from analysis.prefetch.news_digest import NEWS_CLASSIFICATION_SCHEMA, DIGEST_CONSISTENCY_SCHEMA, NewsDigestProcessor
-from analysis.prefetch.macro_preprocessor import MacroPreprocessor
-from utils.protocol.context_coherence import get_base_quote_tags
+from monika.application.skills.loader import compose_system_prompt
+from monika.application.analysis.prefetch.stage1_prefetcher import Stage1DataBundler
+from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
+from monika.application.analysis.stages.fundamental_stage import USER_MESSAGE as STAGE1_USER_MESSAGE_TEXT
+from monika.application.analysis.stages.per_asset_stage import SPECIALIST_PROMPTS, SYMBOL_TO_COT, _render_specialist_prompt, PerAssetStage
+from monika.application.analysis.schemas.schemas import get_tool_schema, SubmitFundamentalBriefSchema
+from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE2_TOOLS, TELEGRAM_TOOLS
+from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
+from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
+from monika.application.analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.conservative_risk_llm import analyze_risk_conservative_llm
+from monika.application.analysis.debate.aggressive_risk_llm import analyze_risk_aggressive_llm
+from monika.application.analysis.debate.neutral_risk_llm import analyze_risk_neutral_llm
+from monika.application.analysis.debate.portfolio_manager import make_portfolio_decision
+from monika.application.analysis.debate.deterministic_risk import analyze_risk_conservative, analyze_risk_aggressive, analyze_risk_neutral
+from monika.application.analysis.validators.fundamental_verifier import VERIFIER_SCHEMA, FUNDAMENTAL_VERIFIER_SYSTEM_PROMPT
+from monika.application.analysis.memory.reflector import REFLECTION_SCHEMA, TradeReflector
+from monika.application.analysis.prefetch.news_digest import NEWS_CLASSIFICATION_SCHEMA, DIGEST_CONSISTENCY_SCHEMA, NewsDigestProcessor
+from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
+from monika.application.protocol.context_coherence import get_base_quote_tags
 
 from .db_access import pick_asset_analysis, latest_brief, latest_digest, recent_news, resolved_reflection, latest_user_message, entry_context, BenchmarkToolExecutor
 from .invoker import make_client
@@ -314,7 +314,7 @@ async def _build_stage2_case(session, settings, symbol: str, stage_tag: str) -> 
             from sqlalchemy import select
             b_row = (await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))).scalar_one_or_none()
             if not b_row:
-                import utils.clock as clock
+                import monika.core.primitives.clock as clock
                 syn = get_synthetic_fundamental_brief()
                 session.add(FundamentalBrief(
                     generated_at=clock.now(),

@@ -4,7 +4,7 @@ from typing import Any
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database.models import AssetAnalysis, SystemConfig
+from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger('TradingAgent.AdversarialCheck')
@@ -83,7 +83,7 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
 
         # Consecutive loss check (reuse existing pattern dari risk_gate)
         try:
-            from database.models import PaperTradeRecord
+            from monika.infrastructure.database.models import PaperTradeRecord
             recent = (
                 await session.execute(
                     select(PaperTradeRecord).where(PaperTradeRecord.symbol == analysis.symbol)
@@ -110,7 +110,7 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
         # Inject fact sheet for ground truth verification
         fact_sheet_str = ''
         try:
-            from analysis.debate.fact_sheet import build_fact_sheet
+            from monika.application.analysis.debate.fact_sheet import build_fact_sheet
             fact_sheet = await build_fact_sheet(session, analysis.id if hasattr(analysis, 'id') and analysis.id else analysis)
             fact_sheet_str = json.dumps(fact_sheet, indent=2, default=str)
         except Exception as fs_err:
@@ -155,7 +155,7 @@ recommend_block=true for significant, non-fatal risk factors.
             logger.info(f"[AdversarialCheck] {analysis.symbol}: Using cached result")
             return {**default_result, **json.loads(cached_result.value)}
 
-        from utils.typesafe.jev_primitives import build_adversarial_check_questions
+        from monika.core.primitives.jev_primitives import build_adversarial_check_questions
         adv_jev_q = build_adversarial_check_questions(analysis.symbol)
 
         result_str = await client.generate_content(
@@ -201,7 +201,7 @@ recommend_block=true for significant, non-fatal risk factors.
             await asyncio.sleep(3)
             retry_prompt = prompt or f"Symbol: {analysis.symbol}\nDirection: {analysis.decision}\nRationale: {analysis.rationale or ''}"
             client = get_client_for_task('adversarial_check', settings)
-            from utils.typesafe.jev_primitives import build_adversarial_check_questions
+            from monika.core.primitives.jev_primitives import build_adversarial_check_questions
             retry_jev_q = build_adversarial_check_questions(analysis.symbol)
             result_str = await client.generate_content(
                 system_prompt='You are a skeptical risk-desk reviewer performing a final pre-trade challenge.',
@@ -225,7 +225,7 @@ recommend_block=true for significant, non-fatal risk factors.
 
         # Alert admin that adversarial check had an error (fail-open)
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
             import asyncio
             asyncio.create_task(AgentNotifier().send_warning(
                 f"[PERINGATAN] <b>Adversarial Check Unavailable (Fail-Open)</b>\n\n"

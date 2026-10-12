@@ -10,8 +10,8 @@ from dateutil import parser as dateutil_parser
 from bs4 import BeautifulSoup
 from typing import List, Any, Optional
 
-from scrapers.base_scraper import BaseScraper
-from scrapers.models import CalendarEvent
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logger = logging.getLogger("TradingAgent.ForexFactoryScraper")
 

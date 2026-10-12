@@ -6,8 +6,8 @@ import logging
 import time
 from typing import List, Optional, Any
 
-from scrapers.base_scraper import BaseScraper
-from scrapers.models import ScrapedNews
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
 
 logger = logging.getLogger("TradingAgent.TradingViewNewsScraper")
 

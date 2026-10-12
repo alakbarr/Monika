@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PaperTradeRecord, DecisionReflection
-from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
-from analysis.memory.playbook_ledger import PlaybookLedger
+from monika.infrastructure.database.models import PaperTradeRecord, DecisionReflection
+from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
 
 logger = logging.getLogger("TradingAgent.Memory.CounterfactualSimulator")
 
@@ -163,7 +163,7 @@ class CounterfactualSimulator:
         """
         Simulate a counterfactual replay for a specific past trade with modified SL/TP or trailing stop parameters.
         """
-        from database.models import PaperTradeRecord, Position, PriceOHLCV
+        from monika.infrastructure.database.models import PaperTradeRecord, Position, PriceOHLCV
 
         trade = await session.get(PaperTradeRecord, trade_id)
         pos = None

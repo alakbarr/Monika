@@ -12,8 +12,8 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Query, HTTPException, Request
 from sqlalchemy import select, desc
 
-from database.db import AsyncSessionLocal
-from database.models import (
+from monika.infrastructure.database.db import AsyncSessionLocal
+from monika.infrastructure.database.models import (
     EconomicCalendar,
     COTReport,
     NewsItem,
@@ -31,8 +31,8 @@ from monika.interfaces.dashboard.routes.common import (
     DeprecateSkillRequest,
     CrystallizeSkillRequest,
 )
-from skills.loader import list_skills, get_skill_metadata
-from plugins.loader import load_manifest_file
+from monika.application.skills.loader import list_skills, get_skill_metadata
+from monika.application.plugins.loader import load_manifest_file
 from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Intelligence")
@@ -507,7 +507,7 @@ async def get_market_sentiment_composite():
 @require_role(Role.VIEWER)
 async def get_crystallized_skills():
     """Retrieve all autonomously crystallized skills with attribution & win-rate metrics."""
-    from analysis.memory.skill_crystallizer import SkillCrystallizer
+    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
     import yaml
 
     crystallizer = SkillCrystallizer()
@@ -607,7 +607,7 @@ async def get_skill_stats(name: str):
 @require_role(Role.OPERATOR)
 async def curate_crystallized_skills(request: Request):
     """Evaluate and prune degraded crystallized skills whose win rate dropped below threshold."""
-    from analysis.memory.skill_crystallizer import SkillCrystallizer
+    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
     crystallizer = SkillCrystallizer()
     async with AsyncSessionLocal() as session:
@@ -623,7 +623,7 @@ async def curate_crystallized_skills(request: Request):
 @require_role(Role.OPERATOR)
 async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest, request: Request):
     """Manually deprecate an underperforming or stale crystallized skill."""
-    from analysis.memory.skill_crystallizer import SkillCrystallizer
+    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
     crystallizer = SkillCrystallizer()
     clean_name = name.lower().replace(".md", "")
@@ -659,7 +659,7 @@ async def deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest
 @require_role(Role.OPERATOR)
 async def crystallize_skills_now(request: Request, payload: Optional[CrystallizeSkillRequest] = None):
     """Trigger on-demand skill crystallization for a symbol or all resolved profitable setups."""
-    from analysis.memory.skill_crystallizer import SkillCrystallizer
+    from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
     crystallizer = SkillCrystallizer()
     sym = payload.symbol if payload else None

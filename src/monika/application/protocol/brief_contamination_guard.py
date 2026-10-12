@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from database.models import DXYData, VIXData
+from monika.infrastructure.database.models import DXYData, VIXData
 
 logger = logging.getLogger('TradingAgent.BriefContaminationGuard')
 
@@ -64,7 +64,7 @@ class BriefContaminationGuard:
         confidence = brief_data.get('confidence', 0.5)
 
         # Check 1: Internal USD consistency (EUR, GBP, AUD)
-        from utils.market.bias_utils import normalize_bias
+        from monika.domain.market.bias_utils import normalize_bias
         usd_bias = normalize_bias(currency_bias.get('USD', 'neutral'))
         eur_bias = normalize_bias(currency_bias.get('EUR', 'neutral'))
         narrative_l = (brief_data.get('macro_narrative') or '').lower()
@@ -216,7 +216,7 @@ class BriefContaminationGuard:
         
         Returns dict: symbol → {safety_level, cds, breakdown, context}
         """
-        from utils.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds_async
+        from monika.application.protocol.enhanced_cds import compute_composite_cds, get_cds_thresholds_async
         
         thresholds = await get_cds_thresholds_async(session, settings)
         result = {}
@@ -274,7 +274,7 @@ class BriefContaminationGuard:
         
         A brief from 2 hours ago may be stale if XAUUSD moved 0.5%.
         """
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
 
         # Get thresholds from settings

@@ -11,7 +11,7 @@ import re
 from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import EconomicCalendar
+from monika.infrastructure.database.models import EconomicCalendar
 
 logger = logging.getLogger("TradingAgent.EconomicSurprise")
 
@@ -123,7 +123,7 @@ async def compute_cesi_index(
     menggunakan pembobotan peluruhan eksponensial (exponential decay) selama window_days (default: 90 hari).
     """
     from datetime import datetime, timezone, timedelta
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     import math
 
     curr = currency.strip().upper()

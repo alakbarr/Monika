@@ -223,7 +223,7 @@ def list_skills() -> list[str]:
 def is_playbook_eligible(skill_name: str, context: Optional[dict] = None) -> bool:
     """Verify if a playbook is currently eligible for production use (not demoted/archived in ledger)."""
     try:
-        from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+        from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
 
         mgr = PlaybookLifecycleManager()
         meta = mgr.get_metadata(skill_name)
@@ -240,7 +240,7 @@ def is_playbook_eligible(skill_name: str, context: Optional[dict] = None) -> boo
 def get_progressive_playbook_index(symbol: Optional[str] = None) -> str:
     """Level 0: Compact index of available playbooks and setups (< 150 tokens)."""
     try:
-        from analysis.memory.progressive_loader import ProgressivePlaybookLoader
+        from monika.application.analysis.memory.progressive_loader import ProgressivePlaybookLoader
 
         loader = ProgressivePlaybookLoader()
         return loader.get_level0_index()
@@ -333,7 +333,7 @@ def compose_system_prompt(
 
     if max_tokens:
         try:
-            from utils.llm.prompt_compressor import estimate_tokens
+            from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
             current = estimate_tokens(composed)
             if current > max_tokens:
@@ -352,7 +352,7 @@ def compose_system_prompt(
                     composed = separator.join(filtered)
                     current = estimate_tokens(composed)
                 if current > max_tokens:
-                    from utils.llm.prompt_compressor import truncate_to_budget
+                    from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
 
                     composed = truncate_to_budget(composed, max_tokens)
         except Exception as e:
@@ -426,7 +426,7 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
 
     # Crystallized operational playbooks (closed-loop learning)
     try:
-        from analysis.memory.skill_crystallizer import SkillCrystallizer
+        from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
 
         crystallized = SkillCrystallizer.get_crystallized_skills_for_symbol(sym)
         for c_name in crystallized[:2]:

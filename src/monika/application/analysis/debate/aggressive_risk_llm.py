@@ -1,6 +1,6 @@
 import logging
 import json
-from analysis.providers.base_provider import BaseLLMClient, extract_and_parse_json
+from monika.infrastructure.providers.base_provider import BaseLLMClient, extract_and_parse_json
 
 logger = logging.getLogger("TradingAgent.AggressiveRisk")
 
@@ -17,7 +17,7 @@ APPLY THESE RULES:
 Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered), 'recommended_multiplier', 'veto_trade'."""
     user_msg = f'Symbol: {symbol}\nContext: {json.dumps(strict_context)}'
     try:
-        from utils.typesafe.jev_primitives import build_risk_gate_aggressive_questions
+        from monika.core.primitives.jev_primitives import build_risk_gate_aggressive_questions
         direction = strict_context.get("direction") or strict_context.get("decision", "buy")
         jev_q = build_risk_gate_aggressive_questions(symbol, direction=direction)
 

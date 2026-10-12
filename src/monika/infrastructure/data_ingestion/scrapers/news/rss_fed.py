@@ -9,7 +9,7 @@ rate decisions, minutes, and speeches. Zero scraping risk (official feed).
 Higher signal-to-noise than third-party news coverage.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 
 class FedRssScraper(RssBaseScraper):

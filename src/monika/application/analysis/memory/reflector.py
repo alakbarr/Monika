@@ -11,8 +11,8 @@ def _get_trading_agent_dir() -> Path:
 import logging
 import json
 from typing import Optional, Any
-from analysis.providers.llm_factory import get_client_for_task
-import utils.clock as clock
+from monika.infrastructure.providers.llm_factory import get_client_for_task
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.TradeReflector")
 
@@ -80,7 +80,7 @@ class TradeReflector:
         """Kumpulkan konteks kaya: AssetAnalysis asli + temuan trade_autopsy."""
         enrichment = {}
         try:
-            from database.models import AssetAnalysis
+            from monika.infrastructure.database.models import AssetAnalysis
             ana = await session.get(AssetAnalysis, reflection.analysis_id)
             if ana:
                 enrichment['confluence_score'] = ana.confluence_score
@@ -108,7 +108,7 @@ class TradeReflector:
             logger.debug(f'AssetAnalysis enrichment fetch failed: {e}')
 
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             position_id = getattr(reflection, 'position_id', None)
             if position_id:
@@ -121,7 +121,7 @@ class TradeReflector:
             logger.debug(f'Autopsy fetch failed: {e}')
 
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
             adv_key = f'adversarial_outcome_{reflection.analysis_id}'
             adv_cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == adv_key))).scalar_one_or_none()
@@ -136,7 +136,7 @@ class TradeReflector:
             logger.debug(f'Adversarial verdict fetch for reflection failed (non-fatal): {e}')
 
         try:
-            from database.models import VIXData
+            from monika.infrastructure.database.models import VIXData
             from sqlalchemy import select
             vix_res = await session.execute(
                 select(VIXData).order_by(VIXData.date.desc()).limit(1)
@@ -202,8 +202,8 @@ class TradeReflector:
         Immediately append pending reflection at trade entry (I5).
         Decouples upfront decision capture from deferred post-mortem evaluation.
         """
-        from database.models import DecisionReflection
-        from database.safe_ops import safe_commit
+        from monika.infrastructure.database.models import DecisionReflection
+        from monika.infrastructure.database.safe_ops import safe_commit
         try:
             entry = DecisionReflection(
                 analysis_id=analysis_id,
@@ -237,8 +237,8 @@ class TradeReflector:
         Update trade outcome metrics asynchronously when trade closes,
         then trigger reflective post-mortem analysis (I5).
         """
-        from database.models import DecisionReflection
-        from database.safe_ops import safe_commit
+        from monika.infrastructure.database.models import DecisionReflection
+        from monika.infrastructure.database.safe_ops import safe_commit
         reflection = await session.get(DecisionReflection, reflection_id)
         if not reflection:
             logger.warning(f"Deferred reflection evaluation: reflection #{reflection_id} not found.")
@@ -254,7 +254,7 @@ class TradeReflector:
         await self.reflect_on_trade(session, reflection_id)
 
     async def reflect_on_trade(self, session, reflection_id: int):
-        from database.models import DecisionReflection
+        from monika.infrastructure.database.models import DecisionReflection
         reflection = await session.get(DecisionReflection, reflection_id)
         if not reflection:
             return
@@ -323,7 +323,7 @@ class TradeReflector:
 
                 # Generate and store embedding for semantic precedent search
                 try:
-                    from utils.llm.embedding import generate_gemini_embedding
+                    from monika.infrastructure.llm.embedding import generate_gemini_embedding
                     embed_text = f"Symbol: {reflection.symbol} | Decision: {reflection.decision} | Rationale: {reflection.rationale_summary or ''} | Lesson: {reflection.specific_lesson} | Outcome: {reflection.exit_reason or ''}"
                     vec = await generate_gemini_embedding(embed_text, settings=self.settings)
                     if vec:
@@ -333,10 +333,10 @@ class TradeReflector:
                     logger.debug(f"[TradeReflector] Embedding generation non-fatal error: {emb_err}")
         except Exception as e:
             logger.error(f"Reflector JSON Parse Error: {e}")
-        from database.safe_ops import safe_commit
+        from monika.infrastructure.database.safe_ops import safe_commit
         await safe_commit(session, label="trade_reflector")
         try:
-            from database.event_store import TradingEventStore
+            from monika.infrastructure.database.event_store import TradingEventStore
             await TradingEventStore.emit(
                 session=session,
                 event_type="learning.reflection",
@@ -356,7 +356,7 @@ class TradeReflector:
         if getattr(reflection, 'was_profitable', False):
             # Branch A: Win -> Skill Crystallization & Playbook Promotion
             try:
-                from analysis.memory.skill_crystallizer import SkillCrystallizer
+                from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
                 crystallizer = SkillCrystallizer(self.settings)
                 await crystallizer.evaluate_and_crystallize(session, symbol=reflection.symbol)
             except Exception as cry_err:
@@ -364,7 +364,7 @@ class TradeReflector:
         else:
             # Branch B: Loss -> Negative Constraint Generation & Storage
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 import time
 
                 lesson_str = getattr(reflection, "specific_lesson", "") or "unspecified execution failure"
@@ -389,11 +389,11 @@ class TradeReflector:
                 }
 
                 session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
-                from database.safe_ops import safe_commit
+                from monika.infrastructure.database.safe_ops import safe_commit
                 await safe_commit(session, label="negative_constraint_save")
 
                 try:
-                    from database.event_store import TradingEventStore
+                    from monika.infrastructure.database.event_store import TradingEventStore
                     await TradingEventStore.emit(
                         session=session,
                         event_type="learning.negative_constraint",

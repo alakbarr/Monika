@@ -2,7 +2,7 @@
 # File: scrapers/news/rss_forexlive.py
 # ==============================================================================
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 class ForexliveRssScraper(RssBaseScraper):
     def __init__(self):

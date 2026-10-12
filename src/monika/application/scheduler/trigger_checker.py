@@ -24,7 +24,7 @@ from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.database.models import TradeTrigger, AssetAnalysis, TechnicalIndicator, ActivityLog
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.TriggerChecker")
 
@@ -159,7 +159,7 @@ class TriggerChecker:
                     # User-level price alert notification dispatch
                     if trigger_cond.get("is_user_alert"):
                         try:
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
                             p_level = trigger_cond.get("price") or trigger_cond.get("target_price")
                             cond_dir = trigger_cond.get("direction") or trigger_cond.get("condition", "")
                             note_text = trigger_cond.get("note", "")
@@ -247,7 +247,7 @@ class TriggerChecker:
                                         logger.error(f"LangGraph reactive trigger execution failed for {symbol}: {e}", exc_info=True)
                                     logger.info(f"auto_execute=false — sending trade proposal for {symbol} (analysis #{analysis_res.get('analysis_id')}) from trigger re-analysis")
                                     try:
-                                        from utils.infra.notifier import AgentNotifier
+                                        from monika.infrastructure.infra.notifier import AgentNotifier
                                         notifier = AgentNotifier()
                                         ana_id = analysis_res.get("analysis_id")
                                         dec = analysis_res.get("decision", "").upper()
@@ -257,7 +257,7 @@ class TriggerChecker:
                                         
                                         keyboard = None
                                         try:
-                                            from telegram_bot.command_router import CommandRouter
+                                            from monika.interfaces.telegram.command_router import CommandRouter
                                             keyboard = CommandRouter.build_confirm_keyboard(str(ana_id))
                                         except Exception as kb_err:
                                             logger.debug(f"Could not build inline keyboard for trade proposal: {kb_err}")
@@ -448,7 +448,7 @@ class TriggerChecker:
 
                     # Send notification (non-blocking, failure won't cause resend)
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(alert_msg)
                         logger.warning(f'Invalidation alert sent for {pos.symbol} position {pos.id}')
                     except Exception as e:

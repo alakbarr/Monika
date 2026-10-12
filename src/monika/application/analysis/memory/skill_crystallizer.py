@@ -32,8 +32,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import DecisionReflection, PaperTradeRecord, SystemConfig, AssetAnalysis
-from skills.loader import invalidate_cache
+from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord, SystemConfig, AssetAnalysis
+from monika.application.skills.loader import invalidate_cache
 
 logger = logging.getLogger("TradingAgent.SkillCrystallizer")
 
@@ -284,7 +284,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         # 1. Attempt LLM reasoning synthesis via task role 'trade_reflection'
         llm_rules = []
         try:
-            from analysis.providers.llm_factory import get_client_for_task
+            from monika.infrastructure.providers.llm_factory import get_client_for_task
             client = get_client_for_task("trade_reflection", self.settings)
             lessons_joined = "\n".join(f"- {l}" for l in raw_lessons)
             prompt = (

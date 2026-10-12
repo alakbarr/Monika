@@ -75,7 +75,7 @@ class AdHocSchedulerProxy:
             self._per_asset = None
 
         try:
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.core.analytics.paper_tracker import PaperTracker
             self._paper_tracker = PaperTracker(self.settings)
         except Exception as e:
             logger.debug(f"Failed to instantiate PaperTracker in AdHocSchedulerProxy: {e}")

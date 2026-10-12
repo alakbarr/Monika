@@ -24,24 +24,24 @@ from monika.application.analysis.prefetch.stage1_prefetcher import (
     CORE_STAGE1_PREFETCH_TOOLS,
     prune_stage1_tools,
 )
-from analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC, minify_tool_definitions
+from monika.application.analysis.tools.tools_definitions import STAGE1_TOOLS, STAGE1_TOOLS_WEEKEND_BTC, minify_tool_definitions
 from monika.application.analysis.validators.fundamental_verifier import verify_fundamental_brief
-from database.db import get_session
-from database.models import ActivityLog, FundamentalBrief, SystemConfig, EconomicCalendar
-from utils.analytics.agent_performance_monitor import (
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog, FundamentalBrief, SystemConfig, EconomicCalendar
+from monika.core.analytics.agent_performance_monitor import (
     get_currency_confidence_ceiling,
     compute_dynamic_escalation_threshold,
 )
-from utils.analytics.cost_tracker import CostTracker
-from utils.protocol.brief_contamination_guard import BriefContaminationGuard
-from utils.infra.notifier import AgentNotifier
-import utils.clock as clock
+from monika.core.analytics.cost_tracker import CostTracker
+from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
+from monika.infrastructure.infra.notifier import AgentNotifier
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.FundamentalStage")
 
 # Muat system prompt dari file skill, fallback jika gagal
 try:
-    from skills.loader import compose_system_prompt as _compose
+    from monika.application.skills.loader import compose_system_prompt as _compose
     _SYSTEM_PROMPT_BUILT = False  # build lazily
 except ImportError:
     _compose = None
@@ -67,7 +67,7 @@ FALLBACK_SYSTEM_PROMPT = """You are a senior macro-economic analyst and fundamen
 Your task is to analyze the macroeconomic environment, central bank reaction functions (Fed, ECB, BoE, BoJ, RBA), interest rate differentials, geopolitical risks, and institutional positioning to provide a bias for major currency pairs and commodities. Interest rates and forward monetary policy expectations are the dominant drivers of currency valuation and capital flows. Use the provided tools to gather data and record your final brief by calling the tool 'submit_fundamental_brief'.
 """
 
-from utils.llm.prompt_disciplines import get_universal_execution_discipline
+from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 FALLBACK_SYSTEM_PROMPT = FALLBACK_SYSTEM_PROMPT.strip() + "\n\n" + get_universal_execution_discipline()
 
 USER_MESSAGE = """Please perform a complete fundamental macro analysis for the current market session.
@@ -142,7 +142,7 @@ class FundamentalStage:
 
         # SOTA Quantized Thinking Budget Allocation (Guarantees prompt cache hit rate)
         try:
-            from utils.llm.adaptive_thinking import QuantizedThinkingAllocator
+            from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
             raw_budget = getattr(self.client, 'thinking_budget', None)
             if raw_budget:
                 q_budget = QuantizedThinkingAllocator.quantize(raw_budget)
@@ -168,14 +168,14 @@ class FundamentalStage:
         if not self.settings.get('agent_architecture', {}).get('enable_debate', False):
             return outcome
         try:
-            from analysis.debate.macro_bull_analyst import run_bull_analyst
-            from analysis.debate.macro_bear_analyst import run_bear_analyst
-            from analysis.debate.macro_judge import run_macro_judge
-            from analysis.debate.macro_debate_validator import validate_macro_judge_output
+            from monika.application.analysis.debate.macro_bull_analyst import run_bull_analyst
+            from monika.application.analysis.debate.macro_bear_analyst import run_bear_analyst
+            from monika.application.analysis.debate.macro_judge import run_macro_judge
+            from monika.application.analysis.debate.macro_debate_validator import validate_macro_judge_output
             import json
             chronicle_bullets = ""
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 chronicle_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=4)
             except Exception:
@@ -263,7 +263,7 @@ class FundamentalStage:
                     )
                     brief.confidence = min(brief.confidence or 0.7, 0.65)
 
-                from utils.market.bias_utils import normalize_bias
+                from monika.domain.market.bias_utils import normalize_bias
                 norm_dxy = normalize_bias(judge.get('dxy_bias'))
                 norm_usd = normalize_bias(b_data.get('currency_bias', {}).get('USD'))
                 if (norm_dxy == 'bullish' and norm_usd == 'bearish') or (norm_dxy == 'bearish' and norm_usd == 'bullish'):
@@ -328,8 +328,8 @@ class FundamentalStage:
 
         # SOTA Cache-Optimized 4-Tier Prompt Assembly with Canonical Tier-0 Anchor (>= 4,150 tokens)
         try:
-            from utils.llm.prompt_assembler import PromptAssembler
-            from analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.infrastructure.llm.prompt_assembler import PromptAssembler
+            from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
             core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
             assembler = PromptAssembler(self.settings)
             static_sys, dynamic_notes = assembler.assemble_stage1_system_tuple(
@@ -355,7 +355,7 @@ class FundamentalStage:
                 system_prompt = MANDATORY_RULES_PREFIX + FALLBACK_SYSTEM_PROMPT
 
             try:
-                from analysis.memory.layered_memory import LayeredMemoryManager
+                from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
                 soul_identity = LayeredMemoryManager(self.settings).get_identity()
                 if soul_identity:
                     system_prompt = f"{soul_identity}\n\n---\n\n{system_prompt}"
@@ -363,7 +363,7 @@ class FundamentalStage:
                 pass
 
             try:
-                from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+                from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
                 model_name = getattr(self.client, "model", "")
                 min_cache_chars = CacheBreakpointManager.get_min_cacheable_chars(model_name)
                 if len(system_prompt) < min_cache_chars:
@@ -383,7 +383,7 @@ class FundamentalStage:
         ctx_lines = []
         # Dynamic performance notes loaded into user message (preserves static system prompt KV-cache)
         try:
-            from skills.loader import load_skill
+            from monika.application.skills.loader import load_skill
             p_notes = load_skill("performance_notes")
             if p_notes and len(p_notes.strip()) > 20:
                 ctx_lines.append(f"\n--- HISTORICAL PERFORMANCE DIRECTIVES ---\n{p_notes.strip()}")
@@ -393,7 +393,7 @@ class FundamentalStage:
         except Exception as p_err:
             logger.debug(f"Dynamic performance notes load failed (non-fatal): {p_err}")
         try:
-            from utils.analytics.analysis_tracker import compute_factor_effectiveness
+            from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
             factor_data = await compute_factor_effectiveness(session, days_back=30)
             
             if (not factor_data.get('insufficient_data') and 
@@ -423,7 +423,7 @@ class FundamentalStage:
 
         # Fetch Market Chronicle (Persistent Long-term Memory)
         try:
-            from analysis.memory.chronicle_writer import ChronicleWriter
+            from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
             chronicle_ctx = await ChronicleWriter(self.settings).get_chronicle_context(session, days_back=30)
             if chronicle_ctx and isinstance(chronicle_ctx, str):
                 ctx_lines.append(f'\n{chronicle_ctx}')
@@ -448,7 +448,7 @@ class FundamentalStage:
 
         # Fetch Layered Core Memory (Curated, <=800 tok)
         try:
-            from analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
             mem_mgr = LayeredMemoryManager(self.settings)
             core_mem = await mem_mgr.get_core_memory(session)
             if core_mem:
@@ -472,7 +472,7 @@ class FundamentalStage:
 
         # Check DataFeedCircuitBreaker status and inject warning if tripped
         try:
-            from data_sources.circuit_breaker import get_data_feed_circuit_breaker
+            from monika.infrastructure.data_ingestion.sources.circuit_breaker import get_data_feed_circuit_breaker
             feed_breaker = get_data_feed_circuit_breaker()
             if feed_breaker.is_tripped():
                 tripped = feed_breaker.get_tripped_feeds()
@@ -544,7 +544,7 @@ class FundamentalStage:
         
         # SOTA Context Compression: Apply LFSP (Lossless Financial Structural Projection)
         try:
-            from utils.llm.prompt_compressor import truncate_to_budget
+            from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
             if isinstance(prefetched_json, str):
                 compressed_json = truncate_to_budget(prefetched_json, max_tokens=3500)
             else:
@@ -1118,7 +1118,7 @@ INSTRUCTIONS:
         await self._log(session, msg)
 
         try:
-            from database.event_store import TradingEventStore
+            from monika.infrastructure.database.event_store import TradingEventStore
             await TradingEventStore.emit(
                 session=session,
                 event_type="analysis.stage1.completed",

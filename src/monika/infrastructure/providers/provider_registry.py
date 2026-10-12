@@ -118,7 +118,7 @@ def _register_builtins():
     """Register Monika's built-in LLM providers."""
 
     def _create_anthropic(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.anthropic_provider import AnthropicProvider
+        from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -129,7 +129,7 @@ def _register_builtins():
         )
 
     def _create_gemini(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.gemini_provider import GeminiProvider
+        from monika.infrastructure.providers.gemini_provider import GeminiProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -144,7 +144,7 @@ def _register_builtins():
         return client
 
     def _create_openai(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.openai_provider import OpenAIProvider
+        from monika.infrastructure.providers.openai_provider import OpenAIProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -157,7 +157,7 @@ def _register_builtins():
         )
 
     def _create_deepseek(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.deepseek_provider import DeepSeekProvider
+        from monika.infrastructure.providers.deepseek_provider import DeepSeekProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -170,7 +170,7 @@ def _register_builtins():
         )
 
     def _create_ollama(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.ollama_provider import OllamaProvider
+        from monika.infrastructure.providers.ollama_provider import OllamaProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         thinking_level = kwargs.get("thinking_level", "none")
@@ -180,7 +180,7 @@ def _register_builtins():
         )
 
     def _create_groq(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.groq_provider import GroqProvider
+        from monika.infrastructure.providers.groq_provider import GroqProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -193,7 +193,7 @@ def _register_builtins():
         )
 
     def _create_openrouter(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.openrouter_provider import OpenRouterProvider
+        from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
         max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
@@ -207,7 +207,7 @@ def _register_builtins():
         )
 
     def _create_typesafe(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.typesafe_provider import TypeSafeProvider
+        from monika.infrastructure.providers.typesafe_provider import TypeSafeProvider
         provider_config = kwargs.get("provider_config", {})
         m_lower = model_name.lower()
         is_openrouter = (
@@ -254,7 +254,7 @@ def _register_builtins():
         )
 
     def _create_openai_compatible(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.openai_provider import OpenAIProvider
+        from monika.infrastructure.providers.openai_provider import OpenAIProvider
         provider_config = kwargs.get("provider_config", {})
         base_url = provider_config.get("base_url", "http://localhost:8000/v1")
         max_tokens = role_config.get("max_tokens", 8192)
@@ -270,7 +270,7 @@ def _register_builtins():
         )
 
     def _create_9router(model_name, settings, role_config, task_role="default", **kwargs):
-        from analysis.providers.nine_router_provider import NineRouterProvider
+        from monika.infrastructure.providers.nine_router_provider import NineRouterProvider
         provider_config = kwargs.get("provider_config", {})
         base_url = provider_config.get("base_url") or kwargs.get("base_url")
         max_tokens = role_config.get("max_tokens", 8192)

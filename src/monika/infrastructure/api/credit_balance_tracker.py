@@ -17,8 +17,8 @@ from typing import Optional, Dict, Any, List
 import aiohttp
 from sqlalchemy import select, func
 
-from database.db import get_session
-from database.models import TokenUsageLog
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import TokenUsageLog
 
 logger = logging.getLogger("TradingAgent.CreditBalanceTracker")
 
@@ -35,7 +35,7 @@ class CreditBalanceTracker:
           - GET https://openrouter.ai/api/v1/credits
           - GET https://openrouter.ai/api/v1/key
         """
-        from utils.api.openrouter_rate_limiter import get_paid_key, get_free_keys
+        from monika.infrastructure.api.openrouter_rate_limiter import get_paid_key, get_free_keys
 
         paid_key = api_key or get_paid_key()
         free_keys = get_free_keys()

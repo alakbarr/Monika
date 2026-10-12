@@ -11,10 +11,10 @@ from typing import Optional, Any, Callable, Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 from monika.infrastructure.providers.llm_factory import get_client_for_task, create_client
-from analysis.tools.tools_definitions import (
+from monika.application.analysis.tools.tools_definitions import (
     STAGE2_TOOLS, STAGE2_EXPANDED_TOOLS, STAGE2_PRESCREEN_TOOLS,
     STAGE2_ESSENTIAL_TOOLS, STAGE2_FROZEN_TOOLS, minify_tool_definitions
 )
@@ -96,9 +96,9 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         Fixes race condition where NewsWatcher/TriggerChecker/PositionExitReviewer call
         run_one() concurrently on the same instance and read stale cross-cycle values.
         """
-        from database.models import FundamentalBrief
+        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
-        from utils.calibration.confidence_calibrator import get_calibrated_confidence
+        from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
         try:
             brief = (await session.execute(
                 select(FundamentalBrief)
@@ -161,7 +161,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         # Ambil nilai confidence dari brief Tahap 1 untuk menyesuaikan agresivitas Tahap 2
         stage1_confidence = 0.50
         try:
-            from database.models import FundamentalBrief
+            from monika.infrastructure.database.models import FundamentalBrief
             async with session_factory() as session:
                 brief = (await session.execute(
                     select(FundamentalBrief)
@@ -263,7 +263,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         """Multi-tier recovery jika LLM selesai tanpa memanggil submit_asset_analysis."""
         final_text = result.get("final_text", "")
         analysis = None
-        from database.models import AssetAnalysis
+        from monika.infrastructure.database.models import AssetAnalysis
         from datetime import timedelta
 
         # --- TIER 1: Targeted Recovery Nudge Turn ---
@@ -341,7 +341,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                                 fallback_payload["stop_loss"] = None
                                 fallback_payload["take_profit"] = None
                     
-                    from analysis.tools.tool_executor import ToolExecutor
+                    from monika.application.analysis.tools.tool_executor import ToolExecutor
                     executor = ToolExecutor(session, settings=self.settings, model_name=active_client.model, symbol=symbol)
                     submit_res = await executor._tool_submit_asset_analysis(fallback_payload)
                     if submit_res.get("status") in ("recorded", "success") or "id" in submit_res:
@@ -448,7 +448,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 if str(analysis.decision).lower() in ("wait", "avoid", "rejected"):
                     decision = "wait"
                     try:
-                        from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                        from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
                         TradeTrajectoryLogger().log_trajectory(
                             symbol=symbol,
                             decision="REJECTED",
@@ -577,7 +577,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 )
                 # Track for monitoring
                 try:
-                    from database.models import SystemConfig
+                    from monika.infrastructure.database.models import SystemConfig
                     import json as _j
                     key = f"ai_compliance_missing_fields_{symbol}"
                     existing = (await session.execute(
@@ -617,7 +617,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
                 if not target_biases:
                     try:
-                        from database.models import SystemConfig
+                        from monika.infrastructure.database.models import SystemConfig
                         _biases_key = f'pending_specialist_biases_{symbol}'
                         _cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == _biases_key))).scalar_one_or_none()
                         if _cfg and _cfg.value:
@@ -688,7 +688,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         if analysis.decision in ("buy", "sell"):
             try:
-                from analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
+                from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
                 effective_threshold, _ = await compute_unified_confluence_threshold(
                     session=session,
                     symbol=symbol,
@@ -703,7 +703,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             
             significant_disagreement_flag = False
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel
                 key = f'specialist_disagreement_{symbol}'
                 cfg = (await session.execute(_sel(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
@@ -803,14 +803,14 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         coherence_injection = await self._compute_ssvp_coherence(session, symbol, brief_check)
 
         # Phase 4: Dynamic Threshold calculation
-        from analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+        from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
         adaptive_policy = AdaptiveRiskPolicy(self.settings)
         effective_threshold, threshold_reason = await adaptive_policy.get_effective_threshold(session, symbol)
         self._last_threshold_reason = threshold_reason  # Store for debugging if needed
         logger.info(f"[{symbol}] Adaptive Threshold: {effective_threshold}/14 ({threshold_reason})")
 
         # Fetch bundle DULU (sebelum skill compose)
-        from utils.market.instrument_identity import resolve_instrument_identity
+        from monika.domain.market.instrument_identity import resolve_instrument_identity
         ident = resolve_instrument_identity(symbol)
         cot_code = ident.cot_code or SYMBOL_TO_COT.get(ident.canonical_symbol, "")
         data_bundle, raw_bundle_data, bundle_success, tool_order_guidance = await self._fetch_stage2_bundle(session, symbol, cot_code)
@@ -820,7 +820,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         atr_f: Optional[float] = None
         adr_f: Optional[float] = None
         try:
-            from analysis.calculators.invariant_calculator import compute_trade_invariants, format_invariants_for_prompt
+            from monika.application.analysis.calculators.invariant_calculator import compute_trade_invariants, format_invariants_for_prompt
             if isinstance(raw_bundle_data, dict):
                 hist = (
                     raw_bundle_data.get("get_price_history_H4")
@@ -874,8 +874,8 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # TimesFM 3.0 Quantile Skewness Alpha Injection
         try:
-            from indicators.timesfm_engine import TimesFMEngine
-            from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
+            from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
             tfm_engine = TimesFMEngine(self.settings)
             tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
             if tfm_fc and tfm_fc.get("quantiles"):
@@ -891,7 +891,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # Initialize Pi-Notebooks WorkingScratchpad for symbol
         try:
-            from analysis.memory.working_scratchpad import WorkingScratchpad
+            from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
             WorkingScratchpad.clear(symbol)
             seed_data = {}
             if atr_f is not None:
@@ -916,7 +916,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                     detected_regime = mr.get("regime", "")
         if not detected_regime:
             try:
-                from analysis.calculators.regime_classifier import classify_market_regime
+                from monika.application.analysis.calculators.regime_classifier import classify_market_regime
                 rc = await classify_market_regime(session, symbol, self.settings)
                 detected_regime = rc.get("final_regime") or rc.get("label") or ""
             except Exception as e:
@@ -970,7 +970,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             should_analyze, screen_reason = await self._run_prescreen(session, symbol)
         
         try:
-            from database.models import PrescreenLog, PriceOHLCV
+            from monika.infrastructure.database.models import PrescreenLog, PriceOHLCV
             from sqlalchemy import select as _psel
             last_price = (await session.execute(
                 _psel(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
@@ -1058,7 +1058,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             logger.info(f"[{symbol}] Bundle unavailable — using fallback tool turns: {effective_tool_turns}")
 
         try:
-            from analysis.calculators.regime_classifier import classify_market_regime
+            from monika.application.analysis.calculators.regime_classifier import classify_market_regime
             regime_res = await classify_market_regime(session, symbol, self.settings)
             if regime_res and regime_res.get("regime"):
                 user_message += f"\n\n[MARKET REGIME DETECTED]: {regime_res['regime'].upper()} (Quality: {regime_res.get('composite_quality', 'NORMAL')}). Adjust strategy accordingly."
@@ -1070,7 +1070,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         ineffective_factors_note = ""
         try:
-            from utils.analytics.analysis_tracker import compute_factor_effectiveness
+            from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
             eff = await compute_factor_effectiveness(session, days_back=30)
             dropped_factors = eff.get("dropped_factors", [])
             if dropped_factors:
@@ -1081,7 +1081,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         # Injeksi AI Decision Memory
         extra_context_str = ineffective_factors_note
         try:
-            from analysis.memory.decision_log import DecisionLogger
+            from monika.application.analysis.memory.decision_log import DecisionLogger
             lessons = await DecisionLogger.get_recent_lessons(session, symbol, limit=3)
             global_lessons = await DecisionLogger.get_global_lessons(session, exclude_symbol=symbol, limit=2)
             if lessons["real_trades"] or lessons["paper_whatifs"]:
@@ -1110,7 +1110,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 }
                     
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 chronicle_ctx = await c_writer.get_chronicle_for_symbol(session, symbol, days_back=30, limit=5)
                 if not chronicle_ctx or "No specific macro chronicle" in chronicle_ctx:
@@ -1188,14 +1188,14 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # Rate limiting
         try:
-            from utils.api.claude_rate_limiter import ClaudeRateLimiter
+            from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
             await ClaudeRateLimiter.acquire_session_slot(model_name=active_client.model)
         except Exception as e:
             logger.debug(f'Rate limiter error (non-fatal): {e}')
 
         # Wire in Per-Symbol Adaptive Thinking Budget (DeepSeek + SOTA Harness Pattern)
         try:
-            from utils.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
+            from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
             vix_val = None
             regime_val = None
             if isinstance(raw_bundle_data, dict):
@@ -1306,7 +1306,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
                 return {**result, "symbol": symbol, "elapsed_seconds": elapsed}
 
         # Pastikan analisis benar-benar tersimpan pada siklus/sesi saat ini
-        from database.models import AssetAnalysis
+        from monika.infrastructure.database.models import AssetAnalysis
         from datetime import timedelta
         analysis = (await session.execute(
             select(AssetAnalysis)
@@ -1369,7 +1369,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         await self._log(session, msg)
 
         try:
-            from database.event_store import TradingEventStore
+            from monika.infrastructure.database.event_store import TradingEventStore
             await TradingEventStore.emit(
                 session=session,
                 event_type="analysis.stage2.completed",
@@ -1390,7 +1390,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # Clean up temporary pending specialist biases
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             _biases_key = f'pending_specialist_biases_{symbol}'
             _cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == _biases_key))).scalar_one_or_none()
             if _cfg:
@@ -1451,7 +1451,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         risk_state: dict = {}
         # === NEW: FORCE-ANALYZE ON PRICE MOVEMENT ===
         try:
-            from database.models import PriceOHLCV, TechnicalIndicator
+            from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
             from sqlalchemy import select
             last_analysis_time = self._last_analysis_time.get(symbol)
             if last_analysis_time:
@@ -1479,7 +1479,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # === QUICK LOCAL PRE-CHECK (no API call) ===
         try:
-            from utils.calibration.prescreen_calibrator import compute_prescreen_skip_quality
+            from monika.core.calibration.prescreen_calibrator import compute_prescreen_skip_quality
             skip_qual = await compute_prescreen_skip_quality(session)
             
             local_quality = skip_qual.get('local_heuristic', {})
@@ -1487,7 +1487,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
             
             # If false skip rate is >35%, we disable local deterministic gates so we don't miss trades
             if local_false_skip_rate <= 35:
-                from database.models import TechnicalIndicator, VIXData
+                from monika.infrastructure.database.models import TechnicalIndicator, VIXData
                 from sqlalchemy import select
                 import json as _j
                 
@@ -1523,10 +1523,10 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # === NEW P1 (Phase 2.7): Quick Calendar Prescreen ===
         try:
-            from database.models import EconomicCalendar
+            from monika.infrastructure.database.models import EconomicCalendar
             from sqlalchemy import select as _sel_cal
             from datetime import timedelta as _td
-            from utils.market.currency_utils import get_symbol_currencies
+            from monika.domain.market.currency_utils import get_symbol_currencies
             sym_currencies = get_symbol_currencies(symbol)
             upcoming_cal = (await session.execute(
                 _sel_cal(EconomicCalendar)
@@ -1547,7 +1547,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
 
         # Risk state check - lightweight
         try:
-            from analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
             executor = ToolExecutor(session, settings=self.settings, symbol=symbol)
             risk_state = await executor.execute('get_risk_state', {})
             if risk_state.get('trading_paused'):
@@ -1581,7 +1581,7 @@ class PerAssetRunner(ContextBuilderMixin, SpecialistPipelineMixin, VerifiersMixi
         # --- NEW: Extract nearest_zone_note ---
         nearest_zone_note = 'active market structure'
         try:
-            from database.models import SRZone, PriceOHLCV, SwingPoint
+            from monika.infrastructure.database.models import SRZone, PriceOHLCV, SwingPoint
             from sqlalchemy import select
             last_close = (await session.execute(
                 select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
@@ -1637,7 +1637,7 @@ Rule:
                 self._haiku_client.thinking_budget = 0
             if hasattr(self._haiku_client, 'thinking_level'):
                 self._haiku_client.thinking_level = 'none'
-            from utils.typesafe.jev_primitives import build_prescreen_questions
+            from monika.core.primitives.jev_primitives import build_prescreen_questions
             prescreen_jev_q = build_prescreen_questions(symbol)
             resp = await self._haiku_client.classify_json(
                 prompt=prompt,
@@ -1652,9 +1652,9 @@ Rule:
             elif resp and resp.get('decision') == 'NO':
                 # --- NEW: BYPASS PRESCREEN IF HIGH CONFIDENCE OR BREAKING CATALYST ---
                 try:
-                    from database.models import FundamentalBrief, NewsItem
+                    from monika.infrastructure.database.models import FundamentalBrief, NewsItem
                     from sqlalchemy import select
-                    from utils.protocol.context_coherence import SYMBOL_CURRENCY_MAP
+                    from monika.application.protocol.context_coherence import SYMBOL_CURRENCY_MAP
                     from datetime import timedelta
                     
                     brief = (await session.execute(

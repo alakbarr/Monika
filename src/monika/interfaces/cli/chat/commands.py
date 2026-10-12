@@ -512,7 +512,7 @@ class ChatCommandRouter:
         console = self.renderer.console
 
         try:
-            from analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
+            from monika.application.analysis.tools.domain.cron_tool import CronRegistry, DEFAULT_CRON_FILE, CronJobRecord
             registry = CronRegistry(DEFAULT_CRON_FILE)
             parts = arg.split(maxsplit=2) if arg else []
             subcmd = parts[0].lower() if parts else "list"

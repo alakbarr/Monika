@@ -27,10 +27,10 @@ from monika.application.harness.contract import (
     PluginState,
 )
 from monika.application.harness.context import PluginContext
-from utils.plugins.manager import PluginManager, get_plugin_manager
-from analysis.prompt_sections import get_prompt_section_registry
-from utils.infra.container import ServiceContainer, get_container
-from utils.protocol.event_bus import (
+from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
+from monika.application.analysis.prompt_sections import get_prompt_section_registry
+from monika.infrastructure.infra.container import ServiceContainer, get_container
+from monika.application.protocol.event_bus import (
     EventBus,
     get_event_bus,
     TickPriceEvent,
@@ -261,7 +261,7 @@ class PluginEngine:
     ) -> bool:
         """Register tool into ToolRegistry with core override protection."""
         try:
-            from analysis.tools.registry import ToolRegistry, ToolDefinition, CORE_PROTECTED_TOOLS
+            from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition, CORE_PROTECTED_TOOLS
 
             reg = ToolRegistry.get_instance()
 
@@ -310,7 +310,7 @@ class PluginEngine:
     def unregister_tool_from_plugin(self, name: str) -> None:
         """Unregister a plugin-provided tool from ToolRegistry."""
         try:
-            from analysis.tools.registry import ToolRegistry
+            from monika.application.analysis.tools.registry import ToolRegistry
 
             ToolRegistry.get_instance().unregister(name)
             logger.debug(f"[PluginEngine] Unregistered tool '{name}'")
@@ -453,7 +453,7 @@ class PluginEngine:
         # 1. Broker Plugins
         if cat == PluginCategory.BROKER or hasattr(plugin, "submit_order"):
             try:
-                from execution.broker_registry import BrokerAdapterRegistry
+                from monika.infrastructure.brokers.broker_registry import BrokerAdapterRegistry
 
                 BrokerAdapterRegistry.register(plugin.metadata.id, plugin)
             except Exception as e:
@@ -462,7 +462,7 @@ class PluginEngine:
         # 2. LLM Provider Plugins
         if cat == PluginCategory.LLM_PROVIDER or hasattr(plugin, "create_client"):
             try:
-                from analysis.providers.provider_registry import ProviderRegistry
+                from monika.infrastructure.providers.provider_registry import ProviderRegistry
 
                 ProviderRegistry.register(plugin.metadata.id, plugin)
             except Exception as e:

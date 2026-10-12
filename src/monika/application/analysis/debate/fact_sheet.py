@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, Optional
 import json
 
-from database.models import AssetAnalysis, TechnicalIndicator, FVGZone, OrderBlock, DXYData, FundamentalBrief
+from monika.infrastructure.database.models import AssetAnalysis, TechnicalIndicator, FVGZone, OrderBlock, DXYData, FundamentalBrief
 
 logger = logging.getLogger("TradingAgent.FactSheet")
 
@@ -123,7 +123,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             pass
 
     # Fetch historical win rate for this symbol
-    from database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import Position, PaperTradeRecord
     historical_positions = (await session.execute(
         select(Position)
         .where(Position.symbol == analysis.symbol)
@@ -151,7 +151,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
 
     core_mem_str = None
     try:
-        from analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
         mem_mgr = LayeredMemoryManager({})
         core_mem_str = await mem_mgr.get_core_memory(session)
     except Exception:
@@ -159,7 +159,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
 
     vix_val = None
     try:
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         vix_row = (await session.execute(
             select(VIXData).order_by(VIXData.date.desc()).limit(1)
         )).scalar_one_or_none()
@@ -170,8 +170,8 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
 
     chronicle_str = None
     try:
-        from analysis.memory.chronicle_writer import ChronicleWriter
-        from config.settings import load_all_config
+        from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+        from monika.core.config.settings import load_all_config
         sys_cfg = load_all_config()
         c_writer = ChronicleWriter(sys_cfg)
         chronicle_str = await c_writer.get_condensed_chronicle_bullets(session, analysis.symbol, days_back=30, limit=4)
@@ -188,7 +188,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         "cvd_divergence": "NONE",
     }
     try:
-        from indicators.order_flow import fetch_latest_order_flow
+        from monika.domain.indicators.order_flow import fetch_latest_order_flow
         of_snap = await fetch_latest_order_flow(session, analysis.symbol)
         if of_snap:
             order_flow_data = {

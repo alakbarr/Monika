@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 
 logger = logging.getLogger("TradingAgent.Agent.StateRewind")
 

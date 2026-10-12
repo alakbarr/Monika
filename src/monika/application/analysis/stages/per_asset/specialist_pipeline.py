@@ -11,7 +11,7 @@ from typing import Optional, Any, Callable, Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 def _get_clock():
     pas = sys.modules.get("analysis.stages.per_asset_stage")
@@ -57,7 +57,7 @@ class SpecialistPipelineMixin:
         if cache['weights'] and cache['ts'] and (now - cache['ts']).total_seconds() < 6 * 3600:
             return cache['weights']
         try:
-            from utils.analytics.specialist_tracker import compute_specialist_reliability
+            from monika.core.analytics.specialist_tracker import compute_specialist_reliability
             data = await compute_specialist_reliability(session)
             specialists = data.get('specialists', {})
         except Exception as e:
@@ -106,7 +106,7 @@ class SpecialistPipelineMixin:
             # SOTA Memory Link: Ensure active structural macro events are present for domain specialists
             if isinstance(raw_bundle_data, dict) and 'market_chronicle' not in raw_bundle_data:
                 try:
-                    from analysis.memory.chronicle_writer import ChronicleWriter
+                    from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                     c_bullets = await ChronicleWriter(self.settings).get_condensed_chronicle_bullets(session, symbol=symbol, limit=3)
                     if c_bullets:
                         raw_bundle_data['market_chronicle'] = c_bullets
@@ -115,7 +115,7 @@ class SpecialistPipelineMixin:
 
             if isinstance(raw_bundle_data, dict) and 'user_market_intel' not in raw_bundle_data:
                 try:
-                    from database.models import UserMarketIntel
+                    from monika.infrastructure.database.models import UserMarketIntel
                     from sqlalchemy import or_
                     now_intel = _get_clock().now()
                     intel_rows = (await session.execute(
@@ -142,7 +142,7 @@ class SpecialistPipelineMixin:
             sent_data_view = self._build_structured_specialist_view(raw_bundle_data, 'sentiment')
             macro_data_view = self._build_structured_specialist_view(raw_bundle_data, 'macro')
 
-            from utils.protocol.context_coherence import get_base_quote_tags
+            from monika.application.protocol.context_coherence import get_base_quote_tags
             currencies = get_base_quote_tags(symbol).split(',')
             base_currency = currencies[0].strip() if currencies else 'USD'
             quote_currency = currencies[1].strip() if len(currencies) > 1 else 'USD'
@@ -168,7 +168,7 @@ class SpecialistPipelineMixin:
             }
 
             async def run_specialist_with_schema(client, role_desc, data_view):
-                from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+                from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
                 target_header = f"[TARGET ASSET]: {symbol} (Base: {base_currency}, Quote: {quote_currency})\n\n"
                 telegraphic_specialist_directive = (
                     "\n[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. "
@@ -244,7 +244,7 @@ class SpecialistPipelineMixin:
             significant_disagreement = len(distinct_biases) >= 2 and weighted_bullish >= 0.6 and weighted_bearish >= 0.6
             if significant_disagreement:
                 try:
-                    from database.models import SystemConfig
+                    from monika.infrastructure.database.models import SystemConfig
                     from sqlalchemy import select as _sel3
                     key = f'specialist_disagreement_{symbol}'
                     cfg = (await session.execute(_sel3(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
@@ -258,7 +258,7 @@ class SpecialistPipelineMixin:
                     logger.debug(f'Failed to persist specialist disagreement flag: {e}')
 
             try:
-                from database.models import SystemConfig
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select as _sel_biases
                 biases_payload = json.dumps({
                     'biases': specialist_biases,

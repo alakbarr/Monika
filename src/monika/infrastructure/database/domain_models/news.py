@@ -1,6 +1,6 @@
 """News and economic calendar models (Phase 7)."""
 
-from database.models import (
+from monika.infrastructure.database.models import (
     NewsItem,
     NewsDigest,
     EconomicCalendar,

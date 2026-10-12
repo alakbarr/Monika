@@ -14,7 +14,7 @@ Tier 4 (VOLATILE): Real-time market quotes, volatile data bundle, dynamic timest
 import logging
 from typing import Optional, Tuple, Dict, Any, List
 from datetime import datetime, timezone
-from skills.loader import compose_system_prompt, load_skill, get_dynamic_micro_skills
+from monika.application.skills.loader import compose_system_prompt, load_skill, get_dynamic_micro_skills
 
 logger = logging.getLogger("TradingAgent.PromptAssembler")
 
@@ -138,9 +138,9 @@ class PromptAssembler:
         Returns structured 3 system tiers (Tier 1, Tier 2, Tier 3) for cache breakpoint injection.
         Guarantees Tier 1 begins with CANONICAL_TIER0_ANCHOR (>= 4,150 tokens) for universal KV-cache hits.
         """
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-        from analysis.memory.layered_memory import LayeredMemoryManager
-        from utils.llm.prompt_disciplines import get_universal_execution_discipline
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
@@ -177,7 +177,7 @@ class PromptAssembler:
         discipline = ""
         if model_name:
             try:
-                from utils.llm.model_discipline import get_model_discipline
+                from monika.infrastructure.llm.model_discipline import get_model_discipline
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
@@ -218,7 +218,7 @@ class PromptAssembler:
         pad_for_gemini: bool = True,
     ) -> Any:
         """Returns structured TieredSystemPrompt for Stage 1 prompt cache stability."""
-        from utils.llm.prompt_tiers import TieredSystemPrompt
+        from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
         tier1, tier2, tier3 = self.assemble_stage1_tiers(core_memory=core_memory, pad_for_gemini=pad_for_gemini)
         return TieredSystemPrompt(tier1_stable=tier1, tier2_context=tier2, tier3_volatile=tier3)
 
@@ -263,7 +263,7 @@ class PromptAssembler:
         system = "\n\n".join(filter(None, [tier1, tier2, tier3]))
 
         # Tier 4: Volatile User Message — static prefetch bundle first, dynamic overrides at tail
-        from analysis.stages.fundamental_stage import USER_MESSAGE
+        from monika.application.analysis.stages.fundamental_stage import USER_MESSAGE
         user_parts = [USER_MESSAGE, f"[PRE-FETCHED DATA]\n{data_bundle}"]
         if sticky_bias_context:
             user_parts.append(f"[STICKY BIAS CONTEXT]\n{sticky_bias_context}")
@@ -294,9 +294,9 @@ class PromptAssembler:
         Returns structured 3 system tiers for Stage 2 per-asset analysis.
         Guarantees Tier 1 begins with CANONICAL_TIER0_ANCHOR (>= 4,150 tokens) only when caching threshold dictates.
         """
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-        from analysis.memory.layered_memory import LayeredMemoryManager
-        from utils.llm.prompt_disciplines import get_universal_execution_discipline
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
@@ -330,7 +330,7 @@ class PromptAssembler:
         discipline = ""
         if model_name:
             try:
-                from utils.llm.model_discipline import get_model_discipline
+                from monika.infrastructure.llm.model_discipline import get_model_discipline
                 discipline = get_model_discipline(model_name)
             except Exception:
                 pass
@@ -401,7 +401,7 @@ class PromptAssembler:
         detected_regime: Optional[str] = None,
     ) -> Any:
         """Returns structured TieredSystemPrompt for Stage 2 prompt cache stability."""
-        from utils.llm.prompt_tiers import TieredSystemPrompt
+        from monika.infrastructure.llm.prompt_tiers import TieredSystemPrompt
         tier1, tier2, tier3 = self.assemble_stage2_tiers(
             symbol=symbol,
             cot_code=cot_code,
@@ -447,8 +447,8 @@ class PromptAssembler:
         Returns (static_system_prompt, dynamic_target_note) for Stage 2.
         Enables cross-symbol KV-cache reuse by keeping the static system prompt invariant.
         """
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
-        from analysis.memory.layered_memory import LayeredMemoryManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
 
         soul_identity = LayeredMemoryManager(self.settings).get_identity()
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""

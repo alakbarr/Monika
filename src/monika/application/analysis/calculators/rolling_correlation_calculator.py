@@ -16,8 +16,8 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PriceOHLCV, TreasuryYield, DXYData
-import utils.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TreasuryYield, DXYData
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Calculators.RollingCorrelation")
 

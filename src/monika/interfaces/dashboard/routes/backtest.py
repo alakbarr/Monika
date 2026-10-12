@@ -12,8 +12,8 @@ from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc, func
 
-from database.db import get_session
-from database.models import BacktestRun, BacktestTrade
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import BacktestRun, BacktestTrade
 from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import _safe_json
 
@@ -133,7 +133,7 @@ async def get_backtest_run_details(
 async def _execute_background_backtest(days: int, mode: str, initial_equity: float, step_hours: int):
     """Background task to run point-in-time backtest."""
     try:
-        from backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
+        from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
         from monika.core.config.settings import load_all_config
 
         settings = load_all_config()

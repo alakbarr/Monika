@@ -47,7 +47,7 @@ async def resolve_and_repair_levels(
     and falls back to ATR percentage heuristics if necessary.
     Synchronizes results back into `r` dictionary and `ana` DB record.
     """
-    from database.models import PriceOHLCV
+    from monika.infrastructure.database.models import PriceOHLCV
     from sqlalchemy import select
 
     dec_u = str(r.get("decision", "")).upper()
@@ -113,7 +113,7 @@ async def resolve_and_repair_levels(
     if levels_invalid and entry_p > 0.0:
         # Try IntradayLevelOptimizer first
         try:
-            from analysis.calculators.intraday_level_optimizer import compute_optimal_levels
+            from monika.application.analysis.calculators.intraday_level_optimizer import compute_optimal_levels
             calc_res = await compute_optimal_levels(
                 session=session,
                 symbol=symbol,

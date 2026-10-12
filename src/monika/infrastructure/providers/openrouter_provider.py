@@ -9,8 +9,8 @@ import os
 import time
 import json
 from typing import Optional, Dict, Any, ClassVar
-from analysis.providers.openai_provider import OpenAIProvider
-from utils.api.openrouter_rate_limiter import (
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.api.openrouter_rate_limiter import (
     OpenRouterRateLimiter,
     get_paid_key,
     get_free_keys,

@@ -14,8 +14,8 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import UserMarketIntel, MarketChronicle, ActivityLog, SystemConfig
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import UserMarketIntel, MarketChronicle, ActivityLog, SystemConfig
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
 
@@ -336,7 +336,7 @@ async def handle_get_active_negative_constraints(
             logger.debug(f"Error reading negative constraints from SystemConfig: {e}")
 
         target_symbols = [symbol_filter] if symbol_filter else ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
-        from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+        from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
 
         for sym in target_symbols:
             try:

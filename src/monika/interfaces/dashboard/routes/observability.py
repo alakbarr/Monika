@@ -430,8 +430,8 @@ async def get_playbook_tree():
     Visualisasi grafik pohon turunan playbook dari MicroPlaybookCompiler.
     Menggabungkan playbook di database (PlaybookRuleAttribution) dan file sistem (skills/trading/playbooks/).
     """
-    from database.db import get_session
-    from database.models import PlaybookRuleAttribution
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import PlaybookRuleAttribution
     from sqlalchemy import select
 
     root = {
@@ -511,8 +511,8 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
     Grafik metrik prompt cache hit rate vs miss rate per siklus.
     Mengambil data dari TokenUsageLog.
     """
-    from database.db import get_session
-    from database.models import TokenUsageLog
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import TokenUsageLog
     from sqlalchemy import select, desc
 
     cycles: List[Dict[str, Any]] = []
@@ -644,7 +644,7 @@ async def get_trade_trajectories(limit: int = Query(50, ge=1, le=500)):
     """
     Retrieve logged trade decision trajectories from TradeTrajectoryLogger JSONL logs.
     """
-    from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+    from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
     logger_inst = TradeTrajectoryLogger()
     records = logger_inst.load_recent_trajectories(limit=limit)
     return {

@@ -26,9 +26,9 @@ import asyncio
 import functools
 import inspect
 from monika.application.graph.nodes.state_pruner import prune_after_fundamental, prune_after_debate, prune_before_execution
-from logging_observability.tracing.spans import node_span
+from monika.core.telemetry.tracing.spans import node_span
 import time
-from analysis.event_broadcaster import emit_analysis_event
+from monika.application.analysis.event_broadcaster import emit_analysis_event
 
 
 def _extract_tokens_from_result(node_name: str, res: Any) -> tuple[int, int]:
@@ -143,7 +143,7 @@ def _record_cycle_event(node_name: str, cycle_id: Optional[str], res: Any, state
     if not cycle_id:
         return
     try:
-        from logging_observability.trading_cycle_event_log import get_cycle_event_log, CycleEventType
+        from monika.core.telemetry.trading_cycle_event_log import get_cycle_event_log, CycleEventType
         event_log = get_cycle_event_log()
         payload = _build_node_payload_summary(node_name, res, state) or {}
         payload.update({
@@ -203,7 +203,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
-                from utils.llm.context_tracker import get_context_tracker
+                from monika.infrastructure.llm.context_tracker import get_context_tracker
                 if inp or out:
                     get_context_tracker().record_usage(input_tokens=inp, output_tokens=out, step=node_name)
             except Exception:
@@ -246,7 +246,7 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
-                from utils.llm.context_tracker import get_context_tracker
+                from monika.infrastructure.llm.context_tracker import get_context_tracker
                 if inp or out:
                     get_context_tracker().record_usage(input_tokens=inp, output_tokens=out, step=node_name)
             except Exception:

@@ -28,12 +28,12 @@ async def run_quant_arbitration(
     Applies SignalArbitrator defense, quant alpha opportunity evaluation,
     and market regime scaling to candidate trade proposals.
     """
-    from analysis.arbitration.signal_arbitrator import SignalArbitrator
-    from analysis.calculators.regime_classifier import classify_market_regime
-    from analysis.strategies.decay_monitor import get_strategy_decay_monitor
-    from analysis.strategies.registry import StrategyRegistry
-    from database.db import get_session
-    from database.models import AssetAnalysis, VIXData
+    from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
+    from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+    from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+    from monika.application.analysis.strategies.registry import StrategyRegistry
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import AssetAnalysis, VIXData
     from sqlalchemy import select
 
     arbitrator = SignalArbitrator(scheduler.settings)

@@ -3,8 +3,8 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from database.models import ActivityLog
-from analysis.providers.llm_factory import get_client_for_task
+from monika.infrastructure.database.models import ActivityLog
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.MemoryCompressor")
 

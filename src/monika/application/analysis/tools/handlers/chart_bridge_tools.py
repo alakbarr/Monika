@@ -30,7 +30,7 @@ async def handle_get_mt5_chart_objects(args: dict, **ctx) -> dict:
     client = _get_mt5_client(ctx)
 
     if not client:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
 
@@ -54,7 +54,7 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
 
     client = _get_mt5_client(ctx)
     if not client:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
 

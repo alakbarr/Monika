@@ -19,8 +19,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.providers.llm_factory import get_client_for_task
-from database.models import COTReport, TechnicalIndicator, EconomicCalendar, SystemConfig
-import utils.clock as clock
+from monika.infrastructure.database.models import COTReport, TechnicalIndicator, EconomicCalendar, SystemConfig
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.MacroPreprocessor")
 
@@ -96,7 +96,7 @@ class MacroPreprocessor:
         If COT says 'bullish' but 5-day price change is strongly bearish,
         mark the signal as LOW CONFIDENCE rather than blocking it entirely.
         """
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
 
         validated = {}

@@ -26,11 +26,11 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 from collections import deque
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from analysis.tools.tool_executor import ToolExecutor
-from utils.llm.context_compaction import ContextCompactionEngine
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 from monika.application.analysis.harness.tool_batch_planner import ToolBatchPlanner
 from monika.application.analysis.harness.tool_repair import repair_tool_name, repair_tool_arguments, coerce_tool_arguments
-from logging_observability.tracing.spans import llm_span
+from monika.core.telemetry.tracing.spans import llm_span
 
 logger = logging.getLogger("TradingAgent.AgentHarness")
 
@@ -93,7 +93,7 @@ class AgentHarness:
         self.max_context_chars = max_context_chars
         self.db_session = db_session
         self.compactor = ContextCompactionEngine(self.settings)
-        from analysis.tools.tool_guardrails import ToolGuardrailController
+        from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
         self.guardrail_controller = ToolGuardrailController(self.settings)
         from monika.application.analysis.harness.context_compressor import ContextCompressor
         self.context_compressor = ContextCompressor(self.settings)
@@ -102,7 +102,7 @@ class AgentHarness:
             warning_threshold=self.settings.get("stall_warning_threshold", 4),
             force_terminate_threshold=self.settings.get("stall_terminate_threshold", 7),
         )
-        from utils.llm.data_dedup import DataFetchDeduplicator
+        from monika.infrastructure.llm.data_dedup import DataFetchDeduplicator
         self.data_dedup = DataFetchDeduplicator()
         from monika.application.analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
         self.verification_ledger = VerificationEvidenceLedger()
@@ -243,7 +243,7 @@ class AgentHarness:
         if not effective_session:
             return
         try:
-            from database.event_store import TradingEventStore
+            from monika.infrastructure.database.event_store import TradingEventStore
 
             assistant_msg = messages[-1] if messages else {}
             content = assistant_msg.get("content", "")
@@ -614,8 +614,8 @@ class AgentHarness:
             except Exception as e:
                 logger.debug(f"[{stage_name}][AgentHarness] llm_client._log_tool_call non-fatal: {e}")
         try:
-            from database.db import get_session
-            from database.models import ActivityLog
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import ActivityLog
 
             actor_name = getattr(self.llm_client, "role", getattr(self.llm_client, "model", "agent_harness"))
             symbol = tool_input.get("symbol") if isinstance(tool_input, dict) else None
@@ -710,7 +710,7 @@ class AgentHarness:
         # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop
         if tools:
             try:
-                from analysis.tools.tools_definitions import minify_tool_definitions
+                from monika.application.analysis.tools.tools_definitions import minify_tool_definitions
                 tools = minify_tool_definitions(tools)
             except Exception as e:
                 logger.debug(f"Tool minification fallback (non-fatal): {e}")
@@ -866,7 +866,7 @@ class AgentHarness:
             )
 
             # 3. Provider Call with Transient Retry, Distributed Tracing, and Plugin Hooks
-            from utils.plugins.manager import get_plugin_manager, PluginHook
+            from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
 
             plugin_mgr = get_plugin_manager()
             await plugin_mgr.emit(
@@ -1603,11 +1603,11 @@ class AgentHarness:
                 called_tools.add(c_name)
                 res_obj = None
                 try:
-                    from utils.plugins.manager import get_plugin_manager, PluginHook
+                    from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
                     plugin_mgr = get_plugin_manager()
                     await plugin_mgr.emit(PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name)
 
-                    from logging_observability.tracing.spans import tool_span
+                    from monika.core.telemetry.tracing.spans import tool_span
                     with tool_span(c_name, symbol=stage_symbol):
                         res_obj = await executor.execute(c_name, c_input)
 
@@ -1624,14 +1624,14 @@ class AgentHarness:
 
                 # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation
                 try:
-                    from analysis.tools.tool_result_storage import get_tool_result_storage
+                    from monika.application.analysis.tools.tool_result_storage import get_tool_result_storage
                     res_obj, was_spilled = get_tool_result_storage().maybe_persist(c_name, c_input, res_obj)
                 except Exception as e:
                     logger.debug(f"[AgentHarness] Tool result spillover check error: {e}")
 
                 # Format tool result block with validation and micro-pruning
                 try:
-                    from utils.validation.tool_response_validator import ToolResponseValidator
+                    from monika.core.validation.tool_response_validator import ToolResponseValidator
                     sanitized_result, is_valid, warning = ToolResponseValidator.validate_and_sanitize(c_name, res_obj)
                     if not is_valid:
                         error_context = ToolResponseValidator.build_error_context(c_name, warning)
@@ -1656,7 +1656,7 @@ class AgentHarness:
                 })
                 if c_name in untrusted_tools:
                     try:
-                        from utils.security.threat_scanner import sanitize_or_block
+                        from monika.core.security.threat_scanner import sanitize_or_block
                         tool_res_content = sanitize_or_block(tool_res_content, source=c_name)
                     except Exception:
                         pass

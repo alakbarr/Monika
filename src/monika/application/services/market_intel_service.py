@@ -17,8 +17,8 @@ import pandas as pd
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import EconomicCalendar, PriceOHLCV
-from indicators.alpha_zoo.vector_factor_engine import (
+from monika.infrastructure.database.models import EconomicCalendar, PriceOHLCV
+from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
     VectorFactorEngine,
     VectorFactorResult,
     get_vector_factor_engine,

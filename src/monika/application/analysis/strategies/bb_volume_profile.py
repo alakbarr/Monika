@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from analysis.strategies.registry import StrategyRegistry
-from analysis.calculators.volume_profile import compute_volume_profile
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.calculators.volume_profile import compute_volume_profile
 
 
 @StrategyRegistry.register

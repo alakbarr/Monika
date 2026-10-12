@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
-from execution.broker_plugin import (
+from monika.domain.execution.broker_plugin import (
     BrokerPlugin,
     TickData,
     InstrumentSpec,
@@ -21,7 +21,7 @@ from execution.broker_plugin import (
     ExitReason,
 )
 from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
-from execution.mt5_client import MT5Client
+from monika.infrastructure.brokers.mt5_client import MT5Client
 
 logger = logging.getLogger("TradingAgent.Plugins.MT5Local")
 

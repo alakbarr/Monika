@@ -14,14 +14,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from analysis.tools.unified_registry import (
+from monika.application.analysis.tools.unified_registry import (
     unified_tool_registry,
     TRADING_TOOLSET,
     DEVELOPER_TOOLSET,
     RESEARCH_TOOLSET,
     TOOLSETS,
 )
-from logging_observability.dashboard.pty_bridge import get_pty_bridge_manager, PtySession
+from monika.interfaces.dashboard.pty_bridge import get_pty_bridge_manager, PtySession
 
 logger = logging.getLogger("Monika.Application.GeneralHarnessService")
 

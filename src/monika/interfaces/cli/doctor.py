@@ -82,7 +82,7 @@ class SystemDoctor:
 
         # Check MetaTrader5 Python package or Linux RPC bridge
         try:
-            from execution.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
+            from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module, is_native_mt5_available, is_mt5linux_available
             mt5 = ensure_mt5_module()
             if is_native_mt5_available():
                 self._record("Dependencies", "MetaTrader5-Pkg", "OK", f"MetaTrader5 native Python package installed (v{getattr(mt5, '__version__', 'unknown')}).")
@@ -175,7 +175,7 @@ class SystemDoctor:
     async def check_database_migrations(self) -> None:
         """Verify database connectivity, active DBA transaction locks, and schema migrations."""
         try:
-            from database.db import init_db, get_session, close_db
+            from monika.infrastructure.database.db import init_db, get_session, close_db
             await init_db()
             async with get_session() as session:
                 from sqlalchemy import text
@@ -225,14 +225,14 @@ class SystemDoctor:
                     pass
         finally:
             try:
-                from database.db import close_db
+                from monika.infrastructure.database.db import close_db
                 await close_db()
             except Exception:
                 pass
 
     async def check_startup_checker_suite(self, settings: dict) -> None:
         """Execute unified 11-step StartupChecker from agent/startup_checks.py."""
-        from agent.startup_checks import StartupChecker
+        from monika.application.agent.startup_checks import StartupChecker
         checker = StartupChecker(settings=settings)
         try:
             ok, warnings = await checker.run_all_checks()
@@ -252,7 +252,7 @@ class SystemDoctor:
             self._record("PreFlight", "StartupCheckerSuite", "FAIL", f"StartupChecker error: {e}")
         finally:
             try:
-                from database.db import close_db
+                from monika.infrastructure.database.db import close_db
                 await close_db()
             except Exception:
                 pass
@@ -260,7 +260,7 @@ class SystemDoctor:
     def check_wal_integrity_and_repair(self) -> None:
         """Verify SQLite WAL database files integrity and clear stale locks."""
         import sqlite3
-        from utils.infra.paths import DATA_DIR
+        from monika.infrastructure.infra.paths import DATA_DIR
         wal_dbs = [
             DATA_DIR / "session_db.sqlite",
             DATA_DIR / "universal_cron.db",
@@ -320,7 +320,7 @@ class SystemDoctor:
                 )
             finally:
                 try:
-                    from database.db import close_db
+                    from monika.infrastructure.database.db import close_db
                     await close_db()
                 except Exception:
                     pass

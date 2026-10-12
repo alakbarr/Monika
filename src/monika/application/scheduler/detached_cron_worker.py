@@ -28,7 +28,7 @@ from monika.application.scheduler.cron_nlp_parser import parse_natural_schedule
 
 logger = logging.getLogger("TradingAgent.Scheduler.DetachedCronWorker")
 
-from utils.infra.paths import DATA_DIR
+from monika.infrastructure.infra.paths import DATA_DIR
 
 DEFAULT_DELIVERIES_DB_PATH = DATA_DIR / "deliveries.db"
 

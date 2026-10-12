@@ -255,7 +255,7 @@ async def run_one_model_for_case(run_id, task_id, category, mode, model_name, ca
                             f"tok={inv.input_tokens}/{inv.output_tokens} score={overall} err={inv.error}")
 
                 try:
-                    from logging_observability.dashboard.routes.common import broadcast_live_event
+                    from monika.interfaces.dashboard.routes.common import broadcast_live_event
                     asyncio.create_task(broadcast_live_event("benchmark_model_done", {
                         "run_id": run_id,
                         "task_id": task_id,
@@ -329,7 +329,7 @@ async def run_benchmark(task_ids: list[str], model_names: list[str], symbols: li
 
     async with get_session() as session:
         run = await session.get(BenchmarkRun, run_id)
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         if run is not None:
             run.finished_at = clock.now()
             await session.commit()

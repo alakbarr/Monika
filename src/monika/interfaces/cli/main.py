@@ -46,8 +46,8 @@ apply_platform_fixes()
 from typing import Any, Dict, List, Optional
 import aiohttp
 from monika.core.config.settings import load_all_config, load_settings
-from database.db import init_db, get_session, close_db
-from database.models import Position, PaperTradeRecord, SystemConfig, RiskState
+from monika.infrastructure.database.db import init_db, get_session, close_db
+from monika.infrastructure.database.models import Position, PaperTradeRecord, SystemConfig, RiskState
 from sqlalchemy import select
 
 from monika.interfaces.cli.theme import (
@@ -184,7 +184,7 @@ def ensure_daemon_running(args, console=None) -> bool:
         return True
 
     try:
-        from utils.infra.env_file_manager import EnvFileManager
+        from monika.infrastructure.infra.env_file_manager import EnvFileManager
         if not EnvFileManager.is_configured():
             return False
     except Exception:
@@ -346,7 +346,7 @@ async def _cmd_unsuspend(args):
     ok = False
 
     async with get_session() as session:
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.core.analytics.paper_tracker import PaperTracker
         tracker = PaperTracker()
         if is_all or not sym:
             cleared = await tracker.unsuspend_all(session)
@@ -440,7 +440,7 @@ async def _cmd_stop(args):
 
     # Mark clean shutdown flag so auto-restart loop scripts won't loop
     try:
-        from agent.task_registry import mark_clean_shutdown
+        from monika.application.agent.task_registry import mark_clean_shutdown
         mark_clean_shutdown()
     except Exception:
         pass
@@ -602,7 +602,7 @@ async def _acli_run(args):
         logger.info(f"Starting in PAPER trading mode (simulation) [Tier: {active_tier.upper()}].")
 
     # Configure Gemini Rate Limiter limits from settings
-    from utils.api.gemini_rate_limiter import configure_from_settings
+    from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
     configure_from_settings(settings)
 
     # 3. Init DB & Health Checks
@@ -788,7 +788,7 @@ async def _cmd_config_set(args):
         import shutil
         import yaml
         from monika.core.config.settings import validate_config, _deep_merge
-        from database.models import ActivityLog
+        from monika.infrastructure.database.models import ActivityLog
 
         settings_path = getattr(args, "config", None)
         if not settings_path:
@@ -1006,7 +1006,7 @@ async def _cmd_sessions(args):
             sessions_data = None
 
     if sessions_data is None:
-        from database.models import TelegramConversation
+        from monika.infrastructure.database.models import TelegramConversation
         from sqlalchemy import func, desc
 
         await init_db()
@@ -1091,7 +1091,7 @@ async def _cmd_logs(args):
     category = getattr(args, "category", None)
     severity = getattr(args, "severity", None)
 
-    from database.models import ActivityLog
+    from monika.infrastructure.database.models import ActivityLog
 
     await init_db()
 
@@ -1266,7 +1266,7 @@ async def _cmd_ask(args):
     if not is_raw:
         console.print(f"{stamp_info('ASK')} Querying Monika: [bold]{question}[/]")
 
-    from agent.chat_agent import ChatAgent
+    from monika.application.agent.chat_agent import ChatAgent
     from monika.core.config.settings import load_all_config
     settings = load_all_config()
     agent = ChatAgent(settings, user_id="cli_user", is_admin=True)
@@ -1304,7 +1304,7 @@ async def _cmd_analyze(args):
     context = getattr(args, "context", "")
     console.print(f"{stamp_info('ANALYZE')} Running ad-hoc analysis for [bold {BRASS}]{symbol}[/]...")
 
-    from agent.agent_loop import SystemAgentLoop
+    from monika.application.agent.agent_loop import SystemAgentLoop
     from monika.core.config.settings import load_all_config
     settings = load_all_config()
     agent_loop = SystemAgentLoop(settings=settings)
@@ -1326,9 +1326,9 @@ async def _cmd_backtest(args):
     console = get_console()
     from datetime import datetime, timezone, timedelta
     from monika.core.config.settings import load_all_config
-    from database.db import init_db
-    from backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
-    from backtest.walk_forward_engine import WalkForwardEngine
+    from monika.infrastructure.database.db import init_db
+    from monika.application.backtest.point_in_time_engine import PointInTimeBacktestEngine, BacktestMode
+    from monika.application.backtest.walk_forward_engine import WalkForwardEngine
 
 
     await init_db()
@@ -1399,10 +1399,10 @@ async def _cmd_backtest(args):
 
 async def _cmd_benchmark_run(args):
     console = get_console()
-    from benchmark.task_specs import TASKS
-    from benchmark.model_registry import get_candidate_models, get_tier_models, get_router_matrix
-    from benchmark.runner import run_benchmark
-    from benchmark.report import build_report
+    from monika.application.benchmark.task_specs import TASKS
+    from monika.application.benchmark.model_registry import get_candidate_models, get_tier_models, get_router_matrix
+    from monika.application.benchmark.runner import run_benchmark
+    from monika.application.benchmark.report import build_report
 
     settings = load_all_config()
     bench_cfg = settings.get("benchmark", {})
@@ -1432,7 +1432,7 @@ async def _cmd_benchmark_run(args):
         tasks = list(TASKS.keys())
 
     if getattr(args, "mode", "standard") == "arena":
-        from benchmark.alpha_arena import AlphaArenaTournament
+        from monika.application.benchmark.alpha_arena import AlphaArenaTournament
         from rich.table import Table
         arena = AlphaArenaTournament()
         console.print(f"\n[{PHOSPHOR_AMBER}] Launching Alpha Arena Head-to-Head Tournament across {len(models)} models...[/]")
@@ -1499,7 +1499,7 @@ async def _cmd_benchmark_leaderboard(args):
     console = get_console()
     from rich.table import Table
     from sqlalchemy import select, desc
-    from benchmark.db_models import BenchmarkRun, BenchmarkResult
+    from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
 
     await init_db()
     run_id = getattr(args, "run_id", None)
@@ -1575,7 +1575,7 @@ async def _cmd_benchmark_history(args):
     console = get_console()
     from rich.table import Table
     from sqlalchemy import select, desc
-    from benchmark.db_models import BenchmarkRun
+    from monika.application.benchmark.db_models import BenchmarkRun
     import json as _json
 
     await init_db()
@@ -1623,7 +1623,7 @@ async def _cmd_benchmark_history(args):
 async def _cmd_benchmark_tasks(args):
     console = get_console()
     from rich.table import Table
-    from benchmark.task_specs import TASKS
+    from monika.application.benchmark.task_specs import TASKS
 
     tbl = Table(title=f"[{PHOSPHOR_AMBER}]Benchmark Task Catalog ({len(TASKS)} Tasks)[/]", box=LEDGER_BOX, header_style=f"bold {PHOSPHOR_AMBER}")
     tbl.add_column("Task ID", style=f"bold {PAPER}")
@@ -1642,7 +1642,7 @@ async def _cmd_benchmark_tasks(args):
 async def _cmd_benchmark_models(args):
     console = get_console()
     from rich.table import Table
-    from benchmark.model_registry import get_candidate_models, get_router_matrix
+    from monika.application.benchmark.model_registry import get_candidate_models, get_router_matrix
     settings = load_all_config()
     bench_cfg = settings.get("benchmark", {})
 
@@ -1683,7 +1683,7 @@ async def _cmd_benchmark(args):
 
 async def _cmd_stress_test(args):
     import time
-    from evals.hostile_market_probe import HostileMarketProbe
+    from monika.application.evals.hostile_market_probe import HostileMarketProbe
     sym = getattr(args, "symbol", "EURUSD").upper()
     ref = getattr(args, "price", 1.0850)
 
@@ -1715,7 +1715,7 @@ async def _cmd_stress_test(args):
 
 
 async def _cmd_backup(args):
-    from utils.infra.db_backup import create_backup
+    from monika.infrastructure.infra.db_backup import create_backup
     from monika.core.config.settings import load_all_config
     cfg = load_all_config()
     dest = getattr(args, "dest", None)
@@ -2046,7 +2046,7 @@ async def _dispatch_cli(args):
         elif args.command == "profile":
             await _cmd_profile(args)
         elif args.command in ("mcp-serve", "mcp_serve"):
-            from analysis.mcp.server import MonikaMcpServer
+            from monika.application.analysis.mcp.server import MonikaMcpServer
             from monika.core.config.settings import load_settings
             cfg = load_settings(getattr(args, "config", None))
             server = MonikaMcpServer(settings=cfg)
@@ -2070,7 +2070,7 @@ async def _dispatch_cli(args):
                     break
         else:
             # First-run interceptor for daemon execution
-            from utils.infra.env_file_manager import EnvFileManager
+            from monika.infrastructure.infra.env_file_manager import EnvFileManager
             if not EnvFileManager.is_configured():
                 if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
                     from rich.prompt import Confirm
@@ -2117,7 +2117,7 @@ def run():
         )
         return
 
-    from utils.infra.event_loop import run_async
+    from monika.infrastructure.infra.event_loop import run_async
 
     try:
         run_async(_dispatch_cli(args))

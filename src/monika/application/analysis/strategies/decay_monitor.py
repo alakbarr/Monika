@@ -254,7 +254,7 @@ class StrategyDecayMonitor:
         if not session:
             return
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
 
             payload = json.dumps(self.to_dict())
             if hasattr(SystemConfig, "upsert"):
@@ -278,7 +278,7 @@ class StrategyDecayMonitor:
         if not session:
             return
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select
 
             stmt = select(SystemConfig).where(SystemConfig.key == "strategy_decay_health")

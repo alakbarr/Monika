@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PriceOHLCV
+from monika.infrastructure.database.models import PriceOHLCV
 
 load_dotenv()
 logger = logging.getLogger("TradingAgent.MT5")
@@ -63,7 +63,7 @@ def _resolve_broker_symbol(symbol: str) -> str:
         return _BROKER_SYMBOL_CACHE[clean_sym]
 
     try:
-        from execution.mt5_compat import ensure_mt5_module
+        from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
         ensure_mt5_module()
         import MetaTrader5 as _mt5
         mt5: Any = _mt5
@@ -103,7 +103,7 @@ def _resolve_broker_symbol(symbol: str) -> str:
 def _build_timeframe_map():
     """Membuat pemetaan timeframe string ke konstanta MT5. Dipanggil secara lazy (saat dibutuhkan)."""
     try:
-        from execution.mt5_compat import ensure_mt5_module
+        from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
         ensure_mt5_module()
         import MetaTrader5 as _mt5
         mt5: Any = _mt5
@@ -170,7 +170,7 @@ class MT5Client:
         )
         self._broker_utc_offset_seconds: Optional[int] = None
         # 2-Phase Order Commit Protocol Manager
-        from risk.pending_action import PendingActionManager
+        from monika.domain.risk.pending_action import PendingActionManager
         self.pending_action_manager = PendingActionManager()
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
@@ -195,7 +195,7 @@ class MT5Client:
             self._connected = success
             if success:
                 try:
-                    from logging_observability.metrics_exporter import metrics
+                    from monika.core.telemetry.metrics_exporter import metrics
                     metrics.set_gauge("active_gateway_is_primary", 1.0 if self.active_gateway == "primary" else 0.0)
                     metrics.set_gauge("mt5_primary_connected", 1.0 if self.active_gateway == "primary" else 0.0)
                     metrics.set_gauge("mt5_secondary_connected", 1.0 if self.active_gateway == "secondary" else 0.0)
@@ -303,7 +303,7 @@ class MT5Client:
             if getattr(self, 'mt5_fail_count', 0) > 0:
                 self.mt5_fail_count = 0
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b>")
                 except Exception:
                     pass
@@ -337,7 +337,7 @@ class MT5Client:
         
         if self.mt5_fail_count % 6 == 1:
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
                 await notifier.send_critical(
                     f"[DARURAT] <b>MT5 CONNECTION FAILED</b>\n"
@@ -703,7 +703,7 @@ class MT5Client:
             saved += 1
 
         if saved:
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             ok = await safe_commit(session, label=f"ohlcv_{symbol}_{timeframe}")
             if ok:
                 logger.debug(f"Saved/Updated {saved} bars: {symbol}/{timeframe}")
@@ -735,7 +735,7 @@ class MT5Client:
                     logger.error(f"Failed to fetch/save {key}: {e}")
                     try:
                         await session.rollback()
-                        from database.safe_ops import _safe_expunge_all
+                        from monika.infrastructure.database.safe_ops import _safe_expunge_all
                         await _safe_expunge_all(session)
                     except Exception:
                         pass
@@ -784,7 +784,7 @@ class MT5Client:
                 logger.debug(f"[{clean_sym}] MT5 order_calc_margin failed: {e}")
 
         if margin is None:
-            from risk.domain.instruments import DEFAULT_INSTRUMENTS
+            from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
             spec = DEFAULT_INSTRUMENTS.get(clean_sym)
             contract = spec.contract_size if spec else (100 if "XAU" in clean_sym else 100_000)
             cur_price = price or (2650.0 if "XAU" in clean_sym else 1.1000)
@@ -832,7 +832,7 @@ class MT5Client:
 
         if event_bus is None:
             try:
-                from utils.protocol.event_bus import get_event_bus
+                from monika.application.protocol.event_bus import get_event_bus
                 event_bus = get_event_bus()
             except Exception:
                 event_bus = None
@@ -874,7 +874,7 @@ class MT5Client:
         loop: Optional[asyncio.AbstractEventLoop],
     ) -> None:
         """Worker loop executing on a dedicated thread for sub-second tick polling."""
-        from utils.protocol.event_bus import TickPriceEvent
+        from monika.application.protocol.event_bus import TickPriceEvent
         stop_event = self._tick_poller_stop_event
 
         while stop_event and not stop_event.is_set():
@@ -1219,7 +1219,7 @@ class MT5Client:
 
     def get_chart_objects(self, symbol: str) -> dict:
         """Reads exported user chart objects from shared MT5 FILE_COMMON (Q151)."""
-        from execution.ea_bridge.heartbeat_writer import HeartbeatManager
+        from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
         import json
         from pathlib import Path
 
@@ -1243,7 +1243,7 @@ class MT5Client:
         session: AsyncSession,
     ) -> dict:
         """Sinkronkan posisi terbuka dari MT5 ke DB lokal (perbarui status DB yang sudah tertutup di MT5)."""
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
         from sqlalchemy import select
 
         mt5_positions = await self.get_open_positions()

@@ -12,7 +12,7 @@ import re
 import logging
 from collections import Counter
 from typing import List, Dict, Any, Optional
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.LessonConsolidator")
 
@@ -85,8 +85,8 @@ def cluster_lessons_semantically(
 
 
 async def consolidate_lessons_to_playbook(session, settings, auto_propose_only: bool = True) -> str | None:
-    from database.models import DecisionReflection, CandidateLesson
-    from analysis.providers.llm_factory import get_client_for_task
+    from monika.infrastructure.database.models import DecisionReflection, CandidateLesson
+    from monika.infrastructure.providers.llm_factory import get_client_for_task
     from sqlalchemy import select
     from datetime import datetime, timezone, timedelta
     from pathlib import Path
@@ -165,7 +165,7 @@ async def consolidate_lessons_to_playbook(session, settings, auto_propose_only: 
     # Enforce Declarative Memory Rule
     content = enforce_declarative_memory_rule(content)
 
-    from database.safe_ops import safe_commit
+    from monika.infrastructure.database.safe_ops import safe_commit
     # Save candidate lessons to database for shadow out-of-sample validation
     for sym in by_symbol:
         sym_block = ""
@@ -272,7 +272,7 @@ async def promote_lesson_to_playbook(content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(updated_content, encoding='utf-8')
     try:
-        from skills.loader import invalidate_cache
+        from monika.application.skills.loader import invalidate_cache
         invalidate_cache()
     except Exception:
         pass
@@ -287,8 +287,8 @@ async def auto_promote_high_confidence_rules(session, settings: Optional[Dict[st
     Rejects if:
     Evaluated trades >= 5 and win_rate_delta <= -0.08
     """
-    from database.models import CandidateLesson
-    from database.safe_ops import safe_commit
+    from monika.infrastructure.database.models import CandidateLesson
+    from monika.infrastructure.database.safe_ops import safe_commit
     from sqlalchemy import select
 
     min_eval = (settings or {}).get("trading", {}).get("memory", {}).get("min_eval_trades_promote", 3)
@@ -350,8 +350,8 @@ async def record_playbook_rule_outcome(
     and marking high-performing rules (>=65% win rate) as 'golden'.
     """
     import hashlib
-    from database.models import PlaybookRuleAttribution
-    from database.safe_ops import safe_commit
+    from monika.infrastructure.database.models import PlaybookRuleAttribution
+    from monika.infrastructure.database.safe_ops import safe_commit
     from sqlalchemy import select
 
     clean_text = rule_text.strip()

@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy import select, func, desc, case
 
-from database.db import get_session
-from database.models import TokenUsageLog
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import TokenUsageLog
 
 logger = logging.getLogger("TradingAgent.TokenAuditor")
 

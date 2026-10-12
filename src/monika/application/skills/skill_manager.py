@@ -54,7 +54,7 @@ class SkillManager:
     def _get_hub(self) -> SkillsHub:
         if self.skills_hub:
             return self.skills_hub
-        from analysis.tools.domain.skill_tools import get_skills_hub
+        from monika.application.analysis.tools.domain.skill_tools import get_skills_hub
 
         return get_skills_hub()
 

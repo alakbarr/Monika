@@ -13,8 +13,8 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
-from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
 logger = logging.getLogger("TradingAgent.PerformanceReviewer")
 
@@ -28,7 +28,7 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> Opti
     Analisa akurasi Stage 1 Fundamental Bias dan hasilkan evaluasi.
     Buat file markdown (catatan evaluasi performa fundamental) & kembalikan kontennya.
     """
-    from utils.analytics.agent_performance_monitor import compute_agent_accuracy_report
+    from monika.core.analytics.agent_performance_monitor import compute_agent_accuracy_report
     report = await compute_agent_accuracy_report(session, days_back=30)
     stage1 = report.get('stage1_bias_accuracy', {})
     
@@ -73,7 +73,7 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> Opti
         FUNDAMENTAL_PERFORMANCE_NOTES_PATH.write_text(content, encoding="utf-8")
         logger.info(f"Fundamental performance notes updated: {FUNDAMENTAL_PERFORMANCE_NOTES_PATH}")
         try:
-            from skills.loader import invalidate_cache
+            from monika.application.skills.loader import invalidate_cache
             invalidate_cache()
         except Exception:
             pass
@@ -89,7 +89,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
     """
     since = datetime.now(timezone.utc) - timedelta(days=30)
     
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
     tracker = PaperTracker()
     stats = await tracker.get_statistics(session)
     
@@ -280,7 +280,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
             lines.append(f"- {day}: {wr:.0f}% WR ({data['total']} trades) {flag}")
 
     try:
-        from utils.analytics.analysis_tracker import compute_factor_effectiveness
+        from monika.core.analytics.analysis_tracker import compute_factor_effectiveness
         factor_data = await compute_factor_effectiveness(session, days_back=30)
         if not factor_data.get('insufficient_data') and factor_data.get('total_trades_analyzed', 0) >= 10:
             lines.append('')
@@ -306,7 +306,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
 
     # Generate specific recommendations untuk confluence threshold
     try:
-        from utils.analytics.analysis_tracker import get_confluence_calibration_status
+        from monika.core.analytics.analysis_tracker import get_confluence_calibration_status
         calibration = await get_confluence_calibration_status(session)
         if not calibration.get('insufficient_data') and calibration.get('recommendation') != 'MAINTAIN':
             optimal = calibration.get('optimal_threshold_from_data', 7)
@@ -329,8 +329,8 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
 
     # Phase 6 Task 1: Auto-drop NEGATIVE_PREDICTOR factors
     try:
-        from utils.analytics.analysis_tracker import compute_factor_weights_recommendation
-        from database.models import SystemConfig
+        from monika.core.analytics.analysis_tracker import compute_factor_weights_recommendation
+        from monika.infrastructure.database.models import SystemConfig
         import json
         
         weight_recs = await compute_factor_weights_recommendation(session, min_trades=30)
@@ -418,7 +418,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> Optio
         logger.info(f"Performance notes updated: {PERFORMANCE_NOTES_PATH}")
         # CRITICAL: Clear LRU cache so next analysis cycle reads the new content
         try:
-            from skills.loader import invalidate_cache
+            from monika.application.skills.loader import invalidate_cache
             invalidate_cache()
             logger.info('Skills LRU cache cleared — AI will read updated performance notes on next cycle')
         except Exception as e:
@@ -453,8 +453,8 @@ async def analyze_failure_patterns(session: AsyncSession, records) -> list[str]:
     return patterns
 
 async def should_regenerate_fundamental_notes(session: AsyncSession) -> tuple[bool, str]:
-    from utils.analytics.agent_performance_monitor import compute_agent_accuracy_report
-    from database.models import SystemConfig
+    from monika.core.analytics.agent_performance_monitor import compute_agent_accuracy_report
+    from monika.infrastructure.database.models import SystemConfig
     from sqlalchemy import select
     report = await compute_agent_accuracy_report(session, days_back=14)
     stage1 = report.get('stage1_bias_accuracy', {})
@@ -486,9 +486,9 @@ async def evaluate_candidate_lessons(session: AsyncSession, settings: Optional[d
     Evaluates CandidateLesson records in shadow mode against out-of-sample holdout trades.
     Promotes only candidate lessons with verified positive performance delta (N >= 30).
     """
-    from database.models import CandidateLesson, PaperTradeRecord
-    from analysis.memory.lesson_consolidator import promote_lesson_to_playbook
-    import utils.clock as clock
+    from monika.infrastructure.database.models import CandidateLesson, PaperTradeRecord
+    from monika.application.analysis.memory.lesson_consolidator import promote_lesson_to_playbook
+    import monika.core.primitives.clock as clock
 
     now = clock.now()
     candidates = (await session.execute(

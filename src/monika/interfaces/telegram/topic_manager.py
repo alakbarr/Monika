@@ -22,7 +22,7 @@ Benefits:
 import logging
 from typing import Optional, List, Any
 from sqlalchemy import select, delete
-from database.models import TelegramTopicBinding
+from monika.infrastructure.database.models import TelegramTopicBinding
 
 logger = logging.getLogger("TradingAgent.TopicManager")
 
@@ -35,10 +35,10 @@ class TopicManager:
             self._session_factory = session_factory
         else:
             try:
-                from database.async_db import AsyncSessionLocal
+                from monika.infrastructure.database.async_db import AsyncSessionLocal
                 self._session_factory = AsyncSessionLocal
             except ImportError:
-                from database.db import AsyncSessionLocal
+                from monika.infrastructure.database.db import AsyncSessionLocal
                 self._session_factory = AsyncSessionLocal
 
     async def get_session_for_topic(

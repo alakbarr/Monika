@@ -20,7 +20,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 logger = logging.getLogger("TradingAgent.MCP.ServerDispatcher")
 

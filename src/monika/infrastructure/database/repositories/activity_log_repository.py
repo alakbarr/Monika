@@ -9,7 +9,7 @@ from typing import Optional, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import ActivityLog
+from monika.infrastructure.database.models import ActivityLog
 
 
 class ActivityLogRepository:

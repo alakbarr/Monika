@@ -12,9 +12,9 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from utils.retry_decorator import retryable
-from database.models import NewsItem, NewsDigest, NewsDigestSlice
+import monika.core.primitives.clock as clock
+from monika.core.primitives.retry import retryable
+from monika.infrastructure.database.models import NewsItem, NewsDigest, NewsDigestSlice
 from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 
 logger = logging.getLogger("TradingAgent.Tools.News")
@@ -116,7 +116,7 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
     # 2. Priority 2: Modern rolling slices via DigestSliceGenerator if no recent verified digest
     if not digest_row or not getattr(digest_row, "digest_text", None):
         try:
-            from analysis.prefetch.digest_slice_generator import DigestSliceGenerator
+            from monika.application.analysis.prefetch.digest_slice_generator import DigestSliceGenerator
 
             generator = DigestSliceGenerator(settings)
             assembled_digest = await generator.assemble_12h_digest(session, hours_back=hours_back)
@@ -301,7 +301,7 @@ async def handle_web_search(args: dict, **ctx) -> dict:
         max_results = 5
 
     try:
-        from data_sources.web_search import get_web_search_service
+        from monika.infrastructure.data_ingestion.sources.web_search import get_web_search_service
 
         search_service = get_web_search_service(settings)
         result = await _execute_web_search(
@@ -331,7 +331,7 @@ async def handle_read_url(args: dict, **ctx) -> dict:
         max_chars = 12000
 
     try:
-        from data_sources.web_reader import WebReader
+        from monika.infrastructure.data_ingestion.sources.web_reader import WebReader
 
         reader = WebReader(max_chars=max_chars)
         result = await _execute_read_url(reader, url)
@@ -352,7 +352,7 @@ async def handle_search_academic(args: dict, **ctx) -> dict:
         max_results = 5
 
     try:
-        from data_sources.academic_search import AcademicSearchClient
+        from monika.infrastructure.data_ingestion.sources.academic_search import AcademicSearchClient
 
         client = AcademicSearchClient()
         result = await _execute_search_academic(client, query, max_results)
@@ -366,7 +366,7 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
     """Search for real-time social trader sentiment on Twitter/X or financial forums, with web search fallback."""
     query = (args.get("query") or args.get("symbol") or "XAUUSD").strip()
     try:
-        from scrapers.social.twitter_watch import TwitterWatchScraper
+        from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
         scraper = TwitterWatchScraper(headless=True)
         tweets = await asyncio.to_thread(scraper.fetch_latest_tweets)
@@ -386,7 +386,7 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
         logger.debug(f"Direct Twitter fetch failed for {query}: {e}")
 
     try:
-        from data_sources.web_search import WebSearch
+        from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
 
         searcher = WebSearch()
         results = await searcher.search(f"{query} sentiment twitter reddit tradingview", max_results=5)

@@ -5,8 +5,8 @@ import inspect
 from pathlib import Path
 from typing import Type, Optional, Dict, Any
 from sqlalchemy import select, delete, update
-from database.models import SystemConfig
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.infrastructure.database.models import SystemConfig
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 
 logger = logging.getLogger("TradingAgent.StrategyRegistry")
 
@@ -145,7 +145,7 @@ class StrategyRegistry:
             # 3. Load StrategyDecayMonitor state first to evaluate live operational health
             decay_mon = None
             try:
-                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                 decay_mon = get_strategy_decay_monitor()
                 await decay_mon.load_from_db(session)
             except Exception as decay_err:
@@ -222,7 +222,7 @@ class StrategyRegistry:
                                 except Exception as purge_err:
                                     logger.debug(f"[StrategyRegistry] Failed purging stub {s_id} from DB: {purge_err}")
                             continue
-                        from scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
+                        from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
                         synth_sched = StrategySynthesisScheduler({})
                         loaded_cls = synth_sched.compile_strategy_class(py_code, cls_name)
                         if loaded_cls:
@@ -269,7 +269,7 @@ class StrategyRegistry:
 
             # 4. Load persisted strategy decay monitor state
             try:
-                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                 await get_strategy_decay_monitor().load_from_db(session)
             except Exception as decay_err:
                 logger.debug(f"[StrategyRegistry] Failed loading decay state: {decay_err}")
@@ -346,7 +346,7 @@ class StrategyRegistry:
                         )
                         continue
 
-                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                 if not get_strategy_decay_monitor().is_tradeable(strat_id):
                     logger.debug(
                         f"[{strat_name}] Suppressed by StrategyDecayMonitor "

@@ -63,7 +63,7 @@ class DecisionMemoryManager:
 
     async def get_past_decisions_context(self, symbol: str, limit: int = 5, run_id: Optional[int] = None) -> str:
         """Mengambil riwayat keputusan untuk konteks Stage 2."""
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         async with get_session() as session:
             stmt = (
                 select(DecisionMemory)

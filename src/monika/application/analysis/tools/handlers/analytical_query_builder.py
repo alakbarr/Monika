@@ -12,9 +12,9 @@ import numpy as np
 from sqlalchemy import select, and_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Position, PaperTradeRecord, TradeOutcome, OrderLog, AssetAnalysis
+from monika.infrastructure.database.models import Position, PaperTradeRecord, TradeOutcome, OrderLog, AssetAnalysis
 from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Tools.AnalyticalQuery")
 

@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from database.models import PriceOHLCV, SRZone
-import utils.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, SRZone
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.VerifiedSnapshotHandler")
 
@@ -69,7 +69,7 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
                 "timeframe": "H1",
             }
             try:
-                from data_sources.validators import validate_ohlcv_freshness, StaleDataError
+                from monika.infrastructure.data_ingestion.sources.validators import validate_ohlcv_freshness, StaleDataError
 
                 validate_ohlcv_freshness(
                     [
@@ -92,7 +92,7 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
         else:
             # Fallback to MT5 current tick if available
             try:
-                from execution.mt5_client import get_mt5_client
+                from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
                 client = get_mt5_client()
                 from unittest.mock import Mock
@@ -115,7 +115,7 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
         # 2. Compute key technical indicators deterministically
         indicators = {}
         try:
-            from indicators.technical import TechnicalIndicatorCalculator
+            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
             calc_settings = self.settings or getattr(executor, "settings", {}) or {}
             calc = TechnicalIndicatorCalculator(session, calc_settings)

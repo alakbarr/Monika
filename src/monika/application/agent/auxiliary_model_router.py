@@ -123,7 +123,7 @@ class AuxiliaryModelRouter:
         s = settings
         if not s:
             try:
-                from utils.config import load_settings
+                from monika.core.config.settings import load_settings
                 s = load_settings()
             except Exception:
                 s = {}

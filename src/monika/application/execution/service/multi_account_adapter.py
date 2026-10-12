@@ -13,7 +13,7 @@ import copy
 import logging
 from typing import Any, Dict, List, Optional
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter
 from monika.domain.execution.broker_plugin import OrderRequest, normalize_order_request
 

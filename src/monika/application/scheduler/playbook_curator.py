@@ -19,7 +19,7 @@ from monika.application.analysis.memory.lesson_consolidator import (
 )
 from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PlaybookCurator")
 

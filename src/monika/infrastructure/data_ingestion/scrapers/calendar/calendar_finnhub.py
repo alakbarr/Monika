@@ -35,7 +35,7 @@ except ImportError:
     HAS_REQUESTS = False
     logger.warning("requests not installed — FinnhubCalendarScraper unavailable")
 
-from scrapers.models import CalendarEvent
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 
 # Pemetaan dampak Finnhub ke sistem 3 level kita
@@ -150,7 +150,7 @@ class FinnhubCalendarScraper:
         events = self._parse_events(data.get("economicCalendar", []))
         logger.info(f"FinnhubCalendarScraper: fetched {len(events)} events ({today} to {end})")
         try:
-            from data_sources.circuit_breaker import record_feed_heartbeat
+            from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
             record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
             record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
         except Exception:
@@ -252,7 +252,7 @@ class FinnhubCalendarScraper:
         events = self._parse_events(data.get("economicCalendar", []))
         logger.info(f"FinnhubCalendarScraper (async): fetched {len(events)} events ({today} to {end})")
         try:
-            from data_sources.circuit_breaker import record_feed_heartbeat
+            from monika.infrastructure.data_ingestion.sources.circuit_breaker import record_feed_heartbeat
             record_feed_heartbeat("finnhub", metadata={"events_count": len(events)})
             record_feed_heartbeat("economic_calendar", metadata={"source": "finnhub", "events_count": len(events)})
         except Exception:

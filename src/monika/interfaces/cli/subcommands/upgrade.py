@@ -25,7 +25,7 @@ from rich.table import Table
 from rich.prompt import Confirm, Prompt
 from monika.core.config.settings import load_settings, get_installation_tier
 from monika.core.config.atomic_writer import AtomicConfigWriter
-from utils.infra.env_file_manager import EnvFileManager
+from monika.infrastructure.infra.env_file_manager import EnvFileManager
 
 
 class UpgradeSubcommand(Subcommand):

@@ -1,10 +1,10 @@
 import json
 from sqlalchemy import select
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from database.models import PriceOHLCV, TechnicalIndicator
-from utils.validation.indicator_sanitizer import safe_float
-import utils.clock as clock
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
+from monika.core.validation.indicator_sanitizer import safe_float
+import monika.core.primitives.clock as clock
 
 from typing import Optional
 from datetime import datetime
@@ -59,7 +59,7 @@ class DailyReopenGapFade(EdgeStrategy):
         if not prev_close or not today_open:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="dirty price data")
 
-        from utils.market.instrument_identity import resolve_instrument_identity
+        from monika.domain.market.instrument_identity import resolve_instrument_identity
         pip = PIP_SIZE.get(symbol) or resolve_instrument_identity(symbol).pip_size or 0.0001
         gap = today_open - prev_close
         gap_pips = abs(gap) / pip
