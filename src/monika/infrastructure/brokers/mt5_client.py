@@ -37,6 +37,8 @@ logger = logging.getLogger("TradingAgent.MT5")
 PRIORITY_CRITICAL = 0    # Emergency, kill-switch, order execution (place, modify, close)
 PRIORITY_STANDARD = 5    # Ticks, account info, open positions, spread
 PRIORITY_NORMAL = PRIORITY_STANDARD # Alias for standard priority tasks
+from monika.core.exceptions import BrokerConnectionError
+
 PRIORITY_BACKGROUND = 10 # Bulk historical rates (get_rates, copy_rates_range)
 
 # MT5 timeframe string → MT5 constant mapping
@@ -44,7 +46,7 @@ PRIORITY_BACKGROUND = 10 # Bulk historical rates (get_rates, copy_rates_range)
 TIMEFRAME_MAP: dict[str, int] = {}
 
 
-class MT5ProfileMismatchError(RuntimeError):
+class MT5ProfileMismatchError(BrokerConnectionError):
     """Raised when the connected MT5 terminal login or trade mode does not match configured expectations."""
     pass
 
