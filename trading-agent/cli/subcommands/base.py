@@ -1,29 +1,23 @@
-# ==============================================================================
-# File: cli/subcommands/base.py
-# ==============================================================================
-
 """
-Base Protocol for Modular CLI Subcommands in Monika.
-Each subcommand group manages its own argument parsing and execution pipeline.
+Compatibility facade shim for legacy base.py.
+Re-exports from canonical monika.interfaces.cli.subcommands.base.
 """
 
-import argparse
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+from __future__ import annotations
+
+import monika.interfaces.cli.subcommands.base as _canonical
+
+from monika.interfaces.cli.subcommands.base import (
+    Subcommand,
+)
+
+__all__ = ['Subcommand']
 
 
-class Subcommand(ABC):
-    """Abstract base class for modular CLI subcommand groups."""
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-    name: str = ""
-    description: str = ""
-
-    @abstractmethod
-    def register_subparser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-        """Register argument parser flags and subcommands."""
-        pass
-
-    @abstractmethod
-    async def execute(self, args: argparse.Namespace) -> int:
-        """Asynchronously execute subcommand. Return exit code (0 for success)."""
-        pass
+import sys as _sys
+_sys.modules[__name__] = _canonical

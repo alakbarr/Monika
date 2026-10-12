@@ -1,25 +1,7 @@
-# ==============================================================================
-# File: cli/subcommands/__init__.py
-# ==============================================================================
-
-"""
-Subcommands Registry for Monika Modular CLI.
-"""
-
-from typing import Dict, List
-from cli.subcommands.base import Subcommand
-from cli.subcommands.daemon import DaemonSubcommand
-from cli.subcommands.trading import TradingSubcommand
-from cli.subcommands.simulation import SimulationSubcommand
-from cli.subcommands.mcp import McpSubcommand
-from cli.subcommands.runcard import RunCardSubcommand
-from cli.subcommands.upgrade import UpgradeSubcommand
-
-AVAILABLE_SUBCOMMANDS: List[Subcommand] = [
-    DaemonSubcommand(),
-    TradingSubcommand(),
-    SimulationSubcommand(),
-    McpSubcommand(),
-    RunCardSubcommand(),
-    UpgradeSubcommand(),
-]
+"""Compatibility facade shim for legacy subcommands package."""
+from __future__ import annotations
+import monika.interfaces.cli.subcommands as _canonical
+from monika.interfaces.cli.subcommands import *  # noqa: F401, F403
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)

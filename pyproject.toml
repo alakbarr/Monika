@@ -33,7 +33,7 @@ build-backend = "setuptools.build_meta"
 where = ["src", "trading-agent"]
 
 [project.scripts]
-monika = "cli.main:main"
+monika = "monika.interfaces.cli.main:main"
 
 [tool.ruff]
 line-length = 120

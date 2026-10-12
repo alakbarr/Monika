@@ -366,7 +366,8 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
         self,
         only_profit: bool = True,
         symbol: Optional[str] = None,
-        requested_by: str = "user_chat"
+        requested_by: str = "user_chat",
+        ticket: Optional[int] = None,
     ) -> dict:
         """
         Moves Stop Loss to entry price (Breakeven) on open positions.
@@ -376,6 +377,8 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
             stmt = select(Position).where(Position.status == "open")
             if symbol:
                 stmt = stmt.where(Position.symbol == symbol.strip().upper())
+            if ticket is not None:
+                stmt = stmt.where((Position.mt5_ticket == ticket) | (Position.id == ticket))
             positions = (await session.execute(stmt)).scalars().all()
 
             if not positions:

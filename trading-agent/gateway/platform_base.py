@@ -1,56 +1,24 @@
-# ==============================================================================
-# File: gateway/platform_base.py
-# ==============================================================================
-
 """
-Base Platform Adapter Interface for Omnichannel Messaging Gateway.
-Institutional-grade engine turn protection architecture.
-
-Defines the contract for real-time bi-directional messaging across multiple platforms
-(Telegram, Discord, Slack, WhatsApp, Signal, Webhook).
+Compatibility facade shim for legacy platform_base.py.
+Re-exports from canonical monika.interfaces.gateway.platform_base.
 """
 
 from __future__ import annotations
 
-import abc
-import asyncio
-import logging
-from typing import Any, Callable, Dict, Optional
+import monika.interfaces.gateway.platform_base as _canonical
 
-logger = logging.getLogger("TradingAgent.Gateway.PlatformBase")
+from monika.interfaces.gateway.platform_base import (
+    BasePlatformAdapter,
+    logger,
+)
+
+__all__ = ['BasePlatformAdapter', 'logger']
 
 
-class BasePlatformAdapter(abc.ABC):
-    """Abstract interface for messaging platforms."""
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-    def __init__(self, platform_name: str):
-        self.platform_name = platform_name
-        self.is_connected: bool = False
-        self.message_handler: Optional[Callable[[str, str, str, Dict[str, Any]], asyncio.Future]] = None
-
-    def register_handler(
-        self,
-        handler: Callable[[str, str, str, Dict[str, Any]], asyncio.Future],
-    ) -> None:
-        """Register the message intake callback (sender_id, channel_id, text, metadata)."""
-        self.message_handler = handler
-
-    @abc.abstractmethod
-    async def start(self) -> None:
-        """Connect to the platform API/websocket/polling loop."""
-        pass
-
-    @abc.abstractmethod
-    async def stop(self) -> None:
-        """Disconnect and clean up platform connections."""
-        pass
-
-    @abc.abstractmethod
-    async def send_message(
-        self,
-        target_id: str,
-        content: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> bool:
-        """Send outgoing message to a channel or user."""
-        pass
+import sys as _sys
+_sys.modules[__name__] = _canonical

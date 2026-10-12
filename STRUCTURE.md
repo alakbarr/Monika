@@ -83,7 +83,29 @@ Monika/
 │       ├── 10_terminal_ui_tui.png
 │       ├── 10_terminal_ui_tui.svg
 │       └── dashboard
+├── frontend
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── README.md
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── vite.config.ts
+│   ├── dist
+│   └── src
+│       ├── App.tsx
+│       ├── main.tsx
+│       ├── components
+│       ├── hooks
+│       ├── services
+│       └── types
 ├── pyproject.toml
+
 ├── pyrightconfig.json
 ├── pytest.ini
 ├── scripts
@@ -397,7 +419,114 @@ Monika/
 │       │       ├── docker_backend.py
 │       │       └── local_backend.py
 │       └── interfaces
-│           └── __init__.py
+│           ├── __init__.py
+│           ├── cli
+│           │   ├── __init__.py
+│           │   ├── analysis_tree.py
+│           │   ├── busy_input.py
+│           │   ├── chat
+│           │   │   ├── __init__.py
+│           │   │   ├── commands.py
+│           │   │   ├── completer.py
+│           │   │   ├── prompt.py
+│           │   │   ├── renderer.py
+│           │   │   ├── session.py
+│           │   │   └── theme.py
+│           │   ├── doctor.py
+│           │   ├── main.py
+│           │   ├── onboarding_trader.py
+│           │   ├── overlays
+│           │   │   ├── __init__.py
+│           │   │   ├── approval_modal.py
+│           │   │   └── plugin_install_modal.py
+│           │   ├── platform_compat.py
+│           │   ├── plugins.py
+│           │   ├── profile_manager.py
+│           │   ├── setup_wizard.py
+│           │   ├── sparklines.py
+│           │   ├── subcommands
+│           │   │   ├── __init__.py
+│           │   │   ├── base.py
+│           │   │   ├── daemon.py
+│           │   │   ├── mcp.py
+│           │   │   ├── runcard.py
+│           │   │   ├── simulation.py
+│           │   │   ├── trading.py
+│           │   │   └── upgrade.py
+│           │   ├── theme.py
+│           │   ├── tui.py
+│           │   ├── tui_chat.py
+│           │   └── width_budget.py
+│           ├── dashboard
+│           │   ├── __init__.py
+│           │   ├── api.py
+│           │   ├── log_streamer.py
+│           │   ├── pty_bridge.py
+│           │   ├── rbac.py
+│           │   ├── routes
+│           │   │   ├── __init__.py
+│           │   │   ├── backtest.py
+│           │   │   ├── benchmark.py
+│           │   │   ├── common.py
+│           │   │   ├── config.py
+│           │   │   ├── intelligence.py
+│           │   │   ├── mcp_server.py
+│           │   │   ├── memory.py
+│           │   │   ├── observability.py
+│           │   │   ├── plugins.py
+│           │   │   ├── system.py
+│           │   │   ├── tokens.py
+│           │   │   ├── trace_search.py
+│           │   │   ├── trading.py
+│           │   │   └── websocket.py
+│           │   └── ws_ticket.py
+│           ├── gateway
+│           │   ├── __init__.py
+│           │   ├── acp_server.py
+│           │   ├── api_server.py
+│           │   ├── bot_loop_guard.py
+│           │   ├── channel_router.py
+│           │   ├── delivery_ledger.py
+│           │   ├── omnichannel_router.py
+│           │   ├── omnichannel_streamer.py
+│           │   ├── pairing.py
+│           │   ├── platform_base.py
+│           │   ├── platforms
+│           │   │   ├── __init__.py
+│           │   │   ├── discord_adapter.py
+│           │   │   ├── slack_adapter.py
+│           │   │   ├── telegram_adapter.py
+│           │   │   └── webhook_adapter.py
+│           │   ├── stream_consumer.py
+│           │   ├── turn_lease.py
+│           │   └── webhook_ingress.py
+│           └── telegram
+│               ├── __init__.py
+│               ├── bot.py
+│               ├── chat_agent.py
+│               ├── chat_compaction.py
+│               ├── chat_tool_router.py
+│               ├── command_router.py
+│               ├── formatters
+│               │   └── __init__.py
+│               ├── fuzzy_router.py
+│               ├── handlers
+│               │   ├── __init__.py
+│               │   ├── market_commands.py
+│               │   ├── system_commands.py
+│               │   └── trading_commands.py
+│               ├── message_formatter.py
+│               ├── routers
+│               │   ├── __init__.py
+│               │   ├── admin_router.py
+│               │   ├── market_router.py
+│               │   ├── quant_router.py
+│               │   ├── risk_router.py
+│               │   └── trading_router.py
+│               ├── sanitizer.py
+│               ├── topic_manager.py
+│               ├── voice_handler.py
+│               └── voice_safety_gate.py
 └── trading-agent
     ├── .env.example
     ├── PRD.md
