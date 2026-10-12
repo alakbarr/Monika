@@ -220,9 +220,21 @@ class RiskGate:
         rejections:    list[str] = []
 
         effective_pair_group = pair_group_id or getattr(analysis, 'pair_group_id', None)
-        fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
-        equity = simulated_equity if (is_backtest and simulated_equity is not None) else (account_equity or fallback_equity)
         effective_is_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
+        if not effective_is_paper and not is_backtest:
+            if account_equity is None or account_equity <= 0:
+                return RiskVerdict(
+                    approved=False,
+                    symbol=symbol,
+                    proposed_lots=sizing.recommended_lots if sizing else 0.0,
+                    checks_passed=[],
+                    checks_failed=["live_equity_unavailable"],
+                    rejection_reasons=["Live account equity is unavailable or zero; order rejected for capital preservation"],
+                )
+            equity = account_equity
+        else:
+            fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+            equity = simulated_equity if (is_backtest and simulated_equity is not None) else (account_equity or fallback_equity)
 
         try:
             from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
@@ -1930,8 +1942,8 @@ class RiskGate:
                     return False, f"Schmitt regime is FUSED (contagion density={detector.last_density:.2f}). Max 2 positions allowed (current={open_count})"
             return True, f"regime={detector.state.value} (density={detector.last_density:.2f})"
         except Exception as e:
-            logger.debug(f"Schmitt regime check error: {e}")
-            return True, "schmitt_regime_fallback_ok"
+            logger.warning(f"Schmitt regime check error: {e}")
+            return False, f"schmitt_regime_check_failed: {e}"
 
     async def _check_vpin_toxicity(
         self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None, is_backtest: bool = False
@@ -1967,8 +1979,8 @@ class RiskGate:
                 return True, f"VPIN={vpin or 'n/a'} (clean flow)"
             return True, "VPIN check ok (no snapshot)"
         except Exception as e:
-            logger.debug(f"VPIN toxicity check error: {e}")
-            return True, "vpin_check_fallback_ok"
+            logger.warning(f"VPIN toxicity check error: {e}")
+            return False, f"vpin_check_failed: {e}"
 
     async def _check_adv_liquidity(
         self,
@@ -2078,7 +2090,8 @@ class RiskGate:
                     return False, f"Extreme crash contagion tail risk: Clayton lambda={lower_tail:.2f} > 0.40 with active position in {other_sym}"
 
         except Exception as e:
-            logger.debug(f"[{symbol}] Copula tail risk check non-fatal: {e}")
+            logger.warning(f"[{symbol}] Copula tail risk check failed: {e}")
+            return False, f"copula_tail_risk_check_failed: {e}"
 
         return True, "Copula tail risk within institutional limits"
 
@@ -2107,7 +2120,8 @@ class RiskGate:
             if not is_valid:
                 return False, f"EvidenceStore rejected trade: {reason}"
         except Exception as e:
-            logger.debug(f"[{symbol}] Evidence gate non-fatal check: {e}")
+            logger.warning(f"[{symbol}] Evidence gate check failed: {e}")
+            return False, f"evidence_gate_check_failed: {e}"
 
         return True, "Strategy passed regime evidence verification"
 

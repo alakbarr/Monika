@@ -155,8 +155,15 @@ void CheckPythonHeartbeat(datetime now)
             Print("[AIAgent EA] HEARTBEAT TIMEOUT! Last beat: ", TimeToString(heartbeatTs),
                   " | Stale for: ", staleSeconds, "s | CLOSING ALL AI POSITIONS");
     
-            EmergencyCloseAllAIPositions();
-            emergencyClosed = true;
+            int remainingFailed = EmergencyCloseAllAIPositions();
+            if(remainingFailed == 0)
+            {
+                emergencyClosed = true;
+            }
+            else
+            {
+                Print("[AIAgent EA] Emergency close had ", remainingFailed, " failures. Will retry on next timer tick.");
+            }
         }
     }
     else
@@ -186,7 +193,7 @@ ENUM_ORDER_TYPE_FILLING GetSymbolFilling(const string sym)
 //+------------------------------------------------------------------+
 //| Emergency close all AI-managed positions                          |
 //+------------------------------------------------------------------+
-void EmergencyCloseAllAIPositions()
+int EmergencyCloseAllAIPositions()
 {
     int closedCount = 0;
     int failedCount = 0;
@@ -284,6 +291,7 @@ void EmergencyCloseAllAIPositions()
 
     Print("[AIAgent EA] Emergency close done: closed=", closedCount,
           " failed=", failedCount, " cancelled_pending=", cancelledOrders);
+    return failedCount;
 }
 
 //+------------------------------------------------------------------+
@@ -346,7 +354,7 @@ void EnforceSLOnAIPositions()
 }
 
 // Backward-compatible function aliases
-void EmergencyCloseAllClaudePositions() { EmergencyCloseAllAIPositions(); }
+int EmergencyCloseAllClaudePositions() { return EmergencyCloseAllAIPositions(); }
 void EnforceSLOnClaudePositions() { EnforceSLOnAIPositions(); }
 
 //+------------------------------------------------------------------+

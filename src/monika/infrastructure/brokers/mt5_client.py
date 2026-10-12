@@ -1421,19 +1421,7 @@ class MT5Client:
             except asyncio.TimeoutError:
                 future.cancel()
                 fn_name = getattr(fn, "__name__", str(fn))
-                try:
-                    if hasattr(self, '_executor') and self._executor:
-                        self._executor.shutdown(wait=False, cancel_futures=True)
-                except Exception:
-                    pass
-                if hasattr(self, '_worker_task') and self._worker_task and not self._worker_task.done():
-                    self._worker_task.cancel()
-                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
-                try:
-                    loop = asyncio.get_running_loop()
-                    self._worker_task = loop.create_task(self._priority_worker_loop())
-                except Exception:
-                    pass
+                logger.warning(f"[MT5Client] Operation {fn_name} exceeded timeout {timeout}s; future cancelled.")
                 raise TimeoutError(f"MT5 operation {fn_name} timed out")
         return await future
 
