@@ -8,6 +8,10 @@ and ProgressiveToolRegistry (stage/asset-specific prompt filtering).
 from analysis.tools.unified_registry import (
     UnifiedToolRegistry,
     unified_tool_registry,
+    TRADING_TOOLSET,
+    DEVELOPER_TOOLSET,
+    RESEARCH_TOOLSET,
+    TOOLSETS,
 )
 from analysis.tools.registry import (
     ToolRegistry,
@@ -27,4 +31,8 @@ __all__ = [
     "register_tool",
     "ProgressiveToolRegistry",
     "default_registry",
+    "TRADING_TOOLSET",
+    "DEVELOPER_TOOLSET",
+    "RESEARCH_TOOLSET",
+    "TOOLSETS",
 ]
