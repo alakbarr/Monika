@@ -1408,7 +1408,7 @@ def main():
     root_dir = Path(__file__).resolve().parent.parent
     csv_path = root_dir / "model_all.csv"
     if not csv_path.exists():
-        csv_path = root_dir / "trading-agent" / "benchmark" / "results" / "model_all.csv"
+        csv_path = root_dir / "src" / "monika" / "application" / "benchmark" / "results" / "model_all.csv"
     output_path = root_dir / "model_quadrant_analysis.html"
 
     if not csv_path.exists():

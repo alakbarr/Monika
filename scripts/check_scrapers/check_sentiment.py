@@ -17,8 +17,17 @@ import logging
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-# Menambahkan root trading-agent ke sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+# Menambahkan root dan src ke sys.path
+_repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_src_dir = os.path.join(_repo_dir, "src")
+sys.path.insert(0, _repo_dir)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 
 # Muat environment variables dari file .env
 try:

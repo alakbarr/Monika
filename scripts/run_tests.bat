@@ -16,6 +16,6 @@ set TELEGRAM_BOT_TOKEN=
 set TELEGRAM_ADMIN_CHAT_ID=
 
 echo [TestRunner] Running test suite in isolated hermetic environment...
-python -m pytest trading-agent/tests %*
+python -m pytest tests %*
 
 endlocal

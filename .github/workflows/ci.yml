@@ -33,6 +33,34 @@ jobs:
         run: |
           ruff check .
 
+  python-typecheck:
+    name: Type Analysis (Pyright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run Pyright
+        run: |
+          npx --yes pyright
+
   python-test:
     name: Test Suite (Pytest)
     runs-on: ubuntu-latest

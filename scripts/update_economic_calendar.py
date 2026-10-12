@@ -11,13 +11,19 @@ import os
 import sys
 from datetime import datetime, timezone
 
-# Add trading-agent to sys.path
+# Add src to sys.path
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.dirname(_script_dir)
-_ta_dir = os.path.join(_root_dir, "trading-agent")
+_src_dir = os.path.join(_root_dir, "src")
 
-if _ta_dir not in sys.path:
-    sys.path.insert(0, _ta_dir)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 
 logging.basicConfig(
     level=logging.INFO,

@@ -3,12 +3,8 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load env from trading-agent/.env or root .env
-env_path = Path("trading-agent/.env")
-if env_path.exists():
-    load_dotenv(env_path)
-else:
-    load_dotenv()
+# Load env from root .env
+load_dotenv()
 
 token = os.getenv("HF_TOKEN")
 

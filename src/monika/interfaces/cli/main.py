@@ -66,7 +66,7 @@ from monika.interfaces.cli.theme import (
     stamp_exec,
 )
 
-import main as _root_main
+from monika.application import main as _root_main
 
 TradingAgent: Any = getattr(_root_main, "TradingAgent", None)
 acquire_single_instance_lock: Any = getattr(_root_main, "acquire_single_instance_lock", None)

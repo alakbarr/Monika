@@ -28,7 +28,7 @@ class AdHocSchedulerProxy:
         self._mt5 = mt5_client
         if self._mt5 is None:
             try:
-                from monika.application.execution.mt5_client import MT5Client
+                from monika.infrastructure.brokers.mt5_client import MT5Client
                 self._mt5 = MT5Client(settings=self.settings)
             except Exception:
                 pass

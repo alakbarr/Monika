@@ -188,7 +188,7 @@ class CycleScheduler:
         # TimesFM 3.0 Universe Batch Forecast Generation
         if not result.get('should_skip', False):
             try:
-                from monika.domain.indicators.timesfm_engine import TimesFMEngine
+                from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
                 tfm_engine = TimesFMEngine(self.settings)
                 if tfm_engine.enabled:
                     target_syms = result.get('weekend_symbols_override') or self.asset_universe

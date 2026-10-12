@@ -16,8 +16,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Set up paths
-REPO_ROOT = Path(r"D:\Monika")
-sys.path.insert(0, str(REPO_ROOT / "trading-agent"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_src_dir = REPO_ROOT / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 os.chdir(str(REPO_ROOT))
 
 # Ensure stdout handles UTF-8 on Windows
@@ -33,10 +40,10 @@ from benchmark.system_one_scorer import score_system_one
 from utils.api.openrouter_rate_limiter import get_paid_key
 
 DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
-FIXTURE_PATH = REPO_ROOT / "trading-agent" / "benchmark" / "fixtures" / "news" / "raw_news_batch_25.json"
-OUTPUT_JSON_ROOT = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_news_classification_results.json"
-OUTPUT_JSON_BENCHMARK = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "news_classification_openrouter.json"
-OUTPUT_MD_REPORT = REPO_ROOT / "trading-agent" / "benchmark" / "results" / "benchmark_news_classification_openrouter.md"
+FIXTURE_PATH = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "fixtures" / "news" / "raw_news_batch_25.json"
+OUTPUT_JSON_ROOT = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_news_classification_results.json"
+OUTPUT_JSON_BENCHMARK = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "news_classification_openrouter.json"
+OUTPUT_MD_REPORT = REPO_ROOT / "src" / "monika" / "application" / "benchmark" / "results" / "benchmark_news_classification_openrouter.md"
 
 MODELS_TO_BENCHMARK: List[Dict[str, str]] = [
     {"id": "openai/gpt-6-luna-decisions", "name": "Luna Decision (GPT-6)"},

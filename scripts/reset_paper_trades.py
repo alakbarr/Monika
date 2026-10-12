@@ -23,11 +23,16 @@ import os
 import argparse
 import asyncio
 
-# Pastikan trading-agent masuk ke sys.path
+# Pastikan src masuk ke sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TRADING_AGENT_DIR = os.path.join(BASE_DIR, "trading-agent")
-if TRADING_AGENT_DIR not in sys.path:
-    sys.path.insert(0, TRADING_AGENT_DIR)
+SRC_DIR = os.path.join(BASE_DIR, "src")
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
+try:
+    from monika.infrastructure.infra.legacy_compat import install_legacy_compat
+    install_legacy_compat()
+except Exception:
+    pass
 
 
 async def main():
@@ -55,12 +60,7 @@ async def main():
     args = parser.parse_args()
 
     from dotenv import load_dotenv
-    # Load .env dari direktori trading-agent jika ada
-    env_path = os.path.join(TRADING_AGENT_DIR, ".env")
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
-    else:
-        load_dotenv()
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
 
     from database.db import AsyncSessionLocal
     from database.models import (

@@ -408,7 +408,7 @@ class OrderReconciler:
                     deals = []
             elif self.mt5_client and hasattr(self.mt5_client, "_run") and t_ticket:
                 try:
-                    from monika.application.execution.mt5_client import _get_deal_history
+                    from monika.infrastructure.brokers.mt5_client import _get_deal_history
                     deals = await self.mt5_client._run(_get_deal_history, t_ticket)
                 except Exception:
                     deals = []
@@ -602,7 +602,7 @@ class OrderReconciler:
                 deals = []
                 if self.mt5_client and hasattr(self.mt5_client, "_run"):
                     try:
-                        from monika.application.execution.mt5_client import _get_deal_history
+                        from monika.infrastructure.brokers.mt5_client import _get_deal_history
                         deals = await self.mt5_client._run(_get_deal_history, ticket)
                     except Exception:
                         deals = []

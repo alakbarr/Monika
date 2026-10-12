@@ -453,7 +453,7 @@ class PluginEngine:
         # 1. Broker Plugins
         if cat == PluginCategory.BROKER or hasattr(plugin, "submit_order"):
             try:
-                from monika.infrastructure.brokers.broker_registry import BrokerAdapterRegistry
+                from monika.application.execution.broker_registry import BrokerAdapterRegistry
 
                 BrokerAdapterRegistry.register(plugin.metadata.id, plugin)
             except Exception as e:
