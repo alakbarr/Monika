@@ -21,9 +21,13 @@ class SqliteCheckpointSaver(InMemorySaver):
     Serves as an autonomous tier between PostgreSQL and volatile MemorySaver (M-5).
     """
 
-    def __init__(self, db_path: str = ".agent_state/checkpoints.sqlite"):
+    def __init__(self, db_path: Optional[str] = None):
         super().__init__()
-        self.db_path = db_path
+        if db_path is None:
+            from monika.infrastructure.infra.paths import BASE_DIR
+            self.db_path = str(BASE_DIR / ".agent_state" / "checkpoints.sqlite")
+        else:
+            self.db_path = db_path
         self._init_db()
 
     def _get_connection(self) -> sqlite3.Connection:
