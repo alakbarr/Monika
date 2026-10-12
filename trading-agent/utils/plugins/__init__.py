@@ -1,15 +1,13 @@
-# ==============================================================================
-# File: utils/plugins/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.plugins.manager."""
 
-from utils.plugins.manager import (
-    PluginHook,
-    PluginManager,
-    get_plugin_manager,
-)
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "PluginHook",
-    "PluginManager",
-    "get_plugin_manager",
-]
+_canonical = _importlib.import_module("monika.application.plugins.manager")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

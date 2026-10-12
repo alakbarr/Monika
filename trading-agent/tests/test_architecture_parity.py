@@ -656,6 +656,88 @@ def test_pr7c_identity_and_parity():
     assert shim_sss.SystemStatusService is canon_sss.SystemStatusService
 
 
+def test_pr7d_identity_and_parity():
+    """Verify PR-7d utilities distribution identity parity."""
+    # 1. Core Analytics
+    import utils.analytics.cost_tracker as shim_ct
+    import monika.core.analytics.cost_tracker as canon_ct
+    assert shim_ct.CostTracker is canon_ct.CostTracker
+
+    import utils.chart_generator as shim_cg
+    import monika.core.analytics.chart_generator as canon_cg
+    assert shim_cg.generate_candlestick_chart is canon_cg.generate_candlestick_chart
+
+    # 2. Core Calibration
+    import utils.calibration.confidence_calibrator as shim_cc
+    import monika.core.calibration.confidence_calibrator as canon_cc
+    assert shim_cc.fit_platt_scaling is canon_cc.fit_platt_scaling
+
+    # 3. Core Streaming & Sanitizer (Coupling #10.3)
+    import utils.streaming.stream_scrubber as shim_ss
+    import monika.core.streaming.stream_scrubber as canon_ss
+    assert shim_ss.StatefulStreamScrubber is canon_ss.StatefulStreamScrubber
+
+    import monika.core.streaming.sanitizer as canon_san
+    import monika.interfaces.telegram.sanitizer as canon_tgsan
+    assert canon_tgsan.strip_emojis_and_emoticons is canon_san.strip_emojis_and_emoticons
+
+    # 4. Core Validation
+    import utils.validation.data_validator as shim_dv
+    import monika.core.validation.data_validator as canon_dv
+    assert shim_dv.validate_data_freshness is canon_dv.validate_data_freshness
+
+    # 5. Core Security
+    import utils.security.threat_detector as shim_td
+    import monika.core.security.threat_detector as canon_td
+    assert shim_td.ThreatDetector is canon_td.ThreatDetector
+
+    # 6. Infrastructure API
+    import utils.api.gemini_rate_limiter as shim_grl
+    import monika.infrastructure.api.gemini_rate_limiter as canon_grl
+    assert shim_grl.GeminiRateLimiter is canon_grl.GeminiRateLimiter
+
+    # 7. Infrastructure Infra
+    import utils.infra.container as shim_ic
+    import monika.infrastructure.infra.container as canon_ic
+    assert shim_ic.ServiceContainer is canon_ic.ServiceContainer
+
+    # 8. Infrastructure LLM
+    import utils.llm.caveman_compressor as shim_cmc
+    import monika.infrastructure.llm.caveman_compressor as canon_cmc
+    assert shim_cmc.compress_tool_payload is canon_cmc.compress_tool_payload
+
+    # 9. Domain Market
+    import utils.market.session_info as shim_si
+    import monika.domain.market.session_info as canon_si
+    assert shim_si.get_current_market_session is canon_si.get_current_market_session
+
+    # 10. Application Protocol
+    import utils.protocol.context_coherence as shim_coco
+    import monika.application.protocol.context_coherence as canon_coco
+    assert shim_coco.compute_brief_price_divergence is canon_coco.compute_brief_price_divergence
+
+    # 11. Application Plugins Manager
+    import utils.plugins.manager as shim_pm
+    import monika.application.plugins.manager.manager as canon_pm
+    assert shim_pm.PluginManager is canon_pm.PluginManager
+
+    # 12. Application Scheduler
+    import utils.scheduling.wall_clock as shim_wc
+    import monika.application.scheduler.wall_clock as canon_wc
+    assert shim_wc.parse_time_list is canon_wc.parse_time_list
+
+    # 13. Interfaces Workspace
+    import utils.workspace.journal_helper as shim_jh
+    import monika.interfaces.workspace.journal_helper as canon_jh
+    assert shim_jh.format_dataview_journal is canon_jh.format_dataview_journal
+
+    # 14. Infrastructure Storage
+    import utils.storage.spill_store as shim_sps
+    import monika.infrastructure.storage.spill_store as canon_sps
+    assert shim_sps.SpillStore is canon_sps.SpillStore
+
+
+
 
 
 

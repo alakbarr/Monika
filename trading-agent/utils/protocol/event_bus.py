@@ -1,13 +1,13 @@
 """
 Compatibility facade shim for legacy event_bus.py.
-Re-exports from canonical monika.core.primitives.event_bus.
+Re-exports from canonical monika.application.protocol.event_bus.
 """
 
 from __future__ import annotations
 
-import monika.core.primitives.event_bus as _canonical
+import monika.application.protocol.event_bus as _canonical
 
-from monika.core.primitives.event_bus import (
+from monika.application.protocol.event_bus import (
     AppEvent,
     BarClosedEvent,
     CircuitBreakerEvent,

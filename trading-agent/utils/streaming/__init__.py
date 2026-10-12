@@ -1,6 +1,13 @@
-"""
-Streaming utilities for Monika trading agent.
-"""
-from utils.streaming.stream_scrubber import StatefulStreamScrubber
+"""Shim package: monika.core.streaming."""
 
-__all__ = ["StatefulStreamScrubber"]
+import sys as _sys
+import importlib as _importlib
+
+_canonical = _importlib.import_module("monika.core.streaming")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

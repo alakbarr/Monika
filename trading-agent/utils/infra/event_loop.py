@@ -1,45 +1,24 @@
 """
-Event loop configuration for Windows compatibility.
-
-Psycopg 3 (used by langgraph-checkpoint-postgres) requires
-SelectorEventLoop because ProactorEventLoop on Windows does not
-implement loop.add_reader() / loop.add_writer().
-
-Python 3.14 deprecates set_event_loop_policy() — use loop_factory instead.
+Compatibility facade shim for legacy event_loop.py.
+Re-exports from canonical monika.infrastructure.infra.event_loop.
 """
 
-import asyncio
-import sys
-from typing import Any, Dict
+from __future__ import annotations
+
+import monika.infrastructure.infra.event_loop as _canonical
+
+from monika.infrastructure.infra.event_loop import (
+    get_loop_factory,
+    run_async,
+)
+
+__all__ = ['get_loop_factory', 'run_async']
 
 
-from utils.infra.platform_compat import configure_event_loop, IS_WINDOWS
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-
-def get_loop_factory() -> Dict[str, Any]:
-    """
-    Return loop_factory keyword arguments for asyncio.run() or asyncio.Runner.
-
-    Usage:
-        asyncio.run(main(), **get_loop_factory())
-    """
-    return configure_event_loop()
-
-
-def run_async(coroutine: Any, **kwargs: Any) -> Any:
-    """
-    Execute coroutine using asyncio.run() with SelectorEventLoop on Windows.
-
-    Usage:
-        run_async(main())
-    """
-    factory_kwargs = get_loop_factory()
-    merged_kwargs = {**factory_kwargs, **kwargs}
-    if sys.version_info < (3, 12):
-        merged_kwargs.pop("loop_factory", None)
-        if IS_WINDOWS:
-            try:
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            except Exception:
-                pass
-    return asyncio.run(coroutine, **merged_kwargs)
+import sys as _sys
+_sys.modules[__name__] = _canonical

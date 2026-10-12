@@ -504,7 +504,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 > - **PR-7a:** `scheduler/` (27) + `governance/` (2) = 29 file (STATUS: 100% COMPLETE & VERIFIED ✅)
 > - **PR-7b:** `backtest/` (21) + `evals/` (12) = 33 file (STATUS: 100% COMPLETE & VERIFIED ✅)
 > - **PR-7c:** `benchmark/` (19) + `plugins/` (11) + Entrypoints/Services (4) = 34 file (STATUS: 100% COMPLETE & VERIFIED ✅)
-> - **PR-7d:** Distribusi Utilitas Sisa `utils/` (89 file)
+> - **PR-7d:** Distribusi Utilitas Sisa `utils/` (89 file) (STATUS: 100% COMPLETE & VERIFIED ✅)
 
 ### 9.1 `src/monika/application/scheduler/` (27 file — PR-7a COMPLETE ✅)
 
@@ -547,7 +547,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 - `trading-agent/run_benchmark.py` → `application/benchmark/run_benchmark.py`
 - `trading-agent/services/system_status_service.py` → `application/services/system_status_service.py`
 
-### 9.8 Distribusi Komprehensif `utils/` Sisa (89 file)
+### 9.8 Distribusi Komprehensif `utils/` Sisa (89 file — PR-7d COMPLETE ✅)
 
 107 file utils total dikurangi 8 primitives murni (PR-3) dan 10 file yang masuk ke paket khusus:
 - **`src/monika/core/analytics/` (17 file):** Semua tracker analitis (`adversarial_outcome_tracker`, `agent_performance_monitor`, `cost_tracker`, `token_auditor`, `trade_autopsy`, dll.).

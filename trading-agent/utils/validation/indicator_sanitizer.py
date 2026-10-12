@@ -1,15 +1,23 @@
-import math, logging
-logger = logging.getLogger('TradingAgent.IndicatorSanitizer')
+"""
+Compatibility facade shim for legacy indicator_sanitizer.py.
+Re-exports from canonical monika.core.validation.indicator_sanitizer.
+"""
 
-def safe_float(value, default: float | None = None, field_name: str = 'value') -> float | None:
-    if isinstance(value, dict):
-        value = value.get(field_name, value.get('value', value.get('val', default)))
-    try:
-        f = float(value)
-    except (TypeError, ValueError):
-        logger.debug(f'Non-numeric indicator {field_name}={value!r} -> default={default}')
-        return default
-    if math.isnan(f) or math.isinf(f):
-        logger.debug(f'NaN/Inf indicator {field_name}={value!r} -> default={default}')
-        return default
-    return f
+from __future__ import annotations
+
+import monika.core.validation.indicator_sanitizer as _canonical
+
+from monika.core.validation.indicator_sanitizer import (
+    safe_float,
+)
+
+__all__ = ['safe_float']
+
+
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
+
+import sys as _sys
+_sys.modules[__name__] = _canonical

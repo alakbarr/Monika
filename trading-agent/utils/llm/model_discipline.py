@@ -1,40 +1,27 @@
 """
-Model-family gated execution discipline and verification prompts.
+Compatibility facade shim for legacy model_discipline.py.
+Re-exports from canonical monika.infrastructure.llm.model_discipline.
 """
 
-from typing import Optional
+from __future__ import annotations
 
-TOOL_USE_ENFORCEMENT_MODELS = ("gpt", "codex", "gemini", "gemma", "deepseek", "qwen", "glm")
-TRADING_VERIFICATION_MODELS = ("gpt", "deepseek", "qwen", "glm")
+import monika.infrastructure.llm.model_discipline as _canonical
 
-TOOL_USE_ENFORCEMENT_GUIDANCE = """# Mandatory Tool Execution Discipline
-You MUST use your tools to query real market quotes, news, and indicators — NEVER estimate or answer from memory.
-When you announce an action (e.g. 'checking ATR', 'reading current quote', 'retrieving market structure'), you MUST immediately invoke the corresponding tool call in the same response.
-Never end your turn with a promise of future action without executing it now."""
+from monika.infrastructure.llm.model_discipline import (
+    TOOL_USE_ENFORCEMENT_GUIDANCE,
+    TOOL_USE_ENFORCEMENT_MODELS,
+    TRADING_VERIFICATION_GUIDANCE,
+    TRADING_VERIFICATION_MODELS,
+    get_model_discipline,
+)
 
-TRADING_VERIFICATION_GUIDANCE = """# Verification & Mathematical Grounding
-Before submitting any trading recommendation or concluding analysis:
-1. Verify SL and TP distances are mathematically grounded in ATR and structure, not arbitrary guesses.
-2. Confirm R:R ratio meets minimum policy requirements (>= 1.3:1).
-3. If tool calls returned errors or empty sets, label data unavailable — NEVER fabricate indicator values.
-4. If confluences are below threshold (min 5/14), conclude with WAIT immediately."""
+__all__ = ['TOOL_USE_ENFORCEMENT_GUIDANCE', 'TOOL_USE_ENFORCEMENT_MODELS', 'TRADING_VERIFICATION_GUIDANCE', 'TRADING_VERIFICATION_MODELS', 'get_model_discipline']
 
 
-def get_model_discipline(model_name: Optional[str]) -> str:
-    """
-    Returns targeted operational guidance based on model family traits.
-    Returns empty string if model already adheres to discipline or is unknown.
-    """
-    if not model_name:
-        return ""
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-    model_lower = model_name.lower()
-    sections = []
-
-    if any(m in model_lower for m in TOOL_USE_ENFORCEMENT_MODELS):
-        sections.append(TOOL_USE_ENFORCEMENT_GUIDANCE)
-
-    if any(m in model_lower for m in TRADING_VERIFICATION_MODELS):
-        sections.append(TRADING_VERIFICATION_GUIDANCE)
-
-    return "\n\n".join(sections)
+import sys as _sys
+_sys.modules[__name__] = _canonical

@@ -1,23 +1,13 @@
-from .event_bus import (
-    AppEvent,
-    TickPriceEvent,
-    BarClosedEvent,
-    OrderStateChangedEvent,
-    RiskBreachEvent,
-    CircuitBreakerEvent,
-    EventBus,
-    get_event_bus,
-    reset_event_bus,
-)
+"""Shim package: monika.application.protocol."""
 
-__all__ = [
-    "AppEvent",
-    "TickPriceEvent",
-    "BarClosedEvent",
-    "OrderStateChangedEvent",
-    "RiskBreachEvent",
-    "CircuitBreakerEvent",
-    "EventBus",
-    "get_event_bus",
-    "reset_event_bus",
-]
+import sys as _sys
+import importlib as _importlib
+
+_canonical = _importlib.import_module("monika.application.protocol")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__
