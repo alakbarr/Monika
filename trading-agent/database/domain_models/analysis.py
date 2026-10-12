@@ -1,21 +1,29 @@
-"""Analysis, fundamental briefs, and prescreen models (Phase 7)."""
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.database.domain_models.analysis
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.domain_models.analysis"""
 
-from database.models import (
-    FundamentalBrief,
+import sys
+import monika.infrastructure.database.domain_models.analysis as _canonical
+
+from monika.infrastructure.database.domain_models.analysis import (
     AssetAnalysis,
-    PrescreenLog,
-    CyclePerformance,
     ConfluenceFactorOutcome,
+    CyclePerformance,
+    FundamentalBrief,
     PlaybookRuleAttribution,
+    PrescreenLog,
     TimesFMForecast,
 )
 
+sys.modules[__name__] = _canonical
+
 __all__ = [
-    "FundamentalBrief",
     "AssetAnalysis",
-    "PrescreenLog",
-    "CyclePerformance",
     "ConfluenceFactorOutcome",
+    "CyclePerformance",
+    "FundamentalBrief",
     "PlaybookRuleAttribution",
+    "PrescreenLog",
     "TimesFMForecast",
 ]

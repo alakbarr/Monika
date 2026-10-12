@@ -1,13 +1,19 @@
 # ==============================================================================
-# File: execution/backends/__init__.py
+# Description: Backward-compatibility shim for monika.infrastructure.sandboxes
 # ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.sandboxes"""
 
-from execution.backends.base import BaseTerminalBackend
-from execution.backends.local_backend import LocalTerminalBackend
-from execution.backends.docker_backend import DockerTerminalBackend
+import sys
+import monika.infrastructure.sandboxes as _canonical
+
+from monika.infrastructure.sandboxes import (
+    BaseTerminalBackend,
+    DockerTerminalBackend,
+    LocalTerminalBackend,
+)
 
 __all__ = [
     "BaseTerminalBackend",
-    "LocalTerminalBackend",
     "DockerTerminalBackend",
+    "LocalTerminalBackend",
 ]

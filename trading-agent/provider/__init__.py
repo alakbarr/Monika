@@ -1,34 +1,35 @@
-"""
-Monika Provider Subsystem.
-Centralized LLM provider abstractions, credential pooling, error classification, and failover management.
-"""
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.credentials
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.credentials"""
 
-from provider.error_taxonomy import (
-    FailoverReason,
-    ErrorCategory,
-    RecoveryAction,
-    ClassifiedError,
-    ErrorClassifier,
-)
-from provider.credential_pool import (
-    CredentialPool,
+import sys
+import monika.infrastructure.credentials as _canonical
+
+from monika.infrastructure.credentials import (
     APICredentialPool,
-    LLMCredentialPool,
-    KeyHealth,
+    ClassifiedError,
+    CredentialPool,
     CredentialState,
+    ErrorCategory,
+    ErrorClassifier,
+    FailoverReason,
+    KeyHealth,
+    LLMCredentialPool,
+    RecoveryAction,
     get_credential_pool,
 )
 
 __all__ = [
-    "FailoverReason",
-    "ErrorCategory",
-    "RecoveryAction",
-    "ClassifiedError",
-    "ErrorClassifier",
-    "CredentialPool",
     "APICredentialPool",
-    "LLMCredentialPool",
-    "KeyHealth",
+    "ClassifiedError",
+    "CredentialPool",
     "CredentialState",
+    "ErrorCategory",
+    "ErrorClassifier",
+    "FailoverReason",
+    "KeyHealth",
+    "LLMCredentialPool",
+    "RecoveryAction",
     "get_credential_pool",
 ]

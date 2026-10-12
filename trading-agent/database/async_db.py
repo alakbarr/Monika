@@ -1,32 +1,27 @@
 # ==============================================================================
-# File: database/async_db.py
+# Description: Backward-compatibility shim for monika.infrastructure.database.async_db
 # ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.async_db"""
 
-"""
-Async Database Session Re-export module.
-Provides AsyncSessionLocal and helper functions for async database sessions.
-"""
+import sys
+import monika.infrastructure.database.async_db as _canonical
 
-from database.db import (
+from monika.infrastructure.database.async_db import (
     AsyncSessionLocal,
+    engine,
+    get_canonical_db_path,
+    get_engine,
     get_session,
     get_write_session,
-    get_canonical_db_path,
-    get_engine as _get_db_engine,
-    engine,
 )
 
-
-def get_engine():
-    """Return the global async SQLAlchemy engine."""
-    return _get_db_engine()
-
+sys.modules[__name__] = _canonical
 
 __all__ = [
     "AsyncSessionLocal",
-    "get_session",
-    "get_write_session",
+    "engine",
     "get_canonical_db_path",
     "get_engine",
-    "engine",
+    "get_session",
+    "get_write_session",
 ]

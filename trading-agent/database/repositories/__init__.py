@@ -1,17 +1,21 @@
-"""
-Monika Database Repositories.
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.database.repositories
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.repositories"""
 
-Provides domain-focused repository abstractions separating data access from UI and service layers.
-"""
+import sys
+import monika.infrastructure.database.repositories as _canonical
 
-from database.repositories.position_repository import PositionRepository
-from database.repositories.activity_log_repository import ActivityLogRepository
-from database.repositories.system_config_repository import SystemConfigRepository
-from database.repositories.trade_proposal_repository import TradeProposalRepository
+from monika.infrastructure.database.repositories import (
+    ActivityLogRepository,
+    PositionRepository,
+    SystemConfigRepository,
+    TradeProposalRepository,
+)
 
 __all__ = [
-    "PositionRepository",
     "ActivityLogRepository",
+    "PositionRepository",
     "SystemConfigRepository",
     "TradeProposalRepository",
 ]

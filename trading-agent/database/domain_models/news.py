@@ -1,17 +1,25 @@
-"""News and economic calendar models (Phase 7)."""
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.database.domain_models.news
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.domain_models.news"""
 
-from database.models import (
-    NewsItem,
-    NewsDigest,
+import sys
+import monika.infrastructure.database.domain_models.news as _canonical
+
+from monika.infrastructure.database.domain_models.news import (
     EconomicCalendar,
     NewsClassificationOutcome,
+    NewsDigest,
     NewsDigestSlice,
+    NewsItem,
 )
 
+sys.modules[__name__] = _canonical
+
 __all__ = [
-    "NewsItem",
-    "NewsDigest",
     "EconomicCalendar",
     "NewsClassificationOutcome",
+    "NewsDigest",
     "NewsDigestSlice",
+    "NewsItem",
 ]

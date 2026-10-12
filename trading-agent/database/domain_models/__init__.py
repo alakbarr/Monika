@@ -1,19 +1,39 @@
-"""
-Modular domain model package (Phase 7).
-Re-exports models partitioned by functional domain:
-- base: Base declarative class
-- market: Price, indicators, SMC zones, yields
-- trading: Positions, orders, outcomes
-- memory: Reflections, lessons, chronicle
-- analysis: Briefs, asset analysis, prescreen
-- system: Events, tokens, system config, risk state
-- news: News items, digests, economic calendar
-"""
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.database.domain_models
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.domain_models"""
 
-from database.domain_models.base import Base, _utcnow
-from database.domain_models.market import *
-from database.domain_models.trading import *
-from database.domain_models.memory import *
-from database.domain_models.analysis import *
-from database.domain_models.system import *
-from database.domain_models.news import *
+import sys
+import monika.infrastructure.database.domain_models as _canonical
+from monika.infrastructure.database.domain_models import (
+    Base,
+    _utcnow,
+    PriceOHLCV,
+    OrderBlock,
+    Position,
+    TradeOutcome,
+    DecisionReflection,
+    FundamentalBrief,
+    AssetAnalysis,
+    TradingEvent,
+    SystemConfig,
+    NewsItem,
+    EconomicCalendar,
+)
+
+__all__ = [
+    "Base",
+    "_utcnow",
+    "PriceOHLCV",
+    "OrderBlock",
+    "Position",
+    "TradeOutcome",
+    "DecisionReflection",
+    "FundamentalBrief",
+    "AssetAnalysis",
+    "TradingEvent",
+    "SystemConfig",
+    "NewsItem",
+    "EconomicCalendar",
+]
+

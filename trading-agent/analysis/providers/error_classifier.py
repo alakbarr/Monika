@@ -1,8 +1,19 @@
-"""
-Backward-compatibility shim.
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.providers.error_classifier
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.providers.error_classifier"""
 
-Use analysis.providers.provider_failover_classifier instead.
-"""
-from analysis.providers.provider_failover_classifier import FailoverReason, classify_error
+import sys
+import monika.infrastructure.providers.error_classifier as _canonical
 
-__all__ = ["FailoverReason", "classify_error"]
+from monika.infrastructure.providers.error_classifier import (
+    FailoverReason,
+    classify_error,
+)
+
+sys.modules[__name__] = _canonical
+
+__all__ = [
+    "FailoverReason",
+    "classify_error",
+]
