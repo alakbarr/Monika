@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from analysis.memory.failure_taxonomy import (
+from monika.application.analysis.memory.failure_taxonomy import (
     FailureCategory,
     FailureClassifier,
     PREVENTATIVE_RULES,
@@ -45,7 +45,7 @@ class NegativeConstraintGenerator:
 
         if session is not None:
             try:
-                from database.models import DecisionReflection, PaperTradeRecord
+                from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
                 # 1. Query recent losing reflections for symbol
                 q_ref = (

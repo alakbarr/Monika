@@ -19,9 +19,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
-import utils.clock as clock
-from database.models import Order, OrderStatus
-from execution.broker_plugin import OrderRequest, normalize_order_request
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import Order, OrderStatus
+from monika.domain.execution.broker_plugin import OrderRequest, normalize_order_request
 
 logger = logging.getLogger("TradingAgent.BrokerAdapter")
 
@@ -44,7 +44,7 @@ def _get_contract_size(symbol: str) -> float:
     """Determine standard contract lot size based on instrument type."""
     sym = (symbol or "").upper()
     try:
-        from risk.domain.instruments import DEFAULT_INSTRUMENTS
+        from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
         clean = sym.replace("/", "").replace(".", "").replace("-", "")
         for k, spec in DEFAULT_INSTRUMENTS.items():
             if k in clean or clean in k:
@@ -214,7 +214,7 @@ class MT5LiveAdapter(BrokerAdapter):
         if self._service is not None and hasattr(self._service, 'mt5') and self._service.mt5 is not None:
             return self._service.mt5
         if self._mt5 is None:
-            from execution.mt5_client import MT5Client
+            from monika.infrastructure.brokers.mt5_client import MT5Client
             self._mt5 = MT5Client(settings=self.settings)
         return self._mt5
 

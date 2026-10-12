@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PreFlightGate")
 
@@ -70,8 +70,8 @@ class PreFlightTurnGate:
     ) -> Tuple[bool, Optional[str]]:
         """Checks if symbol's constituent currencies have high-impact news within +-buffer_minutes."""
         try:
-            from database.models import EconomicCalendar
-            from utils.market.currency_utils import get_symbol_currencies
+            from monika.infrastructure.database.models import EconomicCalendar
+            from monika.domain.market.currency_utils import get_symbol_currencies
             sym_clean = symbol.replace("/", "").replace("_", "").replace(".", "").upper()
             currencies = SYMBOL_CURRENCIES.get(sym_clean)
             if not currencies:
@@ -132,7 +132,7 @@ class PreFlightTurnGate:
         # 3. MT5 Terminal & Quote Freshness Check (<60s)
         if mt5_client is None:
             try:
-                from execution.mt5_client import MT5Client
+                from monika.infrastructure.brokers.mt5_client import MT5Client
                 mt5_client = MT5Client(cfg)
             except Exception as e:
                 logger.debug(f"[{sym_clean}] PreFlightGate: MT5 client import failed: {e}")

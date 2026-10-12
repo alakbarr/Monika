@@ -16,8 +16,8 @@ import logging
 from typing import Optional, Dict, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
-from utils.llm.spill_subsystem import PostgresSpillSubsystem
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.infrastructure.llm.spill_subsystem import PostgresSpillSubsystem
 
 logger = logging.getLogger("TradingAgent.ToolCondenser")
 

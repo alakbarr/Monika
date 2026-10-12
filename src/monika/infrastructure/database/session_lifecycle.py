@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 
 logger = logging.getLogger("TradingAgent.Database.SessionLifecycle")
 

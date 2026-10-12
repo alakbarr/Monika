@@ -15,8 +15,8 @@ from typing import Dict, List, Tuple, Optional, Any, Set
 from collections import defaultdict, deque
 
 from monika.application.plugins.manifest import PluginManifest
-from utils.plugins.manager import PluginManager, get_plugin_manager
-from utils.plugins.extension_loader import load_single_plugin, teardown_single_plugin
+from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
+from monika.application.plugins.manager.extension_loader import load_single_plugin, teardown_single_plugin
 
 logger = logging.getLogger("TradingAgent.Plugins.Loader")
 

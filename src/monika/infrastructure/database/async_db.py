@@ -7,7 +7,7 @@ Async Database Session Re-export module.
 Provides AsyncSessionLocal and helper functions for async database sessions.
 """
 
-from database.db import (
+from monika.infrastructure.database.db import (
     AsyncSessionLocal,
     get_session,
     get_write_session,

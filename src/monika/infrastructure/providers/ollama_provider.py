@@ -1,7 +1,7 @@
 import logging
 import os
 from typing import Optional, Any
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger("TradingAgent.OllamaProvider")
 

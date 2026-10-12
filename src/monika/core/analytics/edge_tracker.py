@@ -11,8 +11,8 @@ import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PaperTradeRecord, SystemConfig
-from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
+from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
 logger = logging.getLogger('TradingAgent.EdgeTracker')
 
@@ -184,7 +184,7 @@ async def compute_edge_status(session: AsyncSession) -> dict:
     AUTO_PAUSE_Z_THRESHOLD = -1.0
     if status == 'no_edge' and z_score < AUTO_PAUSE_Z_THRESHOLD:
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import update
             
             # Cek apakah trading sudah di-pause sebelumnya karena alasan ini
@@ -220,7 +220,7 @@ async def compute_edge_status(session: AsyncSession) -> dict:
                 
                 # Kirim alert kritis via Telegram
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_critical(
                         f'[DARURAT] <b>EDGE TRACKER — AUTO PAUSE AKTIF</b>\n\n'
                         f'Win Rate: <b>{win_rate*100:.1f}%</b> '

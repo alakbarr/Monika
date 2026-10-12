@@ -13,8 +13,8 @@ import inspect
 import os
 import time
 from typing import Optional, Any, Dict
-from analysis.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
-from utils.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse, MockBlock
+from monika.infrastructure.api.streaming import StreamTimeoutError, StreamSafetyTimeoutError
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
 
@@ -348,7 +348,7 @@ class LLMFactory:
         # Note: OpenRouter manages its own dual-tier key pool (OPENROUTER_PAID_API_KEY vs OPENROUTER_API_KEYS)
         # with model-aware paid/free routing & per-model cooldowns. Do not override with a generic pooled key.
         try:
-            from utils.api.credential_pool import get_credential_pool
+            from monika.infrastructure.api.credential_pool import get_credential_pool
             cred_pool = get_credential_pool()
             if provider_name == "openrouter":
                 pooled_key = None
@@ -386,7 +386,7 @@ class LLMFactory:
                 elif clean_model_name.lower() in ("mercury-decide", "mercury/decide"):
                     clean_model_name = "mercury/decide"
 
-        from analysis.providers.provider_registry import ProviderRegistry
+        from monika.infrastructure.providers.provider_registry import ProviderRegistry
         client = ProviderRegistry.create_client(
             provider_name=provider_name,
             model_name=clean_model_name,
@@ -403,7 +403,7 @@ class LLMFactory:
         # SOTA Dynamic Thinking Budget Wiring
         if client is not None:
             try:
-                from utils.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
+                from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
                 if thinking_level and thinking_level != "none":
                     level_to_budget = {"low": 1024, "medium": 4096, "high": 10000, "max": 16000, "xhigh": 16000}
                     base_b = level_to_budget.get(thinking_level.lower(), 4000)
@@ -483,7 +483,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
         self._dynamic_thinking_budget = None
         try:
-            from utils.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator, QuantizedThinkingAllocator
+            from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator, QuantizedThinkingAllocator
             raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role)
             self._dynamic_thinking_budget = QuantizedThinkingAllocator.quantize(raw_b)
             self.thinking_budget = self._dynamic_thinking_budget
@@ -513,7 +513,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
     def set_thinking_budget(self, budget: int) -> None:
         """Sets thinking budget dynamically for wrapper and upcoming provider invocations."""
-        from utils.llm.adaptive_thinking import QuantizedThinkingAllocator
+        from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
         quantized = QuantizedThinkingAllocator.quantize(budget)
         self.thinking_budget = quantized
         self._dynamic_thinking_budget = quantized
@@ -521,7 +521,7 @@ class FallbackClientWrapper(BaseLLMClient):
     async def _execute_with_fallback(self, method_name: str, *args, **kwargs) -> Any:
         # Check dynamic runtime model hot-swap overrides
         try:
-            from analysis.providers.runtime_model_registry import RuntimeModelRegistry
+            from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
             registry = RuntimeModelRegistry.get_instance()
             hot_primary = registry.get_role_model(self.task_role, "primary")
             if hot_primary:
@@ -550,7 +550,7 @@ class FallbackClientWrapper(BaseLLMClient):
         bypass_budget = kwargs.pop("_bypass_budget_check", False)
         if not bypass_budget:
             try:
-                from utils.analytics.cost_tracker import CostTracker
+                from monika.core.analytics.cost_tracker import CostTracker
                 if CostTracker.is_budget_paused_cached():
                     logger.critical(f"[CircuitBreaker] Global AI Budget is paused. Blocking LLM call for task_role='{self.task_role}'")
                     if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
@@ -604,7 +604,7 @@ class FallbackClientWrapper(BaseLLMClient):
                 continue
 
             try:
-                from utils.api.credential_pool import get_credential_pool
+                from monika.infrastructure.api.credential_pool import get_credential_pool
                 cred_pool = get_credential_pool()
                 if cred_pool and not cred_pool.is_model_available(model):
                     logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — in CredentialPool model cooldown")
@@ -615,7 +615,7 @@ class FallbackClientWrapper(BaseLLMClient):
             # Cost-aware guidance: check baseline pricing if max_cost_per_call is configured
             if self.max_cost_per_call is not None:
                 try:
-                    from analysis.providers.pricing_catalog import get_model_pricing
+                    from monika.infrastructure.providers.pricing_catalog import get_model_pricing
                     p = get_model_pricing(model)
                     est_in = min(4096, self.max_tokens // 2)
                     est_out = min(2048, self.max_tokens // 4)
@@ -658,7 +658,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     safe_kwargs = {k: _safe_clone(v) for k, v in kwargs.items()}
 
                     # Dynamic capability clamping (prevent context/output token limit errors)
-                    from analysis.providers.capabilities import get_model_capabilities
+                    from monika.infrastructure.providers.capabilities import get_model_capabilities
                     caps = get_model_capabilities(model)
                     if caps and caps.max_output_tokens:
                         if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
@@ -682,7 +682,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     if provider != "typesafe":
                         jev_q = safe_kwargs.get("jev_questions")
                         if isinstance(jev_q, dict):
-                            from utils.typesafe.jev_primitives import jev_questions_to_schema
+                            from monika.core.primitives.jev_primitives import jev_questions_to_schema
                             if method_name == "classify_json" and not safe_kwargs.get("schema"):
                                 safe_kwargs["schema"] = jev_questions_to_schema(jev_q)
                             elif method_name == "generate_content" and not safe_kwargs.get("response_schema"):
@@ -717,7 +717,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         logger.debug(f"[LLMDispatch] pre_llm_call notice: {h_err}")
 
                     try:
-                        from analysis.prompt_sections import get_prompt_section_registry
+                        from monika.application.analysis.prompt_sections import get_prompt_section_registry
                         psr = get_prompt_section_registry()
                         ctx_info = {"task_role": self.task_role, "model": model}
 
@@ -781,8 +781,8 @@ class FallbackClientWrapper(BaseLLMClient):
                         try:
                             async def _record_fallback_log(text_msg: str):
                                 try:
-                                    from database.db import get_session
-                                    from database.models import ActivityLog
+                                    from monika.infrastructure.database.db import get_session
+                                    from monika.infrastructure.database.models import ActivityLog
                                     async with get_session() as s:
                                         s.add(ActivityLog(
                                             category='system',
@@ -877,7 +877,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     # Strategy 1b: Completion ceiling exceeded — clamp max_tokens and retry same slot in-place
                     if reason.is_completion_ceiling:
-                        from analysis.providers.provider_failover_classifier import extract_completion_ceiling
+                        from monika.infrastructure.providers.provider_failover_classifier import extract_completion_ceiling
                         ceiling = extract_completion_ceiling(e)
                         if ceiling and ceiling > 0 and slot_retries < 1:
                             slot_retries += 1
@@ -920,7 +920,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Strategy 2: In-Flight Key Rotation from APICredentialPool
                     if is_rate_or_auth:
                         try:
-                            from utils.api.credential_pool import APICredentialPool
+                            from monika.infrastructure.api.credential_pool import APICredentialPool
                             cred_pool = APICredentialPool()
                             curr_key = getattr(client, "api_key", None) or getattr(client, "_api_key", None)
                             if curr_key:
@@ -965,7 +965,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         EndpointBlackhole.blackhole_endpoint(provider, ttl_seconds=30.0)
 
                     # Check for upstream Retry-After delay header (honoring provider guidance)
-                    from analysis.providers.base_provider import extract_retry_after
+                    from monika.infrastructure.providers.base_provider import extract_retry_after
                     retry_delay = extract_retry_after(e)
                     if retry_delay and retry_delay > 0:
                         cd_duration = min(retry_delay, 1800.0)
@@ -993,7 +993,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         )
                         async def _notify_failover_post_facto(role: str, failed_model: str, err_reason: str):
                             try:
-                                from utils.infra.notifier import get_notifier
+                                from monika.infrastructure.infra.notifier import get_notifier
                                 await get_notifier().send_alert(
                                     f"[PERINGATAN] *HOT PATH Auto-Failover*\n"
                                     f"Role: `{role}`\n"
@@ -1087,7 +1087,7 @@ def get_client_for_task(task_role: str, settings: Optional[dict] = None) -> Base
     resolved_settings: dict
     if settings is None:
         try:
-            from config.settings import load_settings
+            from monika.core.config.settings import load_settings
             loaded = load_settings()
             resolved_settings = dict(loaded) if isinstance(loaded, dict) else loaded.model_dump()
         except Exception:

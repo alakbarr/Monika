@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Union
 from bs4 import BeautifulSoup
 
-from scrapers.base_scraper import BaseScraper
-from scrapers.models import ScrapedTweet
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedTweet
 
 logger = logging.getLogger("TradingAgent.TwitterScraper")
 
@@ -65,7 +65,7 @@ class TwitterWatchScraper(BaseScraper):
 
                 async def _alert():
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
                             "[PERINGATAN] <b>Twitter Scraper Alert</b>\n"
                             "All Twitter sessions are quarantined! "

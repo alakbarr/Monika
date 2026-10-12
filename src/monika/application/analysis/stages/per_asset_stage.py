@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from typing import Optional, Any, Callable, Dict, List, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 from monika.application.analysis.stages.per_asset.context_builder import (
     SYMBOL_TO_COT,

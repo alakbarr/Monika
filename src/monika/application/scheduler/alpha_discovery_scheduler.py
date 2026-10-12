@@ -16,8 +16,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 
 from sqlalchemy import select, update
-from backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
-from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+from monika.application.backtest.walk_forward_engine import WalkForwardEngine, WalkForwardResult
+from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
 from monika.application.analysis.strategies.registry import StrategyRegistry
 import monika.application.analysis.strategies
 from monika.application.analysis.calculators.quant_plateau_optimizer import (

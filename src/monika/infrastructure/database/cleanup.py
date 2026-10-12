@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import delete, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import (
+from monika.infrastructure.database.models import (
     PriceOHLCV, AssetAnalysis, FundamentalBrief, ActivityLog,
     OrderLog, NewsItem, EconomicCalendar, VIXData, RiskState, TechnicalIndicator, ConfluenceFactorOutcome,
     SwingPoint, LiquidityZone, FVGZone, OrderBlock, StructureBreak, TokenUsageLog, PrescreenLog, NewsDigest,
@@ -128,7 +128,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             
             # Fix FK violation: Delete dependent NewsClassificationOutcomes first
             if model == NewsItem:
-                from database.models import NewsClassificationOutcome
+                from monika.infrastructure.database.models import NewsClassificationOutcome
                 from sqlalchemy import select
                 await session.execute(
                     delete(NewsClassificationOutcome).where(
@@ -138,7 +138,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                     )
                 )
             elif model == AssetAnalysis:
-                from database.models import (
+                from monika.infrastructure.database.models import (
                     TradeTrigger, MT5Signal, TradeOutcome, PaperTradeRecord, Position, DecisionReflection,
                     Order, TradePlan
                 )
@@ -209,7 +209,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             total_deleted += deleted
 
         # ---- Inactive TradeTrigger pruning (fired, cancelled, expired, invalid) ----
-        from database.models import TradeTrigger
+        from monika.infrastructure.database.models import TradeTrigger
         trigger_cutoff = now - timedelta(days=14)
         result = await session.execute(
             delete(TradeTrigger).where(
@@ -225,7 +225,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             total_deleted += trigger_deleted
 
         # ---- SystemConfig keys pruning ----
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         STALE_SYSCONFIG_PREFIXES_MAX_AGE_DAYS = {
             'context_drift_': 3, 'autopsy_': 30, 'submit_attempt_': 7,
             'news_cls_dist_': 14, 'prefilter_audit_sample_': 7, 'adversarial_outcome_': 60,
@@ -346,7 +346,7 @@ async def reset_paper_trading_history(
     import os
     import json
     from sqlalchemy import select, update
-    from database.models import (
+    from monika.infrastructure.database.models import (
         PaperTradeRecord, Position, MT5Signal, DecisionReflection,
         ConfluenceFactorOutcome, SystemConfig, RiskState, TradeOutcome, TradePlanLeg
     )

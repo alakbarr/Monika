@@ -1,8 +1,8 @@
 import logging
 import json
 from typing import Dict, Any, Union
-from analysis.providers.base_provider import BaseLLMClient
-from utils.llm.prompt_disciplines import get_universal_execution_discipline
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
 logger = logging.getLogger("TradingAgent.BullAnalyst")
 

@@ -96,7 +96,7 @@ class SetupWizard:
         from monika.interfaces.cli.theme import get_console, stamp_ok, stamp_err, stamp_warn, stamp_info, BRASS, PAPER, MUTED
         console = get_console()
         try:
-            from execution.mt5_compat import ensure_mt5_module
+            from monika.infrastructure.brokers.mt5_compat import ensure_mt5_module
             mt5: Any = ensure_mt5_module()
         except ImportError:
             console.print(f"{stamp_err('MT5 PKG')} MetaTrader5 Python package or mt5linux bridge is not installed.")
@@ -248,7 +248,7 @@ class SetupWizard:
         )
         from rich.prompt import Prompt, Confirm
         from monika.core.config.atomic_writer import AtomicConfigWriter
-        from utils.infra.env_file_manager import EnvFileManager
+        from monika.infrastructure.infra.env_file_manager import EnvFileManager
 
         console = get_console()
         console.print(f"\n[{PHOSPHOR_AMBER}]══════════════════════════════════════════════════════════════[/]")

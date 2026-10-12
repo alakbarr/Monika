@@ -19,8 +19,8 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import (
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import (
     EconomicCalendar,
     TechnicalIndicator,
     TreasuryYield,
@@ -134,7 +134,7 @@ async def handle_get_volatility_regime(args: dict, **ctx) -> dict:
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
     try:
-        from analysis.calculators.regime_classifier import classify_market_regime
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
 
         return await classify_market_regime(session, symbol, settings)
     except Exception as e:
@@ -152,7 +152,7 @@ async def handle_get_macro_bias_score(args: dict, **ctx) -> dict:
     if not symbol:
         return {"error": "Missing required parameter 'symbol'"}
     try:
-        from analysis.calculators.macro_bias_filter import evaluate_macro_alignment
+        from monika.application.analysis.calculators.macro_bias_filter import evaluate_macro_alignment
 
         return await evaluate_macro_alignment(session, symbol, direction, settings)
     except Exception as e:
@@ -302,7 +302,7 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
             return r_time <= curr_now
         return False
 
-    from scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
+    from monika.application.scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
 
     wib_tz = ZoneInfo("Asia/Jakarta")
 
@@ -388,7 +388,7 @@ async def handle_get_precomputed_cot_signals(args: dict, **ctx) -> dict:
 
         if not cot_data:
             try:
-                from analysis.prefetch.macro_preprocessor import MacroPreprocessor
+                from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
 
                 preprocessor = MacroPreprocessor(settings=settings)
                 cot_data = await preprocessor.compute_cot_signals(session)
@@ -420,7 +420,7 @@ async def handle_get_surprise_summary(args: dict, **ctx) -> dict:
 
         if not surprise_data:
             try:
-                from analysis.prefetch.macro_preprocessor import MacroPreprocessor
+                from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
 
                 preprocessor = MacroPreprocessor(settings=settings)
                 surprise_data = await preprocessor.compute_surprise_summary(session)
@@ -1515,7 +1515,7 @@ async def handle_get_funding_rate(args: dict, **ctx) -> dict:
 
     # 2. Live On-Demand Fallback via CoinglasFundingFetcher
     try:
-        from data_sources.coinglass_funding import CoinglasFundingFetcher
+        from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
 
         fetcher = CoinglasFundingFetcher(session)
         live_data = await fetcher.fetch()
@@ -1565,7 +1565,7 @@ async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:
 
         # Web search fallback for CNN Fear & Greed
         try:
-            from data_sources.web_search import WebSearch
+            from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
             import re
 
             ws = WebSearch()
@@ -1604,7 +1604,7 @@ async def handle_get_fear_greed_index(args: dict, **ctx) -> dict:
 
     # On-demand fetch fallback
     try:
-        from data_sources.fear_greed import FearGreedFetcher
+        from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
 
         fetcher = FearGreedFetcher(session)
         return await fetcher.fetch()
@@ -1629,7 +1629,7 @@ async def handle_get_eia_oil_inventory(args: dict, **ctx) -> dict:
 
     # Fallback 1: Query recent EconomicCalendar records for EIA Crude Oil Inventories
     try:
-        from database.models import EconomicCalendar
+        from monika.infrastructure.database.models import EconomicCalendar
 
         cal_query = (
             select(EconomicCalendar)
@@ -1663,7 +1663,7 @@ async def handle_get_eia_oil_inventory(args: dict, **ctx) -> dict:
 
     # Fallback 2: Direct EIA Open Data fetcher
     try:
-        from data_sources.eia_oil_inventory import EIAInventoryFetcher
+        from monika.infrastructure.data_ingestion.sources.eia_oil_inventory import EIAInventoryFetcher
 
         fetcher = EIAInventoryFetcher(session)
         live_res = await fetcher.fetch()
@@ -1718,7 +1718,7 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
     # Tier 3: Fallback to synthetic USD strength proxy from basket if DXYData is empty
     if not rows:
         try:
-            from utils.market.usd_strength_proxy import compute_usd_strength_proxy
+            from monika.domain.market.usd_strength_proxy import compute_usd_strength_proxy
 
             proxy_res = await compute_usd_strength_proxy(session, lookback_bars=20, timeframe="H4")
             if proxy_res and proxy_res.get("method") == "basket_proxy":
@@ -1887,7 +1887,7 @@ async def handle_get_weekly_macro_summary(args: dict, **ctx) -> dict:
 
 
 async def handle_get_macro_priced_in_score(args: dict, **ctx) -> dict:
-    from analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
+    from monika.application.analysis.calculators.stage1_priced_in import calculate_stage1_priced_in_baseline
 
     symbol = str(args.get("symbol", "EURUSD")).upper().strip()
     cot_percentile = float(args.get("cot_percentile", 50.0))
@@ -2270,7 +2270,7 @@ async def handle_get_earnings_calendar(args: dict, **ctx) -> dict:
     from_date = args.get("from_date")
     to_date = args.get("to_date")
     try:
-        from scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
+        from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_finnhub import FinnhubCalendarScraper
 
         scraper = FinnhubCalendarScraper()
         earnings = await scraper.afetch_earnings_calendar(symbol=symbol, from_date=from_date, to_date=to_date)
@@ -2280,7 +2280,7 @@ async def handle_get_earnings_calendar(args: dict, **ctx) -> dict:
         logger.debug(f"Finnhub earnings fetch failed: {e}")
 
     try:
-        from data_sources.web_search import WebSearch
+        from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
 
         ws = WebSearch()
         q = f"{symbol or 'US tech stocks'} earnings release date calendar estimates 2026"
@@ -2292,7 +2292,7 @@ async def handle_get_earnings_calendar(args: dict, **ctx) -> dict:
 
 async def handle_get_indonesia_macro(args: dict, **ctx) -> dict:
     """Fetch Indonesian macro data including Bank Indonesia (BI Rate), JISDOR USD/IDR, Inflation YoY/MoM, and Trade Balance."""
-    from data_sources.bps_stats import BPSStatsFetcher
+    from monika.infrastructure.data_ingestion.sources.bps_stats import BPSStatsFetcher
 
     fetcher = BPSStatsFetcher()
     return await fetcher.fetch_all_idr_macro()
@@ -2302,7 +2302,7 @@ async def handle_inspect_economic_report(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    from monika.application.analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
 
     analyzer = UniversalMacroAnalyzer(session)
     report_type = args.get("report_type", "CPI")
@@ -2318,7 +2318,7 @@ async def handle_diff_central_bank_documents(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
+    from monika.application.analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
 
     differ = UniversalCentralBankDiffer(session)
     bank = args.get("bank", "FED")
@@ -2330,7 +2330,7 @@ async def handle_get_macro_cross_report_synthesis(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    from monika.application.analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
 
     analyzer = UniversalMacroAnalyzer(session)
     currency = args.get("currency", "USD")
@@ -2342,7 +2342,7 @@ async def handle_get_g10_macro_divergence(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
+    from monika.application.analysis.calculators.universal_macro_analyzer import UniversalMacroAnalyzer
 
     analyzer = UniversalMacroAnalyzer(session)
     pair = args.get("pair", "EURUSD")
@@ -2353,7 +2353,7 @@ async def handle_get_fed_net_liquidity_and_stress(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    from monika.application.analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
 
     analyzer = UniversalLiquidityAnalyzer(session)
     lookback = int(args.get("lookback_weeks", 8))
@@ -2369,7 +2369,7 @@ async def handle_get_treasury_auction_results(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    from monika.application.analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
 
     analyzer = UniversalLiquidityAnalyzer(session)
     tenor = args.get("tenor", "10Y")
@@ -2381,7 +2381,7 @@ async def handle_get_ecb_qt_progress(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
+    from monika.application.analysis.calculators.universal_liquidity_analyzer import UniversalLiquidityAnalyzer
 
     analyzer = UniversalLiquidityAnalyzer(session)
     lookback = int(args.get("lookback_weeks", 8))
@@ -2392,7 +2392,7 @@ async def handle_get_global_pmi_trend(args: dict, **ctx) -> dict:
     session = ctx.get("session")
     if not session:
         return {"status": "unavailable", "message": "Database session required"}
-    from data_sources.leading_survey_fetcher import LeadingSurveyFetcher
+    from monika.infrastructure.data_ingestion.sources.leading_survey_fetcher import LeadingSurveyFetcher
 
     fetcher = LeadingSurveyFetcher(session)
     period = args.get("period")

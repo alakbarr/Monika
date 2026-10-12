@@ -20,7 +20,7 @@ from typing import Optional, Dict, List, Any
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import NewsItem, NewsDigestSlice, NewsDigest, VIXData, DXYData
+from monika.infrastructure.database.models import NewsItem, NewsDigestSlice, NewsDigest, VIXData, DXYData
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 from monika.application.analysis.prefetch.news_digest import _jaccard_title_similarity, _format_news_item_for_prompt
 

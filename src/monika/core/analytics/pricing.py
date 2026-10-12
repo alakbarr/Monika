@@ -574,7 +574,7 @@ async def fetch_openrouter_pricing_async(cache_path: Optional[str] = None) -> Di
     import aiohttp
     from pathlib import Path
 
-    from utils.infra.paths import DATA_DIR
+    from monika.infrastructure.infra.paths import DATA_DIR
     cache_file = Path(cache_path) if cache_path else (DATA_DIR / "openrouter_pricing.json")
     # Check fresh cache (less than 24 hours)
     if cache_file.exists():

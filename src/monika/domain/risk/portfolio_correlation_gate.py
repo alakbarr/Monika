@@ -65,7 +65,7 @@ async def filter_correlated_proposals(
         return ([], [])
     
     # 0. Query existing open positions from DB to enforce true portfolio risk
-    from database.models import Position
+    from monika.infrastructure.database.models import Position
     from sqlalchemy import select
     import math
 

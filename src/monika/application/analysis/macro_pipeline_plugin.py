@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.contract import PluginCategory, PluginMetadata
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
-from risk.trade_proposal import TradeProposal
+from monika.domain.risk.trade_proposal import TradeProposal
 
 logger = logging.getLogger("TradingAgent.MacroPipeline")
 

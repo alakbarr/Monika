@@ -10,8 +10,8 @@ Constructs validated Order entities before submission to broker adapter.
 import uuid
 import logging
 from typing import Optional, Tuple
-import utils.clock as clock
-from database.models import Order, OrderStatus
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import Order, OrderStatus
 
 logger = logging.getLogger("TradingAgent.ExecutionService.OrderCreator")
 

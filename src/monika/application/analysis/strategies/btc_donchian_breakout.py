@@ -1,9 +1,9 @@
 import statistics
 from sqlalchemy import select
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from database.models import PriceOHLCV
-import utils.clock as clock
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.infrastructure.database.models import PriceOHLCV
+import monika.core.primitives.clock as clock
 
 @StrategyRegistry.register
 class BTCDonchianBreakout(EdgeStrategy):

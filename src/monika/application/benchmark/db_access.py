@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
 
-from analysis.tools.tool_executor import ToolExecutor
-from analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
 from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief, NewsItem, NewsDigest, DecisionReflection, TelegramConversation
 
 

@@ -35,7 +35,7 @@ from enum import Enum
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
     Order,
@@ -45,7 +45,7 @@ from monika.infrastructure.database.models import (
     TradeOutcome,
     AssetAnalysis,
 )
-from utils.protocol.event_bus import get_event_bus, OrderStateChangedEvent
+from monika.application.protocol.event_bus import get_event_bus, OrderStateChangedEvent
 
 logger = logging.getLogger("TradingAgent.OrderReconciler")
 

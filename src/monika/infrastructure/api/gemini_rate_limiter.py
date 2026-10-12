@@ -69,7 +69,7 @@ class GeminiRateLimiter:
         
         try:
             from sqlalchemy import select
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             
             # We will lazy-load counts per model as they are encountered instead of pre-loading all possible models here.
             # But we can try to fetch all gemini_quota_%_today configs
@@ -102,7 +102,7 @@ class GeminiRateLimiter:
             key = f"gemini_quota_{model}_{today}"
             count = self._daily_counts[model]["count"]
             
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             await SystemConfig.upsert(self._session, key=key, value=str(count))
             await self._session.commit()
         except Exception as e:
@@ -163,11 +163,11 @@ class GeminiRateLimiter:
     async def _persist_async(self, model: str, today: str) -> None:
         """Simpan data di background agar tidak memblokir main thread."""
         try:
-            from database.db import get_session as _gs
+            from monika.infrastructure.database.db import get_session as _gs
             async with _gs() as persist_session:
                 key = f"gemini_quota_{model}_{today}"
                 count = self._daily_counts.get(model, {}).get("count", 0)
-                from database.models import SystemConfig as _SC
+                from monika.infrastructure.database.models import SystemConfig as _SC
                 await _SC.upsert(persist_session, key=key, value=str(count))
                 await persist_session.commit()
         except Exception as e:

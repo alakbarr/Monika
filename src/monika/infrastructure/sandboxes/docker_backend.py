@@ -18,7 +18,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from execution.backends.base import BaseTerminalBackend
+from monika.infrastructure.sandboxes.base import BaseTerminalBackend
 
 logger = logging.getLogger("TradingAgent.Execution.DockerBackend")
 

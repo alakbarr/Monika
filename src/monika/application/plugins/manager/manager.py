@@ -203,7 +203,7 @@ class PluginManager:
         Returns a disposer function that unregisters the tool when called.
         """
         try:
-            from analysis.tools.unified_registry import unified_tool_registry, ToolEntry
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry, ToolEntry
             desc = description or (getattr(input_model, "__doc__", None) or getattr(handler, "__doc__", "")).strip()
             is_async = inspect.iscoroutinefunction(handler)
             entry = ToolEntry(
@@ -227,7 +227,7 @@ class PluginManager:
     def unregister_tool(self, name: str) -> bool:
         """Unregister a previously registered custom tool."""
         try:
-            from analysis.tools.unified_registry import unified_tool_registry
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry
             if name in unified_tool_registry._tools:
                 del unified_tool_registry._tools[name]
                 if name in self._registered_tools:
@@ -245,7 +245,7 @@ class PluginManager:
     async def execute_tool(self, tool_name: str, **kwargs: Any) -> Any:
         """Execute a registered custom or unified tool."""
         try:
-            from analysis.tools.unified_registry import unified_tool_registry
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry
             entry = unified_tool_registry._tools.get(tool_name)
             if entry:
                 if entry.is_async:
@@ -255,7 +255,7 @@ class PluginManager:
             pass
 
         try:
-            from analysis.tools.registry import ToolRegistry
+            from monika.application.analysis.tools.registry import ToolRegistry
             tool = ToolRegistry.get_instance()._tools.get(tool_name)
             if tool:
                 res = tool.handler(**kwargs)

@@ -15,8 +15,8 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PriceOHLCV, EconomicCalendar, VIXData, AssetAnalysis
-import utils.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, EconomicCalendar, VIXData, AssetAnalysis
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.TradePreCommitGate")
 
@@ -195,7 +195,7 @@ class TradePreCommitGate:
             window_start = now - timedelta(minutes=15)
             window_end = now + timedelta(minutes=15)
 
-            from utils.market.currency_utils import get_symbol_currencies
+            from monika.domain.market.currency_utils import get_symbol_currencies
             sym_currencies = get_symbol_currencies(sym)
 
             stmt = (

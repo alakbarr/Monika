@@ -59,7 +59,7 @@ async def handle_get_fxssi_sentiment(args: dict, **ctx) -> dict:
 
 async def handle_get_prediction_market_odds(args: dict, **ctx) -> dict:
     session, _, _ = _get_sentiment_context(args, ctx)
-    from data_sources.prediction_market import PredictionMarketClient
+    from monika.infrastructure.data_ingestion.sources.prediction_market import PredictionMarketClient
 
     client = PredictionMarketClient(session=session)
     return await client.ingest_and_persist()

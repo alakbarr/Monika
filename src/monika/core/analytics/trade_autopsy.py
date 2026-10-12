@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
 
 logger = logging.getLogger('TradingAgent.TradeAutopsy')
 
@@ -23,11 +23,11 @@ async def run_trade_autopsy(session: AsyncSession, trade: PaperTradeRecord) -> d
         return {}
     
     patterns = []
-    from utils.analytics.edge_tracker import is_trade_win
+    from monika.core.analytics.edge_tracker import is_trade_win
     was_loss = not is_trade_win(trade)
     
     # Pattern 1: Was trade entered during high-VIX?
-    from database.models import VIXData
+    from monika.infrastructure.database.models import VIXData
     vix_at_entry = (await session.execute(
         select(VIXData)
         .where(VIXData.date <= trade.opened_at)
@@ -43,7 +43,7 @@ async def run_trade_autopsy(session: AsyncSession, trade: PaperTradeRecord) -> d
         })
     
     # Pattern 2: Was brief close to expiry?
-    from database.models import FundamentalBrief
+    from monika.infrastructure.database.models import FundamentalBrief
     if analysis.brief_id:
         brief = await session.get(FundamentalBrief, analysis.brief_id)
         if brief and brief.generated_at:
@@ -131,7 +131,7 @@ async def summarize_recent_patterns(session: AsyncSession, hours_back: int = 24)
     Returns dict with has_critical_patterns bool and summary string.
     """
     from datetime import datetime, timezone, timedelta
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
     from sqlalchemy import select
     
     since = datetime.now(timezone.utc) - timedelta(hours=hours_back)

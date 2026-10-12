@@ -60,7 +60,7 @@ def install_compatibility_shims() -> None:
             def register_tool(self, name: str, handler: Callable, **kwargs: Any) -> None:
                 self._tools[name] = handler
                 try:
-                    from analysis.tools.registry import ToolRegistry
+                    from monika.application.analysis.tools.registry import ToolRegistry
 
                     ToolRegistry.get_instance().register_handler(name, handler)
                 except Exception as e:
@@ -79,7 +79,7 @@ def install_compatibility_shims() -> None:
                 if tool_name in self._tools:
                     return self._tools[tool_name](**args)
                 try:
-                    from analysis.tools.registry import ToolRegistry
+                    from monika.application.analysis.tools.registry import ToolRegistry
 
                     return ToolRegistry.get_instance().get(tool_name)
                 except Exception:

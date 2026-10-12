@@ -12,7 +12,7 @@ from typing import Type, Optional, Dict, Any, List
 import logging
 
 from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
-from analysis.strategies.base_strategy import EdgeStrategy
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy
 
 logger = logging.getLogger("TradingAgent.StrategyPlugin")
 
@@ -37,7 +37,7 @@ class StrategyPlugin(TradingPlugin, ABC):
     async def on_register(self, container: Any, event_bus: Any) -> None:
         """Auto-register the strategy class into StrategyRegistry upon plugin load."""
         await super().on_register(container, event_bus)
-        from analysis.strategies.registry import StrategyRegistry
+        from monika.application.analysis.strategies.registry import StrategyRegistry
         strat_cls = self.get_strategy_class()
         StrategyRegistry.register(strat_cls)
         logger.info(f"[StrategyPlugin] Registered strategy '{strat_cls.strategy_id}' via plugin '{self.metadata.id}'")

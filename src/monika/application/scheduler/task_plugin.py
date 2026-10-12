@@ -24,7 +24,7 @@ from monika.application.harness.contract import (
     ServiceContainerProtocol,
     TaskRegistryProtocol,
 )
-from utils.infra.container import ServiceContainer
+from monika.infrastructure.infra.container import ServiceContainer
 from monika.application.agent.task_registry import TaskRegistry, TaskDefinition
 
 logger = logging.getLogger("TradingAgent.Scheduler.TaskPlugin")

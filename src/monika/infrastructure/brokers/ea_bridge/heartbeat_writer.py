@@ -143,7 +143,7 @@ class HeartbeatManager:
 
     def get_watchdog(self, check_interval_seconds: float = 15.0) -> Any:
         """PR-16: Returns an active EAWatchdog instance bound to this manager."""
-        from execution.ea_bridge.watchdog import EAWatchdog
+        from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
         return EAWatchdog(
             heartbeat_manager=self,
             check_interval_seconds=check_interval_seconds,

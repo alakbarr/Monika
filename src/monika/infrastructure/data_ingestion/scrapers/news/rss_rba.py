@@ -4,8 +4,8 @@
  
 """Reserve Bank of Australia official RSS feeds (Speeches & Monetary Policy Media Releases). Critical for AUDUSD."""
 from typing import List
-from scrapers.news.rss_base import RssBaseScraper
-from scrapers.models import ScrapedNews
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
 
 class RbaRssScraper(RssBaseScraper):
     def __init__(self):

@@ -37,7 +37,7 @@ class SimulationSubcommand(Subcommand):
             from monika.interfaces.cli.main import _cmd_backtest
             await _cmd_backtest(args)
         elif action == "scenario":
-            from backtest.batch_scenario_runner import BatchScenarioRunner, MarketScenario
+            from monika.application.backtest.batch_scenario_runner import BatchScenarioRunner, MarketScenario
             console.print(f"{stamp_info('SIMULATION')} Initializing Batch Scenario Runner...")
             runner = BatchScenarioRunner(max_workers=getattr(args, "workers", 4))
             

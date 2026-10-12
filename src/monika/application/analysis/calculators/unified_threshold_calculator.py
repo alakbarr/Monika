@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import SystemConfig
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger('TradingAgent.UnifiedThreshold')
 
@@ -25,7 +25,7 @@ async def compute_unified_confluence_threshold(
     Satu-satunya sumber kebenaran untuk effective confluence threshold.
     Mengumpulkan SEMUA sinyal adjustment dan mengembalikan SATU angka final.
     """
-    from analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+    from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
     reasons = []
     penalties = []
     
@@ -42,7 +42,7 @@ async def compute_unified_confluence_threshold(
             
     # 3. VIX
     try:
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         vix_stmt = select(VIXData)
         if as_of:
             vix_stmt = vix_stmt.where(VIXData.date <= as_of.date())
@@ -55,7 +55,7 @@ async def compute_unified_confluence_threshold(
         
     # 4. Consecutive SL: check if the last 3 closed trades strictly hit stop-loss
     try:
-        from database.models import PaperTradeRecord
+        from monika.infrastructure.database.models import PaperTradeRecord
         trades_stmt = (
             select(PaperTradeRecord)
             .where(PaperTradeRecord.symbol == symbol)
@@ -73,7 +73,7 @@ async def compute_unified_confluence_threshold(
     # 5. Deterministic ADX/Regime penalty
     regime_modifier = 0
     try:
-        from analysis.calculators.regime_classifier import classify_market_regime
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
         regime = await classify_market_regime(session, symbol, settings, as_of=as_of)
         regime_modifier = max(-1, min(2, regime['threshold_modifier']))
         reasons.append(

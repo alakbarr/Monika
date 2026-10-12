@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from pydantic import BaseModel, Field
 
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 
 logger = logging.getLogger("TradingAgent.Skills.ContinuousLearning")
 

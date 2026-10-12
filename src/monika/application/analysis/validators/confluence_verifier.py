@@ -6,8 +6,8 @@ import logging
 import json
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import AssetAnalysis
-from analysis.calculators.confluence_calculator import calculate_confluence
+from monika.infrastructure.database.models import AssetAnalysis
+from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 
 logger = logging.getLogger('TradingAgent.ConfluenceVerifier')
 

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import Position, EconomicCalendar, ActivityLog
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PositionGuardian")
 
@@ -244,7 +244,7 @@ class PositionGuardian:
                     await session.commit()
 
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_info(
                             f"[TARGET] <b>Tranche Scale-Out: Leg 1 Closed</b>\n"
                             f"Symbol: <b>{runner_leg.symbol}</b> | Ticket: <code>{runner_leg.mt5_ticket}</code>\n"
@@ -315,7 +315,7 @@ class PositionGuardian:
             action_type = "alerted"
 
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
             await AgentNotifier().send_warning(msg)
         except Exception as e:
             logger.warning(f"Position guardian alert failed: {e}")
@@ -438,7 +438,7 @@ class PositionGuardian:
                 lines.append("\nSemua posisi at-risk telah diamankan dari weekend gap.")
                 
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_info("\n".join(lines))
                 except Exception as e:
                     logger.error(f"Friday auto-close notification failed: {e}")
@@ -463,7 +463,7 @@ class PositionGuardian:
                 )
                 
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_critical("\n".join(lines))
                 except Exception as e:
                     logger.error(f"Friday close alert failed: {e}")
@@ -549,7 +549,7 @@ class PositionGuardian:
         """
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
-            from utils.typesafe.jev_primitives import build_position_guard_questions
+            from monika.core.primitives.jev_primitives import build_position_guard_questions
             client = get_client_for_task("jev_position_guard", self.settings)
             if not hasattr(client, "classify_json"):
                 return {}

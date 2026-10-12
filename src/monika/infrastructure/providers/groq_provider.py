@@ -6,8 +6,8 @@ import logging
 import os
 import time
 from typing import Optional, ClassVar, Any
-from analysis.providers.openai_provider import OpenAIProvider
-from utils.api.groq_rate_limiter import GroqRateLimiter, get_api_keys
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.api.groq_rate_limiter import GroqRateLimiter, get_api_keys
 
 logger = logging.getLogger(__name__)
 

@@ -31,7 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Memory.SkillCurator")
 
@@ -62,7 +62,7 @@ class SkillCurator:
 
     async def curate_db_rules(self, session: AsyncSession) -> dict:
         """Curate playbook_rule_attributions stored in the database."""
-        from database.models import PlaybookRuleAttribution
+        from monika.infrastructure.database.models import PlaybookRuleAttribution
 
         now = clock.now()
         stale_threshold = now - timedelta(days=30)

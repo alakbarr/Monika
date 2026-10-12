@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import DecisionReflection
+from monika.infrastructure.database.models import DecisionReflection
 
 logger = logging.getLogger("TradingAgent.SessionSearch")
 
@@ -92,7 +92,7 @@ class SessionSearchEngine:
             return await self._execute_symbol_precedents(session, clean_sym, limit, regime=regime, as_of=as_of)
 
         try:
-            from database.db import get_session
+            from monika.infrastructure.database.db import get_session
             async with get_session() as s:
                 return await self._execute_symbol_precedents(s, clean_sym, limit, regime=regime, as_of=as_of)
         except Exception as e:
@@ -212,7 +212,7 @@ class SessionSearchEngine:
             return await self._execute_search(session, clean_query, limit, query_vector=query_vector, as_of=as_of)
 
         try:
-            from database.db import get_session
+            from monika.infrastructure.database.db import get_session
             async with get_session() as s:
                 return await self._execute_search(s, clean_query, limit, query_vector=query_vector, as_of=as_of)
         except Exception as e:
@@ -266,7 +266,7 @@ class SessionSearchEngine:
             # If no query_vector provided, attempt auto-vectorization via Gemini Embedding
             if not query_vector:
                 try:
-                    from utils.llm.embedding import generate_gemini_embedding
+                    from monika.infrastructure.llm.embedding import generate_gemini_embedding
                     query_vector = await generate_gemini_embedding(query)
                 except Exception:
                     query_vector = None
@@ -507,7 +507,7 @@ class SessionSearchEngine:
             )
 
         try:
-            from database.db import get_session
+            from monika.infrastructure.database.db import get_session
             async with get_session() as s:
                 return await self._execute_symbol_precedents_hybrid(
                     s, clean_sym, current_regime=current_regime, setup_text=setup_text, limit=limit, query_vector=query_vector, as_of=as_of

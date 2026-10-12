@@ -7,7 +7,7 @@ import time
 import re
 import urllib.request
 from typing import List
-from scrapers.models import ScrapedNews
+from monika.infrastructure.data_ingestion.scrapers.models import ScrapedNews
 
 logger = logging.getLogger("TradingAgent.RssNewsScraper")
 

@@ -139,8 +139,8 @@ class MonikaMcpServer:
     async def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Dispatches an MCP tool call to Monika's internal services."""
         if tool_name == "monika_get_status":
-            from database.db import get_session
-            from database.models import SystemConfig, Position, PaperTradeRecord
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import SystemConfig, Position, PaperTradeRecord
             from sqlalchemy import select
 
             try:
@@ -171,8 +171,8 @@ class MonikaMcpServer:
                 }
 
         elif tool_name == "monika_get_open_positions":
-            from database.db import get_session
-            from database.models import Position, PaperTradeRecord
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import Position, PaperTradeRecord
             from sqlalchemy import select
 
             mode = arguments.get("mode", "all")
@@ -210,8 +210,8 @@ class MonikaMcpServer:
             return {"count": len(positions_data), "positions": positions_data}
 
         elif tool_name == "monika_get_macro_regime":
-            from database.db import get_session
-            from analysis.memory.layered_memory import LayeredMemoryManager
+            from monika.infrastructure.database.db import get_session
+            from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
 
             async with get_session() as session:
                 mgr = LayeredMemoryManager(self.settings)
@@ -220,23 +220,23 @@ class MonikaMcpServer:
                 return {"regime": regime, "core_summary": core_mem}
 
         elif tool_name == "monika_get_economic_calendar":
-            from analysis.tools.handlers.macro_tools import handle_get_economic_calendar
-            from database.db import get_session
+            from monika.application.analysis.tools.handlers.macro_tools import handle_get_economic_calendar
+            from monika.infrastructure.database.db import get_session
 
             async with get_session() as session:
                 return await handle_get_economic_calendar(arguments, session=session)
 
         elif tool_name == "monika_list_playbooks":
-            from analysis.tools.handlers.skills_tools import handle_skills_list
+            from monika.application.analysis.tools.handlers.skills_tools import handle_skills_list
             return await handle_skills_list()
 
         elif tool_name == "monika_get_playbook":
-            from analysis.tools.handlers.skills_tools import handle_skill_view
+            from monika.application.analysis.tools.handlers.skills_tools import handle_skill_view
             return await handle_skill_view({"skill_name": arguments.get("name", "")})
 
         elif tool_name == "monika_search_session_memory":
-            from database.session_db_wal import SessionDbWal
-            from database.fts5_cjk import Fts5SessionSearch
+            from monika.infrastructure.database.session_db_wal import SessionDbWal
+            from monika.infrastructure.database.fts5_cjk import Fts5SessionSearch
             wal = SessionDbWal()
             try:
                 conn = wal.get_connection()
@@ -249,7 +249,7 @@ class MonikaMcpServer:
                 wal.close()
 
         elif tool_name == "monika_execute_quant_calc":
-            from analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
+            from monika.application.analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
             env = Tier1InProcessEnvironment()
             code = arguments.get("code", "")
             outcome = await env.run_python_code(code)
@@ -362,7 +362,7 @@ class MonikaMcpServer:
 
 def run_mcp_server(settings: Optional[Dict[str, Any]] = None):
     """Entrypoint function to run Monika MCP Server over stdio."""
-    from utils.infra.event_loop import run_async
+    from monika.infrastructure.infra.event_loop import run_async
 
     server = MonikaMcpServer(settings=settings)
     run_async(server.run_stdio())

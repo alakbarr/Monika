@@ -1,6 +1,6 @@
 """Check objektif & reproducible -- independen dari LLM judge -- dihitung
 terhadap snapshot pasar REAL yang sama yang dilihat setiap model kandidat."""
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 
 async def score_trade_payload(session, settings, symbol: str, payload: dict) -> dict:

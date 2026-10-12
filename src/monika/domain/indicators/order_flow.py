@@ -151,7 +151,7 @@ class OrderFlowEngine:
 
         if len(prices) < 2 and session is not None:
             try:
-                from database.models import PriceOHLCV
+                from monika.infrastructure.database.models import PriceOHLCV
                 stmt = (
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == symbol)
@@ -254,7 +254,7 @@ class OrderFlowEngine:
 
 async def fetch_latest_order_flow(session: AsyncSession, symbol: str) -> OrderFlowSnapshot:
     """Ambil snapshot order flow terbaru dari database atau hitung on-the-fly."""
-    from database.models import TechnicalIndicator
+    from monika.infrastructure.database.models import TechnicalIndicator
     row = (await session.execute(
         select(TechnicalIndicator)
         .where(TechnicalIndicator.symbol == symbol)

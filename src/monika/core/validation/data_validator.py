@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PriceOHLCV, NewsItem, FundamentalBrief
+from monika.infrastructure.database.models import PriceOHLCV, NewsItem, FundamentalBrief
 
 logger = logging.getLogger("TradingAgent.DataValidator")
 
@@ -67,7 +67,7 @@ async def validate_data_freshness(
     """
     warnings = []
     errors = []
-    from utils.clock import now as get_clock_now
+    from monika.core.primitives.clock import now as get_clock_now
     now = get_clock_now()
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -115,7 +115,7 @@ async def validate_data_freshness(
                     errors.append(f"{symbol}/{tf} OHLCV is {age_hours:.1f}h old (stale)")
     
     # Check Indicator freshness
-    from database.models import TechnicalIndicator
+    from monika.infrastructure.database.models import TechnicalIndicator
     for symbol in symbols:
         is_crypto = is_crypto_symbol(symbol)
         for tf in timeframes:
@@ -163,7 +163,7 @@ async def validate_data_freshness(
             warnings.append(f"Latest news is {news_age:.1f}h old")
 
     # Check macro data freshness
-    from database.models import EconomicCalendar, VIXData, TreasuryYield, DXYData, COTReport, FedWatchProbability
+    from monika.infrastructure.database.models import EconomicCalendar, VIXData, TreasuryYield, DXYData, COTReport, FedWatchProbability
     from datetime import date
     
     cal_max_days = 2.0 if require_macro_data else (max_calendar_age_hours / 24.0)
@@ -312,7 +312,7 @@ def is_spread_acceptable(symbol: str, bid: float, ask: float) -> bool:
     if sym in typical_spreads:
         typical = typical_spreads[sym]
     else:
-        from utils.market.instrument_identity import resolve_instrument_identity
+        from monika.domain.market.instrument_identity import resolve_instrument_identity
         ident = resolve_instrument_identity(sym)
         typical = (ident.pip_size * 2.0) if ident and ident.pip_size else 0.0005
     
@@ -335,9 +335,9 @@ async def check_data_coherence(
     memiliki timestamp yang coherent (tidak ada yang terlalu stale)
     dengan batas usia berbasis timeframe (D1: 32h, H4: 8h).
     """
-    from database.models import PriceOHLCV, TechnicalIndicator
+    from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
     from sqlalchemy import select
-    from utils.clock import now as get_clock_now
+    from monika.core.primitives.clock import now as get_clock_now
     
     now = get_clock_now()
     if now.tzinfo is None:

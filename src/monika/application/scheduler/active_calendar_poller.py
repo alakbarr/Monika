@@ -6,11 +6,11 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from sqlalchemy import select, func
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import EconomicCalendar, NewsItem
-from scrapers.calendar.calendar_investing import InvestingCalendarScraper
+from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import InvestingCalendarScraper
 
 logger = logging.getLogger("TradingAgent.CalendarPoller")
 
@@ -149,7 +149,7 @@ class ActiveCalendarPoller:
                         logger.error(f"Active Polling iteration error: {e}")
                         # Fallback attempt via ForexFactory direct feed if investing scraper failed
                         try:
-                            from scrapers.calendar.calendar_forexfactory import fetch_forexfactory_feed_direct
+                            from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import fetch_forexfactory_feed_direct
                             fresh_ff = await asyncio.to_thread(fetch_forexfactory_feed_direct, max_cache_age=15, ignore_cache=True)
                             if fresh_ff:
                                 for event_id, name in list(event_targets):
@@ -240,7 +240,7 @@ class ActiveCalendarPoller:
 
         # Hook MacroTriggerRouter to immediately ingest granular decomposition / statements
         try:
-            from scrapers.macro.macro_trigger_router import MacroTriggerRouter
+            from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
             router = MacroTriggerRouter(session)
             for e in events:
                 ev_name = e.get("event_name") if isinstance(e, dict) else getattr(e, "event_name", "")

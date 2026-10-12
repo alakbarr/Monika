@@ -8,9 +8,9 @@ from typing import Dict, Any, Optional
 
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from analysis.providers.llm_factory import get_client_for_task
-from analysis.debate.bull_analyst import generate_bull_rebuttal
-from analysis.debate.bear_analyst import generate_bear_rebuttal
+from monika.infrastructure.providers.llm_factory import get_client_for_task
+from monika.application.analysis.debate.bull_analyst import generate_bull_rebuttal
+from monika.application.analysis.debate.bear_analyst import generate_bear_rebuttal
 from monika.application.graph.nodes.debate.helpers import _is_grounded, sync_facade_patches
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.RebuttalNode")

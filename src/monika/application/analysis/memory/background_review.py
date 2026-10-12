@@ -40,8 +40,8 @@ class BackgroundReviewEngine:
         self.reflector = reflector
         if self.reflector is None:
             try:
-                from analysis.providers.llm_factory import get_client_for_task
-                from analysis.memory.reflector import TradeReflector
+                from monika.infrastructure.providers.llm_factory import get_client_for_task
+                from monika.application.analysis.memory.reflector import TradeReflector
                 aux_client = get_client_for_task("trade_reflection", self.settings)
                 if aux_client:
                     self.reflector = TradeReflector(llm_client=aux_client)
@@ -129,7 +129,7 @@ class BackgroundReviewEngine:
                     import inspect
                     reflection_id = outcome.get("reflection_id") or outcome.get("ticket")
                     if reflection_id:
-                        from database.async_db import get_session
+                        from monika.infrastructure.database.async_db import get_session
                         async with get_session() as session:
                             reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
                     else:
@@ -144,7 +144,7 @@ class BackgroundReviewEngine:
             try:
                 if hasattr(self.crystallizer, "evaluate_and_crystallize"):
                     # If DB session provider is present
-                    from database.async_db import get_session
+                    from monika.infrastructure.database.async_db import get_session
                     async with get_session() as session:
                         await self.crystallizer.evaluate_and_crystallize(session, symbol=symbol)
             except Exception as cry_err:

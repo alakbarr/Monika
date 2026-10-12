@@ -49,7 +49,7 @@ class ScanPatternSimilarityHandler(ToolHandler):
             timeframes = [t.strip() for t in timeframes.split(",")]
 
         try:
-            from indicators.pattern_similarity import PatternSimilarityEngine
+            from monika.domain.indicators.pattern_similarity import PatternSimilarityEngine
 
             settings = getattr(executor, "settings", {}) or {}
             engine = PatternSimilarityEngine(session=session, settings=settings)

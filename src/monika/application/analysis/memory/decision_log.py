@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List, Dict
 from datetime import datetime, timezone
-from database.models import DecisionReflection, AssetAnalysis
+from monika.infrastructure.database.models import DecisionReflection, AssetAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class DecisionLogger:
                 context_cds_score=ssvp_cds_score
             )
             session.add(new_log)
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             await safe_commit(session, label="log_decision_real")
             return new_log.id
         except Exception as e:
@@ -79,7 +79,7 @@ class DecisionLogger:
                 context_cds_score=ssvp_cds_score
             )
             session.add(new_log)
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             await safe_commit(session, label="log_decision_whatif")
             return new_log.id
         except Exception as e:

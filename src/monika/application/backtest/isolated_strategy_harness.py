@@ -547,7 +547,7 @@ class IsolatedStrategyBacktestHarness:
         Executes zero-lookahead historical bar-by-bar simulation for this strategy.
         Enforces frozen simulated clock per bar stepping to eliminate lookahead bias.
         """
-        from utils.clock import frozen_time
+        from monika.core.primitives.clock import frozen_time
 
         primary_candles = await self.fetch_historical_candles(
             session=session,
@@ -939,7 +939,7 @@ class IsolatedStrategyBacktestHarness:
 
     async def _run_simulation_on_candles(self, candles: List[CandleDict]) -> HarnessMetrics:
         """Helper to simulate on a pre-sliced list of candles with full clock freezing and resampled HTF."""
-        from utils.clock import frozen_time
+        from monika.core.primitives.clock import frozen_time
 
         if len(candles) < 25:
             return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)

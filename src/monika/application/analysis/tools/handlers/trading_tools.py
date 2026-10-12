@@ -49,7 +49,7 @@ async def handle_calculate_position_size(args: dict, **ctx) -> dict:
 
 
 async def handle_get_swap_rates(args: dict, **ctx) -> dict:
-    from utils.market.swap_estimator import FALLBACK_SWAP
+    from monika.domain.market.swap_estimator import FALLBACK_SWAP
 
     symbol = args.get("symbol")
     executor = ctx.get("executor")
@@ -87,7 +87,7 @@ async def handle_get_swap_rates(args: dict, **ctx) -> dict:
 
 
 async def handle_calculate_confluence(args: dict, **ctx) -> dict:
-    from analysis.calculators.confluence_calculator import calculate_confluence
+    from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 
     symbol = str(args.get("symbol") or "EURUSD")
     direction = str(args.get("direction") or "buy")
@@ -100,7 +100,7 @@ async def handle_calculate_confluence(args: dict, **ctx) -> dict:
 async def handle_get_slippage_summary(args: dict, **ctx) -> dict:
     symbol = str(args.get("symbol") or "EURUSD").upper()
     days_back = int(args.get("days_back", 30))
-    from backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+    from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
 
     profile = ASSET_FRICTION_PROFILE.get(symbol, {"spread_pips": 1.5, "slippage_pips": 0.5})
     return {

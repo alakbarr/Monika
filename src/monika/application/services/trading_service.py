@@ -21,12 +21,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Position
-from risk.trade_proposal import TradeProposal
-from database.repositories.position_repository import PositionRepository
-from database.repositories.trade_proposal_repository import TradeProposalRepository
-from database.repositories.activity_log_repository import ActivityLogRepository
-from database.repositories.system_config_repository import SystemConfigRepository
+from monika.infrastructure.database.models import Position
+from monika.domain.risk.trade_proposal import TradeProposal
+from monika.infrastructure.database.repositories.position_repository import PositionRepository
+from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
+from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
+from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
 
 logger = logging.getLogger("Monika.Application.TradingService")
 

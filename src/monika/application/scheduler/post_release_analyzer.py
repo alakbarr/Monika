@@ -15,7 +15,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Any
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger('TradingAgent.PostReleaseAnalyzer')
 
@@ -413,7 +413,7 @@ class PostReleaseAnalyzer:
             # Notify via Telegram if actionable
             if actionable:
                 try:
-                    from utils.infra.notifier import get_notifier
+                    from monika.infrastructure.infra.notifier import get_notifier
                     notifier = get_notifier()
                     trade_summary = ', '.join(f"{s}: {r['decision'].upper()}" for s, r in actionable)
                     await notifier.send(

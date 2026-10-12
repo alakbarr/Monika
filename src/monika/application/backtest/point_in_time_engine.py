@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import BacktestRun, BacktestTrade, AssetAnalysis, PriceOHLCV, TechnicalIndicator
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.application.backtest.outcome_evaluator import OutcomeEvaluator
 from monika.application.backtest.report_generator import ReportGenerator
 from monika.domain.risk.position_sizing import PositionSizer

@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import SystemConfig
+from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger('TradingAgent.PromptABTest')
 

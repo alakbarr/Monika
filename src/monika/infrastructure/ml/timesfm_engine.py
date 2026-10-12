@@ -27,8 +27,8 @@ import pandas as pd
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast, DXYData, TreasuryYield
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, TimesFMForecast, DXYData, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.TimesFMEngine")
 

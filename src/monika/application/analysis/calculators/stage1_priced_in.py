@@ -1,5 +1,5 @@
 from typing import Optional
-from utils.calibration.cot_thresholds import cot_extreme_score
+from monika.core.calibration.cot_thresholds import cot_extreme_score
 
 def calculate_stage1_priced_in_baseline(
     symbol: str,

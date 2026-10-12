@@ -75,7 +75,7 @@ class CoreDataValidator:
         return (True, core_data, issues)
     
     async def _validate_brief(self) -> Tuple[bool, dict, str]:
-        from database.models import FundamentalBrief
+        from monika.infrastructure.database.models import FundamentalBrief
         
         brief = (await self.session.execute(
             select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
@@ -131,7 +131,7 @@ class CoreDataValidator:
         }, issue_note)
     
     async def _validate_vix(self) -> Tuple[bool, dict, str]:
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         
         vix = (await self.session.execute(
             select(VIXData).order_by(VIXData.date.desc()).limit(1)
@@ -170,7 +170,7 @@ class CoreDataValidator:
         }, "")
     
     async def _validate_dxy(self) -> Tuple[bool, dict, str]:
-        from database.models import DXYData
+        from monika.infrastructure.database.models import DXYData
         
         rows = (await self.session.execute(
             select(DXYData).order_by(DXYData.date.desc()).limit(5)
@@ -208,7 +208,7 @@ class CoreDataValidator:
         DXY strengthening = USD bullish
         DXY weakening = USD bearish
         """
-        from utils.market.bias_utils import normalize_bias
+        from monika.domain.market.bias_utils import normalize_bias
         dxy_trend = dxy_data.get('trend_5d', 'unknown')
         currency_bias = brief_data.get('currency_bias', {})
         usd_bias = normalize_bias(currency_bias.get('USD', 'neutral'))

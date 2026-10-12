@@ -26,7 +26,7 @@ class DataTemporalValidator:
 
         Returns dict dengan gap analysis dan recommendations.
         """
-        from database.models import (
+        from monika.infrastructure.database.models import (
             PriceOHLCV, FundamentalBrief, VIXData, COTReport
         )
 

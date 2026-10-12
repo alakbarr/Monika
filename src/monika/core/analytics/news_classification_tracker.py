@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import NewsItem, NewsClassificationOutcome, PriceOHLCV
+from monika.infrastructure.database.models import NewsItem, NewsClassificationOutcome, PriceOHLCV
 
 logger = logging.getLogger('TradingAgent.NewsClassificationTracker')
 
@@ -45,7 +45,7 @@ async def snapshot_classification_for_tracking(session: AsyncSession, news_item:
 
 async def _get_dynamic_move_threshold_pct(session: AsyncSession, symbol: str, impact_tier: str) -> float:
     # Mengambil ATR H4 terakhir untuk symbol
-    from database.models import PriceOHLCV, TechnicalIndicator
+    from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
     from sqlalchemy import select
     bar = (await session.execute(
         select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == 'H4')
@@ -161,7 +161,7 @@ async def compute_and_apply_tier_calibration(session: AsyncSession, days_back: i
                     f"untuk {tier}, lebih sering gunakan tier di bawahnya bila ragu."
                 )
 
-    from database.models import SystemConfig
+    from monika.infrastructure.database.models import SystemConfig
     from sqlalchemy import select
     import json
     key = 'news_tier_calibration_directives'

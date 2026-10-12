@@ -22,7 +22,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from analysis.tools.environments.pty_query_responder import PtyQueryResponder
+from monika.application.analysis.tools.environments.pty_query_responder import PtyQueryResponder
 
 logger = logging.getLogger("TradingAgent.Dashboard.PtyBridge")
 
@@ -94,8 +94,8 @@ class PtySession:
     async def _log_security_violation(self, command: str, reason: str) -> None:
         """Asynchronously persist security violation audit record to database."""
         try:
-            from database.db import get_session
-            from database.repositories.activity_log_repository import ActivityLogRepository
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.repositories.activity_log_repository import ActivityLogRepository
             async with get_session() as session:
                 repo = ActivityLogRepository(session)
                 await repo.log_activity(

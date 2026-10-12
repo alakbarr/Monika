@@ -9,13 +9,13 @@ from typing import Optional, Literal, ClassVar, Any
 
 from dotenv import load_dotenv
 
-from utils.api.http_retry import fetch_with_retry, RateLimitError, APIStatusError, format_api_error_summary
-from utils.api.streaming import streaming_request, StreamConfig, StreamResult, StreamTimeoutError, StreamSafetyTimeoutError
-from analysis.tools.tool_executor import ToolExecutor
-from database.db import get_session
-from database.models import TokenUsageLog
-from utils.api.gemini_rate_limiter import GeminiRateLimiter
-from analysis.providers.base_provider import BaseLLMClient, MockBlock, MockResponse, _flatten_system_prompt
+from monika.infrastructure.api.http_retry import fetch_with_retry, RateLimitError, APIStatusError, format_api_error_summary
+from monika.infrastructure.api.streaming import streaming_request, StreamConfig, StreamResult, StreamTimeoutError, StreamSafetyTimeoutError
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import TokenUsageLog
+from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse, _flatten_system_prompt
 
 load_dotenv()
 logger = logging.getLogger("TradingAgent.GeminiProvider")
@@ -297,7 +297,7 @@ class GeminiProvider(BaseLLMClient):
             self.resolved_thinking_level = "MINIMAL"
         else:
             try:
-                from utils.llm.adaptive_thinking import QuantizedThinkingAllocator
+                from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
                 quantized_budget = QuantizedThinkingAllocator.quantize(budget)
             except Exception:
                 quantized_budget = 4096 if budget >= 4000 else 1024
@@ -539,7 +539,7 @@ class GeminiProvider(BaseLLMClient):
         return None
 
     async def classify_json(self, prompt: str, system_prompt: Optional[str] = None, schema: Optional[dict] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs: Any) -> Optional[dict]:
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         anchored_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
             system_prompt or "", model_name=self.model, provider_name="gemini"
         )
@@ -547,7 +547,7 @@ class GeminiProvider(BaseLLMClient):
         result = await self.generate(full_prompt, system=anchored_sys, response_schema=schema, temperature=temperature, max_tokens=max_tokens, **kwargs)
         if not result:
             return None
-        from analysis.providers.base_provider import extract_and_parse_json
+        from monika.infrastructure.providers.base_provider import extract_and_parse_json
         parsed = extract_and_parse_json(result)
         if parsed is not None:
             return parsed
@@ -557,7 +557,7 @@ class GeminiProvider(BaseLLMClient):
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> MockResponse:
         gemini_tools = []
         if tools:
-            from analysis.providers.openai_provider import _canonicalize_schema
+            from monika.infrastructure.providers.openai_provider import _canonicalize_schema
             sorted_tools = sorted(tools, key=lambda t: t.get("name", "") if isinstance(t, dict) else "")
             declarations = []
             for t in sorted_tools:
@@ -729,7 +729,7 @@ class GeminiProvider(BaseLLMClient):
             }
         }
         if flat_sys:
-            from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
             anchored_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
                 flat_sys,
                 model_name=self.model,
@@ -896,7 +896,7 @@ class GeminiProvider(BaseLLMClient):
         messages = [{"role": h["role"], "content": h["content"]} for h in conversation_history]
         messages.append({"role": "user", "content": new_user_message})
 
-        from utils.llm.context_compaction import ContextCompactionEngine
+        from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
         compactor = ContextCompactionEngine(self.settings)
 
         turns = 0
@@ -973,7 +973,7 @@ class GeminiProvider(BaseLLMClient):
                     tool_results.append({"type": "tool_result", "tool_use_id": tool_use_id, "content": json.dumps({"status": "proposed", "message": "Action proposed."})})
                     continue
 
-                from database.db import get_session as _gs
+                from monika.infrastructure.database.db import get_session as _gs
                 async with _gs() as session:
                     bound_executor = tool_executor or ToolExecutor(session, settings=self.settings, model_name=self.model)
                     result = await bound_executor.execute(tool_name, tool_input)
@@ -984,7 +984,7 @@ class GeminiProvider(BaseLLMClient):
             messages.append({"role": "user", "content": tool_results})
 
         if total_input_tokens > 0 or total_output_tokens > 0:
-            from database.db import get_session as _gs
+            from monika.infrastructure.database.db import get_session as _gs
             async with _gs() as session:
                 await self._save_token_usage(self.model, "chat_telegram", total_input_tokens, total_output_tokens, session, cached_tokens=total_cached_tokens, thinking_tokens=total_thinking_tokens, is_direct_free_tier=not any_turn_paid)
 

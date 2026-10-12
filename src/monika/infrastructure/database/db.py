@@ -12,7 +12,7 @@ from typing import Any, AsyncGenerator, Union
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from database.models import Base
+from monika.infrastructure.database.models import Base
 
 from pathlib import Path
 
@@ -98,7 +98,7 @@ def verify_safe_database_url(url: str) -> None:
 def get_tier() -> str:
     """Detect configured tier via canonical settings resolver with fallback to trial."""
     try:
-        from config.settings import get_installation_tier
+        from monika.core.config.settings import get_installation_tier
         return get_installation_tier()
     except Exception:
         tier = os.getenv("MONIKA_TIER")

@@ -29,8 +29,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.llm.prompt_compressor import estimate_tokens, truncate_to_budget
-from analysis.memory.session_search import SessionSearchEngine
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
+from monika.application.analysis.memory.session_search import SessionSearchEngine
 
 logger = logging.getLogger("TradingAgent.LayeredMemory")
 
@@ -75,7 +75,7 @@ class LayeredMemoryManager:
 
     async def get_frozen_snapshot(self, session: Optional[AsyncSession] = None):
         """Retrieve frozen memory snapshot for prompt cache preservation."""
-        from analysis.memory.frozen_snapshot import get_frozen_snapshot_manager
+        from monika.application.analysis.memory.frozen_snapshot import get_frozen_snapshot_manager
         return await get_frozen_snapshot_manager(self.settings).get_snapshot(session=session)
 
     def get_identity(self) -> str:
@@ -113,7 +113,7 @@ class LayeredMemoryManager:
         # 4. Active Structural Macro Reality & Ongoing Chronicles
         if session:
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=3)
                 if c_bullets:
@@ -175,7 +175,7 @@ class LayeredMemoryManager:
             return _wrap_market_memory(composed, 400)
 
         try:
-            from database.models import DecisionReflection, PaperTradeRecord
+            from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord
 
             # 2. Recent reflections for this symbol
             reflections = (await session.execute(
@@ -210,7 +210,7 @@ class LayeredMemoryManager:
 
             # 4. Systematic Negative Constraints based on past failure modes (PR-13)
             try:
-                from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+                from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
                 neg_constraints = await NegativeConstraintGenerator.generate_negative_constraints_from_losses(
                     session=session,
                     symbol=symbol,
@@ -225,7 +225,7 @@ class LayeredMemoryManager:
 
             # 5. Pattern similarity consensus (if available in cache)
             try:
-                from database.models import PatternScreeningCache
+                from monika.infrastructure.database.models import PatternScreeningCache
                 p_entry = (await session.execute(
                     select(PatternScreeningCache)
                     .where(PatternScreeningCache.symbol == symbol)
@@ -256,8 +256,8 @@ class LayeredMemoryManager:
         STALE and ARCHIVED playbooks are strictly excluded.
         """
         try:
-            from analysis.memory.progressive_loader import ProgressiveMemoryLoader
-            from analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
+            from monika.application.analysis.memory.progressive_loader import ProgressiveMemoryLoader
+            from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleFSM, PlaybookState
 
             clean_sym = symbol.strip().upper()
             fsm = PlaybookLifecycleFSM()
@@ -298,7 +298,7 @@ class LayeredMemoryManager:
         if not session:
             return "USD_NEUTRAL | VIX_NORMAL"
         try:
-            from database.models import DXYData, VIXData, FundamentalBrief
+            from monika.infrastructure.database.models import DXYData, VIXData, FundamentalBrief
 
             # 1. DXY trend
             dxy_rows = (await session.execute(
@@ -330,7 +330,7 @@ class LayeredMemoryManager:
             # 4. Active Geopolitical/Structural tags from Chronicle
             geo_tag = ""
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 geo_tag = await ChronicleWriter(self.settings).get_macro_state_summary(session)
             except Exception:
                 pass
@@ -349,7 +349,7 @@ class LayeredMemoryManager:
         if not session:
             return ["No revenge trade within 4h of SL", "Priced-in score >=8 requires WAIT"]
         try:
-            from database.models import DecisionReflection, CandidateLesson
+            from monika.infrastructure.database.models import DecisionReflection, CandidateLesson
             seen_texts = set()
             scored_lessons: List[tuple[float, str]] = []
 
@@ -404,7 +404,7 @@ class LayeredMemoryManager:
         if not session:
             return "0 open positions"
         try:
-            from database.models import PaperTradeRecord, Position
+            from monika.infrastructure.database.models import PaperTradeRecord, Position
             live_positions = (await session.execute(
                 select(Position).where(Position.status == 'open')
             )).scalars().all()
@@ -422,7 +422,7 @@ class LayeredMemoryManager:
     async def _get_model_biases(self) -> str:
         """Performance notes from benchmark/skill files."""
         try:
-            from skills.loader import load_skill
+            from monika.application.skills.loader import load_skill
             notes = load_skill("fundamental_performance_notes")
             for line in notes.split('\n'):
                 if 'Accuracy' in line:

@@ -8,7 +8,7 @@ Source: ecb.europa.eu official press releases — primary source for ECB rate
 decisions, statements, and speeches. Critical for EURUSD and GBPUSD analysis.
 """
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 
 class EcbRssScraper(RssBaseScraper):

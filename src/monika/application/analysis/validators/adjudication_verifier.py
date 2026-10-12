@@ -76,7 +76,7 @@ Final decision: {final_decision}
 Rationale: {rationale[:1500]}"""
 
     try:
-        from utils.typesafe.jev_primitives import build_adjudication_questions
+        from monika.core.primitives.jev_primitives import build_adjudication_questions
         adjudication_jev_q = build_adjudication_questions()
         result = await client.classify_json(
             prompt=user_prompt,

@@ -54,7 +54,7 @@ class ShaSkillLedger:
     """
 
     def __init__(self, ledger_file: Optional[Path] = None):
-        from utils.infra.paths import DATA_DIR
+        from monika.infrastructure.infra.paths import DATA_DIR
         self.ledger_file = ledger_file or (DATA_DIR / "skill_ledger_sha.jsonl")
         self._chain: List[ShaLedgerBlock] = []
         self._load_ledger()

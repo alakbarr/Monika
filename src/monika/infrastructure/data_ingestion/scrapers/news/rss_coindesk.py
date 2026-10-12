@@ -2,7 +2,7 @@
 # File: scrapers/news/rss_coindesk.py
 # ==============================================================================
 
-from scrapers.news.rss_base import RssBaseScraper
+from monika.infrastructure.data_ingestion.scrapers.news.rss_base import RssBaseScraper
 
 class CoindeskRssScraper(RssBaseScraper):
     def __init__(self):

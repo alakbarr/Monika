@@ -66,7 +66,7 @@ def repair_tool_name(raw_name: str) -> str:
 
     # Check registry aliases
     try:
-        from analysis.tools.registry import default_tool_registry
+        from monika.application.analysis.tools.registry import default_tool_registry
         canonical = default_tool_registry.resolve_name(clean)
         if canonical != clean:
             logger.info(f"Registry resolved tool alias: '{clean}' -> '{canonical}'")

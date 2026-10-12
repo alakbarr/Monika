@@ -251,7 +251,7 @@ class PluginContext:
         Execute an MCP tool via Monika's MCP client with error and timeout boundaries.
         """
         try:
-            from analysis.mcp.client import McpClientManager
+            from monika.application.analysis.mcp.client import McpClientManager
 
             manager = McpClientManager.get_instance()
             if manager:

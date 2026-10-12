@@ -231,7 +231,7 @@ class DataFeedCircuitBreaker:
     def _publish_event(self, component: str, reason: str, is_active: bool, cooldown: int = 0) -> None:
         """Best-effort async event emission to EventBus."""
         try:
-            from utils.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+            from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
             bus = get_event_bus()
             event = CircuitBreakerEvent(
                 component=component,

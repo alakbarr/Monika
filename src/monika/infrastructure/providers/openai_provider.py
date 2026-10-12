@@ -7,9 +7,9 @@ import re
 from types import SimpleNamespace
 from typing import Dict, Any, Optional
 import os
-from analysis.providers.base_provider import BaseLLMClient, _flatten_system_prompt
-from analysis.tools.tool_executor import ToolExecutor
-from utils.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
+from monika.infrastructure.providers.base_provider import BaseLLMClient, _flatten_system_prompt
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class OpenAIProvider(BaseLLMClient):
             self.thinking_level = "none"
         else:
             try:
-                from utils.llm.adaptive_thinking import QuantizedThinkingAllocator
+                from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
                 quantized_budget = QuantizedThinkingAllocator.quantize(budget)
             except Exception:
                 quantized_budget = 4096 if budget >= 4000 else 1024
@@ -716,7 +716,7 @@ class OpenAIProvider(BaseLLMClient):
                 elif isinstance(user_msg, list):
                     kwargs["messages"][-1]["content"].append({"type": "text", "text": json_hint})
             else:
-                from analysis.schemas.pydantic_schemas import make_openai_strict_schema
+                from monika.application.analysis.schemas.pydantic_schemas import make_openai_strict_schema
                 is_strict_capable = (self._get_provider_name() == "openai") or any(m in str(self.model).lower() for m in ("gpt-4o", "gpt-4.1", "o1", "o3"))
                 
                 if is_array_schema:
@@ -876,7 +876,7 @@ class OpenAIProvider(BaseLLMClient):
                         continue
                     logger.warning(f"[{self.model}] classify_json: generate_content returned empty/None")
                     return None
-                from analysis.providers.base_provider import extract_and_parse_json
+                from monika.infrastructure.providers.base_provider import extract_and_parse_json
                 parsed = extract_and_parse_json(result_text)
                 if parsed is not None:
                     return parsed
@@ -1087,9 +1087,9 @@ class OpenAIProvider(BaseLLMClient):
         if not self.client:
             return {"success": False, "reply": "OpenAI API not initialized.", "error": "Not initialized"}
         
-        from database.db import get_session
+        from monika.infrastructure.database.db import get_session
         async with get_session() as session:
-            from analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
             executor = tool_executor or ToolExecutor(session, settings=self.settings, model_name=self.model)
 
             messages = []
@@ -1108,7 +1108,7 @@ class OpenAIProvider(BaseLLMClient):
             consecutive_chat_tool_sig = None
             repeated_chat_tool_count = 0
 
-            from utils.llm.context_compaction import ContextCompactionEngine
+            from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
             compactor = ContextCompactionEngine(self.settings)
 
             while turns < self.max_tool_turns:

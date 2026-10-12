@@ -1,8 +1,8 @@
 import logging
 import json
 from typing import Optional, Dict, Any
-from analysis.providers.base_provider import BaseLLMClient
-from utils.llm.prompt_disciplines import get_universal_execution_discipline
+from monika.infrastructure.providers.base_provider import BaseLLMClient
+from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 
 logger = logging.getLogger("TradingAgent.InvestmentJudge")
 
@@ -99,7 +99,7 @@ async def evaluate_debate(
     bear_dissent: dict,
     bull_rebuttal: Optional[dict] = None
 ) -> dict:
-    from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
     anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     decision = str(original_context.get("decision", "buy")).upper()
     regime_weights = resolve_regime_weights(original_context)
@@ -208,7 +208,7 @@ Respond in valid JSON format conforming to the schema."""
 
     # S²-MAD Sparse Debate: Inject structured blackboard state for dense, low-token evaluation
     try:
-        from analysis.debate.blackboard import DebateBlackboard
+        from monika.application.analysis.debate.blackboard import DebateBlackboard
         bb = DebateBlackboard(symbol=symbol, fact_sheet=original_context)
         b_thesis = bull_claim.get("thesis") or bull_claim.get("bull_thesis") or bull_claim.get("argument") or str(bull_claim)[:300]
         bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0)

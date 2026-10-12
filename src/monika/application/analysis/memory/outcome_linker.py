@@ -3,9 +3,9 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone, timedelta
-from database.models import DecisionReflection, AssetAnalysis, PaperTradeRecord
-from analysis.memory.reflector import TradeReflector
-from analysis.memory.alpha_calculator import AlphaCalculator
+from monika.infrastructure.database.models import DecisionReflection, AssetAnalysis, PaperTradeRecord
+from monika.application.analysis.memory.reflector import TradeReflector
+from monika.application.analysis.memory.alpha_calculator import AlphaCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,8 @@ class OutcomeLinker:
         self.settings = settings or {}
         self.reflector = TradeReflector(settings)
         try:
-            from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
-            from analysis.memory.skill_crystallizer import SkillCrystallizer
+            from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
+            from monika.application.analysis.memory.skill_crystallizer import SkillCrystallizer
             self.lifecycle_manager = PlaybookLifecycleManager()
             self.crystallizer = SkillCrystallizer(self.settings)
         except Exception as init_err:
@@ -73,7 +73,7 @@ class OutcomeLinker:
                     reflection.benchmark_return = alpha_data['benchmark_return']
                     reflection.alpha_return = alpha_data['alpha_return']
 
-                from database.safe_ops import safe_commit
+                from monika.infrastructure.database.safe_ops import safe_commit
                 if exit_reason != "partial_tp":
                     reflection.status = "pending_reflection"
                     await safe_commit(session, label="outcome_linker_closed")
@@ -115,7 +115,7 @@ class OutcomeLinker:
                         source_strat_id = getattr(analysis, "source_strategy_id", None) if analysis else None
                         if source_strat_id:
                             try:
-                                from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                                 decay_mon = get_strategy_decay_monitor()
                                 decay_mon.record_trade_outcome(
                                     strategy_id=str(source_strat_id),
@@ -157,7 +157,7 @@ class OutcomeLinker:
                 try:
                     price_now = analysis.price_24h_after if hasattr(analysis, 'price_24h_after') and analysis.price_24h_after else None
                     if price_now is None:
-                        from database.models import PriceOHLCV
+                        from monika.infrastructure.database.models import PriceOHLCV
                         target_time = analysis.generated_at + timedelta(hours=24)
                         bar = (await session.execute(
                             select(PriceOHLCV)
@@ -184,7 +184,7 @@ class OutcomeLinker:
                     entry_price = reflection.whatif_entry_price
                     
                     if entry_price and price_now:
-                        from risk.position_sizing import get_instrument_spec
+                        from monika.domain.risk.position_sizing import get_instrument_spec
                         spec = get_instrument_spec(reflection.symbol)
                         pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
 
@@ -270,7 +270,7 @@ class OutcomeLinker:
         menyentuh SL atau TP terlebih dahulu (path-dependent evaluation).
         Returns: (sl_would_hit, tp_would_hit)
         """
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
 
         # Fallback sl/tp jika tidak ditentukan atau bernilai non-positif dalam AssetAnalysis

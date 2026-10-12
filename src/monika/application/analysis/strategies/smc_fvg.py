@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
-from analysis.strategies.registry import StrategyRegistry
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal, CandleDict
+from monika.application.analysis.strategies.registry import StrategyRegistry
 
 
 @StrategyRegistry.register

@@ -30,8 +30,8 @@ import ta.volume
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import PriceOHLCV, TechnicalIndicator
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
 logger = logging.getLogger("TradingAgent.Indicators")
 _WARNED_INSUFFICIENT_BARS: set[str] = set()
@@ -218,7 +218,7 @@ class TechnicalIndicatorCalculator:
                     if hasattr(self.session, "rollback"):
                         try:
                             await self.session.rollback()
-                            from database.safe_ops import _safe_expunge_all
+                            from monika.infrastructure.database.safe_ops import _safe_expunge_all
                             await _safe_expunge_all(self.session)
                         except Exception:
                             pass

@@ -185,7 +185,7 @@ class GraphCycleScheduler(CycleScheduler):
         
         # Kirim alert Telegram agar operator tahu state persistence terdegradasi
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
             await AgentNotifier().send_warning(
                 '[PERINGATAN] <b>LangGraph: PostgreSQL Checkpointer Gagal</b>\n\n'
                 f'Setup gagal setelah {MAX_RETRIES} percobaan.\n'
@@ -299,7 +299,7 @@ class GraphCycleScheduler(CycleScheduler):
     @staticmethod
     def _get_session_open_utc(tz_name: str, open_hour: int, open_minute: int = 0) -> datetime:
         """Calculate today's session open in UTC, strictly DST-aware."""
-        from utils.scheduling.wall_clock import get_tzinfo
+        from monika.application.scheduler.wall_clock import get_tzinfo
         now_utc = datetime.now(timezone.utc)
         tz = get_tzinfo(tz_name)
         local_now = now_utc.astimezone(tz)
@@ -510,13 +510,13 @@ class GraphCycleScheduler(CycleScheduler):
             
             # TAMBAHKAN: Edge tracking
             try:
-                from utils.analytics.edge_tracker import compute_edge_status
+                from monika.core.analytics.edge_tracker import compute_edge_status
                 async with get_session() as session:
                     edge_data = await compute_edge_status(session)
                     if edge_data.get('status') == 'no_edge' and edge_data.get('total_trades', 0) >= 50:
                         logger.critical(f"EDGE DETECTION: System shows NO statistical edge after {edge_data['total_trades']} trades. Win rate: {edge_data['win_rate']}%")
                         try:
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
                             await AgentNotifier().send_critical(
                                 f"[DARURAT] <b>EDGE DETECTION ALERT</b>\nNo statistical edge after {edge_data['total_trades']} trades\n"
                                 f"Win Rate: {edge_data['win_rate']}% (need >{edge_data['breakeven_win_rate_pct']}%)\n"
@@ -538,12 +538,12 @@ class GraphCycleScheduler(CycleScheduler):
             if hours_since_pattern_check >= 12:
                 self._last_pattern_check = datetime.now(timezone.utc)
                 try:
-                    from utils.analytics.trade_autopsy import summarize_recent_patterns
+                    from monika.core.analytics.trade_autopsy import summarize_recent_patterns
                     async with get_session() as session:
                         pattern_summary = await summarize_recent_patterns(session, hours_back=24)
                         if pattern_summary.get('has_critical_patterns'):
                             logger.warning(f'Critical patterns detected in last 24h: {pattern_summary}')
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
                             await AgentNotifier().send_warning(
                                 f'[LAPORAN] <b>Pattern Alert (24h)</b>\n{pattern_summary.get("summary", "")}'
                             )
@@ -585,7 +585,7 @@ class GraphCycleScheduler(CycleScheduler):
                     "symbols": self.asset_universe,
                     "forced": forced,
                 })
-                from utils.llm.context_tracker import get_context_tracker
+                from monika.infrastructure.llm.context_tracker import get_context_tracker
                 get_context_tracker().reset(cycle_id=cycle_id)
             except Exception as e:
                 logger.debug(f"Failed emitting analysis_cycle_start: {e}")
@@ -621,7 +621,7 @@ class GraphCycleScheduler(CycleScheduler):
             except Exception as e:
                 logger.warning(f'Failed to load prior cycle state: {e}')
 
-            from utils.validation.data_validator import is_forex_market_closed, is_crypto_symbol
+            from monika.core.validation.data_validator import is_forex_market_closed, is_crypto_symbol
             weekend_symbols_override = None
             if is_forex_market_closed(start):
                 weekend_symbols_override = [s for s in self.asset_universe if is_crypto_symbol(s)]
@@ -667,7 +667,7 @@ class GraphCycleScheduler(CycleScheduler):
             # Stream the graph execution with distributed cycle_span
             final_state = dict(state)
             try:
-                from logging_observability.tracing.spans import cycle_span
+                from monika.core.telemetry.tracing.spans import cycle_span
                 with cycle_span(cycle_id, symbols=self.asset_universe):
                     async for event in self.graph.astream(state, config=config):
                         if not isinstance(event, dict):
@@ -735,7 +735,7 @@ class GraphCycleScheduler(CycleScheduler):
             summary_data = final_state.get('summary', {})
             if summary_data.get('api_cost_usd') is None:
                 try:
-                    from utils.analytics.cost_tracker import CostTracker
+                    from monika.core.analytics.cost_tracker import CostTracker
                     stage1_in = summary_data.get("fundamental", {}).get("input_tokens", 0)
                     stage1_out = summary_data.get("fundamental", {}).get("output_tokens", 0)
                     stage2_in = sum(r.get("input_tokens", 0) for r in summary_data.get("per_asset", {}).values() if isinstance(r, dict))
@@ -756,10 +756,10 @@ class GraphCycleScheduler(CycleScheduler):
                     await self._check_system_health_trend(session)
                     
                     # Task 1.3: Confidence Calibration Check
-                    from utils.calibration.confidence_calibrator import compute_confidence_calibration
+                    from monika.core.calibration.confidence_calibrator import compute_confidence_calibration
                     calibration = await compute_confidence_calibration(session)
                     if not calibration.get('confidence_is_calibrated') and calibration.get('total_analyzed', 0) >= 30:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning(
                             f'[PERINGATAN] <b>Confidence Calibration Issue</b>\n'
                             f'Higher confidence scores do NOT reliably predict higher win rates.\n'
@@ -780,10 +780,10 @@ class GraphCycleScheduler(CycleScheduler):
             
             # Cost projection check (cost tracking itself sudah dilakukan di execution_node.py)
             try:
-                from utils.analytics.cost_tracker import CostTracker
+                from monika.core.analytics.cost_tracker import CostTracker
                 async with get_session() as session:
                     rolling = await CostTracker.get_rolling_7day_cost(session)
-                    from config.settings import DEFAULT_MONTHLY_BUDGET_USD
+                    from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
                     monthly_budget = self.settings.get('cost_tracking', {}).get('monthly_budget_usd', DEFAULT_MONTHLY_BUDGET_USD)
                     if rolling['projected_monthly'] > monthly_budget * 0.9:
                         logger.warning(
@@ -942,7 +942,7 @@ class GraphCycleScheduler(CycleScheduler):
                 
                 if consecutive_wait >= 5:
                     logger.warning(f'5+ consecutive WAIT-only cycles. Possible threshold too high or market regime issue.')
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
                         f'[PERINGATAN] <b>No Trades for {consecutive_wait} Cycles</b>\n'
                         f'All assets returning WAIT/AVOID for {consecutive_wait} consecutive cycles.\n'
@@ -1001,7 +1001,7 @@ class GraphCycleScheduler(CycleScheduler):
 
             # Generate and save Markdown Report
             try:
-                from logging_observability.report_writer import ReportWriter
+                from monika.core.telemetry.report_writer import ReportWriter
                 writer = ReportWriter()
                 await writer.write_cycle_report_async(cycle_id, final_state)
                 logger.info(f'Cycle report saved for cycle {cycle_id}')
@@ -1010,7 +1010,7 @@ class GraphCycleScheduler(CycleScheduler):
                 
             # Emit POST_CYCLE plugin hook
             try:
-                from utils.plugins.manager import get_plugin_manager, PluginHook
+                from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
                 await get_plugin_manager().emit(
                     PluginHook.POST_CYCLE,
                     cycle_id=cycle_id,
@@ -1032,7 +1032,7 @@ class GraphCycleScheduler(CycleScheduler):
         from datetime import timedelta
         
         try:
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.core.analytics.paper_tracker import PaperTracker
             await PaperTracker(self.settings).check_and_alert_winrate(session, self.settings, min_trades=10)
         except Exception as e:
             logger.warning(f"Winrate check alert failed: {e}")
@@ -1059,7 +1059,7 @@ class GraphCycleScheduler(CycleScheduler):
             avg_skip_rate = sum(recent_skip_rates) / len(recent_skip_rates)
             if avg_skip_rate > 0.7:
                 try:
-                    from utils.infra.notifier import AgentNotifier
+                    from monika.infrastructure.infra.notifier import AgentNotifier
                     await AgentNotifier().send_warning(
                         f"[PERINGATAN] HIGH SKIP RATE DETECTED\n"
                         f"Average skip rate last 5 cycles: {avg_skip_rate:.0%}\n"
@@ -1077,7 +1077,7 @@ class GraphCycleScheduler(CycleScheduler):
         """
         from monika.infrastructure.database.models import UserMarketIntel, ActivityLog
         from sqlalchemy import select
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
 
         consumed_count = 0
         expired_count = 0

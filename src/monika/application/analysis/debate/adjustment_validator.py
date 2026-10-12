@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import TechnicalIndicator, AssetAnalysis
-from analysis.debate.exact_decimal_math import (
+from monika.infrastructure.database.models import TechnicalIndicator, AssetAnalysis
+from monika.application.analysis.debate.exact_decimal_math import (
     to_exact_decimal,
     exact_rr_ratio,
     exact_price_deviation_pct,
@@ -99,7 +99,7 @@ async def validate_and_apply_judge_adjustments(
             )
 
     try:
-        from analysis.calculators.daily_range_calculator import compute_daily_range_context
+        from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
         adr_ctx = await compute_daily_range_context(session, ana.symbol, settings)
         if 'error' not in adr_ctx:
             tol = adr_ctx.get('band_tolerance_pct', 0.10)

@@ -31,9 +31,9 @@ from typing import Optional, List
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import MarketChronicle, NewsItem, FundamentalBrief
-from analysis.providers.llm_factory import get_client_for_task
-import utils.clock as clock
+from monika.infrastructure.database.models import MarketChronicle, NewsItem, FundamentalBrief
+from monika.infrastructure.providers.llm_factory import get_client_for_task
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.ChronicleWriter")
 
@@ -449,7 +449,7 @@ class ChronicleWriter:
         self, session: AsyncSession, symbol: str, days_back: int = 30, limit: int = 6
     ) -> str:
         """Fetch ongoing and recent macro chronicles relevant to a specific currency pair/asset."""
-        from utils.protocol.context_coherence import get_base_quote_tags
+        from monika.application.protocol.context_coherence import get_base_quote_tags
         tags = get_base_quote_tags(symbol).split(',')
         currencies = [t.strip() for t in tags if t.strip()]
         currencies.append('MACRO')
@@ -524,7 +524,7 @@ class ChronicleWriter:
         currencies = []
         if symbol:
             try:
-                from utils.protocol.context_coherence import get_base_quote_tags
+                from monika.application.protocol.context_coherence import get_base_quote_tags
                 tags = get_base_quote_tags(symbol).split(',')
                 currencies = [t.strip().upper() for t in tags if t.strip()]
             except Exception:

@@ -16,8 +16,8 @@ from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
 from monika.application.analysis.tools.domain.position_handlers import PositionToolHandlers
 from monika.application.analysis.tools.domain.execution_handlers import ExecutionToolHandlers
-from database.models import ActivityLog, Position
-import utils.clock as clock
+from monika.infrastructure.database.models import ActivityLog, Position
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.Tools.PositionMgmt")
 
@@ -92,7 +92,7 @@ async def handle_calculate_position_size(
     # Fallback to current market price if entry price is not provided
     if entry_price <= 0:
         try:
-            from execution.mt5_client import get_mt5_client
+            from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
             client = get_mt5_client(settings or getattr(executor, "settings", {}))
             if client:
@@ -104,7 +104,7 @@ async def handle_calculate_position_size(
 
     # If stop loss is not provided, estimate based on 30 pips default
     if stop_loss <= 0 and entry_price > 0:
-        from risk.position_sizing import DEFAULT_INSTRUMENTS
+        from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
 
         spec = DEFAULT_INSTRUMENTS.get(clean_sym)
         pip_size = spec.pip_size if spec else (0.01 if "JPY" in clean_sym or "XAU" in clean_sym else 0.0001)

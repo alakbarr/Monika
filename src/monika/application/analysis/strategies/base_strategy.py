@@ -67,7 +67,7 @@ class EdgeStrategy(ABC):
         limit: int = 100,
     ) -> list[CandleDict]:
         """Built-in helper for quantitative strategies to retrieve historical OHLCV candles."""
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
         norm_tf = timeframe.upper()
         cache_key = (symbol, norm_tf)

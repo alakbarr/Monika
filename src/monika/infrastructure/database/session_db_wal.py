@@ -27,7 +27,7 @@ from typing import Any, ContextManager, Dict, Generator, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Database.SessionDbWal")
 
-from utils.infra.paths import DATA_DIR
+from monika.infrastructure.infra.paths import DATA_DIR
 
 DEFAULT_SESSION_DB_PATH = DATA_DIR / "session_db.sqlite"
 

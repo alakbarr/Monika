@@ -18,11 +18,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from database.db import get_session, transactional_advisory_lock
+from monika.infrastructure.database.db import get_session, transactional_advisory_lock
 from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
-from risk.position_sizing import PositionSizer, SizingResult
-from risk.risk_gate import RiskGate
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+from monika.domain.risk.risk_gate import RiskGate
 
 from monika.application.execution.service.order_executor import (
     ExecutionResult,
@@ -90,7 +90,7 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
             self.broker_adapter = MT5LiveAdapter(self.mt5, settings=self.settings, dry_run=self.dry_run, service=self)
 
         from monika.domain.execution.verification_engine import EvidenceFirstVerifier
-        from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+        from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
         from monika.application.execution.effect_gate import EffectGate
         from monika.infrastructure.brokers.idempotency_guard import get_idempotency_guard
 

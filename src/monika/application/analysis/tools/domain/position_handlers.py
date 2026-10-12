@@ -15,7 +15,7 @@ class PositionToolHandlers:
         self.settings = settings or {}
 
     async def get_open_positions(self, session: Optional[AsyncSession] = None, **kwargs) -> Any:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         positions = []
         try:
@@ -28,7 +28,7 @@ class PositionToolHandlers:
 
         if not positions and session:
             try:
-                from database.models import Position, PaperTradeRecord
+                from monika.infrastructure.database.models import Position, PaperTradeRecord
 
                 db_pos = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
                 if db_pos:
@@ -95,7 +95,7 @@ class PositionToolHandlers:
 
                 if not cur_p and session:
                     try:
-                        from database.models import PriceOHLCV
+                        from monika.infrastructure.database.models import PriceOHLCV
 
                         last_bar = (
                             await session.execute(
@@ -136,7 +136,7 @@ class PositionToolHandlers:
     async def get_pending_orders(
         self, symbol: Optional[str] = None, session: Optional[AsyncSession] = None, **kwargs
     ) -> Any:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         orders = []
         try:
@@ -149,7 +149,7 @@ class PositionToolHandlers:
         return orders
 
     async def get_account_info(self, session: Optional[AsyncSession] = None, **kwargs) -> Optional[Dict[str, Any]]:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         info = None
         try:
@@ -170,7 +170,7 @@ class PositionToolHandlers:
 
         if session:
             try:
-                from database.models import PaperTradeRecord
+                from monika.infrastructure.database.models import PaperTradeRecord
 
                 closed_pct = (
                     await session.execute(
@@ -211,6 +211,6 @@ class PositionToolHandlers:
         }
 
     async def get_risk_state(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from risk.risk_gate import get_current_risk_state
+        from monika.domain.risk.risk_gate import get_current_risk_state
 
         return await get_current_risk_state(session=session)

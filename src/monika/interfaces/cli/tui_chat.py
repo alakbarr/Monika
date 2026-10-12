@@ -382,7 +382,7 @@ class ChatScreen(Screen):
         transcript = self.query_one("#transcript", RichLog)
         try:
             if not self._local_agent:
-                from agent.chat_agent import ChatAgent
+                from monika.application.agent.chat_agent import ChatAgent
                 settings = load_settings()
                 self._local_agent = ChatAgent(settings=settings, user_id=self.session_id)
 
@@ -476,7 +476,7 @@ async def _submit_cli_decision(ws, local_agent, action_id: str, decision: str, c
         console.print(f"[bold {PHOSPHOR_AMBER}]Monika:[/] {msg.get('text', 'Decision processed.')}\n")
     else:
         if local_agent is None:
-            from agent.chat_agent import ChatAgent
+            from monika.application.agent.chat_agent import ChatAgent
             settings = load_settings()
             local_agent = ChatAgent(settings=settings, user_id="cli:repl_user")
         if decision == "allow_once":

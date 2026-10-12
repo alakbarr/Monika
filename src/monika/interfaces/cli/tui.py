@@ -696,8 +696,8 @@ class TradingDashboard(App):
         try:
             bench_table = self.query_one("#benchmark_table", DataTable)
             if self.standalone:
-                from benchmark.db_models import BenchmarkRun, BenchmarkResult
-                from database.db import get_session
+                from monika.application.benchmark.db_models import BenchmarkRun, BenchmarkResult
+                from monika.infrastructure.database.db import get_session
                 from sqlalchemy import select, desc
                 async with get_session() as session:
                     latest = (await session.execute(
@@ -898,8 +898,8 @@ class TradingDashboard(App):
 
         if not dispatched:
             try:
-                from database.db import get_session
-                from database.models import UserMarketIntel, ActivityLog as DBLog, _utcnow
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.models import UserMarketIntel, ActivityLog as DBLog, _utcnow
                 async with get_session() as session:
                     session.add(UserMarketIntel(
                         telegram_user_id="tui_operator",
@@ -998,8 +998,8 @@ class TradingDashboard(App):
 
     async def _fetch_data_from_db(self) -> Dict[str, Any]:
         """Query PostgreSQL directly for positions, configs, activity logs, and tokens."""
-        from database.db import get_session
-        from database.models import (
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import (
             Position,
             PaperTradeRecord,
             SystemConfig,
@@ -1160,7 +1160,7 @@ class TradingDashboard(App):
 
                 # 9. Deterministic Risk Gate Scorecard
                 try:
-                    from risk.risk_gate import RiskGate
+                    from monika.domain.risk.risk_gate import RiskGate
                     cfg = load_settings()
                     gate = RiskGate(cfg)
                     res_data["scorecard"] = await gate.get_current_scorecard(session)
@@ -1170,7 +1170,7 @@ class TradingDashboard(App):
 
                 # 10. Economic Calendar
                 try:
-                    from database.models import EconomicCalendar
+                    from monika.infrastructure.database.models import EconomicCalendar
                     from datetime import timedelta
                     now_utc = datetime.now(timezone.utc)
                     cal_q = select(EconomicCalendar).where(
@@ -1332,7 +1332,7 @@ class TradingDashboard(App):
 
         # Dynamic context window gauge (from ContextTracker)
         try:
-            from utils.llm.context_tracker import get_context_tracker
+            from monika.infrastructure.llm.context_tracker import get_context_tracker
             ctx_summary = tokens.get("context_tracker") or get_context_tracker().get_summary()
             if ctx_summary and ctx_summary.get("used_tokens", 0) > 0:
                 self._context_used = int(ctx_summary["used_tokens"])
@@ -1744,7 +1744,7 @@ class TradingDashboard(App):
             inline_log.write(f"[dim {MUTED}]Thinking...[/]")
 
             if self._inline_chat_agent is None:
-                from agent.chat_agent import ChatAgent
+                from monika.application.agent.chat_agent import ChatAgent
                 settings = getattr(self, "settings", None) or load_settings()
                 self._inline_chat_agent = ChatAgent(settings=settings, user_id="cli:tui_inline")
             reply_text, pending = await self._inline_chat_agent.handle(prompt)
@@ -1903,8 +1903,8 @@ class TradingDashboard(App):
                 activity_log.write(f"[red]Failed reading config: {e}[/]")
         elif cmd == "sessions":
             try:
-                from database.db import get_session
-                from database.models import TelegramConversation
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.models import TelegramConversation
                 from sqlalchemy import select, func, desc
 
                 async with get_session() as session:

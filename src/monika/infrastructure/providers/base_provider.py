@@ -420,7 +420,7 @@ class BaseLLMClient(ABC):
         self.symbol = kwargs.get('symbol', None)
         self.cycle_id = kwargs.get('cycle_id', None)
         self.thinking_budget: Optional[int] = kwargs.get('thinking_budget', None)
-        from analysis.providers.capabilities import get_model_capabilities
+        from monika.infrastructure.providers.capabilities import get_model_capabilities
         self.capabilities = get_model_capabilities(model)
 
     def set_thinking_budget(self, budget: int) -> None:
@@ -541,7 +541,7 @@ class BaseLLMClient(ABC):
                   "error": str|None, "context_messages": list|None,
                   "is_billing_error": bool|None}
         """
-        from analysis.harness.agent_harness import AgentHarness
+        from monika.application.analysis.harness.agent_harness import AgentHarness
         harness = AgentHarness(
             llm_client=self,
             settings=self.settings,
@@ -576,7 +576,7 @@ class BaseLLMClient(ABC):
                                        prefetch_satisfied_tools: Optional[set] = None,
                                        **kwargs) -> dict:
         """Continue agent from existing messages via AgentHarness."""
-        from analysis.harness.agent_harness import AgentHarness
+        from monika.application.analysis.harness.agent_harness import AgentHarness
         harness = AgentHarness(
             llm_client=self,
             settings=self.settings,
@@ -665,8 +665,8 @@ class BaseLLMClient(ABC):
     async def _log_tool_call(self, session, stage_name: str, tool_name: str, tool_input: dict, result: dict) -> None:
         """Save tool call audit trail to ActivityLog using isolated session."""
         try:
-            from database.models import ActivityLog
-            from database.db import get_session
+            from monika.infrastructure.database.models import ActivityLog
+            from monika.infrastructure.database.db import get_session
             from datetime import datetime, timezone
             actor_name = getattr(self, "role", getattr(self, "model", "llm"))
             entry = ActivityLog(
@@ -708,8 +708,8 @@ class BaseLLMClient(ABC):
         if input_tokens == 0 and output_tokens == 0:
             return
         try:
-            from database.models import TokenUsageLog
-            from database.db import get_session
+            from monika.infrastructure.database.models import TokenUsageLog
+            from monika.infrastructure.database.db import get_session
 
             resolved_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
             resolved_subsystem = subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
@@ -728,7 +728,7 @@ class BaseLLMClient(ABC):
                 cost_estimate = round(float(exact_cost), 6)
             else:
                 try:
-                    from utils.analytics.pricing import cost_usd
+                    from monika.core.analytics.pricing import cost_usd
                     kwargs_cost = {"cached_tokens": cached_tokens, "provider": provider_name}
                     if is_direct_free_tier is not None:
                         kwargs_cost["is_direct_free_tier"] = is_direct_free_tier
@@ -756,7 +756,7 @@ class BaseLLMClient(ABC):
                 pass
 
             try:
-                from utils.llm.cycle_budget_guard import get_cycle_budget_guard
+                from monika.infrastructure.llm.cycle_budget_guard import get_cycle_budget_guard
                 guard = get_cycle_budget_guard(self.settings)
                 guard.record(
                     input_tokens=input_tokens,
@@ -769,7 +769,7 @@ class BaseLLMClient(ABC):
                 pass
 
             try:
-                from utils.llm.context_tracker import get_context_tracker
+                from monika.infrastructure.llm.context_tracker import get_context_tracker
                 tracker = get_context_tracker()
                 tracker.record_usage(
                     input_tokens=input_tokens,
@@ -784,8 +784,8 @@ class BaseLLMClient(ABC):
             # Tracing Integration: Record an 'llm' span in the active distributed trace
             if not kwargs.get("from_agent_harness", False):
                 try:
-                    from logging_observability.tracing.context import get_current_trace_id, get_current_span_id
-                    from logging_observability.tracing.tracer import get_tracer
+                    from monika.core.telemetry.tracing.context import get_current_trace_id, get_current_span_id
+                    from monika.core.telemetry.tracing.tracer import get_tracer
                     current_trace = get_current_trace_id()
                     current_parent_span = get_current_span_id()
                     if current_trace:
@@ -890,7 +890,7 @@ async def _flush_token_usage_worker():
                     break
 
             if batch:
-                from database.db import get_session
+                from monika.infrastructure.database.db import get_session
                 async with get_session() as s:
                     s.add_all(batch)
                     await s.commit()

@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.retry_decorator import retryable
+from monika.core.primitives.retry import retryable
 
 logger = logging.getLogger("TradingAgent.SentimentHandlers")
 
@@ -24,10 +24,10 @@ class SentimentToolHandlers:
     ) -> Dict[str, Any]:
         if session:
             try:
-                from database.models import NewsItem
+                from monika.infrastructure.database.models import NewsItem
                 from sqlalchemy import select, or_
                 from datetime import timedelta
-                import utils.clock as clock
+                import monika.core.primitives.clock as clock
 
                 hours_back = kwargs.get("hours_back", 24)
                 since = clock.now() - timedelta(hours=hours_back)
@@ -57,7 +57,7 @@ class SentimentToolHandlers:
     async def get_fear_greed(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
         if session:
             try:
-                from data_sources.fear_greed import FearGreedFetcher
+                from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
 
                 fetcher = FearGreedFetcher(session)
                 return await _fetch_with_retry(fetcher)
@@ -77,8 +77,8 @@ class SentimentToolHandlers:
             try:
                 import json
                 from datetime import datetime, timezone
-                import utils.clock as clock
-                from database.models import SystemConfig
+                import monika.core.primitives.clock as clock
+                from monika.infrastructure.database.models import SystemConfig
                 from sqlalchemy import select
 
                 cache_keys = [
@@ -115,19 +115,19 @@ class SentimentToolHandlers:
             # 2. Live fetch fallback if cache missing/stale
             try:
                 if target_symbol.startswith("BTC") or target_symbol.startswith("ETH"):
-                    from scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.binance_sentiment import BinanceSentimentFetcher
 
                     fetcher = BinanceSentimentFetcher(session)
                     return await _fetch_with_retry(fetcher)
                 else:
-                    from scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.myfxbook_sentiment import MyFxBookSentimentFetcher
 
                     fetcher = MyFxBookSentimentFetcher(session)
                     res = await _fetch_with_retry(fetcher)
                     if isinstance(res, dict) and "error" not in res and bool(res):
                         return res
                     # Graceful fallback to FXSSI if MyFxBook is blocked or unavailable
-                    from scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
+                    from monika.infrastructure.data_ingestion.scrapers.sentiment.fxssi_sentiment import FXSSISentimentFetcher
 
                     fxssi_fetcher = FXSSISentimentFetcher(session)
                     return await _fetch_with_retry(fxssi_fetcher)
@@ -139,7 +139,7 @@ class SentimentToolHandlers:
         self, symbol: str = "BTCUSD", session: Optional[AsyncSession] = None, **kwargs
     ) -> Dict[str, Any]:
         from unittest.mock import Mock
-        from utils.api.http_retry import fetch_with_retry
+        from monika.infrastructure.api.http_retry import fetch_with_retry
 
         if isinstance(fetch_with_retry, Mock):
             data = await fetch_with_retry(

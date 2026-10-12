@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from typing import List, Any, Optional
 
-from scrapers.base_scraper import BaseScraper
-from scrapers.models import CalendarEvent
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logger = logging.getLogger("TradingAgent.InvestingScraper")
 
@@ -306,7 +306,7 @@ class InvestingCalendarScraper(BaseScraper):
             try:
                 from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
             except ImportError:
-                from scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
+                from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import ForexFactoryCalendarScraper
             ff = ForexFactoryCalendarScraper(headless=True)
             events = ff.fetch_feed_events()
             if events:

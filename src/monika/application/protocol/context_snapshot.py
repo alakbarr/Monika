@@ -19,7 +19,7 @@ async def compute_context_snapshot_id(session: AsyncSession) -> tuple[str, dict]
     Returns:
         (snapshot_id: str, snapshot_metadata: dict)
     """
-    from database.models import FundamentalBrief, VIXData, DXYData
+    from monika.infrastructure.database.models import FundamentalBrief, VIXData, DXYData
     
     components = {}
     
@@ -81,7 +81,7 @@ async def detect_context_version_split(session: AsyncSession, cycle_start: datet
     Returns:
         Warning message jika ditemukan split, None jika konsisten.
     """
-    from database.models import AssetAnalysis
+    from monika.infrastructure.database.models import AssetAnalysis
     
     # Ambil semua analisis dari siklus ini
     analyses = (await session.execute(

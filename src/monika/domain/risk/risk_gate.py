@@ -30,8 +30,8 @@ from typing import Optional, Any, List, Tuple, Dict
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import utils.clock as clock
-from database.models import (
+import monika.core.primitives.clock as clock
+from monika.infrastructure.database.models import (
     Position, RiskState, EconomicCalendar, OrderLog, TradeOutcome, PaperTradeRecord, AssetAnalysis, SystemConfig,
     Order, OrderStatus
 )
@@ -42,7 +42,7 @@ logger = logging.getLogger("TradingAgent.RiskGate")
 
 
 # Simpler: track per base-currency exposure
-from utils.market.currency_utils import SYMBOL_CURRENCIES, get_symbol_currencies
+from monika.domain.market.currency_utils import SYMBOL_CURRENCIES, get_symbol_currencies
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ def get_trading_day_start(settings: dict, now: Optional[datetime] = None) -> dat
     Default: 21:00 UTC (17:00 New York / NY Close), aware terhadap Daylight Saving Time.
     """
     if now is None:
-        from utils.clock import now as get_clock_now
+        from monika.core.primitives.clock import now as get_clock_now
         now = get_clock_now()
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -225,7 +225,7 @@ class RiskGate:
         effective_is_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
 
         try:
-            from utils.plugins.manager import get_plugin_manager, PluginHook
+            from monika.application.plugins.manager.manager import get_plugin_manager, PluginHook
             await get_plugin_manager().emit(
                 PluginHook.PRE_RISK_GATE,
                 symbol=symbol,
@@ -321,7 +321,7 @@ class RiskGate:
         if not is_backtest:
             await self._log_verdict(session, symbol, direction, sizing, verdict)
             try:
-                from database.event_store import TradingEventStore
+                from monika.infrastructure.database.event_store import TradingEventStore
                 await TradingEventStore.emit(
                     session=session,
                     event_type="risk.verdict",
@@ -341,7 +341,7 @@ class RiskGate:
                 logger.debug(f"Event store emit risk.verdict failed: {e}")
 
             try:
-                from logging_observability.metrics_exporter import metrics
+                from monika.core.telemetry.metrics_exporter import metrics
                 if approved:
                     metrics.inc_counter("risk_checks_approved_total", 1.0, labels={"symbol": symbol})
                 else:
@@ -478,7 +478,7 @@ class RiskGate:
         if not session:
             return None
         try:
-            from database.models import RiskState
+            from monika.infrastructure.database.models import RiskState
             from sqlalchemy import select, desc
             stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
             return (await session.execute(stmt)).scalar_one_or_none()
@@ -496,7 +496,7 @@ class RiskGate:
         if is_backtest:
             return True, "backtest_freshness_ok"
         try:
-            from utils.validation.data_validator import validate_data_freshness
+            from monika.core.validation.data_validator import validate_data_freshness
             tfs = self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"]) if isinstance(self.settings, dict) else ["M15", "H1", "H4", "D1"]
             freshness = await validate_data_freshness(session, [symbol], tfs)
             if not freshness.get('ready', True):
@@ -516,7 +516,7 @@ class RiskGate:
             return True, "TimesFM expectancy gate disabled"
 
         try:
-            from indicators.timesfm_engine import TimesFMEngine
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
             engine = TimesFMEngine(self.settings)
             fc = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
             if not fc or "quantiles" not in fc:
@@ -591,7 +591,7 @@ class RiskGate:
         min_confluence = self.settings.get('trading', {}).get('auto_execute_min_confluence', 7)
         if session and getattr(analysis, 'symbol', None):
             try:
-                from analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+                from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
                 policy = AdaptiveRiskPolicy(self.settings)
                 eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
                 min_confluence = eff_thresh
@@ -622,7 +622,7 @@ class RiskGate:
         if not strat_id and not factor_family:
             return True, "factor_exposure_na"
 
-        from analysis.strategies.registry import StrategyRegistry
+        from monika.application.analysis.strategies.registry import StrategyRegistry
         if not factor_family:
             strat_cls = StrategyRegistry.get_strategy(strat_id) if strat_id else None
             factor_family = getattr(strat_cls, "factor_family", "trend") if strat_cls else "trend"
@@ -714,7 +714,7 @@ class RiskGate:
                 return (True, f"consecutive_losses_paper_ok({consecutive_losses}/{max_consecutive})")
 
         # Mode strict / Live Trading:
-        from utils.analytics.paper_tracker import PaperTracker
+        from monika.core.analytics.paper_tracker import PaperTracker
         suspended = await PaperTracker(self.settings).get_suspended_symbols(session)
         if symbol in suspended:
             return (False, f'{symbol} is suspended due to consecutive losses')
@@ -731,7 +731,7 @@ class RiskGate:
         """Periksa bahwa trading belum di-pause manual."""
         if is_backtest:
             return (True, "ok")
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         # Check persistent SystemConfig manual pause & emergency kill switch (persists across midnight rollover)
         pause_configs = (await session.execute(
             select(SystemConfig).where(SystemConfig.key.in_(['manual_trading_paused', 'system_paused', 'kill_switch', 'system_kill_switch']))
@@ -790,7 +790,7 @@ class RiskGate:
         today_end = today_start + timedelta(days=1)
         # Count from positions opened today (separating live vs paper positions)
         # to ensure paper simulation trades do not exhaust live quota limits.
-        from database.models import Position, PaperTradeRecord
+        from monika.infrastructure.database.models import Position, PaperTradeRecord
         
         # Hitung posisi live yang dibuka hari ini
         live_today = (await session.execute(
@@ -868,7 +868,7 @@ class RiskGate:
             return True, "backtest_spread_ok"
         effective_paper = is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
         try:
-            from execution.mt5_client import get_mt5_client
+            from monika.infrastructure.brokers.mt5_client import get_mt5_client
             client = getattr(self, "_mt5", None)
             if client is None:
                 try:
@@ -903,7 +903,7 @@ class RiskGate:
     ) -> tuple[bool, str]:
         if is_backtest:
             return True, "weekly_drawdown_backtest_ok"
-        from database.models import PaperTradeRecord, TradeOutcome
+        from monika.infrastructure.database.models import PaperTradeRecord, TradeOutcome
         from datetime import timedelta
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -988,7 +988,7 @@ class RiskGate:
                 logger.debug(f"Failed to fetch MT5 positions for unrealized PnL: {e}")
         elif is_dry:
             try:
-                from database.models import PaperTradeRecord, PriceOHLCV
+                from monika.infrastructure.database.models import PaperTradeRecord, PriceOHLCV
                 open_papers = (await session.execute(
                     select(PaperTradeRecord)
                     .where(PaperTradeRecord.status == 'open')
@@ -1150,7 +1150,7 @@ class RiskGate:
         """Block new positions when VIX exceeds the configured pause threshold."""
         if is_backtest:
             return True, "vix_threshold_backtest_ok"
-        from database.models import VIXData
+        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select
         
         risk_cfg = self.settings.get("trading", {}).get("risk", {})
@@ -1344,7 +1344,7 @@ class RiskGate:
 
         # Check user-defined blacklisted events from UserPreference
         try:
-            from database.models import UserPreference
+            from monika.infrastructure.database.models import UserPreference
             pref_stmt = select(UserPreference).where(
                 UserPreference.is_active == True,
                 (UserPreference.category == "event_blacklist") | (UserPreference.key == "event_blacklist")
@@ -1508,9 +1508,9 @@ class RiskGate:
         self, session: AsyncSession, symbol1: str, symbol2: str, as_of: Optional[datetime] = None
     ) -> tuple[float, float]:
         """Hitung korelasi harian secara dinamis berdasar PriceOHLCV, return (corr, std_dev2)."""
-        from utils.market.dynamic_correlation import get_rolling_correlation
+        from monika.domain.market.dynamic_correlation import get_rolling_correlation
         import pandas as pd
-        from database.models import PriceOHLCV
+        from monika.infrastructure.database.models import PriceOHLCV
         from sqlalchemy import select
         
         sim_time = as_of or clock.now()
@@ -1646,7 +1646,7 @@ class RiskGate:
         sizing: SizingResult, verdict: RiskVerdict
     ) -> None:
         """Catat keputusan risk gate ke tabel orders_log."""
-        from database.models import OrderLog
+        from monika.infrastructure.database.models import OrderLog
         import json
 
         record = OrderLog(
@@ -1718,7 +1718,7 @@ class RiskGate:
             logger.warning(f"TRADING AUTO-PAUSED: {state.reason}")
             
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 notifier = AgentNotifier()
                 await notifier.send_critical(f"[STOP] <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
             except Exception as e:
@@ -1735,7 +1735,7 @@ class RiskGate:
         self, session: AsyncSession, reason: str, duration_hours: Optional[float] = None
     ) -> None:
         """Pause sistem trading secara manual dengan opsi durasi auto-unpause."""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         from datetime import timedelta
         today_start = get_trading_day_start(self.settings)
         state = (await session.execute(
@@ -1773,7 +1773,7 @@ class RiskGate:
     async def _check_edge_status_not_paused(self, session: AsyncSession, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:
             return (True, 'ok')
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == 'trading_paused')
         )).scalar_one_or_none()
@@ -1783,7 +1783,7 @@ class RiskGate:
         return (True, 'ok')
 
     async def clear_edge_status_pause(self, session: AsyncSession) -> None:
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         cfg = (await session.execute(
             select(SystemConfig).where(SystemConfig.key == 'trading_paused')
         )).scalar_one_or_none()
@@ -1793,7 +1793,7 @@ class RiskGate:
 
     async def resume_trading(self, session: AsyncSession) -> None:
         """Lanjutkan (resume) trading secara manual."""
-        from database.models import SystemConfig
+        from monika.infrastructure.database.models import SystemConfig
         today_start = get_trading_day_start(self.settings)
         state = (await session.execute(
             select(RiskState).where(RiskState.date >= today_start).limit(1)
@@ -1815,7 +1815,7 @@ class RiskGate:
         
         # Bersihkan juga suspended symbols saat resume trading dipanggil
         try:
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.core.analytics.paper_tracker import PaperTracker
             await PaperTracker(self.settings).unsuspend_all(session)
         except Exception as e:
             logger.debug(f"Failed to clear suspended symbols on resume: {e}")
@@ -1839,7 +1839,7 @@ class RiskGate:
         since = now - timedelta(hours=cooldown_hours)
         
         # Check for recent SL hits on this symbol
-        from database.models import TradeOutcome
+        from monika.infrastructure.database.models import TradeOutcome
         recent_sl = (await session.execute(
             select(TradeOutcome)
             .where(TradeOutcome.symbol == symbol)
@@ -1883,10 +1883,10 @@ class RiskGate:
         if is_backtest:
             return True, "schmitt_regime_backtest_exempt"
         try:
-            from indicators.regime_detector import get_schmitt_regime_detector, RegimeState
+            from monika.domain.indicators.regime_detector import get_schmitt_regime_detector, RegimeState
             detector = get_schmitt_regime_detector()
             if detector.state == RegimeState.FUSED:
-                from database.models import Position
+                from monika.infrastructure.database.models import Position
                 open_count = (await session.execute(
                     select(func.count(Position.id)).where(Position.status == "open")
                 )).scalar_one_or_none() or 0
@@ -1909,11 +1909,11 @@ class RiskGate:
         if is_backtest and as_of is None:
             return True, "vpin_check_backtest_exempt"
         try:
-            from indicators.microstructure import VPIN_SYMBOLS
+            from monika.domain.indicators.microstructure import VPIN_SYMBOLS
             if symbol.upper() not in VPIN_SYMBOLS:
                 return True, f"{symbol} exempt from VPIN check"
 
-            from database.models import TechnicalIndicator
+            from monika.infrastructure.database.models import TechnicalIndicator
             stmt = (
                 select(TechnicalIndicator)
                 .where(TechnicalIndicator.symbol == symbol)
@@ -1957,7 +1957,7 @@ class RiskGate:
                 return False, f"Illiquid rollover window (21:55-22:15 UTC): lots={sizing.recommended_lots} exceeds 0.5 lot ceiling"
 
         try:
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.models import PriceOHLCV
             cutoff = now - timedelta(days=30)
             stmt = (
                 select(PriceOHLCV.volume)
@@ -2003,8 +2003,8 @@ class RiskGate:
             if not active_symbols:
                 return True, "No concurrent portfolio positions for tail dependency"
 
-            from database.models import PriceOHLCV
-            from analysis.calculators.copula_tail_risk import fit_clayton_copula
+            from monika.infrastructure.database.models import PriceOHLCV
+            from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
             import numpy as np
 
             now = as_of or clock.now()
@@ -2064,7 +2064,7 @@ class RiskGate:
             return True, "Evidence gate skipped for backtest or missing analysis"
 
         try:
-            from analysis.strategies.evidence_store import EvidenceStore
+            from monika.application.analysis.strategies.evidence_store import EvidenceStore
             strat_id = getattr(analysis, "strategy_id", None) or "general"
             regime = getattr(analysis, "market_regime", "UNKNOWN") or "UNKNOWN"
 
@@ -2099,7 +2099,7 @@ class RiskGate:
         open_count = len(simulated_positions) if simulated_positions is not None else 0
         if simulated_positions is None and session:
             try:
-                from database.models import Position
+                from monika.infrastructure.database.models import Position
                 from sqlalchemy import select, func
                 stmt = select(func.count(Position.id)).where(Position.status == "open")
                 res = await session.execute(stmt)
@@ -2212,7 +2212,7 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
         try:
-            from database.db import get_session
+            from monika.infrastructure.database.db import get_session
             async with get_session() as sess:
                 return await get_current_risk_state(session=sess, settings=settings)
         except Exception:
@@ -2245,7 +2245,7 @@ async def get_current_risk_state(session: Optional[AsyncSession] = None, setting
     # Fetch live equity from MT5 or fallback to paper trading initial balance
     live_equity = 0.0
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
         client = get_mt5_client(settings)
         if client:
             acc = await client.get_account_info()

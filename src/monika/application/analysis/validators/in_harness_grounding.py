@@ -243,7 +243,7 @@ class InHarnessGroundingValidator:
         # 6. Working Scratchpad Cross-Verification
         if symbol:
             try:
-                from analysis.memory.working_scratchpad import WorkingScratchpad
+                from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
                 sp = WorkingScratchpad.read_scratchpad(symbol)
                 if sp and sp.get("bias") and sp.get("bias") != "NEUTRAL":
                     sp_bias = sp.get("bias")

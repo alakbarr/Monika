@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import EconomicReportDecomposition, TreasuryYield, InterestRate
-from scrapers.macro.macro_trigger_router import MacroTriggerRouter
-from utils import clock
+from monika.infrastructure.database.models import EconomicReportDecomposition, TreasuryYield, InterestRate
+from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
+from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.UniversalMacroAnalyzer")
 

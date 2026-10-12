@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import ContextSpillBlob
+from monika.infrastructure.database.models import ContextSpillBlob
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
 from monika.application.analysis.tools.unified_registry import unified_tool_registry

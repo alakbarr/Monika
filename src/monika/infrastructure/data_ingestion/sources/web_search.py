@@ -26,7 +26,7 @@ from urllib.parse import quote_plus, unquote
 import aiohttp
 from bs4 import BeautifulSoup
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.WebSearch")
 

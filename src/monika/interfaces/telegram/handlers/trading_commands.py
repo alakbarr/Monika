@@ -39,8 +39,8 @@ async def execute_trading_command(
     broker_adapter: Any = None,
 ) -> Dict[str, Any]:
     """Execute trading operational command through TradingService and PortfolioService."""
-    from services.trading_service import TradingService
-    from services.portfolio_service import PortfolioService
+    from monika.application.services.trading_service import TradingService
+    from monika.application.services.portfolio_service import PortfolioService
 
     cmd = command.lower().strip()
     if cmd in ("kill", "emergency"):

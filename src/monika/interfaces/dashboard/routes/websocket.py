@@ -22,7 +22,7 @@ from monika.interfaces.dashboard.routes.common import (
     get_current_stream_seq,
     get_buffered_events_since,
 )
-from utils.streaming.stream_scrubber import StatefulStreamScrubber
+from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.WebSocket")
 
@@ -174,7 +174,7 @@ async def websocket_live_feed(websocket: WebSocket):
                 pass
 
         try:
-            from risk.approval_hub import ApprovalHub
+            from monika.domain.risk.approval_hub import ApprovalHub
             open_reqs = ApprovalHub.get_instance().get_open_requests()
             if open_reqs:
                 await queue.put({
@@ -211,7 +211,7 @@ async def websocket_live_feed(websocket: WebSocket):
                         text = msg.get("message") or (msg.get("payload", {}).get("message") if isinstance(msg.get("payload"), dict) else None)
                         symbol = msg.get("symbol") or "ALL"
                         if text:
-                            from risk.approval_hub import ApprovalHub
+                            from monika.domain.risk.approval_hub import ApprovalHub
                             operator_tag = f"ws:{role.value if role else 'client'}"
                             steer_res = await ApprovalHub.get_instance().steer(symbol, str(text), operator=operator_tag)
                             await queue.put({"type": "steer_acknowledged", **steer_res})
@@ -221,7 +221,7 @@ async def websocket_live_feed(websocket: WebSocket):
                             continue
                         req_id = msg.get("request_id") or msg.get("action_id")
                         operator_tag = f"ws:{role.value if role else 'client'}"
-                        from risk.approval_hub import ApprovalHub
+                        from monika.domain.risk.approval_hub import ApprovalHub
                         ok, res_str = await ApprovalHub.get_instance().approve(str(req_id), operator=operator_tag)
                         await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
                     elif msg.get("type") in ("reject", "approval_reject"):
@@ -231,7 +231,7 @@ async def websocket_live_feed(websocket: WebSocket):
                         req_id = msg.get("request_id") or msg.get("action_id")
                         reason = msg.get("reason", "")
                         operator_tag = f"ws:{role.value if role else 'client'}"
-                        from risk.approval_hub import ApprovalHub
+                        from monika.domain.risk.approval_hub import ApprovalHub
                         ok, res_str = await ApprovalHub.get_instance().reject(str(req_id), operator=operator_tag, reason=reason)
                         await queue.put({"type": "approval_result", "request_id": req_id, "success": ok, "message": res_str})
                 except Exception:
@@ -414,7 +414,7 @@ async def websocket_agent_chat(websocket: WebSocket):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
     try:
-        from risk.approval_hub import ApprovalHub
+        from monika.domain.risk.approval_hub import ApprovalHub
         open_reqs = ApprovalHub.get_instance().get_open_requests()
         if open_reqs:
             await websocket.send_json({
@@ -427,7 +427,7 @@ async def websocket_agent_chat(websocket: WebSocket):
     from monika.core.config.settings import load_settings
     raw_settings = get_dashboard_dependency("settings") or load_settings()
     settings: dict = dict(raw_settings) if isinstance(raw_settings, dict) else raw_settings.model_dump()
-    from agent.chat_agent import ChatAgent
+    from monika.application.agent.chat_agent import ChatAgent
     agent = ChatAgent(settings=settings, user_id=session_id, is_admin=(role == Role.ADMIN))
 
     tools_used: list[str] = []
@@ -505,7 +505,7 @@ async def websocket_agent_chat(websocket: WebSocket):
                 operator_tag = f"ws:{role.value if role else 'client'}"
 
                 try:
-                    from risk.approval_hub import ApprovalHub
+                    from monika.domain.risk.approval_hub import ApprovalHub
                     if decision in ("allow_once", "allow_session"):
                         await ApprovalHub.get_instance().approve(action_id, operator=operator_tag)
                     elif decision in ("deny", "reject"):
@@ -667,8 +667,8 @@ async def list_sessions(
     limit: int = Query(default=50, ge=1, le=200),
 ):
     """List conversation sessions with message counts, activity times, and preview."""
-    from database.db import AsyncSessionLocal
-    from database.models import TelegramConversation
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import TelegramConversation
     from sqlalchemy import select, func, desc
 
     async with AsyncSessionLocal() as session:
@@ -721,8 +721,8 @@ async def get_session_messages(
     limit: int = Query(default=100, ge=1, le=500),
 ):
     """Retrieve conversation transcript for a given session."""
-    from database.db import AsyncSessionLocal
-    from database.models import TelegramConversation
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import TelegramConversation
     from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:

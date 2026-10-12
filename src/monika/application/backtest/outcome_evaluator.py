@@ -85,7 +85,7 @@ class OutcomeEvaluator:
         """
         from monika.infrastructure.database.models import PaperTradeRecord
         from sqlalchemy import select
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         
         now = as_of if as_of is not None else clock.now()
         since = now - timedelta(days=lookback_days)
@@ -304,7 +304,7 @@ class OutcomeEvaluator:
         # Apply holding swap costs based on calculated lot size
         if apply_costs:
             try:
-                from utils.market.swap_estimator import estimate_swap_cost
+                from monika.domain.market.swap_estimator import estimate_swap_cost
                 holding_hours = max(1.0, (outcome["exit_time"] - trade_entry_time).total_seconds() / 3600.0)
                 lots = getattr(trade, "executed_lots", None) or 0.1
                 swap = await estimate_swap_cost(trade.symbol, trade.direction, lots, holding_hours, start_time=trade_entry_time)

@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
+from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, SystemConfig
 
 logger = logging.getLogger('TradingAgent.AgentPerformanceMonitor')
 
@@ -14,7 +14,7 @@ async def compute_agent_accuracy_report(session: AsyncSession, days_back: int = 
     since = datetime.now(timezone.utc) - timedelta(days=days_back)
     
     # Stage 1 accuracy: Did currency bias align with subsequent price movement?
-    from database.models import FundamentalBrief, PriceOHLCV
+    from monika.infrastructure.database.models import FundamentalBrief, PriceOHLCV
     
     briefs = (await session.execute(
         select(FundamentalBrief)
@@ -90,7 +90,7 @@ async def compute_agent_accuracy_report(session: AsyncSession, days_back: int = 
                 if invert:
                     price_moved_up = not price_moved_up
                 
-                from utils.market.bias_utils import normalize_bias
+                from monika.domain.market.bias_utils import normalize_bias
                 brief_was_bullish = normalize_bias(bias) == 'bullish'
                 is_correct = (brief_was_bullish == price_moved_up)
                 
@@ -158,7 +158,7 @@ async def compute_dynamic_escalation_threshold(session: AsyncSession, base_limit
     Compute dynamic Opus escalation budget/limit.
     Increases limit if VIX is high (complex market) or recent accuracy is poor.
     """
-    from database.models import VIXData
+    from monika.infrastructure.database.models import VIXData
     
     escalation_limit = base_limit
     

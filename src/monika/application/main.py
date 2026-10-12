@@ -64,23 +64,23 @@ from datetime import datetime, timezone, timedelta
 
 # Arm startup watchdog early before heavy application imports (skipped in test runner)
 if "pytest" not in sys.modules and "PYTEST_CURRENT_TEST" not in os.environ:
-    from agent.monitors.startup_watchdog import arm_startup_watchdog
+    from monika.application.agent.monitors.startup_watchdog import arm_startup_watchdog
     arm_startup_watchdog(timeout_s=180.0)
 from typing import Callable, Optional, Any, TYPE_CHECKING
 
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 if TYPE_CHECKING:
-    from execution.mt5_client import MT5Client
-    from execution.execution_service import ExecutionService
-    from execution.ea_bridge.heartbeat_writer import HeartbeatManager
-    from execution.ea_bridge.watchdog import EAWatchdog
+    from monika.infrastructure.brokers.mt5_client import MT5Client
+    from monika.application.execution.execution_service import ExecutionService
+    from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
+    from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
     from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
     from monika.application.scheduler.news_watcher import NewsWatcher
     from monika.application.scheduler.trigger_checker import TriggerChecker
-    from telegram_bot.bot import TelegramBot
-    from analysis.stages.fundamental_stage import FundamentalStage
-    from analysis.stages.per_asset_stage import PerAssetStage
+    from monika.interfaces.telegram.bot import TelegramBot
+    from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+    from monika.application.analysis.stages.per_asset_stage import PerAssetStage
     from monika.application.scheduler.position_guardian import PositionGuardian
     from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
     from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
@@ -95,7 +95,7 @@ if TYPE_CHECKING:
     from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
     from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
     from monika.application.scheduler.position_supervisor import PositionSupervisor
-    from utils.infra.notifier import AgentNotifier
+    from monika.infrastructure.infra.notifier import AgentNotifier
 
 from dotenv import load_dotenv
 
@@ -125,7 +125,7 @@ install_bootstrap_hardening()
 # ---------------------------------------------------------------------------
 # Bootstrap logging immediately (before any other import)
 # ---------------------------------------------------------------------------
-from logging_observability.activity_logger import setup_logging
+from monika.core.telemetry.activity_logger import setup_logging
 setup_logging(log_dir="logs", level=logging.INFO)
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -134,7 +134,7 @@ logger = logging.getLogger("TradingAgent.Main")
 # ---------------------------------------------------------------------------
 from monika.core.config.settings import load_settings, load_all_config
 from monika.infrastructure.database.db import init_db, close_db
-from logging_observability.activity_logger import ActivityLogger
+from monika.core.telemetry.activity_logger import ActivityLogger
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -149,7 +149,7 @@ BANNER = r"""
 # ---------------------------------------------------------------------------
 # Health Checks (Delegated to agent.startup_checks)
 # ---------------------------------------------------------------------------
-from agent.startup_checks import StartupChecker, run_startup_checks as _delegate_startup_checks
+from monika.application.agent.startup_checks import StartupChecker, run_startup_checks as _delegate_startup_checks
 
 async def run_startup_checks(settings: dict) -> bool:
     """
@@ -316,27 +316,27 @@ class TradingAgent:
 
     def _init_components(self):
         """Instantiate all components with their dependencies."""
-        from agent.task_registry import TaskRegistry
+        from monika.application.agent.task_registry import TaskRegistry
         self.task_registry = TaskRegistry(self.shutdown_event)
-        from execution.mt5_client import MT5Client
-        from execution.execution_service import ExecutionService
-        from execution.ea_bridge.heartbeat_writer import HeartbeatManager
+        from monika.infrastructure.brokers.mt5_client import MT5Client
+        from monika.application.execution.execution_service import ExecutionService
+        from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
         from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
         from monika.application.scheduler.news_watcher import NewsWatcher
         from monika.application.scheduler.trigger_checker import TriggerChecker
-        from telegram_bot.bot import TelegramBot
-        from analysis.stages.fundamental_stage import FundamentalStage
-        from analysis.stages.per_asset_stage import PerAssetStage
+        from monika.interfaces.telegram.bot import TelegramBot
+        from monika.application.analysis.stages.fundamental_stage import FundamentalStage
+        from monika.application.analysis.stages.per_asset_stage import PerAssetStage
         from monika.application.scheduler.position_guardian import PositionGuardian
         from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
         from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
         from monika.application.scheduler.market_data_scheduler import MarketDataScheduler
         from monika.application.scheduler.macro_data_scheduler import MacroDataScheduler
-        from utils.protocol.event_bus import get_event_bus
+        from monika.application.protocol.event_bus import get_event_bus
 
         self.event_bus = get_event_bus()
         self.mt5_client = MT5Client(settings=self.settings)
-        from execution.health_check import FlakeTolerantHealthChecker
+        from monika.application.execution.health_check import FlakeTolerantHealthChecker
         self.mt5_health_checker = FlakeTolerantHealthChecker(self.mt5_client, ttl_seconds=30.0, grace_seconds=60.0)
         self.market_data_scheduler = MarketDataScheduler(self.settings, mt5_client=self.mt5_client, event_bus=self.event_bus)
         self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=self._recovery_complete)
@@ -345,7 +345,7 @@ class TradingAgent:
         adapter_type = exec_cfg.get("adapter_type", "live")
         broker_adapter = None
         if adapter_type == "remote_gateway":
-            from execution.broker_adapter import MT5RemoteGatewayAdapter
+            from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
             gateway_url = (
                 exec_cfg.get("remote_gateway_url")
                 or exec_cfg.get("gateway_url")
@@ -442,7 +442,7 @@ class TradingAgent:
         # Wire ActivityLogger to key components
         self.cycle_scheduler._activity_log = self._activity_log
 
-        from agent.turn_lease_manager import SymbolTurnLeaseManager
+        from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager
         self.turn_lease_manager = SymbolTurnLeaseManager.get_instance()
         
         self.news_watcher = NewsWatcher(
@@ -484,7 +484,7 @@ class TradingAgent:
         self.telegram_bot._activity_log = self._activity_log
         self.telegram_bot.task_registry = self.task_registry
 
-        from utils.infra.notifier import AgentNotifier
+        from monika.infrastructure.infra.notifier import AgentNotifier
         self.notifier = AgentNotifier()
 
         from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
@@ -499,7 +499,7 @@ class TradingAgent:
             self.execution_service.risk_gate.flash_crash_detector = self.flash_crash_detector
 
         # Hot-Reload Risk Parameters (M-4)
-        from config.hot_reload import RiskParameterReloader
+        from monika.core.config.hot_reload import RiskParameterReloader
         settings_yaml_path = os.path.join(os.path.dirname(__file__), "config", "settings.yaml")
         rg = getattr(self.execution_service, "risk_gate", None)
         if rg:
@@ -513,7 +513,7 @@ class TradingAgent:
             self.risk_parameter_reloader = None
 
         # Universal ConfigManager Pub/Sub Subscriptions
-        from config.config_manager import ConfigManager
+        from monika.core.config.config_manager import ConfigManager
         self.config_manager = ConfigManager.get_instance()
 
         def _on_config_risk_update(payload: dict):
@@ -551,7 +551,7 @@ class TradingAgent:
 
         # Wire EventBus subscribers for sub-second reactive protection & live observability
         if self.event_bus:
-            from utils.protocol.event_bus import TickPriceEvent, OrderStateChangedEvent
+            from monika.application.protocol.event_bus import TickPriceEvent, OrderStateChangedEvent
             if self.flash_crash_detector and hasattr(self.flash_crash_detector, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.flash_crash_detector.on_tick, priority=10)
             if self.position_guardian and hasattr(self.position_guardian, "on_tick"):
@@ -561,7 +561,7 @@ class TradingAgent:
 
             # Observability live feed forwarder to dashboard WebSockets
             try:
-                from logging_observability.dashboard.api import broadcast_live_event
+                from monika.interfaces.dashboard.api import broadcast_live_event
 
                 async def _on_live_tick(evt: TickPriceEvent):
                     await broadcast_live_event("tick", {
@@ -588,7 +588,7 @@ class TradingAgent:
             except Exception as ws_err:
                 logger.debug(f"Dashboard WebSocket EventBus subscriber wiring note: {ws_err}")
 
-            from utils.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
+            from monika.application.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
             async def _on_circuit_breaker(evt: CircuitBreakerEvent):
                 logger.warning(f"[EventBus] Circuit breaker received from {evt.component}: {evt.reason} (active={evt.is_active})")
                 if evt.is_active and self.execution_service and hasattr(self.execution_service, "trigger_circuit_breaker"):
@@ -597,7 +597,7 @@ class TradingAgent:
                     except Exception as cb_err:
                         logger.error(f"[EventBus] Failed to dispatch circuit breaker to ExecutionService: {cb_err}")
                 try:
-                    from logging_observability.dashboard.api import broadcast_live_event
+                    from monika.interfaces.dashboard.api import broadcast_live_event
                     await broadcast_live_event("circuit_breaker", {
                         "component": evt.component,
                         "reason": evt.reason,
@@ -611,7 +611,7 @@ class TradingAgent:
             async def _on_risk_breach(evt: RiskBreachEvent):
                 logger.warning(f"[EventBus] Risk breach received: {evt.breach_type} (severity={evt.severity})")
                 try:
-                    from logging_observability.dashboard.api import broadcast_live_event
+                    from monika.interfaces.dashboard.api import broadcast_live_event
                     await broadcast_live_event("risk_breach", {
                         "breach_type": evt.breach_type,
                         "symbol": evt.symbol,
@@ -647,7 +647,7 @@ class TradingAgent:
             edge_strategy_runner=self.edge_strategy_runner,
         )
 
-        from analysis.memory.background_review import BackgroundReviewEngine
+        from monika.application.analysis.memory.background_review import BackgroundReviewEngine
         self.background_review_engine = BackgroundReviewEngine(self.settings)
 
         from monika.application.scheduler.playbook_curator import PlaybookCurator
@@ -655,7 +655,7 @@ class TradingAgent:
 
         # Initialize Universal PluginEngine Harness
         try:
-            from utils.infra.container import get_container
+            from monika.infrastructure.infra.container import get_container
             from monika.application.harness.engine import PluginEngine
             self.container = get_container()
             self.container.register_instance("settings", self.settings)
@@ -697,7 +697,7 @@ class TradingAgent:
         """Publish a live TickPriceEvent to the centralized EventBus."""
         if not self.event_bus:
             return
-        from utils.protocol.event_bus import TickPriceEvent
+        from monika.application.protocol.event_bus import TickPriceEvent
         from datetime import datetime, timezone
         event = TickPriceEvent(
             symbol=symbol.upper(),
@@ -981,7 +981,7 @@ class TradingAgent:
 
                 # 1d. Restore Strategy Decay Monitor state from DB
                 try:
-                    from analysis.strategies.decay_monitor import get_strategy_decay_monitor
+                    from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
                     async with get_session() as rec_session:
                         await get_strategy_decay_monitor().load_from_db(rec_session)
                     logger.info("[Recovery] StrategyDecayMonitor health state restored from DB")
@@ -995,7 +995,7 @@ class TradingAgent:
             _recovery_cycle_dispatched = False
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import CyclePerformance, NewsDigest, FundamentalBrief
-            from analysis.prefetch.news_digest import NewsDigestProcessor
+            from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
             from sqlalchemy import select
 
             # Harmonized Catch-up & Brief Expiry Check
@@ -1045,7 +1045,7 @@ class TradingAgent:
                         else:
                             brief_expired = True
 
-                        from utils.scheduling.wall_clock import parse_time_list, previous_occurrence, get_tzinfo
+                        from monika.application.scheduler.wall_clock import parse_time_list, previous_occurrence, get_tzinfo
                         most_recent_target_utc = None
                         try:
                             times = parse_time_list(cycle_times_raw)
@@ -1234,7 +1234,7 @@ class TradingAgent:
         logger.info("=" * 62)
 
         # Arm startup watchdog to detect deadlocks during component initialization
-        from agent.monitors.startup_watchdog import global_startup_watchdog
+        from monika.application.agent.monitors.startup_watchdog import global_startup_watchdog
         global_startup_watchdog.start()
 
         # Register signal handlers
@@ -1246,7 +1246,7 @@ class TradingAgent:
         # Connect MT5 / Broker Gateway Adapter
         try:
             connected = False
-            from execution.broker_adapter import MT5LiveAdapter
+            from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
             custom_adapter = getattr(self.execution_service, "broker_adapter", None) if self.execution_service else None
             if custom_adapter and not isinstance(custom_adapter, MT5LiveAdapter):
                 connected = await custom_adapter.ensure_connected()
@@ -1278,7 +1278,7 @@ class TradingAgent:
 
         # PR-22: Cold-Start Pre-Flight Verification before enabling schedulers
         try:
-            from agent.monitors.startup_watchdog import run_cold_start_preflight
+            from monika.application.agent.monitors.startup_watchdog import run_cold_start_preflight
             preflight = await run_cold_start_preflight(self)
             logger.info(f"[Preflight] Cold-start verification: broker_ping={preflight.get('broker_ping')}, "
                         f"positions_reconciled={preflight.get('positions_reconciled')}, "
@@ -1487,7 +1487,7 @@ class TradingAgent:
         check_interval_seconds = 3600  # Every 1 hour
         logger.info('What-If resolver started (interval: 1h)')
         
-        from analysis.memory.outcome_linker import OutcomeLinker
+        from monika.application.analysis.memory.outcome_linker import OutcomeLinker
         from monika.infrastructure.database.db import get_session
         linker = OutcomeLinker()
         
@@ -1514,7 +1514,7 @@ class TradingAgent:
         Autonomous micro-playbook compilation loop.
         Evaluates trade memories and promotes high-performing strategies (>=3 consecutive wins or >=65% win rate).
         """
-        from analysis.memory.skill_evolution import MicroPlaybookCompiler
+        from monika.application.analysis.memory.skill_evolution import MicroPlaybookCompiler
         from monika.infrastructure.database.db import get_session
         compiler = MicroPlaybookCompiler(self.settings)
         check_interval_seconds = 21600  # Run every 6 hours
@@ -1537,7 +1537,7 @@ class TradingAgent:
         Autonomous background skill curator loop (MEDIUM-2).
         Periodically audits and archives stale playbooks and deduplicates redundant conditions (every 24 hours).
         """
-        from analysis.memory.skill_curator import SkillCurator
+        from monika.application.analysis.memory.skill_curator import SkillCurator
         from monika.infrastructure.database.db import get_session
         curator = SkillCurator(self.settings)
         check_interval_seconds = 86400  # Run every 24 hours
@@ -1646,7 +1646,7 @@ class TradingAgent:
                     if consecutive_failures == max_failures_before_alert:
                         if self.mt5_health_checker is not None:
                             self.mt5_health_checker.record_failure()
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_critical(
                             f"[PLUGIN] <b>MT5 Connection Lost</b>\n"
                             f"MT5 has been disconnected for ~{consecutive_failures} minutes.\n"
@@ -1664,7 +1664,7 @@ class TradingAgent:
                         if self.market_data_scheduler:
                             asyncio.create_task(self.market_data_scheduler.sync_now())
                         try:
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
                             await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched.")
                         except Exception:
                             pass
@@ -1740,7 +1740,7 @@ class TradingAgent:
                 )).scalars().all()
 
                 try:
-                    from database.event_store import TradingEventStore
+                    from monika.infrastructure.database.event_store import TradingEventStore
                     await TradingEventStore.emit(
                         session=session,
                         event_type="system.shutdown",
@@ -2016,7 +2016,7 @@ async def _amain():
     settings = load_all_config()
     
     # Configure Gemini Rate Limiter limits from settings
-    from utils.api.gemini_rate_limiter import configure_from_settings
+    from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
     configure_from_settings(settings)
 
     # Init DB (create tables)

@@ -10,7 +10,7 @@ import logging
 import os
 import time
 from typing import Optional, Dict, Any, List, ClassVar
-from analysis.providers.openai_provider import OpenAIProvider
+from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger("TradingAgent.NineRouterProvider")
 

@@ -1,7 +1,7 @@
 import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import DXYData, PriceOHLCV
+from monika.infrastructure.database.models import DXYData, PriceOHLCV
 logger = logging.getLogger(__name__)
 
 # Bobot ICE DXY asli: EUR 57.6%, JPY 13.6%, GBP 11.9%, CAD 9.1%, SEK 4.2%, CHF 3.6%.

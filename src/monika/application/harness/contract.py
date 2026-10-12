@@ -15,12 +15,12 @@ import inspect
 import logging
 
 try:
-    from utils.infra.container import ServiceContainer
+    from monika.infrastructure.infra.container import ServiceContainer
 except ImportError:
     ServiceContainer = Any
 
 try:
-    from utils.protocol.event_bus import (
+    from monika.application.protocol.event_bus import (
         EventBus,
         TickPriceEvent,
         BarClosedEvent,
@@ -32,7 +32,7 @@ except ImportError:
     EventBus = Any
 
 try:
-    from agent.task_registry import TaskRegistry
+    from monika.application.agent.task_registry import TaskRegistry
 except ImportError:
     TaskRegistry = Any
 

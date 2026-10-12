@@ -28,11 +28,11 @@ from typing import Optional, Any, Union
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db import get_session
-from database.models import TelegramConversation, ActivityLog, Position, RiskState, FundamentalBrief
-from analysis.providers.llm_factory import get_client_for_task
-from analysis.tools.tools_definitions import TELEGRAM_TOOLS, PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
-from telegram_bot.chat_tool_router import ChatToolRouter
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import TelegramConversation, ActivityLog, Position, RiskState, FundamentalBrief
+from monika.infrastructure.providers.llm_factory import get_client_for_task
+from monika.application.analysis.tools.tools_definitions import TELEGRAM_TOOLS, PROPOSE_ACTION, SAVE_MARKET_INTELLIGENCE
+from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 
 logger = logging.getLogger("TradingAgent.ChatAgent")
 
@@ -59,7 +59,7 @@ def _sanitize_telegram_format_impl(text: str) -> str:
 
     # 0. Saring blok thinking (<think>), context tags internal, dan rahasia
     try:
-        from utils.streaming.stream_scrubber import StatefulStreamScrubber
+        from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
         scrubber = StatefulStreamScrubber()
         text = scrubber.process_delta(text) + scrubber.flush()
     except Exception:
@@ -67,7 +67,7 @@ def _sanitize_telegram_format_impl(text: str) -> str:
     
     # 1. Hapus emoji Unicode dan text emoticons secara mutlak
     try:
-        from telegram_bot.sanitizer import strip_emojis_and_emoticons
+        from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
         text = strip_emojis_and_emoticons(text)
     except Exception:
         pass
@@ -177,7 +177,7 @@ class ChatAgent:
         self.last_active: Optional[datetime] = None
         self._tool_router = ChatToolRouter(TELEGRAM_TOOLS)
 
-        from analysis.tools.tool_guardrails import ToolGuardrailController
+        from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
         self.guardrail_controller = ToolGuardrailController(self.settings)
 
         # HIGH-3: Session-Level Tool Approval Gate (TTL 4h)
@@ -346,8 +346,8 @@ class ChatAgent:
         if getattr(self, "_mcp_synced", False):
             return
         try:
-            from analysis.mcp.client import McpClientManager
-            from analysis.tools.unified_registry import unified_tool_registry
+            from monika.application.analysis.mcp.client import McpClientManager
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry
             mgr = McpClientManager.get_instance(self.settings)
             await mgr.initialize_servers()
             mcp_tool_defs = []
@@ -388,7 +388,7 @@ class ChatAgent:
     async def _persist_pending_action(self, action: PendingAction):
         """Save pending action to SystemConfig table in DB."""
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             async with get_session() as session:
                 await SystemConfig.upsert(
                     session,
@@ -403,7 +403,7 @@ class ChatAgent:
     async def _delete_persisted_pending_action(self, action_id: str):
         """Remove persisted pending action from SystemConfig table."""
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import delete
             async with get_session() as session:
                 await session.execute(
@@ -419,7 +419,7 @@ class ChatAgent:
         if action:
             return action
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             from sqlalchemy import select, delete
             async with get_session() as session:
                 cfg = (await session.execute(
@@ -586,7 +586,7 @@ class ChatAgent:
 
     def _inject_macro_playbooks(self, system_prompt: Union[str, tuple[str, str]], user_query: str = "") -> Union[str, tuple[str, str]]:
         """Inject macro playbooks and dynamic matched skills into system prompt."""
-        from skills.loader import load_skill
+        from monika.application.skills.loader import load_skill
 
         playbook_sections: list[str] = []
 
@@ -616,7 +616,7 @@ class ChatAgent:
         # 2. Dynamic skill matching for domain-specific user requests (up to 3 skills)
         if user_query:
             try:
-                from skills.unified_runtime import get_skills_runtime
+                from monika.application.skills.unified_runtime import get_skills_runtime
                 runtime = get_skills_runtime()
                 matched = runtime.match_skills_for_prompt(user_query)
                 for s_name in matched[:3]:
@@ -681,7 +681,7 @@ class ChatAgent:
 
         # Jev System One Intent & Model Tier Routing
         try:
-            from utils.typesafe.jev_primitives import build_telegram_intent_questions
+            from monika.core.primitives.jev_primitives import build_telegram_intent_questions
             jev_client = getattr(self, "_client_intent", None) or self._client_lite
             if hasattr(jev_client, "classify_json"):
                 jev_res = await jev_client.classify_json(
@@ -949,7 +949,7 @@ class ChatAgent:
         """Logika internal pemrosesan pesan dari user."""
         self._last_turn_streamed = False
         import re
-        from analysis.tools.tool_executor import ToolExecutor
+        from monika.application.analysis.tools.tool_executor import ToolExecutor
 
         # Synchronize active MCP tools into ChatToolRouter
         await self._ensure_mcp_tools_synced()
@@ -984,7 +984,7 @@ class ChatAgent:
 
         # Prompt injection safety pre-flight check
         try:
-            from security.prompt_injection_scanner import PromptInjectionScanner
+            from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
             scan_res = PromptInjectionScanner.scan(clean_message, threshold=0.75)
             if not scan_res.is_safe:
                 logger.warning(f"[ChatAgent] Rejected hostile message from user {self.user_id}: {scan_res.rejection_reason}")
@@ -1269,7 +1269,7 @@ class ChatAgent:
         2. Spawns specialist workers concurrently with isolated context sandboxes & execution timeouts.
         3. Synthesizes all specialist intelligence reports into an authoritative Executive Brief.
         """
-        from analysis.subagent_spawner import DynamicSubagentPool
+        from monika.application.analysis.subagent_spawner import DynamicSubagentPool
 
         system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
 
@@ -1380,7 +1380,7 @@ class ChatAgent:
         # without polluting the chat turn with unprompted action confirmation buttons.
         if self._is_macro_event_query(message):
             try:
-                from database.models import UserMarketIntel
+                from monika.infrastructure.database.models import UserMarketIntel
                 from datetime import datetime, timezone, timedelta
                 clean_title = message.strip().replace("\n", " ")[:120]
                 reply_raw = synth_response.get("reply", "")
@@ -1601,8 +1601,8 @@ class ChatAgent:
 
     async def _execute_action(self, action: PendingAction) -> str:
         """Meneruskan aksi yang dikonfirmasi ke ExecutionService."""
-        from execution.execution_service import ExecutionService
-        from config.settings import load_settings
+        from monika.application.execution.execution_service import ExecutionService
+        from monika.core.config.settings import load_settings
 
         svc = ExecutionService(self.settings)
         params = action.params
@@ -1615,8 +1615,8 @@ class ChatAgent:
                 return "[GAGAL] Order ditolak: parameter 'symbol' dan 'direction' wajib diisi."
 
             async with get_session() as session:
-                from analysis.tools.tool_executor import ToolExecutor
-                from database.models import AssetAnalysis, FundamentalBrief
+                from monika.application.analysis.tools.tool_executor import ToolExecutor
+                from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
 
                 executor = ToolExecutor(session, settings=self.settings)
                 self._instrument_executor(executor)
@@ -1686,7 +1686,7 @@ class ChatAgent:
                     f"Ticket: {result.mt5_ticket}"
                 )
                 try:
-                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
                     j_res = record_trade_to_workspace(self.settings, {
                         "symbol": result.symbol,
                         "action": result.decision.upper(),
@@ -1725,7 +1725,7 @@ class ChatAgent:
             if result.get("success"):
                 msg = f"[OK] Position #{ticket} closed. Profit: {result.get('profit', 'N/A')}"
                 try:
-                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
                     j_res = record_trade_to_workspace(self.settings, {
                         "symbol": params.get("symbol", "POSITION"),
                         "action": "CLOSE",
@@ -1782,9 +1782,9 @@ class ChatAgent:
             return "[ERROR] MT5 execution client unavailable."
 
         elif action.action_type == "close_paper_trade":
-            from utils.analytics.paper_tracker import PaperTracker
-            from database.models import PaperTradeRecord, PriceOHLCV
-            import utils.clock as clock
+            from monika.core.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.models import PaperTradeRecord, PriceOHLCV
+            import monika.core.primitives.clock as clock
             trade_id = params.get("trade_id") or params.get("ticket") or params.get("id")
             symbol = params.get("symbol")
             async with get_session() as session:
@@ -1826,7 +1826,7 @@ class ChatAgent:
                 await session.commit()
                 msg = f"[OK] Paper trade #{trade.id} ({trade.symbol}) closed manually @ {exit_p:.5f}. Realized PnL: {pnl_pct:+.2f}%"
                 try:
-                    from utils.workspace.journal_helper import record_trade_to_workspace
+                    from monika.interfaces.workspace.journal_helper import record_trade_to_workspace
                     record_trade_to_workspace(self.settings, {
                         "symbol": trade.symbol,
                         "action": f"CLOSE_{trade.direction.upper()}",
@@ -1843,7 +1843,7 @@ class ChatAgent:
                 return msg
 
         elif action.action_type == "modify_paper_sl_tp":
-            from database.models import PaperTradeRecord
+            from monika.infrastructure.database.models import PaperTradeRecord
             trade_id = params.get("trade_id") or params.get("id")
             symbol = params.get("symbol")
             sl = params.get("sl")
@@ -1868,7 +1868,7 @@ class ChatAgent:
                 return f"[OK] Paper trade #{trade.id} ({trade.symbol}) modified: SL={trade.stop_loss}, TP={trade.take_profit}"
 
         elif action.action_type == "cancel_trigger":
-            from database.models import TradeTrigger
+            from monika.infrastructure.database.models import TradeTrigger
             trigger_id = params.get("trigger_id") or params.get("id")
             if not trigger_id:
                 return "[ERROR] Trigger ID required."
@@ -1887,7 +1887,7 @@ class ChatAgent:
                 return f"[OK] Trigger #{trigger.id} cancelled."
 
         elif action.action_type == "pause_trading":
-            from risk.risk_gate import RiskGate
+            from monika.domain.risk.risk_gate import RiskGate
             dur_raw = params.get("duration") or params.get("duration_hours") or params.get("duration_str")
             duration_hours = None
             if dur_raw:
@@ -1920,7 +1920,7 @@ class ChatAgent:
             return "[PAUSED] Trading paused."
 
         elif action.action_type == "resume_trading":
-            from risk.risk_gate import RiskGate
+            from monika.domain.risk.risk_gate import RiskGate
             async with get_session() as session:
                 gate = RiskGate(self.settings)
                 await gate.resume_trading(session)
@@ -1942,7 +1942,7 @@ class ChatAgent:
             return f"[ERROR] Modify failed: {result.get('error')}"
 
         elif action.action_type == "save_market_intelligence":
-            from analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
             async with get_session() as session:
                 executor = ToolExecutor(session, settings=self.settings)
                 self._instrument_executor(executor)
@@ -1961,7 +1961,7 @@ class ChatAgent:
             return "[ERROR] Execution service does not support bulk breakeven."
 
         elif action.action_type == "cancel_stale_pending_orders":
-            from analysis.tools.handlers.trade_intel import handle_cancel_stale_pending_orders
+            from monika.application.analysis.tools.handlers.trade_intel import handle_cancel_stale_pending_orders
             max_age = float(params.get("max_age_hours", 24))
             res = await handle_cancel_stale_pending_orders({"max_age_hours": max_age})
             if res.get("status") == "success":
@@ -1969,7 +1969,7 @@ class ChatAgent:
             return f"[ERROR] Failed to cancel stale orders: {res.get('error')}"
 
         elif action.action_type == "set_trailing_stop":
-            from analysis.tools.handlers.position_mgmt import handle_set_trailing_stop
+            from monika.application.analysis.tools.handlers.position_mgmt import handle_set_trailing_stop
             async with get_session() as session:
                 res = await handle_set_trailing_stop(params, session=session, settings=self.settings)
                 if res.get("success"):
@@ -1977,7 +1977,7 @@ class ChatAgent:
                 return f"[ERROR] Failed to set trailing stop: {res.get('error') or res.get('message')}"
 
         elif action.action_type == "update_config":
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             key = params.get("key") or params.get("parameter")
             value = params.get("value")
             if not key or value is None:
@@ -1992,7 +1992,7 @@ class ChatAgent:
                     session.add(SystemConfig(key=str(key), value=str(value)))
                 await session.commit()
                 try:
-                    from risk.risk_gate import RiskGate
+                    from monika.domain.risk.risk_gate import RiskGate
                     gate = RiskGate(self.settings)
                     if hasattr(gate, "hot_reload_risk_parameters"):
                         getattr(gate, "hot_reload_risk_parameters")({str(key): value})
@@ -2001,7 +2001,7 @@ class ChatAgent:
                 return f"[OK] Configuration '{key}' updated to '{value}'."
 
         elif action.action_type == "update_user_preference":
-            from database.models import UserPreference
+            from monika.infrastructure.database.models import UserPreference
             user_id = str(self.user_id)
             cat = str(params.get("category") or "general")
             key = str(params.get("key") or "preference")
@@ -2033,21 +2033,21 @@ class ChatAgent:
             return await self._execute_db_mutation(params)
 
         elif action.action_type == "execute_terminal_command":
-            from analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
             async with get_session() as session:
                 executor = ToolExecutor(session, settings=self.settings)
                 res = await executor.execute("terminal", params)
                 return f"[TERMINAL OUTPUT]\n{res}"
 
         elif action.action_type == "desktop_gui_action":
-            from analysis.tools.tool_executor import ToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
             async with get_session() as session:
                 executor = ToolExecutor(session, settings=self.settings)
                 res = await executor.execute("computer_use", params)
                 return f"[GUI ACTION RESULT]\n{res}"
 
         elif action.action_type == "partial_close_and_breakeven":
-            from database.models import Position
+            from monika.infrastructure.database.models import Position
             raw_ticket = params.get("ticket")
             if raw_ticket is None:
                 return "[ERROR] Ticket number missing for partial_close_and_breakeven."
@@ -2095,9 +2095,9 @@ class ChatAgent:
         if not getattr(self, "is_admin", False):
             return "[GAGAL] Eksekusi ditolak: Hanya Admin yang dapat memodifikasi database."
 
-        from analysis.tools.handlers.db_tools import get_table_model_map
-        from analysis.tools.tool_guardrails import DATABASE_IMMUTABLE_TABLES
-        from database.models import ActivityLog
+        from monika.application.analysis.tools.handlers.db_tools import get_table_model_map
+        from monika.application.analysis.tools.tool_guardrails import DATABASE_IMMUTABLE_TABLES
+        from monika.infrastructure.database.models import ActivityLog
         from sqlalchemy import inspect as sqla_inspect, Integer, BigInteger
         from datetime import date
 
@@ -2330,7 +2330,7 @@ class ChatAgent:
 
     async def _build_system_prompt(self, session: AsyncSession) -> str | tuple[str, str]:
         """Construct complete system prompt with immutable static prefix for optimal KV-cache hits."""
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         lines = [
             anchor,
@@ -2390,7 +2390,7 @@ class ChatAgent:
 
         # Append trading persona skill (immutable communication style)
         try:
-            from skills.loader import load_skill
+            from monika.application.skills.loader import load_skill
             persona = load_skill("telegram_persona")
             lines.append("\n---\n")
             lines.append(persona)
@@ -2399,7 +2399,7 @@ class ChatAgent:
 
         # Append intent-resolution skill (intent decomposition & anti-slop guidelines)
         try:
-            from skills.loader import load_skill
+            from monika.application.skills.loader import load_skill
             intent_res = load_skill("intent-resolution")
             if intent_res:
                 lines.append("\n---\n")
@@ -2409,7 +2409,7 @@ class ChatAgent:
 
         # Append compact index of available specialization skills
         try:
-            from skills.unified_runtime import get_skills_runtime
+            from monika.application.skills.unified_runtime import get_skills_runtime
             runtime = get_skills_runtime()
             compact_index = runtime.get_compact_prompt_index(max_skills=15)
             if compact_index:
@@ -2445,8 +2445,8 @@ class ChatAgent:
                 dynamic_lines.append("## Current Open Live Positions (MT5): None.")
 
             # Paper Trading status snapshot
-            from utils.analytics.paper_tracker import PaperTracker
-            from database.models import PaperTradeRecord, TradeTrigger, UserPreference
+            from monika.core.analytics.paper_tracker import PaperTracker
+            from monika.infrastructure.database.models import PaperTradeRecord, TradeTrigger, UserPreference
             tracker = PaperTracker(self.settings)
             p_stats = await tracker.get_statistics(session)
             open_paper = (await session.execute(
@@ -2484,7 +2484,7 @@ class ChatAgent:
 
             # Active Market Chronicle (ongoing macro/geopolitical events)
             try:
-                from analysis.memory.chronicle_writer import ChronicleWriter
+                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
                 c_writer = ChronicleWriter(self.settings)
                 c_ctx = await c_writer.get_chronicle_context(session, days_back=30, limit=4)
                 if c_ctx:
@@ -2579,7 +2579,7 @@ class ChatAgent:
         selected_rows = list(reversed(selected_rows))
 
         messages = [{"role": role, "content": content} for role, content in selected_rows]
-        from telegram_bot.chat_compaction import ChatMicroCompactor
+        from monika.interfaces.telegram.chat_compaction import ChatMicroCompactor
         compactor = ChatMicroCompactor(max_history_tokens=MAX_HISTORY_CHARS // 4)
         messages = compactor.compact_history(messages)
         return messages

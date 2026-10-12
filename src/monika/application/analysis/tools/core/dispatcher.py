@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional
 from monika.application.analysis.tools.core.coercion import coerce_arguments
 from monika.application.analysis.tools.core.definition import ToolDefinition
 from monika.application.analysis.tools.core.toolset_registry import ToolsetRegistry, get_toolset_registry
-from database.session_db_wal import SessionDbWal
+from monika.infrastructure.database.session_db_wal import SessionDbWal
 
 logger = logging.getLogger("TradingAgent.Analysis.Tools.Dispatcher")
 

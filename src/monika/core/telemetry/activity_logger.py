@@ -37,7 +37,7 @@ DATE_FORMAT        = "%Y-%m-%d %H:%M:%S"
 
 import queue
 try:
-    from utils.infra.log_redactor import RedactingFormatter
+    from monika.infrastructure.infra.log_redactor import RedactingFormatter
 except ImportError:
     from ..utils.infra.log_redactor import RedactingFormatter
 
@@ -210,8 +210,8 @@ class ActivityLogger:
                 from monika.infrastructure.database.db import get_write_session
                 from monika.infrastructure.database.models import ActivityLog
             except ImportError:
-                from database.db import get_write_session
-                from database.models import ActivityLog
+                from monika.infrastructure.database.db import get_write_session
+                from monika.infrastructure.database.models import ActivityLog
 
             entry = ActivityLog(
                 timestamp=datetime.now(timezone.utc),
@@ -305,8 +305,8 @@ class ActivityLogger:
                 from monika.infrastructure.database.db import get_write_session
                 from monika.infrastructure.database.models import ActivityLog
             except ImportError:
-                from database.db import get_write_session
-                from database.models import ActivityLog
+                from monika.infrastructure.database.db import get_write_session
+                from monika.infrastructure.database.models import ActivityLog
 
             async def _do_bulk(sess):
                 count = 0

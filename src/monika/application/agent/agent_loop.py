@@ -28,7 +28,7 @@ from monika.application.graph.workflow import build_trading_graph
 logger = logging.getLogger("TradingAgent.Agent.SystemAgentLoop")
 
 
-from scheduler.adhoc_proxy import AdHocSchedulerProxy  # noqa: F401 (re-exported)
+from monika.application.scheduler.adhoc_proxy import AdHocSchedulerProxy  # noqa: F401 (re-exported)
 
 
 

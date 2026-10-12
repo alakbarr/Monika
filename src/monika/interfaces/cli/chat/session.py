@@ -223,7 +223,7 @@ class ChatReplSession:
         if self.local_agent is not None:
             return True
         try:
-            from agent.chat_agent import ChatAgent
+            from monika.application.agent.chat_agent import ChatAgent
 
             _loader = load_settings
             try:

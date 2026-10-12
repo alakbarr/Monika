@@ -11,8 +11,8 @@ import logging
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import AssetAnalysis, TradeOutcome, SystemConfig, PaperTradeRecord
-from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.infrastructure.database.models import AssetAnalysis, TradeOutcome, SystemConfig, PaperTradeRecord
+from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
 logger = logging.getLogger("TradingAgent.AnalysisTracker")
 
@@ -22,7 +22,7 @@ async def compute_analysis_quality_report(session: AsyncSession, days_back: int 
     Hitung laporan kualitas analisis: profil win rate berdasarkan parameter konfluensi.
     Identifikasi kondisi sistematis untung/rugi.
     """
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
     tracker = PaperTracker()
     stats = await tracker.get_statistics(session, days_back=days_back)
     

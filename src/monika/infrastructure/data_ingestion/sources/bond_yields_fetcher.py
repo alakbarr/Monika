@@ -26,8 +26,8 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import BondYieldData
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import BondYieldData
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.BondYields")
 
@@ -90,7 +90,7 @@ class BondYieldFetcher:
 
         # 2. Fetch sovereign curves via CentralBankWatch (UK, JP, AU 2Y & 10Y daily snapshots)
         try:
-            from data_sources.central_bank_watch import CentralBankWatchFetcher
+            from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
             cbw_fetcher = CentralBankWatchFetcher(self.session)
             cbw_yields = await cbw_fetcher.fetch_sovereign_yields()
             for k in ("UK_10Y", "UK_2Y", "JP_10Y", "JP_2Y", "AU_10Y", "AU_2Y"):
@@ -170,7 +170,7 @@ class BondYieldFetcher:
                 continue
 
         if saved:
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             await safe_commit(self.session, label="BondYield.ECB")
 
         return saved
@@ -220,7 +220,7 @@ class BondYieldFetcher:
                 continue
 
         if saved:
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             await safe_commit(self.session, label=f"BondYield.{label}")
 
         return saved

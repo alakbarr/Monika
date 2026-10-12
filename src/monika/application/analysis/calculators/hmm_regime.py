@@ -17,8 +17,8 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import PriceOHLCV
-from utils import clock
+from monika.infrastructure.database.models import PriceOHLCV
+from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.HMMRegimeClassifier")
 

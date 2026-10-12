@@ -16,11 +16,11 @@ from unittest.mock import MagicMock
 
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
-import database.db as _db_mod
-from database.safe_ops import safe_commit
-from database.models import (
+import monika.infrastructure.database.db as _db_mod
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.models import (
     AssetAnalysis,
     Position,
     OrderLog,
@@ -34,9 +34,9 @@ from database.models import (
 )
 from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
-from risk.position_sizing import PositionSizer, SizingResult
-from risk.risk_gate import RiskGate
-from utils.infra.notifier import AgentNotifier
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.infra.notifier import AgentNotifier
 
 
 def get_session(*args, **kwargs):
@@ -151,7 +151,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
 
                     if db_pos.analysis_id and not is_partial:
                         try:
-                            from analysis.memory.outcome_linker import OutcomeLinker
+                            from monika.application.analysis.memory.outcome_linker import OutcomeLinker
 
                             holding_hours = 0.0
                             c_dt = db_pos.closed_at
@@ -217,7 +217,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         Repairs PositionGuardian / TrailingStopManager / PositionExitReviewer
         which previously silently no-op'd against fake tickets. (P1-1)
         """
-        from database.models import PriceOHLCV, PaperTradeRecord
+        from monika.infrastructure.database.models import PriceOHLCV, PaperTradeRecord
 
         exit_price = None
         try:
@@ -276,7 +276,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 paper.exit_reason = f"manual_{requested_by}"[:100]
                 paper.holding_hours = (now - paper.opened_at).total_seconds() / 3600 if paper.opened_at else 0.0
                 try:
-                    from analysis.memory.outcome_linker import OutcomeLinker
+                    from monika.application.analysis.memory.outcome_linker import OutcomeLinker
 
                     if paper.analysis_id is not None:
                         await OutcomeLinker(self.settings).process_closed_position(
@@ -313,7 +313,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             await session.commit()
 
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
 
             await AgentNotifier().send_critical(
                 f" <b>CIRCUIT BREAKER ACTIVATED</b>\n"
@@ -353,7 +353,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 )
                 await session.commit()
 
-            from database.models import Position, PaperTradeRecord
+            from monika.infrastructure.database.models import Position, PaperTradeRecord
             from sqlalchemy import select
 
             max_retries = 3
@@ -425,7 +425,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             # 3. Clean up any remaining orphaned PaperTradeRecord rows
             try:
                 async with get_session() as paper_session:
-                    from database.models import PriceOHLCV
+                    from monika.infrastructure.database.models import PriceOHLCV
 
                     open_papers = (
                         (await paper_session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
@@ -538,7 +538,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                         f"Kill switch: {len(agent_positions)} positions STILL OPEN after {max_retries} retries!"
                     )
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
 
                         await AgentNotifier().send_critical(
                             f"[DARURAT] KILL SWITCH INCOMPLETE\n"
@@ -551,7 +551,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             logger.critical(f"Kill switch complete: {total_closed}/{total_cnt} positions closed")
 
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
 
                 notifier = AgentNotifier()
                 await notifier.send_critical(

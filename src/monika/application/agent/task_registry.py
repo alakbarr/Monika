@@ -78,7 +78,7 @@ def mark_clean_shutdown():
 
 async def _safe_notify_warning(msg: str) -> None:
     try:
-        from utils.infra.notifier import AgentNotifier
+        from monika.infrastructure.infra.notifier import AgentNotifier
         notifier = AgentNotifier()
         await asyncio.wait_for(notifier.send_warning(msg), timeout=3.0)
     except Exception as notify_err:
@@ -87,7 +87,7 @@ async def _safe_notify_warning(msg: str) -> None:
 
 async def _safe_notify_critical(msg: str) -> None:
     try:
-        from utils.infra.notifier import AgentNotifier
+        from monika.infrastructure.infra.notifier import AgentNotifier
         notifier = AgentNotifier()
         await asyncio.wait_for(notifier.send_critical(msg), timeout=3.0)
     except Exception as notify_err:

@@ -28,8 +28,8 @@ import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import VIXData
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import VIXData
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.VIX")
 
@@ -376,7 +376,7 @@ class VIXFetcher:
                 saved += 1
 
         if saved:
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             ok = await safe_commit(self.session, label="VIXData")
             if not ok:
                 return 0
@@ -451,7 +451,7 @@ class VIXFetcher:
 
 async def _test():
     from dotenv import load_dotenv
-    from database.db import get_session, init_db
+    from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()
     await init_db()

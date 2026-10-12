@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Position, Order
-from database.repositories.position_repository import PositionRepository
+from monika.infrastructure.database.models import Position, Order
+from monika.infrastructure.database.repositories.position_repository import PositionRepository
 
 logger = logging.getLogger("Monika.Application.PortfolioService")
 
@@ -141,7 +141,7 @@ class PortfolioService:
             by_symbol[sym]["net_lots"] = round(by_symbol[sym]["long_lots"] - by_symbol[sym]["short_lots"], 2)
 
         # Calculate Net Currency Exposure (e.g. USD, EUR, GBP, XAU)
-        from utils.market.instrument_identity import resolve_instrument_identity
+        from monika.domain.market.instrument_identity import resolve_instrument_identity
         by_currency: Dict[str, Dict[str, float]] = {}
         for p in positions:
             sym = p.symbol or "UNKNOWN"

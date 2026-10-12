@@ -1,6 +1,6 @@
 """Trading, order, position, and outcome models (Phase 7)."""
 
-from database.models import (
+from monika.infrastructure.database.models import (
     Trade,
     Position,
     TradeTrigger,

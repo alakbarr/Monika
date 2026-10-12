@@ -12,15 +12,15 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 if TYPE_CHECKING:
     import asyncio
-    from database.models import AssetAnalysis, Order, Position, OrderStatus
-    from execution.mt5_client import MT5Client
-    from execution.broker_adapter import BrokerAdapter
+    from monika.infrastructure.database.models import AssetAnalysis, Order, Position, OrderStatus
+    from monika.infrastructure.brokers.mt5_client import MT5Client
+    from monika.infrastructure.brokers.broker_adapter import BrokerAdapter
     from monika.domain.risk.position_sizing import PositionSizer, SizingResult
     from monika.domain.risk.risk_gate import RiskGate
-    from execution.rate_throttler import RateThrottler
+    from monika.infrastructure.brokers.rate_throttler import RateThrottler
     from monika.domain.execution.verification_engine import EvidenceFirstVerifier
-    from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
-    from execution.effect_gate import EffectGate
+    from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+    from monika.application.execution.effect_gate import EffectGate
 
 
 class _ExecutionServiceMixinBase:

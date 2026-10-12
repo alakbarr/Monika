@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
-from database.models import DXYData, PriceOHLCV
+from monika.infrastructure.database.models import DXYData, PriceOHLCV
 
 logger = logging.getLogger(__name__)
 

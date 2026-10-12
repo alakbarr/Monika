@@ -18,8 +18,8 @@ import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import DXYData
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import DXYData
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.DXY")
 
@@ -179,7 +179,7 @@ class DXYFetcher:
 
     async def _save(self, df: pd.DataFrame) -> int:
         """Menyimpan data DXY ke database."""
-        from database.models import DXYData
+        from monika.infrastructure.database.models import DXYData
         
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -231,7 +231,7 @@ class DXYFetcher:
                 saved += 1
 
         if saved:
-            from database.safe_ops import safe_commit
+            from monika.infrastructure.database.safe_ops import safe_commit
             ok = await safe_commit(self.session, label="DXYData")
             if not ok:
                 return 0

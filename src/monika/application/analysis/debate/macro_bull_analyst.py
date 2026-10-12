@@ -1,6 +1,6 @@
 import logging
 import json
-from analysis.providers.llm_factory import get_client_for_task
+from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.MacroBull")
 
@@ -42,7 +42,7 @@ async def run_bull_analyst(context: str, settings: dict) -> dict:
     except Exception:
         client = get_client_for_task("stage1_fundamental", settings)
 
-    from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
     anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     system_prompt = (
         f"{anchor}\n\n---\n\n"

@@ -23,8 +23,8 @@ async def compute_cds_outcome_correlation(
     This validates our CDS implementation empirically, similar to the paper's
     controlled experiments.
     """
-    from database.models import AssetAnalysis, PaperTradeRecord
-    from utils.constants import MARKET_OUTCOME_EXIT_REASONS
+    from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord
+    from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 
     since = datetime.now(timezone.utc) - timedelta(days=days_back)
 

@@ -12,7 +12,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.contract import TradingPlugin, PluginCategory, PluginMetadata
-from risk.trade_proposal import TradeProposal
+from monika.domain.risk.trade_proposal import TradeProposal
 
 
 class AnalysisPipelinePlugin(TradingPlugin, ABC):

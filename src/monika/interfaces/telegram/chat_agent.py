@@ -31,7 +31,7 @@ except ImportError:
     RetryAfter = _FallbackRetryAfter
     BadRequest = _FallbackBadRequest
 
-from agent.chat_agent import (
+from monika.application.agent.chat_agent import (
     ChatAgent as CoreChatAgent,
     PendingAction,
     HISTORY_WINDOW,
@@ -41,7 +41,7 @@ from agent.chat_agent import (
     get_client_for_task,
     get_session,
 )
-from agent import chat_agent as _core_agent
+from monika.application.agent import chat_agent as _core_agent
 
 logger = logging.getLogger("TradingAgent.TelegramChatAgent")
 

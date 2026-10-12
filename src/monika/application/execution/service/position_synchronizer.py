@@ -16,11 +16,11 @@ from unittest.mock import MagicMock
 
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
-import database.db as _db_mod
-from database.safe_ops import safe_commit
-from database.models import (
+import monika.infrastructure.database.db as _db_mod
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.models import (
     AssetAnalysis,
     Position,
     OrderLog,
@@ -34,9 +34,9 @@ from database.models import (
 )
 from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
-from risk.position_sizing import PositionSizer, SizingResult
-from risk.risk_gate import RiskGate
-from utils.infra.notifier import AgentNotifier
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.infra.notifier import AgentNotifier
 from monika.domain.execution.state_machine import OrderStateMachine
 
 
@@ -131,7 +131,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                         if o_dt is not None and c_dt is not None:
                             holding_duration = max(0.0, (c_dt - o_dt).total_seconds() / 3600.0)
 
-                        from database.models import AssetAnalysis, TradeOutcome
+                        from monika.infrastructure.database.models import AssetAnalysis, TradeOutcome
 
                         related_analysis = (
                             await session.execute(
@@ -204,7 +204,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                             async def _bg_link_outcome(an_id: int, pnl_val: float, h_hours: float, ex_reason: str):
                                 try:
                                     async with get_session() as bg_sess:
-                                        from analysis.memory.outcome_linker import OutcomeLinker
+                                        from monika.application.analysis.memory.outcome_linker import OutcomeLinker
 
                                         await OutcomeLinker().process_closed_position(
                                             bg_sess,
@@ -229,7 +229,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
                         # Update trade trajectory outcome for learning loop
                         try:
-                            from benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+                            from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
 
                             TradeTrajectoryLogger().update_trajectory_outcome(
                                 ticket=pos.mt5_ticket,
@@ -256,7 +256,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                             f"{closed_in_db} positions closed outside system — EA dead-man switch may have triggered!"
                         )
                         try:
-                            from utils.infra.notifier import AgentNotifier
+                            from monika.infrastructure.infra.notifier import AgentNotifier
 
                             await AgentNotifier().send_critical(
                                 f"[DARURAT] <b>EA Dead-Man Switch Suspected</b>\n"
@@ -279,7 +279,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
         # Cek berapa SL hits hari ini (live + paper)
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
-        from database.models import TradeOutcome, PaperTradeRecord
+        from monika.infrastructure.database.models import TradeOutcome, PaperTradeRecord
         from sqlalchemy import select, func
 
         paper_sl_hits = (
@@ -318,7 +318,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
         # Notify tanpa pause global
         try:
-            from utils.infra.notifier import AgentNotifier
+            from monika.infrastructure.infra.notifier import AgentNotifier
 
             await AgentNotifier().send_warning(
                 f"[PERINGATAN] <b>STOP LOSS HIT</b>\nSymbol: {position.symbol}\nTicket: {position.mt5_ticket}\nPnL: {position.pnl}\n"
@@ -344,7 +344,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                 if tp is not None:
                     db_pos.tp = tp
                 if db_pos.analysis_id and sl is not None:
-                    from utils.analytics.paper_tracker import PaperTracker
+                    from monika.core.analytics.paper_tracker import PaperTracker
 
                     await PaperTracker(self.settings).update_paper_trade_sl(session, db_pos.analysis_id, sl)
                 await session.commit()

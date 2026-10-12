@@ -64,7 +64,7 @@ async def handle_get_timesfm_forecast(
         }
 
     try:
-        from indicators.timesfm_engine import TimesFMEngine
+        from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
         engine = TimesFMEngine(effective_settings)
         forecast = await engine.get_or_generate_forecast(effective_session, symbol=sym, timeframe=tf, horizon=hs)
@@ -101,7 +101,7 @@ async def handle_get_timesfm_forecast(
 
         alpha_skew = None
         try:
-            from analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+            from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
 
             if quantiles:
                 alpha_skew = TimesFMAlphaCalculator.calculate_skew_from_quantiles(

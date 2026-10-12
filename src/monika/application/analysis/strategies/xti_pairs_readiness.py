@@ -1,12 +1,12 @@
-from analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
-from analysis.strategies.registry import StrategyRegistry
-from database.models import PriceOHLCV
+from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
+from monika.application.analysis.strategies.registry import StrategyRegistry
+from monika.infrastructure.database.models import PriceOHLCV
 from sqlalchemy import select
 from datetime import datetime, timezone
 import logging
 import pandas as pd
 import numpy as np
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger('TradingAgent.XTIPairsReadiness')
 
@@ -111,7 +111,7 @@ class XTIPairsReadiness(EdgeStrategy):
         # TimesFM 3.0 Multivariate Confirmation for Oil Spread
         tfm_meta = {}
         try:
-            from indicators.timesfm_engine import TimesFMEngine
+            from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
             tfm_engine = TimesFMEngine(settings)
             xti_fc = await tfm_engine.get_latest_forecast(session, 'XTIUSD', timeframe='H1', max_age_hours=8.0)
             if xti_fc:

@@ -12,8 +12,8 @@ import logging
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import SystemConfig
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import SystemConfig
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.FearGreed")
 
@@ -72,7 +72,7 @@ class FearGreedFetcher:
         else:
             self.session.add(SystemConfig(key=cfg_key, value=json.dumps(result)))
 
-        from database.safe_ops import safe_commit
+        from monika.infrastructure.database.safe_ops import safe_commit
         await safe_commit(self.session, label="FearGreed")
         logger.info(f"Fear & Greed: {latest['value']} ({latest['classification']})")
         return result

@@ -13,7 +13,7 @@ from typing import Set, Dict, Any, List
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Position, MT5Signal, Order
+from monika.infrastructure.database.models import Position, MT5Signal, Order
 
 logger = logging.getLogger("TradingAgent.ExecutionService.Reconciliation")
 

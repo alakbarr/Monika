@@ -9,12 +9,12 @@ from typing import Dict, Any, List, Tuple, Optional
 
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from database.db import get_session
-from database.models import AssetAnalysis
-from analysis.providers.llm_factory import get_client_for_task
-from analysis.debate.investment_judge import evaluate_debate
-from analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
-from analysis.memory.decision_log import DecisionLogger
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import AssetAnalysis
+from monika.infrastructure.providers.llm_factory import get_client_for_task
+from monika.application.analysis.debate.investment_judge import evaluate_debate
+from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
+from monika.application.analysis.memory.decision_log import DecisionLogger
 from monika.application.graph.nodes.debate.helpers import sync_facade_patches
 
 logger = logging.getLogger("TradingAgent.Graph.Debate.DebateJudgeNode")
@@ -112,7 +112,7 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                 r['risk_multiplier'] = new_rm
 
                         try:
-                            from database.event_store import TradingEventStore
+                            from monika.infrastructure.database.event_store import TradingEventStore
                             await TradingEventStore.emit(
                                 session=session,
                                 event_type="analysis.debate.verdict",

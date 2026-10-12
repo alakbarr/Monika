@@ -25,7 +25,7 @@ import pandas as pd
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import (
+from monika.infrastructure.database.models import (
     PriceOHLCV, SwingPoint, SRZone, LiquidityZone, FVGZone,
     OrderBlock, StructureBreak
 )

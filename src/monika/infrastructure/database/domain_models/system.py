@@ -1,6 +1,6 @@
 """System, event store, and telemetry models (Phase 7)."""
 
-from database.models import (
+from monika.infrastructure.database.models import (
     TradingEvent,
     TokenUsageLog,
     SystemConfig,

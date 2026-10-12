@@ -14,8 +14,8 @@ logger = logging.getLogger("TradingAgent.ScraperLoop")
 async def run_scraper_loop(agent: Any) -> None:
     """Scraper background loop (interval: 1h, Stage 2 every 2h)."""
     logger.info("Scraper background loop started (interval: 1h, Stage 2 every 2h)")
-    from database.db import get_session as _gs_scraper
-    from database.models import SystemConfig
+    from monika.infrastructure.database.db import get_session as _gs_scraper
+    from monika.infrastructure.database.models import SystemConfig
     from sqlalchemy import select as _sel_scraper
 
     min_interval_minutes = agent.settings.get("scraping", {}).get("min_interval_minutes", 45)
@@ -48,7 +48,7 @@ async def run_scraper_loop(agent: Any) -> None:
                         pass
 
             if not skip_scrape:
-                from scheduler.scraper_runner import ScraperRunner
+                from monika.application.scheduler.scraper_runner import ScraperRunner
 
                 runner = ScraperRunner(agent.settings)
                 agent._active_scraper_runner = runner
@@ -71,8 +71,8 @@ async def run_scraper_loop(agent: Any) -> None:
                         save_session.add(SystemConfig(key="last_scraper_run_at", value=now_iso))
                     await save_session.commit()
 
-            from analysis.prefetch.news_digest import NewsDigestProcessor
-            from database.db import get_session
+            from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
+            from monika.infrastructure.database.db import get_session
 
             processor = NewsDigestProcessor(agent.settings)
             async with get_session() as session:

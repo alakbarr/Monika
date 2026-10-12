@@ -21,7 +21,7 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
     
     # === CHECK 1: Correlation conflict detection ===
     try:
-        from utils.protocol.context_coherence import compute_cross_pair_contradictions
+        from monika.application.protocol.context_coherence import compute_cross_pair_contradictions
         analyses_dict = dict(actionable)
         contradictions = compute_cross_pair_contradictions(analyses_dict)
         if contradictions:
@@ -97,8 +97,8 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
     # constraining trade concurrency to 1 trade under fail-safe posture.
     vix_value = None
     try:
-        from database.db import get_session
-        from database.models import VIXData
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import VIXData
         from sqlalchemy import select
         async with get_session() as session:
             vix_row = (await session.execute(
@@ -141,8 +141,8 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         'BTCUSD': ('BTC', 'USD'), 'ETHUSD': ('ETH', 'USD')
     }
     try:
-        from database.db import get_session
-        from database.models import FundamentalBrief
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FundamentalBrief
         from sqlalchemy import select
         async with get_session() as session:
             brief_row = (await session.execute(
@@ -170,7 +170,7 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
                         consistent_trades.append((sym, r))
                         continue
                     
-                    from utils.market.bias_utils import normalize_bias
+                    from monika.domain.market.bias_utils import normalize_bias
                     base_bias = normalize_bias(currency_bias.get(base, 'neutral'))
                     quote_bias = normalize_bias(currency_bias.get(quote, 'neutral'))
                     

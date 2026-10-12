@@ -316,7 +316,7 @@ async def streaming_request(
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 429:
-                from utils.api.http_retry import RateLimitError, format_api_error_summary
+                from monika.infrastructure.api.http_retry import RateLimitError, format_api_error_summary
                 body = await response.text()
                 retry_after = None
                 raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")
@@ -332,7 +332,7 @@ async def streaming_request(
                 )
 
             if response.status != 200:
-                from utils.api.http_retry import APIStatusError, format_api_error_summary
+                from monika.infrastructure.api.http_retry import APIStatusError, format_api_error_summary
                 body = await response.text()
                 retry_after = None
                 raw_ra = response.headers.get("Retry-After") or response.headers.get("retry-after")

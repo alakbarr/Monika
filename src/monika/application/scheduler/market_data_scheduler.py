@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.infrastructure.database.db import get_session
 from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 from monika.domain.indicators.structure import MarketStructureAnalyzer
-from utils.validation.data_validator import is_forex_market_closed, is_crypto_symbol
+from monika.core.validation.data_validator import is_forex_market_closed, is_crypto_symbol
 
 logger = logging.getLogger("TradingAgent.MarketDataScheduler")
 
@@ -100,7 +100,7 @@ class MarketDataScheduler:
                 bus = self.event_bus
                 if bus is None:
                     try:
-                        from utils.protocol.event_bus import get_event_bus
+                        from monika.application.protocol.event_bus import get_event_bus
                         bus = get_event_bus()
                     except Exception:
                         bus = None
@@ -114,7 +114,7 @@ class MarketDataScheduler:
                                 ask = float(quote.get("ask", 0.0) or 0.0)
                                 last = float(quote.get("last", 0.0) or 0.0)
                                 if bid > 0 or ask > 0:
-                                    from utils.protocol.event_bus import TickPriceEvent
+                                    from monika.application.protocol.event_bus import TickPriceEvent
                                     t_evt = TickPriceEvent(
                                         symbol=sym,
                                         bid=bid,
@@ -216,7 +216,7 @@ class MarketDataScheduler:
                 vix_cnt = (await sess.execute(select(func.count(VIXData.id)))).scalar_one()
                 if vix_cnt < 365:
                     logger.info(f"[DeepHistory] VIX rows={vix_cnt} (<365). Downloading 5y VIX history...")
-                    from data_sources.vix_yfinance import VIXFetcher
+                    from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
                     fred_key = self.settings.get('data_sources', {}).get('fred', {}).get('api_key')
                     vix_fetcher = VIXFetcher(sess, fred_api_key=fred_key)
                     report["vix"] = await vix_fetcher.fetch(period="5y")
@@ -228,7 +228,7 @@ class MarketDataScheduler:
                 dxy_cnt = (await sess.execute(select(func.count(DXYData.id)))).scalar_one()
                 if dxy_cnt < 365:
                     logger.info(f"[DeepHistory] DXY rows={dxy_cnt} (<365). Downloading 5y DXY history...")
-                    from data_sources.dxy_yfinance import DXYFetcher
+                    from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
                     dxy_fetcher = DXYFetcher(sess)
                     report["dxy"] = await dxy_fetcher.fetch(period="5y")
             except Exception as e:

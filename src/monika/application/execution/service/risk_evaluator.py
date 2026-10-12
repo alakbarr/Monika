@@ -16,11 +16,11 @@ from unittest.mock import MagicMock
 
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
-import database.db as _db_mod
-from database.safe_ops import safe_commit
-from database.models import (
+import monika.infrastructure.database.db as _db_mod
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.database.models import (
     AssetAnalysis,
     Position,
     OrderLog,
@@ -34,9 +34,9 @@ from database.models import (
 )
 from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
-from risk.position_sizing import PositionSizer, SizingResult
-from risk.risk_gate import RiskGate
-from utils.infra.notifier import AgentNotifier
+from monika.domain.risk.position_sizing import PositionSizer, SizingResult
+from monika.domain.risk.risk_gate import RiskGate
+from monika.infrastructure.infra.notifier import AgentNotifier
 
 
 def get_session(*args, **kwargs):
@@ -64,7 +64,7 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
     async def _count_open_positions(self, session, symbol: Optional[str] = None) -> int:
         """Count currently open positions in database."""
         from sqlalchemy import select, func
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
 
         try:
             stmt = select(func.count(Position.id)).where(Position.status == "open")
@@ -93,7 +93,7 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
             if not risk_cfg.get("dynamic_risk_scaling", False):
                 return base_risk_pct
 
-            from utils.analytics.paper_tracker import PaperTracker
+            from monika.core.analytics.paper_tracker import PaperTracker
 
             tracker = PaperTracker(self.settings)
             stats = await tracker.get_statistics(session)
@@ -172,7 +172,7 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
 
         # Fallback: use last known close from DB
         async with get_session() as session:
-            from database.models import PriceOHLCV
+            from monika.infrastructure.database.models import PriceOHLCV
 
             bar = (
                 await session.execute(

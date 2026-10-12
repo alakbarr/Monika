@@ -194,8 +194,8 @@ async def get_plugin_config_schema(plugin_id: str, request: Request):
 async def update_config_settings(payload: ConfigUpdateRequest, request: Request):
     """Validate payload, create .bak backup, write settings.yaml, trigger hot-reload, and log."""
     from monika.core.config.settings import validate_config, _deep_merge
-    from database.db import AsyncSessionLocal
-    from database.models import ActivityLog
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.models import ActivityLog
 
     settings_path = _resolve_settings_path()
     existing_settings: Dict[str, Any] = {}

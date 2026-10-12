@@ -11,7 +11,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import OrderBlock, FVGZone, LiquidityZone
+from monika.infrastructure.database.models import OrderBlock, FVGZone, LiquidityZone
 from monika.application.analysis.tools.registry import ToolRegistry, ToolDefinition
 
 logger = logging.getLogger("TradingAgent.Tools.SMC")
@@ -49,7 +49,7 @@ async def handle_get_order_blocks(args: dict, **ctx) -> dict:
         .where(OrderBlock.mitigated_at == None)
     )
     if days > 0:
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         from datetime import timedelta
 
         cutoff = clock.now() - timedelta(days=days)
@@ -167,7 +167,7 @@ async def handle_get_volume_profile(args: dict, **ctx) -> dict:
         return {"status": "unavailable", "message": "Database session required for volume profile"}
 
     try:
-        from analysis.calculators.volume_profile import compute_volume_profile, compute_anchored_vwap
+        from monika.application.analysis.calculators.volume_profile import compute_volume_profile, compute_anchored_vwap
 
         anchor_mode = args.get("anchor_mode", "daily")
         vp = await compute_volume_profile(session, symbol, settings)
@@ -193,7 +193,7 @@ async def handle_get_liquidity_sweep_context(args: dict, **ctx) -> dict:
     mode = args.get("mode", "auto")
 
     try:
-        from analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+        from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
 
         return await detect_liquidity_sweep(session, symbol, settings, timeframe=timeframe, mode=mode)
     except Exception as e:
@@ -212,8 +212,8 @@ async def handle_get_inducements(args: dict, **ctx) -> dict:
     trend = args.get("trend", "bullish")
 
     try:
-        from database.models import PriceOHLCV, SwingPoint
-        from indicators.smc_advanced import detect_inducement
+        from monika.infrastructure.database.models import PriceOHLCV, SwingPoint
+        from monika.domain.indicators.smc_advanced import detect_inducement
 
         # Fetch recent candles
         bars = (
@@ -291,8 +291,8 @@ async def handle_get_breaker_blocks(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "H4")
 
     try:
-        from database.models import PriceOHLCV, OrderBlock
-        from indicators.smc_advanced import detect_breaker_blocks
+        from monika.infrastructure.database.models import PriceOHLCV, OrderBlock
+        from monika.domain.indicators.smc_advanced import detect_breaker_blocks
 
         bars = (
             (
@@ -382,8 +382,8 @@ async def handle_get_inverted_fvg(args: dict, **ctx) -> dict:
     lookback = int(args.get("lookback", 150))
 
     try:
-        from database.models import PriceOHLCV, FVGZone
-        from indicators.smc_advanced import detect_inverted_fvg
+        from monika.infrastructure.database.models import PriceOHLCV, FVGZone
+        from monika.domain.indicators.smc_advanced import detect_inverted_fvg
 
         bars = (
             (
@@ -499,8 +499,8 @@ async def handle_get_judas_swing(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "M15")
 
     try:
-        from database.models import PriceOHLCV
-        from indicators.smc_advanced import detect_judas_swing
+        from monika.infrastructure.database.models import PriceOHLCV
+        from monika.domain.indicators.smc_advanced import detect_judas_swing
         from monika.application.analysis.calculators.liquidity_sweep_detector import _get_asian_session_range
 
         asian_range = await _get_asian_session_range(session, symbol, settings)
@@ -574,8 +574,8 @@ async def handle_get_equal_highs_lows(args: dict, **ctx) -> dict:
     tolerance_pips = float(args.get("tolerance_pips", 3.0))
 
     try:
-        from database.models import PriceOHLCV
-        from indicators.smc_advanced import detect_equal_highs_lows
+        from monika.infrastructure.database.models import PriceOHLCV
+        from monika.domain.indicators.smc_advanced import detect_equal_highs_lows
 
         bars = (
             (
@@ -638,8 +638,8 @@ async def handle_get_wick_to_wick_fvg(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "H4")
 
     try:
-        from database.models import PriceOHLCV
-        from indicators.smc_advanced import find_wick_to_wick_fvg
+        from monika.infrastructure.database.models import PriceOHLCV
+        from monika.domain.indicators.smc_advanced import find_wick_to_wick_fvg
 
         bars = (
             (
@@ -702,8 +702,8 @@ async def handle_get_smt_divergence(
         return {"status": "unavailable", "message": "Database session required for get_smt_divergence"}
 
     try:
-        from database.models import PriceOHLCV
-        from indicators.smc_advanced import detect_smt_divergence
+        from monika.infrastructure.database.models import PriceOHLCV
+        from monika.domain.indicators.smc_advanced import detect_smt_divergence
 
         async def _fetch_df(sym_name: str):
             bars = (

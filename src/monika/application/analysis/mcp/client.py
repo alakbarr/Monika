@@ -19,9 +19,9 @@ import aiohttp
 from monika.application.analysis.mcp.protocol import LATEST_PROTOCOL_VERSION
 from monika.application.analysis.mcp.mcp_death_supervisor import McpDeathSupervisor
 from monika.application.analysis.mcp.mcp_schema_cache import McpSchemaCache
-from analysis.tools.base_handler import ToolHandler
-from analysis.tools.registry import default_tool_registry, ToolDefinition
-from analysis.tools.unified_registry import unified_tool_registry
+from monika.application.analysis.tools.base_handler import ToolHandler
+from monika.application.analysis.tools.registry import default_tool_registry, ToolDefinition
+from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("TradingAgent.MCP.Client")

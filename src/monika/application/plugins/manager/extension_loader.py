@@ -13,7 +13,7 @@ import yaml
 import logging
 import importlib.util
 from typing import Dict, List, Any, Optional
-from utils.plugins.manager import PluginManager, get_plugin_manager
+from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
 
 logger = logging.getLogger("TradingAgent.PluginLoader")
 
@@ -60,7 +60,7 @@ def load_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = None)
             else:
                 module = importlib.import_module(mod_name)
             target = getattr(module, func_name)
-            from utils.plugins.manager import BasePlugin
+            from monika.application.plugins.manager.manager import BasePlugin
             if isinstance(target, type) and issubclass(target, BasePlugin):
                 plugin_instance = target(config=manifest.get("config", {}))
                 plugin_instance.setup(mgr)

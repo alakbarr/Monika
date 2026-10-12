@@ -1084,7 +1084,7 @@ async def classify_news_batch_with_jev(
     try:
         from monika.infrastructure.database.adapters import extract_currency_tags
     except ImportError:
-        from database.adapters import extract_currency_tags
+        from monika.infrastructure.database.adapters import extract_currency_tags
 
     calendar_priors = calendar_priors or {}
 

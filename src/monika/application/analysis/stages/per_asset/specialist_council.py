@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
-from analysis.memory.failure_taxonomy import get_negative_constraints_for_regime
+from monika.application.analysis.memory.failure_taxonomy import get_negative_constraints_for_regime
 
 logger = logging.getLogger("TradingAgent.PerAsset.SpecialistCouncil")
 

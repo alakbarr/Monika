@@ -74,8 +74,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
     # 2. Deterministic Portfolio Correlation Gating
     try:
-        from database.db import get_session
-        from risk.portfolio_correlation_gate import filter_correlated_proposals
+        from monika.infrastructure.database.db import get_session
+        from monika.domain.risk.portfolio_correlation_gate import filter_correlated_proposals
 
         async with get_session() as session:
             kept_actionable, rejected_actionable = await filter_correlated_proposals(session, actionable)
@@ -103,10 +103,10 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     # 4. Institutional 22-Check Risk Gate Evaluation
     if actionable:
         try:
-            from database.db import get_session as _gs_rg
-            from database.models import AssetAnalysis
-            from risk.risk_gate import RiskGate
-            from risk.trade_proposal import TradeProposal
+            from monika.infrastructure.database.db import get_session as _gs_rg
+            from monika.infrastructure.database.models import AssetAnalysis
+            from monika.domain.risk.risk_gate import RiskGate
+            from monika.domain.risk.trade_proposal import TradeProposal
 
             risk_gate = getattr(scheduler, "risk_gate", None) or RiskGate(
                 scheduler.settings, mt5_client=getattr(scheduler, "mt5", None)
@@ -210,8 +210,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
     # 5. Deterministic Trade Pre-Commit Gate
     if actionable:
         try:
-            from analysis.validators.precommit_gate import TradePreCommitGate
-            from database.db import get_session as _gs_pre
+            from monika.application.analysis.validators.precommit_gate import TradePreCommitGate
+            from monika.infrastructure.database.db import get_session as _gs_pre
 
             precommit_gate = TradePreCommitGate(scheduler.settings)
             precommit_approved = []

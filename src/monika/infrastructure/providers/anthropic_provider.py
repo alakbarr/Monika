@@ -18,12 +18,12 @@ from anthropic import (
     AuthenticationError as AnthropicAuthError,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.api.claude_rate_limiter import ClaudeRateLimiter
-from utils.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
+from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
+from monika.infrastructure.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
 
-from analysis.tools.tool_executor import ToolExecutor
-from database.models import ActivityLog
-from analysis.providers.base_provider import BaseLLMClient, MockResponse
+from monika.application.analysis.tools.tool_executor import ToolExecutor
+from monika.infrastructure.database.models import ActivityLog
+from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse
 
 logger = logging.getLogger("TradingAgent.AnthropicProvider")
 
@@ -78,7 +78,7 @@ class AnthropicProvider(BaseLLMClient):
             self.thinking_level = "none"
         else:
             try:
-                from utils.llm.adaptive_thinking import QuantizedThinkingAllocator
+                from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
                 quantized_budget = QuantizedThinkingAllocator.quantize(budget)
             except Exception:
                 quantized_budget = 4096 if budget >= 4000 else 1024
@@ -281,7 +281,7 @@ class AnthropicProvider(BaseLLMClient):
             use_thinking = bool(self.thinking_level and str(self.thinking_level).lower() != "none" and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS))
             is_adaptive = use_thinking and any(x in self.model.lower() for x in ADAPTIVE_MODELS)
             
-            from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
             cbm = CacheBreakpointManager()
             sys_blocks, cached_tools = cbm.wrap_classify_json(system_prompt, tool_def, pad_to_cache_threshold=True)
             if not sys_blocks:
@@ -401,7 +401,7 @@ class AnthropicProvider(BaseLLMClient):
         )
         if not res or res.startswith("ERROR:"):
             return None
-        from analysis.providers.base_provider import extract_and_parse_json
+        from monika.infrastructure.providers.base_provider import extract_and_parse_json
         parsed = extract_and_parse_json(res)
         if parsed is not None:
             return parsed
@@ -469,7 +469,7 @@ class AnthropicProvider(BaseLLMClient):
             else:
                 normalized_messages.append(m)
 
-        from utils.llm.cache_breakpoint_manager import CacheBreakpointManager
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
         cbm = CacheBreakpointManager()
         cached_messages = cbm.apply_to_messages(normalized_messages)
 
@@ -522,7 +522,7 @@ class AnthropicProvider(BaseLLMClient):
         if not self.client:
             raise ValueError("ANTHROPIC_API_KEY is not set (invalid api key). Claude client uninitialized.")
         
-        from database.db import get_session
+        from monika.infrastructure.database.db import get_session
         async with get_session() as session:
             executor = ToolExecutor(session, settings=self.settings, model_name=self.model)
 
@@ -543,7 +543,7 @@ class AnthropicProvider(BaseLLMClient):
             consecutive_chat_tool_sig = None
             repeated_chat_tool_count = 0
 
-            from utils.llm.context_compaction import ContextCompactionEngine
+            from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
             compactor = ContextCompactionEngine(self.settings)
 
             while turns < self.max_tool_turns:
@@ -673,7 +673,7 @@ class AnthropicProvider(BaseLLMClient):
         result: dict,
     ) -> None:
         try:
-            from database.db import get_session
+            from monika.infrastructure.database.db import get_session
             entry = ActivityLog(
                 timestamp=datetime.now(timezone.utc),
                 category="analysis",

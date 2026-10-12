@@ -12,9 +12,9 @@ from typing import Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import ContextSpillBlob
-from utils.llm.prompt_compressor import estimate_tokens
-from utils.llm.context_compaction import ContextCompactionEngine
+from monika.infrastructure.database.models import ContextSpillBlob
+from monika.infrastructure.llm.prompt_compressor import estimate_tokens
+from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
 logger = logging.getLogger("TradingAgent.PostgresSpillSubsystem")
 

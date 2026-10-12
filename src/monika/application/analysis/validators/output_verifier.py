@@ -9,7 +9,7 @@ Validates trade proposals with deterministic constraints before entering the deb
 import logging
 import json
 from typing import Optional, List, Tuple, Dict, Any
-from analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
 logger = logging.getLogger("TradingAgent.OutputVerifier")
 
@@ -154,7 +154,7 @@ class OutputVerifier:
 
         digits = 5
         try:
-            from risk.position_sizing import get_instrument_spec
+            from monika.domain.risk.position_sizing import get_instrument_spec
             spec = get_instrument_spec(symbol)
             if spec and spec.digits:
                 digits = int(spec.digits)
@@ -390,7 +390,7 @@ class OutputVerifier:
             # Check 4b: TimesFM 3.0 Reachability Envelope Compliance
             if session:
                 try:
-                    from indicators.timesfm_engine import TimesFMEngine
+                    from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
                     tfm_engine = TimesFMEngine(settings)
                     tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe='H1', max_age_hours=8.0)
                     if tfm_fc and "quantiles" in tfm_fc:

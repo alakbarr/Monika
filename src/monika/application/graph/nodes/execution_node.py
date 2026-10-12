@@ -1,9 +1,9 @@
 import logging
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from typing import Dict, Any, Optional
 from monika.application.graph.state import TradingState
 from langchain_core.runnables.config import RunnableConfig
-from database.db import get_session
+from monika.infrastructure.database.db import get_session
 from datetime import datetime, timezone
 from sqlalchemy import select
 
@@ -31,7 +31,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
         
         # [NEW] Check override
         try:
-            from database.models import SystemConfig
+            from monika.infrastructure.database.models import SystemConfig
             async with get_session() as session:
                 cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == 'auto_execute_min_confidence_override'))).scalar_one_or_none()
                 if cfg and cfg.value:
@@ -57,7 +57,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
             
             exec_svc = getattr(scheduler, "execution_service", None)
             if exec_svc is None:
-                from execution.execution_service import ExecutionService
+                from monika.application.execution.execution_service import ExecutionService
                 exec_svc = ExecutionService(scheduler.settings, scheduler._mt5, dry_run=getattr(scheduler, 'dry_run', False))
             equity = None
             try:
@@ -67,7 +67,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                 else:
                     logger.error('MT5 returned zero or null equity. Auto-execute BLOCKED this cycle.')
                     try:
-                        from utils.infra.notifier import AgentNotifier
+                        from monika.infrastructure.infra.notifier import AgentNotifier
                         await AgentNotifier().send_warning('[PERINGATAN] <b>Auto-Execute BLOCKED</b>\nMT5 could not verify account equity.')
                     except Exception: pass
                     summary['execution'] = {'status': 'blocked_no_equity_data', 'count': 0}
@@ -81,7 +81,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
             for sym, r in actionable:
                 analysis_id = r["analysis_id"]
                 raw_conf = r.get("confidence", 0)
-                from utils.calibration.confidence_calibrator import get_calibrated_confidence
+                from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
                 async with get_session() as cal_session:
                     calibrated_conf = await get_calibrated_confidence(
                         cal_session, raw_conf, regime=r.get("market_regime") or r.get("regime")
@@ -96,7 +96,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                 async with get_session() as check_session:
                     sym_stats = await scheduler._get_symbol_paper_stats(check_session, sym)
                 
-                from analysis.memory.decision_log import DecisionLogger
+                from monika.application.analysis.memory.decision_log import DecisionLogger
                 
                 if sym_stats.get('blocked'):
                     logger.warning(f"Auto-execute blocked for {sym}: symbol WR < 35%")
@@ -108,12 +108,12 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                 max_execute_age_minutes = scheduler.settings.get('execution', {}).get('max_analysis_age_for_execute_minutes', 20)
                 
                 async with get_session() as session:
-                    from database.models import AssetAnalysis
+                    from monika.infrastructure.database.models import AssetAnalysis
                     ana = (await session.execute(select(AssetAnalysis).where(AssetAnalysis.id == analysis_id))).scalar_one_or_none()
                     
                     if ana:
                         if scheduler.settings.get('adversarial_check', {}).get('enabled', True):
-                            from database.models import SystemConfig
+                            from monika.infrastructure.database.models import SystemConfig
                             import json
                             cached = (await session.execute(
                                 select(SystemConfig).where(SystemConfig.key == f'adversarial_outcome_{analysis_id}')
@@ -194,7 +194,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
 
                         # Phase 7: Pre-Execution Market Replay & Slippage Simulation Sandbox
                         try:
-                            from risk.execution_simulator import ExecutionSimulator
+                            from monika.domain.risk.execution_simulator import ExecutionSimulator
                             simulator = ExecutionSimulator(scheduler.settings, mt5_client=scheduler._mt5)
                             entry_p = float(ana.entry_price or ana.price_at_analysis or r.get("entry_price") or 0.0)
                             sl_p = float(ana.stop_loss or r.get("stop_loss") or 0.0)
@@ -264,7 +264,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
 
     # Hitung API Cost
     try:
-        from utils.analytics.cost_tracker import CostTracker
+        from monika.core.analytics.cost_tracker import CostTracker
         stage1_in = summary.get("fundamental", {}).get("input_tokens", 0)
         stage1_out = summary.get("fundamental", {}).get("output_tokens", 0)
         stage2_in = sum(r.get("input_tokens", 0) for r in summary.get("per_asset", {}).values() if isinstance(r, dict))

@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, List
 from sqlalchemy import select, desc, or_, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import (
+from monika.infrastructure.database.models import (
     AssetAnalysis,
     PaperTradeRecord,
     TradeTrigger,
@@ -23,7 +23,7 @@ from database.models import (
     DecisionReflection,
     ActivityLog,
 )
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool, ToolRegistry, ToolDefinition
 
@@ -80,7 +80,7 @@ async def handle_get_trade_history(
     # Query live Position records if requested or if paper trades list is empty
     mode = str(args.get("mode") or "").lower()
     if mode in ("live", "all") or not trades:
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
 
         pos_q = select(Position)
         if status_filter:
@@ -134,7 +134,7 @@ async def handle_get_trade_details(
 
     is_live = False
     if not record:
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
 
         record = (
             await effective_session.execute(select(Position).where((Position.id == tid) | (Position.mt5_ticket == tid)))
@@ -322,7 +322,7 @@ async def handle_get_paper_trading_performance(
     mode = str(args.get("mode", "paper")).lower()
 
     if mode in ("live", "all"):
-        from database.models import Position
+        from monika.infrastructure.database.models import Position
         from datetime import timedelta
 
         q = select(Position).where(Position.status == "closed")
@@ -372,7 +372,7 @@ async def handle_get_paper_trading_performance(
                 ],
             }
 
-    from utils.analytics.paper_tracker import PaperTracker
+    from monika.core.analytics.paper_tracker import PaperTracker
 
     tracker = PaperTracker(settings)
     stats = await tracker.get_statistics(effective_session, days_back=days_back, symbol=symbol)
@@ -413,7 +413,7 @@ async def handle_get_spread_snapshot(
 ) -> dict:
     sym = args.get("symbol") or getattr(executor, "symbol", "EURUSD")
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         return await client.get_spread(symbol=sym)
@@ -425,9 +425,9 @@ async def handle_get_market_correlations(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Calculates rolling cross-asset return correlations across market symbols."""
-    from database.db import get_session
-    from risk.correlation_matrix import DynamicCorrelationMatrix
-    import utils.clock as clock
+    from monika.infrastructure.database.db import get_session
+    from monika.domain.risk.correlation_matrix import DynamicCorrelationMatrix
+    import monika.core.primitives.clock as clock
 
     symbols = args.get("symbols")
     if isinstance(symbols, str):
@@ -580,7 +580,7 @@ async def handle_get_recent_activity(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Recent agent activity log entries."""
-    from database.models import ActivityLog
+    from monika.infrastructure.database.models import ActivityLog
 
     effective_session = session or getattr(executor, "session", None)
     if not effective_session:
@@ -630,7 +630,7 @@ async def handle_get_asset_analysis(
             pass
     elif hours_back:
         try:
-            import utils.clock as clock
+            import monika.core.primitives.clock as clock
             from datetime import timedelta
 
             cutoff = clock.now() - timedelta(hours=float(hours_back))
@@ -685,7 +685,7 @@ async def handle_search_historical_memories(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Searches past decisions, reflections, lessons, and precedent trade sessions."""
-    from analysis.memory.session_search import SessionSearchEngine
+    from monika.application.analysis.memory.session_search import SessionSearchEngine
 
     effective_session = session or getattr(executor, "session", None)
     query = str(args.get("query") or "").strip()
@@ -713,8 +713,8 @@ async def handle_run_trade_counterfactual(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Runs counterfactual replay on a specific past trade."""
-    from analysis.memory.counterfactual_simulator import CounterfactualSimulator
-    from database.db import get_session
+    from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
+    from monika.infrastructure.database.db import get_session
 
     trade_id = int(args.get("trade_id", 0))
     sl_pips_delta = float(args.get("sl_pips_delta", 0.0))
@@ -755,10 +755,10 @@ async def handle_get_debate_statistics(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Aggregates debate outcomes (Bull vs Bear wins) over a specified time window."""
-    from database.db import get_session
-    from database.models import AssetAnalysis
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import AssetAnalysis
     from datetime import timedelta
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
 
     days = int(args.get("days", 30))
     cutoff = clock.now() - timedelta(days=days)
@@ -834,8 +834,8 @@ async def handle_get_rejection_history(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Retrieves history of orders rejected by RiskGate or preflight safety checks."""
-    from database.db import get_session
-    from database.models import OrderLog
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import OrderLog
     import json
 
     limit = int(args.get("limit", 20))
@@ -935,8 +935,8 @@ async def handle_get_market_chronicle(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Retrieve market chronicles and macro structural milestones for a given month, timeframe, or category."""
-    from database.db import get_session
-    from database.models import MarketChronicle
+    from monika.infrastructure.database.db import get_session
+    from monika.infrastructure.database.models import MarketChronicle
     from datetime import datetime, timezone
     import calendar
 
@@ -1059,14 +1059,14 @@ async def handle_get_portfolio_exposure(
     effective_session = session or getattr(executor, "session", None)
 
     async def _run(s: AsyncSession):
-        from services.portfolio_service import PortfolioService
+        from monika.application.services.portfolio_service import PortfolioService
 
         return await PortfolioService.get_portfolio_exposure(s, is_paper=is_paper)
 
     if effective_session:
         return await _run(effective_session)
     else:
-        from database.db import get_session
+        from monika.infrastructure.database.db import get_session
 
         async with get_session() as sess:
             return await _run(sess)
@@ -1092,8 +1092,8 @@ class GetPortfolioExposureHandler(ToolHandler):
 async def handle_run_monte_carlo_simulation(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
-    from backtest.monte_carlo_engine import MonteCarloStressTester
-    from services.portfolio_service import PortfolioService
+    from monika.application.backtest.monte_carlo_engine import MonteCarloStressTester
+    from monika.application.services.portfolio_service import PortfolioService
 
     num_simulations = int(args.get("num_simulations", 1000))
     mode = str(args.get("mode", "permutation"))
@@ -1123,7 +1123,7 @@ async def handle_run_monte_carlo_simulation(
         # Fallback to PaperTradeRecord if live closed positions are insufficient
         if len(returns) < 5:
             try:
-                from database.models import PaperTradeRecord
+                from monika.infrastructure.database.models import PaperTradeRecord
 
                 paper_stmt = select(PaperTradeRecord).where(PaperTradeRecord.status == "closed")
                 if symbol:
@@ -1166,7 +1166,7 @@ async def handle_run_monte_carlo_simulation(
     if effective_session:
         return await _run(effective_session)
     else:
-        from database.db import get_session
+        from monika.infrastructure.database.db import get_session
 
         async with get_session() as sess:
             return await _run(sess)
@@ -1204,7 +1204,7 @@ async def handle_query_signal_performance(
     days_back = int(args.get("days_back", 30))
     limit = min(100, int(args.get("limit", 20)))
 
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     from datetime import timedelta
 
     cutoff = clock.now() - timedelta(days=days_back)
@@ -1345,7 +1345,7 @@ async def handle_export_debate_transcripts(
     symbol = (args.get("symbol") or "").upper().strip().replace("/", "")
     limit = min(500, int(args.get("limit", 100)))
 
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     from datetime import timedelta
 
     cutoff = clock.now() - timedelta(days=days_back)
@@ -1420,13 +1420,13 @@ async def handle_trigger_learning_cycle(
     days_back = int(args.get("days_back", 7))
 
     try:
-        from analysis.memory.reflector import TradeReflector
-        from analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
-        from analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
-        from database.models import DecisionReflection
+        from monika.application.analysis.memory.reflector import TradeReflector
+        from monika.application.analysis.memory.negative_constraint_generator import NegativeConstraintGenerator
+        from monika.application.analysis.memory.lesson_consolidator import consolidate_lessons_to_playbook
+        from monika.infrastructure.database.models import DecisionReflection
         from sqlalchemy import select
         from datetime import timedelta
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
 
         reflector = TradeReflector(settings)
         since = clock.now() - timedelta(days=days_back)
@@ -1497,7 +1497,7 @@ async def handle_trigger_market_scan(
     if isinstance(symbols, str):
         symbols = [s.strip() for s in symbols.split(",")]
 
-    from database.models import FundamentalBrief, AssetAnalysis
+    from monika.infrastructure.database.models import FundamentalBrief, AssetAnalysis
     import json
 
     latest_brief = (
@@ -1588,8 +1588,8 @@ async def handle_run_strategy_backtest(
     strategy_name = str(args.get("strategy") or "smc_fvg").lower()
 
     try:
-        from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-        from analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+        from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
 
         # Resolve strategy class or fallback to base
         strategy_cls = None
@@ -1613,7 +1613,7 @@ async def handle_run_strategy_backtest(
             settings=settings,
         )
 
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         from datetime import timedelta, datetime, timezone
 
         raw_start = args.get("start_date")
@@ -1699,10 +1699,10 @@ async def handle_get_pnl_summary(
     if not effective_session:
         return {"error": "Database session required for get_pnl_summary"}
 
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     from datetime import datetime, timezone, timedelta
     from sqlalchemy import select, func
-    from database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import Position, PaperTradeRecord
 
     now = clock.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1792,9 +1792,9 @@ async def handle_run_adhoc_symbol_debate(
     settings = getattr(executor, "settings", {}) or {}
     symbol = (args.get("symbol") or getattr(executor, "symbol", "EURUSD") or "EURUSD").upper().strip().replace("/", "")
 
-    from database.db import get_session
-    from analysis.debate.debate_orchestrator import DebateOrchestrator
-    from analysis.prefetch.pipeline import prefetch_pipeline
+    from monika.infrastructure.database.db import get_session
+    from monika.application.analysis.debate.debate_orchestrator import DebateOrchestrator
+    from monika.application.analysis.prefetch.pipeline import prefetch_pipeline
 
     async def _do_debate(sess):
         market_data = await prefetch_pipeline.get_market_context(symbol, session=sess)
@@ -1847,12 +1847,12 @@ async def handle_run_hostile_stress_test(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Runs Hostile Market Feed Wire Probes and RiskGate stress testing against extreme anomalies."""
-    from evals.hostile_market_probe import HostileMarketProbe
+    from monika.application.evals.hostile_market_probe import HostileMarketProbe
 
     symbol = (args.get("symbol") or "EURUSD").upper().strip().replace("/", "")
 
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         spread_info = await client.get_spread(symbol)
@@ -1913,7 +1913,7 @@ async def handle_export_trades_to_excel(
     import os
     import pandas as pd
     from datetime import datetime, timezone
-    from database.models import Position, PaperTradeRecord
+    from monika.infrastructure.database.models import Position, PaperTradeRecord
 
     out_dir = args.get("output_dir") or "data/exports"
     os.makedirs(out_dir, exist_ok=True)
@@ -2053,9 +2053,9 @@ class ExportTradesToExcelHandler(ToolHandler):
 
 async def handle_generate_docx_report(args: dict, session: Optional[AsyncSession] = None, **kwargs) -> dict:
     """Generates an institutional Microsoft Word (.docx) portfolio performance report."""
-    from logging_observability.reporting.docx_report_generator import DocxReportGenerator
-    from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
-    from database.models import Position, PaperTradeRecord
+    from monika.core.telemetry.reporting.docx_report_generator import DocxReportGenerator
+    from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
+    from monika.infrastructure.database.models import Position, PaperTradeRecord
 
     trades = []
     if session:
@@ -2136,9 +2136,9 @@ class GenerateDocxReportHandler(ToolHandler):
 
 async def handle_generate_pptx_deck(args: dict, session: Optional[AsyncSession] = None, **kwargs) -> dict:
     """Generates an institutional Microsoft PowerPoint (.pptx) pitch and performance deck."""
-    from logging_observability.reporting.pptx_deck_generator import PptxDeckGenerator
-    from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
-    from database.models import PaperTradeRecord
+    from monika.core.telemetry.reporting.pptx_deck_generator import PptxDeckGenerator
+    from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     trades = []
     if session:
@@ -2211,7 +2211,7 @@ async def handle_cancel_stale_pending_orders(args: dict, **kwargs) -> dict:
     failed_tickets = []
 
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         orders = await client.get_orders()
@@ -2266,7 +2266,7 @@ async def handle_close_positions_batch(
     reason = str(args.get("reason") or "User requested batch close")
 
     try:
-        from config.settings import load_settings
+        from monika.core.config.settings import load_settings
 
         settings = load_settings() or {}
         is_paper = bool(settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
@@ -2275,7 +2275,7 @@ async def handle_close_positions_batch(
 
         if is_paper:
             # Paper trading simulation: close open paper positions in database
-            from database.models import Position
+            from monika.infrastructure.database.models import Position
             from sqlalchemy import select
 
             closed_count = 0
@@ -2304,7 +2304,7 @@ async def handle_close_positions_batch(
             if session:
                 closed_count = await _close_paper_in_session(session)
             else:
-                from database.db import get_session
+                from monika.infrastructure.database.db import get_session
 
                 async with get_session() as s:
                     closed_count = await _close_paper_in_session(s)
@@ -2318,7 +2318,7 @@ async def handle_close_positions_batch(
             }
         else:
             # Live broker mode: pass to MT5 client
-            from execution.mt5_client import get_mt5_client
+            from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
             client = get_mt5_client()
             if hasattr(client, "close_positions_batch"):
@@ -2358,8 +2358,8 @@ async def handle_run_walk_forward_analysis(
     test_months = int(args.get("test_months", 1))
 
     try:
-        from backtest.walk_forward_engine import WalkForwardEngine
-        from analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        from monika.application.backtest.walk_forward_engine import WalkForwardEngine
+        from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
 
         strategy_cls = None
         for k, v in STRATEGY_REGISTRY.items():
@@ -2371,7 +2371,7 @@ async def handle_run_walk_forward_analysis(
                 (v for v in STRATEGY_REGISTRY.values() if isinstance(v, type) and issubclass(v, EdgeStrategy)), None
             )
 
-        import utils.clock as clock
+        import monika.core.primitives.clock as clock
         from datetime import timedelta
 
         end_date = clock.now()
@@ -2446,10 +2446,10 @@ async def handle_run_parameter_plateau_optimization(
     settings = getattr(executor, "settings", {}) or {}
 
     try:
-        from analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer, ParameterSpec
-        from backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-        from analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
-        import utils.clock as clock
+        from monika.application.analysis.calculators.quant_plateau_optimizer import QuantPlateauOptimizer, ParameterSpec
+        from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+        from monika.application.analysis.strategies.registry import STRATEGY_REGISTRY, EdgeStrategy
+        import monika.core.primitives.clock as clock
         from datetime import timedelta
 
         # Resolve strategy class
@@ -2560,8 +2560,8 @@ class RunParameterPlateauOptimizationHandler(ToolHandler):
 
 async def handle_generate_tearsheet_report(args: dict, session: Optional[AsyncSession] = None, **kwargs) -> dict:
     """Generates an institutional PDF / HTML quantitative tearsheet report."""
-    from logging_observability.reporting.tearsheet_generator import QuantTearsheetGenerator
-    from database.models import PaperTradeRecord
+    from monika.core.telemetry.reporting.tearsheet_generator import QuantTearsheetGenerator
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     trades = []
     if session:
@@ -2654,7 +2654,7 @@ async def handle_export_dataset_file(args: dict, session: Optional[AsyncSession]
         return {"error": "Database session required for export_dataset_file"}
 
     import pandas as pd
-    from database.models import PaperTradeRecord, AssetAnalysis, MarketChronicle
+    from monika.infrastructure.database.models import PaperTradeRecord, AssetAnalysis, MarketChronicle
 
     model_map = {
         "paper_trades": PaperTradeRecord,
@@ -2718,7 +2718,7 @@ async def handle_get_graduation_status(
     min_trades = int(settings.get("execution", {}).get("min_paper_trades_before_live", 50))
     min_wr = float(settings.get("execution", {}).get("graduation_min_win_rate", 0.55))
 
-    from database.models import PaperTradeRecord
+    from monika.infrastructure.database.models import PaperTradeRecord
 
     closed_records = (
         (await effective_session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "closed")))
@@ -2798,7 +2798,7 @@ async def handle_add_journal_entry(
     except Exception:
         t_ref = None
 
-    from database.models import UserJournalEntry
+    from monika.infrastructure.database.models import UserJournalEntry
 
     user_id = str(getattr(executor, "user_id", "default") or "default")
     entry = UserJournalEntry(
@@ -2844,7 +2844,7 @@ async def handle_get_journal_entries(
     symbol = args.get("symbol")
     tag = args.get("sentiment_tag") or args.get("tag")
 
-    from database.models import UserJournalEntry
+    from monika.infrastructure.database.models import UserJournalEntry
 
     query = select(UserJournalEntry)
     if symbol:
@@ -3035,7 +3035,7 @@ async def handle_read_system_logs(
 
     logs = []
     if effective_session and source != "file":
-        from database.models import ActivityLog
+        from monika.infrastructure.database.models import ActivityLog
 
         q = select(ActivityLog)
         if category and category != "all":
@@ -3100,7 +3100,7 @@ async def handle_get_broker_expenses_summary(
     days = int(args.get("days", 30))
     symbol_filter = str(args.get("symbol") or "").upper().strip()
 
-    import utils.clock as clock
+    import monika.core.primitives.clock as clock
     from datetime import timedelta
 
     now = clock.now()
@@ -3114,7 +3114,7 @@ async def handle_get_broker_expenses_summary(
     by_symbol: dict = {}
 
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         mt5_client = get_mt5_client(getattr(executor, "settings", {}))
         deals = []
@@ -3191,7 +3191,7 @@ async def handle_get_recent_tick_flow(
     symbol = (args.get("symbol") or "XAUUSD").strip().upper().replace("/", "")
     minutes = int(args.get("minutes", 15))
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         now_dt = clock.now()
@@ -3252,7 +3252,7 @@ async def handle_export_tick_data(
     symbol = (args.get("symbol") or "XAUUSD").strip().upper().replace("/", "")
     hours = min(int(args.get("hours", 1)), 24)
     try:
-        from execution.mt5_client import get_mt5_client
+        from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
         client = get_mt5_client()
         now_dt = clock.now()

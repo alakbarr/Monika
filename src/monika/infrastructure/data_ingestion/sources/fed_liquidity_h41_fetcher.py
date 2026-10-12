@@ -20,9 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import MacroLiquidityCreditMetric
-from database.safe_ops import safe_commit
-from utils import clock
+from monika.infrastructure.database.models import MacroLiquidityCreditMetric
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.FedLiquidityH41Fetcher")
 

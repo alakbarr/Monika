@@ -31,7 +31,7 @@ logger = logging.getLogger("TradingAgent.NewsWatcher")
 # Keyword Configuration
 # =============================================================================
 
-from utils.market.news_impact_keywords import HIGH_IMPACT_KEYWORDS, SHOCK_KEYWORDS
+from monika.domain.market.news_impact_keywords import HIGH_IMPACT_KEYWORDS, SHOCK_KEYWORDS
 
 
 # Kata kunci Medium-Impact — dipantau tapi tidak memicu re-analisis instan
@@ -261,7 +261,7 @@ class NewsWatcher:
         except Exception as e:
             logger.error(f'LLM classification pipeline failed — applying conservative SHOCK-only fallback (no full validation layer available): {e}')
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 asyncio.create_task(AgentNotifier().send_warning(
                     f'[PERINGATAN] News classification pipeline error. Menggunakan fallback shock-keyword konservatif '
                     f'(tanpa validasi berlapis normal) sampai pipeline pulih.\n{str(e)[:150]}'
@@ -317,7 +317,7 @@ class NewsWatcher:
             result["reanalysis_triggered"] = True
 
             try:
-                from utils.infra.notifier import AgentNotifier
+                from monika.infrastructure.infra.notifier import AgentNotifier
                 top_items_text = "\n".join([f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]])
                 symbols_text = f"Simbol terdampak: {', '.join(affected)}" if affected else "Simbol: Multi-aset/Makro"
                 notif_msg = f"[BREAKING NEWS] Terdeteksi berita berdampak tinggi:\n{top_items_text}\n{symbols_text}\nEvaluasi risiko dan re-analisis otomatis dipicu."
@@ -927,7 +927,7 @@ class NewsWatcher:
         """Instant sub-100ms news impact & position threat assessment via TypeSafe Jev System One."""
         try:
             from monika.infrastructure.providers.llm_factory import get_client_for_task
-            from utils.typesafe.jev_primitives import build_realtime_news_questions
+            from monika.core.primitives.jev_primitives import build_realtime_news_questions
             client = get_client_for_task("jev_news_realtime", self.settings)
             questions = build_realtime_news_questions(open_positions=open_positions)
             state = {

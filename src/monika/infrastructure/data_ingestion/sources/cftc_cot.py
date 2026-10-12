@@ -22,8 +22,8 @@ import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import COTReport
-from utils.api.http_retry import fetch_with_retry
+from monika.infrastructure.database.models import COTReport
+from monika.infrastructure.api.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.CFTC")
 
@@ -246,7 +246,7 @@ class CFTCCOTFetcher:
 async def _test():
     import os
     from dotenv import load_dotenv
-    from database.db import get_session, init_db
+    from monika.infrastructure.database.db import get_session, init_db
 
     load_dotenv()
     await init_db()

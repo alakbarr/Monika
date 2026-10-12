@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator, Position, ActivityLog, SystemConfig
-import utils.clock as clock
+import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.FlashCrashDetector")
 
@@ -423,7 +423,7 @@ class FlashCrashDetector:
 
                     if alerts:
                         try:
-                            from utils.protocol.event_bus import get_event_bus, CircuitBreakerEvent
+                            from monika.application.protocol.event_bus import get_event_bus, CircuitBreakerEvent
                             bus = get_event_bus()
                             cb_event = CircuitBreakerEvent(
                                 component="FlashCrashDetector",

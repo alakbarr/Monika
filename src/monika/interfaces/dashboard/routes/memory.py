@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select, or_, desc
 
-from database.db import AsyncSessionLocal
-from database.models import DecisionReflection, CandidateLesson, PlaybookRuleAttribution
+from monika.infrastructure.database.db import AsyncSessionLocal
+from monika.infrastructure.database.models import DecisionReflection, CandidateLesson, PlaybookRuleAttribution
 from monika.interfaces.dashboard.rbac import require_role, Role
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Memory")
@@ -183,7 +183,7 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
             is_mock_session = hasattr(session, "mock_calls") or hasattr(session, "_mock_return_value")
             if not is_mock_session:
                 try:
-                    from analysis.memory.session_search import SessionSearchEngine
+                    from monika.application.analysis.memory.session_search import SessionSearchEngine
                     engine = SessionSearchEngine()
                     hybrid_results = await engine.hybrid_search(
                         query=payload.query,
@@ -272,7 +272,7 @@ class PlaybookRollbackRequest(BaseModel):
 @memory_router.get("/playbooks/{name}/history")
 async def get_playbook_history(name: str) -> List[Dict[str, Any]]:
     """Retrieve version mutation history for a specific playbook."""
-    from analysis.memory.playbook_ledger import PlaybookLedger
+    from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
     ledger = PlaybookLedger()
     return ledger.list_history(playbook_name=name)
 
@@ -281,7 +281,7 @@ async def get_playbook_history(name: str) -> List[Dict[str, Any]]:
 @require_role(Role.ADMIN)
 async def rollback_playbook(name: str, request: Request, payload: Optional[PlaybookRollbackRequest] = None) -> Dict[str, Any]:
     """Roll back a playbook rule to an immediate prior or specified SHA-256 target blob."""
-    from analysis.memory.playbook_ledger import PlaybookLedger
+    from monika.application.analysis.memory.playbook_ledger import PlaybookLedger
     ledger = PlaybookLedger()
     target_hash = payload.target_hash if payload else None
     success = ledger.rollback(playbook_name=name, target_hash=target_hash)

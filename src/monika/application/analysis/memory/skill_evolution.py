@@ -29,10 +29,10 @@ import logging
 from collections import defaultdict
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-import utils.clock as clock
-from skills.loader import invalidate_cache
-from analysis.memory.playbook_linter import PlaybookLinter
-from analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
+import monika.core.primitives.clock as clock
+from monika.application.skills.loader import invalidate_cache
+from monika.application.analysis.memory.playbook_linter import PlaybookLinter
+from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
 
@@ -69,7 +69,7 @@ class MicroPlaybookCompiler:
         Returns:
             List of compiled playbook metadata dicts.
         """
-        from database.models import DecisionReflection, PaperTradeRecord, ActivityLog
+        from monika.infrastructure.database.models import DecisionReflection, PaperTradeRecord, ActivityLog
 
         cls.ensure_playbooks_dir()
         cfg = settings or getattr(cls, "_default_settings", {}) or {}
@@ -186,7 +186,7 @@ sample_size: {len(trades)}
                         os.replace(tmp_path, playbook_path)
                         invalidate_cache()
                     try:
-                        from analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
+                        from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager, PlaybookStatus
                         lifecycle = PlaybookLifecycleManager()
                         lifecycle.register_playbook(playbook_name, status=PlaybookStatus.ACTIVE)
                     except Exception as lm_err:

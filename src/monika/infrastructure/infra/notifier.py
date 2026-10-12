@@ -27,7 +27,7 @@ def sanitize_telegram_html(text: str) -> str:
         return ""
     
     try:
-        from telegram_bot.sanitizer import strip_emojis_and_emoticons
+        from monika.interfaces.telegram.sanitizer import strip_emojis_and_emoticons
         text = strip_emojis_and_emoticons(text)
     except Exception:
         pass
@@ -189,8 +189,8 @@ class AgentNotifier:
 
             # Log to ActivityLog
             try:
-                from database.db import get_session
-                from database.models import ActivityLog
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.models import ActivityLog
                 
                 async with get_session() as session:
                     clean_msg = re.sub(r'<[^>]+>', '', full_msg)

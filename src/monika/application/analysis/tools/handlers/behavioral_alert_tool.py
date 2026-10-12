@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from database.models import UserPreference
-from database.safe_ops import safe_commit
-from utils import clock
+from monika.infrastructure.database.models import UserPreference
+from monika.infrastructure.database.safe_ops import safe_commit
+from monika.core.primitives import clock
 
 logger = logging.getLogger("TradingAgent.BehavioralAlert")
 
