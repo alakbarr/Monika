@@ -217,3 +217,52 @@ def test_domain_core_class_identity_and_functional_parity():
     assert len(shim_zoo.FactorRegistry.list_factors()) >= 10
     assert len(canon_zoo.FactorRegistry.list_factors()) >= 10
 
+
+def test_infrastructure_layer_identity_and_parity():
+    """Verify PR-2 infrastructure layer shims preserve exact object identity and runtime contracts."""
+    # 1. Database models & engine identity
+    import database.models as shim_models
+    import monika.infrastructure.database.models as canon_models
+    assert shim_models.Base is canon_models.Base
+    assert shim_models.Trade is canon_models.Trade
+
+    import database.domain_models as shim_dm
+    import monika.infrastructure.database.domain_models as canon_dm
+    assert shim_dm.Base is canon_dm.Base
+    assert shim_dm.PriceOHLCV is canon_dm.PriceOHLCV
+
+    # 2. Broker adapters identity
+    import execution.broker_adapter as shim_ba
+    import monika.infrastructure.brokers.broker_adapter as canon_ba
+    assert shim_ba.SimulatedBrokerAdapter is canon_ba.SimulatedBrokerAdapter
+
+    import risk.approval_transport as shim_at
+    import monika.infrastructure.brokers.approval_transport as canon_at
+    assert shim_at.ApprovalTransport is canon_at.ApprovalTransport
+    assert shim_at.ApprovalRequestPayload is canon_at.ApprovalRequestPayload
+
+    # 3. LLM Providers identity
+    import analysis.providers.provider_registry as shim_pr
+    import monika.infrastructure.providers.provider_registry as canon_pr
+    assert shim_pr.ProviderRegistry is canon_pr.ProviderRegistry
+
+    import analysis.providers.llm_factory as shim_lf
+    import monika.infrastructure.providers.llm_factory as canon_lf
+    assert shim_lf.LLMFactory is canon_lf.LLMFactory
+
+    # 4. Credentials & Error taxonomy identity
+    import provider.credential_pool as shim_cp
+    import monika.infrastructure.credentials.credential_pool as canon_cp
+    assert shim_cp.CredentialPool is canon_cp.CredentialPool
+
+    import provider.error_taxonomy as shim_et
+    import monika.infrastructure.credentials.error_taxonomy as canon_et
+    assert shim_et.FailoverReason is canon_et.FailoverReason
+    assert shim_et.ErrorClassifier is canon_et.ErrorClassifier
+
+    # 5. TimesFM ML Engine identity
+    import indicators.timesfm_engine as shim_tfm
+    import monika.infrastructure.ml.timesfm_engine as canon_tfm
+    assert shim_tfm.TimesFMEngine is canon_tfm.TimesFMEngine
+
+

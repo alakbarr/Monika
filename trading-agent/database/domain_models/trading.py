@@ -1,35 +1,43 @@
-"""Trading, order, position, and outcome models (Phase 7)."""
+# ==============================================================================
+# Description: Backward-compatibility shim for monika.infrastructure.database.domain_models.trading
+# ==============================================================================
+"""Backward-compatibility shim. Canonical: monika.infrastructure.database.domain_models.trading"""
 
-from database.models import (
-    Trade,
-    Position,
-    TradeTrigger,
-    TradeOutcome,
-    PaperTradeRecord,
-    Order,
-    OrderLog,
-    TradePlan,
-    MT5Signal,
-    OrderStatus,
-    OrderEvent,
-    TradePlanLeg,
+import sys
+import monika.infrastructure.database.domain_models.trading as _canonical
+
+from monika.infrastructure.database.domain_models.trading import (
     BacktestRun,
     BacktestTrade,
+    MT5Signal,
+    Order,
+    OrderEvent,
+    OrderLog,
+    OrderStatus,
+    PaperTradeRecord,
+    Position,
+    Trade,
+    TradeOutcome,
+    TradePlan,
+    TradePlanLeg,
+    TradeTrigger,
 )
 
+sys.modules[__name__] = _canonical
+
 __all__ = [
-    "Trade",
-    "Position",
-    "TradeTrigger",
-    "TradeOutcome",
-    "PaperTradeRecord",
-    "Order",
-    "OrderLog",
-    "TradePlan",
-    "MT5Signal",
-    "OrderStatus",
-    "OrderEvent",
-    "TradePlanLeg",
     "BacktestRun",
     "BacktestTrade",
+    "MT5Signal",
+    "Order",
+    "OrderEvent",
+    "OrderLog",
+    "OrderStatus",
+    "PaperTradeRecord",
+    "Position",
+    "Trade",
+    "TradeOutcome",
+    "TradePlan",
+    "TradePlanLeg",
+    "TradeTrigger",
 ]

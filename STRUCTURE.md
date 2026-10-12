@@ -238,7 +238,109 @@ Monika/
 │       │       ├── risk_rule_plugin.py
 │       │       └── trade_proposal.py
 │       ├── infrastructure
-│       │   └── __init__.py
+│       │   ├── __init__.py
+│       │   ├── brokers
+│       │   │   ├── __init__.py
+│       │   │   ├── approval_transport.py
+│       │   │   ├── audit_logger.py
+│       │   │   ├── broker_adapter.py
+│       │   │   ├── ea_bridge
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── contract_types.py
+│       │   │   │   ├── file_protocol.py
+│       │   │   │   ├── mql5_bridge.py
+│       │   │   │   ├── rate_limiter.py
+│       │   │   │   ├── types.py
+│       │   │   │   └── watchdog.py
+│       │   │   ├── ibkr_adapter.py
+│       │   │   ├── idempotency_guard.py
+│       │   │   ├── mt5_client.py
+│       │   │   ├── mt5_compat.py
+│       │   │   ├── paper_tracker.py
+│       │   │   └── rate_throttler.py
+│       │   ├── credentials
+│       │   │   ├── __init__.py
+│       │   │   ├── credential_pool.py
+│       │   │   └── error_taxonomy.py
+│       │   ├── database
+│       │   │   ├── __init__.py
+│       │   │   ├── base_repository.py
+│       │   │   ├── clean_stale_proposals.py
+│       │   │   ├── compat.py
+│       │   │   ├── connection.py
+│       │   │   ├── domain_models
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── activity_logs.py
+│       │   │   │   ├── base.py
+│       │   │   │   ├── order_history.py
+│       │   │   │   ├── positions.py
+│       │   │   │   ├── price_data.py
+│       │   │   │   ├── system_config.py
+│       │   │   │   └── trade_proposals.py
+│       │   │   ├── emergency_audit.py
+│       │   │   ├── engine.py
+│       │   │   ├── fts5_tokenizer.py
+│       │   │   ├── migrations
+│       │   │   │   ├── env.py
+│       │   │   │   ├── script.py.mako
+│       │   │   │   └── versions
+│       │   │   │       ├── 001_initial_schema.py
+│       │   │   │       ├── 002_add_fts5_virtual_tables.py
+│       │   │   │       ├── 003_add_session_wal_and_pruning.py
+│       │   │   │       ├── 004_add_user_market_intel.py
+│       │   │   │       ├── 005_add_phase2_compression.py
+│       │   │   │       ├── 006_add_phase3_runtime.py
+│       │   │   │       ├── 007_add_phase4_rewind.py
+│       │   │   │       └── 008_foreign_key_audit.py
+│       │   │   ├── phase2_compaction.py
+│       │   │   ├── phase2_prune_ledger.py
+│       │   │   ├── phase3_runtime.py
+│       │   │   ├── prune_database.py
+│       │   │   ├── repositories
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── activity_log_repository.py
+│       │   │   │   ├── position_repository.py
+│       │   │   │   ├── system_config_repository.py
+│       │   │   │   └── trade_proposal_repository.py
+│       │   │   ├── session_db.py
+│       │   │   ├── sqlite_concurrency.py
+│       │   │   └── user_market_intel.py
+│       │   ├── ml
+│       │   │   ├── __init__.py
+│       │   │   └── timesfm_engine.py
+│       │   ├── providers
+│       │   │   ├── __init__.py
+│       │   │   ├── ai21_provider.py
+│       │   │   ├── anthropic_provider.py
+│       │   │   ├── bedrock_provider.py
+│       │   │   ├── cerebras_provider.py
+│       │   │   ├── circuit_breaker.py
+│       │   │   ├── cohere_provider.py
+│       │   │   ├── deepseek_provider.py
+│       │   │   ├── fireworks_provider.py
+│       │   │   ├── gemini_provider.py
+│       │   │   ├── groq_provider.py
+│       │   │   ├── huggingface_provider.py
+│       │   │   ├── llm_factory.py
+│       │   │   ├── mistral_provider.py
+│       │   │   ├── mock_provider.py
+│       │   │   ├── ollama_provider.py
+│       │   │   ├── openai_provider.py
+│       │   │   ├── openrouter_provider.py
+│       │   │   ├── perplexity_provider.py
+│       │   │   ├── provider_failover_classifier.py
+│       │   │   ├── provider_registry.py
+│       │   │   ├── request_budget.py
+│       │   │   ├── samba_provider.py
+│       │   │   ├── streaming_think_scrubber.py
+│       │   │   ├── together_provider.py
+│       │   │   ├── universal_provider.py
+│       │   │   └── xai_provider.py
+│       │   └── sandboxes
+│       │       ├── __init__.py
+│       │       ├── base.py
+│       │       ├── docker_backend.py
+│       │       └── local_backend.py
 │       └── interfaces
 │           └── __init__.py
 └── trading-agent

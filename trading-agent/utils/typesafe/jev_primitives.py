@@ -97,7 +97,9 @@ def schema_to_jev_questions(schema: dict, base_prompt: str = "") -> Dict[str, Un
     return questions
 
 
-def jev_questions_to_schema(questions: Dict[str, Union[Choice, Score, Noul, dict]]) -> dict:
+from typing import Mapping
+
+def jev_questions_to_schema(questions: Mapping[str, Any]) -> dict:
     """
     Reverse schema synthesis: transforms a dictionary of TypeSafe Jev Questions (Choice, Score, Noul)
     into a strictly validated JSON Schema suitable for fallback LLMs (Gemini, Groq, Anthropic).

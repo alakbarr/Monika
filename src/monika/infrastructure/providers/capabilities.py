@@ -1,0 +1,623 @@
+# ==============================================================================
+# File: analysis/providers/capabilities.py
+# ==============================================================================
+
+"""
+Declarative Model Capabilities Table.
+Centralizes LLM feature flags (tool choice, structured output, caching, reasoning)
+to eliminate scattered ad-hoc if/else branching across providers.
+"""
+
+from dataclasses import dataclass
+from typing import Dict, Optional
+
+
+@dataclass(frozen=True)
+class ModelCapabilities:
+    """Declarative capability flags for a model or family of models."""
+    supports_tool_choice: bool = True
+    supports_json_mode: bool = True
+    supports_structured_output: bool = True
+    supports_streaming: bool = True
+    requires_reasoning_roundtrip: bool = False
+    requires_reasoning_split: bool = False
+    max_output_tokens: int = 8192
+    context_window: int = 200000
+    prompt_cache_strategy: str = "none"
+    supports_caching: bool = False
+    normalize_content: bool = False
+    supports_native_thinking: bool = False
+
+
+# Known model capability registry
+MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
+    # Anthropic
+    "claude-sonnet-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-5-sonnet": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-3-5-sonnet": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-3-7-sonnet": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-3-5-haiku": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+    ),
+    "claude-3-haiku": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=4096,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+    ),
+
+    # Google Gemini
+    "gemini-3.8-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.7-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.6-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.5-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.5-flash-lite": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+    ),
+    "gemini-3.1-flash-lite": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+    ),
+    "gemini-3.1-pro-preview": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.1-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.8-live": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+    ),
+    "gemini-3.8-live-extended-thinking": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=1048576,
+        supports_native_thinking=True,
+    ),
+    "gemini-3.5-transcribe-live": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=False,
+        max_output_tokens=4096,
+        context_window=1048576,
+    ),
+    "gemini-3-flash-live": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+    ),
+    "gemini-3.8-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-2.5-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-2.5-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-2.0-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+    ),
+    "gemini-1.5-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+    ),
+    "gemini-1.5-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+    ),
+
+    # OpenAI
+    "gpt-6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-astra": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-sol": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=500000,
+        supports_native_thinking=True,
+    ),
+    "o3": ModelCapabilities(
+        supports_tool_choice=True,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=32768,
+        context_window=200000,
+    ),
+    "o4": ModelCapabilities(
+        supports_tool_choice=True,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=32768,
+        context_window=500000,
+    ),
+    "gpt-4o": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=4096,
+    ),
+    "gpt-4o-mini": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=4096,
+    ),
+    "o1": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=16384,
+    ),
+    "o3-mini": ModelCapabilities(
+        supports_tool_choice=True,
+        supports_structured_output=True,
+        requires_reasoning_split=True,
+        max_output_tokens=16384,
+    ),
+
+    # DeepSeek
+    "deepseek-v4-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "deepseek-v4.1-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "deepseek-v4": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
+    "deepseek-chat": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+    ),
+    "deepseek-reasoner": ModelCapabilities(
+        supports_tool_choice=False,
+        requires_reasoning_roundtrip=True,
+        max_output_tokens=8192,
+        supports_native_thinking=True,
+    ),
+
+    # Groq / OpenRouter
+    "groq-compound": ModelCapabilities(
+        max_output_tokens=8192,
+        supports_caching=False,
+    ),
+    "groq/compound": ModelCapabilities(
+        max_output_tokens=8192,
+        supports_caching=False,
+    ),
+    "groq-compound-mini": ModelCapabilities(
+        max_output_tokens=8192,
+        supports_caching=False,
+    ),
+    "groq/compound-mini": ModelCapabilities(
+        max_output_tokens=8192,
+        supports_caching=False,
+    ),
+    "llama-3.3-70b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "llama-3.1-8b": ModelCapabilities(
+        max_output_tokens=8192,
+        supports_structured_output=True,
+    ),
+    "qwen3.8-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "groq-qwen3.8-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "qwen/qwen3.8-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "qwen3.6-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "groq-qwen3.6-27b": ModelCapabilities(
+        max_output_tokens=32768,
+        supports_structured_output=True,
+    ),
+    "groq-gpt-oss-120b": ModelCapabilities(
+        max_output_tokens=65536,
+        supports_structured_output=True,
+    ),
+    "groq-gpt-oss-20b": ModelCapabilities(
+        max_output_tokens=65536,
+        supports_structured_output=True,
+    ),
+    # TypeSafe Jev System One
+    "jev-latest": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        supports_streaming=False,
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_caching=False,
+        supports_native_thinking=False,
+    ),
+    "jev-1.13": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        supports_streaming=False,
+        max_output_tokens=2048,
+        context_window=64000,
+        supports_caching=False,
+        supports_native_thinking=False,
+    ),
+
+    # 9Router Key & Free Models
+    "kr/claude-sonnet-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "kr/claude-opus-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "oc/union-alpha": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "if/kimi-k2": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "if/deepseek-v3.2": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "mmf/mimo-auto": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=4096,
+        context_window=32768,
+    ),
+    "combo/free-fallback": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+}
+
+DEFAULT_CAPABILITIES = ModelCapabilities()
+
+
+def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
+    """
+    Look up capabilities for a model with prefix/substring matching and graceful default fallback.
+    """
+    if not model_name:
+        return DEFAULT_CAPABILITIES
+
+    clean_name = model_name.strip().lower()
+
+    # Exact match
+    if clean_name in MODEL_CAPABILITIES:
+        return MODEL_CAPABILITIES[clean_name]
+
+    # Handle 9Router prefix stripping (e.g. 9r/kr/claude-sonnet-4.5 -> kr/claude-sonnet-4.5 or claude-sonnet-4.5)
+    for prefix in ("9router/", "9r/"):
+        if clean_name.startswith(prefix):
+            stripped = clean_name[len(prefix):]
+            if stripped in MODEL_CAPABILITIES:
+                return MODEL_CAPABILITIES[stripped]
+            clean_name = stripped
+            break
+
+    # Partial / prefix match
+    for key, caps in MODEL_CAPABILITIES.items():
+        if key in clean_name or clean_name in key:
+            return caps
+
+    # Provider heuristic fallbacks
+    if "jev" in clean_name or "typesafe" in clean_name:
+        return ModelCapabilities(
+            supports_tool_choice=False,
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_streaming=False,
+            max_output_tokens=2048,
+            context_window=64000,
+            supports_caching=False,
+            supports_native_thinking=False,
+        )
+    if "claude" in clean_name:
+        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
+    if "gemini" in clean_name:
+        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
+    if "gpt-4" in clean_name:
+        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
+    if "deepseek-reasoner" in clean_name or "r1" in clean_name:
+        return ModelCapabilities(supports_tool_choice=False, requires_reasoning_roundtrip=True, prompt_cache_strategy="none")
+    if clean_name.startswith(("kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "ag/", "cx/", "cc/", "combo/")):
+        return ModelCapabilities(supports_caching=False, supports_structured_output=True, max_output_tokens=8192, context_window=128000)
+
+    return DEFAULT_CAPABILITIES
+
+
+get_capabilities = get_model_capabilities
+
+
+def resolve_effective_context_window(
+    model_name: Optional[str],
+    provider_name: Optional[str] = None,
+    settings: Optional[dict] = None,
+    proxy_limit: Optional[int] = None,
+) -> int:
+    """
+    Multi-Tier Context Window Resolution Cascade:
+    1. Explicit proxy_limit parameter (if passed by proxy / gateway / router).
+    2. settings.yaml override (llm.models.<model>.context_window or llm.providers.<provider>.context_window).
+    3. ModelCapabilities table (MODEL_CAPABILITIES[model_name].context_window).
+    4. Provider default heuristic (gemini: 1M, anthropic: 200k, deepseek/openai: 128k, groq: 32k).
+    5. Safe fallback lower bound (32768).
+    """
+    # Tier 1: Explicit proxy limit
+    if proxy_limit is not None and proxy_limit > 0:
+        return int(proxy_limit)
+
+    clean_model = (model_name or "").strip().lower()
+    clean_prov = (provider_name or "").strip().lower()
+
+    # Tier 2: Settings override
+    if isinstance(settings, dict):
+        llm_cfg = settings.get("llm", {})
+        if isinstance(llm_cfg, dict):
+            # Model-specific config
+            models_cfg = llm_cfg.get("models", {})
+            if isinstance(models_cfg, dict) and clean_model in models_cfg:
+                m_entry = models_cfg[clean_model]
+                if isinstance(m_entry, dict) and "context_window" in m_entry:
+                    return int(m_entry["context_window"])
+            # Provider-specific config
+            provs_cfg = llm_cfg.get("providers", {})
+            if isinstance(provs_cfg, dict) and clean_prov in provs_cfg:
+                p_entry = provs_cfg[clean_prov]
+                if isinstance(p_entry, dict) and "context_window" in p_entry:
+                    return int(p_entry["context_window"])
+        # Global fallback in settings
+        if "context_window" in settings and isinstance(settings["context_window"], int):
+            return int(settings["context_window"])
+
+    # Tier 3: ModelCapabilities table lookup
+    if clean_model:
+        caps = get_model_capabilities(clean_model)
+        if caps and caps.context_window and caps.context_window != DEFAULT_CAPABILITIES.context_window:
+            return caps.context_window
+
+    # Tier 4: Provider heuristics
+    if "gemini" in clean_model or clean_prov == "gemini":
+        return 1048576
+    if "claude" in clean_model or clean_prov == "anthropic":
+        return 200000
+    if "deepseek" in clean_model or clean_prov == "deepseek":
+        return 128000
+    if "gpt" in clean_model or "o1" in clean_model or "o3" in clean_model or clean_prov == "openai":
+        return 128000
+    if "groq" in clean_model or clean_prov == "groq":
+        return 32768
+    if "jev" in clean_model or clean_prov == "typesafe":
+        return 64000
+    if clean_prov == "ollama":
+        return 32768
+    if clean_prov in ("9router", "ninerouter", "nine_router"):
+        return 128000
+
+    # Tier 5: Safe lower bound default
+    return DEFAULT_CAPABILITIES.context_window if DEFAULT_CAPABILITIES.context_window > 0 else 32768
+
+
+def resolve_stale_timeout_floor(
+    model_name: Optional[str],
+    default_timeout: float = 30.0,
+) -> float:
+    """
+    Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
+    Frontier reasoning engines (o1, o3, R1, Sonnet 3.7 Thinking, Gemini Pro Thinking)
+    require 180s - 600s timeout floors.
+    """
+    if not model_name:
+        return default_timeout
+
+    clean = model_name.strip().lower()
+
+    # Extreme reasoning models (up to 10 min)
+    if any(k in clean for k in ("o1-pro", "o3", "deepseek-reasoner", "r1-full", "opus-5-thinking")):
+        return max(default_timeout, 300.0)
+
+    # Standard reasoning models (up to 3 min)
+    if any(k in clean for k in ("o1", "r1", "thinking", "reasoning", "sonnet-3-7", "sonnet-5")):
+        return max(default_timeout, 180.0)
+
+    return default_timeout
+
+
+def clamp_reasoning_effort(
+    model_name: str,
+    requested_effort: str,
+) -> str:
+    """
+    Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
+    effort level for the specified model family without raising schema errors.
+    """
+    effort = (requested_effort or "medium").strip().lower()
+    valid_levels = ("low", "medium", "high")
+
+    if effort not in valid_levels:
+        effort = "medium"
+
+    clean = model_name.strip().lower()
+
+    # Models supporting only low / medium or fixed
+    if "o3-mini" in clean:
+        return effort  # supports low, medium, high
+    if "o1-mini" in clean:
+        return "medium"  # o1-mini doesn't support custom effort levels
+
+    return effort
