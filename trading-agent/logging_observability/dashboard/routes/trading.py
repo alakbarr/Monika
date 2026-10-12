@@ -42,14 +42,16 @@ trading_router = APIRouter()
 async def get_overview():
     """Data metrik ringkas untuk highlight kartu dashboard."""
     from database.db import AsyncSessionLocal
-    from database.models import Position, RiskState, VIXData, AssetAnalysis, SystemConfig
-    from sqlalchemy import select, func
+    from database.models import RiskState, VIXData, AssetAnalysis
+    from database.repositories import PositionRepository, SystemConfigRepository
+    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
+        pos_repo = PositionRepository(session)
+        cfg_repo = SystemConfigRepository(session)
+
         # Open positions
-        pos_count = (await session.execute(
-            select(func.count(Position.id)).where(Position.status == "open")
-        )).scalar_one_or_none() or 0
+        pos_count = await pos_repo.count_open_positions()
 
         # Daily PnL + drawdown + paused
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -61,9 +63,7 @@ async def get_overview():
         )).scalar_one_or_none()
 
         # Account balance for pct calculation
-        balance_cfg = (await session.execute(
-            select(SystemConfig.value).where(SystemConfig.key.in_(["account_balance", "initial_balance"])).limit(1)
-        )).scalar_one_or_none()
+        balance_cfg = await cfg_repo.get("account_balance") or await cfg_repo.get("initial_balance")
 
         balance = None
         if balance_cfg:
@@ -131,16 +131,13 @@ async def get_positions(
     """Daftar historis atau posisi yang masih terbuka dengan data yang diperkaya."""
     from database.db import AsyncSessionLocal
     from database.models import Position
-    from sqlalchemy import select
+    from database.repositories import PositionRepository
 
     mt5_client = get_dashboard_dependency("mt5_client")
 
     async with AsyncSessionLocal() as session:
-        q = select(Position).order_by(Position.opened_at.desc()).limit(limit)
-        if status != "all":
-            q = q.where(Position.status == status)
-
-        positions = (await session.execute(q)).scalars().all()
+        pos_repo = PositionRepository(session)
+        positions = list(await pos_repo.get_recent_positions(limit=limit, status=status))
 
         current_quotes: Dict[str, dict] = {}
         if mt5_client and status in ("open", "all"):
@@ -205,20 +202,11 @@ async def get_activity(
 ):
     """Log aktivitas (berdukungan paginasi & filter)."""
     from database.db import AsyncSessionLocal
-    from database.models import ActivityLog
-    from sqlalchemy import select
+    from database.repositories import ActivityLogRepository
 
     async with AsyncSessionLocal() as session:
-        q = (
-            select(ActivityLog)
-            .order_by(ActivityLog.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        if category:
-            q = q.where(ActivityLog.category == category)
-
-        logs = (await session.execute(q)).scalars().all()
+        act_repo = ActivityLogRepository(session)
+        logs = await act_repo.get_recent(limit=limit, offset=offset, category=category)
 
         return [
             {
@@ -1109,15 +1097,11 @@ async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
 async def get_trade_triggers(status: Optional[str] = None, limit: int = Query(default=50, ge=1, le=200)):
     """Ambil daftar trade triggers kondisional (M-4)."""
     from database.db import AsyncSessionLocal
-    from database.models import TradeTrigger
-    from sqlalchemy import select
+    from database.repositories import TradeProposalRepository
 
     async with AsyncSessionLocal() as session:
-        stmt = select(TradeTrigger)
-        if status:
-            stmt = stmt.where(TradeTrigger.status == status)
-        stmt = stmt.order_by(TradeTrigger.created_at.desc()).limit(limit)
-        rows = (await session.execute(stmt)).scalars().all()
+        prop_repo = TradeProposalRepository(session)
+        rows = await prop_repo.get_recent_triggers(limit=limit, status=status)
 
         results = []
         for t in rows:
@@ -1266,8 +1250,7 @@ async def action_steer(body: SteerRequest, request: Request):
 async def action_override_risk(payload: OverrideRiskRequest, request: Request):
     """Update dynamic risk parameters in SystemConfig and runtime settings with duration support."""
     from database.db import AsyncSessionLocal
-    from database.models import SystemConfig, ActivityLog
-    from sqlalchemy import select
+    from database.repositories import SystemConfigRepository, ActivityLogRepository
 
     updated_fields = {}
     if payload.risk_percent_per_trade is not None:
@@ -1298,22 +1281,18 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": "No risk fields provided to override."})
 
     async with AsyncSessionLocal() as session:
-        cfg_row = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "risk_override")
-        )).scalar_one_or_none()
+        cfg_repo = SystemConfigRepository(session)
+        act_repo = ActivityLogRepository(session)
 
+        raw_val = await cfg_repo.get("risk_override")
         current_cfg = {}
-        if cfg_row and cfg_row.value:
+        if raw_val:
             try:
-                current_cfg = json.loads(cfg_row.value)
+                current_cfg = json.loads(raw_val)
             except Exception:
                 pass
         current_cfg.update(updated_fields)
-
-        if cfg_row:
-            cfg_row.value = json.dumps(current_cfg)
-        else:
-            session.add(SystemConfig(key="risk_override", value=json.dumps(current_cfg)))
+        await cfg_repo.set("risk_override", json.dumps(current_cfg), description="Dynamic risk override")
 
         settings = get_dashboard_dependency("settings")
         if settings and isinstance(settings, dict):
@@ -1321,11 +1300,11 @@ async def action_override_risk(payload: OverrideRiskRequest, request: Request):
             trading_risk.update(updated_fields)
 
         reason_text = payload.reason or f"Risk parameters overridden via Dashboard: {list(updated_fields.keys())}"
-        session.add(ActivityLog(
+        await act_repo.log_activity(
             category="risk",
             description=reason_text,
             actor="dashboard",
-        ))
+        )
         await session.commit()
 
     await broadcast_live_event("risk_override_updated", {
@@ -1904,22 +1883,17 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
 async def action_emergency_kill(request: Request):
     """Trigger emergency kill switch and position liquidation safely via daemon."""
     from database.db import AsyncSessionLocal
-    from database.models import SystemConfig, ActivityLog
-    from sqlalchemy import select
+    from database.repositories import SystemConfigRepository, ActivityLogRepository
 
     async with AsyncSessionLocal() as session:
-        cfg = (await session.execute(
-            select(SystemConfig).where(SystemConfig.key == "kill_switch")
-        )).scalar_one_or_none()
-        if cfg:
-            cfg.value = "true"
-        else:
-            session.add(SystemConfig(key="kill_switch", value="true"))
-        session.add(ActivityLog(
+        cfg_repo = SystemConfigRepository(session)
+        act_repo = ActivityLogRepository(session)
+        await cfg_repo.set_kill_switch(True)
+        await act_repo.log_activity(
             category="system",
             description="Emergency kill switch activated via Dashboard / CLI",
             actor="admin",
-        ))
+        )
         await session.commit()
 
     exec_svc = get_dashboard_dependency("execution_service")
@@ -1972,15 +1946,11 @@ async def action_resume_trading(request: Request):
 async def action_pause_trading(request: Request):
     """Pause system trading operations."""
     from database.db import AsyncSessionLocal
-    from database.models import SystemConfig
-    from sqlalchemy import select
+    from database.repositories import SystemConfigRepository
 
     async with AsyncSessionLocal() as session:
-        cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == "system_paused"))).scalar_one_or_none()
-        if cfg:
-            cfg.value = "true"
-        else:
-            session.add(SystemConfig(key="system_paused", value="true"))
+        cfg_repo = SystemConfigRepository(session)
+        await cfg_repo.set_system_paused(True)
         await session.commit()
 
     await broadcast_live_event("system_state_change", {
