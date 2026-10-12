@@ -903,6 +903,9 @@ Monika/
 │       │   │       ├── risk_evaluator.py
 │       │   │       ├── self_healing_executor.py
 │       │   │       └── trade_confirm.py
+│       │   ├── governance
+│       │   │   ├── __init__.py
+│       │   │   └── run_manifest.py
 │       │   ├── harness
 │       │   │   ├── __init__.py
 │       │   │   ├── adapters
@@ -913,6 +916,34 @@ Monika/
 │       │   │   ├── engine.py
 │       │   │   ├── installer.py
 │       │   │   └── lifecycle.py
+│       │   ├── scheduler
+│       │   │   ├── __init__.py
+│       │   │   ├── active_calendar_poller.py
+│       │   │   ├── adhoc_proxy.py
+│       │   │   ├── alpha_discovery_scheduler.py
+│       │   │   ├── cron_nlp_parser.py
+│       │   │   ├── cycle_scheduler.py
+│       │   │   ├── detached_cron_worker.py
+│       │   │   ├── digest_slice_scheduler.py
+│       │   │   ├── edge_strategy_runner.py
+│       │   │   ├── flash_crash_detector.py
+│       │   │   ├── graph_cycle_scheduler.py
+│       │   │   ├── macro_data_scheduler.py
+│       │   │   ├── market_data_scheduler.py
+│       │   │   ├── news_watcher.py
+│       │   │   ├── order_reconciler.py
+│       │   │   ├── playbook_curator.py
+│       │   │   ├── position_exit_reviewer.py
+│       │   │   ├── position_guardian.py
+│       │   │   ├── position_supervisor.py
+│       │   │   ├── post_release_analyzer.py
+│       │   │   ├── scraper_runner.py
+│       │   │   ├── strategy_synthesis_scheduler.py
+│       │   │   ├── task_plugin.py
+│       │   │   ├── trailing_stop_manager.py
+│       │   │   ├── trigger_checker.py
+│       │   │   ├── unified_cron_engine.py
+│       │   │   └── universal_cron_scheduler.py
 │       │   ├── services
 │       │   │   ├── __init__.py
 │       │   │   ├── general_harness_service.py

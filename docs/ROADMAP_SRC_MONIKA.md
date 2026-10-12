@@ -499,7 +499,14 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
 
 **Target:** Distribusi proporsional ke `application/`, `infrastructure/`, dan `core/`.
 
-### 9.1 `src/monika/application/scheduler/` (27 file)
+> [!IMPORTANT]
+> Pembagian Sub-Siklus PR-7 (185 file):
+> - **PR-7a:** `scheduler/` (27) + `governance/` (2) = 29 file (STATUS: 100% COMPLETE & VERIFIED ✅)
+> - **PR-7b:** `backtest/` (21) + `evals/` (12) = 33 file
+> - **PR-7c:** `benchmark/` (19) + `plugins/` (11) + Entrypoints/Services (4) = 34 file
+> - **PR-7d:** Distribusi Utilitas Sisa `utils/` (89 file)
+
+### 9.1 `src/monika/application/scheduler/` (27 file — PR-7a COMPLETE ✅)
 
 `unified_cron_engine.py`, `universal_cron_scheduler.py`, `cycle_scheduler.py`, `graph_cycle_scheduler.py`, `cron_nlp_parser.py`, `task_plugin.py`, `active_calendar_poller.py`, `adhoc_proxy.py`, `alpha_discovery_scheduler.py`, `detached_cron_worker.py`, `digest_slice_scheduler.py`, `edge_strategy_runner.py`, `flash_crash_detector.py`, `macro_data_scheduler.py`, `market_data_scheduler.py`, `news_watcher.py`, `order_reconciler.py`, `playbook_curator.py`, `position_exit_reviewer.py`, `position_guardian.py`, `position_supervisor.py`, `post_release_analyzer.py`, `scraper_runner.py`, `strategy_synthesis_scheduler.py`, `trailing_stop_manager.py`, `trigger_checker.py`, `__init__.py`.
 
@@ -529,7 +536,7 @@ Komponen orkestrasi eksekusi dari `trading-agent/execution/`:
   - `indicators/custom_indicator/custom_indicator.py`
   - `scrapers/example_scraper/example_scraper.py`
 
-### 9.6 `src/monika/application/governance/` (2 file)
+### 9.6 `src/monika/application/governance/` (2 file — PR-7a COMPLETE ✅)
 
 `run_manifest.py`, `__init__.py`.
 
