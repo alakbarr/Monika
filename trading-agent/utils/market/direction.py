@@ -1,32 +1,24 @@
-# ==============================================================================
-# File: utils/market/direction.py
-# ==============================================================================
-
 """
-Market Direction Normalization Utility.
-Enforces strict lowercase ('buy' | 'sell') representation across the entire system.
+Compatibility facade shim for legacy direction.py.
+Re-exports from canonical monika.domain.market.direction.
 """
 
-from typing import Optional
+from __future__ import annotations
+
+import monika.domain.market.direction as _canonical
+
+from monika.domain.market.direction import (
+    is_valid_direction,
+    normalize_direction,
+)
+
+__all__ = ['is_valid_direction', 'normalize_direction']
 
 
-def normalize_direction(direction: Optional[str]) -> str:
-    """
-    Normalize trade direction string to lowercase ('buy' or 'sell').
-    Raises ValueError if input is invalid or cannot be recognized.
-    """
-    d = (direction or "").strip().lower()
-    if d in ("buy", "long"):
-        return "buy"
-    if d in ("sell", "short"):
-        return "sell"
-    raise ValueError(f"Invalid market direction: {direction!r}. Expected 'buy' or 'sell'.")
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-
-def is_valid_direction(direction: Optional[str]) -> bool:
-    """Check if direction is a valid trade direction without raising an exception."""
-    try:
-        normalize_direction(direction)
-        return True
-    except (ValueError, TypeError):
-        return False
+import sys as _sys
+_sys.modules[__name__] = _canonical

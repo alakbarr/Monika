@@ -1,15 +1,13 @@
-"""
-Analytics utilities package.
-"""
+"""Shim package: monika.core.analytics."""
 
-from utils.analytics.edge_tracker import (
-    is_trade_win,
-    compute_edge_status,
-    binomial_confidence_interval,
-)
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    'is_trade_win',
-    'compute_edge_status',
-    'binomial_confidence_interval',
-]
+_canonical = _importlib.import_module("monika.core.analytics")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

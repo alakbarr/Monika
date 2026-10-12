@@ -1047,6 +1047,31 @@ Monika/
 │       │       └── usage_tracker.py
 │       ├── core
 │       │   ├── __init__.py
+│       │   ├── analytics
+│       │   │   ├── __init__.py
+│       │   │   ├── adversarial_outcome_tracker.py
+│       │   │   ├── agent_performance_monitor.py
+│       │   │   ├── analysis_tracker.py
+│       │   │   ├── cds_outcome_tracker.py
+│       │   │   ├── chart_generator.py
+│       │   │   ├── cost_tracker.py
+│       │   │   ├── edge_tracker.py
+│       │   │   ├── models_dev_sync.py
+│       │   │   ├── news_classification_tracker.py
+│       │   │   ├── paper_tracker.py
+│       │   │   ├── pdf_report_generator.py
+│       │   │   ├── performance_reviewer.py
+│       │   │   ├── pricing.py
+│       │   │   ├── specialist_tracker.py
+│       │   │   ├── strategy_edge_tracker.py
+│       │   │   ├── token_auditor.py
+│       │   │   └── trade_autopsy.py
+│       │   ├── calibration
+│       │   │   ├── __init__.py
+│       │   │   ├── cds_threshold_calibrator.py
+│       │   │   ├── confidence_calibrator.py
+│       │   │   ├── cot_thresholds.py
+│       │   │   └── prescreen_calibrator.py
 │       │   ├── config
 │       │   │   ├── __init__.py
 │       │   │   ├── atomic_writer.py
@@ -1077,9 +1102,40 @@ Monika/
 │       │   │   ├── prompt_injection_scanner.py
 │       │   │   ├── ssrf_guard.py
 │       │   │   ├── supply_chain_quarantine.py
-│       │   │   └── terminal_guard.py
-│       │   └── telemetry
+│       │   │   ├── terminal_guard.py
+│       │   │   ├── threat_detector.py
+│       │   │   └── threat_scanner.py
+│       │   ├── streaming
+│       │   │   ├── __init__.py
+│       │   │   ├── sanitizer.py
+│       │   │   ├── stream_scrubber.py
+│       │   │   └── streaming_lease.py
+│       │   ├── telemetry
+│       │   │   ├── __init__.py
+│       │   │   ├── activity_logger.py
+│       │   │   ├── delegation_live_log.py
+│       │   │   ├── metrics_exporter.py
+│       │   │   ├── operator_feedback.py
+│       │   │   ├── report_writer.py
+│       │   │   ├── reporting
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── docx_report_generator.py
+│       │   │   │   ├── pdf_report_generator.py
+│       │   │   │   ├── pptx_deck_generator.py
+│       │   │   │   └── tearsheet_generator.py
+│       │   │   ├── run_card.py
+│       │   │   ├── sinks.py
+│       │   │   ├── token_budgeter.py
+│       │   │   └── tracing
+│       │   │       ├── __init__.py
+│       │   │       ├── context.py
+│       │   │       └── exporters.py
+│       │   └── validation
 │       │       ├── __init__.py
+│       │       ├── data_temporal_validator.py
+│       │       ├── data_validator.py
+│       │       ├── indicator_sanitizer.py
+│       │       └── tool_response_validator.py
 │       │       ├── activity_logger.py
 │       │       ├── delegation_live_log.py
 │       │       ├── metrics_exporter.py
@@ -1115,6 +1171,18 @@ Monika/
 │       │   │   └── verification_engine.py
 │       │   ├── indicators
 │       │   │   ├── __init__.py
+│       │   ├── market
+│       │   │   ├── __init__.py
+│       │   │   ├── bias_utils.py
+│       │   │   ├── brent_yfinance.py
+│       │   │   ├── currency_utils.py
+│       │   │   ├── direction.py
+│       │   │   ├── dynamic_correlation.py
+│       │   │   ├── instrument_identity.py
+│       │   │   ├── news_impact_keywords.py
+│       │   │   ├── session_info.py
+│       │   │   ├── swap_estimator.py
+│       │   │   └── usd_strength_proxy.py
 │       │   │   ├── alpha_zoo
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── academic_factors.py
@@ -1172,6 +1240,16 @@ Monika/
 │       │       └── trade_proposal.py
 │       ├── infrastructure
 │       │   ├── __init__.py
+│       │   ├── api
+│       │   │   ├── __init__.py
+│       │   │   ├── claude_rate_limiter.py
+│       │   │   ├── credential_pool.py
+│       │   │   ├── credit_balance_tracker.py
+│       │   │   ├── gemini_rate_limiter.py
+│       │   │   ├── groq_rate_limiter.py
+│       │   │   ├── http_retry.py
+│       │   │   ├── openrouter_rate_limiter.py
+│       │   │   └── streaming.py
 │       │   ├── brokers
 │       │   │   ├── __init__.py
 │       │   │   ├── approval_transport.py
@@ -1347,7 +1425,51 @@ Monika/
 │       │   │   ├── streaming_think_scrubber.py
 │       │   │   ├── together_provider.py
 │       │   │   ├── universal_provider.py
-│       │   │   └── xai_provider.py
+│       │   ├── infra
+│       │   │   ├── __init__.py
+│       │   │   ├── audit_settings_keys.py
+│       │   │   ├── container.py
+│       │   │   ├── db_backup.py
+│       │   │   ├── discord_notifier.py
+│       │   │   ├── env_file_manager.py
+│       │   │   ├── event_loop.py
+│       │   │   ├── log_redactor.py
+│       │   │   ├── notifier.py
+│       │   │   ├── paths.py
+│       │   │   ├── platform_compat.py
+│       │   │   └── worktree_manager.py
+│       │   ├── llm
+│       │   │   ├── __init__.py
+│       │   │   ├── adaptive_thinking.py
+│       │   │   ├── cache_breakpoint_manager.py
+│       │   │   ├── cache_miss_detector.py
+│       │   │   ├── caveman_compressor.py
+│       │   │   ├── constrained_sampling.py
+│       │   │   ├── context_compaction.py
+│       │   │   ├── context_compressor.py
+│       │   │   ├── context_tracker.py
+│       │   │   ├── credential_pool.py
+│       │   │   ├── cycle_budget_guard.py
+│       │   │   ├── data_dedup.py
+│       │   │   ├── deferred_dispatcher.py
+│       │   │   ├── embedding.py
+│       │   │   ├── llmlingua_compressor.py
+│       │   │   ├── memory_compressor.py
+│       │   │   ├── model_capabilities.py
+│       │   │   ├── model_discipline.py
+│       │   │   ├── prompt_ab_test.py
+│       │   │   ├── prompt_assembler.py
+│       │   │   ├── prompt_caching.py
+│       │   │   ├── prompt_compressor.py
+│       │   │   ├── prompt_disciplines.py
+│       │   │   ├── prompt_tiering.py
+│       │   │   ├── prompt_tiers.py
+│       │   │   ├── semantic_cache.py
+│       │   │   ├── spill_subsystem.py
+│       │   │   └── tool_condenser.py
+│       │   ├── storage
+│       │   │   ├── __init__.py
+│       │   │   └── spill_store.py
 │       │   └── sandboxes
 │       │       ├── __init__.py
 │       │       ├── base.py
@@ -1462,6 +1584,9 @@ Monika/
 │               ├── topic_manager.py
 │               ├── voice_handler.py
 │               └── voice_safety_gate.py
+│           └── workspace
+│               ├── __init__.py
+│               └── journal_helper.py
 └── trading-agent
     ├── .env.example
     ├── PRD.md

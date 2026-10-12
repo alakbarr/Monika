@@ -1,21 +1,17 @@
-# ==============================================================================
-# File: utils/llm/context_compressor.py
-# ==============================================================================
-
 """
-Unified Context Compressor & Memory Compaction Facade (Phase 4).
-Canonical entrypoint consolidating multi-phase hierarchical context compression,
-deterministic tool pruning, boundary splitting, and auxiliary summarization.
+Compatibility facade shim for legacy context_compressor.py.
+Re-exports from canonical monika.infrastructure.llm.context_compressor.
 """
 
 from __future__ import annotations
 
-import logging
-from typing import Any, Dict, List, Optional
+import monika.infrastructure.llm.context_compressor as _canonical
 
-from analysis.harness.context_compressor import (
+from monika.infrastructure.llm.context_compressor import (
     ContextCompressor,
     TRADING_SUMMARY_SECTIONS,
+    get_context_compressor,
+    compress_context,
     prune_oversized_tool_results,
     prune_tool_result_content,
     safe_unicode_slice,
@@ -23,50 +19,13 @@ from analysis.harness.context_compressor import (
     offload_historical_charts,
 )
 
-logger = logging.getLogger("TradingAgent.Utils.LLM.ContextCompressor")
+__all__ = ['ContextCompressor', 'TRADING_SUMMARY_SECTIONS', 'get_context_compressor', 'compress_context', 'prune_oversized_tool_results', 'prune_tool_result_content', 'safe_unicode_slice', 'safe_unicode_tail', 'offload_historical_charts']
 
 
-_GLOBAL_COMPRESSOR: Optional[ContextCompressor] = None
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
 
-
-def get_context_compressor(
-    settings: Optional[Dict[str, Any]] = None,
-    aux_client: Optional[Any] = None,
-) -> ContextCompressor:
-    """Return process singleton or configured ContextCompressor instance."""
-    global _GLOBAL_COMPRESSOR
-    if _GLOBAL_COMPRESSOR is None:
-        _GLOBAL_COMPRESSOR = ContextCompressor(settings=settings, aux_client=aux_client)
-    return _GLOBAL_COMPRESSOR
-
-
-async def compress_context(
-    messages: List[Dict[str, Any]],
-    max_context_chars: int = 100000,
-    tail_turns: int = 3,
-    settings: Optional[Dict[str, Any]] = None,
-    aux_client: Optional[Any] = None,
-) -> List[Dict[str, Any]]:
-    """
-    Convenience function to compress messages list using canonical ContextCompressor.
-    Applies deterministic tool pruning, protected boundary preservation, and summarization.
-    """
-    compressor = get_context_compressor(settings=settings, aux_client=aux_client)
-    return await compressor.compress(
-        messages=messages,
-        max_context_chars=max_context_chars,
-        tail_turns=tail_turns,
-    )
-
-
-__all__ = [
-    "ContextCompressor",
-    "TRADING_SUMMARY_SECTIONS",
-    "get_context_compressor",
-    "compress_context",
-    "prune_oversized_tool_results",
-    "prune_tool_result_content",
-    "safe_unicode_slice",
-    "safe_unicode_tail",
-    "offload_historical_charts",
-]
+import sys as _sys
+_sys.modules[__name__] = _canonical

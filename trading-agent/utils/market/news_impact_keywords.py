@@ -1,72 +1,28 @@
-"""Sumber tunggal untuk taksonomi shock/high-impact keywords — dipakai oleh
-news_watcher.py (regex fallback) DAN news_digest.py (AI classification guard),
-supaya tidak divergen."""
+"""
+Compatibility facade shim for legacy news_impact_keywords.py.
+Re-exports from canonical monika.domain.market.news_impact_keywords.
+"""
 
-SHOCK_KEYWORDS = [
-    # Geopolitical & War Threats — frasa spesifik (bukan single words seperti 'war', 'attack')
-    'missile attack', 'missile strikes', 'military strikes', 'military strikes on', 'airstrike on',
-    'war declared', 'declares war', 'war breaks out',
-    'coup attempt', 'coup d\'etat', 'martial law declared', 'state of emergency declared',
-    'assassination of', 'targeted assassination',
-    'nuclear threat', 'nuclear strike', 'nuclear missile', 'nuclear attack',
-    'terrorist attack on', 'terror attack kills',
-    'or it won\'t exist', 'won\'t exist any longer', 'military ultimatum', 'existential threat',
-    'threatens attack', 'threatens strikes', 'threatens retaliation', 'military action against',
-    'strikes on oil', 'attacks oil tankers', 'retaliation pledged', 'forces on high alert',
-    # Financial system shocks — frasa spesifik
-    'bank run', 'bank collapse', 'bank failure', 'banking crisis',
-    'circuit breaker activated', 'trading halt activated', 'trading suspended',
-    'flash crash', 'black swan event',
-    'sanctions imposed on', 'new sanctions on', 'sweeping sanctions',
-    'oil embargo declared', 'oil embargo against',
-    'capital controls imposed', 'capital controls enacted',
-    'debt ceiling breached', 'debt ceiling crisis',
-    'credit rating downgraded', 'sovereign downgrade',
-    'sovereign default', 'nation defaults', 'debt default',
-    # Monetary intervention — spesifik
-    'yen intervention', 'boj currency intervention', 'emergency currency intervention',
-    'emergency rate cut', 'emergency rate hike', 'unscheduled rate',
-    # Crypto & Bitcoin Shocks — spesifik
-    'crypto exchange collapse', 'crypto exchange bankrupt', 'exchange insolvent',
-    'sec sues crypto', 'sec charges crypto', 'sec crypto lawsuit',
-    'spot bitcoin etf approved', 'bitcoin etf rejected',
-    'bitcoin flash crash', 'btc flash crash',
-    'crypto ban enacted', 'crypto ban imposed',
-    'stablecoin depeg', 'usdt depeg', 'usdc depeg', 'tether depeg',
-    # Energy Shocks & Strategic Chokepoints — spesifik
-    'opec emergency meeting', 'opec surprise output cut', 'opec surprise cut',
-    'strait of hormuz', 'bab el-mandeb', 'red sea shipping', 'persian gulf',
-    'kharg island', 'oil supply disruption', 'pipeline explosion',
-    'major pipeline explosion',
-]
+from __future__ import annotations
 
-GEOPOLITICAL_HOTSPOT_ENTITIES = [
-    'iran', 'tehran', 'irgc', 'taiwan', 'russia', 'ukraine', 'israel',
-    'lebanon', 'hezbollah', 'houthi', 'north korea', 'strait of hormuz',
-]
+import monika.domain.market.news_impact_keywords as _canonical
 
-GEOPOLITICAL_LEADERS = [
-    'trump', 'putin', 'xi jinping', 'netanyahu', 'khamenei', 'biden', 'zelenskiy',
-]
+from monika.domain.market.news_impact_keywords import (
+    DEESCALATION_KEYWORDS,
+    GEOPOLITICAL_HOTSPOT_ENTITIES,
+    GEOPOLITICAL_LEADERS,
+    HIGH_IMPACT_KEYWORDS,
+    REHASH_KEYWORDS,
+    SHOCK_KEYWORDS,
+)
 
-HIGH_IMPACT_KEYWORDS = [
-    'fomc', 'federal reserve', 'fed rate', 'rate hike', 'rate cut', 'emergency cut',
-    'powell', 'rate decision', 'monetary policy', 'quantitative tightening', 'qt',
-    'recession', 'financial crisis', 'nfp', 'non-farm payroll', 'cpi surprise',
-    'inflation surge', 'gdp contraction', 'unemployment spike', 'ecb rate', 'boe rate',
-    'boj', 'bank of japan intervention', 'rba rate', 'reserve bank australia',
-    'bitcoin halving', 'sec etf decision', 'crypto market structure',
-] + SHOCK_KEYWORDS
+__all__ = ['DEESCALATION_KEYWORDS', 'GEOPOLITICAL_HOTSPOT_ENTITIES', 'GEOPOLITICAL_LEADERS', 'HIGH_IMPACT_KEYWORDS', 'REHASH_KEYWORDS', 'SHOCK_KEYWORDS']
 
-DEESCALATION_KEYWORDS = [
-    'ceasefire', 'truce', 'peace talks', 'tariff exemption', 'sanctions waiver',
-    'dispute resolved', 'diplomatic accord', 'easing tensions', 'postpone tariff',
-    'tariff delay', 'de-escalation', 'peace agreement', 'hostage deal',
-    'trade deal agreed', 'sanctions relief', 'border agreement',
-]
 
-REHASH_KEYWORDS = [
-    'reiterates stance', 'repeats comments', 'unchanged outlook', 'previous remarks',
-    'as widely expected', 'in line with prior', 'no new signals', 'reaffirms guidance',
-    'largely priced in', 'rehashes', 'reiterates commitment',
-]
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
+
+import sys as _sys
+_sys.modules[__name__] = _canonical

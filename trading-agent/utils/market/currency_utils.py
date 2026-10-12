@@ -1,38 +1,24 @@
-# ==============================================================================
-# File: utils/market/currency_utils.py
-# ==============================================================================
-
 """
-Utilitas pemetaan simbol instrumen trading ke mata uang terkait.
-Digunakan secara terpusat oleh RiskGate, ExecutionService, Schedulers, dan Analysis Stages.
+Compatibility facade shim for legacy currency_utils.py.
+Re-exports from canonical monika.domain.market.currency_utils.
 """
 
-from typing import Tuple
+from __future__ import annotations
 
-SYMBOL_CURRENCIES: dict[str, Tuple[str, ...]] = {
-    "XAUUSD": ("XAU", "USD"),
-    "EURUSD": ("EUR", "USD"),
-    "GBPUSD": ("GBP", "USD"),
-    "USDJPY": ("USD", "JPY"),
-    "AUDUSD": ("AUD", "USD"),
-    "XTIUSD": ("OIL", "USD"),
-    "XBRUSD": ("OIL", "USD"),
-    "BTCUSD": ("BTC", "USD"),
-}
+import monika.domain.market.currency_utils as _canonical
+
+from monika.domain.market.currency_utils import (
+    SYMBOL_CURRENCIES,
+    get_symbol_currencies,
+)
+
+__all__ = ['SYMBOL_CURRENCIES', 'get_symbol_currencies']
 
 
-def get_symbol_currencies(symbol: str) -> Tuple[str, ...]:
-    """
-    Mengembalikan tuple kode mata uang atau komoditas terkait untuk simbol yang diberikan.
-    
-    Contoh:
-        get_symbol_currencies("GBPUSD") -> ("GBP", "USD")
-        get_symbol_currencies("XTIUSD") -> ("OIL", "USD")
-        get_symbol_currencies("USDCAD") -> ("USD", "CAD")
-    """
-    sym = (symbol or "").strip().upper()
-    if sym in SYMBOL_CURRENCIES:
-        return SYMBOL_CURRENCIES[sym]
-    if len(sym) == 6 and sym.isalpha():
-        return (sym[:3], sym[3:])
-    return ("USD",)
+# Direct module reference forwarding
+for _attr in dir(_canonical):
+    if not _attr.startswith('__') and _attr not in globals():
+        globals()[_attr] = getattr(_canonical, _attr)
+
+import sys as _sys
+_sys.modules[__name__] = _canonical

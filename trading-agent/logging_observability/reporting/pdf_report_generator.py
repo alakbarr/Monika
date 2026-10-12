@@ -8,11 +8,12 @@ from __future__ import annotations
 import monika.core.telemetry.reporting.pdf_report_generator as _canonical
 
 from monika.core.telemetry.reporting.pdf_report_generator import (
+    HAS_REPORTLAB,
     PDFReportGenerator,
     logger,
 )
 
-__all__ = ['PDFReportGenerator', 'logger']
+__all__ = ['HAS_REPORTLAB', 'PDFReportGenerator', 'logger']
 
 
 # Direct module reference forwarding
