@@ -276,7 +276,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 ### Folder: `docs`
 
-  - **Description**: Documentation repository, system guides, comprehensive UI showcase screenshot assets, and the persistent `docs/ux-audit/` workstation evaluation ledger.
+  - **Description**: Documentation repository, system guides (`SETUP_GUIDE.md`), gradual migration roadmap (`ROADMAP_SRC_MONIKA.md`), comprehensive UI showcase screenshot assets, and the persistent `docs/ux-audit/` workstation evaluation ledger.
   - **Note**: Collapsed directory containing documentation, screenshots, and UX audit files.
 
 ### Folder: `scripts`
