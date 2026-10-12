@@ -685,15 +685,15 @@ npx pyright src/monika
 | Tahapan | Target Layer di `src/monika/` | Sumber di `trading-agent/` | Jumlah File Sumber | Status |
 |---|---|---|---|---|
 | **M0** | `application/services/` | `services/` (4 shims) | 4 | ✅ Selesai |
-| **PR-1** | `domain/` | `risk/` (19), `execution/` (7), `indicators/` (497) | 523 | ⬜ Belum |
-| **PR-2** | `infrastructure/` | `database/` (34), `brokers/sandboxes` (17), `providers` (23), `provider/` (3), `ml` (1), `approval_transport` (1), `graph/checkpointers` (3) | 102 | ⬜ Belum |
-| **PR-3** | `core/` | `config/` (11), `security/` (7), `telemetry/` (20), `primitives/` (8) | 46 | ⬜ Belum |
-| **PR-4** | `interfaces/` | `telegram_bot/` (17), `cli/` (33), `dashboard/` (21), `gateway/` (18) | 89 | ⬜ Belum |
-| **PR-5** | `infrastructure/data_ingestion/` | `data_sources/` (25), `scrapers/` (39), `market_data_service` (1) | 65 | ⬜ Belum |
-| **PR-6** | `application/` | `agent/` (35), `graph/` (31), `analysis/` (389), `harness/` (8), `skills/` (10), `execution orchestration` (12) | 485 | ⬜ Belum |
-| **PR-7** | `application/` & shared | `scheduler/` (27), `backtest/` (21), `benchmark/` (19), `evals/` (12), `plugins/` (11), `governance/` (2), `utils/` (89), entrypoints (4) | 185 | ⬜ Belum |
-| **PR-8** | Final Cutover | Shim deletion, namespace normalization | — | ⬜ Belum |
-| **TOTAL** | | | **1.499** | |
+| **PR-1** | `domain/` | `risk/` (19), `execution/` (7), `indicators/` (497) | 523 | ✅ Selesai |
+| **PR-2** | `infrastructure/` | `database/` (34), `brokers/sandboxes` (17), `providers` (23), `provider/` (3), `ml` (1), `approval_transport` (1), `graph/checkpointers` (3) | 102 | ✅ Selesai |
+| **PR-3** | `core/` | `config/` (11), `security/` (7), `telemetry/` (20), `primitives/` (8) | 46 | ✅ Selesai |
+| **PR-4** | `interfaces/` | `telegram_bot/` (17), `cli/` (33), `dashboard/` (21), `gateway/` (18) | 89 | ✅ Selesai |
+| **PR-5** | `infrastructure/data_ingestion/` | `data_sources/` (25), `scrapers/` (39), `market_data_service` (1) | 65 | ✅ Selesai |
+| **PR-6** | `application/` | `agent/` (35), `graph/` (31), `analysis/` (389), `harness/` (8), `skills/` (10), `execution orchestration` (12) | 485 | ✅ Selesai |
+| **PR-7** | `application/` & shared | `scheduler/` (27), `backtest/` (21), `benchmark/` (19), `evals/` (12), `plugins/` (11), `governance/` (2), `utils/` (89), entrypoints (4) | 185 | ✅ Selesai |
+| **PR-8** | Final Cutover | Package discovery cutover, namespace normalization & verification | — | ✅ Selesai |
+| **TOTAL** | | | **1.499** | **100% Selesai** |
 
 *(Catatan: Total 1.499 file mencakup 1.490 file Python sumber `trading-agent/` + 9 modul sub-package baru yang diciptakan untuk isolasi arsitektur bersih).*
 

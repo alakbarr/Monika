@@ -387,7 +387,7 @@ class Stage1DataBundler:
         compressed = compress_tool_payload(data)
         if isinstance(compressed, (str, dict)):
             try:
-                from utils.llm.prompt_compressor import ContextCompressor
+                from monika.infrastructure.llm.prompt_compressor import PromptBundleCompressor as ContextCompressor
                 compressor = ContextCompressor(self.settings)
                 return compressor.compress_stage1_bundle(compressed, max_tokens=6000)
             except Exception:

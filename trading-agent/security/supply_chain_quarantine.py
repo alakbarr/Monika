@@ -8,12 +8,14 @@ from __future__ import annotations
 import monika.core.security.supply_chain_quarantine as _canonical
 
 from monika.core.security.supply_chain_quarantine import (
+    CRITICAL_CORE_LIBRARIES,
+    DEFAULT_QUARANTINE_DAYS,
     QuarantineVerdict,
     SupplyChainQuarantine,
     logger,
 )
 
-__all__ = ['QuarantineVerdict', 'SupplyChainQuarantine', 'logger']
+__all__ = ['CRITICAL_CORE_LIBRARIES', 'DEFAULT_QUARANTINE_DAYS', 'QuarantineVerdict', 'SupplyChainQuarantine', 'logger']
 
 
 # Direct module reference forwarding

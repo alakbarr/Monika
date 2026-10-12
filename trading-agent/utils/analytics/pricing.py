@@ -12,15 +12,19 @@ from monika.core.analytics.pricing import (
     FREE_TIER_MODELS,
     Price,
     PricingTier,
+    PRICING,
+    OPENROUTER_PRICING_MAP,
+    _FREE,
     cost_from_canonical,
     cost_usd,
+    estimate_cost,
     fetch_openrouter_pricing_async,
     get_price,
     infer_provider_from_model,
     is_free_tier,
 )
 
-__all__ = ['CanonicalUsage', 'FREE_TIER_MODELS', 'Price', 'PricingTier', 'cost_from_canonical', 'cost_usd', 'fetch_openrouter_pricing_async', 'get_price', 'infer_provider_from_model', 'is_free_tier']
+__all__ = ['CanonicalUsage', 'FREE_TIER_MODELS', 'Price', 'PricingTier', 'PRICING', 'OPENROUTER_PRICING_MAP', '_FREE', 'cost_from_canonical', 'cost_usd', 'estimate_cost', 'fetch_openrouter_pricing_async', 'get_price', 'infer_provider_from_model', 'is_free_tier']
 
 
 # Direct module reference forwarding

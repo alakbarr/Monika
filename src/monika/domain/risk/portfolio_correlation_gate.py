@@ -3,7 +3,7 @@ from typing import Optional, Dict, List, Tuple
 import logging
 import math
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.market.dynamic_correlation import get_rolling_correlation, _static_fallback
+from monika.domain.market.dynamic_correlation import get_rolling_correlation, _static_fallback
 
 logger = logging.getLogger('TradingAgent.PortfolioCorrelationGate')
 
