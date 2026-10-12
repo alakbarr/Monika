@@ -67,8 +67,9 @@ try:
                     except Exception:
                         pass
                 return
-            return _orig_cancel_cmd(self, waiter)
-        asyncpg.connection.Connection._cancel_current_command = _safe_cancel_current_command
+            if callable(_orig_cancel_cmd):
+                _orig_cancel_cmd(self, waiter)
+        setattr(asyncpg.connection.Connection, "_cancel_current_command", _safe_cancel_current_command)
 except Exception:
     pass
 
@@ -81,10 +82,11 @@ if sys.platform == "win32":
         _orig_pipe_del = getattr(_ProactorBasePipeTransport, "__del__", None)
         if _orig_pipe_del is not None:
             def _safe_pipe_del(self):
-                try:
-                    _orig_pipe_del(self)
-                except (ValueError, OSError):
-                    pass
+                if callable(_orig_pipe_del):
+                    try:
+                        _orig_pipe_del(self)
+                    except (ValueError, OSError):
+                        pass
             _ProactorBasePipeTransport.__del__ = _safe_pipe_del
     except Exception:
         pass
@@ -357,5 +359,17 @@ def protect_live_database_in_tests(monkeypatch, request):
         monkeypatch.setattr(database.db, "get_sessionmaker", safe_get_sessionmaker)
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def reset_executed_analysis_ids():
+    """Ensure in-memory executed analysis cache is cleanly reset between test runs."""
+    yield
+    try:
+        from monika.application.execution.service.execution_service import _EXECUTED_ANALYSIS_IDS
+        _EXECUTED_ANALYSIS_IDS.clear()
+    except Exception:
+        pass
+
 
 
