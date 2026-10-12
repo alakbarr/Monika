@@ -1,21 +1,13 @@
-# ==============================================================================
-# File: harness/adapters/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.harness.adapters."""
 
-"""
-Plugin adapters and bridges for standalone functional script plugins.
-"""
+import sys as _sys
+import importlib as _importlib
 
-from harness.adapters.functional_adapter import (
-    FunctionalPluginBridge,
-    install_compatibility_shims,
-    script_constants,
-    tools,
-)
+_canonical = _importlib.import_module("monika.application.harness.adapters")
 
-__all__ = [
-    "FunctionalPluginBridge",
-    "install_compatibility_shims",
-    "script_constants",
-    "tools",
-]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

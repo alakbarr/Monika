@@ -1,23 +1,13 @@
-# ==============================================================================
-# File: analysis/tools/environments/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.analysis.tools.environments."""
 
-"""
-3-Tier Sandboxed Execution Environments.
-"""
+import sys as _sys
+import importlib as _importlib
 
-from analysis.tools.environments.base_environment import (
-    BaseExecutionEnvironment,
-    ExecutionOutcome,
-)
-from analysis.tools.environments.tier1_inprocess import Tier1InProcessEnvironment
-from analysis.tools.environments.tier2_kernel import Tier2HostKernelEnvironment
-from analysis.tools.environments.tier3_docker import Tier3DockerEnvironment
+_canonical = _importlib.import_module("monika.application.analysis.tools.environments")
 
-__all__ = [
-    "BaseExecutionEnvironment",
-    "ExecutionOutcome",
-    "Tier1InProcessEnvironment",
-    "Tier2HostKernelEnvironment",
-    "Tier3DockerEnvironment",
-]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

@@ -753,6 +753,105 @@ Monika/
 │       │   │       ├── market_snapshot.py
 │       │   │       ├── output_verifier.py
 │       │   │       └── precommit_gate.py
+│       │   │   └── tools
+│       │   │       ├── __init__.py
+│       │   │       ├── base_handler.py
+│       │   │       ├── composite_tools.py
+│       │   │       ├── core
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── coercion.py
+│       │   │       │   ├── decorator.py
+│       │   │       │   ├── definition.py
+│       │   │       │   ├── dispatcher.py
+│       │   │       │   └── toolset_registry.py
+│       │   │       ├── domain
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── browser_tool.py
+│       │   │       │   ├── clarify_tool.py
+│       │   │       │   ├── code_execution_tool.py
+│       │   │       │   ├── code_search_tool.py
+│       │   │       │   ├── computer_use_tool.py
+│       │   │       │   ├── cron_tool.py
+│       │   │       │   ├── delegate_tool.py
+│       │   │       │   ├── execution_handlers.py
+│       │   │       │   ├── file_tools.py
+│       │   │       │   ├── kanban_tools.py
+│       │   │       │   ├── macro_handlers.py
+│       │   │       │   ├── multimodal_tools.py
+│       │   │       │   ├── position_handlers.py
+│       │   │       │   ├── sentiment_handlers.py
+│       │   │       │   ├── skill_tools.py
+│       │   │       │   ├── spill_reader_tool.py
+│       │   │       │   ├── technical_handlers.py
+│       │   │       │   ├── terminal_tools.py
+│       │   │       │   ├── todo_tool.py
+│       │   │       │   ├── tool_search_tools.py
+│       │   │       │   └── web_tools.py
+│       │   │       ├── environments
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── base_environment.py
+│       │   │       │   ├── pty_query_responder.py
+│       │   │       │   ├── tier1_inprocess.py
+│       │   │       │   ├── tier2_kernel.py
+│       │   │       │   └── tier3_docker.py
+│       │   │       ├── executor.py
+│       │   │       ├── file_patch_engine.py
+│       │   │       ├── handlers
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── advanced_quant_tools.py
+│       │   │       │   ├── analysis_submit.py
+│       │   │       │   ├── analytical_query_builder.py
+│       │   │       │   ├── behavioral_alert_tool.py
+│       │   │       │   ├── broker_profile_tool.py
+│       │   │       │   ├── category_loader.py
+│       │   │       │   ├── chart_bridge_tools.py
+│       │   │       │   ├── db_tools.py
+│       │   │       │   ├── execution_handlers.py
+│       │   │       │   ├── intelligence.py
+│       │   │       │   ├── macro_data.py
+│       │   │       │   ├── macro_tools.py
+│       │   │       │   ├── market_data.py
+│       │   │       │   ├── market_data_tools.py
+│       │   │       │   ├── news_tools.py
+│       │   │       │   ├── pattern_similarity_tools.py
+│       │   │       │   ├── phase_transition.py
+│       │   │       │   ├── position_mgmt.py
+│       │   │       │   ├── ptc_handler.py
+│       │   │       │   ├── scratchpad.py
+│       │   │       │   ├── sentiment_data.py
+│       │   │       │   ├── sentiment_tools.py
+│       │   │       │   ├── skills_tools.py
+│       │   │       │   ├── smc_tools.py
+│       │   │       │   ├── system_info.py
+│       │   │       │   ├── timesfm.py
+│       │   │       │   ├── trade_intel.py
+│       │   │       │   ├── trading_tools.py
+│       │   │       │   └── verified_snapshot.py
+│       │   │       ├── kernel
+│       │   │       │   ├── __init__.py
+│       │   │       │   ├── code_execution_rpc.py
+│       │   │       │   ├── env_sanitizer.py
+│       │   │       │   ├── output_spiller.py
+│       │   │       │   ├── persistent_kernel.py
+│       │   │       │   ├── persistent_session_kernel.py
+│       │   │       │   └── sandbox_runner.py
+│       │   │       ├── loop_guard.py
+│       │   │       ├── quant_sandbox
+│       │   │       │   ├── __init__.py
+│       │   │       │   └── rpc_server.py
+│       │   │       ├── registry.py
+│       │   │       ├── terminal_process_engine.py
+│       │   │       ├── tool_catalog.py
+│       │   │       ├── tool_executor.py
+│       │   │       ├── tool_guardrails.py
+│       │   │       ├── tool_plugin.py
+│       │   │       ├── tool_registry.py
+│       │   │       ├── tool_result_storage.py
+│       │   │       ├── tool_search_engine.py
+│       │   │       ├── tool_selector.py
+│       │   │       ├── tool_spill.py
+│       │   │       ├── tools_definitions.py
+│       │   │       └── unified_registry.py
 │       │   ├── graph
 │       │   │   ├── __init__.py
 │       │   │   ├── grounding.py
@@ -788,13 +887,50 @@ Monika/
 │       │   │   ├── state.py
 │       │   │   ├── team_compiler.py
 │       │   │   └── workflow.py
-│       │   └── services
+│       │   ├── execution
+│       │   │   ├── __init__.py
+│       │   │   ├── broker_registry.py
+│       │   │   ├── effect_gate.py
+│       │   │   ├── execution_service.py
+│       │   │   ├── health_check.py
+│       │   │   └── service
+│       │   │       ├── __init__.py
+│       │   │       ├── emergency_manager.py
+│       │   │       ├── multi_account_adapter.py
+│       │   │       ├── order_executor.py
+│       │   │       ├── position_synchronizer.py
+│       │   │       ├── reconciliation.py
+│       │   │       ├── risk_evaluator.py
+│       │   │       ├── self_healing_executor.py
+│       │   │       └── trade_confirm.py
+│       │   ├── harness
+│       │   │   ├── __init__.py
+│       │   │   ├── adapters
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── functional_adapter.py
+│       │   │   ├── context.py
+│       │   │   ├── contract.py
+│       │   │   ├── engine.py
+│       │   │   ├── installer.py
+│       │   │   └── lifecycle.py
+│       │   ├── services
+│       │   │   ├── __init__.py
+│       │   │   ├── general_harness_service.py
+│       │   │   ├── market_data_service.py
+│       │   │   ├── market_intel_service.py
+│       │   │   ├── portfolio_service.py
+│       │   │   └── trading_service.py
+│       │   └── skills
 │       │       ├── __init__.py
-│       │       ├── general_harness_service.py
-│       │       ├── market_data_service.py
-│       │       ├── market_intel_service.py
-│       │       ├── portfolio_service.py
-│       │       └── trading_service.py
+│       │       ├── continuous_learning.py
+│       │       ├── curator.py
+│       │       ├── loader.py
+│       │       ├── skill_manager.py
+│       │       ├── skills_guard.py
+│       │       ├── skills_hub.py
+│       │       ├── trading_skill_linter.py
+│       │       ├── unified_runtime.py
+│       │       └── usage_tracker.py
 │       ├── core
 │       │   ├── __init__.py
 │       │   ├── config

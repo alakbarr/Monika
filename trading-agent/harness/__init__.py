@@ -1,33 +1,13 @@
-# ==============================================================================
-# File: harness/__init__.py
-# ==============================================================================
+"""Shim package: monika.application.harness."""
 
-"""
-Monika Trading Harness Core.
-Provides microkernel architecture, universal plugin contracts, and topological engine.
-"""
+import sys as _sys
+import importlib as _importlib
 
-from harness.contract import (
-    PluginCategory,
-    PluginOrigin,
-    PluginMetadata,
-    PluginState,
-    TradingPlugin,
-    TaskRegistryProtocol,
-    EventBusProtocol,
-    ServiceContainerProtocol,
-)
-from harness.engine import PluginEngine
+_canonical = _importlib.import_module("monika.application.harness")
 
-__all__ = [
-    "PluginCategory",
-    "PluginOrigin",
-    "PluginMetadata",
-    "PluginState",
-    "TradingPlugin",
-    "TaskRegistryProtocol",
-    "EventBusProtocol",
-    "ServiceContainerProtocol",
-    "PluginEngine",
-]
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
 
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

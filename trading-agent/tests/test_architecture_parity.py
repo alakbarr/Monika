@@ -507,3 +507,55 @@ def test_analysis_core_framework_identity_and_parity():
     import monika.application.analysis.mcp.client as canon_mcp_cli
     assert shim_mcp_cli.McpClientManager is canon_mcp_cli.McpClientManager
 
+
+def test_pr6d_identity_and_parity():
+    """Verify PR-6d harness, skills, tools, and execution identity parity."""
+    # 1. Harness
+    import harness.contract as shim_hc
+    import monika.application.harness.contract as canon_hc
+    assert shim_hc.TradingPlugin is canon_hc.TradingPlugin
+
+    import harness.engine as shim_he
+    import monika.application.harness.engine as canon_he
+    assert shim_he.PluginEngine is canon_he.PluginEngine
+
+    # 2. Skills
+    import skills.skills_hub as shim_sh
+    import monika.application.skills.skills_hub as canon_sh
+    assert shim_sh.SkillsHub is canon_sh.SkillsHub
+
+    import skills.loader as shim_sl
+    import monika.application.skills.loader as canon_sl
+    assert shim_sl.load_skill is canon_sl.load_skill
+
+    # 3. Tools
+    import analysis.tools.registry as shim_tr
+    import monika.application.analysis.tools.registry as canon_tr
+    assert shim_tr.ToolRegistry is canon_tr.ToolRegistry
+
+    import analysis.tools.executor as shim_te
+    import monika.application.analysis.tools.executor as canon_te
+    assert shim_te.ToolExecutor is canon_te.ToolExecutor
+
+    # 4. Execution orchestration
+    import execution.execution_service as shim_es
+    import monika.application.execution.execution_service as canon_es
+    assert shim_es.ExecutionService is canon_es.ExecutionService
+
+    import execution.broker_registry as shim_br
+    import monika.application.execution.broker_registry as canon_br
+    assert shim_br.BrokerAdapterRegistry is canon_br.BrokerAdapterRegistry
+
+    import execution.effect_gate as shim_eg
+    import monika.application.execution.effect_gate as canon_eg
+    assert shim_eg.EffectGate is canon_eg.EffectGate
+
+    import execution.service.order_executor as shim_oe
+    import monika.application.execution.service.order_executor as canon_oe
+    assert shim_oe.OrderExecutorMixin is canon_oe.OrderExecutorMixin
+
+    import execution.service.risk_evaluator as shim_re
+    import monika.application.execution.service.risk_evaluator as canon_re
+    assert shim_re.RiskEvaluatorMixin is canon_re.RiskEvaluatorMixin
+
+

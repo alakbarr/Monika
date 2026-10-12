@@ -19,6 +19,7 @@ tags: [minimalism, yagni, refactoring, performance, async, sqlalchemy, zero_bloa
 - **Transaction Context Managers**: Always encapsulate database mutations within safe transactional boundaries:
   ```python
   from database.safe_ops import safe_commit
+
   # Preferred pattern
   async with session.begin():
       stmt = select(SystemConfig).where(SystemConfig.key == "example_key")

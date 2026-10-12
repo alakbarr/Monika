@@ -293,7 +293,7 @@ When presenting deep research briefings, the system MUST structure output accord
          affected_symbols="EURUSD,XAUUSD,USDJPY",
          directive="scenario_watch",
          target_cycle="until_event",
-         expires_in_hours=24
+         expires_in_hours=24,
      )
      ```
 2. **Cycle Injection (Database → LangGraph Nodes)**:

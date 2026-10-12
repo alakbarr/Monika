@@ -59,9 +59,9 @@ filepath = generator.generate_report(
     narrative_synthesis="During Q3, the system captured significant trend expansions on XAUUSD and EURUSD...",
     recommendations=[
         "Maintain conservative position sizing during FOMC weeks.",
-        "Tighten trailing stops on Friday afternoon sessions."
+        "Tighten trailing stops on Friday afternoon sessions.",
     ],
-    title="Monika Portfolio Performance Review"
+    title="Monika Portfolio Performance Review",
 )
 ```
 
@@ -82,7 +82,7 @@ filepath = deck_gen.generate_pitch_deck(
         "expectancy_r": 0.52,
     },
     title="Monika Autonomous Trading Agent",
-    subtitle="Quantitative Multi-Agent Architecture & Performance Deck"
+    subtitle="Quantitative Multi-Agent Architecture & Performance Deck",
 )
 ```
 
@@ -90,8 +90,9 @@ filepath = deck_gen.generate_pitch_deck(
 ```python
 import pandas as pd
 
+
 def export_trades_to_excel(trades: list[dict], filepath: str):
     df = pd.DataFrame(trades)
-    with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Trade_Log', index=False)
+    with pd.ExcelWriter(filepath, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="Trade_Log", index=False)
 ```
