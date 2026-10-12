@@ -690,18 +690,25 @@ class OrderExecutorMixin(_ExecutionServiceMixinBase):
             )
 
         if specified_lots > 0:
-            # Preplanned lot size provided in order_plan, clamp to broker bounds
+            # Preplanned lot size provided in order_plan: clamp to broker bounds AND fortress safety cap
             spec = getattr(sizing, "_instrument_spec", None)
             try:
                 max_limit = float(getattr(spec, "max_lot", 100.0))
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 max_limit = 100.0
             try:
                 min_limit = float(getattr(spec, "min_lot", 0.01))
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 min_limit = 0.01
-            sizing.recommended_lots = round(max(min_limit, min(specified_lots, max_limit)), 2)
+            # Never allow specified_lots to exceed fortress-calculated safe sizing.recommended_lots
+            safe_lots = round(max(min_limit, min(specified_lots, sizing.recommended_lots, max_limit)), 2)
+            sizing.recommended_lots = safe_lots
             sizing.raw_lots = specified_lots
+            # Recalculate actual dollar risk based on revised lot size
+            if sizing.sl_distance_pips > 0 and sizing.pip_value_per_lot > 0:
+                sizing.risk_amount_usd = round(sizing.sl_distance_pips * sizing.pip_value_per_lot * safe_lots, 4)
+                if account_equity and account_equity > 0:
+                    sizing.risk_percent = round((sizing.risk_amount_usd / account_equity) * 100.0, 4)
 
         # 3. Deterministic RiskGate Evaluation
         analysis_obj = None
