@@ -798,10 +798,17 @@ Monika/
     │   │       ├── 0002_user_prefs_and_journal.py
     │   │       ├── 0003_add_benchmark_tables_and_cache_cost_columns.py
     │   │       ├── 0004_fk_cascade_integrity.py
+    │   │       ├── 0005_sync_missing_indexes_and_constraints.py
     │   │       ├── __init__.py
     │   │       └── c83c5e451412_sync_schema_indexes_types_and_.py
     │   ├── models.py
     │   ├── repair_ledger.py
+    │   ├── repositories
+    │   │   ├── __init__.py
+    │   │   ├── activity_log_repository.py
+    │   │   ├── position_repository.py
+    │   │   ├── system_config_repository.py
+    │   │   └── trade_proposal_repository.py
     │   ├── safe_ops.py
     │   ├── session_db_wal.py
     │   └── session_lifecycle.py

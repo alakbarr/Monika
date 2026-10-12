@@ -65,7 +65,7 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == 't1a2b3c4d5e6', f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == '0004_fk_cascade_integrity', f"Expected head revision to be 0004_fk_cascade_integrity, got {visited[-1]}"
+    assert visited[-1] == '0005_sync_indexes_constraints', f"Expected head revision to be 0005_sync_indexes_constraints, got {visited[-1]}"
 
 
 def test_schema_completeness_all_models():
@@ -85,6 +85,11 @@ def test_schema_completeness_all_models():
         def drop_column(self, col_name):
             if self.table_name in tables and col_name in tables[self.table_name]:
                 del tables[self.table_name][col_name]
+        def alter_column(self, col_name, new_column_name=None, type_=None, **kw):
+            if self.table_name in tables and col_name in tables[self.table_name]:
+                val = tables[self.table_name].pop(col_name)
+                target = new_column_name if new_column_name else col_name
+                tables[self.table_name][target] = str(type_) if type_ is not None else val
         def create_foreign_key(self, *a, **kw): pass
         def drop_constraint(self, *a, **kw): pass
 
@@ -160,6 +165,7 @@ def test_schema_completeness_all_models():
             class MockInsp:
                 def get_table_names(self): return list(tables.keys())
                 def get_columns(self, t_name): return [{'name': c} for c in tables.get(t_name, {})]
+                def get_indexes(self, t_name): return []
             return MockInsp()
         sa.inspect = mock_insp
         mod.upgrade()

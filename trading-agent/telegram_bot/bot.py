@@ -740,11 +740,10 @@ class TelegramBot:
 
         positions = []
         try:
+            from database.repositories import PositionRepository
             async with get_session() as session:
-                positions = (await session.execute(
-                    select(Position).where(Position.status == "open")
-                    .order_by(Position.opened_at.desc())
-                )).scalars().all()
+                pos_repo = PositionRepository(session)
+                positions = list(await pos_repo.get_open_positions())
         except Exception as e:
             await update.message.reply_text(f"[ GAGAL ] Error: {e}")
             return
@@ -2467,11 +2466,11 @@ class TelegramBot:
 
         ticket_arg = int(ctx.args[0]) if ctx.args and ctx.args[0].isdigit() else None
 
+        from database.repositories import PositionRepository
         async with get_session() as session:
+            pos_repo = PositionRepository(session)
             if ticket_arg:
-                pos = (await session.execute(
-                    select(Position).where(Position.mt5_ticket == ticket_arg)
-                )).scalar_one_or_none()
+                pos = await pos_repo.get_by_ticket(ticket_arg)
 
                 if not pos:
                     await update.message.reply_text(f"[GAGAL] Posisi dengan ticket *#{ticket_arg}* tidak ditemukan.")
@@ -2498,9 +2497,7 @@ class TelegramBot:
                     ])
                 await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
             else:
-                positions = (await session.execute(
-                    select(Position).order_by(desc(Position.opened_at)).limit(5)
-                )).scalars().all()
+                positions = await pos_repo.get_recent_positions(limit=5)
 
                 if not positions:
                     await update.message.reply_text("[INFORMASI] Belum ada riwayat posisi untuk diaudit.")
@@ -3919,10 +3916,9 @@ class TelegramBot:
             async with get_session() as session:
                 now = datetime.now(timezone.utc)
 
-                # Open positions count
-                pos_count = (await session.execute(
-                    select(func.count(Position.id)).where(Position.status == "open")
-                )).scalar_one_or_none() or 0
+                from database.repositories import PositionRepository
+                pos_repo = PositionRepository(session)
+                pos_count = await pos_repo.count_open_positions()
 
                 # Risk state
                 today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -3978,12 +3974,10 @@ class TelegramBot:
         from telegram_bot.message_formatter import format_positions_slip
 
         try:
+            from database.repositories import PositionRepository
             async with get_session() as session:
-                positions = (await session.execute(
-                    select(Position).where(Position.status == "open")
-                    .order_by(Position.opened_at.desc())
-                )).scalars().all()
-
+                pos_repo = PositionRepository(session)
+                positions = list(await pos_repo.get_open_positions())
                 return format_positions_slip(positions)
         except Exception as e:
             return f"[ GAGAL ] Error: {e}"

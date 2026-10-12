@@ -236,14 +236,31 @@ def get_sessionmaker():
 
 
 async def init_db() -> None:
-    """Initialize database schema and create all tables."""
-    logger.info("Initializing database tables...")
+    """Initialize database schema via Alembic migrations, falling back to create_all if offline/testing."""
+    logger.info("Initializing database schema...")
+    if not is_running_under_test_suite():
+        try:
+            from alembic.config import Config
+            from alembic import command
+            from pathlib import Path
+            alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+            if alembic_ini.exists():
+                alembic_cfg = Config(str(alembic_ini))
+                eng = engine if engine is not None else get_engine()
+                db_url = str(eng.url)
+                alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+                await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+                logger.info("Database schema synchronized to Alembic head successfully.")
+                return
+        except Exception as e:
+            logger.warning(f"Alembic migration failed ({e}); falling back to metadata.create_all.")
+
     try:
         eng = engine if engine is not None else get_engine()
         get_sessionmaker()
         async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables created successfully.")
+        logger.info("Database tables verified via metadata.create_all.")
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
         raise
