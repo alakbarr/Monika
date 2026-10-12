@@ -559,3 +559,30 @@ def test_pr6d_identity_and_parity():
     assert shim_re.RiskEvaluatorMixin is canon_re.RiskEvaluatorMixin
 
 
+def test_pr7a_identity_and_parity():
+    """Verify PR-7a scheduler and governance identity parity."""
+    # 1. Scheduler
+    import scheduler.unified_cron_engine as shim_uce
+    import monika.application.scheduler.unified_cron_engine as canon_uce
+    assert shim_uce.UnifiedCronEngine is canon_uce.UnifiedCronEngine
+
+    import scheduler.cycle_scheduler as shim_cs
+    import monika.application.scheduler.cycle_scheduler as canon_cs
+    assert shim_cs.CycleScheduler is canon_cs.CycleScheduler
+
+    import scheduler.trailing_stop_manager as shim_tsm
+    import monika.application.scheduler.trailing_stop_manager as canon_tsm
+    assert shim_tsm.TrailingStopManager is canon_tsm.TrailingStopManager
+
+    import scheduler.cron_nlp_parser as shim_cnp
+    import monika.application.scheduler.cron_nlp_parser as canon_cnp
+    assert shim_cnp.parse_natural_schedule is canon_cnp.parse_natural_schedule
+
+    # 2. Governance
+    import governance.run_manifest as shim_rm
+    import monika.application.governance.run_manifest as canon_rm
+    assert shim_rm.RunManifest is canon_rm.RunManifest
+    assert shim_rm.RunManifestGenerator is canon_rm.RunManifestGenerator
+
+
+

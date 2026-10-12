@@ -1,8 +1,13 @@
-# ==============================================================================
-# File: governance/__init__.py
-# Monika Governance & Run Manifest Package
-# ==============================================================================
+"""Shim package: monika.application.governance."""
 
-from governance.run_manifest import RunManifest, RunManifestGenerator
+import sys as _sys
+import importlib as _importlib
 
-__all__ = ["RunManifest", "RunManifestGenerator"]
+_canonical = _importlib.import_module("monika.application.governance")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__
