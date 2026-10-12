@@ -223,7 +223,115 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── arbitration
 │       │   │   │   ├── __init__.py
-│       │   │   └── signal_arbitrator.py
+│       │   │   │   └── signal_arbitrator.py
+│       │   │   ├── calculators
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── __init__.cpython-314.pyc
+│       │   │   │   │   ├── adaptive_policy.cpython-314.pyc
+│       │   │   │   │   ├── cointegration.cpython-314.pyc
+│       │   │   │   │   ├── confluence_calculator.cpython-314.pyc
+│       │   │   │   │   ├── copula_tail_risk.cpython-314.pyc
+│       │   │   │   │   ├── daily_range_calculator.cpython-314.pyc
+│       │   │   │   │   ├── economic_surprise.cpython-314.pyc
+│       │   │   │   │   ├── evt_tail_calculator.cpython-314.pyc
+│       │   │   │   │   ├── factor_ic.cpython-314.pyc
+│       │   │   │   │   ├── garch_volatility.cpython-314.pyc
+│       │   │   │   │   ├── hierarchical_risk_parity.cpython-314.pyc
+│       │   │   │   │   ├── hmm_regime.cpython-314.pyc
+│       │   │   │   │   ├── intraday_level_optimizer.cpython-314.pyc
+│       │   │   │   │   ├── invariant_calculator.cpython-314.pyc
+│       │   │   │   │   ├── leading_indicator_mapper.cpython-314.pyc
+│       │   │   │   │   ├── liquidity_sweep_detector.cpython-314.pyc
+│       │   │   │   │   ├── macro_bias_filter.cpython-314.pyc
+│       │   │   │   │   ├── macro_priced_in_calculator.cpython-314.pyc
+│       │   │   │   │   ├── options_volatility_hedging.cpython-314.pyc
+│       │   │   │   │   ├── quant_plateau_optimizer.cpython-314.pyc
+│       │   │   │   │   ├── quantlib_core.cpython-314.pyc
+│       │   │   │   │   ├── regime_classifier.cpython-314.pyc
+│       │   │   │   │   ├── rolling_correlation_calculator.cpython-314.pyc
+│       │   │   │   │   ├── seasonality.cpython-314.pyc
+│       │   │   │   │   ├── stage1_priced_in.cpython-314.pyc
+│       │   │   │   │   ├── taylor_rule.cpython-314.pyc
+│       │   │   │   │   ├── timesfm_alpha.cpython-314.pyc
+│       │   │   │   │   ├── timesfm_residual_validator.cpython-314.pyc
+│       │   │   │   │   ├── unified_threshold_calculator.cpython-314.pyc
+│       │   │   │   │   ├── universal_cb_differ.cpython-314.pyc
+│       │   │   │   │   ├── universal_liquidity_analyzer.cpython-314.pyc
+│       │   │   │   │   ├── universal_macro_analyzer.cpython-314.pyc
+│       │   │   │   │   └── volume_profile.cpython-314.pyc
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── adaptive_policy.py
+│       │   │   │   ├── cointegration.py
+│       │   │   │   ├── confluence_calculator.py
+│       │   │   │   ├── copula_tail_risk.py
+│       │   │   │   ├── daily_range_calculator.py
+│       │   │   │   ├── economic_surprise.py
+│       │   │   │   ├── evt_tail_calculator.py
+│       │   │   │   ├── factor_ic.py
+│       │   │   │   ├── garch_volatility.py
+│       │   │   │   ├── hierarchical_risk_parity.py
+│       │   │   │   ├── hmm_regime.py
+│       │   │   │   ├── intraday_level_optimizer.py
+│       │   │   │   ├── invariant_calculator.py
+│       │   │   │   ├── leading_indicator_mapper.py
+│       │   │   │   ├── liquidity_sweep_detector.py
+│       │   │   │   ├── macro_bias_filter.py
+│       │   │   │   ├── macro_priced_in_calculator.py
+│       │   │   │   ├── options_volatility_hedging.py
+│       │   │   │   ├── quant_plateau_optimizer.py
+│       │   │   │   ├── quantlib_core.py
+│       │   │   │   ├── regime_classifier.py
+│       │   │   │   ├── rolling_correlation_calculator.py
+│       │   │   │   ├── seasonality.py
+│       │   │   │   ├── stage1_priced_in.py
+│       │   │   │   ├── taylor_rule.py
+│       │   │   │   ├── timesfm_alpha.py
+│       │   │   │   ├── timesfm_residual_validator.py
+│       │   │   │   ├── unified_threshold_calculator.py
+│       │   │   │   ├── universal_cb_differ.py
+│       │   │   │   ├── universal_liquidity_analyzer.py
+│       │   │   │   ├── universal_macro_analyzer.py
+│       │   │   │   └── volume_profile.py
+│       │   │   ├── debate
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── __init__.cpython-314.pyc
+│       │   │   │   │   ├── adjustment_validator.cpython-314.pyc
+│       │   │   │   │   ├── aggressive_risk_llm.cpython-314.pyc
+│       │   │   │   │   ├── bear_analyst.cpython-314.pyc
+│       │   │   │   │   ├── blackboard.cpython-314.pyc
+│       │   │   │   │   ├── bull_analyst.cpython-314.pyc
+│       │   │   │   │   ├── conservative_risk_llm.cpython-314.pyc
+│       │   │   │   │   ├── deterministic_risk.cpython-314.pyc
+│       │   │   │   │   ├── discussion_engine.cpython-314.pyc
+│       │   │   │   │   ├── exact_decimal_math.cpython-314.pyc
+│       │   │   │   │   ├── fact_sheet.cpython-314.pyc
+│       │   │   │   │   ├── investment_judge.cpython-314.pyc
+│       │   │   │   │   ├── macro_bear_analyst.cpython-314.pyc
+│       │   │   │   │   ├── macro_bull_analyst.cpython-314.pyc
+│       │   │   │   │   ├── macro_debate_validator.cpython-314.pyc
+│       │   │   │   │   ├── macro_judge.cpython-314.pyc
+│       │   │   │   │   ├── multi_persona_risk_llm.cpython-314.pyc
+│       │   │   │   │   ├── neutral_risk_llm.cpython-314.pyc
+│       │   │   │   │   └── portfolio_manager.cpython-314.pyc
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── adjustment_validator.py
+│       │   │   │   ├── aggressive_risk_llm.py
+│       │   │   │   ├── bear_analyst.py
+│       │   │   │   ├── blackboard.py
+│       │   │   │   ├── bull_analyst.py
+│       │   │   │   ├── conservative_risk_llm.py
+│       │   │   │   ├── deterministic_risk.py
+│       │   │   │   ├── discussion_engine.py
+│       │   │   │   ├── exact_decimal_math.py
+│       │   │   │   ├── fact_sheet.py
+│       │   │   │   ├── investment_judge.py
+│       │   │   │   ├── macro_bear_analyst.py
+│       │   │   │   ├── macro_bull_analyst.py
+│       │   │   │   ├── macro_debate_validator.py
+│       │   │   │   ├── macro_judge.py
+│       │   │   │   ├── multi_persona_risk_llm.py
+│       │   │   │   ├── neutral_risk_llm.py
+│       │   │   │   └── portfolio_manager.py
 │       │   │   ├── event_broadcaster.py
 │       │   │   ├── grounding
 │       │   │   │   ├── __init__.py
@@ -270,6 +378,70 @@ Monika/
 │       │   │   │       ├── filesystem_server.py
 │       │   │   │       ├── google_sheets_server.py
 │       │   │   └── sqlite_server.py
+│       │   │   ├── memory
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── __init__.cpython-314.pyc
+│       │   │   │   │   ├── alpha_calculator.cpython-314.pyc
+│       │   │   │   │   ├── background_review.cpython-314.pyc
+│       │   │   │   │   ├── background_review_fork.cpython-314.pyc
+│       │   │   │   │   ├── chronicle_writer.cpython-314.pyc
+│       │   │   │   │   ├── context_engine.cpython-314.pyc
+│       │   │   │   │   ├── counterfactual_simulator.cpython-314.pyc
+│       │   │   │   │   ├── decision_log.cpython-314.pyc
+│       │   │   │   │   ├── failure_taxonomy.cpython-314.pyc
+│       │   │   │   │   ├── frozen_snapshot.cpython-314.pyc
+│       │   │   │   │   ├── layered_memory.cpython-314.pyc
+│       │   │   │   │   ├── lesson_consolidator.cpython-314.pyc
+│       │   │   │   │   ├── mechanical_anchor_index.cpython-314.pyc
+│       │   │   │   │   ├── memory_lifecycle_gc.cpython-314.pyc
+│       │   │   │   │   ├── negative_constraint_generator.cpython-314.pyc
+│       │   │   │   │   ├── outcome_linker.cpython-314.pyc
+│       │   │   │   │   ├── playbook_ledger.cpython-314.pyc
+│       │   │   │   │   ├── playbook_lifecycle.cpython-314.pyc
+│       │   │   │   │   ├── playbook_linter.cpython-314.pyc
+│       │   │   │   │   ├── progressive_loader.cpython-314.pyc
+│       │   │   │   │   ├── prompt_cache_boundary.cpython-314.pyc
+│       │   │   │   │   ├── reflector.cpython-314.pyc
+│       │   │   │   │   ├── session_search.cpython-314.pyc
+│       │   │   │   │   ├── sharegpt_exporter.cpython-314.pyc
+│       │   │   │   │   ├── skill_ast_audit.cpython-314.pyc
+│       │   │   │   │   ├── skill_crystallizer.cpython-314.pyc
+│       │   │   │   │   ├── skill_curator.cpython-314.pyc
+│       │   │   │   │   ├── skill_evolution.cpython-314.pyc
+│       │   │   │   │   ├── skill_ledger_sha.cpython-314.pyc
+│       │   │   │   │   ├── trajectory_compressor.cpython-314.pyc
+│       │   │   │   │   └── working_scratchpad.cpython-314.pyc
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── alpha_calculator.py
+│       │   │   │   ├── background_review.py
+│       │   │   │   ├── background_review_fork.py
+│       │   │   │   ├── chronicle_writer.py
+│       │   │   │   ├── context_engine.py
+│       │   │   │   ├── counterfactual_simulator.py
+│       │   │   │   ├── decision_log.py
+│       │   │   │   ├── failure_taxonomy.py
+│       │   │   │   ├── frozen_snapshot.py
+│       │   │   │   ├── layered_memory.py
+│       │   │   │   ├── lesson_consolidator.py
+│       │   │   │   ├── mechanical_anchor_index.py
+│       │   │   │   ├── memory_lifecycle_gc.py
+│       │   │   │   ├── negative_constraint_generator.py
+│       │   │   │   ├── outcome_linker.py
+│       │   │   │   ├── playbook_ledger.py
+│       │   │   │   ├── playbook_lifecycle.py
+│       │   │   │   ├── playbook_linter.py
+│       │   │   │   ├── progressive_loader.py
+│       │   │   │   ├── prompt_cache_boundary.py
+│       │   │   │   ├── reflector.py
+│       │   │   │   ├── session_search.py
+│       │   │   │   ├── sharegpt_exporter.py
+│       │   │   │   ├── skill_ast_audit.py
+│       │   │   │   ├── skill_crystallizer.py
+│       │   │   │   ├── skill_curator.py
+│       │   │   │   ├── skill_evolution.py
+│       │   │   │   ├── skill_ledger_sha.py
+│       │   │   │   ├── trajectory_compressor.py
+│       │   │   │   └── working_scratchpad.py
 │       │   │   ├── pipeline_plugin.py
 │       │   │   ├── prefetch
 │       │   │   │   ├── __init__.py
@@ -300,6 +472,268 @@ Monika/
 │       │   │   │   │   └── verifiers.py
 │       │   │   │   ├── per_asset_stage.py
 │       │   │   │   └── preflight_gate.py
+│       │   │   ├── strategies
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── __init__.cpython-314.pyc
+│       │   │   │   │   ├── base_strategy.cpython-314.pyc
+│       │   │   │   │   ├── bb_volume_profile.cpython-314.pyc
+│       │   │   │   │   ├── btc_donchian_breakout.cpython-314.pyc
+│       │   │   │   │   ├── decay_monitor.cpython-314.pyc
+│       │   │   │   │   ├── evidence_store.cpython-314.pyc
+│       │   │   │   │   ├── gap_fade.cpython-314.pyc
+│       │   │   │   │   ├── hypothesis_registry.cpython-314.pyc
+│       │   │   │   │   ├── liquidity_sweep_edge.cpython-314.pyc
+│       │   │   │   │   ├── pretrade_gate.cpython-314.pyc
+│       │   │   │   │   ├── registry.cpython-314.pyc
+│       │   │   │   │   ├── smc_fvg.cpython-314.pyc
+│       │   │   │   │   ├── strategy_plugin.cpython-314.pyc
+│       │   │   │   │   ├── tri_convergent_alpha.cpython-314.pyc
+│       │   │   │   │   ├── tsm_momentum.cpython-314.pyc
+│       │   │   │   │   ├── xau_trend_engine.cpython-314.pyc
+│       │   │   │   │   └── xti_pairs_readiness.cpython-314.pyc
+│       │   │   │   ├── synthesized
+│       │   │   │   │   ├── __pycache__
+│       │   │   │   │   │   ├── __init__.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_27c20d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_3a4246.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_5f9ce8.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_8acf60.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_932927.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_aacbcf.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_abe552.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_c2eab6.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_ce0c59.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_de5e1e.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_audusd_eb3084.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_1230d3.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_486acc.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_50c0eb.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_52d670.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_8b05ec.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_96feb9.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_adf9b6.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_b22661.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_bd9200.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_cbd98f.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_ce0d23.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_db91cc.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_btcusd_f91b83.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_6c25e3.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_6d622a.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_76877d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_8060ed.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_920843.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_974ead.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_a25dcb.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_b7af66.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_c89ba5.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_eurusd_fa2e45.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_1c9869.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_1fb4c5.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_4947d0.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_634767.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_867953.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_9f0652.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_b14ef8.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_b3f4b6.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_gbpusd_e73efc.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_131b6e.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_13a603.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_159711.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_41ec5b.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_4a7cd2.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_55884a.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_7c9264.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_8102fa.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_da40ef.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_usdjpy_e3c1b2.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_133dfb.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_3af460.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_5044bf.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_59cf5d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_5e8d45.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_61842a.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_63216a.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_6e46d9.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_72bf31.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_7358c1.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_754250.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_75d1dc.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_78210e.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_94ad53.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_96d26b.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_a6d004.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_a84e8d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_b01980.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_b256b3.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_b68a11.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_bb1cfa.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_ca7c75.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xauusd_dfbed8.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_042cd9.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_0d2342.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_0f1bd3.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_176316.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_3e1575.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_3fe51d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_5af3d8.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_6e7089.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_87e8fa.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_945526.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_9e8436.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_beb0e3.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_d4aee9.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_d7ab4a.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_e55dbf.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_e87a0b.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_eadd31.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xbrusd_ec8f88.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_09ce88.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_16dc64.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_1793d0.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_2c4e39.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_374fa7.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_403155.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_43ae5f.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_487183.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_592069.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_83031c.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_880297.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_9ffd6d.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_dae3f9.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_f30ff5.cpython-314.pyc
+│       │   │   │   │   │   ├── alpha_xtiusd_fd5506.cpython-314.pyc
+│       │   │   │   │   │   └── mock_pass.cpython-314.pyc
+│       │   │   │   │   ├── quarantine
+│       │   │   │   │   │   └── alpha_btcusd_467904.py
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── alpha_audusd_27c20d.py
+│       │   │   │   │   ├── alpha_audusd_3a4246.py
+│       │   │   │   │   ├── alpha_audusd_5f9ce8.py
+│       │   │   │   │   ├── alpha_audusd_8acf60.py
+│       │   │   │   │   ├── alpha_audusd_932927.py
+│       │   │   │   │   ├── alpha_audusd_aacbcf.py
+│       │   │   │   │   ├── alpha_audusd_abe552.py
+│       │   │   │   │   ├── alpha_audusd_c2eab6.py
+│       │   │   │   │   ├── alpha_audusd_ce0c59.py
+│       │   │   │   │   ├── alpha_audusd_de5e1e.py
+│       │   │   │   │   ├── alpha_audusd_eb3084.py
+│       │   │   │   │   ├── alpha_btcusd_1230d3.py
+│       │   │   │   │   ├── alpha_btcusd_486acc.py
+│       │   │   │   │   ├── alpha_btcusd_50c0eb.py
+│       │   │   │   │   ├── alpha_btcusd_52d670.py
+│       │   │   │   │   ├── alpha_btcusd_8b05ec.py
+│       │   │   │   │   ├── alpha_btcusd_96feb9.py
+│       │   │   │   │   ├── alpha_btcusd_adf9b6.py
+│       │   │   │   │   ├── alpha_btcusd_b22661.py
+│       │   │   │   │   ├── alpha_btcusd_bd9200.py
+│       │   │   │   │   ├── alpha_btcusd_cbd98f.py
+│       │   │   │   │   ├── alpha_btcusd_ce0d23.py
+│       │   │   │   │   ├── alpha_btcusd_db91cc.py
+│       │   │   │   │   ├── alpha_btcusd_f91b83.py
+│       │   │   │   │   ├── alpha_eurusd_6c25e3.py
+│       │   │   │   │   ├── alpha_eurusd_6d622a.py
+│       │   │   │   │   ├── alpha_eurusd_76877d.py
+│       │   │   │   │   ├── alpha_eurusd_8060ed.py
+│       │   │   │   │   ├── alpha_eurusd_920843.py
+│       │   │   │   │   ├── alpha_eurusd_974ead.py
+│       │   │   │   │   ├── alpha_eurusd_a25dcb.py
+│       │   │   │   │   ├── alpha_eurusd_b7af66.py
+│       │   │   │   │   ├── alpha_eurusd_c89ba5.py
+│       │   │   │   │   ├── alpha_eurusd_fa2e45.py
+│       │   │   │   │   ├── alpha_gbpusd_1c9869.py
+│       │   │   │   │   ├── alpha_gbpusd_1fb4c5.py
+│       │   │   │   │   ├── alpha_gbpusd_4947d0.py
+│       │   │   │   │   ├── alpha_gbpusd_634767.py
+│       │   │   │   │   ├── alpha_gbpusd_867953.py
+│       │   │   │   │   ├── alpha_gbpusd_9f0652.py
+│       │   │   │   │   ├── alpha_gbpusd_b14ef8.py
+│       │   │   │   │   ├── alpha_gbpusd_b3f4b6.py
+│       │   │   │   │   ├── alpha_gbpusd_e73efc.py
+│       │   │   │   │   ├── alpha_usdjpy_131b6e.py
+│       │   │   │   │   ├── alpha_usdjpy_13a603.py
+│       │   │   │   │   ├── alpha_usdjpy_159711.py
+│       │   │   │   │   ├── alpha_usdjpy_41ec5b.py
+│       │   │   │   │   ├── alpha_usdjpy_4a7cd2.py
+│       │   │   │   │   ├── alpha_usdjpy_55884a.py
+│       │   │   │   │   ├── alpha_usdjpy_7c9264.py
+│       │   │   │   │   ├── alpha_usdjpy_8102fa.py
+│       │   │   │   │   ├── alpha_usdjpy_da40ef.py
+│       │   │   │   │   ├── alpha_usdjpy_e3c1b2.py
+│       │   │   │   │   ├── alpha_xauusd_133dfb.py
+│       │   │   │   │   ├── alpha_xauusd_3af460.py
+│       │   │   │   │   ├── alpha_xauusd_5044bf.py
+│       │   │   │   │   ├── alpha_xauusd_59cf5d.py
+│       │   │   │   │   ├── alpha_xauusd_5e8d45.py
+│       │   │   │   │   ├── alpha_xauusd_61842a.py
+│       │   │   │   │   ├── alpha_xauusd_63216a.py
+│       │   │   │   │   ├── alpha_xauusd_6e46d9.py
+│       │   │   │   │   ├── alpha_xauusd_72bf31.py
+│       │   │   │   │   ├── alpha_xauusd_7358c1.py
+│       │   │   │   │   ├── alpha_xauusd_754250.py
+│       │   │   │   │   ├── alpha_xauusd_75d1dc.py
+│       │   │   │   │   ├── alpha_xauusd_78210e.py
+│       │   │   │   │   ├── alpha_xauusd_94ad53.py
+│       │   │   │   │   ├── alpha_xauusd_96d26b.py
+│       │   │   │   │   ├── alpha_xauusd_a6d004.py
+│       │   │   │   │   ├── alpha_xauusd_a84e8d.py
+│       │   │   │   │   ├── alpha_xauusd_b01980.py
+│       │   │   │   │   ├── alpha_xauusd_b256b3.py
+│       │   │   │   │   ├── alpha_xauusd_b68a11.py
+│       │   │   │   │   ├── alpha_xauusd_bb1cfa.py
+│       │   │   │   │   ├── alpha_xauusd_ca7c75.py
+│       │   │   │   │   ├── alpha_xauusd_dfbed8.py
+│       │   │   │   │   ├── alpha_xbrusd_042cd9.py
+│       │   │   │   │   ├── alpha_xbrusd_0d2342.py
+│       │   │   │   │   ├── alpha_xbrusd_0f1bd3.py
+│       │   │   │   │   ├── alpha_xbrusd_176316.py
+│       │   │   │   │   ├── alpha_xbrusd_3e1575.py
+│       │   │   │   │   ├── alpha_xbrusd_3fe51d.py
+│       │   │   │   │   ├── alpha_xbrusd_5af3d8.py
+│       │   │   │   │   ├── alpha_xbrusd_6e7089.py
+│       │   │   │   │   ├── alpha_xbrusd_87e8fa.py
+│       │   │   │   │   ├── alpha_xbrusd_945526.py
+│       │   │   │   │   ├── alpha_xbrusd_9e8436.py
+│       │   │   │   │   ├── alpha_xbrusd_beb0e3.py
+│       │   │   │   │   ├── alpha_xbrusd_d4aee9.py
+│       │   │   │   │   ├── alpha_xbrusd_d7ab4a.py
+│       │   │   │   │   ├── alpha_xbrusd_e55dbf.py
+│       │   │   │   │   ├── alpha_xbrusd_e87a0b.py
+│       │   │   │   │   ├── alpha_xbrusd_eadd31.py
+│       │   │   │   │   ├── alpha_xbrusd_ec8f88.py
+│       │   │   │   │   ├── alpha_xtiusd_09ce88.py
+│       │   │   │   │   ├── alpha_xtiusd_16dc64.py
+│       │   │   │   │   ├── alpha_xtiusd_1793d0.py
+│       │   │   │   │   ├── alpha_xtiusd_2c4e39.py
+│       │   │   │   │   ├── alpha_xtiusd_374fa7.py
+│       │   │   │   │   ├── alpha_xtiusd_403155.py
+│       │   │   │   │   ├── alpha_xtiusd_43ae5f.py
+│       │   │   │   │   ├── alpha_xtiusd_487183.py
+│       │   │   │   │   ├── alpha_xtiusd_592069.py
+│       │   │   │   │   ├── alpha_xtiusd_83031c.py
+│       │   │   │   │   ├── alpha_xtiusd_880297.py
+│       │   │   │   │   ├── alpha_xtiusd_9ffd6d.py
+│       │   │   │   │   ├── alpha_xtiusd_dae3f9.py
+│       │   │   │   │   ├── alpha_xtiusd_f30ff5.py
+│       │   │   │   │   ├── alpha_xtiusd_fd5506.py
+│       │   │   │   │   └── mock_pass.py
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── base_strategy.py
+│       │   │   │   ├── bb_volume_profile.py
+│       │   │   │   ├── btc_donchian_breakout.py
+│       │   │   │   ├── decay_monitor.py
+│       │   │   │   ├── evidence_store.py
+│       │   │   │   ├── gap_fade.py
+│       │   │   │   ├── hypothesis_registry.py
+│       │   │   │   ├── liquidity_sweep_edge.py
+│       │   │   │   ├── pretrade_gate.py
+│       │   │   │   ├── registry.py
+│       │   │   │   ├── smc_fvg.py
+│       │   │   │   ├── strategy_plugin.py
+│       │   │   │   ├── tri_convergent_alpha.py
+│       │   │   │   ├── tsm_momentum.py
+│       │   │   │   ├── xau_trend_engine.py
+│       │   │   │   └── xti_pairs_readiness.py
 │       │   │   ├── subagent
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adhoc_manager.py
