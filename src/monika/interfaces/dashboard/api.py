@@ -17,12 +17,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import secrets
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from monika.interfaces.dashboard.rbac import Role, resolve_role, require_role
 from monika.interfaces.dashboard.routes import (
@@ -206,6 +209,37 @@ async def verify_api_key(request: Request, call_next):
         return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid or missing API key in headers"})
 
     return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# Global Exception Handlers (Sanitize Internal Stack Traces)
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
+        )
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors()},
+        )
+    error_id = secrets.token_hex(8)
+    logger.error(
+        f"[DashboardAPI] Unhandled exception [ErrorID: {error_id}] on {request.method} {request.url.path}: {exc}",
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_id": error_id,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

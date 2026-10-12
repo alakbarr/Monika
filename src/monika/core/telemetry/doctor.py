@@ -16,7 +16,9 @@ import datetime
 import logging
 import os
 import shutil
+import urllib.parse
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("Monika.Core.Telemetry.Doctor")
@@ -380,6 +382,70 @@ class SystemDoctor:
             except Exception as e:
                 self._record("DatabaseWAL", f"wal:{db_file.name}", "WARN", f"WAL check error: {e}")
 
+    def check_database_url_and_offline_integrity(self, settings: Optional[dict] = None) -> None:
+        """Validate DATABASE_URL formatting and perform offline file/integrity checks."""
+        import sqlite3
+
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url and isinstance(settings, dict):
+            db_cfg = settings.get("database", {})
+            if isinstance(db_cfg, dict):
+                db_url = db_cfg.get("url")
+
+        if not db_url:
+            self._record("Database", "DATABASE_URL", "WARN", "DATABASE_URL is not set (will default to SQLite).")
+            return
+
+        parsed = urllib.parse.urlparse(db_url)
+        scheme = parsed.scheme.lower()
+        valid_schemes = (
+            "sqlite",
+            "sqlite+aiosqlite",
+            "postgresql",
+            "postgresql+asyncpg",
+            "postgresql+psycopg2",
+        )
+
+        if not any(scheme == s or scheme.startswith("sqlite") or scheme.startswith("postgresql") for s in valid_schemes):
+            self._record("Database", "DATABASE_URL", "FAIL", f"Unsupported database scheme: '{scheme}'.")
+            return
+
+        self._record("Database", "DATABASE_URL", "OK", f"Database URI scheme validated: {scheme}")
+
+        if "sqlite" in scheme:
+            db_path = parsed.path
+            if db_path.startswith("///"):
+                file_path = Path(db_path[3:])
+            elif db_path.startswith("/"):
+                file_path = Path(db_path[1:]) if os.name == "nt" and ":" in db_path else Path(db_path)
+            else:
+                file_path = Path(db_path)
+
+            if file_path.exists():
+                try:
+                    conn = sqlite3.connect(str(file_path), timeout=5.0)
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA integrity_check;")
+                    res = cursor.fetchone()
+                    conn.close()
+                    if res and res[0] == "ok":
+                        self._record("Database", "SQLite-Integrity", "OK", f"Offline SQLite integrity verified ({file_path.name}).")
+                    else:
+                        self._record("Database", "SQLite-Integrity", "WARN", f"Integrity check returned: {res}")
+                except Exception as e:
+                    self._record("Database", "SQLite-Integrity", "WARN", f"Offline SQLite check failed: {e}")
+            else:
+                parent_dir = file_path.parent
+                if parent_dir.exists() and os.access(parent_dir, os.W_OK):
+                    self._record("Database", "SQLite-Path", "OK", f"SQLite target file will be initialized in {parent_dir}.")
+                else:
+                    self._record("Database", "SQLite-Path", "WARN", f"SQLite directory not writable or missing: {parent_dir}")
+        elif "postgresql" in scheme:
+            if not parsed.hostname:
+                self._record("Database", "PostgreSQL-Config", "WARN", "PostgreSQL URI lacks a valid hostname.")
+            else:
+                self._record("Database", "PostgreSQL-Config", "OK", f"Target host: {parsed.hostname}:{parsed.port or 5432}, DB: {parsed.path.lstrip('/')}")
+
     async def check_redis(self, settings: dict) -> None:
         """Verify Redis cache connectivity if configured or using localhost."""
         redis_cfg = settings.get("redis", {}) if isinstance(settings, dict) else {}
@@ -415,6 +481,7 @@ class SystemDoctor:
         self.check_configuration(settings)
         self.check_credentials(settings)
         self.check_mt5(settings)
+        self.check_database_url_and_offline_integrity(settings)
         self.check_wal_integrity_and_repair()
         if self.live_probes:
             try:

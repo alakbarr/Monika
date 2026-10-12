@@ -69,8 +69,8 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1047
       - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1055
       - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1062
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1069
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1077
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1070
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1078
 
 ## Root Directory: `Monika/`
 
@@ -1061,6 +1061,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `src/monika/interfaces/gateway`
 - **Modules**:
+  - `api_server.py`: OpenAI-compatible API server (`/v1/chat/completions`) with origin validation and RBAC-protected PTY terminal websocket.
   - `acp_server.py`: Agent Communication Protocol server.
   - `channel_router.py`: Omnichannel message multiplexing and dispatching across external protocols.
   - `webhook_ingress.py`: Cryptographically signed HMAC-SHA256 webhook ingress with replay window protection.

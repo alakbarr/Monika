@@ -12,26 +12,14 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+import importlib.util
 from typing import Any, Dict, List, Optional
 
 import monika.core.primitives.clock as clock
 
 logger = logging.getLogger("TradingAgent.PDFReportGenerator")
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import (
-    HRFlowable,
-    Image,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
-HAS_REPORTLAB = True
+HAS_REPORTLAB: bool = importlib.util.find_spec("reportlab") is not None
 
 
 class PDFReportGenerator:
@@ -95,6 +83,20 @@ class PDFReportGenerator:
             }
 
         try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from reportlab.platypus import (
+                HRFlowable,
+                Image,
+                Paragraph,
+                SimpleDocTemplate,
+                Spacer,
+                Table,
+                TableStyle,
+            )
+
             doc = SimpleDocTemplate(
                 str(filepath),
                 pagesize=letter,

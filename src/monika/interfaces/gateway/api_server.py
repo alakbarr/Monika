@@ -25,6 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from monika.interfaces.dashboard.rbac import Role, resolve_role
+
 logger = logging.getLogger("TradingAgent.Gateway.ApiServer")
 
 app = FastAPI(
@@ -33,9 +35,25 @@ app = FastAPI(
     version="2.0.0",
 )
 
+_allowed_origins_raw = os.getenv("GATEWAY_ALLOWED_ORIGINS") or os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _allowed_origins_raw.split(",") if o.strip()] or [
+    "http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "http://localhost:8000",
+    "http://127.0.0.1:5173", "http://127.0.0.1:4173", "http://127.0.0.1:3000", "http://127.0.0.1:8000",
+]
+
+
+def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
+    origin = websocket.headers.get("origin")
+    if not origin:
+        return is_localhost
+    if "*" in _allowed_origins:
+        return True
+    return origin in _allowed_origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -177,6 +195,19 @@ async def chat_completions(req: ChatCompletionRequest, request: Request):
     OpenAI-compatible Chat Completions endpoint.
     Supports both standard JSON and Server-Sent Events (SSE) streaming.
     """
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    is_localhost = client_ip in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    auth_header = request.headers.get("Authorization", "")
+    bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+    client_key = request.headers.get("X-API-Key") or bearer_key or request.query_params.get("token") or ""
+
+    try:
+        role = resolve_role(str(client_key), is_localhost=is_localhost)
+        request.state.role = role
+    except PermissionError:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing API key.")
+
     if not req.messages:
         raise HTTPException(status_code=400, detail="Messages array cannot be empty.")
 
@@ -326,8 +357,54 @@ async def terminal_websocket(websocket: WebSocket):
     """
     WebSocket endpoint for bidirectional interactive terminal console streaming.
     Integrates with PtyBridgeManager and PtyQueryResponder.
+    Requires origin validation and Role.ADMIN authorization.
     """
     from monika.interfaces.dashboard.pty_bridge import get_pty_bridge_manager
+    from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
+
+    client_host = websocket.client.host if websocket.client else "127.0.0.1"
+    is_localhost = client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+    if not _is_origin_allowed(websocket, is_localhost):
+        logger.warning(f"[ApiServer] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        return
+
+    ticket_mgr = get_ws_ticket_manager()
+    role = None
+    authenticated = False
+
+    ticket_param = websocket.query_params.get("ticket")
+    if ticket_param:
+        ticket_payload = ticket_mgr.validate_and_consume(ticket_param)
+        if ticket_payload:
+            role = Role(ticket_payload.role) if ticket_payload.role in [r.value for r in Role] else Role.VIEWER
+            authenticated = True
+
+    if not authenticated:
+        token_param = websocket.query_params.get("token") or websocket.query_params.get("api_key")
+        auth_header = websocket.headers.get("authorization", "")
+        bearer_key = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else ""
+        client_key = token_param or websocket.headers.get("x-api-key") or bearer_key or ""
+
+        # Terminal shell requires explicit token or ticket even on localhost to prevent CSWSH attacks
+        if not client_key and not ticket_param:
+            logger.warning(f"[ApiServer] Rejected terminal shell connection on localhost without explicit token or ticket from {client_host}")
+            await websocket.close(code=1008, reason="Forbidden: Terminal shell requires explicit ticket or API key")
+            return
+
+        try:
+            role = resolve_role(str(client_key), is_localhost=is_localhost)
+            authenticated = True
+        except PermissionError:
+            logger.warning(f"[ApiServer] Unauthorized terminal connection attempt from {client_host}")
+            await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+            return
+
+    if role != Role.ADMIN:
+        logger.warning(f"[ApiServer] Forbidden: Role '{role}' cannot access terminal shell from {client_host}")
+        await websocket.close(code=1008, reason="Forbidden: ADMIN role required for terminal shell")
+        return
 
     await websocket.accept()
     manager = get_pty_bridge_manager()
