@@ -1,20 +1,12 @@
-"""
-Package: agent.monitors
-Background monitoring loops extracted from TradingAgent.
-"""
-from agent.monitors.drawdown_monitor import run_floating_drawdown_monitor
-from agent.monitors.scraper_loop import run_scraper_loop
-from agent.monitors.db_health import run_db_health_check
-from agent.monitors.paper_trade_monitor import run_paper_trade_monitor
-from agent.monitors.margin_monitor import run_margin_monitor
-from agent.monitors.startup_watchdog import StartupWatchdog, global_startup_watchdog
+"""Shim package: monika.application.agent.monitors."""
+import sys as _sys
+import importlib as _importlib
 
-__all__ = [
-    "run_floating_drawdown_monitor",
-    "run_scraper_loop",
-    "run_db_health_check",
-    "run_paper_trade_monitor",
-    "run_margin_monitor",
-    "StartupWatchdog",
-    "global_startup_watchdog",
-]
+_canonical = _importlib.import_module("monika.application.agent.monitors")
+
+for _attr in dir(_canonical):
+    if not _attr.startswith("_"):
+        globals()[_attr] = getattr(_canonical, _attr)
+
+if hasattr(_canonical, "__all__"):
+    __all__ = _canonical.__all__

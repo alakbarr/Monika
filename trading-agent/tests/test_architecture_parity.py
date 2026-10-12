@@ -396,3 +396,48 @@ def test_data_ingestion_layer_identity_and_parity():
     import services.market_data_service as shim_mds
     import monika.application.services.market_data_service as canon_mds
     assert shim_mds.MarketDataService is canon_mds.MarketDataService
+
+
+def test_agent_and_graph_layer_identity_and_parity():
+    """Verify PR-6a agent, graph, and checkpointer shims preserve exact object identity and runtime contracts."""
+    # 1. Agent layer identity
+    import agent.agent_loop as shim_al
+    import monika.application.agent.agent_loop as canon_al
+    assert shim_al.SystemAgentLoop is canon_al.SystemAgentLoop
+
+    import agent.startup_checks as shim_sc
+    import monika.application.agent.startup_checks as canon_sc
+    assert shim_sc.StartupChecker is canon_sc.StartupChecker
+    assert shim_sc.run_startup_checks is canon_sc.run_startup_checks
+
+    import agent.task_registry as shim_tr
+    import monika.application.agent.task_registry as canon_tr
+    assert shim_tr.TaskRegistry is canon_tr.TaskRegistry
+
+    # 2. Graph layer identity
+    import graph.workflow as shim_gw
+    import monika.application.graph.workflow as canon_gw
+    assert shim_gw.build_trading_graph is canon_gw.build_trading_graph
+
+    import graph.state as shim_gs
+    import monika.application.graph.state as canon_gs
+    assert shim_gs.merge_dicts is canon_gs.merge_dicts
+    assert shim_gs.merge_lists is canon_gs.merge_lists
+
+    import graph.nodes.data_node as shim_dn
+    import monika.application.graph.nodes.data_node as canon_dn
+    assert shim_dn.fetch_data_node is canon_dn.fetch_data_node
+
+    import graph.nodes.debate.subgraph as shim_ds
+    import monika.application.graph.nodes.debate.subgraph as canon_ds
+    assert shim_ds.build_debate_subgraph is canon_ds.build_debate_subgraph
+
+    # 3. Checkpointers (infrastructure) identity
+    import graph.checkpointers.sqlite_checkpointer as shim_sqcp
+    import monika.infrastructure.graph.checkpointers.sqlite_checkpointer as canon_sqcp
+    assert shim_sqcp.SqliteCheckpointSaver is canon_sqcp.SqliteCheckpointSaver
+
+    import graph.checkpointers.dual_checkpointer as shim_dcp
+    import monika.infrastructure.graph.checkpointers.dual_checkpointer as canon_dcp
+    assert shim_dcp.DualCheckpointSaver is canon_dcp.DualCheckpointSaver
+
