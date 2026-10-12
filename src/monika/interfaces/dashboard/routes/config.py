@@ -48,7 +48,8 @@ class ConfigUpdateRequest(BaseModel):
 SENSITIVE_KEY_PATTERN = re.compile(
     r"(^|_)("
     r"api_key|secret_key|secret|password|credential|passwd|"
-    r"private_key|auth_token|passphrase|webhook_url"
+    r"private_key|auth_token|token|passphrase|webhook_url|webhook|"
+    r"database_url|db_url|conn_str|connection_string"
     r")($|_)",
     re.IGNORECASE,
 )

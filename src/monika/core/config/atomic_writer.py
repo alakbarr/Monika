@@ -62,13 +62,24 @@ class AtomicConfigWriter:
         return data
 
     @classmethod
-    def _sync_dict_to_ruamel(cls, dest: Any, src: Dict[str, Any]) -> None:
+    def _is_env_template(cls, val: Any) -> bool:
+        """Check if value is an environment variable template string like ${VAR} or ${VAR:default}."""
+        if isinstance(val, str):
+            s = val.strip()
+            return s.startswith("${") and s.endswith("}")
+        return False
+
+    @classmethod
+    def _sync_dict_to_ruamel(cls, dest: Any, src: Dict[str, Any], preserve_env_templates: bool = True) -> None:
         """Recursively synchronizes a dictionary into a ruamel.yaml CommentedMap while preserving comments."""
         if not hasattr(dest, "items"):
             return
         for k, v in src.items():
+            if preserve_env_templates and k in dest and cls._is_env_template(dest[k]):
+                if isinstance(v, str) and not cls._is_env_template(v):
+                    continue
             if k in dest and isinstance(dest[k], dict) and isinstance(v, dict):
-                cls._sync_dict_to_ruamel(dest[k], v)
+                cls._sync_dict_to_ruamel(dest[k], v, preserve_env_templates=preserve_env_templates)
             else:
                 dest[k] = v
         for k in list(dest.keys()):
@@ -215,6 +226,8 @@ class AtomicConfigWriter:
 
         def _recursive_merge(dest: Any, src: Dict[str, Any]):
             for k, v in src.items():
+                if k in dest and cls._is_env_template(dest[k]) and isinstance(v, str) and not cls._is_env_template(v):
+                    continue
                 if isinstance(v, dict) and isinstance(dest.get(k), dict):
                     _recursive_merge(dest[k], v)
                 else:

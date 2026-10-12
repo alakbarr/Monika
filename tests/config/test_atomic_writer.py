@@ -137,3 +137,33 @@ def test_atomic_writer_update_in_place_sanitizes_time_quotes(tmp_path: Path):
     assert parsed["trading"]["schedule"]["cycle_times_local"] == ["07:00", "15:00", "20:00"]
     for t in parsed["trading"]["schedule"]["cycle_times_local"]:
         assert isinstance(t, str)
+
+
+def test_atomic_writer_preserves_env_templates(tmp_path: Path):
+    target_yaml = tmp_path / "settings.yaml"
+    initial_content = """database:
+  url: ${DATABASE_URL}
+  password: ${DB_PASS}
+app:
+  name: Monika
+"""
+    target_yaml.write_text(initial_content, encoding="utf-8")
+
+    # Incoming update with resolved plaintext or masked string
+    update_data = {
+        "database": {
+            "url": "postgresql://user:secret123@localhost:5432/db",
+            "password": "********",
+        },
+        "app": {
+            "name": "Monika-Renamed",
+        },
+    }
+    AtomicConfigWriter.write(target_yaml, update_data, create_backup=False)
+
+    raw_text = target_yaml.read_text(encoding="utf-8")
+    assert "${DATABASE_URL}" in raw_text
+    assert "${DB_PASS}" in raw_text
+    assert "Monika-Renamed" in raw_text
+    assert "secret123" not in raw_text
+
