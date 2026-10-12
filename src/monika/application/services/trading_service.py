@@ -67,20 +67,40 @@ class TradeExecutionResult:
 class TradingService:
     """Canonical Application Service orchestrating order placement and safety."""
 
-    SECRET_KEY = os.environ.get("MONIKA_ORDER_SIGNING_SECRET", "monika-internal-fortress-secret-key").encode()
+    @classmethod
+    def _get_signing_key(cls, is_live: bool = False) -> bytes:
+        secret = os.environ.get("MONIKA_ORDER_SIGNING_SECRET")
+        if not secret:
+            if is_live:
+                raise ValueError("MONIKA_ORDER_SIGNING_SECRET must be configured for live order execution.")
+            secret = "monika-internal-fortress-secret-key"
+        return secret.encode("utf-8")
 
     @classmethod
     def generate_preview_token(cls, symbol: str, action: str, volume: float, expires_at: float) -> str:
         """Generate HMAC-SHA256 signature for pre-trade verification confirmation."""
         payload = f"{symbol}:{action}:{volume}:{expires_at}".encode()
-        return hmac.new(cls.SECRET_KEY, payload, hashlib.sha256).hexdigest()
+        key = cls._get_signing_key(is_live=False)
+        return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
     @classmethod
-    def verify_preview_token(cls, token: str, symbol: str, action: str, volume: float, expires_at: float) -> bool:
+    def verify_preview_token(
+        cls,
+        token: str,
+        symbol: str,
+        action: str,
+        volume: float,
+        expires_at: float,
+        is_live: bool = False,
+    ) -> bool:
         """Verify validity and non-expiration of pre-trade confirmation token."""
         if time.time() > expires_at:
             return False
-        expected = cls.generate_preview_token(symbol, action, volume, expires_at)
+        try:
+            key = cls._get_signing_key(is_live=is_live)
+        except ValueError:
+            return False
+        expected = hmac.new(key, f"{symbol}:{action}:{volume}:{expires_at}".encode(), hashlib.sha256).hexdigest()
         return hmac.compare_digest(token, expected)
 
     @classmethod
@@ -149,6 +169,7 @@ class TradingService:
         token_expires_at: Optional[float] = None,
         actor: str = "system",
         broker_adapter: Any = None,
+        risk_gate: Any = None,
     ) -> TradeExecutionResult:
         """
         Execute an order after verifying pre-trade confirmation token and risk parameters.
@@ -157,15 +178,74 @@ class TradingService:
         sym = symbol.upper()
         act = action.upper()
 
-        # 1. Verify confirmation token if provided
-        if preview_token and token_expires_at:
-            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at):
+        # 1. Enforce confirmation token for live orders and verify if provided
+        if not is_paper:
+            if not preview_token or not token_expires_at:
+                return TradeExecutionResult(
+                    success=False,
+                    symbol=sym,
+                    action=act,
+                    volume=volume,
+                    error_message="Live order execution requires a valid signed pre-trade confirmation token.",
+                )
+            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=True):
+                return TradeExecutionResult(
+                    success=False,
+                    symbol=sym,
+                    action=act,
+                    volume=volume,
+                    error_message="Invalid or expired pre-trade confirmation token for live order.",
+                )
+        elif preview_token and token_expires_at:
+            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=False):
                 return TradeExecutionResult(
                     success=False,
                     symbol=sym,
                     action=act,
                     volume=volume,
                     error_message="Invalid or expired pre-trade confirmation token.",
+                )
+
+        # 2. Enforce Mechanical Fortress: RiskGate validation for live orders
+        if not is_paper:
+            try:
+                from monika.domain.risk.trade_proposal import TradeProposal
+                prop_dir = "BUY" if act == "BUY" else ("SELL" if act == "SELL" else "WAIT")
+                proposal = TradeProposal(
+                    symbol=sym,
+                    direction=prop_dir,
+                    entry_price=entry_price,
+                    stop_loss=stop_loss or 0.0,
+                    take_profit=take_profit or 0.0,
+                    lot_size=volume,
+                    confluence_score=75.0,
+                    metadata={"actor": actor, "source": "TradingService.submit_order"},
+                )
+                if risk_gate is not None:
+                    rg = risk_gate
+                else:
+                    from monika.domain.risk.risk_gate import RiskGate
+                    from monika.core.config.settings import load_settings
+                    rg = RiskGate(settings=load_settings(), mt5_client=broker_adapter)
+                verdict = await rg.evaluate_proposal(session, proposal, is_paper=False)
+                if not verdict.approved:
+                    err_msg = f"Rejected by RiskGate: {', '.join(verdict.rejection_reasons)}"
+                    logger.warning(f"[TradingService] Live order {act} {volume} {sym} blocked: {err_msg}")
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=err_msg,
+                    )
+            except Exception as e:
+                logger.error(f"[TradingService] RiskGate evaluation error for live order: {e}", exc_info=True)
+                return TradeExecutionResult(
+                    success=False,
+                    symbol=sym,
+                    action=act,
+                    volume=volume,
+                    error_message=f"RiskGate evaluation failure: {e}",
                 )
 
         now = datetime.now(timezone.utc)

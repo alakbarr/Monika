@@ -81,7 +81,7 @@ class ExecutionService(OrderExecutorMixin, RiskEvaluatorMixin, PositionSynchroni
         elif "paper_trading" in self.settings:
             paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", True))
         else:
-            paper_enabled = False
+            paper_enabled = True
         self.dry_run = dry_run or paper_enabled
 
         if broker_adapter is not None:

@@ -41,7 +41,7 @@ class TrailingStopManager:
         self._running = False
         self._is_forex_blocked = False
         self._stop_event = asyncio.Event()
-        from monika.application.execution.order_emulator import ClientOrderEmulator
+        from monika.domain.execution.order_emulator import ClientOrderEmulator
         self.order_emulator = ClientOrderEmulator(
             execution_service=self.execution_service,
             settings=self.settings,
