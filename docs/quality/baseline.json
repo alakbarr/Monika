@@ -20,14 +20,28 @@
     },
     "ruff": {
       "active_config_errors": 0,
-      "expanded_ruleset_debt": 57805
+      "expanded_ruleset_debt": 25000,
+      "ruff_format_status": "100% clean (2299 files formatted)",
+      "isort_status": "100% sorted (PEP 8 / I001)"
     },
     "pyright": {
       "errors": 0,
       "warnings": 0,
-      "informations": 0
+      "informations": 0,
+      "reportMissingImports": true,
+      "missing_imports_suppressions": 0
+    },
+    "import_linter": {
+      "contracts_enforced": 2,
+      "contracts_broken": 0
+    },
+    "test_suite_enhancements": {
+      "architecture_contracts_passed": 2,
+      "hypothesis_property_tests_passed": 2,
+      "strict_markers_enforced": true
     }
   },
+  "phase_checkpoint": "checkpoint/phase-3",
   "architecture_debt": {
     "layer_violations_count": 1860,
     "top_violating_pairs": {

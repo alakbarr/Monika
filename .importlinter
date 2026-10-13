@@ -1,0 +1,23 @@
+[importlinter]
+root_package = monika
+
+[importlinter:contract:1]
+name = Core Layer Boundary
+type = forbidden
+source_modules =
+    monika.core
+forbidden_modules =
+    monika.interfaces
+ignore_imports =
+    monika.infrastructure.infra.notifier -> monika.interfaces.telegram.sanitizer
+    monika.core.telemetry.doctor -> monika.interfaces.cli.doctor
+
+[importlinter:contract:2]
+name = Domain Layer Boundary
+type = forbidden
+source_modules =
+    monika.domain
+forbidden_modules =
+    monika.interfaces
+ignore_imports =
+    monika.infrastructure.infra.notifier -> monika.interfaces.telegram.sanitizer
