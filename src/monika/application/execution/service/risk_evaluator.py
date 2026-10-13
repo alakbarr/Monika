@@ -110,7 +110,11 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
                 return base_risk_pct
 
             win_rate = sym_stats.get("win_rate", 50) / 100
-            rr_ratio = risk_cfg.get("min_rr_ratio", 1.3)
+            realized_payoff = sym_stats.get("payoff_ratio")
+            if realized_payoff and realized_payoff > 0:
+                rr_ratio = float(realized_payoff)
+            else:
+                rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.3))
             kelly = win_rate - (1 - win_rate) / rr_ratio
 
             if kelly <= 0:

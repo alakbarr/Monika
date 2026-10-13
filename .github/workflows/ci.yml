@@ -33,6 +33,10 @@ jobs:
         run: |
           ruff check .
 
+      - name: Verify Documentation Synchronization
+        run: |
+          python scripts/update_index_toc.py --check
+
   python-typecheck:
     name: Type Analysis (Pyright)
     runs-on: ubuntu-latest
@@ -94,12 +98,18 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
+      - name: Apply Database Migrations (Alembic)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
+        run: |
+          alembic upgrade head
+
       - name: Run Pytest
         env:
           PYTHONPATH: src
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
         run: |
-          python -m pytest tests -v
+          python -m pytest tests -v -m "not live and not network"
 
   frontend-build:
     name: Dashboard Frontend Build

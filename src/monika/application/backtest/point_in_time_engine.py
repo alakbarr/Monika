@@ -378,10 +378,22 @@ class PointInTimeBacktestEngine:
                             spread_cost = sym_prof.get("spread_pips", 1.5) * pip_sz
                             slip_cost = sym_prof.get("slippage_pips", 0.5) * pip_sz
 
+                            # Query execution bar (Zero-lookahead: next bar open beginning at or after current_time)
+                            next_bar = (await session.execute(
+                                select(PriceOHLCV)
+                                .where(PriceOHLCV.symbol == symbol)
+                                .where(PriceOHLCV.timeframe == 'H1')
+                                .where(PriceOHLCV.timestamp >= current_time)
+                                .order_by(PriceOHLCV.timestamp.asc())
+                                .limit(1)
+                            )).scalar_one_or_none()
+
+                            base_entry = next_bar.open if next_bar else latest_bar.close
+
                             if direction == 'buy':
-                                entry_price = latest_bar.close + (spread_cost / 2.0) + slip_cost
+                                entry_price = base_entry + (spread_cost / 2.0) + slip_cost
                             else:
-                                entry_price = latest_bar.close - (spread_cost / 2.0) - slip_cost
+                                entry_price = base_entry - (spread_cost / 2.0) - slip_cost
 
                             # Calculate ATR-based dynamic stops & targets
                             adr_ctx = await compute_daily_range_context(session, symbol, self.settings, as_of=current_time)
