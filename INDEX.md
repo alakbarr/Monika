@@ -610,7 +610,7 @@ This document provides an exhaustive structural index of all directories, files,
   - `journal/`: Behavioral diagnostics and trade reflection attribution (`AttributionEngine`, `JournalParser`).
   - `mcp/`: Model Context Protocol client/server infrastructure and tool servers (`MCPClient`, `MCPServer`, `ExcelServer`, `SqliteServer`).
   - `memory/`: Recursive episodic memory, outcome linking, crystallized trade reflection, and skill crystallizers (`OutcomeLinker`, `TradeReflector`, `SkillCrystallizer`, `PlaybookLedger`, `EpisodicMemory`).
-  - `prefetch/`: Market data, macro indicators, and sentiment prefetching pipelines (`Stage1Prefetcher`, `Stage2Prefetcher`, `PrefetchPipeline`, `NewsDigest`).
+  - `prefetch/`: Market data, macro indicators, and sentiment prefetching pipelines (`Stage1Prefetcher`, `Stage2Prefetcher`, `PrefetchPipeline`, `NewsDigestProcessor`), decomposed modular news digest subpackage (`news_digest/`: `base`, `constants`, `helpers`, `summaries`, `macro_context`, `verification`, `classification`, `generation`, `processor`).
   - `research/`: Macroeconomic regime playbooks and playbook runners (`MacroPlaybookRunner`).
   - `schemas/`: Pydantic data validation and payload schemas for analytical outputs.
   - `stages/`: Multi-stage analytical pipeline execution (`FundamentalStage`, `PerAssetStage`, `ContextBuilder`, `PerAssetRunner`).

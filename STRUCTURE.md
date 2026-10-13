@@ -448,7 +448,19 @@ Monika/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── digest_slice_generator.py
 │       │   │   │   ├── macro_preprocessor.py
+│       │   │   │   ├── news_digest
+│       │   │   │   │   ├── __init__.py
+│       │   │   │   │   ├── base.py
+│       │   │   │   │   ├── classification.py
+│       │   │   │   │   ├── constants.py
+│       │   │   │   │   ├── generation.py
+│       │   │   │   │   ├── helpers.py
+│       │   │   │   │   ├── macro_context.py
+│       │   │   │   │   ├── processor.py
+│       │   │   │   │   ├── summaries.py
+│       │   │   │   │   └── verification.py
 │       │   │   │   ├── news_digest.py
+│       │   │   │   ├── pipeline.py
 │       │   │   │   ├── sentiment_aggregator.py
 │       │   │   │   ├── stage1_prefetcher.py
 │       │   │   │   └── stage2_prefetcher.py
