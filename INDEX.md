@@ -1071,10 +1071,10 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `src/monika/interfaces/dashboard`
 - **Modules**:
-  - `api.py`: FastAPI application server orchestrating WebSocket telemetry, REST APIs, and modern SPA frontend static file resolution.
+  - `api.py`: FastAPI application server orchestrating WebSocket telemetry, REST APIs, strict CORS origin controls (`localhost:5173`, `127.0.0.1:5173`), and modern SPA frontend static file resolution.
   - `rbac.py`: Role-Based Access Control enforcing role boundaries (ADMIN, TRADER, VIEWER).
   - `pty_bridge.py`: WebSocket pseudo-terminal bridge for web console execution.
-  - `routes/`: Modular API endpoints (`trading.py`, `config.py`, `system.py`, `intelligence.py`, `backtest.py`, `benchmark.py`, `tokens.py`, `websocket.py`).
+  - `routes/`: Modular API endpoints (`trading.py` synchronized batch close contracts, `config.py`, `system.py`, `intelligence.py`, `backtest.py`, `benchmark.py`, `tokens.py`, `websocket.py`).
 
 ##### Folder: `src/monika/interfaces/gateway`
 - **Modules**:
@@ -1086,7 +1086,7 @@ This document provides an exhaustive structural index of all directories, files,
 
 ##### Folder: `src/monika/interfaces/telegram`
 - **Modules**:
-  - `bot.py`: Primary production Telegram bot controller, callback router, and event notifier.
+  - `bot.py`: Primary production Telegram bot controller with token-bucket outbound queue, RetryAfter backoff, offline disk buffer, callback router, and event notifier.
   - `command_router.py`: Command routing and RBAC authorization guard for Telegram.
   - `routers/`: Modular domain sub-routers (`trading_router.py`, `risk_router.py`, `market_router.py`, `quant_router.py`, `admin_router.py`).
   - `voice_handler.py`: Multimodal voice note processing, transcription, and command confirmation.

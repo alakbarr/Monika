@@ -124,6 +124,59 @@ export function useAgentChatWs() {
             });
             break;
 
+          case 'thought_delta':
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last && last.role === 'assistant' && last.isStreaming) {
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, thought: (last.thought || '') + data.text },
+                ];
+              } else {
+                return [
+                  ...prev,
+                  {
+                    id: String(Date.now()),
+                    role: 'assistant',
+                    text: '',
+                    thought: data.text,
+                    timestamp: new Date().toISOString(),
+                    isStreaming: true,
+                  },
+                ];
+              }
+            });
+            break;
+
+          case 'chart_image':
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: String(Date.now()),
+                role: 'assistant',
+                text: data.caption || '📊 Visualisasi Grafik Pasar',
+                chart_image: data.image_url || data.image_data,
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+            break;
+
+          case 'file_download':
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: String(Date.now()),
+                role: 'assistant',
+                text: data.text || `📥 Berkas siap diunduh: ${data.filename || 'download'}`,
+                file_download: {
+                  url: data.url || data.download_url,
+                  filename: data.filename || 'report.pdf',
+                },
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+            break;
+
           case 'complete':
             setIsProcessing(false);
             setMessages((prev) => {
