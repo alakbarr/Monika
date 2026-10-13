@@ -844,8 +844,25 @@ Monika/
 │       │   │       │   ├── db_tools.py
 │       │   │       │   ├── execution_handlers.py
 │       │   │       │   ├── intelligence.py
+│       │   │       │   ├── macro
+│       │   │       │   │   ├── __init__.py
+│       │   │       │   │   ├── base.py
+│       │   │       │   │   ├── calendar.py
+│       │   │       │   │   ├── central_banks.py
+│       │   │       │   │   ├── fixed_income.py
+│       │   │       │   │   ├── regime.py
+│       │   │       │   │   ├── registration.py
+│       │   │       │   │   └── sentiment_commodities.py
 │       │   │       │   ├── macro_data.py
 │       │   │       │   ├── macro_tools.py
+│       │   │       │   ├── market_data
+│       │   │       │   │   ├── __init__.py
+│       │   │       │   │   ├── base.py
+│       │   │       │   │   ├── charts.py
+│       │   │       │   │   ├── quotes_prices.py
+│       │   │       │   │   ├── registration.py
+│       │   │       │   │   ├── structures_smc.py
+│       │   │       │   │   └── technicals.py
 │       │   │       │   ├── market_data.py
 │       │   │       │   ├── market_data_tools.py
 │       │   │       │   ├── news_tools.py
