@@ -3,7 +3,7 @@ import re
 
 INDEX_FILE = os.path.join(os.path.dirname(__file__), "..", "INDEX.md")
 
-def generate_toc():
+def generate_toc(check_only: bool = False):
     if not os.path.exists(INDEX_FILE):
         print(f"Error: {INDEX_FILE} not found.")
         return
@@ -106,11 +106,24 @@ def generate_toc():
 
     # Replace old TOC with new TOC
     new_file_lines = lines[:toc_start_idx] + new_toc_lines + lines[content_start_idx:]
+    new_content = '\n'.join(new_file_lines)
+
+    if check_only:
+        import sys
+        with open(INDEX_FILE, 'r', encoding='utf-8') as f:
+            current_content = f.read()
+        if current_content != new_content:
+            print("Error: INDEX.md Table of Contents is out of date. Run 'python scripts/update_index_toc.py' to sync.")
+            sys.exit(1)
+        print(f"INDEX.md Table of Contents is up to date ({len(headings)} sections verified).")
+        return
 
     with open(INDEX_FILE, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(new_file_lines))
+        f.write(new_content)
 
     print(f"Successfully updated TOC in INDEX.md. Found {len(headings)} sections. Shift delta: {delta} lines.")
 
 if __name__ == '__main__':
-    generate_toc()
+    import sys
+    check_mode = "--check" in sys.argv
+    generate_toc(check_only=check_mode)

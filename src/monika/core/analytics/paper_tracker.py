@@ -1393,6 +1393,8 @@ def _group_by_symbol(history):
                 "pnl_pct": 0.0,
                 "total_pnl_pct": 0.0,
                 "win_rate": 0.0,
+                "_win_pnls": [],
+                "_loss_pnls": [],
             }
         
         # Only count trades for win_rate if they are market exits
@@ -1405,6 +1407,11 @@ def _group_by_symbol(history):
                 by_sym[sym]["losses"] += 1
                 
         pnl = t.get("pnl_pct", 0) or 0.0
+        if pnl > 0:
+            by_sym[sym]["_win_pnls"].append(float(pnl))
+        elif pnl < 0:
+            by_sym[sym]["_loss_pnls"].append(abs(float(pnl)))
+
         by_sym[sym]["pnl_pct"] = round(by_sym[sym]["pnl_pct"] + pnl, 4)
         by_sym[sym]["total_pnl_pct"] = by_sym[sym]["pnl_pct"]
         by_sym[sym]["win_rate"] = (
@@ -1412,6 +1419,17 @@ def _group_by_symbol(history):
             if by_sym[sym]["trades"] > 0
             else 0.0
         )
+
+    for s_data in by_sym.values():
+        win_list = s_data.pop("_win_pnls", [])
+        loss_list = s_data.pop("_loss_pnls", [])
+        avg_w = sum(win_list) / len(win_list) if win_list else 0.0
+        avg_l = sum(loss_list) / len(loss_list) if loss_list else 0.0
+        payoff = round(avg_w / avg_l, 2) if avg_l > 0 else (round(avg_w, 2) if avg_w > 0 else 1.0)
+        s_data["avg_win_pct"] = round(avg_w, 4)
+        s_data["avg_loss_pct"] = round(avg_l, 4)
+        s_data["payoff_ratio"] = payoff
+
     return by_sym
 
 

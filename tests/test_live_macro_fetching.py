@@ -45,6 +45,9 @@ pytestmark = [pytest.mark.live, pytest.mark.network]
 @pytest_asyncio.fixture
 async def db_session_factory():
     """Create async session factory connected to local PostgreSQL database, ensuring schema exists."""
+    if os.getenv("RUN_LIVE_MACRO_TESTS", "0").lower() not in ("1", "true"):
+        pytest.skip("Skipping live macro tests (set RUN_LIVE_MACRO_TESTS=1 to run against live services)")
+
     raw_url = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL", "")
     db_url = (
         raw_url

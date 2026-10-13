@@ -292,7 +292,7 @@ This document provides an exhaustive structural index of all directories, files,
 - **Modules**:
   - `cost_tracker.py`: Real-time token consumption and inference expenditure tracker (`CostTracker`).
   - `chart_generator.py`: Candlestick chart generation and technical indicator overlay rendering (`generate_candlestick_chart`, `plot_candlesticks_with_smc`).
-  - `paper_tracker.py`: Simulated paper execution portfolio tracker and decay outcome logger (`PaperTracker`).
+  - `paper_tracker.py`: Simulated paper execution portfolio tracker, realized payoff ratio metrics, and decay outcome logger (`PaperTracker`).
   - `trade_autopsy.py`: Post-trade forensic autopsy and degradation attribution engine (`TradeAutopsy`).
   - `edge_tracker.py`: Alpha strategy edge quantification and decaying expectancy tracker (`EdgeTracker`).
   - `specialist_tracker.py`: Domain specialist model performance and win-rate attribution monitor (`SpecialistTracker`).
@@ -682,7 +682,7 @@ This document provides an exhaustive structural index of all directories, files,
   - `service/order_lifecycle_service.py`: Orchestrates pure domain state transitions, DB session flush, event store emit, and event bus publishing (`OrderLifecycleService`).
   - `service/position_synchronizer.py`: Real-time position reconciliation between local database and broker state (`PositionSynchronizer`).
   - `service/reconciliation.py`: Periodic trade and fill reconciliation ledger (`ExecutionReconciliation`).
-  - `service/risk_evaluator.py`: Pre-execution risk sanity check and sizing gatekeeper (`ExecutionRiskEvaluator`).
+  - `service/risk_evaluator.py`: Pre-execution risk sanity check, realized payoff Kelly scaling, and sizing gatekeeper (`RiskEvaluatorMixin`).
   - `service/self_healing_executor.py`: Automated retry, failover, and order recovery engine (`SelfHealingExecutor`).
   - `service/trade_confirm.py`: Dual-token trade confirmation and user approval verification (`TradeConfirmationManager`).
   - `service/emergency_manager.py`: Emergency liquidation and position halt coordinator (`EmergencyExecutionManager`).
@@ -746,7 +746,7 @@ This document provides an exhaustive structural index of all directories, files,
 - Institutional walk-forward engine, point-in-time backtesting, statistical validation, and multi-asset replay simulation.
 - **Modules**:
   - `walk_forward_engine.py`: Anchored and rolling walk-forward optimization with Purged K-Fold validation (`WalkForwardEngine`, `WalkForwardResult`).
-  - `point_in_time_engine.py`: Research-to-live parity replay engine with simulated broker adapter and execution service (`PointInTimeBacktestEngine`).
+  - `point_in_time_engine.py`: Research-to-live parity replay engine with zero-lookahead next_bar.open execution and simulated broker adapter (`PointInTimeBacktestEngine`).
   - `outcome_evaluator.py`: Quantitative trade outcome evaluator, dynamic friction modeling, and asset friction profiles (`OutcomeEvaluator`, `ASSET_FRICTION_PROFILE`).
   - `monte_carlo_engine.py`: Institutional Monte Carlo stress tester, scenario shock engine, and probability of ruin simulator (`MonteCarloStressTester`).
   - `alpha_validation.py`: Rigorous alpha hypothesis validation against statistical tests, cost stresses, and split-half tests (`validate_alpha`, `AlphaValidation`).
