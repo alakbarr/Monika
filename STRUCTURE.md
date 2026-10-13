@@ -1696,6 +1696,20 @@ Monika/
 │           │   │   └── upgrade.py
 │           │   ├── theme.py
 │           │   ├── tui.py
+│           │   ├── tui_app
+│           │   │   ├── __init__.py
+│           │   │   ├── base.py
+│           │   │   ├── constants.py
+│           │   │   ├── dashboard.py
+│           │   │   ├── entrypoints.py
+│           │   │   ├── mixins
+│           │   │   │   ├── __init__.py
+│           │   │   │   ├── actions.py
+│           │   │   │   ├── data_sync.py
+│           │   │   │   ├── navigation.py
+│           │   │   │   ├── plugins_benchmark.py
+│           │   │   │   └── websocket.py
+│           │   │   └── widgets.py
 │           │   ├── tui_chat.py
 │           │   └── width_budget.py
 │           ├── dashboard

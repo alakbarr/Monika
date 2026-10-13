@@ -72,10 +72,10 @@ This document provides an exhaustive structural index of all directories, files,
       - [Folder: `src/monika/infrastructure/storage`](#folder-srcmonikainfrastructurestorage) - Line 1168
     - [Folder: `src/monika/interfaces`](#folder-srcmonikainterfaces) - Line 1173
       - [Folder: `src/monika/interfaces/cli`](#folder-srcmonikainterfacescli) - Line 1177
-      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1186
-      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1193
-      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1201
-      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1212
+      - [Folder: `src/monika/interfaces/dashboard`](#folder-srcmonikainterfacesdashboard) - Line 1187
+      - [Folder: `src/monika/interfaces/gateway`](#folder-srcmonikainterfacesgateway) - Line 1194
+      - [Folder: `src/monika/interfaces/telegram`](#folder-srcmonikainterfacestelegram) - Line 1202
+      - [Folder: `src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace) - Line 1213
 
 ## Root Directory: `Monika/`
 
@@ -1178,7 +1178,8 @@ This document provides an exhaustive structural index of all directories, files,
 - **Modules**:
   - `main.py`: Streamlined entrypoint (`monika` CLI) dispatching daemon, doctor, chat, tui, and admin subcommands.
   - `commands/`: Modular command implementations and argument parser (`parser.py`, `daemon_ctrl.py`, `config_ctrl.py`, `inspect_ctrl.py`, `analysis_ctrl.py`, `benchmark_ctrl.py`).
-  - `tui.py`: Terminal User Interface built with Textual for live monitoring and manual trading operations.
+  - `tui.py`: Backward-compatible facade delegating to modular `tui_app/` package for the Rich Textual dashboard.
+  - `tui_app/`: Modular Textual dashboard package (`dashboard.py`, `entrypoints.py`, `widgets.py`, `constants.py`, `base.py`, and mixins: `navigation.py`, `plugins_benchmark.py`, `websocket.py`, `actions.py`, `data_sync.py`).
   - `doctor.py`: Offline/online environment health check diagnostics.
   - `chat/`: Interactive conversational trading assistant (`prompt.py`, `renderer.py`, `session.py`, `completer.py`).
   - `subcommands/`: Modular CLI handlers (`daemon.py`, `trading.py`, `simulation.py`, `mcp.py`, `upgrade.py`, `runcard.py`).
