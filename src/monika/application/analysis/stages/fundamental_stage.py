@@ -328,7 +328,7 @@ class FundamentalStage:
 
         # SOTA Cache-Optimized 4-Tier Prompt Assembly with Canonical Tier-0 Anchor (>= 4,150 tokens)
         try:
-            from monika.infrastructure.llm.prompt_assembler import PromptAssembler
+            from monika.application.analysis.prompt.prompt_assembler import PromptAssembler
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
             core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
             assembler = PromptAssembler(self.settings)

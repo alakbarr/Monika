@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 
 from monika.infrastructure.api.http_retry import fetch_with_retry, RateLimitError, APIStatusError, format_api_error_summary
 from monika.infrastructure.api.streaming import streaming_request, StreamConfig, StreamResult, StreamTimeoutError, StreamSafetyTimeoutError
-from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import TokenUsageLog
 from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
@@ -975,7 +974,12 @@ class GeminiProvider(BaseLLMClient):
 
                 from monika.infrastructure.database.db import get_session as _gs
                 async with _gs() as session:
-                    bound_executor = tool_executor or ToolExecutor(session, settings=self.settings, model_name=self.model)
+                    if tool_executor is not None:
+                        bound_executor = tool_executor
+                    else:
+                        import importlib
+                        tool_executor_cls = importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
+                        bound_executor = tool_executor_cls(session, settings=self.settings, model_name=self.model)
                     result = await bound_executor.execute(tool_name, tool_input)
                 raw_payload = json.dumps(result, ensure_ascii=False, default=str)
                 pruned_payload = compactor.micro_prune(raw_payload, tool_name=tool_name)

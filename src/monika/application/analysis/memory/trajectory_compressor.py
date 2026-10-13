@@ -22,11 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
-def estimate_tokens(text: str) -> int:
-    """Rough token estimation (4 characters per token)."""
-    if not text:
-        return 0
-    return max(1, len(text) // 4)
+from monika.core.primitives import estimate_tokens
 
 
 def truncate_middle_text(text: str, max_chars: int) -> str:

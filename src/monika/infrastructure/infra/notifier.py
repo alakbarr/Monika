@@ -20,39 +20,7 @@ from monika.infrastructure.infra.paths import DATA_DIR
 
 _OUTBOX_FILE = DATA_DIR / "notifier_outbox.json"
 
-def sanitize_telegram_html(text: str) -> str:
-    """
-    Sanitizes arbitrary text containing Telegram HTML formatting.
-    Guarantees 100% zero emoji/emoticon contamination and escapes standalone HTML brackets.
-    """
-    if not text or not isinstance(text, str):
-        return ""
-    
-    try:
-        from monika.core.streaming.sanitizer import strip_emojis_and_emoticons
-        text = strip_emojis_and_emoticons(text)
-    except Exception:
-        pass
-
-    tag_regex = re.compile(
-        r'<\/?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|a|code|pre|blockquote)(?:\s+[^<>]*)?>',
-        re.IGNORECASE
-    )
-    parts = []
-    last_idx = 0
-    for m in tag_regex.finditer(text):
-        non_tag = text[last_idx:m.start()]
-        non_tag = non_tag.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        non_tag = non_tag.replace('&amp;lt;', '&lt;').replace('&amp;gt;', '&gt;').replace('&amp;amp;', '&amp;')
-        parts.append(non_tag)
-        parts.append(m.group(0))
-        last_idx = m.end()
-
-    trailing = text[last_idx:]
-    trailing = trailing.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    trailing = trailing.replace('&amp;lt;', '&lt;').replace('&amp;gt;', '&gt;').replace('&amp;amp;', '&amp;')
-    parts.append(trailing)
-    return "".join(parts)
+from monika.interfaces.telegram.sanitizer import sanitize_telegram_html
 
 
 class AgentNotifier:

@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from typing import Dict, Any, Optional
 import os
 from monika.infrastructure.providers.base_provider import BaseLLMClient, _flatten_system_prompt
-from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.api.streaming import StreamConfig, StreamTimeoutError, StreamSafetyTimeoutError
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,58 @@ def _canonicalize_schema(schema: Any) -> Any:
         return {k: _canonicalize_schema(v) for k, v in sorted(schema.items())}
     if isinstance(schema, list):
         return [_canonicalize_schema(item) for item in schema]
-    return schema
+def make_openai_strict_schema(schema_dict: dict) -> dict:
+    """
+    Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
+    Requirements for OpenAI Structured Outputs (strict: true):
+    1. 'additionalProperties': False on all object schemas.
+    2. Every property in 'properties' MUST be listed in 'required'.
+    3. Fields optional in domain logic are made nullable via anyOf: [orig, {"type": "null"}].
+    """
+    import copy
+    if not isinstance(schema_dict, dict):
+        return schema_dict
+
+    s = copy.deepcopy(schema_dict)
+
+    def _patch_object(obj: dict):
+        if not isinstance(obj, dict):
+            return
+
+        if obj.get("type") == "object" or "properties" in obj:
+            obj["additionalProperties"] = False
+            props = obj.get("properties", {})
+            orig_req = set(obj.get("required", []))
+            obj["required"] = list(props.keys())
+
+            for key, prop in props.items():
+                if key not in orig_req:
+                    if "anyOf" in prop:
+                        has_null = any(x.get("type") == "null" for x in prop["anyOf"] if isinstance(x, dict))
+                        if not has_null:
+                            prop["anyOf"].append({"type": "null"})
+                    elif "type" in prop:
+                        orig_type = prop["type"]
+                        if isinstance(orig_type, str):
+                            if orig_type != "null":
+                                prop["anyOf"] = [{"type": orig_type}, {"type": "null"}]
+                                del prop["type"]
+                        elif isinstance(orig_type, list):
+                            if "null" not in orig_type:
+                                prop["type"] = orig_type + ["null"]
+                    else:
+                        prop["anyOf"] = [copy.deepcopy(prop), {"type": "null"}]
+
+        for v in obj.values():
+            if isinstance(v, dict):
+                _patch_object(v)
+            elif isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict):
+                        _patch_object(item)
+
+    _patch_object(s)
+    return s
 
 
 class OpenAIProvider(BaseLLMClient):
@@ -716,7 +766,6 @@ class OpenAIProvider(BaseLLMClient):
                 elif isinstance(user_msg, list):
                     kwargs["messages"][-1]["content"].append({"type": "text", "text": json_hint})
             else:
-                from monika.application.analysis.schemas.pydantic_schemas import make_openai_strict_schema
                 is_strict_capable = (self._get_provider_name() == "openai") or any(m in str(self.model).lower() for m in ("gpt-4o", "gpt-4.1", "o1", "o3"))
                 
                 if is_array_schema:
@@ -1089,8 +1138,12 @@ class OpenAIProvider(BaseLLMClient):
         
         from monika.infrastructure.database.db import get_session
         async with get_session() as session:
-            from monika.application.analysis.tools.tool_executor import ToolExecutor
-            executor = tool_executor or ToolExecutor(session, settings=self.settings, model_name=self.model)
+            if tool_executor is not None:
+                executor = tool_executor
+            else:
+                import importlib
+                tool_executor_cls = importlib.import_module("monika.application.analysis.tools.tool_executor").ToolExecutor
+                executor = tool_executor_cls(session, settings=self.settings, model_name=self.model)
 
             messages = []
             for msg in conversation_history:

@@ -11,11 +11,7 @@ from typing import Any, List, Dict, Union, Optional
 logger = logging.getLogger("TradingAgent.PromptCompressor")
 
 
-def estimate_tokens(text: str) -> int:
-    """Estimasi kasar jumlah token (~4 chars per token)."""
-    if not text:
-        return 0
-    return len(text) // 4
+from monika.core.primitives import estimate_tokens
 
 
 def truncate_to_budget(text: str, max_tokens: int) -> str:

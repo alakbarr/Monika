@@ -13,7 +13,8 @@ __author__ = "Saiful Akbar"
 
 from monika.infrastructure.infra.legacy_compat import install_legacy_compat
 
-install_legacy_compat()
+# Note: legacy_compat is deprecated. The monika package layout is 100% canonical.
+# install_legacy_compat() remains exported for legacy test harnesses and scripts.
 
 __all__ = [
     "__version__",

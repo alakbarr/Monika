@@ -433,6 +433,9 @@ Monika/
 │       │   │   │   ├── sentiment_aggregator.py
 │       │   │   │   ├── stage1_prefetcher.py
 │       │   │   │   └── stage2_prefetcher.py
+│       │   │   ├── prompt
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── prompt_assembler.py
 │       │   │   ├── prompt_sections.py
 │       │   │   ├── research
 │       │   │   │   └── macro_playbook_runner.py
@@ -1075,6 +1078,7 @@ Monika/
 │       │   │   ├── content_distiller.py
 │       │   │   ├── event_bus.py
 │       │   │   ├── jev_primitives.py
+│       │   │   ├── prompt_primitives.py
 │       │   │   ├── retry.py
 │       │   │   ├── turn_marker.py
 │       │   │   └── worktree.py
